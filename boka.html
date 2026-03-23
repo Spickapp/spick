@@ -366,7 +366,7 @@ input[type=range] { width: 100%; accent-color: var(--green); height: 6px; }
       </div>
     </div>
 
-    <div class="error-msg" id="errorMsg">Något gick fel – försök igen eller kontakta hello@spick.se</div>
+    <div class="error-msg" id="errorMsg">Något gick fel – försök igen eller kontakta <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5e363b3232311e2d2e373d35702d3b">[email&#160;protected]</a></div>
 
     <button type="submit" class="btn-submit" id="submitBtn">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -387,7 +387,7 @@ input[type=range] { width: 100%; accent-color: var(--green); height: 6px; }
 
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPABASE_URL = 'https://urjeijcncsyuletprydy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
 const { createClient } = supabase;
@@ -468,6 +468,8 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
   try {
     const { error } = await db.from('bookings').insert([booking]);
     if (error) throw error;
+    // Skicka e-postnotis till admin
+    await db.functions.invoke('notify', { body: { type: 'booking', record: booking } });
     document.getElementById('bookingForm').style.display = 'none';
     document.getElementById('successCard').style.display = 'block';
     document.getElementById('confirmEmail').textContent = booking.email;
@@ -476,11 +478,4 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     console.error(err);
     errorMsg.style.display = 'block';
     btn.disabled = false;
-    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Bekräfta bokning';
-  }
-});
-
-updatePriceSummary();
-</script>
-</body>
-</html>
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0
