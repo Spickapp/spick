@@ -160,22 +160,117 @@ const SUPABASE_KEY = 'sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const AVATAR_COLORS = ['#1D9E75','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11','#C0396B','#0F6E56'];
+
 const DEMO_CLEANERS = [
-  { id:1, name:'Sara Karlsson', location:'Stockholm · Östermalm', rating:4.97, reviews:47, jobs:89, price:350, bio:'Noggrann och pålitlig städare med 4 års erfarenhet. Specialiserad på hemstädning och storstädning. Allergiker-vänliga produkter på begäran.', tags:['Hemstädning','Storstädning','Fönsterputs'], color:'#1D9E75', avail:true, days:[1,1,1,0,1,1,0], featured:true },
-  { id:2, name:'Maria Andersson', location:'Solna · Sundbyberg', rating:4.94, reviews:31, jobs:58, price:320, bio:'Effektiv och diskret. Jobbar gärna medan du är hemma eller borta. Har eget städmaterial och miljövänliga produkter.', tags:['Hemstädning','Flyttstädning'], color:'#534AB7', avail:true, days:[0,1,1,1,1,0,0], featured:false },
-  { id:3, name:'Ahmad Hassan', location:'Bromma · Vällingby', rating:4.91, reviews:28, jobs:52, price:300, bio:'Professionell städare med bakgrund från städbranschen. Pratar svenska, arabiska och engelska. Flexibel med tider.', tags:['Hemstädning','Kontorsstädning','Fönsterputs'], color:'#D85A30', avail:false, days:[1,0,1,0,1,1,0], featured:false },
-  { id:4, name:'Olena Kovalenko', location:'Stockholm · Södermalm', rating:4.89, reviews:19, jobs:34, price:330, bio:'Ukrainsk städare med höga standarder. Extremt noggrann med detaljer. Perfekt för regelbunden hemstädning.', tags:['Hemstädning','Storstädning'], color:'#0C447C', avail:true, days:[1,1,0,1,0,1,0], featured:false },
-  { id:5, name:'Fatima Osman', location:'Stockholm · Kista', rating:4.85, reviews:14, jobs:27, price:290, bio:'Glad och pålitlig städare. Jobbar kvällar och helger. Perfekt för familjer som behöver flexibla tider.', tags:['Hemstädning','Fönsterputs'], color:'#854F0B', avail:true, days:[0,0,1,1,1,1,1], featured:false },
-  { id:6, name:'Monika Wiśniewska', location:'Stockholm · Vasastan', rating:4.88, reviews:22, jobs:41, price:340, bio:'Polsk städare med 6 års erfarenhet. Specialiserad på flyttstädning och storstädning. Alltid i tid.', tags:['Flyttstädning','Storstädning','Hemstädning'], color:'#3B6D11', avail:false, days:[1,1,1,1,0,0,0], featured:false },
+  { id:'demo-1', name:'Sara Karlsson', location:'Stockholm · Östermalm', rating:4.97, reviews:47, jobs:89, price:350, bio:'Noggrann och pålitlig städare med 4 års erfarenhet. Specialiserad på hemstädning och storstädning. Allergiker-vänliga produkter på begäran.', tags:['Hemstädning','Storstädning','Fönsterputs'], color:'#1D9E75', avail:true, days:[1,1,1,0,1,1,0], featured:true },
+  { id:'demo-2', name:'Olena Kovalenko', location:'Stockholm · Södermalm', rating:4.89, reviews:19, jobs:34, price:330, bio:'Ukrainsk städare med höga standarder. Extremt noggrann med detaljer. Perfekt för regelbunden hemstädning.', tags:['Hemstädning','Storstädning'], color:'#0C447C', avail:true, days:[1,1,0,1,0,1,0], featured:false },
 ];
 
+let ALL_CLEANERS = [];
 let currentFilter = 'alla';
 let currentSort = 'betyg';
 let recurringOn = false;
 let selectedCleaner = null;
+let isLoading = true;
 
 function getInitials(name) { return name.split(' ').map(n=>n[0]).join('').slice(0,2); }
 function starsHtml(r) { const full=Math.floor(r); return '★'.repeat(full)+'☆'.repeat(5-full); }
+
+function mapCleaner(row, idx) {
+  const services = [];
+  if (row.services) {
+    if (Array.isArray(row.services)) services.push(...row.services);
+    else services.push(...row.services.split(',').map(s=>s.trim()));
+  } else {
+    services.push('Hemstädning');
+  }
+  let days = [1,1,1,1,1,0,0];
+  if (row.days && Array.isArray(row.days)) days = row.days;
+  const price = row.hourly_rate || row.price || 350;
+  const rating = row.rating || 0;
+  const reviews = row.reviews || 0;
+  const jobs = row.jobs_completed || row.jobs || 0;
+  return {
+    id: row.id,
+    name: row.full_name || row.name || 'Okänd',
+    location: row.city ? `${row.city}` : 'Stockholm',
+    rating, reviews, jobs, price,
+    bio: row.bio || row.description || row.message || 'Professionell och pålitlig städare.',
+    tags: services,
+    color: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+    avail: row.available !== false,
+    days,
+    featured: row.featured || idx === 0,
+  };
+}
+
+function showLoading() {
+  const grid = document.getElementById('cleanersGrid');
+  grid.innerHTML = Array(3).fill(`
+    <div class="cleaner-card" style="pointer-events:none;">
+      <div class="card-top">
+        <div class="avatar" style="background:var(--gray-mid);"></div>
+        <div class="card-info">
+          <div style="height:14px;background:var(--gray-mid);border-radius:4px;width:60%;margin-bottom:8px;"></div>
+          <div style="height:11px;background:var(--gray-mid);border-radius:4px;width:40%;"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="height:11px;background:var(--gray-mid);border-radius:4px;width:80%;margin-bottom:8px;"></div>
+        <div style="height:11px;background:var(--gray-mid);border-radius:4px;width:55%;"></div>
+      </div>
+      <div class="card-footer" style="padding-top:0.5rem;">
+        <div style="height:40px;background:var(--gray-mid);border-radius:100px;flex:1;"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadCleaners() {
+  showLoading();
+  try {
+    let { data, error } = await db
+      .from('cleaners')
+      .select('*')
+      .eq('status', 'godkänd')
+      .order('rating', { ascending: false });
+    if (error || !data || data.length === 0) {
+      const res2 = await db
+        .from('applications')
+        .select('*')
+        .eq('status', 'godkänd')
+        .order('created_at', { ascending: false });
+      if (!res2.error && res2.data && res2.data.length > 0) {
+        data = res2.data;
+        error = null;
+      }
+    }
+    if (!error && data && data.length > 0) {
+      ALL_CLEANERS = data.map((row, idx) => mapCleaner(row, idx));
+    } else {
+      ALL_CLEANERS = DEMO_CLEANERS;
+      showDemoBanner();
+    }
+  } catch(e) {
+    console.warn('Supabase-fel:', e);
+    ALL_CLEANERS = DEMO_CLEANERS;
+    showDemoBanner();
+  }
+  isLoading = false;
+  renderCleaners();
+}
+
+function showDemoBanner() {
+  const header = document.querySelector('.page-header');
+  if (!document.getElementById('demoBanner')) {
+    const banner = document.createElement('div');
+    banner.id = 'demoBanner';
+    banner.style.cssText = 'background:#FEF3C7;border:1px solid #F59E0B;border-radius:12px;padding:0.75rem 1rem;font-size:0.8rem;color:#92400E;margin-top:1rem;';
+    banner.innerHTML = '⚠️ <strong>Admin:</strong> Inga godkända städare i databasen ännu – visar exempeldata. Godkänn ansökningar i <a href="admin.html" style="color:#92400E;">admin-panelen</a>.';
+    header.appendChild(banner);
+  }
+}
 
 function filterCards(filter, btn) {
   currentFilter = filter;
@@ -187,7 +282,7 @@ function filterCards(filter, btn) {
 function sortCards(val) { currentSort=val; renderCleaners(); }
 
 function renderCleaners() {
-  let data = [...DEMO_CLEANERS];
+  let data = [...ALL_CLEANERS];
   if (currentFilter==='tillganglig') data=data.filter(c=>c.avail);
   else if (currentFilter==='hemstadning') data=data.filter(c=>c.tags.includes('Hemstädning'));
   else if (currentFilter==='flyttstadning') data=data.filter(c=>c.tags.includes('Flyttstädning'));
@@ -195,12 +290,10 @@ function renderCleaners() {
   if (currentSort==='betyg') data.sort((a,b)=>b.rating-a.rating);
   else if (currentSort==='pris') data.sort((a,b)=>a.price-b.price);
   else if (currentSort==='jobb') data.sort((a,b)=>b.jobs-a.jobs);
-
   const grid = document.getElementById('cleanersGrid');
   if (!data.length) { grid.innerHTML='<div class="no-results">Inga städare hittades för detta filter.</div>'; return; }
-
   grid.innerHTML = data.map(c => `
-    <div class="cleaner-card ${c.featured?'featured':''}" onclick="openModal(${c.id})">
+    <div class="cleaner-card ${c.featured?'featured':''}" onclick="openModal('${c.id}')">
       <div class="card-top">
         <div class="avatar" style="background:${c.color};">
           ${getInitials(c.name)}
@@ -228,19 +321,18 @@ function renderCleaners() {
         ${c.avail?'<div class="avail-badge"><div class="avail-dot"></div>Tillgänglig denna vecka</div>':'<div style="font-size:0.72rem;color:var(--muted);">Nästa lediga tid: nästa vecka</div>'}
       </div>
       <div class="card-footer">
-        <button class="btn-book" onclick="event.stopPropagation();openModal(${c.id})">Boka ${c.name.split(' ')[0]}</button>
-        <button class="btn-profile" onclick="event.stopPropagation();openModal(${c.id})">Profil</button>
+        <button class="btn-book" onclick="event.stopPropagation();openModal('${c.id}')">Boka ${c.name.split(' ')[0]}</button>
+        <button class="btn-profile" onclick="event.stopPropagation();openModal('${c.id}')">Profil</button>
       </div>
     </div>
   `).join('');
 }
 
 function openModal(id) {
-  selectedCleaner = DEMO_CLEANERS.find(c=>c.id===id);
+  selectedCleaner = ALL_CLEANERS.find(c=>String(c.id)===String(id));
   const c = selectedCleaner;
   const days = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-
   document.getElementById('modal').innerHTML = `
     <div class="modal-header">
       <div></div>
@@ -250,12 +342,10 @@ function openModal(id) {
       <div class="modal-avatar" style="background:${c.color};">${getInitials(c.name)}</div>
       <div class="modal-name">${c.name}</div>
       <div class="modal-location">${c.location} · ${c.price} kr/h <span style="color:var(--green);font-size:0.8rem;">(${Math.round(c.price*0.5)} kr/h med RUT)</span></div>
-
       <div class="modal-section">
         <div class="modal-section-title">Om ${c.name.split(' ')[0]}</div>
         <div class="modal-bio">${c.bio}</div>
       </div>
-
       <div class="modal-section">
         <div class="modal-section-title">Statistik</div>
         <div class="stats-grid">
@@ -264,14 +354,12 @@ function openModal(id) {
           <div class="stat"><div class="stat-val">${c.jobs}</div><div class="stat-lbl">Utförda jobb</div></div>
         </div>
       </div>
-
       <div class="modal-section">
         <div class="modal-section-title">Tillgänglighet denna vecka</div>
         <div class="times-grid">
           ${days.map((d,i)=>`<div class="day ${c.days[i]?'avail':''}"><div class="day-name">${d}</div><div class="day-dot"></div></div>`).join('')}
         </div>
       </div>
-
       <div class="modal-section">
         <div class="modal-section-title">Boka ${c.name.split(' ')[0]}</div>
         <div class="book-form">
@@ -301,7 +389,6 @@ function openModal(id) {
               </select>
             </div>
           </div>
-
           <div class="recurring-toggle" id="recurringToggle" onclick="toggleRecurring()">
             <div>
               <div class="recurring-label">Boka återkommande</div>
@@ -309,7 +396,6 @@ function openModal(id) {
             </div>
             <div class="toggle-sw" id="toggleSw"><div class="toggle-th"></div></div>
           </div>
-
           <div id="recurringOptions" style="display:none;margin-bottom:0.75rem;">
             <select class="form-input" id="m-freq">
               <option value="weekly">Varje vecka</option>
@@ -317,7 +403,6 @@ function openModal(id) {
               <option value="monthly">En gång i månaden</option>
             </select>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Ditt namn</label>
@@ -336,14 +421,12 @@ function openModal(id) {
             <label class="form-label">Adress</label>
             <input type="text" class="form-input" id="m-address" placeholder="Storgatan 1, Stockholm">
           </div>
-
           <button class="btn-confirm" id="confirmBtn" onclick="confirmBooking()">
             Boka ${c.name.split(' ')[0]} →
           </button>
         </div>
       </div>
     </div>`;
-
   document.getElementById('modalOverlay').style.display='flex';
   document.body.style.overflow='hidden';
 }
@@ -368,15 +451,12 @@ async function confirmBooking() {
   const date = document.getElementById('m-date').value;
   const time = document.getElementById('m-time').value;
   const address = document.getElementById('m-address').value;
-
   if (!name||!email||!phone||!date||!address) {
     alert('Fyll i alla fält för att boka.');
     return;
   }
-
   btn.disabled=true;
   btn.innerHTML='<div class="spinner"></div> Bokar...';
-
   const booking = {
     name, email, phone, address, city: 'Stockholm',
     service: document.getElementById('m-service').value,
@@ -386,7 +466,6 @@ async function confirmBooking() {
     message: `Städare: ${selectedCleaner.name}${recurringOn?' · Återkommande: '+document.getElementById('m-freq').value:''}`,
     status: 'ny'
   };
-
   try {
     const { error } = await db.from('bookings').insert([booking]);
     if (error) throw error;
@@ -406,7 +485,7 @@ async function confirmBooking() {
   }
 }
 
-renderCleaners();
+loadCleaners();
 </script>
 </body>
 </html>
