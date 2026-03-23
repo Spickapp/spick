@@ -336,6 +336,44 @@ textarea { resize: vertical; min-height: 100px; }
       <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;" id="t-fskatt-note">Har du inte F-skatt ännu? Inga problem – följ guiden ovan så hjälper vi dig!</p>
     </div>
 
+    <!-- Försäkring -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <span id="t-insurance-title">Ansvarsförsäkring</span>
+      </div>
+      <div class="fskatt-toggle" id="insuranceToggle" onclick="toggleInsurance()">
+        <div>
+          <span class="toggle-label" id="t-insurance-q">Har du ansvarsförsäkring?</span>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px;" id="t-insurance-sub">Täcker skador du orsakar hos kunden</div>
+        </div>
+        <div class="toggle-switch" id="insuranceSwitch"><div class="toggle-thumb"></div></div>
+      </div>
+      <div id="insuranceInfo" style="margin-top:0.875rem;background:var(--green-pale);border-radius:12px;padding:0.875rem 1rem;display:none;">
+        <div style="font-size:0.8rem;color:var(--green);font-weight:500;margin-bottom:0.25rem;">Har du inte ansvarsförsäkring ännu?</div>
+        <div style="font-size:0.75rem;color:#1D9E75;line-height:1.5;">Inga problem – du kan skaffa en via Folksam eller If Företag för ca 150–250 kr/mån. Vi hjälper dig med det efter godkännande.</div>
+      </div>
+    </div>
+
+    <!-- Nyckelhantering -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        </div>
+        <span id="t-keys-title">Nyckelhantering</span>
+      </div>
+      <div style="font-size:0.875rem;color:var(--text-muted);line-height:1.6;margin-bottom:1rem;" id="t-keys-info">
+        Många kunder lämnar nycklar. Genom att godkänna vår nyckelrutin förbinder du dig att hantera nycklar säkert och kvittera mottagning digitalt i appen.
+      </div>
+      <div class="fskatt-toggle" id="keysToggle" onclick="toggleKeys()">
+        <span class="toggle-label" id="t-keys-q">Jag godkänner Spicks nyckelrutin</span>
+        <div class="toggle-switch" id="keysSwitch"><div class="toggle-thumb"></div></div>
+      </div>
+    </div>
+
     <!-- Meddelande -->
     <div class="form-card">
       <div class="form-section-title">
@@ -377,8 +415,23 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let hasFskatt = false;
+let hasInsurance = false;
+let acceptsKeys = false;
 let selectedServices = ['Hemstädning'];
 let selectedExperience = 'Ingen erfarenhet';
+
+function toggleInsurance() {
+  hasInsurance = !hasInsurance;
+  document.getElementById('insuranceSwitch').classList.toggle('on', hasInsurance);
+  document.getElementById('insuranceToggle').classList.toggle('yes', hasInsurance);
+  document.getElementById('insuranceInfo').style.display = hasInsurance ? 'none' : 'block';
+}
+
+function toggleKeys() {
+  acceptsKeys = !acceptsKeys;
+  document.getElementById('keysSwitch').classList.toggle('on', acceptsKeys);
+  document.getElementById('keysToggle').classList.toggle('yes', acceptsKeys);
+}
 
 const translations = {
   sv: {
@@ -524,6 +577,8 @@ document.getElementById('cleanerForm').addEventListener('submit', async (e) => {
     experience: selectedExperience,
     services: selectedServices.join(', '),
     has_fskatt: hasFskatt,
+    has_insurance: hasInsurance,
+    accepts_keys: acceptsKeys,
     message: document.getElementById('message').value,
     status: 'ny'
   };
