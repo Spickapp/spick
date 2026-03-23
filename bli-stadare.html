@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bli städare – Spick</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --green: #0F6E56;
+  --green-mid: #1D9E75;
+  --green-light: #9FE1CB;
+  --green-pale: #E1F5EE;
+  --black: #0E0E0E;
+  --gray: #F7F7F5;
+  --gray-mid: #E8E8E4;
+  --text: #1C1C1A;
+  --text-muted: #6B6960;
+  --white: #FFFFFF;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--gray); min-height: 100vh; }
+
+nav {
+  background: white;
+  padding: 1.25rem 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--gray-mid);
+  position: sticky; top: 0; z-index: 10;
+}
+.nav-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--green); text-decoration: none; }
+.nav-back { font-size: 0.875rem; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s; }
+.nav-back:hover { color: var(--green); }
+
+.page { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+
+.page-header { text-align: center; margin-bottom: 3rem; }
+.page-tag { display: inline-block; background: var(--black); color: white; font-size: 0.8rem; font-weight: 500; padding: 0.35rem 1rem; border-radius: 100px; margin-bottom: 1rem; }
+.page-title { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 700; color: var(--black); margin-bottom: 0.75rem; letter-spacing: -0.02em; }
+.page-sub { font-size: 1rem; color: var(--text-muted); font-weight: 300; line-height: 1.6; }
+
+/* Benefits */
+.benefits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; }
+.benefit { background: white; border-radius: 16px; padding: 1.25rem; border: 1px solid var(--gray-mid); text-align: center; }
+.benefit-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.benefit-title { font-size: 0.9rem; font-weight: 600; color: var(--black); margin-bottom: 0.25rem; }
+.benefit-sub { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+
+/* F-skatt guide */
+.fskatt-guide { background: var(--black); border-radius: 20px; padding: 1.5rem; margin-bottom: 2rem; color: white; }
+.fskatt-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; }
+.fskatt-sub { font-size: 0.875rem; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 1.25rem; font-weight: 300; }
+.fskatt-steps { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; }
+.fskatt-step { display: flex; gap: 0.875rem; align-items: flex-start; }
+.fstep-num { width: 24px; height: 24px; border-radius: 50%; background: var(--green); color: white; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.fstep-text { font-size: 0.875rem; color: rgba(255,255,255,0.8); line-height: 1.5; }
+.fstep-text strong { color: white; font-weight: 500; }
+.btn-fskatt { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: var(--green); color: white; border-radius: 100px; font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
+.btn-fskatt:hover { background: var(--green-mid); }
+
+/* Language selector */
+.lang-selector { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.lang-btn { padding: 0.4rem 1rem; border-radius: 100px; border: 1.5px solid var(--gray-mid); font-size: 0.8rem; font-weight: 500; cursor: pointer; background: white; color: var(--text-muted); transition: all 0.2s; }
+.lang-btn.active { border-color: var(--green); background: var(--green-pale); color: var(--green); }
+
+/* Form */
+.form-card { background: white; border-radius: 24px; padding: 2.5rem; border: 1px solid var(--gray-mid); margin-bottom: 1.5rem; }
+.form-section-title { font-size: 1.1rem; font-weight: 600; color: var(--black); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
+.form-section-icon { width: 36px; height: 36px; background: var(--green-pale); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.form-section-icon svg { width: 18px; height: 18px; stroke: var(--green); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-group.span2 { grid-column: span 2; }
+label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); }
+label span { color: var(--green); }
+input, select, textarea {
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--gray-mid);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  background: white;
+  transition: border-color 0.2s;
+  outline: none;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--green); }
+textarea { resize: vertical; min-height: 100px; }
+
+/* Services checkboxes */
+.services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.service-check { border: 1.5px solid var(--gray-mid); border-radius: 12px; padding: 0.875rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.6rem; }
+.service-check:hover { border-color: var(--green-mid); }
+.service-check.selected { border-color: var(--green); background: var(--green-pale); }
+.service-check input { display: none; }
+.check-box { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--gray-mid); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.service-check.selected .check-box { background: var(--green); border-color: var(--green); }
+.check-mark { width: 10px; height: 10px; stroke: white; fill: none; stroke-width: 3; }
+.service-name-small { font-size: 0.85rem; font-weight: 500; color: var(--text); }
+
+/* F-skatt toggle */
+.fskatt-toggle { display: flex; align-items: center; justify-content: space-between; border: 1.5px solid var(--gray-mid); border-radius: 14px; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.2s; }
+.fskatt-toggle.yes { border-color: var(--green); background: var(--green-pale); }
+.toggle-label { font-size: 0.95rem; font-weight: 500; }
+.fskatt-toggle.yes .toggle-label { color: var(--green); }
+.toggle-switch { width: 44px; height: 24px; border-radius: 12px; background: var(--gray-mid); position: relative; transition: background 0.2s; flex-shrink: 0; }
+.fskatt-toggle.yes .toggle-switch { background: var(--green); }
+.toggle-thumb { width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 0.2s; }
+.fskatt-toggle.yes .toggle-thumb { transform: translateX(20px); }
+
+/* Experience options */
+.exp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.exp-card { border: 1.5px solid var(--gray-mid); border-radius: 12px; padding: 1rem; cursor: pointer; transition: all 0.2s; text-align: center; }
+.exp-card:hover { border-color: var(--green-mid); }
+.exp-card.selected { border-color: var(--green); background: var(--green-pale); }
+.exp-title { font-size: 0.875rem; font-weight: 600; color: var(--text); margin-bottom: 0.25rem; }
+.exp-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Submit */
+.btn-submit { width: 100%; padding: 1.1rem; background: var(--black); color: white; border: none; border-radius: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.25s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+.btn-submit:hover { background: #2a2a28; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Success */
+.success-card { background: white; border-radius: 24px; padding: 3rem; text-align: center; border: 1px solid var(--gray-mid); display: none; }
+.success-icon { width: 64px; height: 64px; background: var(--green-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+.success-icon svg { width: 32px; height: 32px; stroke: var(--green); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.success-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--black); margin-bottom: 0.75rem; }
+.success-sub { font-size: 1rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 2rem; font-weight: 300; }
+.btn-home { display: inline-block; padding: 0.875rem 2rem; background: var(--green); color: white; border-radius: 100px; text-decoration: none; font-weight: 500; transition: all 0.2s; }
+.btn-home:hover { background: var(--green-mid); }
+.error-msg { background: #FCEBEB; color: #A32D2D; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin-top: 1rem; display: none; }
+
+@media (max-width: 600px) {
+  nav { padding: 1rem 1.5rem; }
+  .page { padding: 2rem 1rem 4rem; }
+  .page-title { font-size: 1.8rem; }
+  .form-card { padding: 1.5rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.span2 { grid-column: span 1; }
+  .benefits { grid-template-columns: 1fr; }
+  .services-grid { grid-template-columns: repeat(2, 1fr); }
+  .exp-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Spick</a>
+  <a href="index.html" class="nav-back">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    Tillbaka
+  </a>
+</nav>
+
+<div class="page">
+
+  <div class="page-header">
+    <div class="page-tag">Bli städare</div>
+    <h1 class="page-title">Starta ditt eget städföretag</h1>
+    <p class="page-sub">Välj dina egna tider, ta de jobb du vill och få betalt direkt efter varje städning. Vi hjälper dig komma igång – helt gratis.</p>
+  </div>
+
+  <!-- Benefits -->
+  <div class="benefits">
+    <div class="benefit">
+      <div class="benefit-icon">⏰</div>
+      <div class="benefit-title">Egna tider</div>
+      <div class="benefit-sub">Du bestämmer när du jobbar</div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">💰</div>
+      <div class="benefit-title">Betalt direkt</div>
+      <div class="benefit-sub">Pengarna in efter varje jobb</div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">⭐</div>
+      <div class="benefit-title">Bygg ditt rykte</div>
+      <div class="benefit-sub">Betyg ger dig fler kunder</div>
+    </div>
+  </div>
+
+  <!-- F-skatt guide -->
+  <div class="fskatt-guide">
+    <div class="fskatt-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Behöver du F-skatt? Vi hjälper dig!
+    </div>
+    <p class="fskatt-sub">För att jobba via Spick behöver du F-skatt (enskild firma). Det är gratis, tar 1–3 dagar och vi guidar dig hela vägen.</p>
+    <div class="fskatt-steps">
+      <div class="fskatt-step">
+        <div class="fstep-num">1</div>
+        <div class="fstep-text">Gå till <strong>skatteverket.se</strong> och klicka på "Starta företag"</div>
+      </div>
+      <div class="fskatt-step">
+        <div class="fstep-num">2</div>
+        <div class="fstep-text">Välj <strong>"Enskild firma"</strong> och fyll i ditt personnummer</div>
+      </div>
+      <div class="fskatt-step">
+        <div class="fstep-num">3</div>
+        <div class="fstep-text">Kryssa i <strong>"F-skatt"</strong> under skatteregistrering – det är gratis</div>
+      </div>
+      <div class="fskatt-step">
+        <div class="fstep-num">4</div>
+        <div class="fstep-text">Vänta 1–3 dagar. <strong>Klart!</strong> Kom tillbaka och ansök hos Spick</div>
+      </div>
+    </div>
+    <a href="https://skatteverket.se/foretagochorganisationer/startaochregistrera/startaenskildnaringsverksamhet.4.65fc817e1077c25b532800015.html" target="_blank" class="btn-fskatt">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Ansök om F-skatt på Skatteverket
+    </a>
+  </div>
+
+  <!-- Language -->
+  <div class="lang-selector">
+    <span style="font-size:0.8rem;color:var(--text-muted);align-self:center;margin-right:4px;">Språk:</span>
+    <button class="lang-btn active" onclick="setLang('sv', this)">🇸🇪 Svenska</button>
+    <button class="lang-btn" onclick="setLang('en', this)">🇬🇧 English</button>
+    <button class="lang-btn" onclick="setLang('ar', this)">🇸🇦 العربية</button>
+    <button class="lang-btn" onclick="setLang('so', this)">🇸🇴 Soomaali</button>
+    <button class="lang-btn" onclick="setLang('uk', this)">🇺🇦 Українська</button>
+    <button class="lang-btn" onclick="setLang('pl', this)">🇵🇱 Polski</button>
+    <button class="lang-btn" onclick="setLang('sr', this)">🇷🇸 Srpski</button>
+    <button class="lang-btn" onclick="setLang('ti', this)">🇪🇷 ትግርኛ</button>
+  </div>
+
+  <form id="cleanerForm">
+
+    <!-- Personuppgifter -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <span id="t-personal">Dina uppgifter</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label id="t-name">Förnamn & efternamn <span>*</span></label>
+          <input type="text" id="name" placeholder="Anna Svensson" required>
+        </div>
+        <div class="form-group">
+          <label id="t-phone">Telefon <span>*</span></label>
+          <input type="tel" id="phone" placeholder="070 123 45 67" required>
+        </div>
+        <div class="form-group span2">
+          <label id="t-email">E-post <span>*</span></label>
+          <input type="email" id="email" placeholder="anna@email.se" required>
+        </div>
+        <div class="form-group span2">
+          <label id="t-city">Stad / område du vill jobba i <span>*</span></label>
+          <input type="text" id="city" placeholder="Stockholm, Södermalm" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Erfarenhet -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <span id="t-exp-title">Erfarenhet</span>
+      </div>
+      <div class="exp-grid" id="expGrid">
+        <div class="exp-card selected" onclick="selectExp(this,'Ingen erfarenhet')">
+          <div class="exp-title" id="exp1">Nybörjare</div>
+          <div class="exp-sub" id="exp1s">Ingen tidigare erfarenhet</div>
+        </div>
+        <div class="exp-card" onclick="selectExp(this,'1-2 år')">
+          <div class="exp-title" id="exp2">1–2 år</div>
+          <div class="exp-sub" id="exp2s">Jobbat med städning tidigare</div>
+        </div>
+        <div class="exp-card" onclick="selectExp(this,'3+ år')">
+          <div class="exp-title" id="exp3">3+ år</div>
+          <div class="exp-sub" id="exp3s">Erfaren städare</div>
+        </div>
+      </div>
+      <input type="hidden" id="selectedExp" value="Ingen erfarenhet">
+    </div>
+
+    <!-- Tjänster -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <span id="t-services">Vilka tjänster kan du utföra?</span>
+      </div>
+      <div class="services-grid">
+        <label class="service-check selected" onclick="toggleService(this,'Hemstädning')">
+          <div class="check-box">
+            <svg class="check-mark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="service-name-small" id="s1">Hemstädning</span>
+        </label>
+        <label class="service-check" onclick="toggleService(this,'Flyttstädning')">
+          <div class="check-box"></div>
+          <span class="service-name-small" id="s2">Flyttstädning</span>
+        </label>
+        <label class="service-check" onclick="toggleService(this,'Storstädning')">
+          <div class="check-box"></div>
+          <span class="service-name-small" id="s3">Storstädning</span>
+        </label>
+        <label class="service-check" onclick="toggleService(this,'Fönsterputs')">
+          <div class="check-box"></div>
+          <span class="service-name-small" id="s4">Fönsterputs</span>
+        </label>
+        <label class="service-check" onclick="toggleService(this,'Kontorsstädning')">
+          <div class="check-box"></div>
+          <span class="service-name-small" id="s5">Kontorsstädning</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- F-skatt -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <span id="t-fskatt-title">F-skatt</span>
+      </div>
+      <div class="fskatt-toggle" id="fskattToggle" onclick="toggleFskatt()">
+        <span class="toggle-label" id="t-fskatt-q">Har du F-skatt redan?</span>
+        <div class="toggle-switch"><div class="toggle-thumb"></div></div>
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;" id="t-fskatt-note">Har du inte F-skatt ännu? Inga problem – följ guiden ovan så hjälper vi dig!</p>
+    </div>
+
+    <!-- Meddelande -->
+    <div class="form-card">
+      <div class="form-section-title">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <span id="t-msg-title">Berätta om dig själv</span>
+      </div>
+      <div class="form-group">
+        <label id="t-msg">Varför vill du jobba med Spick? (valfritt)</label>
+        <textarea id="message" placeholder="Berätta lite om dig själv, varför du vill städa via Spick och vad som gör dig till en bra städare..."></textarea>
+      </div>
+    </div>
+
+    <div class="error-msg" id="errorMsg">Något gick fel – försök igen eller kontakta hello@spick.se</div>
+
+    <button type="submit" class="btn-submit" id="submitBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      <span id="t-submit">Skicka ansökan</span>
+    </button>
+
+  </form>
+
+  <div class="success-card" id="successCard">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 class="success-title">Ansökan mottagen!</h2>
+    <p class="success-sub">Tack för din ansökan! Vi granskar den och återkommer inom 48 timmar på <strong id="confirmEmail"></strong>. Välkommen till Spick-familjen!</p>
+    <a href="index.html" class="btn-home">Tillbaka till startsidan</a>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let hasFskatt = false;
+let selectedServices = ['Hemstädning'];
+let selectedExperience = 'Ingen erfarenhet';
+
+const translations = {
+  sv: {
+    'personal': 'Dina uppgifter', 'name': 'Förnamn & efternamn', 'phone': 'Telefon',
+    'email': 'E-post', 'city': 'Stad / område du vill jobba i',
+    'exp-title': 'Erfarenhet', 'exp1': 'Nybörjare', 'exp1s': 'Ingen tidigare erfarenhet',
+    'exp2': '1–2 år', 'exp2s': 'Jobbat med städning tidigare', 'exp3': '3+ år', 'exp3s': 'Erfaren städare',
+    'services': 'Vilka tjänster kan du utföra?',
+    'fskatt-title': 'F-skatt', 'fskatt-q': 'Har du F-skatt redan?',
+    'fskatt-note': 'Har du inte F-skatt ännu? Inga problem – följ guiden ovan!',
+    'msg-title': 'Berätta om dig själv', 'msg': 'Varför vill du jobba med Spick? (valfritt)',
+    'submit': 'Skicka ansökan', 'dir': 'ltr'
+  },
+  en: {
+    'personal': 'Your details', 'name': 'Full name', 'phone': 'Phone',
+    'email': 'Email', 'city': 'City / area you want to work in',
+    'exp-title': 'Experience', 'exp1': 'Beginner', 'exp1s': 'No previous experience',
+    'exp2': '1–2 years', 'exp2s': 'Have worked with cleaning', 'exp3': '3+ years', 'exp3s': 'Experienced cleaner',
+    'services': 'Which services can you perform?',
+    'fskatt-title': 'F-tax (F-skatt)', 'fskatt-q': 'Do you already have F-tax?',
+    'fskatt-note': 'No F-tax yet? No problem – follow the guide above!',
+    'msg-title': 'About you', 'msg': 'Why do you want to work with Spick? (optional)',
+    'submit': 'Submit application', 'dir': 'ltr'
+  },
+  ar: {
+    'personal': 'بياناتك', 'name': 'الاسم الكامل', 'phone': 'الهاتف',
+    'email': 'البريد الإلكتروني', 'city': 'المدينة التي تريد العمل فيها',
+    'exp-title': 'الخبرة', 'exp1': 'مبتدئ', 'exp1s': 'لا توجد خبرة سابقة',
+    'exp2': '١–٢ سنة', 'exp2s': 'عملت في التنظيف من قبل', 'exp3': '٣+ سنوات', 'exp3s': 'عامل تنظيف متمرس',
+    'services': 'ما هي الخدمات التي يمكنك تقديمها؟',
+    'fskatt-title': 'الضريبة (F-skatt)', 'fskatt-q': 'هل لديك F-skatt بالفعل؟',
+    'fskatt-note': 'ليس لديك F-skatt؟ لا مشكلة – اتبع الدليل أعلاه!',
+    'msg-title': 'عن نفسك', 'msg': 'لماذا تريد العمل مع Spick؟ (اختياري)',
+    'submit': 'إرسال الطلب', 'dir': 'rtl'
+  },
+  so: {
+    'personal': 'Xogaada', 'name': 'Magaca buuxa', 'phone': 'Telefoonka',
+    'email': 'Iimaylka', 'city': 'Magaalada aad rabto inaad shaqeyso',
+    'exp-title': 'Khibradda', 'exp1': 'Bilow', 'exp1s': 'Khibrad hore ma lihid',
+    'exp2': '1–2 sano', 'exp2s': 'Waxaad shaqeysay nadiifinta', 'exp3': '3+ sano', 'exp3s': 'Nadiifiye khibrad leh',
+    'services': 'Maxay yihiin adeegyada aad samayn kartid?',
+    'fskatt-title': 'F-skatt', 'fskatt-q': 'Ma haysataa F-skatt?',
+    'fskatt-note': 'Ma haysatid F-skatt? Wax dhibaato ah ma aha – raac tilmaamaha kore!',
+    'msg-title': 'Naftaada kaga waran', 'msg': 'Maxaad u rabaa inaad la shaqeyso Spick? (ikhtiyaari)',
+    'submit': 'Dir codsiga', 'dir': 'ltr'
+  },
+  uk: {
+    'personal': 'Ваші дані', 'name': 'Ім\'я та прізвище', 'phone': 'Телефон',
+    'email': 'Електронна пошта', 'city': 'Місто / район роботи',
+    'exp-title': 'Досвід', 'exp1': 'Початківець', 'exp1s': 'Немає попереднього досвіду',
+    'exp2': '1–2 роки', 'exp2s': 'Мав досвід прибирання', 'exp3': '3+ роки', 'exp3s': 'Досвідчений прибиральник',
+    'services': 'Які послуги ви можете надавати?',
+    'fskatt-title': 'F-skatt (податок)', 'fskatt-q': 'У вас вже є F-skatt?',
+    'fskatt-note': 'Немає F-skatt? Не проблема – дотримуйтесь інструкції вище!',
+    'msg-title': 'Розкажіть про себе', 'msg': 'Чому ви хочете працювати з Spick? (необов\'язково)',
+    'submit': 'Надіслати заявку', 'dir': 'ltr'
+  },
+  pl: {
+    'personal': 'Twoje dane', 'name': 'Imię i nazwisko', 'phone': 'Telefon',
+    'email': 'E-mail', 'city': 'Miasto / obszar pracy',
+    'exp-title': 'Doświadczenie', 'exp1': 'Początkujący', 'exp1s': 'Brak doświadczenia',
+    'exp2': '1–2 lata', 'exp2s': 'Pracowałem przy sprzątaniu', 'exp3': '3+ lata', 'exp3s': 'Doświadczony sprzątacz',
+    'services': 'Jakie usługi możesz wykonywać?',
+    'fskatt-title': 'F-skatt (podatek)', 'fskatt-q': 'Czy masz już F-skatt?',
+    'fskatt-note': 'Nie masz F-skatt? Nie ma problemu – postępuj zgodnie z powyższym przewodnikiem!',
+    'msg-title': 'O sobie', 'msg': 'Dlaczego chcesz pracować ze Spick? (opcjonalnie)',
+    'submit': 'Wyślij zgłoszenie', 'dir': 'ltr'
+  },
+  sr: {
+    'personal': 'Vaši podaci', 'name': 'Ime i prezime', 'phone': 'Telefon',
+    'email': 'E-pošta', 'city': 'Grad / oblast rada',
+    'exp-title': 'Iskustvo', 'exp1': 'Početnik', 'exp1s': 'Nema prethodnog iskustva',
+    'exp2': '1–2 godine', 'exp2s': 'Radio sam čišćenje ranije', 'exp3': '3+ godine', 'exp3s': 'Iskusan čistač',
+    'services': 'Koje usluge možete obavljati?',
+    'fskatt-title': 'F-skatt (porez)', 'fskatt-q': 'Imate li već F-skatt?',
+    'fskatt-note': 'Nemate F-skatt? Nema problema – pratite vodič iznad!',
+    'msg-title': 'O sebi', 'msg': 'Zašto želite da radite sa Spick? (opciono)',
+    'submit': 'Pošalji prijavu', 'dir': 'ltr'
+  },
+  ti: {
+    'personal': 'ሓበሬታኻ', 'name': 'ሙሉእ ስም', 'phone': 'ቁጽሪ ተሌፎን',
+    'email': 'ኢሜይል', 'city': 'ከተማ / ቦታ ክትሰርሕ ትደሊ',
+    'exp-title': 'ተመኩሮ', 'exp1': 'ጀማሪ', 'exp1s': 'ቅድሚ ሕጂ ተመኩሮ የብለይን',
+    'exp2': '1–2 ዓመት', 'exp2s': 'ቅድሚ ሕጂ ጽሬት ሰሪሐ', 'exp3': '3+ ዓመት', 'exp3s': 'ተመኩሮ ዘለዎ',
+    'services': 'ኣየኖት ኣገልግሎታት ክትህብ ትኽእል?',
+    'fskatt-title': 'F-skatt', 'fskatt-q': 'F-skatt ኣለካ ድዩ?',
+    'fskatt-note': 'F-skatt የብልካን? ጸገም የልቦን – ነቲ ላዕሊ ዘሎ መምርሒ ስዓቦ!',
+    'msg-title': 'ብዛዕባ ነብስኻ', 'msg': 'ንምንታይምኽንያት ምስ Spick ክትሰርሕ ትደሊ? (ወሓዚ)',
+    'submit': 'ሕቶ ስደድ', 'dir': 'ltr'
+  }
+};
+
+function setLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const t = translations[lang];
+  if (!t) return;
+  Object.keys(t).forEach(k => {
+    if (k === 'dir') return;
+    const el = document.getElementById('t-' + k);
+    if (el) el.textContent = t[k];
+  });
+  document.body.style.direction = t.dir || 'ltr';
+}
+
+function toggleFskatt() {
+  hasFskatt = !hasFskatt;
+  document.getElementById('fskattToggle').classList.toggle('yes', hasFskatt);
+}
+
+function toggleService(el, name) {
+  el.classList.toggle('selected');
+  const checkBox = el.querySelector('.check-box');
+  if (el.classList.contains('selected')) {
+    checkBox.innerHTML = '<svg class="check-mark" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    if (!selectedServices.includes(name)) selectedServices.push(name);
+  } else {
+    checkBox.innerHTML = '';
+    selectedServices = selectedServices.filter(s => s !== name);
+  }
+}
+
+function selectExp(el, exp) {
+  document.querySelectorAll('.exp-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedExperience = exp;
+  document.getElementById('selectedExp').value = exp;
+}
+
+document.getElementById('cleanerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Skickar ansökan...';
+  errorMsg.style.display = 'none';
+
+  const application = {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    city: document.getElementById('city').value,
+    experience: selectedExperience,
+    services: selectedServices.join(', '),
+    has_fskatt: hasFskatt,
+    message: document.getElementById('message').value,
+    status: 'ny'
+  };
+
+  try {
+    const { error } = await db.from('cleaner_applications').insert([application]);
+    if (error) throw error;
+    document.getElementById('cleanerForm').style.display = 'none';
+    document.getElementById('successCard').style.display = 'block';
+    document.getElementById('confirmEmail').textContent = application.email;
+    window.scrollTo(0, 0);
+  } catch (err) {
+    console.error(err);
+    errorMsg.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Skicka ansökan';
+  }
+});
+</script>
+</body>
+</html>
