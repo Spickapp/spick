@@ -1,0 +1,31 @@
+name: Nightly Backup & Health Check
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backup Supabase data
+        run: |
+          mkdir -p backups
+          curl -s "https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?select=*" -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > backups/bookings_$(date +%Y%m%d).json
+          curl -s "https://urjeijcncsyuletprydy.supabase.co/rest/v1/cleaners?select=*" -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > backups/cleaners_$(date +%Y%m%d).json
+          curl -s "https://urjeijcncsyuletprydy.supabase.co/rest/v1/ratings?select=*" -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > backups/ratings_$(date +%Y%m%d).json
+      - name: Commit backup
+        run: |
+          git config user.email "backup@spick.se"
+          git config user.name "Spick Backup"
+          git add backups/
+          git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d)"
+          git push || true
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check spick.se
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://spick.se)
+          echo "Status: $STATUS"
+          [ "$STATUS" = "200" ] && echo "✅ Live" || echo "❌ Nere: $STATUS"
