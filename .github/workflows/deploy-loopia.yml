@@ -15,10 +15,12 @@ jobs:
       - name: Deploy till Loopia via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ftp.loopia.se
+          server: ftpcluster.loopia.se
           username: ${{ secrets.LOOPIA_FTP_USER }}
           password: ${{ secrets.LOOPIA_FTP_PASS }}
           server-dir: /public_html/
+          protocol: ftp
+          port: 21
           exclude: |
             **/.git*
             **/.git*/**
@@ -28,6 +30,7 @@ jobs:
             **/.github/**
             **/supabase/**
             **/files1.zip
+            **/SPICK_KONTEXT.pdf
 
       - name: Deploy klar!
-        run: echo "spick.se uppdaterad via Loopia FTP!"
+        run: echo "spick.se live pa Loopia!"
