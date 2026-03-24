@@ -1,0 +1,36 @@
+name: Generate Sitemap
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  sitemap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Generera sitemap.xml
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          cat > sitemap.xml << 'SITEMAP'
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+SITEMAP
+          for f in *.html; do
+            [[ "$f" == "admin.html" || "$f" == "404.html" || "$f" == "tack.html" ]] && continue
+            PAGE="${f%.html}"
+            [[ "$PAGE" == "index" ]] && PAGE=""
+            echo "  <url><loc>https://spick.se/$PAGE</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq></url>" >> sitemap.xml
+          done
+          echo "</urlset>" >> sitemap.xml
+          echo "✅ Sitemap genererad med $(grep -c '<url>' sitemap.xml) sidor"
+      
+      - name: Commit sitemap
+        run: |
+          git config user.email "hello@spick.se"
+          git config user.name "Spick Bot"
+          git add sitemap.xml
+          git diff --cached --quiet || git commit -m "Auto-update sitemap.xml"
+          git push
