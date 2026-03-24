@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hitta din städare – Spick</title>
+<title>Hitta din stÃ¤dare â Spick</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -54,19 +54,19 @@ nav{background:white;padding:1.25rem 4rem;display:flex;align-items:center;justif
 <body>
 <nav>
   <a href="index.html" class="nav-logo">Spick</a>
-  <a href="index.html" class="nav-back">← Tillbaka</a>
+  <a href="index.html" class="nav-back">â Tillbaka</a>
 </nav>
 <div class="page">
-  <h1>Hitta din perfekta städare</h1>
-  <p class="page-sub">Välj en betygsatt städare nära dig – och boka samma person varje gång.</p>
+  <h1>Hitta din perfekta stÃ¤dare</h1>
+  <p class="page-sub">VÃ¤lj en betygsatt stÃ¤dare nÃ¤ra dig â och boka samma person varje gÃ¥ng.</p>
   <div class="filter-bar">
     <button class="filter-btn active" onclick="filter('alla',this)">Alla</button>
-    <button class="filter-btn" onclick="filter('hemstad',this)">Hemstädning</button>
-    <button class="filter-btn" onclick="filter('flytt', this)">Flyttstädning</button>
-    <button class="filter-btn" onclick="filter('storstad',this)">Storstädning</button>
+    <button class="filter-btn" onclick="filter('hemstad',this)">HemstÃ¤dning</button>
+    <button class="filter-btn" onclick="filter('flytt', this)">FlyttstÃ¤dning</button>
+    <button class="filter-btn" onclick="filter('storstad',this)">StorstÃ¤dning</button>
     <select class="sort-select" onchange="sort(this.value)">
-      <option value="betyg">Högst betyg</option>
-      <option value="pris">Lägsta pris</option>
+      <option value="betyg">HÃ¶gst betyg</option>
+      <option value="pris">LÃ¤gsta pris</option>
     </select>
   </div>
   <div class="cleaners-grid" id="grid"></div>
@@ -77,36 +77,36 @@ const SUPABASE_KEY='sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
 const{createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_KEY);
 const COLORS=['#1D9E75','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
-const DEMO=[{id:1,name:'Sara Karlsson',city:'Stockholm',hourly_rate:350,rating:4.97,status:'godkänd',services:'Hemstädning',bio:'Noggrann och pålitlig städare med 4 års erfarenhet.',},{id:2,name:'Olena Kovalenko',location:'Stockholm',hourly_rate:330,rating:4.89,status:'godkänd',services:'Hemstädning,Storstädning',bio:'Ukrainsk städare med hög standard.'}];
+const DEMO=[{id:1,name:'Sara Karlsson',city:'Stockholm',hourly_rate:350,rating:4.97,status:'godkÃ¤nd',services:'HemstÃ¤dning',bio:'Noggrann och pÃ¥litlig stÃ¤dare med 4 Ã¥rs erfarenhet.',},{id:2,name:'Olena Kovalenko',location:'Stockholm',hourly_rate:330,rating:4.89,status:'godkÃ¤nd',services:'HemstÃ¤dning,StorstÃ¤dning',bio:'Ukrainsk stÃ¤dare med hÃ¶g standard.'}];
 let ALL=[],filterVal='alla',sortVal='betyg';
 function inits(n){return n.split(' ').map(w=>w[0]).join('').slice(0,2);}
-function stars(r){return '★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
+function stars(r){return 'â'.repeat(Math.floor(r))+'â'.repeat(5-Math.floor(r));}
 async function load(){
-  document.getElementById('grid').innerHTML='<div style="grid-column:1/-4;text-align:center;padding:3rem;color:var(--muted);">Hämtar städare...</div>';
+  document.getElementById('grid').innerHTML='<div style="grid-column:1/-4;text-align:center;padding:3rem;color:var(--muted);">HÃ¤mtar stÃ¤dare...</div>';
   let rows=null;
   try{
-    const {rows:d,error:e}=await db.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false});
+    const {data:d,error:e}=await db.from('cleaners').select('*').eq('status','godkÃ¤nd').order('rating',{ascending:false});
     if(!e&&d&&d.length>0)rows=d;
   }catch(er){}
   if(!rows){
     try{
-      const {data:d,error:e}=await db.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false});
+      const {data:d,error:e}=await db.from('cleaners').select('*').eq('status','godkÃ¤nd').order('rating',{ascending:false});
       if(!e&&d&&d.length>0)rows=d;
     }catch(er){}
   }
   if(rows&&rows.length>0){
     ALL=rows.map((r,idx)=>({
-      id:r.id,name:r.full_name||r.name||'Okänd',
+      id:r.id,name:r.full_name||r.name||'OkÃ¤nd',
       city:r.city||'Stockholm',
       price:r.hourly_rate||r.price||350,
       rating:r.rating||0,
-      bio:r.bio||r.message||'Professionell städare.',
-      tags:r.services?r.services.split(',').map(s=>s.trim()):['Hemstädning'],
+      bio:r.bio||r.message||'Professionell stÃ¤dare.',
+      tags:r.services?r.services.split(',').map(s=>s.trim()):['HemstÃ¤dning'],
       color:COLORS[idx%COLORS.length],
       featured:idx===0
     }));
   }else{
-    ALL=DEMO.map((r,idx)=>({...r,city:r.city||'Stockholm',price:r.hourly_rate||350,bio:r.bio||'Professionell städare.',tags:r.services?r.services.split(',').map(s=>s.trim()):['Hemstädning'],color:COLORS[idx%COLORS.length],featured:idx===0}));
+    ALL=DEMO.map((r,idx)=>({...r,city:r.city||'Stockholm',price:r.hourly_rate||350,bio:r.bio||'Professionell stÃ¤dare.',tags:r.services?r.services.split(',').map(s=>s.trim()):['HemstÃ¤dning'],color:COLORS[idx%COLORS.length],featured:idx===0}));
   }
   render();
 }
@@ -125,7 +125,7 @@ function render(){
   if(sortVal==='betyg')d.sort((a,b)=>b.rating-a.rating);
   else d.sort((a,b)=>a.price-b.price);
   const g=document.getElementById('grid');
-  if(!d.length){g.innerHTML='<div class="no-results">Inga städare hittades.</div>';return;]}
+  if(!d.length){g.innerHTML='<div class="no-results">Inga stÃ¤dare hittades.</div>';return;]}
   g.innerHTML=d.map(c=>`
     <div class="cleaner-card ${c.featured?'featured':''}">
       <div class="card-top">
@@ -152,7 +152,7 @@ function render(){
         </div>
       </div>
       <div class="card-footer">
-        <a class="btn-book" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}|&id=${c.id}">Boka ${c.name.split(' ')[0]} →</a>
+        <a class="btn-book" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}|&id=${c.id}">Boka ${c.name.split(' ')[0]} â</a>
       </div>
     </div>
   `).join('');
