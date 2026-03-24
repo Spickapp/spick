@@ -4,479 +4,122 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Boka städning – Spick</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root {
-  --green: #0F6E56;
-  --green-mid: #1D9E75;
-  --green-light: #9FE1CB;
-  --green-pale: #E1F5EE;
-  --black: #0E0E0E;
-  --gray: #F7F7F5;
-  --gray-mid: #E8E8E4;
-  --text: #1C1C1A;
-  --text-muted: #6B6960;
-  --white: #FFFFFF;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--gray); min-height: 100vh; }
-
-nav {
-  background: white;
-  padding: 1.25rem 4rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--gray-mid);
-  position: sticky; top: 0; z-index: 10;
-}
-.nav-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--green); text-decoration: none; }
-.nav-back { font-size: 0.875rem; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s; }
-.nav-back:hover { color: var(--green); }
-
-.page { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
-
-.page-header { text-align: center; margin-bottom: 3rem; }
-.page-tag { display: inline-block; background: var(--green-pale); color: var(--green); font-size: 0.8rem; font-weight: 500; padding: 0.35rem 1rem; border-radius: 100px; margin-bottom: 1rem; }
-.page-title { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 700; color: var(--black); margin-bottom: 0.75rem; letter-spacing: -0.02em; }
-.page-sub { font-size: 1rem; color: var(--text-muted); font-weight: 300; line-height: 1.6; }
-
-/* Steps */
-.steps { display: flex; gap: 0; margin-bottom: 3rem; background: white; border-radius: 16px; padding: 1.25rem; border: 1px solid var(--gray-mid); }
-.step-item { flex: 1; display: flex; align-items: center; gap: 0.75rem; position: relative; }
-.step-item:not(:last-child)::after { content: '→'; position: absolute; right: -8px; color: var(--gray-mid); font-size: 1rem; }
-.step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; transition: all 0.3s; }
-.step-circle.active { background: var(--green); color: white; }
-.step-circle.done { background: var(--green-pale); color: var(--green); }
-.step-circle.inactive { background: var(--gray); color: var(--text-muted); }
-.step-label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); }
-.step-label.active { color: var(--green); }
-
-/* Form */
-.form-card { background: white; border-radius: 24px; padding: 2.5rem; border: 1px solid var(--gray-mid); margin-bottom: 1.5rem; }
-.form-section-title { font-size: 1.1rem; font-weight: 600; color: var(--black); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
-.form-section-icon { width: 36px; height: 36px; background: var(--green-pale); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-.form-section-icon svg { width: 18px; height: 18px; stroke: var(--green); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.form-grid.full { grid-template-columns: 1fr; }
-.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-.form-group.span2 { grid-column: span 2; }
-label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); }
-label span { color: var(--green); }
-input, select, textarea {
-  padding: 0.75rem 1rem;
-  border: 1.5px solid var(--gray-mid);
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-family: 'DM Sans', sans-serif;
-  color: var(--text);
-  background: white;
-  transition: border-color 0.2s;
-  outline: none;
-  width: 100%;
-}
-input:focus, select:focus, textarea:focus { border-color: var(--green); }
-textarea { resize: vertical; min-height: 100px; }
-select { cursor: pointer; }
-
-/* Service cards */
-.service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
-.service-card { border: 1.5px solid var(--gray-mid); border-radius: 12px; padding: 1rem; cursor: pointer; transition: all 0.2s; text-align: center; }
-.service-card:hover { border-color: var(--green-mid); background: var(--green-pale); }
-.service-card.selected { border-color: var(--green); background: var(--green-pale); }
-.service-card input { display: none; }
-.service-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
-.service-name { font-size: 0.85rem; font-weight: 500; color: var(--text); }
-.service-price { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
-
-/* Hours slider */
-.hours-display { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-.hours-num { font-size: 1.5rem; font-weight: 700; color: var(--green); font-family: 'Playfair Display', serif; }
-.hours-price { font-size: 0.9rem; color: var(--text-muted); }
-input[type=range] { width: 100%; accent-color: var(--green); height: 6px; }
-
-/* RUT toggle */
-.rut-toggle { display: flex; align-items: center; justify-content: space-between; background: var(--green-pale); border-radius: 14px; padding: 1.1rem 1.25rem; cursor: pointer; }
-.rut-left { display: flex; flex-direction: column; gap: 2px; }
-.rut-title { font-size: 0.95rem; font-weight: 600; color: var(--green); }
-.rut-sub { font-size: 0.8rem; color: #1D9E75; }
-.toggle { width: 48px; height: 26px; background: var(--green); border-radius: 13px; position: relative; transition: background 0.2s; flex-shrink: 0; }
-.toggle.off { background: var(--gray-mid); }
-.toggle-thumb { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 3px; right: 3px; transition: transform 0.2s; }
-.toggle.off .toggle-thumb { transform: translateX(-22px); }
-
-/* Price summary */
-.price-summary { background: var(--black); border-radius: 20px; padding: 1.5rem; color: white; margin-bottom: 1.5rem; }
-.price-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.price-lbl { font-size: 0.875rem; color: rgba(255,255,255,0.6); }
-.price-val { font-size: 0.95rem; font-weight: 500; color: white; }
-.price-val.red { color: #F09595; }
-.price-val.green { color: var(--green-light); font-size: 1.1rem; }
-.price-div { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0; }
-.price-total-lbl { font-size: 1rem; font-weight: 500; color: white; }
-.price-total-val { font-size: 1.4rem; font-weight: 700; color: var(--green-light); font-family: 'Playfair Display', serif; }
-
-/* Submit */
-.btn-submit { width: 100%; padding: 1.1rem; background: var(--green); color: white; border: none; border-radius: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.25s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
-.btn-submit:hover { background: var(--green-mid); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15,110,86,0.25); }
-.btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Success */
-.success-card { background: white; border-radius: 24px; padding: 3rem; text-align: center; border: 1px solid var(--gray-mid); display: none; }
-.success-icon { width: 64px; height: 64px; background: var(--green-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
-.success-icon svg { width: 32px; height: 32px; stroke: var(--green); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.success-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--black); margin-bottom: 0.75rem; }
-.success-sub { font-size: 1rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 2rem; font-weight: 300; }
-.btn-home { display: inline-block; padding: 0.875rem 2rem; background: var(--green); color: white; border-radius: 100px; text-decoration: none; font-weight: 500; transition: all 0.2s; }
-.btn-home:hover { background: var(--green-mid); }
-
-.error-msg { background: #FCEBEB; color: #A32D2D; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin-top: 1rem; display: none; }
-
-@media (max-width: 600px) {
-  nav { padding: 1rem 1.5rem; }
-  .page { padding: 2rem 1rem 4rem; }
-  .page-title { font-size: 1.8rem; }
-  .form-card { padding: 1.5rem; }
-  .form-grid { grid-template-columns: 1fr; }
-  .form-group.span2 { grid-column: span 1; }
-  .service-grid { grid-template-columns: repeat(2, 1fr); }
-  .steps { flex-direction: column; gap: 0.5rem; }
-  .step-item::after { display: none; }
-}
+:root{--green:#0F6E56;--green-mid:#1D9E75;--green-pale:#E1F5EE;--black:#0E0E0E;--gray:#F7F7F5;--gray-mid:#E8E8E4;--text:#1C1C1A;--muted:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:var(--text);background:var(--gray);min-height:100vh;}
+nav{background:white;padding:1.25rem 4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-mid);position:sticky;top:0;z-index:10;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--green);text-decoration:none;}
+.nav-back{font-size:0.875rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:0.5rem;transition:color 0.2s;}
+.nav-back:hover{color:var(--green);}
+.page{max-width:760px;margin:0 auto;padding:3rem 1.5rem 6rem;}
+.cleaner-banner{background:white;border-radius:20px;padding:1.5rem;border:1px solid var(--gray-mid);display:flex;align-items:center;gap:1.25rem;margin-bottom:2rem;}
+.cleaner-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:white;flex-shrink:0;background:var(--green);}
+.cleaner-info h3{font-size:1rem;font-weight:600;color:var(--black);}
+.cleaner-info p{font-size:0.8rem;color:var(--muted);margin-top:2px;}
+.cleaner-badge{margin-left:auto;background:var(--green-pale);color:var(--green);font-size:0.75rem;font-weight:500;padding:0.3rem 0.75rem;border-radius:100px;}
+.form-card{background:white;border-radius:24px;padding:2.5rem;border:1px solid var(--gray-mid);margin-bottom:1.5rem;}
+.form-card h2{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--black);margin-bottom:0.25rem;}
+.form-card .lead{font-size:0.875rem;color:var(--muted);margin-bottom:2rem;}
+.section-label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.75rem;margin-top:1.5rem;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.form-group{display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.875rem;}
+label{font-size:0.8rem;font-weight:500;color:var(--muted);}
+label span{color:#ef4444;}
+input,select,textarea{padding:0.75rem 1rem;border:1.5px solid var(--gray-mid);border-radius:12px;font-size:0.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.2s;background:white;color:var(--text);}
+input:focus,select:focus,textarea:focus{border-color:var(--green);}
+textarea{resize:vertical;min-height:80px;line-height:1.6;}
+hr{border:none;border-top:1px solid var(--gray-mid);margin:1.5rem 0;}
+.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;margin-bottom:0.875rem;}
+.s-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.25rem;padding:0.875rem 0.5rem;border:1.5px solid var(--gray-mid);border-radius:14px;cursor:pointer;transition:all 0.2s;font-size:0.75rem;font-weight:500;color:var(--muted);text-align:center;background:white;}
+.s-chip:hover{border-color:var(--green);color:var(--green);}
+.s-chip.active{background:var(--green-pale);border-color:var(--green);color:var(--green);}
+.s-chip .icon{font-size:1.5rem;}
+.summary-card{background:var(--green);border-radius:20px;padding:1.75rem;color:white;position:sticky;top:100px;}
+.summary-card h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:1.25rem;}
+.summary-row{display:flex;justify-content:space-between;font-size:0.875rem;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.15);}
+.summary-row:last-of-type{border-bottom:none;}
+.summary-row .lbl{color:rgba(255,255,255,0.7);}
+.summary-row .val{color:white;font-weight:500;}
+.summary-total{background:rgba(255,255,255,0.12);border-radius:12px;padding:1rem;margin-top:1rem;display:flex;justify-content:space-between;align-items:center;}
+.summary-total .lbl{font-size:0.875rem;color:rgba(255,255,255,0.8);}
+.summary-total .val{font-size:1.3rem;font-weight:700;color:white;}
+.rut-note{font-size:0.7rem;color:rgba(255,255,255,0.6);margin-top:0.25rem;text-align:right;}
+.layout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start;}
+.submit-btn{width:100%;padding:1rem;background:var(--green);color:white;border:none;border-radius:100px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;margin-top:1rem;}
+.submit-btn:hover:not(:disabled){background:var(--green-mid);}
+.submit-btn:disabled{opacity:0.6;cursor:not-allowed;}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:s 0.8s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes s{to{transform:rotate(360deg);}}
+.rut-toggle{display:flex;align-items:center;justify-content:space-between;background:var(--green-pale);border-radius:14px;padding:1rem 1.25rem;cursor:pointer;margin-bottom:0.875rem;}
+.rut-toggle-info h4{font-size:0.9rem;font-weight:600;color:var(--green);}
+.rut-toggle-info p{font-size:0.75rem;color:#085041;margin-top:2px;}
+.toggle-switch{width:44px;height:24px;background:var(--green);border-radius:100px;position:relative;transition:background 0.2s;flex-shrink:0;}
+.toggle-switch::after{content:'';position:absolute;top:3px;right:3px;width:18px;height:18px;background:white;border-radius:50%;transition:transform 0.2s;}
+.toggle-switch.off{background:var(--gray-mid);}
+.toggle-switch.off::after{transform:translateX(-20px);}
+@media(max-width:700px){nav{padding:1rem 1.5rem;}.layout{grid-template-columns:1fr;}.summary-card{position:static;}.form-row{grid-template-columns:1fr;}.service-grid{grid-template-columns:repeat(2,1fr);}}
 </style>
 </head>
 <body>
-
 <nav>
   <a href="index.html" class="nav-logo">Spick</a>
-  <a href="index.html" class="nav-back">
+  <a href="stadare.html" class="nav-back">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-    Tillbaka
+    Byt städare
   </a>
-  <a href="faq.html" style="font-size:0.875rem;color:#0F6E56;text-decoration:none;font-family:'DM Sans',sans-serif;">FAQ</a>
 </nav>
 
 <div class="page">
-  <div class="page-header">
-    <div class="page-tag">Boka städning</div>
-    <h1 class="page-title">Boka din städning</h1>
-    <p class="page-sub">Fyll i formuläret så matchar vi dig med en betygsatt städare. Med RUT-avdrag betalar du bara hälften.</p>
+  <div class="cleaner-banner" id="cleanerBanner" style="display:none;">
+    <div class="cleaner-avatar" id="bannerAvatar"></div>
+    <div class="cleaner-info"><h3 id="bannerName"></h3><p id="bannerSub"></p></div>
+    <div class="cleaner-badge" id="bannerRating"></div>
   </div>
-
-  <div class="steps">
-    <div class="step-item">
-      <div class="step-circle active">1</div>
-      <span class="step-label active">Tjänst & tid</span>
-    </div>
-    <div class="step-item">
-      <div class="step-circle inactive">2</div>
-      <span class="step-label">Dina uppgifter</span>
-    </div>
-    <div class="step-item">
-      <div class="step-circle inactive">3</div>
-      <span class="step-label">Bekräftelse</span>
-    </div>
-  </div>
-
-  <form id="bookingForm">
-
-    <!-- Tjänst -->
-    <div class="form-card">
-      <div class="form-section-title">
-        <div class="form-section-icon">
-          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+  <div class="layout">
+    <div>
+      <div class="form-card">
+        <h2>Boka städning</h2>
+        <p class="lead">Fyll i dina uppgifter nedan. Vi bekräftar bokningen inom 2 timmar.</p>
+        <div class="section-label">Din tjänst</div>
+        <div class="service-grid">
+          <div class="s-chip active" onclick="selectService(this,'Hemstädning')"><span class="icon">🏠</span>Hemstädning</div>
+          <div class="s-chip" onclick="selectService(this,'Storstädning')"><span class="icon">🧽</span>Storstädning</div>
+          <div class="s-chip" onclick="selectService(this,'Flyttstädning')"><span class="icon">📦</span>Flyttstädning</div>
+          <div class="s-chip" onclick="selectService(this,'Fönsterputs')"><span class="icon">🪟</span>Fönsterputs</div>
+          <div class="s-chip" onclick="selectService(this,'Kontorsstädning')"><span class="icon">🏢</span>Kontor</div>
+          <div class="s-chip" onclick="selectService(this,'Trappstädning')"><span class="icon">🪜</span>Trappa</div>
         </div>
-        Välj tjänst
-      </div>
-      <div class="service-grid">
-        <label class="service-card selected" onclick="selectService(this,'Hemstädning')">
-          <div class="service-icon">🏠</div>
-          <div class="service-name">Hemstädning</div>
-          <div class="service-price">från 175 kr/h*</div>
-        </label>
-        <label class="service-card" onclick="selectService(this,'Flyttstädning')">
-          <div class="service-icon">📦</div>
-          <div class="service-name">Flyttstädning</div>
-          <div class="service-price">från 175 kr/h*</div>
-        </label>
-        <label class="service-card" onclick="selectService(this,'Storstädning')">
-          <div class="service-icon">✨</div>
-          <div class="service-name">Storstädning</div>
-          <div class="service-price">från 175 kr/h*</div>
-        </label>
-        <label class="service-card" onclick="selectService(this,'Fönsterputs')">
-          <div class="service-icon">🪟</div>
-          <div class="service-name">Fönsterputs</div>
-          <div class="service-price">från 175 kr/h*</div>
-        </label>
-        <label class="service-card" onclick="selectService(this,'Kontorsstädning')">
-          <div class="service-icon">🏢</div>
-          <div class="service-name">Kontorsstädning</div>
-          <div class="service-price">från 175 kr/h*</div>
-        </label>
-      </div>
-      <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;">*Efter RUT-avdrag 50%</p>
-      <input type="hidden" id="selectedService" value="Hemstädning">
-    </div>
-
-    <!-- Antal timmar -->
-    <div class="form-card">
-      <div class="form-section-title">
-        <div class="form-section-icon">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <hr>
+        <div class="section-label">Dina uppgifter</div>
+        <div class="form-row">
+          <div class="form-group"><label>Namn <span>*</span></label><input type="text" id="inp-name" placeholder="Anna Svensson" required></div>
+          <div class="form-group"><label>Telefon <span>*</span></label><input type="tel" id="inp-phone" placeholder="070 123 45 67" required></div>
         </div>
-        Antal timmar
-      </div>
-      <div class="hours-display">
-        <div>
-          <div class="hours-num" id="hoursDisplay">3 timmar</div>
-          <div class="hours-price" id="hoursPrice">Pris: 1 050 kr · Du betalar: 525 kr med RUT</div>
+        <div class="form-group"><label>E-post <span>*</span></label><input type="email" id="inp-email" placeholder="anna@email.se" required></div>
+        <div class="form-group"><label>Adress <span>*</span></label><input type="text" id="inp-address" placeholder="Storgatan 1" required></div>
+        <div class="form-row">
+          <div class="form-group"><label>Stad <span>*</span></label><input type="text" id="inp-city" placeholder="Stockholm" required></div>
+          <div class="form-group"><label>Postnummer</label><input type="text" id="inp-zip" placeholder="113 45"></div>
         </div>
-      </div>
-      <input type="range" min="1" max="8" step="1" value="3" id="hoursSlider" oninput="updateHours(this.value)">
-      <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
-        <span>1 timme</span><span>8 timmar</span>
-      </div>
-      <input type="hidden" id="selectedHours" value="3">
-    </div>
-
-    <!-- Datum & tid -->
-    <div class="form-card">
-      <div class="form-section-title">
-        <div class="form-section-icon">
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <hr>
+        <div class="section-label">Datum och tid</div>
+        <div class="form-row">
+          <div class="form-group"><label>Datum <span>*</span></label><input type="date" id="inp-date" required></div>
+          <div class="form-group"><label>Starttid <span>*</span></label><select id="inp-time" required><option value="">Välj...</option><option>07:00</option><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option></select></div>
         </div>
-        Datum & tid
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Datum <span>*</span></label>
-          <input type="date" id="bookingDate" required min="">
+        <div class="form-row">
+          <div class="form-group"><label>Antal timmar <span>*</span></label><select id="inp-hours" onchange="updateSummary()" required><option value="">Välj...</option><option value="2">2 timmar</option><option value="3" selected>3 timmar</option><option value="4">4 timmar</option><option value="5">5 timmar</option><option value="6">6 timmar</option><option value="8">8 timmar (heldag)</option></select></div>
+          <div class="form-group"><label>Upprepning</label><select id="inp-recurring"><option value="Engångsstädning">Engång (standard)</option><option value="Varje vecka">Varje vecka (–10%)</option><option value="Varannan vecka">Varannan vecka</option><option value="En gång i månaden">En gång/månad</option></select></div>
         </div>
-        <div class="form-group">
-          <label>Önskad starttid <span>*</span></label>
-          <select id="bookingTime" required>
-            <option value="">Välj tid</option>
-            <option value="07:00">07:00</option>
-            <option value="08:00">08:00</option>
-            <option value="09:00">09:00</option>
-            <option value="10:00">10:00</option>
-            <option value="11:00">11:00</option>
-            <option value="12:00">12:00</option>
-            <option value="13:00">13:00</option>
-            <option value="14:00">14:00</option>
-            <option value="15:00">15:00</option>
-            <option value="16:00">16:00</option>
-            <option value="17:00">17:00</option>
-          </select>
-        </div>
+        <div class="rut-toggle" onclick="toggleRut()"><div class="rut-toggle-info"><h4>RUT-avdrag</h4><p>Du betalar bara 50% – Skatteverket betalar resten</p></div><div class="toggle-switch" id="rutSwitch"></div></div>
+        <div class="form-group"><label>Övrigt / tillträdesinformation</label><textarea id="inp-message" placeholder="Portkod, nyckelplacering, husdjur, allergier, eller annat vi bör veta..."></textarea></div>
+        <button class="submit-btn" id="submitBtn" onclick="submitBooking()">Bekräfta bokning →</button>
+        <p style="font-size:0.75rem;color:var(--muted);text-align:center;margin-top:0.75rem;">Ingen betalning nu – du betalar efter städningen via Swish</p>
       </div>
     </div>
-
-    <!-- Adress -->
-    <div class="form-card">
-      <div class="form-section-title">
-        <div class="form-section-icon">
-          <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        </div>
-        Adress
-      </div>
-      <div class="form-grid">
-        <div class="form-group span2">
-          <label>Gatuadress <span>*</span></label>
-          <input type="text" id="address" placeholder="Storgatan 1, lgh 1001" required>
-        </div>
-        <div class="form-group">
-          <label>Stad <span>*</span></label>
-          <input type="text" id="city" placeholder="Stockholm" required>
-        </div>
-        <div class="form-group">
-          <label>Postnummer</label>
-          <input type="text" id="postalCode" placeholder="114 29">
-        </div>
-      </div>
-    </div>
-
-    <!-- Dina uppgifter -->
-    <div class="form-card">
-      <div class="form-section-title">
-        <div class="form-section-icon">
-          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </div>
-        Dina uppgifter
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Förnamn & efternamn <span>*</span></label>
-          <input type="text" id="name" placeholder="Anna Svensson" required>
-        </div>
-        <div class="form-group">
-          <label>Telefon <span>*</span></label>
-          <input type="tel" id="phone" placeholder="070 123 45 67" required>
-        </div>
-        <div class="form-group span2">
-          <label>E-post <span>*</span></label>
-          <input type="email" id="email" placeholder="anna@email.se" required>
-        </div>
-        <div class="form-group span2">
-          <label>Meddelande till städaren</label>
-          <textarea id="message" placeholder="T.ex. fokusera på köket och badrummet, hunden är hemma..."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- RUT -->
-    <div class="form-card">
-      <div class="form-section-title">
-        <div class="form-section-icon">
-          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        RUT-avdrag
-      </div>
-      <div class="rut-toggle" id="rutToggle" onclick="toggleRut()">
-        <div class="rut-left">
-          <div class="rut-title">Aktivera RUT-avdrag</div>
-          <div class="rut-sub" id="rutSub">Du betalar bara 525 kr istället för 1 050 kr</div>
-        </div>
-        <div class="toggle" id="toggleEl">
-          <div class="toggle-thumb"></div>
-        </div>
-      </div>
-      <div id="rutField" style="margin-top:1rem;">
-        <div class="form-group">
-          <label>Personnummer <span>*</span></label>
-          <input type="text" id="personalNumber" placeholder="YYYYMMDD-XXXX">
-        </div>
-      </div>
-    </div>
-
-    <!-- Prissammanfattning -->
-    <div class="price-summary" id="priceSummary">
-      <div class="price-row"><span class="price-lbl">Tjänst</span><span class="price-val" id="ps-service">Hemstädning, 3h</span></div>
-      <div class="price-row"><span class="price-lbl">Ordinarie pris</span><span class="price-val" id="ps-full">1 050 kr</span></div>
-      <div class="price-row"><span class="price-lbl">RUT-avdrag (50%)</span><span class="price-val red" id="ps-rut">−525 kr</span></div>
-      <div class="price-div"></div>
-      <div class="price-row">
-        <span class="price-total-lbl">Du betalar</span>
-        <span class="price-total-val" id="ps-total">525 kr</span>
-      </div>
-    </div>
-
-    <div class="error-msg" id="errorMsg">Något gick fel – försök igen eller kontakta <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5e363b3232311e2d2e373d35702d3b">[email&#160;protected]</a></div>
-
-    <button type="submit" class="btn-submit" id="submitBtn">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Bekräfta bokning
-    </button>
-
-  </form>
-
-  <!-- Success -->
-  <div class="success-card" id="successCard">
-    <div class="success-icon">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
-    <h2 class="success-title">Bokning mottagen!</h2>
-    <p class="success-sub">Tack för din bokning! Vi matchar dig med en städare och återkommer inom 2 timmar med bekräftelse på <strong id="confirmEmail"></strong>.</p>
-    <a href="index.html" class="btn-home">Tillbaka till startsidan</a>
-  </div>
-
-</div>
-
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-const SUPABASE_URL = 'https://urjeijcncsyuletprydy.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let rutActive = true;
-let currentHours = 3;
-let currentService = 'Hemstädning';
-const HOURLY_RATE = 350;
-
-// Set min date to tomorrow
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
-document.getElementById('bookingDate').min = tomorrow.toISOString().split('T')[0];
-
-function selectService(el, name) {
-  document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  currentService = name;
-  document.getElementById('selectedService').value = name;
-  updatePriceSummary();
-}
-
-function updateHours(val) {
-  currentHours = parseInt(val);
-  document.getElementById('selectedHours').value = val;
-  const full = currentHours * HOURLY_RATE;
-  const rut = Math.round(full * 0.5);
-  document.getElementById('hoursDisplay').textContent = val + (val == 1 ? ' timme' : ' timmar');
-  document.getElementById('hoursPrice').textContent = `Pris: ${full.toLocaleString('sv-SE')} kr · Du betalar: ${rut.toLocaleString('sv-SE')} kr med RUT`;
-  updatePriceSummary();
-}
-
-function toggleRut() {
-  rutActive = !rutActive;
-  const toggle = document.getElementById('toggleEl');
-  const rutField = document.getElementById('rutField');
-  toggle.classList.toggle('off', !rutActive);
-  rutField.style.display = rutActive ? 'block' : 'none';
-  updatePriceSummary();
-}
-
-function updatePriceSummary() {
-  const full = currentHours * HOURLY_RATE;
-  const rut = Math.round(full * 0.5);
-  const toPay = rutActive ? rut : full;
-  document.getElementById('ps-service').textContent = `${currentService}, ${currentHours}h`;
-  document.getElementById('ps-full').textContent = full.toLocaleString('sv-SE') + ' kr';
-  document.getElementById('ps-rut').textContent = rutActive ? `−${rut.toLocaleString('sv-SE')} kr` : '−0 kr';
-  document.getElementById('ps-total').textContent = toPay.toLocaleString('sv-SE') + ' kr';
-  document.getElementById('rutSub').textContent = `Du betalar bara ${rut.toLocaleString('sv-SE')} kr istället för ${full.toLocaleString('sv-SE')} kr`;
-}
-
-document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('submitBtn');
-  const errorMsg = document.getElementById('errorMsg');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Skickar bokning...';
-  errorMsg.style.display = 'none';
-
-  const booking = {
-    name: document.getElementById('name').value,
-    email: document.getElementById('email').value,
-    phone: document.getElementById('phone').value,
-    address: document.getElementById('address').value + ', ' + (document.getElementById('postalCode').value || ''),
-    city: document.getElementById('city').value,
-    service: document.getElementById('selectedService').value,
-    date: document.getElementById('bookingDate').value,
-    time: document.getElementById('bookingTime').value,
-    hours: parseInt(document.getElementById('selectedHours').value),
-    message: document.getElementById('message').value,
-    rut: rutActive,
-    personal_number: rutActive ? document.getElementById('personalNumber').value : null,
-    status: 'ny'
-  };
-
-  try {
-    const { error } = await db.from('bookings').insert([booking]);
-    if (error) throw error;
-    // Skicka e-postnotis till admin
-    await db.functions.invoke('notify', { body: { type: 'booking', record: booking } });
-    document.getElementById('bookingForm').style.display = 'none';
-    document.getElementById('successCard').style.display = 'block';
-    document.getElementById('confirmEmail').textContent = booking.email;
-    window.scrollTo(0, 0);
-  } catch (err) {
-    console.error(err);
-    errorMsg.style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0
+    <div>
+      <div class="summary-card">
+        <h3>Bokningso
