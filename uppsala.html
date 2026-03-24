@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Städare Uppsala – Boka online med RUT-avdrag | Spick</title>
+<meta name="description" content="Boka betygsatta städare i Uppsala. Spick kommer snart till Uppsala! Betygsatta städare med RUT-avdrag. Skriv upp dig på väntelistan. Med RUT-avdrag betalar du bara hälften. Spick – boka städare du litar på.">
+<meta name="keywords" content="städare uppsala, boka städning uppsala, hemstädning uppsala, RUT-avdrag uppsala">
+<link rel="canonical" href="https://spick.se/uppsala.html">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:var(--t);}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
+.nc{font-size:.875rem;color:var(--m);text-decoration:none;}
+.nc:hover{color:var(--g);}
+.hero{background:linear-gradient(135deg,#0a2a1e,var(--g));padding:6rem 5rem;color:#fff;}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:700;margin-bottom:1rem;line-height:1.1;}
+.hero h1 span{color:#9FE1CB;}
+.hero p{font-size:1.05rem;color:rgba(255,255,255,.8);max-width:560px;line-height:1.7;margin-bottom:2.5rem;}
+.hero-cta{display:inline-flex;align-items:center;gap:.5rem;padding:1rem 2.25rem;background:#fff;color:var(--g);border-radius:100px;text-decoration:none;font-weight:700;font-size:.95rem;transition:all .2s;}
+.hero-cta:hover{background:var(--gp);transform:translateY(-2px);}
+.stats{display:flex;gap:3rem;margin-top:3.5rem;flex-wrap:wrap;}
+.stat .sv{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;color:#9FE1CB;}
+.stat .sl{font-size:.85rem;color:rgba(255,255,255,.65);margin-top:.25rem;}
+.sec{padding:5rem 2rem;max-width:1100px;margin:0 auto;}
+.sec-tag{display:inline-block;background:var(--gp);color:var(--g);font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .875rem;border-radius:100px;margin-bottom:1rem;}
+h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);margin-bottom:1rem;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2.5rem;}
+.card{background:#fff;border-radius:18px;padding:1.75rem;border:1px solid var(--grd);}
+.ci{font-size:1.5rem;margin-bottom:.75rem;}
+.card h3{font-size:.95rem;font-weight:600;color:var(--b);margin-bottom:.4rem;}
+.card p{font-size:.875rem;color:var(--m);line-height:1.65;}
+/* SOON */
+.soon-box{background:var(--gr);border-radius:24px;padding:4rem;text-align:center;margin:4rem 2rem;}
+.soon-icon{font-size:4rem;margin-bottom:1.5rem;}
+.soon-box h2{font-family:'Playfair Display',serif;font-size:2.2rem;margin-bottom:.875rem;}
+.soon-box p{font-size:1rem;color:var(--m);max-width:500px;margin:0 auto 2rem;line-height:1.7;}
+.wl-form{display:flex;gap:.75rem;max-width:420px;margin:0 auto;flex-wrap:wrap;justify-content:center;}
+.wl-form input{flex:1;min-width:200px;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;}
+.wl-form input:focus{border-color:var(--g);}
+.wl-btn{padding:.875rem 1.75rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.wl-btn:hover{background:var(--gm);}
+.faq{padding:5rem 2rem;max-width:760px;margin:0 auto;}
+.fi{border:1.5px solid var(--grd);border-radius:14px;overflow:hidden;margin-bottom:.75rem;}
+.fq{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.5rem;cursor:pointer;font-size:.925rem;font-weight:500;}
+.fq:hover{background:var(--gr);}
+.fi.open .fq{background:var(--gp);color:var(--g);}
+.fa{display:none;padding:1rem 1.5rem 1.25rem;font-size:.875rem;color:var(--m);line-height:1.75;border-top:1px solid var(--grd);}
+.fi.open .fa{display:block;}
+.cta{background:var(--b);padding:6rem 5rem;text-align:center;}
+.cta h2{font-family:'Playfair Display',serif;font-size:2.5rem;color:#fff;margin-bottom:1rem;}
+.cta p{font-size:1rem;color:#9E9E99;max-width:500px;margin:0 auto 2.5rem;line-height:1.7;}
+.cta a{display:inline-block;padding:1rem 2.75rem;background:var(--g);color:#fff;border-radius:100px;font-size:1rem;font-weight:700;text-decoration:none;}
+.cta a:hover{background:var(--gm);}
+footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
+footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2rem;font-weight:700;}
+footer p{font-size:.8rem;color:#4A4A45;}
+@media(max-width:900px){nav,footer,footer{padding:1rem 1.5rem;}.hero,.cta{padding:4rem 1.5rem;}.grid{grid-template-columns:1fr;}.sec{padding:3rem 1.5rem;}}
+</style>
+</head>
+<body>
+<nav><a href="index.html" class="logo">Spick</a><a href="stadare.html" class="nc">← Alla städare</a></nav>
+
+<div class="hero">
+  <h1>Städare i <span>Uppsala</span><br>du verkligen litar på</h1>
+  <p>Spick kommer snart till Uppsala! Betygsatta städare med RUT-avdrag. Skriv upp dig på väntelistan.</p>
+  <a href="#waitlist" class="hero-cta">Anmäl dig – lanseras snart! →</a>
+  <div class="stats">
+    <div class="stat"><div class="sv">Snart</div><div class="sl">lansering</div></div><div class="stat"><div class="sv">50%</div><div class="sl">RUT-avdrag</div></div><div class="stat"><div class="sv">Hela</div><div class="sl">Sverige</div></div>
+  </div>
+</div>
+
+
+<div class="soon-box" id="waitlist">
+  <div class="soon-icon">🗺️</div>
+  <h2>Spick lanserar i Uppsala 2025!</h2>
+  <p>Vi rekryterar just nu städare i Uppsala. Skriv upp dig på väntelistan – du får ett mail samma dag vi lanserar, och som tidig användare får du 20% rabatt på din första bokning.</p>
+  <div class="wl-form">
+    <input type="email" id="wlemail" placeholder="din@email.se">
+    <button class="wl-btn" onclick="joinWL()">Notifiera mig! →</button>
+  </div>
+  <p id="wl-ok" style="color:var(--g);margin-top:1rem;display:none">✅ Tack! Du är med på listan och får 20% rabatt vid lansering i Uppsala!</p>
+</div>
+
+
+<div class="sec">
+  <div class="sec-tag">Varför Spick?</div>
+  <h2>Det bästa för dig i Uppsala</h2>
+  <div class="grid">
+    <div class="card"><div class="ci">✓</div><h3>Verifierade städare</h3><p>Alla städare har genomgått ID-kontroll, F-skatteverifiering och referenstagning.</p></div>
+    <div class="card"><div class="ci">⭐</div><h3>Äkta betyg</h3><p>Varje betyg är satt av en riktig kund efter en riktig städning. Ingen manipulation.</p></div>
+    <div class="card"><div class="ci">💚</div><h3>RUT-avdrag 50%</h3><p>Du betalar bara hälften. Vi hanterar hela RUT-administrationen automatiskt.</p></div>
+  </div>
+</div>
+
+<div class="faq">
+  <div class="sec-tag">Vanliga frågor</div>
+  <h2>Om Spick i Uppsala</h2>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Hur bokar jag städare i Uppsala?</span><span>▼</span></div><div class="fa">Välj din städare, välj datum och tid. Bekräftelse inom 2 timmar. Betalning via Swish efter utförd städning.</div></div>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Gäller RUT-avdraget i Uppsala?</span><span>▼</span></div><div class="fa">Ja! RUT-avdraget gäller hela Sverige, inklusive Uppsala. Du betalar 50% – vi hanterar resten med Skatteverket.</div></div>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Kan jag boka samma städare varje gång?</span><span>▼</span></div><div class="fa">Absolut! Vi uppmuntrar det. Välj din favorit och boka dem regelbundet – de lär sig dina önskemål.</div></div>
+</div>
+
+<div class="cta">
+  <h2>Städare i Uppsala – snart!</h2>
+  <p>Vi lanserar i Uppsala under 2025. Anmäl dig och var bland de första!</p>
+  <a href="#waitlist">
+    Anmäl mig →
+  </a>
+</div>
+
+<footer><span>Spick</span><p>Städare i Uppsala och hela Sverige</p><p>© 2026 Spick AB</p></footer>
+
+<script>
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+async function joinWL(){
+  const e=document.getElementById('wlemail')?.value;
+  if(!e)return;
+  await SB.from('notifications').insert([{type:'waitlist_uppsala',recipient_email:e,subject:'Väntelista: Uppsala',status:'pending'}]);
+  document.getElementById('wl-ok').style.display='block';
+  document.querySelector('.wl-form').style.opacity='.4';
+  // Skicka välkomstmail till oss
+  await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB','Content-Type':'application/json'},body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',subject:'🗺️ Ny väntelisteanmälan: Uppsala – '+e,html:'<p>Ny anmälan till väntelistan för <strong>Uppsala</strong>: <strong>'+e+'</strong></p>'})});
+}
+</script>
+</body>
+</html>
