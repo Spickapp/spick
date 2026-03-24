@@ -7,7 +7,7 @@ on:
         required: true
         default: fix-github-pages
         type: choice
-        options: [fix-github-pages, add-google-workspace-mx, list-records, verify-dns]
+        options: [fix-github-pages, add-google-mx, verify-dns, list-records]
 jobs:
   dns:
     runs-on: ubuntu-latest
@@ -19,43 +19,39 @@ jobs:
         run: |
           api() { curl -s -X POST https://api.loopia.se/RPCSERV -H "Content-Type: text/xml" -d "$1"; }
           ACT="${{ github.event.inputs.action }}"
-
-          add_mx() {
-            local prio=$1 host=$2
-            api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>MX</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>$prio</int></value></member><member><n>rdata</n><value><string>$host</string></value></member></struct></value></param></params></methodCall>"
-          }
-
-          add_txt() {
-            local sub=$1 val=$2
-            api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string>$sub</string></value></param><param><value><struct><member><n>type</n><value><string>TXT</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$val</string></value></member></struct></value></param></params></methodCall>"
-          }
-
-          if [ "$ACT" = "add-google-workspace-mx" ]; then
-            echo "=== Lagger till Google Workspace MX-poster ==="
-            add_mx 1  "aspmx.l.google.com."
-            add_mx 5  "alt1.aspmx.l.google.com."
-            add_mx 5  "alt2.aspmx.l.google.com."
-            add_mx 10 "alt3.aspmx.l.google.com."
-            add_mx 10 "alt4.aspmx.l.google.com."
-            echo "=== Uppdaterar SPF (laggar till Google) ==="
-            add_txt "" "v=spf1 include:_spf.google.com include:amazonses.com ~all"
-            echo "=== KLAR! Verifiera pa Google Admin ==="
-            dig +short MX spick.se @8.8.8.8 || true
-
+          
+          if [ "$ACT" = "list-records" ]; then
+            api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param></params></methodCall>"
+          
           elif [ "$ACT" = "fix-github-pages" ]; then
             for IP in "75.2.60.5" "99.83.190.102"; do
+              echo "Removing $IP"
               api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>A</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$IP</string></value></member></struct></value></param></params></methodCall>"
             done
             for IP in "185.199.108.153" "185.199.109.153" "185.199.110.153" "185.199.111.153"; do
+              echo "Adding $IP"
               api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>A</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$IP</string></value></member></struct></value></param></params></methodCall>"
             done
-            dig +short A spick.se @8.8.8.8 || true
-
-          elif [ "$ACT" = "list-records" ]; then
-            api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param></params></methodCall>"
-
+          
+          elif [ "$ACT" = "add-google-mx" ]; then
+            echo "=== Tar bort gammal SMTP.GOOGLE.COM ==="
+            api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>MX</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>1</int></value></member><member><n>rdata</n><value><string>SMTP.GOOGLE.COM.</string></value></member></struct></value></param></params></methodCall>"
+            echo "=== Lagger till Google Workspace MX-poster ==="
+            declare -A MX_RECORDS=( ["ASPMX.L.GOOGLE.COM."]=1 ["ALT1.ASPMX.L.GOOGLE.COM."]=5 ["ALT2.ASPMX.L.GOOGLE.COM."]=5 ["ALT3.ASPMX.L.GOOGLE.COM."]=10 ["ALT4.ASPMX.L.GOOGLE.COM."]=10 )
+            for HOST in "ASPMX.L.GOOGLE.COM." "ALT1.ASPMX.L.GOOGLE.COM." "ALT2.ASPMX.L.GOOGLE.COM." "ALT3.ASPMX.L.GOOGLE.COM." "ALT4.ASPMX.L.GOOGLE.COM."; do
+              PRIO=1
+              [[ "$HOST" == ALT1* || "$HOST" == ALT2* ]] && PRIO=5
+              [[ "$HOST" == ALT3* || "$HOST" == ALT4* ]] && PRIO=10
+              echo "Adding MX $HOST prio $PRIO"
+              api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>MX</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>$PRIO</int></value></member><member><n>rdata</n><value><string>$HOST</string></value></member></struct></value></param></params></methodCall>"
+            done
+            echo "=== Klar! ==="
+          
           elif [ "$ACT" = "verify-dns" ]; then
-            echo "A:" && dig +short A spick.se @8.8.8.8
-            echo "MX:" && dig +short MX spick.se @8.8.8.8
-            echo "CNAME www:" && dig +short CNAME www.spick.se @8.8.8.8
+            echo "--- A-poster ---"
+            dig +short A spick.se @8.8.8.8
+            echo "--- MX-poster ---"
+            dig +short MX spick.se @8.8.8.8
+            echo "--- CNAME www ---"
+            dig +short CNAME www.spick.se @8.8.8.8
           fi
