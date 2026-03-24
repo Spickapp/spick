@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Priser & RUT-avdrag – Spick</title>
+<meta name="description" content="Transparenta priser för städning med RUT-avdrag. Se vad du betalar för hemstädning, storstädning och flyttstädning i Stockholm.">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10;}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
+.back{font-size:.875rem;color:var(--m);text-decoration:none;}
+.hero{background:var(--b);padding:5rem;text-align:center;color:#fff;}
+.hero h1{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:700;margin-bottom:1rem;}
+.hero p{font-size:1rem;color:rgba(255,255,255,.7);max-width:520px;margin:0 auto;}
+.page{max-width:1000px;margin:0 auto;padding:5rem 2rem 6rem;}
+.sec-tag{display:inline-block;background:var(--gp);color:var(--g);font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .875rem;border-radius:100px;margin-bottom:1rem;}
+h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);margin-bottom:1rem;}
+.service-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:4rem;}
+.sc{background:#fff;border-radius:20px;padding:2rem;border:1px solid var(--grd);position:relative;}
+.sc.popular{border:2px solid var(--g);}
+.pop-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--g);color:#fff;font-size:.72rem;font-weight:700;padding:.3rem 1rem;border-radius:100px;white-space:nowrap;}
+.sc-icon{font-size:2rem;margin-bottom:1rem;}
+.sc h3{font-size:1.1rem;font-weight:700;color:var(--b);margin-bottom:.5rem;}
+.sc-desc{font-size:.875rem;color:var(--m);line-height:1.65;margin-bottom:1.5rem;}
+.sc-price{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);}
+.sc-unit{font-size:.875rem;color:var(--m);font-weight:400;}
+.sc-rut{font-size:.8rem;color:var(--g);background:var(--gp);padding:.25rem .75rem;border-radius:100px;display:inline-block;margin-top:.5rem;}
+.sc-list{margin-top:1.5rem;display:flex;flex-direction:column;gap:.5rem;}
+.sc-item{font-size:.82rem;color:var(--m);display:flex;align-items:center;gap:.5rem;}
+.sc-btn{display:block;text-align:center;margin-top:1.5rem;padding:.75rem;background:var(--g);color:#fff;border-radius:100px;font-size:.875rem;font-weight:600;text-decoration:none;transition:background .2s;}
+.sc-btn:hover{background:var(--gm);}
+.calc-section{background:#fff;border-radius:24px;padding:3rem;margin-bottom:4rem;border:1px solid var(--grd);}
+.calc-section h2{margin-bottom:.5rem;}
+.calc-sub{font-size:.9rem;color:var(--m);margin-bottom:2rem;}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;}
+.field{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.25rem;}
+.field label{font-size:.8rem;font-weight:500;color:var(--m);}
+.field input,.field select{padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;}
+.field input:focus,.field select:focus{border-color:var(--g);}
+.result{background:var(--g);border-radius:16px;padding:2rem;color:#fff;}
+.res-row{display:flex;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:.9rem;}
+.res-row:last-child{border:none;padding-top:1rem;}
+.rl{color:rgba(255,255,255,.7);}
+.rv{color:#fff;font-weight:600;}
+.res-row.tot .rl{color:#fff;font-weight:700;font-size:1.05rem;}
+.res-row.tot .rv{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gl);}
+.rut-info{background:var(--gp);border-radius:20px;padding:3rem;margin-bottom:4rem;}
+.rut-info h2{color:var(--b);margin-bottom:1rem;}
+.rut-info p{font-size:.9rem;color:var(--m);line-height:1.75;margin-bottom:1rem;}
+.rut-info ul{padding-left:1.5rem;}
+.rut-info li{font-size:.9rem;color:var(--m);line-height:1.75;margin-bottom:.35rem;}
+footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
+footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2rem;font-weight:700;}
+footer p{font-size:.8rem;color:#4A4A45;}
+@media(max-width:900px){nav,footer{padding:1rem 1.5rem;}.hero{padding:3rem 1.5rem;}.page{padding:3rem 1rem 4rem;}.service-cards{grid-template-columns:1fr;}.calc-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<nav><a href="index.html" class="logo">Spick</a><a href="index.html" class="back">← Startsidan</a></nav>
+
+<div class="hero">
+  <h1>Transparenta priser</h1>
+  <p>Inga dolda avgifter. Du vet exakt vad du betalar – och med RUT-avdrag betalar du bara hälften.</p>
+</div>
+
+<div class="page">
+  <div style="margin-bottom:1.5rem;"><div class="sec-tag">Tjänster & priser</div><h2>Vad kostar städning?</h2></div>
+
+  <div class="service-cards">
+    <div class="sc">
+      <div class="sc-icon">🏠</div>
+      <h3>Hemstädning</h3>
+      <div class="sc-desc">Regelbunden städning av din bostad. Perfekt för den som vill ha ett städat hem utan krångel.</div>
+      <div class="sc-price">250–400 <span class="sc-unit">kr/h</span></div>
+      <div class="sc-rut">125–200 kr/h med RUT</div>
+      <div class="sc-list">
+        <div class="sc-item">✓ Dammsugning & moppning</div>
+        <div class="sc-item">✓ Badrum & kök</div>
+        <div class="sc-item">✓ Damning av ytor</div>
+        <div class="sc-item">✓ Tömma sopor</div>
+      </div>
+      <a href="stadare.html" class="sc-btn">Boka hemstädning →</a>
+    </div>
+    <div class="sc popular">
+      <div class="pop-badge">⭐ Populärast</div>
+      <div class="sc-icon">✨</div>
+      <h3>Storstädning</h3>
+      <div class="sc-desc">Grundlig städning av hela hemmet. Bra inför fest, säsongsstart eller när det behövs extra kärlek.</div>
+      <div class="sc-price">300–500 <span class="sc-unit">kr/h</span></div>
+      <div class="sc-rut">150–250 kr/h med RUT</div>
+      <div class="sc-list">
+        <div class="sc-item">✓ Allt i hemstädning</div>
+        <div class="sc-item">✓ Fönster invändigt</div>
+        <div class="sc-item">✓ Insida ugn & kyl</div>
+        <div class="sc-item">✓ Djuprengöring av badrum</div>
+      </div>
+      <a href="stadare.html" class="sc-btn">Boka storstädning →</a>
+    </div>
+    <div class="sc">
+      <div class="sc-icon">📦</div>
+      <h3>Flyttstädning</h3>
+      <div class="sc-desc">Besiktningsgodkänd städning när du flyttar. Vi ser till att du får tillbaka din deposition.</div>
+      <div class="sc-price">350–550 <span class="sc-unit">kr/h</span></div>
+      <div class="sc-rut">175–275 kr/h med RUT</div>
+      <div class="sc-list">
+        <div class="sc-item">✓ Komplett städning</div>
+        <div class="sc-item">✓ Ugn, kyl & frys</div>
+        <div class="sc-item">✓ Fönster in- & utsida</div>
+        <div class="sc-item">✓ Besiktningsintyg</div>
+      </div>
+      <a href="stadare.html" class="sc-btn">Boka flyttstädning →</a>
+    </div>
+  </div>
+
+  <div class="calc-section">
+    <div class="sec-tag">Priskalkylator</div>
+    <h2>Räkna ut ditt pris</h2>
+    <div class="calc-sub">Se exakt vad du betalar – med och utan RUT-avdrag.</div>
+    <div class="calc-grid">
+      <div>
+        <div class="field"><label>Timpris (kr/h)</label><input type="number" id="rate" value="350" min="250" max="600" oninput="calc()"></div>
+        <div class="field"><label>Antal timmar</label>
+          <select id="hours" onchange="calc()">
+            <option value="1">1 timme</option>
+            <option value="2">2 timmar</option>
+            <option value="3" selected>3 timmar</option>
+            <option value="4">4 timmar</option>
+            <option value="5">5 timmar</option>
+            <option value="6">6 timmar</option>
+          </select>
+        </div>
+        <div class="field"><label>RUT-avdrag</label>
+          <select id="rut" onchange="calc()">
+            <option value="ja" selected>Ja – 50% rabatt</option>
+            <option value="nej">Nej – fullt pris</option>
+          </select>
+        </div>
+      </div>
+      <div class="result" id="result">
+        <div class="res-row"><span class="rl">Timpris</span><span class="rv" id="r-rate">350 kr/h</span></div>
+        <div class="res-row"><span class="rl">Timmar</span><span class="rv" id="r-hours">3 h</span></div>
+        <div class="res-row"><span class="rl">Subtotal</span><span class="rv" id="r-sub">1 050 kr</span></div>
+        <div class="res-row"><span class="rl">RUT-avdrag 50%</span><span class="rv" style="color:#9FE1CB" id="r-rut">−525 kr</span></div>
+        <div class="res-row tot"><span class="rl">Du betalar</span><span class="rv" id="r-tot">525 kr</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rut-info">
+    <div class="sec-tag">RUT-avdrag</div>
+    <h2>Allt om RUT-avdraget</h2>
+    <p>RUT-avdraget (Rengöring, Underhåll och Tvätt) är ett skatteavdrag som ger dig 50% rabatt på hushållsnära tjänster som städning. Du betalar bara hälften och vi sköter resten automatiskt.</p>
+    <ul>
+      <li>Maxavdraget är <strong>75 000 kr per person och år</strong></li>
+      <li>Gäller hemstädning, storstädning, fönsterputs och trappstädning</li>
+      <li>Flyttstädning kan ingå – fråga oss för detaljer</li>
+      <li>RUT och ROT delar på samma maxtak</li>
+      <li>Vi hanterar all administration – du betalar bara halva priset</li>
+    </ul>
+  </div>
+</div>
+
+<footer><span>Spick</span><p>hello@spick.se · 076-050 51 53</p><p>© 2026 Haghighi Consulting AB</p></footer>
+<script>
+function calc(){
+  const rate=+document.getElementById('rate').value||350;
+  const hours=+document.getElementById('hours').value||3;
+  const useRut=document.getElementById('rut').value==='ja';
+  const sub=rate*hours;
+  const rut=useRut?Math.round(sub*.5):0;
+  const tot=sub-rut;
+  document.getElementById('r-rate').textContent=rate+' kr/h';
+  document.getElementById('r-hours').textContent=hours+' h';
+  document.getElementById('r-sub').textContent=sub.toLocaleString('sv')+' kr';
+  document.getElementById('r-rut').textContent=useRut?'−'+rut.toLocaleString('sv')+' kr':'–';
+  document.getElementById('r-tot').textContent=tot.toLocaleString('sv')+' kr';
+}
+</script>
+</body>
+</html>
