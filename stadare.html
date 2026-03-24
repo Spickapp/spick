@@ -3,160 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hitta din stÃ¤dare â Spick</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<title>Hitta din städare – Spick</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root {
-  --green:#0F6E56;--green-mid:#1D9E75;--green-light:#9FE1CB;--green-pale:#E1F5EE;
-  --black:#0E0E0E;--gray:#F7F7F5;--gray-mid:#E8E8E4;--text:#1C1C1A;--muted:#6B6960;--white:#fff;
-}
+:root{--green:#0F6E56;--green-mid:#1D9E75;--green-pale:#E1F5EE;--black:#0E0E0E;--gray:#F7F7F5;--gray-mid:#E8E8E4;--text:#1C1C1A;--muted:#6B6960;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;color:var(--text);background:var(--gray);min-height:100vh;}
+body{font-family:'DM Sans',sans-serif;color:var(--text);background:var(--gray);}
 nav{background:white;padding:1.25rem 4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-mid);position:sticky;top:0;z-index:10;}
 .nav-logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--green);text-decoration:none;}
-.nav-back{font-size:0.875rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:0.5rem;}
+.nav-back{font-size:0.875rem;color:var(--muted);text-decoration:none;}
 .page{max-width:1100px;margin:0 auto;padding:3rem 1.5rem 6rem;}
-.page-title{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--black);margin-bottom:0.5rem;}
-.page-sub{font-size:1rem;color:var(--muted);margin-bottom:2rem;}
+h1{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--black);margin-bottom:0.5rem;}
+.sub{font-size:1rem;color:var(--muted);margin-bottom:2rem;}
 .filter-bar{display:flex;gap:0.75rem;margin-bottom:2rem;flex-wrap:wrap;align-items:center;}
-.filter-btn{padding:0.45rem 1.1rem;border-radius:100px;border:1.5px solid var(--gray-mid);font-size:0.8rem;font-weight:500;cursor:pointer;background:white;color:var(--muted);transition:all 0.2s;font-family:'DM Sans',sans-serif;}
-.filter-btn.active{background:var(--green);color:white;border-color:var(--green);}
-.sort-select{padding:0.45rem 1rem;border-radius:100px;border:1.5px solid var(--gray-mid);font-size:0.8rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;background:white;color:var(--muted);margin-left:auto;}
-.cleaners-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;}
-.cleaner-card{background:white;border-radius:20px;border:1px solid var(--gray-mid);overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;cursor:pointer;}
-.cleaner-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.08);}
-.cleaner-card.featured{border:2px solid var(--green);}
-.card-top{padding:1.5rem 1.5rem 1rem;display:flex;gap:1rem;align-items:flex-start;}
-.avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:white;flex-shrink:0;position:relative;}
-.online-dot{width:14px;height:14px;background:#22c56e;border-radius:50%;position:absolute;bottom:2px;right:2px;border:2px solid white;}
-.card-name{font-size:1.05rem;font-weight:600;color:var(--black);margin-bottom:2px;}
-.card-location{font-size:0.8rem;color:var(--muted);margin-bottom:6px;}
+.btn{padding:0.45rem 1.1rem;border-radius:100px;border:1.5px solid var(--gray-mid);font-size:0.8rem;font-weight:500;cursor:pointer;background:white;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.btn.active{background:var(--green);color:white;border-color:var(--green);}
+.sort{padding:0.45rem 1rem;border-radius:100px;border:1.5px solid var(--gray-mid);font-size:0.8rem;font-family:'DM Sans',sans-serif;outline:none;background:white;color:var(--muted);margin-left:auto;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;}
+.card{background:white;border-radius:20px;border:1px solid var(--gray-mid);overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;}
+.card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.08);}
+.card.top{border:2px solid var(--green);}
+.head{padding:1.5rem 1.5rem 1rem;display:flex;gap:1rem;align-items:flex-start;}
+.av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:white;flex-shrink:0;}
+.badge{background:var(--green);color:white;font-size:0.7rem;font-weight:600;padding:0.25rem 0.75rem;border-radius:100px;display:inline-block;margin-bottom:4px;}
+.cname{font-size:1.05rem;font-weight:600;color:var(--black);}
+.cloc{font-size:0.8rem;color:var(--muted);margin:2px 0 6px;}
 .stars{color:#F59E0B;font-size:0.85rem;}
-.rating-num{font-size:0.8rem;font-weight:500;color:var(--black);}
-.rating-count{font-size:0.75rem;color:var(--muted);}
-.card-body{padding:0 1.5rem 1rem;}
+.body{padding:0 1.5rem 1rem;}
+.tags{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;}
 .tag{font-size:0.7rem;padding:0.25rem 0.7rem;border-radius:100px;background:var(--green-pale);color:var(--green);font-weight:500;}
-.card-bio{font-size:0.8rem;color:var(--muted);line-height:1.55;margin-bottom:1rem;}
-.price-num{font-size:1.3rem;font-weight:700;color:var(--black);font-family:'Playfair Display',serif;}
-.price-rut{font-size:0.75rem;color:var(--green);font-weight:500;background:var(--green-pale);padding:0.2rem 0.6rem;border-radius:100px;margin-left:4px;}
-.card-footer{padding:0 1.5rem 1.25rem;display:flex;gap:0.75rem;}
-.btn-book{flex:1;padding:0.75rem;background:var(--green);color:white;border:none;border-radius:100px;font-size:0.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;text-decoration:none;display:flex;align-items:center;justify-content:center;}
-.btn-book:hover{background:var(--green-mid);}
-.featured-badge{background:var(--green);color:white;font-size:0.7rem;font-weight:600;padding:0.25rem 0.75rem;border-radius:100px;margin-bottom:0.5rem;display:inline-block;}
-.avail-badge{font-size:0.72rem;color:#22c56e;font-weight:500;display:flex;align-items:center;gap:4px;}
-.avail-dot{width:6px;height:6px;background:#22c56e;border-radius:50%;}
-.no-results{text-align:center;padding:4rem;color:var(--muted);}
-@media(max-width:768px){nav{padding:1rem 1.5rem;}.cleaners-grid{grid-template-columns:1fr;}.page{padding:2rem 1rem 4rem;}}
+.bio{font-size:0.8rem;color:var(--muted);line-height:1.55;margin-bottom:0.75rem;}
+.price-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--black);}
+.rut{font-size:0.75rem;color:var(--green);font-weight:500;background:var(--green-pale);padding:0.2rem 0.6rem;border-radius:100px;margin-left:4px;}
+.foot{padding:0 1.5rem 1.25rem;}
+.book{display:block;text-align:center;padding:0.75rem;background:var(--green);color:white;border:none;border-radius:100px;font-size:0.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;transition:background 0.2s;}
+.book:hover{background:var(--green-mid);}
+.empty{text-align:center;padding:4rem;color:var(--muted);grid-column:1/-1;}
+@media(max-width:768px){nav{padding:1rem 1.5rem;}.grid{grid-template-columns:1fr;}.page{padding:2rem 1rem 4rem;}}
 </style>
 </head>
 <body>
 <nav>
   <a href="index.html" class="nav-logo">Spick</a>
-  <a href="index.html" class="nav-back">â Tillbaka</a>
+  <a href="index.html" class="nav-back">← Tillbaka</a>
 </nav>
 <div class="page">
-  <h1>Hitta din perfekta stÃ¤dare</h1>
-  <p class="page-sub">VÃ¤lj en betygsatt stÃ¤dare nÃ¤ra dig â och boka samma person varje gÃ¥ng.</p>
+  <h1>Hitta din perfekta städare</h1>
+  <p class="sub">Välj en betygsatt städare nära dig – och boka samma person varje gång.</p>
   <div class="filter-bar">
-    <button class="filter-btn active" onclick="filter('alla',this)">Alla</button>
-    <button class="filter-btn" onclick="filter('hemstad',this)">HemstÃ¤dning</button>
-    <button class="filter-btn" onclick="filter('flytt', this)">FlyttstÃ¤dning</button>
-    <button class="filter-btn" onclick="filter('storstad',this)">StorstÃ¤dning</button>
-    <select class="sort-select" onchange="sort(this.value)">
-      <option value="betyg">HÃ¶gst betyg</option>
-      <option value="pris">LÃ¤gsta pris</option>
+    <button class="btn active" onclick="doFilter('alla',this)">Alla</button>
+    <button class="btn" onclick="doFilter('hem',this)">Hemstädning</button>
+    <button class="btn" onclick="doFilter('flytt',this)">Flyttstädning</button>
+    <button class="btn" onclick="doFilter('stor',this)">Storstädning</button>
+    <select class="sort" onchange="doSort(this.value)">
+      <option value="betyg">Högst betyg</option>
+      <option value="pris">Lägsta pris</option>
     </select>
   </div>
-  <div class="cleaners-grid" id="grid"></div>
+  <div class="grid" id="grid"><div class="empty">Laddar städare...</div></div>
 </div>
 <script>
-const SUPABASE_URL='https://urjeijcncsyuletprydy.supabase.co';
-const SUPABASE_KEY='sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
-const{createClient}=supabase;
-const db=createClient(SUPABASE_URL,SUPABASE_KEY);
-const COLORS=['#1D9E75','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
-const DEMO=[{id:1,name:'Sara Karlsson',city:'Stockholm',hourly_rate:350,rating:4.97,status:'godkÃ¤nd',services:'HemstÃ¤dning',bio:'Noggrann och pÃ¥litlig stÃ¤dare med 4 Ã¥rs erfarenhet.',},{id:2,name:'Olena Kovalenko',location:'Stockholm',hourly_rate:330,rating:4.89,status:'godkÃ¤nd',services:'HemstÃ¤dning,StorstÃ¤dning',bio:'Ukrainsk stÃ¤dare med hÃ¶g standard.'}];
-let ALL=[],filterVal='alla',sortVal='betyg';
-function inits(n){return n.split(' ').map(w=>w[0]).join('').slice(0,2);}
-function stars(r){return 'â'.repeat(Math.floor(r))+'â'.repeat(5-Math.floor(r));}
-async function load(){
-  document.getElementById('grid').innerHTML='<div style="grid-column:1/-4;text-align:center;padding:3rem;color:var(--muted);">HÃ¤mtar stÃ¤dare...</div>';
-  let rows=null;
-  try{
-    const {data:d,error:e}=await db.from('cleaners').select('*').eq('status','godkÃ¤nd').order('rating',{ascending:false});
-    if(!e&&d&&d.length>0)rows=d;
-  }catch(er){}
-  if(!rows){
-    try{
-      const {data:d,error:e}=await db.from('cleaners').select('*').eq('status','godkÃ¤nd').order('rating',{ascending:false});
-      if(!e&&d&&d.length>0)rows=d;
-    }catch(er){}
-  }
-  if(rows&&rows.length>0){
-    ALL=rows.map((r,idx)=>({
-      id:r.id,name:r.full_name||r.name||'OkÃ¤nd',
-      city:r.city||'Stockholm',
-      price:r.hourly_rate||r.price||350,
-      rating:r.rating||0,
-      bio:r.bio||r.message||'Professionell stÃ¤dare.',
-      tags:r.services?r.services.split(',').map(s=>s.trim()):['HemstÃ¤dning'],
-      color:COLORS[idx%COLORS.length],
-      featured:idx===0
-    }));
-  }else{
-    ALL=DEMO.map((r,idx)=>({...r,city:r.city||'Stockholm',price:r.hourly_rate||350,bio:r.bio||'Professionell stÃ¤dare.',tags:r.services?r.services.split(',').map(s=>s.trim()):['HemstÃ¤dning'],color:COLORS[idx%COLORS.length],featured:idx===0}));
-  }
+const SB='https://urjeijcncsyuletprydy.supabase.co';
+const KEY='sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
+const {createClient}=supabase;
+const db=createClient(SB,KEY);
+const C=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+let ALL=[],fv='alla',sv='betyg';
+function ini(n){return n.split(' ').map(w=>w[0]).join('').slice(0,2);}
+function st(r){return '★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
+async function init(){
+  const {data,error}=await db.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false});
+  if(error){console.error(error);document.getElementById('grid').innerHTML='<div class="empty">Kunde inte ladda städare.</div>';return;}
+  ALL=data.map((r,i)=>({
+    id:r.id,name:r.full_name||'Okänd',city:r.city||'Stockholm',
+    price:r.hourly_rate||350,rating:r.rating||0,bio:r.bio||'Professionell städare.',
+    tags:Array.isArray(r.services)?r.services:(r.services||'Hemstädning').split(',').map(s=>s.trim()),
+    color:C[i%C.length],top:i===0
+  }));
   render();
 }
-function filter(v,btn){
-  filterVal=v;
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  render();
-}
-function sort(v){sortVal=v;render();}
+function doFilter(v,btn){fv=v;document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function doSort(v){sv=v;render();}
 function render(){
   let d=[...ALL];
-  if(filterVal==='hemstad')d=d.filter(c=>c.tags.some(t=>t.includes('Hem')));
-  else if(filterVal==='flytt')d=d.filter(c=>c.tags.some(t=>t.includes('Flytt')));
-  else if(filterVal==='storstad')d=d.filter(c=>c.tags.some(t=>t.includes('Stor')));
-  if(sortVal==='betyg')d.sort((a,b)=>b.rating-a.rating);
+  if(fv==='hem')d=d.filter(c=>c.tags.some(t=>t.includes('Hem')));
+  else if(fv==='flytt')d=d.filter(c=>c.tags.some(t=>t.includes('Flytt')));
+  else if(fv==='stor')d=d.filter(c=>c.tags.some(t=>t.includes('Stor')));
+  if(sv==='betyg')d.sort((a,b)=>b.rating-a.rating);
   else d.sort((a,b)=>a.price-b.price);
   const g=document.getElementById('grid');
-  if(!d.length){g.innerHTML='<div class="no-results">Inga stÃ¤dare hittades.</div>';return;]}
-  g.innerHTML=d.map(c=>`
-    <div class="cleaner-card ${c.featured?'featured':''}">
-      <div class="card-top">
-        <div class="avatar" style="background:${c.color};">${inits(c.name)}</div>
-        <div>
-          ${c.featured?'<span class="featured-badge">Toppvald</span><br>':''}
-          <div class="card-name">${c.name}</div>
-          <div class="card-location">${c.city}</div>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <span class="stars">${stars(c.rating)}</span>
-            <span class="rating-num">${c.rating}</span>
-          </div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;">
-          ${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}
-        </div>
-        <div class="card-bio">${c.bio.slice(0,90)}...</div>
-        <div style="display:flex;align-items:baseline;gap:0.25rem;margin-bottom:1rem;">
-          <span class="price-num">${c.price} kr</span>
-          <span style="font-size:0.8rem;color:var(--muted);">/timme</span>
-          <span class="price-rut">${Math.round(c.price*0.5)} kr med RUT</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <a class="btn-book" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}|&id=${c.id}">Boka ${c.name.split(' ')[0]} â</a>
-      </div>
-    </div>
-  `).join('');
+  if(!d.length){g.innerHTML='<div class="empty">Inga städare hittades.</div>';return;}
+  g.innerHTML=d.map(c=>`<div class="card ${c.top?'top':''}">
+    <div class="head"><div class="av" style="background:${c.color};">${ini(c.name)}</div>
+    <div>${c.top?'<span class="badge">Toppvald</span><br>':''}<div class="cname">${c.name}</div>
+    <div class="cloc">${c.city}</div><div><span class="stars">${st(c.rating)}</span> <strong>${c.rating}</strong></div></div></div>
+    <div class="body"><div class="tags">${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    <div class="bio">${c.bio.slice(0,100)}...</div>
+    <div><span class="price-num">${c.price} kr</span><span style="font-size:0.8rem;color:var(--muted);">/h</span><span class="rut">${Math.round(c.price*0.5)} kr m. RUT</span></div></div>
+    <div class="foot"><a class="book" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}&id=${c.id}">Boka ${c.name.split(' ')[0]} →</a></div>
+  </div>`).join('');
 }
-load();
+init();
 </script>
-</body></html>
+</body>
+</html>
