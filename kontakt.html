@@ -4,94 +4,138 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kontakt – Spick</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:#F7F7F5;color:#1C1C1A;}
-nav{background:white;padding:1.25rem 4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8E8E4;position:sticky;top:0;z-index:10;}
-.nav-logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#0F6E56;text-decoration:none;}
-.nav-back{font-size:0.875rem;color:#6B6960;text-decoration:none;display:flex;align-items:center;gap:0.5rem;transition:color 0.2s;}
-.nav-back:hover{color:#0F6E56;}
-.page{max-width:800px;margin:0 auto;padding:4rem 1.5rem 6rem;}
-.page-header{margin-bottom:3rem;}
-.page-tag{display:inline-block;background:#E1F5EE;color:#0F6E56;font-size:0.8rem;font-weight:500;padding:0.35rem 1rem;border-radius:100px;margin-bottom:1rem;}
-h1{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;color:#0E0E0E;margin-bottom:0.75rem;}
-.lead{font-size:1.1rem;color:#6B6960;line-height:1.65;}
-.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:3rem;}
-.contact-card{background:white;border-radius:20px;padding:2rem;border:1px solid #E8E8E4;transition:transform 0.2s,box-shadow 0.2s;}
-.contact-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.08);}
-.contact-icon{font-size:2rem;margin-bottom:1rem;}
-.contact-card h3{font-size:1rem;font-weight:600;color:#0E0E0E;margin-bottom:0.5rem;}
-.contact-card p{font-size:0.875rem;color:#6B6960;line-height:1.6;margin-bottom:1rem;}
-.contact-link{display:inline-block;color:#0F6E56;font-weight:500;font-size:0.9rem;text-decoration:none;border-bottom:1.5px solid #E1F5EE;transition:border-color 0.2s;}
-.contact-link:hover{border-color:#0F6E56;}
-.faq-teaser{background:white;border-radius:20px;padding:2.5rem;border:1px solid #E8E8E4;text-align:center;margin-bottom:3rem;}
-.faq-teaser h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:0.75rem;}
-.faq-teaser p{color:#6B6960;margin-bottom:1.5rem;}
-.btn{display:inline-block;padding:0.875rem 2rem;border-radius:100px;font-size:0.95rem;font-weight:600;text-decoration:none;transition:all 0.2s;}
-.btn-green{background:#0F6E56;color:white;}
-.btn-green:hover{background:#1D9E75;}
-.hours{background:#E1F5EE;border-radius:16px;padding:1.5rem 2rem;}
-.hours h3{font-size:0.875rem;font-weight:600;color:#0F6E56;margin-bottom:0.75rem;}
-.hours-row{display:flex;justify-content:space-between;font-size:0.875rem;padding:0.35rem 0;color:#085041;}
-@media(max-width:600px){.contact-grid{grid-template-columns:1fr;}nav{padding:1rem 1.5rem;}}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10;}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
+.back{font-size:.875rem;color:var(--m);text-decoration:none;}
+.page{max-width:1100px;margin:0 auto;padding:4rem 2rem 6rem;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:start;}
+.left{}
+.tag{display:inline-block;background:var(--gp);color:var(--g);font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.35rem 1rem;border-radius:100px;margin-bottom:1rem;}
+h1{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;color:var(--b);margin-bottom:1rem;line-height:1.15;}
+.intro{font-size:1rem;color:var(--m);line-height:1.7;margin-bottom:2.5rem;}
+.contact-cards{display:flex;flex-direction:column;gap:1rem;margin-bottom:2.5rem;}
+.cc{background:#fff;border-radius:16px;padding:1.5rem;display:flex;align-items:center;gap:1.25rem;border:1.5px solid var(--grd);transition:all .2s;text-decoration:none;}
+.cc:hover{border-color:var(--g);transform:translateX(4px);}
+.cc-icon{width:48px;height:48px;background:var(--gp);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.cc-label{font-size:.75rem;color:var(--m);text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+.cc-val{font-size:1rem;font-weight:600;color:var(--b);margin-top:2px;}
+.cc-sub{font-size:.78rem;color:var(--m);margin-top:2px;}
+.hours{background:#fff;border-radius:16px;padding:1.5rem;border:1px solid var(--grd);}
+.hours h3{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--m);margin-bottom:1rem;}
+.hr{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--grd);font-size:.875rem;}
+.hr:last-child{border-bottom:none;}
+.hd{color:var(--t);}
+.ht{color:var(--m);}
+.ht.open{color:var(--g);font-weight:500;}
+/* FORM */
+.form-card{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;}
+.form-head{padding:1.75rem 2rem 1.25rem;border-bottom:1px solid var(--grd);}
+.form-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--b);}
+.form-sub{font-size:.875rem;color:var(--m);margin-top:.25rem;}
+.form-body{padding:1.75rem 2rem;}
+.f{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem;}
+.f label{font-size:.78rem;font-weight:500;color:var(--m);}
+.f input,.f select,.f textarea{padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--g);}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.sbtn{width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+.sbtn:hover:not(:disabled){background:var(--gm);}
+.sbtn:disabled{opacity:.6;cursor:not-allowed;}
+.success{display:none;background:var(--gp);border-radius:12px;padding:1.25rem;text-align:center;margin-top:1rem;}
+.success.show{display:block;}
+.success p{font-size:.9rem;color:var(--g);font-weight:500;}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-top:0;}
+footer span{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--gm);}
+footer p{font-size:.8rem;color:#4A4A45;}
+@media(max-width:900px){nav,footer{padding:1rem 1.5rem;}.page{grid-template-columns:1fr;padding:2rem 1rem 4rem;}}
 </style>
 </head>
 <body>
-<nav>
-  <a href="index.html" class="nav-logo">Spick</a>
-  <a href="index.html" class="nav-back">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-    Tillbaka
-  </a>
-</nav>
+<nav><a href="index.html" class="logo">Spick</a><a href="index.html" class="back">← Tillbaka</a></nav>
 
 <div class="page">
-  <div class="page-header">
-    <div class="page-tag">Kontakt</div>
-    <h1>Vi hjälper dig gärna</h1>
-    <p class="lead">Har du frågor om en bokning, vill bli städare eller behöver annan hjälp? Hör av dig!</p>
-  </div>
+  <div class="left">
+    <div class="tag">Kontakta oss</div>
+    <h1>Vi finns här för dig</h1>
+    <p class="intro">Har du frågor om bokning, din städare eller RUT-avdrag? Vi svarar snabbt och hjälper dig gärna.</p>
 
-  <div class="contact-grid">
-    <div class="contact-card">
-      <div class="contact-icon">✉️</div>
-      <h3>E-post</h3>
-      <p>Skicka ett mail – vi svarar inom 2 timmar under vardagar.</p>
-      <a href="mailto:hello@spick.se" class="contact-link">hello@spick.se</a>
+    <div class="contact-cards">
+      <a href="tel:+46760505153" class="cc">
+        <div class="cc-icon">📞</div>
+        <div><div class="cc-label">Telefon</div><div class="cc-val">076-050 51 53</div><div class="cc-sub">Snabbast svar – ring direkt</div></div>
+      </a>
+      <a href="mailto:hello@spick.se" class="cc">
+        <div class="cc-icon">✉️</div>
+        <div><div class="cc-label">E-post</div><div class="cc-val">hello@spick.se</div><div class="cc-sub">Svar inom 2 timmar på vardagar</div></div>
+      </a>
+      <a href="https://wa.me/46760505153" class="cc" target="_blank">
+        <div class="cc-icon">💬</div>
+        <div><div class="cc-label">WhatsApp</div><div class="cc-val">Chatta med oss</div><div class="cc-sub">Snabbt och enkelt</div></div>
+      </a>
     </div>
-    <div class="contact-card">
-      <div class="contact-icon">📞</div>
-      <h3>Telefon</h3>
-      <p>Ring oss direkt. Bäst nåbar vardagar 9–17.</p>
-      <a href="tel:+46760505153" class="contact-link">076-050 51 53</a>
-    </div>
-    <div class="contact-card">
-      <div class="contact-icon">🧹</div>
-      <h3>Bli städare</h3>
-      <p>Vill du jobba som städare via Spick? Fyll i ansökan så hör vi av oss.</p>
-      <a href="bli-stadare.html" class="contact-link">Ansök här →</a>
-    </div>
-    <div class="contact-card">
-      <div class="contact-icon">📋</div>
-      <h3>Boka städning</h3>
-      <p>Redo att boka? Välj din städare och boka direkt online.</p>
-      <a href="stadare.html" class="contact-link">Hitta städare →</a>
+
+    <div class="hours">
+      <h3>Öppettider support</h3>
+      <div class="hr"><span class="hd">Måndag – Fredag</span><span class="ht open">08:00 – 19:00</span></div>
+      <div class="hr"><span class="hd">Lördag</span><span class="ht open">09:00 – 16:00</span></div>
+      <div class="hr"><span class="hd">Söndag</span><span class="ht">Stängt</span></div>
+      <div class="hr"><span class="hd">Akuta ärenden</span><span class="ht open">Alltid via SMS</span></div>
     </div>
   </div>
 
-  <div class="faq-teaser">
-    <h2>Vanliga frågor</h2>
-    <p>Svar på de vanligaste frågorna om priser, RUT-avdrag, F-skatt och mer.</p>
-    <a href="faq.html" class="btn btn-green">Läs FAQ →</a>
-  </div>
-
-  <div class="hours">
-    <h3>📅 Svarstider</h3>
-    <div class="hours-row"><span>Måndag – Fredag</span><span>09:00 – 17:00</span></div>
-    <div class="hours-row"><span>Lördag</span><span>10:00 – 14:00</span></div>
-    <div class="hours-row"><span>Söndag</span><span>Stängt</span></div>
+  <div class="form-card">
+    <div class="form-head">
+      <div class="form-title">Skicka ett meddelande</div>
+      <div class="form-sub">Vi svarar inom 2 timmar under öppettider</div>
+    </div>
+    <div class="form-body">
+      <div class="f2">
+        <div class="f"><label>Förnamn *</label><input type="text" id="fn" placeholder="Anna"></div>
+        <div class="f"><label>Efternamn *</label><input type="text" id="ln" placeholder="Svensson"></div>
+      </div>
+      <div class="f"><label>E-post *</label><input type="email" id="em" placeholder="anna@email.se"></div>
+      <div class="f"><label>Telefon</label><input type="tel" id="ph" placeholder="070 123 45 67"></div>
+      <div class="f">
+        <label>Ärende *</label>
+        <select id="sub">
+          <option value="">Välj ärende...</option>
+          <option>Fråga om bokning</option>
+          <option>Problem med min städare</option>
+          <option>Fråga om RUT-avdrag</option>
+          <option>Avbokning</option>
+          <option>Jag vill bli städare</option>
+          <option>Övrigt</option>
+        </select>
+      </div>
+      <div class="f"><label>Meddelande *</label><textarea id="msg" rows="5" placeholder="Beskriv ditt ärende..."></textarea></div>
+      <button class="sbtn" id="sbtn" onclick="send()">Skicka meddelande</button>
+      <div class="success" id="ok"><p>✅ Meddelande skickat! Vi återkommer inom 2 timmar.</p></div>
+    </div>
   </div>
 </div>
+
+<footer><span>Spick</span><p>Haghighi Consulting AB · 559402-4522</p><p>© 2026</p></footer>
+
+<script>
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+async function send(){
+  const fn=document.getElementById('fn').value,ln=document.getElementById('ln').value,em=document.getElementById('em').value,sub=document.getElementById('sub').value,msg=document.getElementById('msg').value;
+  if(!fn||!ln||!em||!sub||!msg){alert('Fyll i alla obligatoriska fält.');return;}
+  const btn=document.getElementById('sbtn');
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div> Skickar...';
+  try{
+    await SB.from('bookings').insert([{name:fn+' '+ln,email:em,phone:document.getElementById('ph').value,service:'Kontaktformulär',message:sub+': '+msg,status:'kontakt',city:'Stockholm',date:new Date().toISOString().split('T')[0],time:'00:00',hours:0,rut:false,total_price:0}]);
+    document.getElementById('ok').classList.add('show');
+    btn.innerHTML='✓ Skickat!';
+  }catch(e){alert('Fel – ring oss på 076-050 51 53');btn.disabled=false;btn.innerHTML='Skicka meddelande';}
+}
+</script>
 </body>
 </html>
