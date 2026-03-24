@@ -1,441 +1,220 @@
-<!DOCTYPE html>
-<html lang="sv">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spick Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root {
-  --green: #0F6E56;
-  --green-mid: #1D9E75;
-  --green-light: #9FE1CB;
-  --green-pale: #E1F5EE;
-  --black: #0E0E0E;
-  --gray: #F7F7F5;
-  --gray-mid: #E8E8E4;
-  --text: #1C1C1A;
-  --text-muted: #6B6960;
-  --white: #FFFFFF;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--gray); min-height: 100vh; }
-
-/* LOGIN */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-.login-card { background: white; border-radius: 24px; padding: 2.5rem; width: 100%; max-width: 400px; border: 1px solid var(--gray-mid); text-align: center; }
-.login-logo { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--green); margin-bottom: 0.25rem; }
-.login-sub { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 2rem; }
-.login-input { width: 100%; padding: 0.875rem 1rem; border: 1.5px solid var(--gray-mid); border-radius: 12px; font-size: 0.95rem; font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 1rem; transition: border-color 0.2s; }
-.login-input:focus { border-color: var(--green); }
-.login-btn { width: 100%; padding: 0.875rem; background: var(--green); color: white; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
-.login-btn:hover { background: var(--green-mid); }
-.login-error { font-size: 0.8rem; color: #A32D2D; margin-top: 0.75rem; display: none; }
-
-/* LAYOUT */
-.app { display: none; min-height: 100vh; }
-.sidebar { width: 240px; background: var(--black); position: fixed; top: 0; left: 0; bottom: 0; padding: 1.5rem; display: flex; flex-direction: column; }
-.sidebar-logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--green-light); margin-bottom: 0.25rem; }
-.sidebar-sub { font-size: 0.75rem; color: rgba(255,255,255,0.35); margin-bottom: 2rem; }
-.nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; margin-bottom: 0.25rem; color: rgba(255,255,255,0.55); font-size: 0.875rem; font-weight: 500; }
-.nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
-.nav-item.active { background: var(--green); color: white; }
-.nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
-.sidebar-bottom { margin-top: auto; }
-.logout-btn { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 10px; cursor: pointer; color: rgba(255,255,255,0.4); font-size: 0.875rem; border: none; background: none; width: 100%; transition: all 0.2s; }
-.logout-btn:hover { color: white; background: rgba(255,255,255,0.08); }
-
-.main { margin-left: 240px; padding: 2rem; }
-.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
-.page-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--black); }
-.topbar-right { display: flex; align-items: center; gap: 1rem; }
-.refresh-btn { padding: 0.5rem 1rem; border: 1.5px solid var(--gray-mid); border-radius: 100px; font-size: 0.8rem; font-weight: 500; cursor: pointer; background: white; color: var(--text-muted); transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; }
-.refresh-btn:hover { border-color: var(--green); color: var(--green); }
-
-/* METRICS */
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
-.metric-card { background: white; border-radius: 16px; padding: 1.25rem; border: 1px solid var(--gray-mid); }
-.metric-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.metric-value { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--black); }
-.metric-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
-.metric-green { color: var(--green); }
-
-/* TABS */
-.tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-.tab { padding: 0.5rem 1.25rem; border-radius: 100px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: 1.5px solid var(--gray-mid); background: white; color: var(--text-muted); transition: all 0.2s; }
-.tab.active { background: var(--green); color: white; border-color: var(--green); }
-.tab-count { background: rgba(255,255,255,0.25); border-radius: 100px; padding: 0 6px; font-size: 0.75rem; margin-left: 4px; }
-.tab:not(.active) .tab-count { background: var(--gray-mid); color: var(--text-muted); }
-
-/* TABLE */
-.table-card { background: white; border-radius: 20px; border: 1px solid var(--gray-mid); overflow: hidden; }
-.table-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-mid); display: flex; align-items: center; justify-content: space-between; }
-.table-title { font-size: 0.875rem; font-weight: 600; color: var(--black); }
-.search-input { padding: 0.5rem 1rem; border: 1.5px solid var(--gray-mid); border-radius: 100px; font-size: 0.8rem; font-family: 'DM Sans', sans-serif; outline: none; width: 220px; transition: border-color 0.2s; }
-.search-input:focus { border-color: var(--green); }
-table { width: 100%; border-collapse: collapse; }
-th { padding: 0.75rem 1.25rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; background: var(--gray); border-bottom: 1px solid var(--gray-mid); }
-td { padding: 1rem 1.25rem; font-size: 0.875rem; color: var(--text); border-bottom: 1px solid var(--gray-mid); vertical-align: middle; }
-tr:last-child td { border-bottom: none; }
-tr:hover td { background: var(--gray); }
-
-/* BADGES */
-.badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 100px; font-size: 0.75rem; font-weight: 500; }
-.badge-ny { background: #E6F1FB; color: #185FA5; }
-.badge-bekraftad { background: var(--green-pale); color: var(--green); }
-.badge-klar { background: #EAF3DE; color: #3B6D11; }
-.badge-avbokad { background: #FCEBEB; color: #A32D2D; }
-.badge-granskad { background: #FAEEDA; color: #633806; }
-
-/* STATUS CHANGE */
-.status-select { padding: 0.3rem 0.6rem; border: 1px solid var(--gray-mid); border-radius: 8px; font-size: 0.75rem; font-family: 'DM Sans', sans-serif; cursor: pointer; background: white; outline: none; }
-
-/* EMPTY */
-.empty { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 0.875rem; }
-.spinner-wrap { text-align: center; padding: 3rem; }
-.spinner { width: 24px; height: 24px; border: 2.5px solid var(--gray-mid); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* PANEL */
-.view-btn { padding: 0.35rem 0.875rem; border: 1px solid var(--gray-mid); border-radius: 8px; font-size: 0.75rem; cursor: pointer; background: white; color: var(--text-muted); transition: all 0.2s; }
-.view-btn:hover { border-color: var(--green); color: var(--green); }
-
-@media (max-width: 900px) {
-  .sidebar { display: none; }
-  .main { margin-left: 0; padding: 1rem; }
-  .metrics { grid-template-columns: repeat(2, 1fr); }
-}
-</style>
-</head>
-<body>
-
-<!-- LOGIN -->
-<div class="login-wrap" id="loginWrap">
-  <div class="login-card">
-    <div class="login-logo">Spick</div>
-    <div class="login-sub">Admin-panel</div>
-    <input type="password" class="login-input" id="adminPassword" placeholder="Lösenord" onkeydown="if(event.key==='Enter')login()">
-    <button class="login-btn" onclick="login()">Logga in</button>
-    <div class="login-error" id="loginError">Fel lösenord – försök igen</div>
+<!DOCTYPE html><html lang="sv"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Spick Admin</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--red:#DC2626;--yellow:#D97706;--blue:#2563EB;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--b);}
+.lcard{background:#fff;border-radius:24px;padding:3rem;width:100%;max-width:380px;text-align:center;}
+.llogo{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--g);margin-bottom:.25rem;}
+.lsub{font-size:.85rem;color:var(--m);margin-bottom:2rem;}
+.lcard input{width:100%;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.95rem;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:1rem;transition:border-color .2s;}
+.lcard input:focus{border-color:var(--g);}
+.lbtn{width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.lbtn:hover{background:var(--gm);}
+.shell{display:none;min-height:100vh;}
+.shell.show{display:grid;grid-template-columns:240px 1fr;}
+.sidebar{background:var(--b);padding:2rem 1.5rem;display:flex;flex-direction:column;gap:.25rem;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.slogo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--gm);margin-bottom:.5rem;}
+.ssub{font-size:.7rem;color:#5A5A55;margin-bottom:2rem;text-transform:uppercase;letter-spacing:.08em;}
+.sitem{display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;border-radius:10px;color:#9E9E99;font-size:.875rem;cursor:pointer;transition:all .2s;border:none;background:none;font-family:'DM Sans',sans-serif;width:100%;text-align:left;}
+.sitem:hover{background:rgba(255,255,255,.05);color:#fff;}
+.sitem.on{background:var(--g);color:#fff;}
+.ssec{font-size:.65rem;color:#3A3A35;text-transform:uppercase;letter-spacing:.1em;font-weight:700;padding:.75rem 1rem .25rem;margin-top:.5rem;}
+.sbot{margin-top:auto;padding-top:1.5rem;border-top:1px solid #1A1A1A;}
+.main{padding:2.5rem;overflow-y:auto;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;}
+.ptitle{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--b);}
+.badge{padding:.3rem .75rem;border-radius:100px;font-size:.78rem;font-weight:600;}
+.bg{background:var(--gp);color:var(--g);}
+.br{background:#FEE2E2;color:var(--red);}
+.by{background:#FEF3C7;color:var(--yellow);}
+.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-bottom:2rem;}
+.kpi{background:#fff;border-radius:16px;padding:1.5rem;border:1px solid var(--grd);}
+.klbl{font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:.5rem;}
+.kval{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);}
+.ksub{font-size:.75rem;color:var(--m);margin-top:.25rem;}
+.card{background:#fff;border-radius:16px;border:1px solid var(--grd);overflow:hidden;margin-bottom:1.5rem;}
+.ch{padding:1.25rem 1.5rem;border-bottom:1px solid var(--grd);display:flex;align-items:center;justify-content:space-between;}
+.ct{font-size:.9rem;font-weight:600;color:var(--b);}
+.ca{font-size:.78rem;color:var(--g);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;font-weight:500;}
+table{width:100%;border-collapse:collapse;}
+th{padding:.75rem 1.5rem;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--m);background:var(--gr);border-bottom:1px solid var(--grd);}
+td{padding:.875rem 1.5rem;font-size:.875rem;border-bottom:1px solid var(--grd);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--gr);}
+.av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0;}
+.tn{display:flex;align-items:center;gap:.75rem;}
+.sb{padding:.2rem .6rem;border-radius:100px;font-size:.72rem;font-weight:600;}
+.sny{background:#EFF6FF;color:var(--blue);}
+.sgod{background:var(--gp);color:var(--g);}
+.savs{background:#FEE2E2;color:var(--red);}
+.abtn{padding:.3rem .75rem;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all .2s;margin-right:.25rem;}
+.bapp{background:var(--gp);color:var(--g);}
+.bapp:hover{background:var(--g);color:#fff;}
+.brej{background:#FEE2E2;color:var(--red);}
+.brej:hover{background:var(--red);color:#fff;}
+.bvw{background:var(--gr);color:var(--m);}
+.view{display:none;}
+.view.on{display:block;}
+.empty{padding:3rem;text-align:center;color:var(--m);font-size:.875rem;}
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:1rem;}
+.mbg.show{display:flex;}
+.mc{background:#fff;border-radius:20px;padding:2rem;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;}
+.mc h3{font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:1.25rem;}
+.mr{display:flex;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--grd);font-size:.875rem;}
+.mr:last-child{border-bottom:none;}
+.mk{color:var(--m);}
+.mv{font-weight:500;max-width:280px;text-align:right;word-break:break-word;}
+.mcl{float:right;background:var(--gr);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:.9rem;margin-top:-.5rem;}
+</style></head><body>
+<div class="login" id="ls">
+  <div class="lcard">
+    <div class="llogo">Spick</div>
+    <div class="lsub">Admin-panel</div>
+    <input type="password" id="pw" placeholder="Lösenord" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="lbtn" onclick="doLogin()">Logga in</button>
   </div>
 </div>
-
-<!-- APP -->
-<div class="app" id="appWrap">
-
-  <!-- SIDEBAR -->
+<div class="shell" id="sh">
   <div class="sidebar">
-    <div class="sidebar-logo">Spick</div>
-    <div class="sidebar-sub">Admin-panel</div>
-    <div class="nav-item active" onclick="showTab('bookings', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      Bokningar
-    </div>
-    <div class="nav-item" onclick="showTab('cleaners', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Städaransökningar
-    </div>
-    <div class="sidebar-bottom">
-      <button class="logout-btn" onclick="logout()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Logga ut
-      </button>
-    </div>
+    <div class="slogo">Spick</div>
+    <div class="ssub">Admin-panel</div>
+    <button class="sitem on" onclick="sv('dash',this)">📊 Dashboard</button>
+    <button class="sitem" onclick="sv('book',this)">📅 Bokningar</button>
+    <button class="sitem" onclick="sv('apps',this)">👤 Ansökningar <span id="ab" style="margin-left:auto;background:var(--red);color:#fff;border-radius:100px;padding:.1rem .5rem;font-size:.7rem;display:none"></span></button>
+    <button class="sitem" onclick="sv('clean',this)">⭐ Städare</button>
+    <div class="ssec">System</div>
+    <button class="sitem" onclick="sv('info',this)">⚙️ Info</button>
+    <div class="sbot"><button class="sitem" onclick="logout()">🚪 Logga ut</button></div>
   </div>
-
-  <!-- MAIN -->
   <div class="main">
-
-    <!-- BOOKINGS -->
-    <div id="view-bookings">
-      <div class="topbar">
-        <div class="page-title">Bokningar</div>
-        <div class="topbar-right">
-          <button class="refresh-btn" onclick="loadBookings()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Uppdatera
-          </button>
+    <div class="view on" id="vdash">
+      <div class="topbar"><div class="ptitle">Dashboard</div><span class="badge bg" id="ls2">● Live</span></div>
+      <div class="kgrid">
+        <div class="kpi"><div class="klbl">Bokningar idag</div><div class="kval" id="k1">–</div><div class="ksub">Uppdateras live</div></div>
+        <div class="kpi"><div class="klbl">Totalt bokningar</div><div class="kval" id="k2">–</div><div class="ksub">Alla tider</div></div>
+        <div class="kpi"><div class="klbl">Aktiva städare</div><div class="kval" id="k3">–</div><div class="ksub">Godkända</div></div>
+        <div class="kpi"><div class="klbl">Nya ansökningar</div><div class="kval" id="k4">–</div><div class="ksub" id="k4s">Kräver åtgärd</div></div>
+      </div>
+      <div class="card"><div class="ch"><span class="ct">Senaste bokningar</span><button class="ca" onclick="sv('book',document.querySelectorAll('.sitem')[1])">Se alla →</button></div>
+      <table><thead><tr><th>Kund</th><th>Tjänst</th><th>Datum</th><th>Pris</th><th>Status</th></tr></thead><tbody id="rb"></tbody></table></div>
+      <div class="card"><div class="ch"><span class="ct">Väntande ansökningar</span><button class="ca" onclick="sv('apps',document.querySelectorAll('.sitem')[2])">Se alla →</button></div>
+      <table><thead><tr><th>Namn</th><th>Stad</th><th>Datum</th><th>Åtgärd</th></tr></thead><tbody id="ra"></tbody></table></div>
+    </div>
+    <div class="view" id="vbook">
+      <div class="topbar"><div class="ptitle">Bokningar</div></div>
+      <div class="card"><div class="ch"><span class="ct" id="bc">Bokningar</span></div>
+      <table><thead><tr><th>Kund</th><th>Telefon</th><th>Tjänst</th><th>Datum</th><th>Städare</th><th>Pris</th><th>Status</th><th></th></tr></thead><tbody id="ab2"></tbody></table></div>
+    </div>
+    <div class="view" id="vapps">
+      <div class="topbar"><div class="ptitle">Ansökningar</div></div>
+      <div class="card"><div class="ch"><span class="ct" id="ac">Ansökningar</span></div>
+      <table><thead><tr><th>Namn</th><th>Stad</th><th>Tjänster</th><th>Pris/h</th><th>Datum</th><th>Status</th><th>Åtgärd</th></tr></thead><tbody id="aa"></tbody></table></div>
+    </div>
+    <div class="view" id="vclean">
+      <div class="topbar"><div class="ptitle">Städare</div></div>
+      <div class="card"><table><thead><tr><th>Namn</th><th>Stad</th><th>Betyg</th><th>Jobb</th><th>Pris/h</th><th>Status</th><th>Åtgärd</th></tr></thead><tbody id="ac2"></tbody></table></div>
+    </div>
+    <div class="view" id="vinfo">
+      <div class="topbar"><div class="ptitle">Info</div></div>
+      <div class="card" style="padding:2rem;">
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+          <div class="mr"><span class="mk">Företag</span><span class="mv">Haghighi Consulting AB</span></div>
+          <div class="mr"><span class="mk">Org.nr</span><span class="mv">559402-4522</span></div>
+          <div class="mr"><span class="mk">E-post</span><span class="mv">hello@spick.se</span></div>
+          <div class="mr"><span class="mk">Telefon</span><span class="mv">076-050 51 53</span></div>
+          <div class="mr"><span class="mk">Provision</span><span class="mv">17%</span></div>
+          <div class="mr"><span class="mk">Sajt</span><span class="mv"><a href="https://spick.se" target="_blank">spick.se</a></span></div>
         </div>
-      </div>
-
-      <div class="metrics" id="bookingMetrics">
-        <div class="metric-card"><div class="metric-label">Totalt</div><div class="metric-value" id="m-total">–</div></div>
-        <div class="metric-card"><div class="metric-label">Nya</div><div class="metric-value metric-green" id="m-ny">–</div></div>
-        <div class="metric-card"><div class="metric-label">Bekräftade</div><div class="metric-value" id="m-bek">–</div></div>
-        <div class="metric-card"><div class="metric-label">Klara</div><div class="metric-value" id="m-klar">–</div></div>
-      </div>
-
-      <div class="tabs">
-        <div class="tab active" onclick="filterBookings('alla', this)">Alla <span class="tab-count" id="tc-alla">0</span></div>
-        <div class="tab" onclick="filterBookings('ny', this)">Nya <span class="tab-count" id="tc-ny">0</span></div>
-        <div class="tab" onclick="filterBookings('bekraftad', this)">Bekräftade <span class="tab-count" id="tc-bek">0</span></div>
-        <div class="tab" onclick="filterBookings('klar', this)">Klara <span class="tab-count" id="tc-klar">0</span></div>
-      </div>
-
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">Alla bokningar</div>
-          <input type="text" class="search-input" placeholder="Sök namn, e-post..." oninput="searchBookings(this.value)">
-        </div>
-        <div id="bookingsTable"><div class="spinner-wrap"><div class="spinner"></div></div></div>
       </div>
     </div>
-
-    <!-- CLEANERS -->
-    <div id="view-cleaners" style="display:none;">
-      <div class="topbar">
-        <div class="page-title">Städaransökningar</div>
-        <div class="topbar-right">
-          <button class="refresh-btn" onclick="loadCleaners()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Uppdatera
-          </button>
-        </div>
-      </div>
-
-      <div class="metrics">
-        <div class="metric-card"><div class="metric-label">Totalt ansökningar</div><div class="metric-value" id="cm-total">–</div></div>
-        <div class="metric-card"><div class="metric-label">Nya</div><div class="metric-value metric-green" id="cm-ny">–</div></div>
-        <div class="metric-card"><div class="metric-label">Godkända</div><div class="metric-value" id="cm-ok">–</div></div>
-        <div class="metric-card"><div class="metric-label">Har F-skatt</div><div class="metric-value" id="cm-fskatt">–</div></div>
-      </div>
-
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">Alla ansökningar</div>
-          <input type="text" class="search-input" placeholder="Sök namn, stad..." oninput="searchCleaners(this.value)">
-        </div>
-        <div id="cleanersTable"><div class="spinner-wrap"><div class="spinner"></div></div></div>
-      </div>
-    </div>
-
   </div>
 </div>
-
-<script>
-const SUPABASE_URL = 'https://urjeijcncsyuletprydy.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
-const ADMIN_PASSWORD = 'Spick2026!';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let allBookings = [];
-let allCleaners = [];
-let currentFilter = 'alla';
-
-function login() {
-  const pw = document.getElementById('adminPassword').value;
-  if (pw === ADMIN_PASSWORD) {
-    document.getElementById('loginWrap').style.display = 'none';
-    document.getElementById('appWrap').style.display = 'block';
-    loadBookings();
-    loadCleaners();
-  } else {
-    document.getElementById('loginError').style.display = 'block';
+<div class="mbg" id="mb" onclick="if(event.target===this)cm()"><div class="mc" id="mcon"></div></div><script>
+const SB='https://urjeijcncsyuletprydy.supabase.co',KEY='sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3',PASS='Spick2026!';
+const C=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+let db;
+function ini(n){return (n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function col(n){return C[(n||'A').charCodeAt(0)%C.length];}
+function fmt(d){return d?new Date(d).toLocaleDateString('sv',{day:'numeric',month:'short'}):'–';}
+function sbadge(s){const m={'ny':'sny Ny','godkänd':'sgod ✓ Godkänd','avslagen':'savs Avslagen'};const v=m[s]||'sny '+(s||'ny');return '<span class="sb '+v.split(' ')[0]+'">'+v.slice(v.indexOf(' ')+1)+'</span>';}
+function sv(n,btn){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.querySelectorAll('.sitem').forEach(b=>b.classList.remove('on'));document.getElementById('v'+n).classList.add('on');btn&&btn.classList.add('on');}
+function cm(){document.getElementById('mb').classList.remove('show');}
+function logout(){document.getElementById('sh').classList.remove('show');document.getElementById('ls').style.display='flex';}
+function doLogin(){
+  if(document.getElementById('pw').value===PASS){
+    document.getElementById('ls').style.display='none';
+    document.getElementById('sh').classList.add('show');
+    const {createClient}=supabase;db=createClient(SB,KEY);load();
+  }else{document.getElementById('pw').style.borderColor='#DC2626';setTimeout(()=>document.getElementById('pw').style.borderColor='',1500);}
+}
+async function load(){await Promise.all([loadB(),loadA(),loadC()]);}
+async function loadB(){
+  const {data}=await db.from('bookings').select('*').order('created_at',{ascending:false}).limit(200);
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('k1').textContent=(data||[]).filter(b=>b.date===today).length;
+  document.getElementById('k2').textContent=(data||[]).length;
+  document.getElementById('bc').textContent='Bokningar ('+(data||[]).length+')';
+  const rb=document.getElementById('rb');
+  rb.innerHTML=(data||[]).slice(0,5).map(b=>'<tr style="cursor:pointer" onclick="vb('+JSON.stringify(b).replace(/"/g,"'")+')">'
+    +'<td><div class="tn"><div class="av" style="background:'+col(b.name)+'">'+ini(b.name)+'</div><div><div style="font-weight:500">'+b.name+'</div><div style="font-size:.75rem;color:var(--m)">'+b.email+'</div></div></div></td>'
+    +'<td>'+b.service+'</td><td>'+fmt(b.date)+'</td>'
+    +'<td style="font-weight:600;color:var(--g)">'+(b.total_price?(b.total_price.toLocaleString('sv')+' kr'):'–')+'</td>'
+    +'<td>'+sbadge(b.status)+'</td></tr>').join('')||'<tr><td colspan="5" class="empty">Inga bokningar</td></tr>';
+  document.getElementById('ab2').innerHTML=(data||[]).map(b=>'<tr>'
+    +'<td><div class="tn"><div class="av" style="background:'+col(b.name)+';width:30px;height:30px;font-size:.7rem">'+ini(b.name)+'</div><div><b>'+b.name+'</b><div style="font-size:.75rem;color:var(--m)">'+b.phone+'</div></div></div></td>'
+    +'<td>'+b.service+'</td><td>'+fmt(b.date)+'</td><td>'+((b.message||'').match(/Städare: (.+?)(]|$)/)||['','–'])[1]+'</td>'
+    +'<td style="font-weight:600;color:var(--g)">'+(b.total_price?(b.total_price.toLocaleString('sv')+' kr'):'–')+'</td>'
+    +'<td>'+sbadge(b.status)+'</td>'
+    +'<td><button class="abtn bvw" onclick="vb('+JSON.stringify(b).replace(/"/g,"'")+')" >Visa</button></td></tr>').join('')||'<tr><td colspan="8" class="empty">Inga bokningar</td></tr>';
+}
+async function loadA(){
+  const {data}=await db.from('cleaner_applications').select('*').order('created_at',{ascending:false});
+  const pend=(data||[]).filter(a=>!a.status||a.status==='ny');
+  document.getElementById('k4').textContent=pend.length;
+  const badge=document.getElementById('ab');
+  pend.length>0?(badge.textContent=pend.length,badge.style.display='inline'):(badge.style.display='none');
+  document.getElementById('ra').innerHTML=pend.slice(0,4).map(a=>'<tr>'
+    +'<td><div class="tn"><div class="av" style="background:'+col(a.full_name)+'">'+ini(a.full_name)+'</div><b>'+a.full_name+'</b></div></td>'
+    +'<td>'+a.city+'</td><td>'+fmt(a.created_at)+'</td>'
+    +'<td><button class="abtn bapp" onclick="apr('+a.id+','godkänd')">✓ Godkänn</button><button class="abtn brej" onclick="apr('+a.id+','avslagen')">✕</button></td></tr>').join('')||'<tr><td colspan="4" class="empty">Inga väntande</td></tr>';
+  document.getElementById('ac').textContent='Ansökningar ('+(data||[]).length+')';
+  document.getElementById('aa').innerHTML=(data||[]).map(a=>'<tr>'
+    +'<td><div class="tn"><div class="av" style="background:'+col(a.full_name)+';width:30px;height:30px;font-size:.7rem">'+ini(a.full_name)+'</div><div><b>'+a.full_name+'</b><div style="font-size:.75rem;color:var(--m)">'+a.email+'</div></div></div></td>'
+    +'<td>'+a.city+'</td><td style="font-size:.8rem">'+a.services+'</td><td>'+(a.hourly_rate||'–')+' kr</td><td>'+fmt(a.created_at)+'</td>'
+    +'<td>'+sbadge(a.status||'ny')+'</td>'
+    +'<td>'+(!a.status||a.status==='ny'
+      ?'<button class="abtn bapp" onclick="apr('+a.id+','godkänd')">✓ Godkänn</button><button class="abtn brej" onclick="apr('+a.id+','avslagen')">✕</button>'
+      :'<button class="abtn bvw" onclick="">Visa</button>')
+    +'</td></tr>').join('')||'<tr><td colspan="7" class="empty">Inga ansökningar</td></tr>';
+}
+async function loadC(){
+  const {data}=await db.from('cleaners').select('*').order('rating',{ascending:false});
+  document.getElementById('k3').textContent=(data||[]).filter(c=>c.status==='godkänd').length;
+  document.getElementById('ac2').innerHTML=(data||[]).map(c=>'<tr>'
+    +'<td><div class="tn"><div class="av" style="background:'+col(c.full_name)+';width:30px;height:30px;font-size:.7rem">'+ini(c.full_name)+'</div><div><b>'+c.full_name+'</b><div style="font-size:.75rem;color:var(--m)">'+c.email+'</div></div></div></td>'
+    +'<td>'+c.city+'</td><td>'+(c.rating?'⭐ '+c.rating:'–')+'</td><td>'+(c.jobs_completed||0)+'</td><td>'+(c.hourly_rate||'–')+' kr</td>'
+    +'<td>'+sbadge(c.status||'godkänd')+'</td>'
+    +'<td><button class="abtn brej" onclick="delC(''+c.id+'')">Ta bort</button></td></tr>').join('')||'<tr><td colspan="7" class="empty">Inga städare</td></tr>';
+}
+async function apr(id,status){
+  if(!confirm(status==='godkänd'?'Godkänn och lägg till städare?':'Avslå ansökan?'))return;
+  const app=(await db.from('cleaner_applications').select('*').eq('id',id)).data?.[0];
+  await db.from('cleaner_applications').update({status}).eq('id',id);
+  if(status==='godkänd'&&app){
+    const svcs=app.services?app.services.split(',').map(s=>s.trim()):['Hemstädning'];
+    await db.from('cleaners').insert([{full_name:app.full_name,email:app.email,phone:app.phone,city:app.city||'Stockholm',hourly_rate:app.hourly_rate||350,services:svcs,bio:app.bio||app.message||'Professionell städare.',status:'godkänd',available:true,rating:0,jobs_completed:0}]);
+    alert('✅ '+app.full_name+' är nu aktiv som städare på spick.se!');
   }
+  load();
 }
-
-function logout() {
-  document.getElementById('loginWrap').style.display = 'flex';
-  document.getElementById('appWrap').style.display = 'none';
-  document.getElementById('adminPassword').value = '';
+async function delC(id){
+  if(!confirm('Ta bort städaren?'))return;
+  await db.from('cleaners').delete().eq('id',id);loadC();
 }
-
-function showTab(tab, el) {
-  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('view-bookings').style.display = tab === 'bookings' ? 'block' : 'none';
-  document.getElementById('view-cleaners').style.display = tab === 'cleaners' ? 'block' : 'none';
+function vb(b){
+  const rows=[['Namn',b.name],['E-post',b.email],['Telefon',b.phone],['Adress',b.address],['Tjänst',b.service],['Datum',fmt(b.date)],['Tid',b.time],['Timmar',b.hours],['RUT',b.rut?'Ja':'Nej'],['Pris',(b.total_price||0).toLocaleString('sv')+' kr'],['Meddelande',b.message],['Status',b.status]];
+  document.getElementById('mcon').innerHTML='<button class="mcl" onclick="cm()">✕</button><h3>Bokning – '+b.name+'</h3>'+rows.map(([k,v])=>'<div class="mr"><span class="mk">'+k+'</span><span class="mv">'+(v||'–')+'</span></div>').join('');
+  document.getElementById('mb').classList.add('show');
 }
-
-function statusBadge(s) {
-  const map = { ny: 'badge-ny', bekraftad: 'badge-bekraftad', klar: 'badge-klar', avbokad: 'badge-avbokad', granskad: 'badge-granskad', godkand: 'badge-bekraftad', nekad: 'badge-avbokad' };
-  const labels = { ny: 'Ny', bekraftad: 'Bekräftad', klar: 'Klar', avbokad: 'Avbokad', granskad: 'Granskad', godkand: 'Godkänd', nekad: 'Nekad' };
-  return `<span class="badge ${map[s] || 'badge-ny'}">${labels[s] || s}</span>`;
-}
-
-function formatDate(d) {
-  if (!d) return '–';
-  return new Date(d).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-async function loadBookings() {
-  document.getElementById('bookingsTable').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
-  const { data, error } = await db.from('bookings').select('*').order('created_at', { ascending: false });
-  if (error) { document.getElementById('bookingsTable').innerHTML = '<div class="empty">Kunde inte ladda bokningar</div>'; return; }
-  allBookings = data || [];
-  updateBookingMetrics();
-  renderBookings(allBookings);
-}
-
-function updateBookingMetrics() {
-  const ny = allBookings.filter(b => b.status === 'ny').length;
-  const bek = allBookings.filter(b => b.status === 'bekraftad').length;
-  const klar = allBookings.filter(b => b.status === 'klar').length;
-  document.getElementById('m-total').textContent = allBookings.length;
-  document.getElementById('m-ny').textContent = ny;
-  document.getElementById('m-bek').textContent = bek;
-  document.getElementById('m-klar').textContent = klar;
-  document.getElementById('tc-alla').textContent = allBookings.length;
-  document.getElementById('tc-ny').textContent = ny;
-  document.getElementById('tc-bek').textContent = bek;
-  document.getElementById('tc-klar').textContent = klar;
-}
-
-function filterBookings(filter, el) {
-  currentFilter = filter;
-  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  const filtered = filter === 'alla' ? allBookings : allBookings.filter(b => b.status === filter);
-  renderBookings(filtered);
-}
-
-function searchBookings(q) {
-  const filtered = allBookings.filter(b =>
-    b.name?.toLowerCase().includes(q.toLowerCase()) ||
-    b.email?.toLowerCase().includes(q.toLowerCase()) ||
-    b.city?.toLowerCase().includes(q.toLowerCase())
-  );
-  renderBookings(filtered);
-}
-
-function renderBookings(data) {
-  if (!data.length) { document.getElementById('bookingsTable').innerHTML = '<div class="empty">Inga bokningar hittades</div>'; return; }
-  document.getElementById('bookingsTable').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Kund</th><th>Tjänst</th><th>Datum</th><th>Timmar</th><th>RUT</th><th>Status</th><th>Åtgärd</th>
-      </tr></thead>
-      <tbody>
-        ${data.map(b => `
-          <tr>
-            <td>
-              <div style="font-weight:500;">${b.name || '–'}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${b.email || ''}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${b.phone || ''}</div>
-            </td>
-            <td>
-              <div>${b.service || '–'}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${b.city || ''}</div>
-            </td>
-            <td>${b.date || '–'}<br><span style="font-size:0.75rem;color:var(--text-muted);">${b.time || ''}</span></td>
-            <td>${b.hours || '–'}h</td>
-            <td>${b.rut ? '<span style="color:var(--green);font-weight:500;">Ja</span>' : 'Nej'}</td>
-            <td>
-              <select class="status-select" onchange="updateBookingStatus('${b.id}', this.value)">
-                <option value="ny" ${b.status==='ny'?'selected':''}>Ny</option>
-                <option value="bekraftad" ${b.status==='bekraftad'?'selected':''}>Bekräftad</option>
-                <option value="klar" ${b.status==='klar'?'selected':''}>Klar</option>
-                <option value="avbokad" ${b.status==='avbokad'?'selected':''}>Avbokad</option>
-              </select>
-            </td>
-            <td>
-              <button class="view-btn" onclick="copyEmail('${b.email}')">Kopiera e-post</button>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
-async function updateBookingStatus(id, status) {
-  await db.from('bookings').update({ status }).eq('id', id);
-  const b = allBookings.find(b => b.id === id);
-  if (b) b.status = status;
-  updateBookingMetrics();
-}
-
-async function loadCleaners() {
-  document.getElementById('cleanersTable').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
-  const { data, error } = await db.from('cleaner_applications').select('*').order('created_at', { ascending: false });
-  if (error) { document.getElementById('cleanersTable').innerHTML = '<div class="empty">Kunde inte ladda ansökningar</div>'; return; }
-  allCleaners = data || [];
-  const ny = allCleaners.filter(c => c.status === 'ny').length;
-  const ok = allCleaners.filter(c => c.status === 'godkand').length;
-  const fskatt = allCleaners.filter(c => c.has_fskatt).length;
-  document.getElementById('cm-total').textContent = allCleaners.length;
-  document.getElementById('cm-ny').textContent = ny;
-  document.getElementById('cm-ok').textContent = ok;
-  document.getElementById('cm-fskatt').textContent = fskatt;
-  renderCleaners(allCleaners);
-}
-
-function searchCleaners(q) {
-  const filtered = allCleaners.filter(c =>
-    c.name?.toLowerCase().includes(q.toLowerCase()) ||
-    c.email?.toLowerCase().includes(q.toLowerCase()) ||
-    c.city?.toLowerCase().includes(q.toLowerCase())
-  );
-  renderCleaners(filtered);
-}
-
-function renderCleaners(data) {
-  if (!data.length) { document.getElementById('cleanersTable').innerHTML = '<div class="empty">Inga ansökningar hittades</div>'; return; }
-  document.getElementById('cleanersTable').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Sökande</th><th>Stad</th><th>Erfarenhet</th><th>Tjänster</th><th>F-skatt</th><th>Ansökt</th><th>Status</th>
-      </tr></thead>
-      <tbody>
-        ${data.map(c => `
-          <tr>
-            <td>
-              <div style="font-weight:500;">${c.name || '–'}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${c.email || ''}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${c.phone || ''}</div>
-            </td>
-            <td>${c.city || '–'}</td>
-            <td>${c.experience || '–'}</td>
-            <td style="font-size:0.75rem;max-width:150px;">${c.services || '–'}</td>
-            <td>${c.has_fskatt ? '<span style="color:var(--green);font-weight:500;">Ja</span>' : '<span style="color:#A32D2D;">Nej</span>'}</td>
-            <td style="font-size:0.75rem;">${formatDate(c.created_at)}</td>
-            <td>
-              <select class="status-select" onchange="updateCleanerStatus('${c.id}', this.value)">
-                <option value="ny" ${c.status==='ny'?'selected':''}>Ny</option>
-                <option value="granskad" ${c.status==='granskad'?'selected':''}>Granskad</option>
-                <option value="godkand" ${c.status==='godkand'?'selected':''}>Godkänd</option>
-                <option value="nekad" ${c.status==='nekad'?'selected':''}>Nekad</option>
-              </select>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
-async function updateCleanerStatus(id, status) {
-  // Om godkänd → kopiera till cleaners-tabellen
-  if (status === 'godkand') {
-    const app = allCleaners.find(c => c.id === id);
-    if (app) {
-      await db.from('cleaners').upsert({
-        full_name: app.full_name || app.name || 'Okänd',
-        email: app.email,
-        phone: app.phone,
-        city: app.city || 'Stockholm',
-        bio: app.bio || app.message || '',
-        hourly_rate: app.hourly_rate || app.price || 350,
-        services: ['Hemstädning'],
-        available: true,
-        status: 'godkand',
-        application_id: app.id,
-        days: [1,1,1,1,1,0,0]
-      }, { onConflict: 'application_id' });
-    }
-  }
-  await db.from('cleaner_applications').update({ status }).eq('id', id);
-  const c = allCleaners.find(c => c.id === id);
-  if (c) c.status = status;
-  const ok = allCleaners.filter(c => c.status === 'godkand').length;
-  document.getElementById('cm-ok').textContent = ok;
-}
-
-function copyEmail(email) {
-  navigator.clipboard.writeText(email);
-  alert('Kopierat: ' + email);
-}
-</script>
-</body>
-</html>
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+</script></body></html>
