@@ -233,13 +233,13 @@ async function loadCleaners() {
     let { data, error } = await db
       .from('cleaners')
       .select('*')
-      .eq('status', 'godkänd')
+      .eq('status', 'godkand')
       .order('rating', { ascending: false });
     if (error || !data || data.length === 0) {
       const res2 = await db
         .from('applications')
         .select('*')
-        .eq('status', 'godkänd')
+        .eq('status', 'godkand')
         .order('created_at', { ascending: false });
       if (!res2.error && res2.data && res2.data.length > 0) {
         data = res2.data;
