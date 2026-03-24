@@ -1,33 +1,38 @@
-# Spick – Städplattform för Sverige
+# Spick – Sveriges städplattform
 
-**Boka en städare du verkligen litar på**
+Boka en betygsatt städare nära dig. Med RUT-avdrag betalar du bara hälften.
 
-## Live URLs
-- **Startsida:** https://spickapp.github.io/spick/
-- **Städare:** https://spickapp.github.io/spick/stadare.html
-- **Boka:** https://spickapp.github.io/spick/boka.html
-- **FAQ:** https://spickapp.github.io/spick/faq.html
-- **Bli städare:** https://spickapp.github.io/spick/bli-stadare.html
-- **Avtal:** https://spickapp.github.io/spick/avtal.html
-- **Admin:** https://spickapp.github.io/spick/admin.html
+## 🌐 Live
+- **Webbplats:** https://spick.se
+- **GitHub Pages:** https://spickapp.github.io/spick/
+- **Admin:** https://spick.se/admin.html (lösenord: Spick2026!)
 
-## Tech Stack
-- **Frontend:** HTML/CSS/JS – hosted on GitHub Pages
-- **Backend:** Supabase (PostgreSQL + Edge Functions)
-- **E-post:** Resend (konfigureras i Supabase Secrets)
-- **Deploy:** GitHub Actions → GitHub Pages (auto-deploy vid push till main)
+## 📄 Sidor
+| Sida | Beskrivning |
+|------|-------------|
+| index.html | Startsida med hero, städar-preview, RUT-kalkyl |
+| stadare.html | Städarlista från Supabase med sök + filter |
+| boka.html | Bokningsformulär med RUT-toggle |
+| profil.html | Individuell städarprofil |
+| priser.html | Prisöversikt + interaktiv kalkylator |
+| hur-det-funkar.html | 3-steg, RUT-info, FAQ |
+| om-oss.html | Historia, värderingar, grundare |
+| bli-stadare.html | Ansökningsformulär för städare |
+| rekrytera.html | Rekryteringssida med kalkylator |
+| faq.html | 20+ frågor med kategorier och sök |
+| kontakt.html | Kontaktformulär + öppettider |
+| avtal.html | Partnersavtal för städare |
+| admin.html | Admin-dashboard (KPIs, bokningar, ansökningar) |
+| tack.html | Bokningsbekräftelse |
+| integritetspolicy.html | GDPR-policy |
+| 404.html | Felsida |
 
-## Varumärke
-- Primärfärg: #0F6E56
-- Accentfärg: #1D9E75  
-- Rubriker: Playfair Display
-- Brödtext: DM Sans
-- Tagline: Boka en städare du verkligen litar på
+## 🛠 Tech
+- **Frontend:** Vanilla HTML/CSS/JS
+- **Databas:** Supabase (PostgreSQL)
+- **Hosting:** GitHub Pages → spick.se
+- **E-post:** Resend
 
-## Supabase
-- URL: https://urjeijcncsyuletprydy.supabase.co
-- Tabeller: bookings, cleaners, cleaner_applications
-
-## Bolag
-- Haghighi Consulting AB (org.nr 559402-4522)
-- Bifirma: Spick
+## 👤 Kontakt
+Farhad Haghighi · hello@spick.se · 076-050 51 53
+Haghighi Consulting AB · org.nr 559402-4522
