@@ -1,307 +1,291 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Boka städning – Spick</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626;}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
-nav{background:#fff;padding:1.25rem 4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:100;}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10;}
 .logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
-.back{font-size:.875rem;color:var(--m);text-decoration:none;display:flex;align-items:center;gap:.5rem;}
-.back:hover{color:var(--g);}
-.banner{background:#fff;border-bottom:1px solid var(--grd);padding:1rem 4rem;display:flex;align-items:center;gap:1.5rem;}
-.bav{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:#fff;flex-shrink:0;}
-.bname{font-size:1rem;font-weight:600;color:var(--b);}
-.bmeta{font-size:.8rem;color:var(--m);display:flex;align-items:center;gap:.75rem;margin-top:2px;}
-.bprice{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--g);}
-.bchange{font-size:.8rem;color:var(--m);text-decoration:none;border:1.5px solid var(--grd);padding:.35rem .875rem;border-radius:100px;transition:all .2s;white-space:nowrap;}
-.bchange:hover{border-color:var(--g);color:var(--g);}
-.layout{max-width:1080px;margin:0 auto;padding:2.5rem 1.5rem 5rem;display:grid;grid-template-columns:1fr 340px;gap:2rem;align-items:start;}
-.card{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;}
-.sec{padding:1.75rem 2rem;border-bottom:1px solid var(--grd);}
-.sec:last-child{border-bottom:none;}
-.slabel{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--m);margin-bottom:1.25rem;}
-.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;}
-.sbtn{padding:1rem;border-radius:14px;border:2px solid var(--grd);background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;text-align:center;}
-.sbtn:hover{border-color:var(--gm);}
-.sbtn.on{border-color:var(--g);background:var(--gp);}
-.sicon{font-size:1.5rem;margin-bottom:.4rem;display:block;}
-.sname{font-size:.82rem;font-weight:500;}
-.sprice{font-size:.72rem;color:var(--m);margin-top:2px;}
-.dtgrid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
-.f{display:flex;flex-direction:column;gap:.4rem;}
+.back{font-size:.875rem;color:var(--m);text-decoration:none;}.back:hover{color:var(--g);}
+.page{max-width:1080px;margin:0 auto;padding:3rem 2rem 6rem;display:grid;grid-template-columns:1fr 380px;gap:3rem;align-items:start;}
+.form-card{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;}
+.fc-head{padding:1.75rem 2rem;border-bottom:1px solid var(--grd);}
+.fc-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--b);}
+.fc-sub{font-size:.875rem;color:var(--m);margin-top:.25rem;}
+.fc-body{padding:1.75rem 2rem;}
+.f{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.875rem;}
 .f label{font-size:.78rem;font-weight:500;color:var(--m);}
-.f input,.f select,.f textarea{padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:var(--t);}
+.f input,.f select,.f textarea{padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--g);}
-.f input.err{border-color:var(--r);}
-.hrow{display:flex;gap:.5rem;flex-wrap:wrap;}
-.hbtn{padding:.5rem 1.1rem;border-radius:100px;border:1.5px solid var(--grd);background:#fff;font-size:.82rem;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
-.hbtn:hover{border-color:var(--gm);}
-.hbtn.on{background:var(--g);color:#fff;border-color:var(--g);}
-.rtog{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:var(--gp);border-radius:14px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
-.rtog.off{background:var(--gr);border-color:var(--grd);}
-.rl{font-size:.9rem;font-weight:600;color:var(--g);}
-.rtog.off .rl{color:var(--m);}
-.rs{font-size:.75rem;color:var(--g);margin-top:2px;}
-.rtog.off .rs{color:var(--m);}
-.tsw{width:44px;height:24px;border-radius:12px;background:var(--g);position:relative;transition:background .2s;flex-shrink:0;}
-.rtog.off .tsw{background:var(--grd);}
-.tth{width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15);}
-.rtog:not(.off) .tth{transform:translateX(20px);}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
-.fg .full{grid-column:1/-1;}
-.sum{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;position:sticky;top:90px;}
-.sh{padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--grd);}
-.st{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--b);}
-.sb{padding:1.25rem 1.5rem;}
-.sr{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--grd);}
-.sr:last-child{border-bottom:none;}
-.sr.tot{padding-top:1rem;margin-top:.25rem;}
-.sl{font-size:.85rem;color:var(--m);}
-.sv{font-size:.85rem;font-weight:500;}
-.sr.tot .sl{font-size:.95rem;font-weight:600;color:var(--b);}
-.sr.tot .sv{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--g);}
-.sf{padding:1.25rem 1.5rem;border-top:1px solid var(--grd);}
-.subbtn{width:100%;padding:1rem;background:var(--g);color:#fff;border:none;border-radius:14px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
-.subbtn:hover:not(:disabled){background:var(--gm);transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,110,86,.25);}
-.subbtn:disabled{opacity:.6;cursor:not-allowed;}
-.tr{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;font-size:.78rem;color:var(--m);}
-.tb{display:flex;flex-direction:column;gap:.6rem;padding:1.25rem 1.5rem;border-top:1px solid var(--grd);}
-.ti{display:flex;align-items:center;gap:.6rem;font-size:.78rem;color:var(--m);}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.rut-toggle{display:flex;align-items:center;justify-content:space-between;background:var(--gp);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;cursor:pointer;border:2px solid transparent;transition:border-color .2s;}
+.rut-toggle.on{border-color:var(--g);}
+.rut-left{display:flex;align-items:center;gap:.75rem;}
+.rut-icon{font-size:1.4rem;}
+.rut-title{font-size:.9rem;font-weight:600;color:var(--g);}
+.rut-desc{font-size:.75rem;color:var(--gm);}
+.toggle{width:44px;height:24px;background:var(--grd);border-radius:100px;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--g);}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.toggle.on::after{left:23px;}
+.rut-pnr{display:none;margin-bottom:.875rem;}
+.rut-pnr.show{display:block;}
+.pnr-info{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--m);margin-top:.35rem;}
+.submit-btn{width:100%;padding:1rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.25rem;}
+.submit-btn:hover:not(:disabled){background:var(--gm);}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+.trust-row{display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;}
+.trust-item{font-size:.75rem;color:var(--m);display:flex;align-items:center;gap:.3rem;}
+.sidebar-card{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;position:sticky;top:90px;}
+.sc-head{background:linear-gradient(135deg,#0a2a1e,var(--g));padding:1.5rem;}
+.sc-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#fff;}
+.sc-city{font-size:.8rem;color:rgba(255,255,255,.7);margin:.2rem 0 .5rem;}
+.sc-stars{color:#F59E0B;font-size:.9rem;}
+.sc-rating{font-size:.85rem;color:#fff;margin-left:.3rem;}
+.sc-body{padding:1.25rem 1.5rem;}
+.sc-price{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);}
+.sc-unit{font-size:.85rem;color:var(--m);}
+.sc-rut{font-size:.8rem;color:var(--g);font-weight:500;display:block;margin:.2rem 0 1.25rem;}
+.calc-box{background:var(--gr);border-radius:12px;padding:1rem;}
+.calc-row{display:flex;justify-content:space-between;padding:.4rem 0;font-size:.82rem;border-bottom:1px solid var(--grd);}
+.calc-row:last-child{border:none;padding-top:.6rem;}
+.calc-lbl{color:var(--m);}
+.calc-val{font-weight:600;}
+.calc-row.tot .calc-lbl{color:var(--b);font-weight:700;font-size:.9rem;}
+.calc-row.tot .calc-val{color:var(--g);font-family:'Playfair Display',serif;font-size:1.3rem;}
+.av-badge{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#fff;margin-bottom:.75rem;}
 .spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.ov{display:none;position:fixed;inset:0;background:rgba(15,110,86,.97);z-index:200;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;}
-.ov.show{display:flex;}
-.ov h2{font-family:'Playfair Display',serif;font-size:2.2rem;color:#fff;margin-bottom:.75rem;}
-.ov p{font-size:1rem;color:rgba(255,255,255,.8);max-width:420px;line-height:1.65;margin-bottom:2rem;}
-.ov a{padding:1rem 2.5rem;background:#fff;color:var(--g);border-radius:100px;font-size:1rem;font-weight:600;text-decoration:none;}
-@media(max-width:900px){
-  nav,.banner{padding:1rem 1.5rem;}
-  .layout{grid-template-columns:1fr;padding:1.5rem 1rem 4rem;}
-  .sum{position:static;}
-  .sgrid{grid-template-columns:repeat(2,1fr);}
-  .fg{grid-template-columns:1fr;}
-  .fg .full{grid-column:1;}
-  .dtgrid{grid-template-columns:1fr;}
-}
+@media(max-width:900px){nav{padding:1rem 1.5rem;}.page{grid-template-columns:1fr;padding:2rem 1rem 4rem;}.sidebar-card{position:static;}}
 </style>
 </head>
 <body>
-<nav>
-  <a href="index.html" class="logo">Spick</a>
-  <a href="stadare.html" class="back">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-    Byt städare
-  </a>
-</nav>
-
-<div class="banner">
-  <div class="bav" id="bav">SK</div>
-  <div style="flex:1">
-    <div class="bname" id="bname">Sara Karlsson</div>
-    <div class="bmeta">
-      <span style="color:#F59E0B;">★★★★★</span>
-      <span id="brating">4.97</span> · <span id="bcity">Stockholm</span>
+<nav><a href="index.html" class="logo">Spick</a><a href="stadare.html" class="back">← Välj städare</a></nav>
+<div class="page">
+  <div class="form-card">
+    <div class="fc-head">
+      <div class="fc-title">Boka din städning</div>
+      <div class="fc-sub">Fyll i dina uppgifter – bekräftelse via mail inom 2 timmar</div>
     </div>
-  </div>
-  <div class="bprice" id="bprice">350 kr/h</div>
-  <a href="stadare.html" class="bchange">Byt städare</a>
-</div>
-
-<div class="layout">
-  <div class="card">
-    <div class="sec">
-      <div class="slabel">Välj tjänst</div>
-      <div class="sgrid">
-        <button class="sbtn on" onclick="setSvc(this,'Hemstädning')"><span class="sicon">🏠</span><div class="sname">Hemstädning</div><div class="sprice">Från 175 kr/h m. RUT</div></button>
-        <button class="sbtn" onclick="setSvc(this,'Storstädning')"><span class="sicon">✨</span><div class="sname">Storstädning</div><div class="sprice">Grundlig städning</div></button>
-        <button class="sbtn" onclick="setSvc(this,'Flyttstädning')"><span class="sicon">📦</span><div class="sname">Flyttstädning</div><div class="sprice">Besiktningsgodkänd</div></button>
-        <button class="sbtn" onclick="setSvc(this,'Fönsterputs')"><span class="sicon">🪟</span><div class="sname">Fönsterputs</div><div class="sprice">In- &amp; utsida</div></button>
-        <button class="sbtn" onclick="setSvc(this,'Kontorsstädning')"><span class="sicon">🏢</span><div class="sname">Kontor</div><div class="sprice">Regelbundet</div></button>
-        <button class="sbtn" onclick="setSvc(this,'Trappa')"><span class="sicon">🪜</span><div class="sname">Trapphus</div><div class="sprice">Per tillfälle</div></button>
+    <div class="fc-body">
+      <div class="f2">
+        <div class="f"><label>Förnamn *</label><input type="text" id="fname" placeholder="Anna"></div>
+        <div class="f"><label>Efternamn *</label><input type="text" id="lname" placeholder="Svensson"></div>
       </div>
-    </div>
-
-    <div class="sec">
-      <div class="slabel">Datum &amp; tid</div>
-      <div class="dtgrid">
-        <div class="f"><label>Datum</label><input type="date" id="fd" oninput="upd()"></div>
-        <div class="f"><label>Starttid</label>
-          <select id="ft" onchange="upd()">
-            <option>07:00</option><option>08:00</option><option selected>09:00</option>
+      <div class="f"><label>E-post *</label><input type="email" id="email" placeholder="anna@email.se"></div>
+      <div class="f"><label>Telefon *</label><input type="tel" id="phone" placeholder="070 123 45 67"></div>
+      <div class="f"><label>Adress *</label><input type="text" id="address" placeholder="Storgatan 1, Stockholm"></div>
+      <div class="f2">
+        <div class="f"><label>Datum *</label><input type="date" id="date" min=""></div>
+        <div class="f"><label>Tid *</label>
+          <select id="time">
+            <option value="">Välj tid...</option>
+            <option>07:00</option><option>08:00</option><option>09:00</option>
             <option>10:00</option><option>11:00</option><option>12:00</option>
-            <option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option>
+            <option>13:00</option><option>14:00</option><option>15:00</option>
+            <option>16:00</option><option>17:00</option>
           </select>
         </div>
       </div>
-    </div>
-
-    <div class="sec">
-      <div class="slabel">Antal timmar</div>
-      <div class="hrow">
-        <button class="hbtn" onclick="setH(this,1)">1 h</button>
-        <button class="hbtn" onclick="setH(this,2)">2 h</button>
-        <button class="hbtn on" onclick="setH(this,3)">3 h</button>
-        <button class="hbtn" onclick="setH(this,4)">4 h</button>
-        <button class="hbtn" onclick="setH(this,5)">5 h</button>
-        <button class="hbtn" onclick="setH(this,6)">6 h</button>
+      <div class="f2">
+        <div class="f"><label>Tjänst *</label>
+          <select id="service">
+            <option value="">Välj tjänst...</option>
+            <option>Hemstädning</option><option>Storstädning</option>
+            <option>Flyttstädning</option><option>Fönsterputs</option>
+            <option>Kontorsstädning</option><option>Trapphus</option>
+          </select>
+        </div>
+        <div class="f"><label>Antal timmar *</label>
+          <select id="hours" onchange="calcPrice()">
+            <option value="2">2 timmar</option><option value="3" selected>3 timmar</option>
+            <option value="4">4 timmar</option><option value="5">5 timmar</option>
+            <option value="6">6 timmar</option><option value="8">8 timmar</option>
+          </select>
+        </div>
       </div>
-    </div>
 
-    <div class="sec">
-      <div class="slabel">RUT-avdrag</div>
-      <div class="rtog" id="rt" onclick="togRut()">
-        <div><div class="rl" id="rl">✓ RUT-avdrag aktivt</div><div class="rs" id="rs">Du betalar bara 50% – vi hanterar resten</div></div>
-        <div class="tsw"><div class="tth"></div></div>
+      <!-- RUT TOGGLE -->
+      <div class="rut-toggle on" id="rutToggle" onclick="toggleRut()">
+        <div class="rut-left">
+          <div class="rut-icon">💚</div>
+          <div>
+            <div class="rut-title">Använd RUT-avdrag</div>
+            <div class="rut-desc">Betala bara 50% – vi fixar resten med Skatteverket</div>
+          </div>
+        </div>
+        <div class="toggle on" id="rutSwitch"></div>
       </div>
-    </div>
+      <div class="rut-pnr show" id="rutPnr">
+        <div class="f">
+          <label>Personnummer för RUT *</label>
+          <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" maxlength="13">
+          <div class="pnr-info">🔒 Krypteras och hanteras säkert · Används bara för RUT-ansökan hos Skatteverket</div>
+        </div>
+      </div>
 
-    <div class="sec">
-      <div class="slabel">Dina uppgifter</div>
-      <div class="fg">
-        <div class="f"><label>Förnamn *</label><input type="text" id="ff" placeholder="Anna"></div>
-        <div class="f"><label>Efternamn *</label><input type="text" id="fl" placeholder="Svensson"></div>
-        <div class="f"><label>Telefon *</label><input type="tel" id="fp" placeholder="070 123 45 67"></div>
-        <div class="f"><label>E-post *</label><input type="email" id="fe" placeholder="anna@email.se"></div>
-        <div class="f full"><label>Adress *</label><input type="text" id="fa" placeholder="Storgatan 1, Stockholm"></div>
-        <div class="f full"><label>Meddelande <span style="font-weight:400;color:var(--m)">(valfritt)</span></label><textarea id="fm" rows="3" placeholder="Portkod, husdjur, specifika önskemål..."></textarea></div>
+      <div class="f"><label>Önskemål / kommentar</label>
+        <textarea id="msg" rows="3" placeholder="T.ex. allergi mot vissa rengöringsmedel, nyckeln ligger under mattan..."></textarea>
+      </div>
+      <button class="submit-btn" id="sbtn" onclick="doBook()">Bekräfta bokning →</button>
+      <div class="trust-row">
+        <div class="trust-item">✓ Gratis avbokning upp till 24h</div>
+        <div class="trust-item">✓ Betalning via Swish efter städning</div>
+        <div class="trust-item">✓ Nöjdhetsgaranti</div>
       </div>
     </div>
   </div>
 
-  <div class="sum">
-    <div class="sh"><div class="st">Bokningsöversikt</div></div>
-    <div class="sb">
-      <div class="sr"><span class="sl">Tjänst</span><span class="sv" id="ss">Hemstädning</span></div>
-      <div class="sr"><span class="sl">Datum</span><span class="sv" id="sd">–</span></div>
-      <div class="sr"><span class="sl">Tid</span><span class="sv" id="sti">09:00</span></div>
-      <div class="sr"><span class="sl">Städare</span><span class="sv" id="sc">Sara K.</span></div>
-      <div class="sr"><span class="sl">Timmar</span><span class="sv" id="sh">3 timmar</span></div>
-      <div class="sr"><span class="sl">Pris (före RUT)</span><span class="sv" id="sfull">1 050 kr</span></div>
-      <div class="sr"><span class="sl" style="color:var(--g)">RUT-avdrag 50%</span><span class="sv" style="color:var(--g)" id="srut">−525 kr</span></div>
-      <div class="sr tot"><span class="sl">Du betalar</span><span class="sv" id="stot">525 kr</span></div>
+  <!-- SIDEBAR -->
+  <div class="sidebar-card">
+    <div class="sc-head">
+      <div class="av-badge" id="sc-av" style="background:#0F6E56">SK</div>
+      <div class="sc-name" id="sc-name">Sara Karlsson</div>
+      <div class="sc-city" id="sc-city">📍 Stockholm</div>
+      <div><span class="sc-stars">★★★★★</span><span class="sc-rating" id="sc-rating">4.97</span></div>
     </div>
-    <div class="sf">
-      <button class="subbtn" id="sbtn" onclick="submit()">Bekräfta bokning →</button>
-      <div class="tr">🔒 Säker betalning · Swish</div>
-    </div>
-    <div class="tb">
-      <div class="ti">✓ Verifierade städare med F-skatt</div>
-      <div class="ti">✓ Gratis avbokning upp till 24h innan</div>
-      <div class="ti">✓ Nöjdhetsgaranti – vi fixar annars</div>
-      <div class="ti">✓ RUT hanteras automatiskt åt dig</div>
+    <div class="sc-body">
+      <div class="sc-price" id="sc-price">350 kr</div><span class="sc-unit">/timme</span>
+      <span class="sc-rut" id="sc-rut">= 175 kr/h med RUT-avdrag</span>
+      <div class="calc-box">
+        <div class="calc-row"><span class="calc-lbl">Timpris</span><span class="calc-val" id="c-rate">350 kr/h</span></div>
+        <div class="calc-row"><span class="calc-lbl">Timmar</span><span class="calc-val" id="c-hours">3 h</span></div>
+        <div class="calc-row"><span class="calc-lbl">Brutto</span><span class="calc-val" id="c-gross">1 050 kr</span></div>
+        <div class="calc-row" id="c-rut-row"><span class="calc-lbl">RUT-avdrag 50%</span><span class="calc-val" style="color:var(--g)" id="c-rut">−525 kr</span></div>
+        <div class="calc-row tot"><span class="calc-lbl">Du betalar</span><span class="calc-val" id="c-tot">525 kr</span></div>
+      </div>
+      <div style="margin-top:1rem;font-size:.75rem;color:var(--m);line-height:1.65">
+        💳 Betala via Swish direkt till städaren efter godkänd städning. Inga förskott.
+      </div>
     </div>
   </div>
-</div>
-
-<div class="ov" id="ov">
-  <div style="font-size:4rem;margin-bottom:1rem;">✅</div>
-  <h2>Bokning bekräftad!</h2>
-  <p>Vi bekräftar inom 2 timmar via e-post och e-post. Städaren kommer hem till dig på utsatt tid.</p>
-  <a href="index.html">Tillbaka till startsidan</a>
 </div>
 
 <script>
-const SB=createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
-const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
 const p=new URLSearchParams(location.search);
-let S={svc:'Hemstädning',h:3,rut:true,name:decodeURIComponent(p.get('name')||'Sara Karlsson'),rate:+(p.get('rate')||350),id:p.get('id')};
+const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+let rate=+(p.get('rate')||350),useRut=true,cleanerId=p.get('id');
+const ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 
-// Banner
-const n=S.name, idx=n.charCodeAt(0)%COLORS.length;
-document.getElementById('bav').textContent=n.split(' ').map(w=>w[0]).join('').slice(0,2);
-document.getElementById('bav').style.background=COLORS[idx];
-document.getElementById('bname').textContent=n;
-document.getElementById('bprice').textContent=S.rate+' kr/h';
-document.getElementById('sc').textContent=n.split(' ')[0]+' '+(n.split(' ')[1]||'')[0]+'.';
+// Sätt min-datum till imorgon
+const tmr=new Date();tmr.setDate(tmr.getDate()+1);
+document.getElementById('date').min=tmr.toISOString().split('T')[0];
+document.getElementById('date').value=tmr.toISOString().split('T')[0];
 
-// Min datum = imorgon
-const tm=new Date(); tm.setDate(tm.getDate()+1);
-document.getElementById('fd').min=tm.toISOString().split('T')[0];
-document.getElementById('fd').value=tm.toISOString().split('T')[0];
+// Ladda städarinfo
+if(p.get('name')){
+  const n=decodeURIComponent(p.get('name'));
+  document.getElementById('sc-name').textContent=n;
+  document.getElementById('sc-av').textContent=ini(n);
+  document.getElementById('sc-av').style.background=COLORS[n.charCodeAt(0)%COLORS.length];
+}
+if(p.get('rating')) document.getElementById('sc-rating').textContent=p.get('rating');
+document.getElementById('sc-price').textContent=rate+' kr';
+document.getElementById('sc-rut').textContent='= '+Math.round(rate*.5)+' kr/h med RUT-avdrag';
 
-function setSvc(btn,v){document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');S.svc=v;document.getElementById('ss').textContent=v;upd();}
-function setH(btn,v){document.querySelectorAll('.hbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');S.h=v;upd();}
-function togRut(){S.rut=!S.rut;const t=document.getElementById('rt');t.classList.toggle('off',!S.rut);document.getElementById('rl').textContent=S.rut?'✓ RUT-avdrag aktivt':'RUT-avdrag inaktivt';document.getElementById('rs').textContent=S.rut?'Du betalar bara 50% – vi hanterar resten':'Fullt pris utan skatteåterbäring';upd();}
-
-function upd(){
-  const full=S.rate*S.h, rut=S.rut?Math.round(full*.5):0, tot=full-rut;
-  document.getElementById('sh').textContent=S.h+(S.h===1?' timme':' timmar');
-  document.getElementById('sfull').textContent=full.toLocaleString('sv')+' kr';
-  document.getElementById('srut').textContent=S.rut?'−'+rut.toLocaleString('sv')+' kr':'–';
-  document.getElementById('stot').textContent=tot.toLocaleString('sv')+' kr';
-  const d=document.getElementById('fd').value;
-  if(d)document.getElementById('sd').textContent=new Date(d).toLocaleDateString('sv',{weekday:'short',day:'numeric',month:'long'});
-  document.getElementById('sti').textContent=document.getElementById('ft').value;
+function toggleRut(){
+  useRut=!useRut;
+  document.getElementById('rutSwitch').classList.toggle('on',useRut);
+  document.getElementById('rutToggle').classList.toggle('on',useRut);
+  document.getElementById('rutPnr').classList.toggle('show',useRut);
+  calcPrice();
 }
 
-async function submit(){
-  const ids=['ff','fl','fp','fe','fa','fd'];
-  let ok=true;
-  ids.forEach(id=>{const el=document.getElementById(id);if(!el.value.trim()){el.classList.add('err');ok=false;}else el.classList.remove('err');});
-  if(!ok){document.querySelector('.err')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+function calcPrice(){
+  const h=+document.getElementById('hours').value||3;
+  const gross=rate*h,rut=useRut?Math.round(gross*.5):0,tot=gross-rut;
+  document.getElementById('c-rate').textContent=rate+' kr/h';
+  document.getElementById('c-hours').textContent=h+' h';
+  document.getElementById('c-gross').textContent=gross.toLocaleString('sv')+' kr';
+  document.getElementById('c-rut').textContent='−'+rut.toLocaleString('sv')+' kr';
+  document.getElementById('c-rut-row').style.display=useRut?'flex':'none';
+  document.getElementById('c-tot').textContent=tot.toLocaleString('sv')+' kr';
+}
+
+async function hashPnr(pnr){
+  const clean=pnr.replace(/[^0-9]/g,'');
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(clean));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function doBook(){
+  const fn=document.getElementById('fname').value,ln=document.getElementById('lname').value,
+    em=document.getElementById('email').value,ph=document.getElementById('phone').value,
+    addr=document.getElementById('address').value,date=document.getElementById('date').value,
+    time=document.getElementById('time').value,svc=document.getElementById('service').value,
+    h=+document.getElementById('hours').value||3,pnr=document.getElementById('pnr').value;
+
+  if(!fn||!ln||!em||!ph||!addr||!date||!time||!svc){alert('Fyll i alla obligatoriska fält.');return;}
+  if(useRut&&!pnr){alert('Ange personnummer för RUT-avdrag, eller stäng av RUT.');return;}
+
   const btn=document.getElementById('sbtn');
   btn.disabled=true;btn.innerHTML='<div class="spin"></div> Bokar...';
-  const full=S.rate*S.h, rut=S.rut?Math.round(full*.5):0;
+
+  const gross=rate*h,rut=useRut?Math.round(gross*.5):0,tot=gross-rut;
+  let pnrHash='';
+  if(useRut&&pnr) pnrHash=await hashPnr(pnr);
+
+  const booking={
+    name:fn+' '+ln,email:em,phone:ph,address:addr,date,time,service:svc,hours:h,
+    rut:useRut,total_price:tot,status:'ny',
+    message:(p.get('name')?'Städare: '+p.get('name'):'')+(pnrHash?' | PNR-hash: '+pnrHash.slice(0,12)+'...':'')
+  };
+  if(cleanerId) booking.cleaner_id=cleanerId;
+
   try{
-    const {error}=await SB.from('bookings').insert([{
-      name:document.getElementById('ff').value+' '+document.getElementById('fl').value,
-      email:document.getElementById('fe').value,phone:document.getElementById('fp').value,
-      address:document.getElementById('fa').value,city:'Stockholm',service:S.svc,
-      date:document.getElementById('fd').value,time:document.getElementById('ft').value,
-      hours:S.h,rut:S.rut,message:document.getElementById('fm').value+' [Städare: '+S.name+']',
-      status:'ny',total_price:full-rut
-    }]);
-    if(error)throw error;
+    const {data,error}=await SB.from('bookings').insert([booking]).select();
+    if(error) throw error;
+
+    // Mail till kund
+    const rutInfo=useRut?`<div style="background:#E1F5EE;padding:12px;border-radius:8px;color:#0F6E56;font-size:14px;margin:12px 0">✓ RUT-avdrag aktivt – du betalar <strong>${tot.toLocaleString('sv')} kr</strong> (sparat ${rut.toLocaleString('sv')} kr)</div>`:'';
+    await fetch('https://api.resend.com/emails',{method:'POST',
+      headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
+      body:JSON.stringify({from:'Spick <hello@spick.se>',to:em,
+        subject:'✅ Bokningsbekräftelse – '+svc+' '+date+' – Spick',
+        html:`<div style="font-family:DM Sans,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff">
+          <div style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#0F6E56;margin-bottom:24px">Spick</div>
+          <h1 style="font-family:Georgia,serif;font-size:22px;color:#0E0E0E;margin-bottom:8px">Bokningsbekräftelse! 🎉</h1>
+          <p style="color:#6B6960;margin-bottom:20px">Hej ${fn}! Vi återkommer med bekräftelse inom 2 timmar.</p>
+          <div style="background:#F7F7F5;border-radius:12px;padding:20px;margin-bottom:16px">
+            <table style="width:100%;font-size:14px"><tbody>
+              <tr><td style="color:#6B6960;padding:6px 0">Tjänst</td><td style="font-weight:600;text-align:right">${svc}</td></tr>
+              <tr><td style="color:#6B6960;padding:6px 0">Datum</td><td style="font-weight:600;text-align:right">${date}</td></tr>
+              <tr><td style="color:#6B6960;padding:6px 0">Tid</td><td style="font-weight:600;text-align:right">${time}</td></tr>
+              <tr><td style="color:#6B6960;padding:6px 0">Adress</td><td style="font-weight:600;text-align:right">${addr}</td></tr>
+              <tr><td style="color:#6B6960;padding:6px 0">Timmar</td><td style="font-weight:600;text-align:right">${h} h</td></tr>
+              <tr><td style="color:#0E0E0E;font-weight:700;padding:8px 0 0;font-size:15px">Du betalar</td><td style="color:#0F6E56;font-weight:700;text-align:right;font-size:18px">${tot.toLocaleString('sv')} kr</td></tr>
+            </tbody></table>
+          </div>
+          ${rutInfo}
+          <p style="background:#F7F7F5;padding:12px;border-radius:8px;font-size:13px;color:#6B6960;margin-bottom:16px">💳 Betala via Swish till städaren efter godkänd städning. Gratis avbokning upp till 24h före.</p>
+          <p style="font-size:12px;color:#C0C0BA">Spick AB · 559402-4522 · hello@spick.se</p>
+        </div>`
+      })
+    });
+
+    // Mail till admin
+    await fetch('https://api.resend.com/emails',{method:'POST',
+      headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
+      body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',
+        subject:'🔔 NY BOKNING: '+fn+' '+ln+' – '+svc+' '+date,
+        html:'<p><strong>Ny bokning!</strong></p><ul><li>Kund: <strong>'+fn+' '+ln+'</strong></li><li>Email: '+em+'</li><li>Telefon: '+ph+'</li><li>Tjänst: '+svc+'</li><li>Datum: '+date+' kl '+time+'</li><li>Adress: '+addr+'</li><li>Timmar: '+h+'h</li><li>Pris: '+tot.toLocaleString('sv')+' kr</li><li>RUT: '+(useRut?'✅ Ja (hash: '+pnrHash.slice(0,12)+'...)':'❌ Nej')+'</li>'+(p.get('name')?'<li>Städare: '+p.get('name')+'</li>':'')+'</ul><a href="https://spick.se/admin.html" style="display:inline-block;padding:10px 20px;background:#0F6E56;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Öppna admin →</a>'
+      })
+    });
+
     window.location.href='tack.html';
   }catch(e){
-    alert('Något gick fel – ring ');
     btn.disabled=false;btn.innerHTML='Bekräfta bokning →';
+    alert('Fel: '+e.message);
   }
 }
-
-const {createClient}=supabase;
-upd();
-</script>
-
-<style>
-#spick-fab{position:fixed;bottom:1.75rem;right:1.75rem;width:56px;height:56px;background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 28px rgba(15,110,86,.45);z-index:999;font-size:1.4rem;transition:transform .2s;border:none;}
-#spick-fab:hover{transform:scale(1.1);}
-#spick-chat{position:fixed;bottom:1.75rem;right:1.75rem;width:360px;max-height:500px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.2);z-index:1000;display:none;flex-direction:column;overflow:hidden;font-family:'DM Sans',sans-serif;}
-#spick-chat-head{background:linear-gradient(135deg,#0a2a1e,#0F6E56);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-#spick-chat-msgs{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem;min-height:200px;max-height:300px;}
-#spick-chat-inp{border-top:1px solid #E8E8E4;padding:.75rem 1rem;display:flex;gap:.5rem;flex-shrink:0;}
-#spick-chat-inp input{flex:1;padding:.6rem .875rem;border:1.5px solid #E8E8E4;border-radius:100px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;}
-#spick-chat-inp input:focus{border-color:#0F6E56;}
-#spick-chat-inp button{padding:.6rem 1rem;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.sc-msg-bot{background:#F7F7F5;color:#1C1C1A;border-radius:12px 12px 12px 4px;padding:.75rem .875rem;font-size:.845rem;line-height:1.6;max-width:88%;}
-.sc-msg-usr{background:#0F6E56;color:#fff;border-radius:12px 12px 4px 12px;padding:.75rem .875rem;font-size:.845rem;line-height:1.6;max-width:85%;align-self:flex-end;}
-.sc-pulse{width:7px;height:7px;background:#22c55e;border-radius:50%;display:inline-block;animation:scpulse 2s infinite;margin-right:.3rem;}
-@keyframes scpulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-</style>
-<button id="spick-fab" onclick="spickOpen()" title="AI-support">💬</button>
-<div id="spick-chat">
-  <div id="spick-chat-head">
-    <div><div style="font-size:.68rem;color:#9FE1CB;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;"><span class="sc-pulse"></span>AI-support</div><div style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:#fff;">Spick Assistent</div></div>
-    <button onclick="spickClose()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.85rem;">✕</button>
-  </div>
-  <div id="spick-chat-msgs"></div>
-  <div id="spick-chat-inp"><input id="spick-inp" type="text" placeholder="Fråga om bokning, RUT, priser..." onkeydown="if(event.key==='Enter')spickSend()"><button onclick="spickSend()">Skicka</button></div>
-</div>
-<script>
-(function(){const R={rut:'RUT-avdraget ger <strong>50% rabatt</strong>! Max 75 000 kr/år. <a href="priser.html" style="color:#1D9E75">Se priser →</a>',boka:'Boka enkelt – välj städare, datum och tid. Bekräftelse inom 2h. <a href="stadare.html" style="color:#1D9E75">Hitta städare →</a>',pris:'250–600 kr/h, med RUT betalar du bara hälften. <a href="priser.html" style="color:#1D9E75">Se priser →</a>',avbok:'Avbokning gratis upp till 24h. Maila hello@spick.se.',flytt:'Besiktningsgodkänd flyttstädning. <a href="stadare.html" style="color:#1D9E75">Boka →</a>',städare:'9 betygsatta städare, 4.9★ snitt. <a href="stadare.html" style="color:#1D9E75">Se alla →</a>',default:'Maila <a href="mailto:hello@spick.se" style="color:#1D9E75">hello@spick.se</a> – svar inom 2h. 😊'};
-let o=false;
-function add(t,u){const c=document.getElementById('spick-chat-msgs');const d=document.createElement('div');d.className=u?'sc-msg-usr':'sc-msg-bot';d.style.alignSelf=u?'flex-end':'flex-start';d.innerHTML=t;c.appendChild(d);c.scrollTop=c.scrollHeight;}
-function reply(m){const ml=m.toLowerCase();return ml.includes('rut')||ml.includes('avdrag')?R.rut:ml.includes('boka')||ml.includes('bokning')?R.boka:ml.includes('pris')||ml.includes('kostar')?R.pris:ml.includes('avbok')?R.avbok:ml.includes('flytt')?R.flytt:ml.includes('städare')||ml.includes('hitta')?R.städare:R.default;}
-window.spickOpen=function(){document.getElementById('spick-fab').style.display='none';document.getElementById('spick-chat').style.display='flex';if(!o){o=true;setTimeout(()=>add('Hej! 👋 Hur kan jag hjälpa dig med bokning, RUT-avdrag eller städare?',false),200);}document.getElementById('spick-inp').focus();};
-window.spickClose=function(){document.getElementById('spick-fab').style.display='flex';document.getElementById('spick-chat').style.display='none';};
-window.spickSend=function(){const i=document.getElementById('spick-inp');const m=i.value.trim();if(!m)return;add(m,true);i.value='';setTimeout(()=>add(reply(m),false),500);};
-})();
+calcPrice();
 </script>
 </body>
 </html>
