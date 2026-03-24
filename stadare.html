@@ -4,105 +4,169 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hitta din städare – Spick</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<meta name="description" content="Välj bland betygsatta städare i Stockholm. Boka direkt online med RUT-avdrag.">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--green:#0F6E56;--green-mid:#1D9E75;--green-pale:#E1F5EE;--black:#0E0E0E;--gray:#F7F7F5;--gray-mid:#E8E8E4;--text:#1C1C1A;--muted:#6B6960;}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;color:var(--text);background:var(--gray);}
-nav{background:white;padding:1.25rem 4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-mid);position:sticky;top:0;z-index:10;}
-.nav-logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--green);text-decoration:none;}
-.nav-back{font-size:0.875rem;color:var(--muted);text-decoration:none;}
-.page{max-width:1100px;margin:0 auto;padding:3rem 1.5rem 6rem;}
-h1{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--black);margin-bottom:0.5rem;}
-.sub{font-size:1rem;color:var(--muted);margin-bottom:2rem;}
-.filter-bar{display:flex;gap:0.75rem;margin-bottom:2rem;flex-wrap:wrap;align-items:center;}
-.btn{padding:0.45rem 1.1rem;border-radius:100px;border:1.5px solid var(--gray-mid);font-size:0.8rem;font-weight:500;cursor:pointer;background:white;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all 0.2s;}
-.btn.active{background:var(--green);color:white;border-color:var(--green);}
-.sort{padding:0.45rem 1rem;border-radius:100px;border:1.5px solid var(--gray-mid);font-size:0.8rem;font-family:'DM Sans',sans-serif;outline:none;background:white;color:var(--muted);margin-left:auto;}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10;}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
+.back{font-size:.875rem;color:var(--m);text-decoration:none;display:flex;align-items:center;gap:.4rem;transition:color .2s;}
+.back:hover{color:var(--g);}
+.hero{background:linear-gradient(135deg,#0a2a1e,var(--g));padding:3.5rem 5rem;color:#fff;}
+.hero h1{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;margin-bottom:.625rem;}
+.hero p{font-size:1rem;color:rgba(255,255,255,.75);margin-bottom:2rem;}
+.search-bar{display:flex;gap:.75rem;max-width:640px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:200px;padding:.875rem 1.25rem;border:none;border-radius:12px;font-size:.95rem;font-family:'DM Sans',sans-serif;outline:none;}
+.search-btn{padding:.875rem 1.5rem;background:#fff;color:var(--g);border:none;border-radius:12px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.search-btn:hover{background:var(--gp);}
+.page{max-width:1200px;margin:0 auto;padding:2.5rem 2rem 6rem;}
+.toolbar{display:flex;gap:.625rem;margin-bottom:2rem;flex-wrap:wrap;align-items:center;}
+.fbtn{padding:.45rem 1.1rem;border-radius:100px;border:1.5px solid var(--grd);font-size:.8rem;font-weight:500;cursor:pointer;background:#fff;color:var(--m);transition:all .2s;font-family:'DM Sans',sans-serif;}
+.fbtn:hover{border-color:var(--gm);color:var(--g);}
+.fbtn.on{background:var(--g);color:#fff;border-color:var(--g);}
+.sort{padding:.45rem 1rem;border-radius:100px;border:1.5px solid var(--grd);font-size:.8rem;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;background:#fff;color:var(--m);margin-left:auto;}
+.count{font-size:.82rem;color:var(--m);margin-left:.5rem;}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;}
-.card{background:white;border-radius:20px;border:1px solid var(--gray-mid);overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;}
-.card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.08);}
-.card.top{border:2px solid var(--green);}
-.head{padding:1.5rem 1.5rem 1rem;display:flex;gap:1rem;align-items:flex-start;}
-.av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:white;flex-shrink:0;}
-.badge{background:var(--green);color:white;font-size:0.7rem;font-weight:600;padding:0.25rem 0.75rem;border-radius:100px;display:inline-block;margin-bottom:4px;}
-.cname{font-size:1.05rem;font-weight:600;color:var(--black);}
-.cloc{font-size:0.8rem;color:var(--muted);margin:2px 0 6px;}
-.stars{color:#F59E0B;font-size:0.85rem;}
-.body{padding:0 1.5rem 1rem;}
-.tags{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;}
-.tag{font-size:0.7rem;padding:0.25rem 0.7rem;border-radius:100px;background:var(--green-pale);color:var(--green);font-weight:500;}
-.bio{font-size:0.8rem;color:var(--muted);line-height:1.55;margin-bottom:0.75rem;}
-.price-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--black);}
-.rut{font-size:0.75rem;color:var(--green);font-weight:500;background:var(--green-pale);padding:0.2rem 0.6rem;border-radius:100px;margin-left:4px;}
-.foot{padding:0 1.5rem 1.25rem;}
-.book{display:block;text-align:center;padding:0.75rem;background:var(--green);color:white;border:none;border-radius:100px;font-size:0.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;transition:background 0.2s;}
-.book:hover{background:var(--green-mid);}
-.empty{text-align:center;padding:4rem;color:var(--muted);grid-column:1/-1;}
-@media(max-width:768px){nav{padding:1rem 1.5rem;}.grid{grid-template-columns:1fr;}.page{padding:2rem 1rem 4rem;}}
+.card{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;transition:transform .25s,box-shadow .25s;display:flex;flex-direction:column;}
+.card:hover{transform:translateY(-5px);box-shadow:0 20px 50px rgba(0,0,0,.1);}
+.card.top{border:2px solid var(--g);}
+.card-head{padding:1.5rem 1.5rem 1rem;display:flex;gap:1rem;align-items:flex-start;}
+.av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#fff;flex-shrink:0;position:relative;}
+.online{width:14px;height:14px;background:#22c55e;border-radius:50%;position:absolute;bottom:2px;right:2px;border:2px solid #fff;}
+.top-badge{background:var(--g);color:#fff;font-size:.68rem;font-weight:600;padding:.2rem .65rem;border-radius:100px;display:inline-block;margin-bottom:4px;}
+.cname{font-size:1.05rem;font-weight:600;color:var(--b);}
+.cloc{font-size:.78rem;color:var(--m);margin:3px 0 6px;display:flex;align-items:center;gap:.3rem;}
+.stars{color:#F59E0B;font-size:.85rem;letter-spacing:.05em;}
+.rating{font-size:.82rem;font-weight:600;color:var(--b);}
+.reviews{font-size:.75rem;color:var(--m);}
+.card-body{padding:0 1.5rem 1rem;flex:1;}
+.tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.875rem;}
+.tag{font-size:.7rem;padding:.25rem .7rem;border-radius:100px;background:var(--gp);color:var(--g);font-weight:500;}
+.bio{font-size:.82rem;color:var(--m);line-height:1.6;margin-bottom:1rem;}
+.price-row{display:flex;align-items:baseline;gap:.25rem;}
+.price{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--b);}
+.price-unit{font-size:.8rem;color:var(--m);}
+.rut{font-size:.72rem;color:var(--g);font-weight:500;background:var(--gp);padding:.2rem .6rem;border-radius:100px;margin-left:4px;}
+.card-foot{padding:0 1.5rem 1.25rem;}
+.book-btn{display:block;text-align:center;padding:.75rem;background:var(--g);color:#fff;border:none;border-radius:100px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;text-decoration:none;}
+.book-btn:hover{background:var(--gm);}
+.empty{text-align:center;padding:5rem 2rem;grid-column:1/-1;color:var(--m);}
+.empty-icon{font-size:3rem;margin-bottom:1rem;}
+.skeleton{background:linear-gradient(90deg,var(--grd) 25%,#eee 50%,var(--grd) 75%);background-size:200% 100%;animation:skel 1.5s infinite;border-radius:8px;height:20px;margin-bottom:.5rem;}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media(max-width:1024px){.grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:768px){nav{padding:1rem 1.5rem;}.hero{padding:2.5rem 1.5rem;}.hero h1{font-size:1.8rem;}.page{padding:1.5rem 1rem 4rem;}.grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <nav>
-  <a href="index.html" class="nav-logo">Spick</a>
-  <a href="index.html" class="nav-back">← Tillbaka</a>
+  <a href="index.html" class="logo">Spick</a>
+  <a href="index.html" class="back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    Tillbaka
+  </a>
 </nav>
-<div class="page">
+
+<div class="hero">
   <h1>Hitta din perfekta städare</h1>
-  <p class="sub">Välj en betygsatt städare nära dig – och boka samma person varje gång.</p>
-  <div class="filter-bar">
-    <button class="btn active" onclick="doFilter('alla',this)">Alla</button>
-    <button class="btn" onclick="doFilter('hem',this)">Hemstädning</button>
-    <button class="btn" onclick="doFilter('flytt',this)">Flyttstädning</button>
-    <button class="btn" onclick="doFilter('stor',this)">Storstädning</button>
-    <select class="sort" onchange="doSort(this.value)">
+  <p>Välj bland betygsatta städare nära dig – och boka samma person varje gång.</p>
+  <div class="search-bar">
+    <input class="search-input" type="text" id="sq" placeholder="Sök på namn eller stad..." oninput="doSearch(this.value)">
+    <button class="search-btn" onclick="doSearch(document.getElementById('sq').value)">Sök</button>
+  </div>
+</div>
+
+<div class="page">
+  <div class="toolbar">
+    <button class="fbtn on" onclick="setF('alla',this)">Alla</button>
+    <button class="fbtn" onclick="setF('hem',this)">🏠 Hemstädning</button>
+    <button class="fbtn" onclick="setF('stor',this)">✨ Storstädning</button>
+    <button class="fbtn" onclick="setF('flytt',this)">📦 Flyttstädning</button>
+    <button class="fbtn" onclick="setF('fonster',this)">🪟 Fönsterputs</button>
+    <span class="count" id="cnt"></span>
+    <select class="sort" onchange="setS(this.value)">
       <option value="betyg">Högst betyg</option>
-      <option value="pris">Lägsta pris</option>
+      <option value="pris-upp">Lägsta pris</option>
+      <option value="pris-ner">Högsta pris</option>
     </select>
   </div>
-  <div class="grid" id="grid"><div class="empty">Laddar städare...</div></div>
+  <div class="grid" id="grid">
+    <div class="card"><div class="card-head"><div class="av" style="background:var(--grd)"></div><div style="flex:1"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div></div><div class="card"><div class="card-head"><div class="av" style="background:var(--grd)"></div><div style="flex:1"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div></div><div class="card"><div class="card-head"><div class="av" style="background:var(--grd)"></div><div style="flex:1"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div></div>
+  </div>
 </div>
+
 <script>
-const SB='https://urjeijcncsyuletprydy.supabase.co';
-const KEY='sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3';
-const {createClient}=supabase;
-const db=createClient(SB,KEY);
-const C=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
-let ALL=[],fv='alla',sv='betyg';
-function ini(n){return n.split(' ').map(w=>w[0]).join('').slice(0,2);}
-function st(r){return '★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+let ALL=[],fv='alla',sv='betyg',sq='';
+
+const ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const st=r=>'★'.repeat(Math.floor(r||0))+'☆'.repeat(5-Math.floor(r||0));
+
 async function init(){
-  const {data,error}=await db.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false});
-  if(error){console.error(error);document.getElementById('grid').innerHTML='<div class="empty">Kunde inte ladda städare.</div>';return;}
+  const {data,error}=await SB.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false});
+  if(error||!data?.length){document.getElementById('grid').innerHTML='<div class="empty"><div class="empty-icon">🧹</div><p>Inga städare hittades just nu.</p></div>';return;}
   ALL=data.map((r,i)=>({
     id:r.id,name:r.full_name||'Okänd',city:r.city||'Stockholm',
-    price:r.hourly_rate||350,rating:r.rating||0,bio:r.bio||'Professionell städare.',
+    price:r.hourly_rate||350,rating:r.rating||0,
+    bio:r.bio||'Professionell städare med hög standard.',
     tags:Array.isArray(r.services)?r.services:(r.services||'Hemstädning').split(',').map(s=>s.trim()),
-    color:C[i%C.length],top:i===0
+    color:COLORS[i%COLORS.length],top:i===0,jobs:r.jobs_completed||0
   }));
   render();
 }
-function doFilter(v,btn){fv=v;document.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
-function doSort(v){sv=v;render();}
+
+function setF(v,btn){fv=v;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');render();}
+function setS(v){sv=v;render();}
+function doSearch(v){sq=v.toLowerCase();render();}
+
 function render(){
   let d=[...ALL];
-  if(fv==='hem')d=d.filter(c=>c.tags.some(t=>t.includes('Hem')));
-  else if(fv==='flytt')d=d.filter(c=>c.tags.some(t=>t.includes('Flytt')));
-  else if(fv==='stor')d=d.filter(c=>c.tags.some(t=>t.includes('Stor')));
+  if(sq)d=d.filter(c=>c.name.toLowerCase().includes(sq)||c.city.toLowerCase().includes(sq)||c.bio.toLowerCase().includes(sq));
+  if(fv==='hem')d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('hem')));
+  else if(fv==='stor')d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('stor')));
+  else if(fv==='flytt')d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('flytt')));
+  else if(fv==='fonster')d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('fönster')));
   if(sv==='betyg')d.sort((a,b)=>b.rating-a.rating);
-  else d.sort((a,b)=>a.price-b.price);
+  else if(sv==='pris-upp')d.sort((a,b)=>a.price-b.price);
+  else d.sort((a,b)=>b.price-a.price);
+
+  document.getElementById('cnt').textContent=d.length+' städare';
   const g=document.getElementById('grid');
-  if(!d.length){g.innerHTML='<div class="empty">Inga städare hittades.</div>';return;}
-  g.innerHTML=d.map(c=>`<div class="card ${c.top?'top':''}">
-    <div class="head"><div class="av" style="background:${c.color};">${ini(c.name)}</div>
-    <div>${c.top?'<span class="badge">Toppvald</span><br>':''}<div class="cname">${c.name}</div>
-    <div class="cloc">${c.city}</div><div><span class="stars">${st(c.rating)}</span> <strong>${c.rating}</strong></div></div></div>
-    <div class="body"><div class="tags">${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-    <div class="bio">${c.bio.slice(0,100)}...</div>
-    <div><span class="price-num">${c.price} kr</span><span style="font-size:0.8rem;color:var(--muted);">/h</span><span class="rut">${Math.round(c.price*0.5)} kr m. RUT</span></div></div>
-    <div class="foot"><a class="book" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}&id=${c.id}">Boka ${c.name.split(' ')[0]} →</a></div>
-  </div>`).join('');
+  if(!d.length){g.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Inga städare matchar din sökning.</p></div>';return;}
+  g.innerHTML=d.map(c=>`
+    <div class="card ${c.top?'top':''}">
+      <div class="card-head">
+        <div class="av" style="background:${c.color}">${ini(c.name)}<div class="online"></div></div>
+        <div style="flex:1">
+          ${c.top?'<span class="top-badge">⭐ Toppvald</span><br>':''}
+          <div class="cname">${c.name}</div>
+          <div class="cloc">📍 ${c.city}${c.jobs>0?' · '+c.jobs+' städningar':''}</div>
+          <div style="display:flex;align-items:center;gap:.4rem">
+            <span class="stars">${st(c.rating)}</span>
+            <span class="rating">${c.rating||'–'}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tags">${c.tags.slice(0,4).map(t=>'<span class="tag">'+t+'</span>').join('')}</div>
+        <div class="bio">${c.bio.slice(0,100)}...</div>
+        <div class="price-row">
+          <span class="price">${c.price} kr</span>
+          <span class="price-unit">/timme</span>
+          <span class="rut">${Math.round(c.price*.5)} kr m. RUT</span>
+        </div>
+      </div>
+      <div class="card-foot">
+        <a class="book-btn" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}&id=${c.id}">
+          Boka ${c.name.split(' ')[0]} →
+        </a>
+      </div>
+    </div>
+  `).join('');
 }
 init();
 </script>
