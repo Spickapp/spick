@@ -1,0 +1,25 @@
+name: Database Maintenance
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rensa gamla notifikationer
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "=== Databasunderhåll ==="
+          MONTH_AGO=$(date -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          
+          # Ta bort notiser äldre än 30 dagar
+          DELETED=$(curl -s -X DELETE "$SUPA_URL/rest/v1/notifications?created_at=lt.$MONTH_AGO" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -H "Prefer: return=representation" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "0")
+          
+          echo "✅ Rensade $DELETED gamla notiser"
+          echo "Underhåll klart: $(date)"
