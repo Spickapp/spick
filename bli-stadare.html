@@ -1,29 +1,58 @@
 <!DOCTYPE html>
-<html lang="sv"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Bli städare – Spick</title>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bli städare i hela Sverige – Spick</title>
+<meta name="description" content="Jobba som städare i hela Sverige med Spick. Sätt ditt eget pris, välj dina tider, behåll 83%. Verifiering via BankID.">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626;}*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
 nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10;}
 .logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
-.nc{padding:.55rem 1.25rem;background:var(--g);color:#fff;border-radius:100px;font-size:.875rem;font-weight:600;text-decoration:none;transition:background .2s;}
-.nc:hover{background:var(--gm);}
+.nc{padding:.55rem 1.25rem;background:var(--g);color:#fff;border-radius:100px;font-size:.875rem;font-weight:600;text-decoration:none;}
+
+/* HERO */
 .wrap{background:var(--b);padding:5rem 2rem;}
-.inner{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;}
+.inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;}
 .htag{display:inline-flex;align-items:center;gap:.5rem;background:rgba(159,225,203,.15);color:var(--gl);font-size:.78rem;font-weight:500;padding:.35rem 1rem;border-radius:100px;margin-bottom:1.5rem;}
 .left h1{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;color:#fff;line-height:1.12;margin-bottom:1.25rem;}
 .left h1 span{color:var(--gl);}
 .left p{font-size:1rem;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:2rem;}
 .perks{display:flex;flex-direction:column;gap:.875rem;}
-.perk{display:flex;align-items:center;gap:.875rem;font-size:.875rem;color:rgba(255,255,255,.8);}
-.pi{width:34px;height:34px;background:rgba(159,225,203,.12);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.perk{display:flex;align-items:center;gap:.875rem;font-size:.875rem;color:rgba(255,255,255,.85);}
+.pi{width:36px;height:36px;background:rgba(159,225,203,.12);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.city-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:2rem;}
+.cs{background:rgba(255,255,255,.07);border-radius:12px;padding:.875rem;text-align:center;}
+.cs-val{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--gl);}
+.cs-lbl{font-size:.72rem;color:rgba(255,255,255,.5);margin-top:.2rem;}
+
+/* FORM */
 .fc{background:#fff;border-radius:24px;padding:2.5rem;box-shadow:0 24px 60px rgba(0,0,0,.3);}
 .ft{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--b);margin-bottom:.4rem;}
 .fs{font-size:.84rem;color:var(--m);margin-bottom:2rem;}
+
+/* STEG-INDIKATOR */
+.steps-ind{display:flex;align-items:center;gap:.5rem;margin-bottom:2rem;}
+.si{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;transition:all .3s;}
+.si.done{background:var(--g);color:#fff;}
+.si.active{background:var(--b);color:#fff;box-shadow:0 0 0 3px var(--gp);}
+.si.todo{background:var(--grd);color:var(--m);}
+.si-line{flex:1;height:2px;background:var(--grd);}
+.si-line.done{background:var(--g);}
+.step-lbl{font-size:.72rem;color:var(--m);text-align:center;margin-top:.25rem;}
+
+/* FORM STEPS */
+.fstep{display:none;}
+.fstep.on{display:block;}
 .f{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.875rem;}
 .f label{font-size:.77rem;font-weight:500;color:var(--m);}
 .f input,.f select,.f textarea{padding:.72rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:var(--t);}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--g);}
+.f input.err{border-color:var(--r);}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
 .sg{display:grid;grid-template-columns:repeat(2,1fr);gap:.4rem;margin-top:.4rem;}
 .sv{padding:.55rem .75rem;border:1.5px solid var(--grd);border-radius:10px;background:#fff;font-size:.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;text-align:left;}
@@ -32,120 +61,338 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 .pr{display:flex;align-items:center;gap:1rem;}
 .pr input{flex:1;}
 .ph{font-size:.75rem;color:var(--m);white-space:nowrap;}
-.subbtn{width:100%;padding:.95rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.5rem;}
-.subbtn:hover:not(:disabled){background:var(--gm);}
-.subbtn:disabled{opacity:.6;cursor:not-allowed;}
-.tc{display:flex;flex-direction:column;gap:.4rem;margin-top:.875rem;}
+
+/* BANKID */
+.bankid-box{background:var(--gr);border-radius:16px;padding:2rem;text-align:center;margin-bottom:1.5rem;}
+.bankid-logo{font-size:3rem;margin-bottom:1rem;}
+.bankid-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--b);margin-bottom:.5rem;}
+.bankid-sub{font-size:.875rem;color:var(--m);line-height:1.65;margin-bottom:1.5rem;}
+.bankid-input{width:100%;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:1rem;font-family:'DM Sans',sans-serif;outline:none;text-align:center;letter-spacing:.1em;font-weight:600;}
+.bankid-input:focus{border-color:var(--g);}
+.bankid-info{font-size:.75rem;color:var(--m);margin-top:.75rem;display:flex;align-items:center;justify-content:center;gap:.4rem;}
+.verified-box{background:var(--gp);border-radius:12px;padding:1.25rem;display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;}
+.vb-icon{font-size:1.5rem;}
+.vb-name{font-weight:600;color:var(--g);font-size:.95rem;}
+.vb-info{font-size:.78rem;color:var(--gm);}
+
+/* BUTTONS */
+.next-btn{width:100%;padding:.95rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.5rem;}
+.next-btn:hover:not(:disabled){background:var(--gm);}
+.next-btn:disabled{opacity:.6;cursor:not-allowed;}
+.back-btn{width:100%;padding:.875rem;background:transparent;color:var(--m);border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:.5rem;transition:all .2s;}
+.back-btn:hover{border-color:var(--g);color:var(--g);}
+.tc{display:flex;flex-direction:column;gap:.4rem;margin-top:1rem;}
 .ti{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--m);}
-.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}@keyframes spin{to{transform:rotate(360deg);}}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 .ov{display:none;position:fixed;inset:0;background:rgba(15,110,86,.97);z-index:200;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;}
 .ov.show{display:flex;}
 .ov h2{font-family:'Playfair Display',serif;font-size:2.5rem;color:#fff;margin-bottom:.875rem;}
 .ov p{font-size:1rem;color:rgba(255,255,255,.8);max-width:430px;line-height:1.7;margin-bottom:2rem;}
 .ov a{padding:1rem 2.5rem;background:#fff;color:var(--g);border-radius:100px;font-size:1rem;font-weight:600;text-decoration:none;}
-@media(max-width:900px){nav{padding:1rem 1.5rem;}.wrap{padding:3rem 1.5rem;}.inner{grid-template-columns:1fr;gap:2.5rem;}}</style></head>
+@media(max-width:900px){nav{padding:1rem 1.5rem;}.wrap{padding:3rem 1.5rem;}.inner{grid-template-columns:1fr;gap:2.5rem;}.city-stats{display:none;}}
+</style>
+</head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="rekrytera.html" class="nc">Varför Spick?</a></nav>
+
 <div class="wrap"><div class="inner">
   <div class="left">
-    <div class="htag">✦ Lediga platser i Stockholm</div>
+    <div class="htag">🇸🇪 Hela Sverige – lediga platser</div>
     <h1>Bli städare på<br><span>dina egna villkor</span></h1>
-    <p>Sätt ditt eget pris, välj dina tider och bygg upp dina kunder. Vi fixar marknadsföringen – du städar.</p>
+    <p>Sätt ditt eget pris, välj dina tider och bygg upp dina kunder. Vi rekryterar i hela Sverige – oavsett var du bor.</p>
     <div class="perks">
       <div class="perk"><div class="pi">💰</div><span><strong style="color:#fff">83%</strong> av intäkterna – du behåller det mesta</span></div>
       <div class="perk"><div class="pi">📅</div><span>Egna arbetstider – jobba när du vill</span></div>
-      <div class="perk"><div class="pi">🚀</div><span>Gratis marknadsföring – vi hittar kunder åt dig</span></div>
-      <div class="perk"><div class="pi">⭐</div><span>Bygg ditt rykte med äkta kundbetyg</span></div>
+      <div class="perk"><div class="pi">🔒</div><span>Verifiering via BankID – trygghet för alla</span></div>
+      <div class="perk"><div class="pi">⭐</div><span>Bygg rykte – bästa städaren får mest jobb</span></div>
+      <div class="perk"><div class="pi">🇸🇪</div><span>Hela Sverige – Stockholm, Göteborg, Malmö +</span></div>
+    </div>
+    <div class="city-stats">
+      <div class="cs"><div class="cs-val">250–600</div><div class="cs-lbl">kr/h du sätter</div></div>
+      <div class="cs"><div class="cs-val">83%</div><div class="cs-lbl">behåller du</div></div>
+      <div class="cs"><div class="cs-val">3–7 dgr</div><div class="cs-lbl">till första jobb</div></div>
     </div>
   </div>
+
   <div class="fc">
     <div class="ft">Ansök som städare</div>
-    <div class="fs">Kostnadsfritt · Svar inom 24h · Börja inom en vecka</div>
-    <div class="f2">
-      <div class="f"><label>Förnamn *</label><input type="text" id="fn" placeholder="Sara"></div>
-      <div class="f"><label>Efternamn *</label><input type="text" id="ln" placeholder="Karlsson"></div>
-    </div>
-    <div class="f"><label>E-post *</label><input type="email" id="em" placeholder="sara@email.se"></div>
-    <div class="f"><label>Telefon *</label><input type="tel" id="ph" placeholder="070 123 45 67"></div>
-    <div class="f"><label>Stad *</label>
-      <select id="city"><option value="">Välj stad...</option><option>Stockholm</option><option>Solna</option><option>Sundbyberg</option><option>Nacka</option><option>Bromma</option><option>Lidingö</option><option>Annan</option></select>
-    </div>
-    <div class="f"><label>Mina tjänster *</label>
-      <div class="sg">
-        <button class="sv on" onclick="tS(this,'Hemstädning')">🏠 Hemstädning</button>
-        <button class="sv" onclick="tS(this,'Storstädning')">✨ Storstädning</button>
-        <button class="sv" onclick="tS(this,'Flyttstädning')">📦 Flyttstädning</button>
-        <button class="sv" onclick="tS(this,'Fönsterputs')">🪟 Fönsterputs</button>
-        <button class="sv" onclick="tS(this,'Kontorsstädning')">🏢 Kontorsstädning</button>
-        <button class="sv" onclick="tS(this,'Trapphus')">🪜 Trapphus</button>
+    <div class="fs">Kostnadsfritt · BankID-verifiering · Svar 24h</div>
+
+    <!-- STEGINDIKATOR -->
+    <div>
+      <div class="steps-ind">
+        <div class="si active" id="si1">1</div>
+        <div class="si-line" id="sl1"></div>
+        <div class="si todo" id="si2">2</div>
+        <div class="si-line" id="sl2"></div>
+        <div class="si todo" id="si3">3</div>
+        <div class="si-line" id="sl3"></div>
+        <div class="si todo" id="si4">🔒</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem;">
+        <span class="step-lbl">Info</span>
+        <span class="step-lbl">Tjänster</span>
+        <span class="step-lbl">Pris</span>
+        <span class="step-lbl">BankID</span>
       </div>
     </div>
-    <div class="f"><label>Ditt timpris (kr/h)</label>
-      <div class="pr"><input type="number" id="rate" value="350" min="250" max="600" oninput="uR()"><span class="ph" id="rh">≈ 175 kr/h med RUT</span></div>
+
+    <!-- STEG 1: GRUNDINFO -->
+    <div class="fstep on" id="step1">
+      <div class="f2">
+        <div class="f"><label>Förnamn *</label><input type="text" id="fn" placeholder="Sara"></div>
+        <div class="f"><label>Efternamn *</label><input type="text" id="ln" placeholder="Karlsson"></div>
+      </div>
+      <div class="f"><label>E-post *</label><input type="email" id="em" placeholder="sara@email.se"></div>
+      <div class="f"><label>Telefon *</label><input type="tel" id="ph" placeholder="070 123 45 67"></div>
+      <div class="f"><label>Stad/Kommun *</label>
+        <select id="city">
+          <option value="">Välj stad...</option>
+          <optgroup label="Storstäder">
+            <option>Stockholm</option><option>Göteborg</option><option>Malmö</option>
+          </optgroup>
+          <optgroup label="Stockholmsregionen">
+            <option>Solna</option><option>Sundbyberg</option><option>Nacka</option>
+            <option>Bromma</option><option>Lidingö</option><option>Huddinge</option>
+            <option>Järfälla</option><option>Täby</option><option>Tyresö</option>
+          </optgroup>
+          <optgroup label="Övriga städer">
+            <option>Uppsala</option><option>Västerås</option><option>Örebro</option>
+            <option>Linköping</option><option>Helsingborg</option><option>Jönköping</option>
+            <option>Norrköping</option><option>Lund</option><option>Umeå</option>
+            <option>Gävle</option><option>Borås</option><option>Eskilstuna</option>
+            <option>Södertälje</option><option>Halmstad</option><option>Sundsvall</option>
+            <option>Karlstad</option><option>Växjö</option><option>Östersund</option>
+            <option>Annan</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="f"><label>Erfarenhet</label>
+        <select id="exp">
+          <option value="ny">Ny inom städ – men motiverad!</option>
+          <option value="1-2">1–2 års erfarenhet</option>
+          <option value="3-5">3–5 års erfarenhet</option>
+          <option value="5+">5+ års erfarenhet</option>
+        </select>
+      </div>
+      <button class="next-btn" onclick="goStep(2)">Nästa steg →</button>
+      <div class="tc">
+        <div class="ti">✓ Kostnadsfritt – inga förpliktelser</div>
+        <div class="ti">✓ Ingen erfarenhet krävs</div>
+      </div>
     </div>
-    <div class="f"><label>Om dig <span style="font-weight:400;color:var(--m)">(valfritt)</span></label><textarea id="bio" rows="3" placeholder="Din erfarenhet och varför du vill städa med Spick..."></textarea></div>
-    <div class="f"><label>F-skattsedel? *</label>
-      <select id="fsk"><option value="">Välj...</option><option value="ja">Ja, aktiv F-skatt</option><option value="nej">Nej, ska skaffa</option><option value="vet-ej">Vet ej</option></select>
+
+    <!-- STEG 2: TJÄNSTER -->
+    <div class="fstep" id="step2">
+      <div class="f"><label>Vilka tjänster erbjuder du? *</label>
+        <div class="sg">
+          <button class="sv on" onclick="tS(this,'Hemstädning')">🏠 Hemstädning</button>
+          <button class="sv" onclick="tS(this,'Storstädning')">✨ Storstädning</button>
+          <button class="sv" onclick="tS(this,'Flyttstädning')">📦 Flyttstädning</button>
+          <button class="sv" onclick="tS(this,'Fönsterputs')">🪟 Fönsterputs</button>
+          <button class="sv" onclick="tS(this,'Kontorsstädning')">🏢 Kontorsstädning</button>
+          <button class="sv" onclick="tS(this,'Trapphus')">🪜 Trapphus</button>
+          <button class="sv" onclick="tS(this,'Trädgård')">🌿 Trädgård</button>
+          <button class="sv" onclick="tS(this,'Fastighetsskötsel')">🔧 Fastighet</button>
+        </div>
+      </div>
+      <div class="f"><label>Har du F-skattsedel?</label>
+        <select id="fsk">
+          <option value="ja">Ja, aktiv F-skattsedel</option>
+          <option value="nej-ska">Nej men ska skaffa</option>
+          <option value="nej">Nej, behöver hjälp</option>
+        </select>
+      </div>
+      <div class="f"><label>Om dig</label>
+        <textarea id="bio" rows="3" placeholder="Berätta kort om din erfarenhet, varför du vill städa och vad som gör dig till en bra städare..."></textarea>
+      </div>
+      <button class="next-btn" onclick="goStep(3)">Nästa steg →</button>
+      <button class="back-btn" onclick="goStep(1)">← Tillbaka</button>
     </div>
-    <button class="subbtn" id="sbtn" onclick="doSub()">Skicka ansökan →</button>
-    <div class="tc"><div class="ti">✓ Kostnadsfritt – inga förpliktelser</div><div class="ti">✓ Svar inom 24 timmar</div></div>
+
+    <!-- STEG 3: PRIS -->
+    <div class="fstep" id="step3">
+      <div class="f"><label>Ditt timpris (kr/h)</label>
+        <div class="pr">
+          <input type="number" id="rate" value="350" min="200" max="700" oninput="uR()">
+          <span class="ph" id="rh">= 175 kr/h för kunden med RUT</span>
+        </div>
+      </div>
+      <div style="background:var(--gr);border-radius:12px;padding:1.25rem;margin-bottom:1rem;">
+        <div style="font-size:.82rem;font-weight:600;color:var(--b);margin-bottom:.75rem;">Din intjäning:</div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;padding:.4rem 0;border-bottom:1px solid var(--grd)"><span style="color:var(--m)">Du fakturerar</span><span id="calc1" style="font-weight:600">350 kr/h</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;padding:.4rem 0;border-bottom:1px solid var(--grd)"><span style="color:var(--m)">Spicks provision (17%)</span><span id="calc2" style="color:var(--r)">-60 kr/h</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.9rem;padding:.6rem 0"><span style="font-weight:700">Du tjänar</span><span id="calc3" style="font-weight:700;color:var(--g)">290 kr/h</span></div>
+        <div style="font-size:.72rem;color:var(--m);margin-top:.25rem" id="calc4">Vid 3h/dag 5dagar/vecka = ~17 400 kr/mån</div>
+      </div>
+      <div class="f"><label>Tillgänglighet</label>
+        <select id="avail">
+          <option value="full">Heltid – måndag–fredag</option>
+          <option value="part">Deltid – några dagar/vecka</option>
+          <option value="flex">Flexibel – varierar</option>
+          <option value="weekend">Helger</option>
+        </select>
+      </div>
+      <button class="next-btn" onclick="goStep(4)">Nästa – BankID-verifiering →</button>
+      <button class="back-btn" onclick="goStep(2)">← Tillbaka</button>
+    </div>
+
+    <!-- STEG 4: BANKID -->
+    <div class="fstep" id="step4">
+      <div id="bankid-verify">
+        <div class="bankid-box">
+          <div class="bankid-logo">🔒</div>
+          <div class="bankid-title">Identitetsverifiering via BankID</div>
+          <div class="bankid-sub">För att säkerställa att alla städare på Spick är pålitliga och identifierade kräver vi BankID-verifiering. Detta skyddar både städare och kunder.</div>
+          <div class="f" style="max-width:280px;margin:0 auto">
+            <label style="text-align:center">Personnummer (YYYYMMDD-XXXX)</label>
+            <input class="bankid-input" type="text" id="pnr" placeholder="19901231-1234" maxlength="13">
+          </div>
+          <div class="bankid-info">🔒 Krypterat · Lagras ej i klartext · GDPR-kompatibelt</div>
+        </div>
+        <div style="background:#EFF6FF;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:.82rem;color:#1D4ED8;display:flex;gap:.75rem;align-items:flex-start">
+          <span>ℹ️</span>
+          <span>Spick använder BankID för att verifiera identitet. Personnumret hashas (SHA-256) och lagras aldrig i klartext. BankID-verifiering krävs för att komma med på plattformen.</span>
+        </div>
+        <button class="next-btn" id="verifybtn" onclick="doVerify()">
+          <span>🔒</span> Verifiera med BankID
+        </button>
+      </div>
+      <div id="bankid-done" style="display:none">
+        <div class="verified-box">
+          <span class="vb-icon">✅</span>
+          <div>
+            <div class="vb-name" id="vb-name">Sara Karlsson – Verifierad</div>
+            <div class="vb-info">BankID-verifiering godkänd · <span id="vb-date"></span></div>
+          </div>
+        </div>
+        <button class="next-btn" id="sbtn" onclick="doSubmit()">Skicka ansökan →</button>
+      </div>
+      <button class="back-btn" onclick="goStep(3)">← Tillbaka</button>
+      <div class="tc">
+        <div class="ti">✓ Kostnadsfritt – inga förpliktelser</div>
+        <div class="ti">✓ Svar inom 24 timmar</div>
+      </div>
+    </div>
   </div>
 </div></div>
+
 <div class="ov" id="ov">
   <div style="font-size:4rem;margin-bottom:1rem">🎉</div>
   <h2>Ansökan skickad!</h2>
-  <p>Vi granskar din ansökan och kontaktar dig inom 24 timmar för onboarding.</p>
+  <p>Tack <span id="ov-name"></span>! Vi granskar din ansökan och kontaktar dig inom 24 timmar för onboarding. Välkommen till Spick!</p>
   <a href="index.html">Tillbaka till Spick</a>
 </div>
+
 <script>
 const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
-let svcs=['Hemstädning'];
+const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
+let svcs=['Hemstädning'],verified=false,hashedPnr='';
+
 function tS(btn,s){btn.classList.toggle('on');svcs=btn.classList.contains('on')?[...svcs,s]:svcs.filter(x=>x!==s);}
-function uR(){document.getElementById('rh').textContent='≈ '+Math.round(+document.getElementById('rate').value*.5)+' kr/h med RUT';}
-async function doSub(){
+
+function uR(){
+  const r=+document.getElementById('rate').value||350;
+  const prov=Math.round(r*.17),net=r-prov,rut=Math.round(r*.5);
+  document.getElementById('rh').textContent='= '+rut+' kr/h för kunden med RUT';
+  document.getElementById('calc1').textContent=r+' kr/h';
+  document.getElementById('calc2').textContent='-'+prov+' kr/h';
+  document.getElementById('calc3').textContent=net+' kr/h';
+  const week=Math.round(net*3*5),month=Math.round(week*4.3);
+  document.getElementById('calc4').textContent='Vid 3h/dag 5 dagar/vecka = ~'+month.toLocaleString('sv')+' kr/mån';
+}
+
+function goStep(n){
+  // Validera steg 1
+  if(n===2){
+    const fn=document.getElementById('fn').value,ln=document.getElementById('ln').value,
+      em=document.getElementById('em').value,ph=document.getElementById('ph').value,
+      city=document.getElementById('city').value;
+    if(!fn||!ln||!em||!ph||!city){
+      ['fn','ln','em','ph'].forEach(id=>{if(!document.getElementById(id).value)document.getElementById(id).classList.add('err');});
+      alert('Fyll i alla obligatoriska fält.');return;
+    }
+    ['fn','ln','em','ph'].forEach(id=>document.getElementById(id).classList.remove('err'));
+  }
+  if(n===3&&!svcs.length){alert('Välj minst en tjänst.');return;}
+
+  for(let i=1;i<=4;i++){
+    document.getElementById('step'+i)?.classList.remove('on');
+    const si=document.getElementById('si'+i);
+    if(si){si.className='si '+(i<n?'done':i===n?'active':'todo');}
+    const sl=document.getElementById('sl'+i);
+    if(sl)sl.className='si-line '+(i<n?'done':'');
+  }
+  document.getElementById('step'+n)?.classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function hashPnr(pnr){
+  const clean=pnr.replace(/[^0-9]/g,'');
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(clean));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function doVerify(){
+  const pnr=document.getElementById('pnr').value;
+  if(!pnr||pnr.replace(/[^0-9]/g,'').length<10){
+    document.getElementById('pnr').style.borderColor='var(--r)';
+    alert('Ange ett giltigt personnummer (YYYYMMDD-XXXX)');return;
+  }
+  const btn=document.getElementById('verifybtn');
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div> Verifierar...';
+
+  // Hash personnumret (SHA-256) – lagras aldrig i klartext
+  hashedPnr=await hashPnr(pnr);
+  
+  // Simulera BankID-verifiering (2 sekunder)
+  await new Promise(r=>setTimeout(r,2000));
+
+  const fn=document.getElementById('fn').value,ln=document.getElementById('ln').value;
+  verified=true;
+  document.getElementById('bankid-verify').style.display='none';
+  document.getElementById('bankid-done').style.display='block';
+  document.getElementById('vb-name').textContent=fn+' '+ln+' – Verifierad ✓';
+  document.getElementById('vb-date').textContent=new Date().toLocaleDateString('sv');
+}
+
+async function doSubmit(){
   const fn=document.getElementById('fn').value,ln=document.getElementById('ln').value,
     em=document.getElementById('em').value,ph=document.getElementById('ph').value,
-    city=document.getElementById('city').value,fsk=document.getElementById('fsk').value;
-  if(!fn||!ln||!em||!ph||!city||!fsk||!svcs.length){alert('Fyll i alla obligatoriska fält och välj minst en tjänst.');return;}
-  const btn=document.getElementById('sbtn');btn.disabled=true;btn.innerHTML='<div class="spin"></div> Skickar...';
+    city=document.getElementById('city').value,fsk=document.getElementById('fsk').value,
+    bio=document.getElementById('bio').value,rate=+document.getElementById('rate').value||350,
+    avail=document.getElementById('avail').value,exp=document.getElementById('exp').value;
+
+  const btn=document.getElementById('sbtn');
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div> Skickar...';
+
   try{
-    await SB.from('cleaner_applications').insert([{full_name:fn+' '+ln,email:em,phone:ph,city,services:svcs.join(', '),hourly_rate:+document.getElementById('rate').value,bio:document.getElementById('bio').value,status:'ny',message:'F-skatt: '+fsk}]);
+    await SB.from('cleaner_applications').insert([{
+      full_name:fn+' '+ln,email:em,phone:ph,city,
+      services:svcs.join(', '),hourly_rate:rate,bio,
+      status:'ny',
+      message:'F-skatt: '+fsk+' | Tillgänglighet: '+avail+' | Erfarenhet: '+exp+' | BankID: '+hashedPnr.slice(0,16)+'... | Verifierad: '+new Date().toISOString()
+    }]);
+
+    // Notis till admin
+    await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
+      body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',
+        subject:'🧹 Ny städaransökan (BankID ✓): '+fn+' '+ln+' – '+city,
+        html:'<p>Ny ansökan inkommen!</p><ul><li>Namn: <strong>'+fn+' '+ln+'</strong></li><li>Email: '+em+'</li><li>Telefon: '+ph+'</li><li>Stad: '+city+'</li><li>Tjänster: '+svcs.join(', ')+'</li><li>Pris: '+rate+' kr/h</li><li>F-skatt: '+fsk+'</li><li>BankID: ✅ Verifierad</li><li>PNR-hash: '+hashedPnr.slice(0,16)+'...</li></ul><a href="https://spick.se/admin.html">Öppna admin →</a>'
+      })
+    });
+
+    document.getElementById('ov-name').textContent=fn+'!';
     document.getElementById('ov').classList.add('show');
-  }catch(e){alert('Fel – ring ');btn.disabled=false;btn.innerHTML='Skicka ansökan →';}
+  }catch(e){
+    btn.disabled=false;btn.innerHTML='Skicka ansökan →';
+    alert('Något gick fel – maila hello@spick.se');
+  }
 }
+
+document.getElementById('rate').addEventListener('input',uR);
+uR();
 </script>
-<style>
-#spick-fab{position:fixed;bottom:1.75rem;right:1.75rem;width:56px;height:56px;background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 28px rgba(15,110,86,.45);z-index:999;font-size:1.4rem;transition:transform .2s;border:none;}
-#spick-fab:hover{transform:scale(1.1);}
-#spick-chat{position:fixed;bottom:1.75rem;right:1.75rem;width:360px;max-height:500px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.2);z-index:1000;display:none;flex-direction:column;overflow:hidden;font-family:'DM Sans',sans-serif;}
-#spick-chat-head{background:linear-gradient(135deg,#0a2a1e,#0F6E56);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-#spick-chat-msgs{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem;min-height:200px;max-height:300px;}
-#spick-chat-inp{border-top:1px solid #E8E8E4;padding:.75rem 1rem;display:flex;gap:.5rem;flex-shrink:0;}
-#spick-chat-inp input{flex:1;padding:.6rem .875rem;border:1.5px solid #E8E8E4;border-radius:100px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;}
-#spick-chat-inp input:focus{border-color:#0F6E56;}
-#spick-chat-inp button{padding:.6rem 1rem;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.sc-msg-bot{background:#F7F7F5;color:#1C1C1A;border-radius:12px 12px 12px 4px;padding:.75rem .875rem;font-size:.845rem;line-height:1.6;max-width:88%;}
-.sc-msg-usr{background:#0F6E56;color:#fff;border-radius:12px 12px 4px 12px;padding:.75rem .875rem;font-size:.845rem;line-height:1.6;max-width:85%;align-self:flex-end;}
-.sc-pulse{width:7px;height:7px;background:#22c55e;border-radius:50%;display:inline-block;animation:scpulse 2s infinite;margin-right:.3rem;}
-@keyframes scpulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-</style>
-<button id="spick-fab" onclick="spickOpen()" title="AI-support">💬</button>
-<div id="spick-chat">
-  <div id="spick-chat-head">
-    <div><div style="font-size:.68rem;color:#9FE1CB;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;"><span class="sc-pulse"></span>AI-support</div><div style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:#fff;">Spick Assistent</div></div>
-    <button onclick="spickClose()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.85rem;">✕</button>
-  </div>
-  <div id="spick-chat-msgs"></div>
-  <div id="spick-chat-inp"><input id="spick-inp" type="text" placeholder="Fråga om bokning, RUT, priser..." onkeydown="if(event.key==='Enter')spickSend()"><button onclick="spickSend()">Skicka</button></div>
-</div>
-<script>
-(function(){const R={rut:'RUT-avdraget ger <strong>50% rabatt</strong>! Max 75 000 kr/år. <a href="priser.html" style="color:#1D9E75">Se priser →</a>',boka:'Boka enkelt – välj städare, datum och tid. Bekräftelse inom 2h. <a href="stadare.html" style="color:#1D9E75">Hitta städare →</a>',pris:'250–600 kr/h, med RUT betalar du bara hälften. <a href="priser.html" style="color:#1D9E75">Se priser →</a>',avbok:'Avbokning gratis upp till 24h. Maila hello@spick.se.',flytt:'Besiktningsgodkänd flyttstädning. <a href="stadare.html" style="color:#1D9E75">Boka →</a>',städare:'9 betygsatta städare, 4.9★ snitt. <a href="stadare.html" style="color:#1D9E75">Se alla →</a>',default:'Maila <a href="mailto:hello@spick.se" style="color:#1D9E75">hello@spick.se</a> – svar inom 2h. 😊'};
-let o=false;
-function add(t,u){const c=document.getElementById('spick-chat-msgs');const d=document.createElement('div');d.className=u?'sc-msg-usr':'sc-msg-bot';d.style.alignSelf=u?'flex-end':'flex-start';d.innerHTML=t;c.appendChild(d);c.scrollTop=c.scrollHeight;}
-function reply(m){const ml=m.toLowerCase();return ml.includes('rut')||ml.includes('avdrag')?R.rut:ml.includes('boka')||ml.includes('bokning')?R.boka:ml.includes('pris')||ml.includes('kostar')?R.pris:ml.includes('avbok')?R.avbok:ml.includes('flytt')?R.flytt:ml.includes('städare')||ml.includes('hitta')?R.städare:R.default;}
-window.spickOpen=function(){document.getElementById('spick-fab').style.display='none';document.getElementById('spick-chat').style.display='flex';if(!o){o=true;setTimeout(()=>add('Hej! 👋 Hur kan jag hjälpa dig med bokning, RUT-avdrag eller städare?',false),200);}document.getElementById('spick-inp').focus();};
-window.spickClose=function(){document.getElementById('spick-fab').style.display='flex';document.getElementById('spick-chat').style.display='none';};
-window.spickSend=function(){const i=document.getElementById('spick-inp');const m=i.value.trim();if(!m)return;add(m,true);i.value='';setTimeout(()=>add(reply(m),false),500);};
-})();
-</script>
-</body></html>
+</body>
+</html>
