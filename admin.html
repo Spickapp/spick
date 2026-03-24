@@ -406,6 +406,25 @@ function renderCleaners(data) {
 }
 
 async function updateCleanerStatus(id, status) {
+  // Om godkänd → kopiera till cleaners-tabellen
+  if (status === 'godkand') {
+    const app = allCleaners.find(c => c.id === id);
+    if (app) {
+      await db.from('cleaners').upsert({
+        full_name: app.full_name || app.name || 'Okänd',
+        email: app.email,
+        phone: app.phone,
+        city: app.city || 'Stockholm',
+        bio: app.bio || app.message || '',
+        hourly_rate: app.hourly_rate || app.price || 350,
+        services: ['Hemstädning'],
+        available: true,
+        status: 'godkand',
+        application_id: app.id,
+        days: [1,1,1,1,1,0,0]
+      }, { onConflict: 'application_id' });
+    }
+  }
   await db.from('cleaner_applications').update({ status }).eq('id', id);
   const c = allCleaners.find(c => c.id === id);
   if (c) c.status = status;
