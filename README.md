@@ -34,5 +34,5 @@ Boka en betygsatt städare nära dig. Med RUT-avdrag betalar du bara hälften.
 - **E-post:** Resend
 
 ## 👤 Kontakt
-Farhad Haghighi · hello@spick.se · 076-050 51 53
-Haghighi Consulting AB · org.nr 559402-4522
+Farhad Haghighi · hello@spick.se
+Spick AB · org.nr 559402-4522
