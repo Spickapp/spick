@@ -1,0 +1,24 @@
+name: SSL Certificate Monitor
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+jobs:
+  ssl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kontrollera SSL-certifikat
+        run: |
+          EXPIRY=$(echo | openssl s_client -servername spick.se -connect spick.se:443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+          echo "SSL certifikat går ut: $EXPIRY"
+          DAYS=$(( ($(date -d "$EXPIRY" +%s) - $(date +%s)) / 86400 ))
+          echo "Dagar kvar: $DAYS"
+          if [ $DAYS -lt 30 ]; then
+            echo "⚠️ VARNING: SSL certifikat går ut om $DAYS dagar!"
+            curl -s -X POST https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+              -d "{"type":"ssl_warning","days_left":$DAYS}"
+          else
+            echo "✅ SSL OK - $DAYS dagar kvar"
+          fi
