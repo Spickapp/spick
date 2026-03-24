@@ -273,5 +273,40 @@ async function signContract() {
   }
 }
 </script>
+
+<style>
+#spick-fab{position:fixed;bottom:1.75rem;right:1.75rem;width:56px;height:56px;background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 28px rgba(15,110,86,.45);z-index:999;font-size:1.4rem;transition:transform .2s;border:none;}
+#spick-fab:hover{transform:scale(1.1);}
+#spick-chat{position:fixed;bottom:1.75rem;right:1.75rem;width:360px;max-height:500px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.2);z-index:1000;display:none;flex-direction:column;overflow:hidden;font-family:'DM Sans',sans-serif;}
+#spick-chat-head{background:linear-gradient(135deg,#0a2a1e,#0F6E56);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#spick-chat-msgs{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem;min-height:200px;max-height:300px;}
+#spick-chat-inp{border-top:1px solid #E8E8E4;padding:.75rem 1rem;display:flex;gap:.5rem;flex-shrink:0;}
+#spick-chat-inp input{flex:1;padding:.6rem .875rem;border:1.5px solid #E8E8E4;border-radius:100px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;}
+#spick-chat-inp input:focus{border-color:#0F6E56;}
+#spick-chat-inp button{padding:.6rem 1rem;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.sc-msg-bot{background:#F7F7F5;color:#1C1C1A;border-radius:12px 12px 12px 4px;padding:.75rem .875rem;font-size:.845rem;line-height:1.6;max-width:88%;}
+.sc-msg-usr{background:#0F6E56;color:#fff;border-radius:12px 12px 4px 12px;padding:.75rem .875rem;font-size:.845rem;line-height:1.6;max-width:85%;align-self:flex-end;}
+.sc-pulse{width:7px;height:7px;background:#22c55e;border-radius:50%;display:inline-block;animation:scpulse 2s infinite;margin-right:.3rem;}
+@keyframes scpulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+</style>
+<button id="spick-fab" onclick="spickOpen()" title="AI-support">💬</button>
+<div id="spick-chat">
+  <div id="spick-chat-head">
+    <div><div style="font-size:.68rem;color:#9FE1CB;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;"><span class="sc-pulse"></span>AI-support</div><div style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:#fff;">Spick Assistent</div></div>
+    <button onclick="spickClose()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.85rem;">✕</button>
+  </div>
+  <div id="spick-chat-msgs"></div>
+  <div id="spick-chat-inp"><input id="spick-inp" type="text" placeholder="Fråga om bokning, RUT, priser..." onkeydown="if(event.key==='Enter')spickSend()"><button onclick="spickSend()">Skicka</button></div>
+</div>
+<script>
+(function(){const R={rut:'RUT-avdraget ger <strong>50% rabatt</strong>! Max 75 000 kr/år. <a href="priser.html" style="color:#1D9E75">Se priser →</a>',boka:'Boka enkelt – välj städare, datum och tid. Bekräftelse inom 2h. <a href="stadare.html" style="color:#1D9E75">Hitta städare →</a>',pris:'250–600 kr/h, med RUT betalar du bara hälften. <a href="priser.html" style="color:#1D9E75">Se priser →</a>',avbok:'Avbokning gratis upp till 24h. Maila hello@spick.se.',flytt:'Besiktningsgodkänd flyttstädning. <a href="stadare.html" style="color:#1D9E75">Boka →</a>',städare:'9 betygsatta städare, 4.9★ snitt. <a href="stadare.html" style="color:#1D9E75">Se alla →</a>',default:'Maila <a href="mailto:hello@spick.se" style="color:#1D9E75">hello@spick.se</a> – svar inom 2h. 😊'};
+let o=false;
+function add(t,u){const c=document.getElementById('spick-chat-msgs');const d=document.createElement('div');d.className=u?'sc-msg-usr':'sc-msg-bot';d.style.alignSelf=u?'flex-end':'flex-start';d.innerHTML=t;c.appendChild(d);c.scrollTop=c.scrollHeight;}
+function reply(m){const ml=m.toLowerCase();return ml.includes('rut')||ml.includes('avdrag')?R.rut:ml.includes('boka')||ml.includes('bokning')?R.boka:ml.includes('pris')||ml.includes('kostar')?R.pris:ml.includes('avbok')?R.avbok:ml.includes('flytt')?R.flytt:ml.includes('städare')||ml.includes('hitta')?R.städare:R.default;}
+window.spickOpen=function(){document.getElementById('spick-fab').style.display='none';document.getElementById('spick-chat').style.display='flex';if(!o){o=true;setTimeout(()=>add('Hej! 👋 Hur kan jag hjälpa dig med bokning, RUT-avdrag eller städare?',false),200);}document.getElementById('spick-inp').focus();};
+window.spickClose=function(){document.getElementById('spick-fab').style.display='flex';document.getElementById('spick-chat').style.display='none';};
+window.spickSend=function(){const i=document.getElementById('spick-inp');const m=i.value.trim();if(!m)return;add(m,true);i.value='';setTimeout(()=>add(reply(m),false),500);};
+})();
+</script>
 </body>
 </html>
