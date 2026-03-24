@@ -1,84 +1,56 @@
 # Spick – Session Handoff
-Skapad: 2026-03-24
+Uppdaterad: 2026-03-24 (kväll)
 
-## HUR MAN HITTAR CREDENTIALS
-- GitHub token: github.com/settings/tokens (regenerera vid ny session)
-- Supabase: supabase.com/dashboard/project/urjeijcncsyuletprydy/settings/api
-- Resend: resend.com/api-keys
-- Admin: spick.se/admin.html (lösenord i admin.html source, byt till ngt bättre)
+## SYSTEMSTATUS – ALLT LIVE
 
-## PUSH-METODIK (kör i konsolen på spickapp.github.io/spick/)
-Ersätt TOKEN med din GitHub personal access token:
+### Klart idag
+- DNS: GitHub Pages A-poster fixade via Loopia API
+- Resend: Domän VERIFIERAD, mail fungerar
+- Supabase webhooks: notify_on_booking + notify_on_application
+- Edge Function notify: deployad med RESEND_API_KEY
+- GitHub Secrets: ANTHROPIC_API_KEY, SUPABASE_ANON_KEY, LOOPIA_API_USER, LOOPIA_API_PASS
+- Google Workspace MX-poster: inlagda i Loopia (ASPMX.L.GOOGLE.COM etc)
+- Städarnas email: uppdaterade med platshåll (byt till riktiga)
 
-const T='TOKEN',R='Spickapp/spick';
-window.push=async(f,html,msg)=>{
-  const i=await fetch('https://api.github.com/repos/'+R+'/contents/'+f,{headers:{'Authorization':'token '+T}}).then(r=>r.json());
-  const bytes=new TextEncoder().encode(html);let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
-  const body={message:msg,content:btoa(bin)};if(i.sha)body.sha=i.sha;
-  const res=await fetch('https://api.github.com/repos/'+R+'/contents/'+f,{method:'PUT',headers:{'Authorization':'token '+T,'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
-  return res.commit?.sha?.slice(0,7)||res.message;
-};
+### GitHub Actions (alla aktiva)
+- Deploy to GitHub Pages
+- Nightly Backup & Health Check
+- Monthly Invoice Generator
+- Claude Code via Issues
+- Fix DNS via Loopia API (actions: fix-github-pages, add-google-mx, verify-dns, list-records)
+- Inject GA4 + Meta Pixel (kör när du har ID:na)
 
-## SYSTEMSTATUS (2026-03-24)
-- Live: spick.se + spickapp.github.io/spick
-- 34 sidor, 20 stader med landing pages
-- 9 stadare i Supabase (alla saknar email = PRIO)
-- BankID-verifiering, AI-chatt, admin-panel, betyg, fakturor, backup-workflows
+## TODOS KVAR
 
-## TODOS I PRIORITETSORDNING
+### PRIO 1 – Google Workspace
+1. workspace.google.com → Business Starter → domän: spick.se
+2. TXT-verifiering finns redan i Loopia
+3. Aktiverar hello@spick.se
 
-### PRIO 1 – Resend DNS (5 min i Loopia)
-Resend domain ID: db7d6b85-c927-4dfa-8de7-5ec2221da7be
-Status: Domain skapad, DNS-poster EJ inlagda i Loopia an
+### PRIO 2 – GA4 + Meta Pixel
+1. Skapa GA4 under hello@spick.se → kopiera G-XXXXXXXXXX
+2. business.facebook.com → Pixel → kopiera ID
+3. Kör workflow "Inject GA4 + Meta Pixel" med båda ID:na
+   Injicerar i alla 36 HTML-filer automatiskt
 
-Poster att lagga in pa Loopia (spick.se → DNS-hantering):
-- TXT  resend._domainkey  [se resend.com/domains/...]
-- MX   send               feedback-smtp.eu-west-1.amazonses.com (prio 10)
-- TXT  send               v=spf1 include:amazonses.com ~all
-- TXT  _dmarc             v=DMARC1; p=none;
+### PRIO 3 – Städarnas riktiga email
+SQL: UPDATE cleaners SET email = 'riktig@email.se' WHERE full_name = 'Namn';
 
-Klicka "Verify DNS Records" pa Resend efter Loopia.
+### PRIO 4 – Testbokning
+spick.se/stadare.html → boka → verifiera mail + admin
 
-### PRIO 2 – GitHub Secrets (5 min)
-URL: github.com/Spickapp/spick/settings/secrets/actions
-Lagga till: ANTHROPIC_API_KEY och SUPABASE_ANON_KEY
-(aktiverar: nattlig backup, Claude Code via Issues, manadsraktura)
+### PRIO 5 – Byt admin-lösenord
+Hårdkodat i admin.html → ändra till starkt lösenord
 
-### PRIO 3 – Stadares email (10 min)
-spick.se/admin.html → Stadare-fliken
-Fyll i email pa alla 9 stadare – utan detta nar ingen bokningsnotis fram
+## PUSH-METODIK
+Se ADMIN_GUIDE.md för push-script utan credentials.
 
-### PRIO 4 – Testbokning (10 min)
-spick.se/stadare.html → Boka en stadare → kontrollera:
-a) Bekraftelsemail till kunden
-b) Admin-notis till hello@spick.se
-c) Bokningen syns i admin-panelen
-
-### PRIO 5 – Byt admin-losenord
-Hardkodat i admin.html – byt till nagonting starkt och unikt
-
-### PRIO 6 – Rotera GitHub token
-Gor efter Prio 2 ar klart. github.com/settings/tokens
-
-## AFFARSMODELL
-350 kr/h x 3h = 1050 kr brutto
-Spick 17% = 178 kr per bokning
+## AFFÄRSMODELL
+350 kr/h x 3h = 1050 kr | Spick 17% = 178 kr/bokning
 50 bok/man = 8 900 kr | 200 = 35 600 kr | 500 = 89 000 kr
 
-Noejdhetsgaranti: Stadaren gor returbesok gratis (ingaar i avtal).
-Spick betalar 0 kr extra. Triggas vid betyg 1-2 stjarnor.
-
-## NATIONELL EXPANSION
-- Stockholm: Live, 9 stadare, redo
-- Goteborg/Malmo/Uppsala/+16 stader: Vaentlista aktiv
-- Naesta steg: Facebook-annons i Goteborg (ca 500 kr) → 5 stadare
-
-## DATABAS
-Supabase projekt: urjeijcncsyuletprydy
-Tabeller: cleaners, bookings, ratings, notifications, invoices, guarantee_requests, cleaner_applications
-Alla med RLS aktiverat
-
-## GITHUB ACTIONS (aktiva workflows)
-- backup.yml: nattlig backup 02:00 (kraever SUPABASE_ANON_KEY secret)
-- claude.yml: Claude Code via Issues (kraever ANTHROPIC_API_KEY secret)
-- monthly-invoices.yml: manadsraktura 1:a varje manad
+## CREDENTIALS (förvara separat)
+- Admin lösenord: Spick2026! (BYTA!)
+- Supabase projekt: urjeijcncsyuletprydy
+- Resend domain ID: db7d6b85-c927-4dfa-8de7-5ec2221da7be
+- Loopia API user: spickdns@loopiaapi
