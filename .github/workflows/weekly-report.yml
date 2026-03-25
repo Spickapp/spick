@@ -7,29 +7,51 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - name: Generera veckorapport
+      - name: Generera och skicka veckorapport
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
           SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          echo "=== SPICK VECKORAPPORT ==="
-          DATE=$(date +%Y-%m-%d)
-          WEEK_AGO=$(date -d '7 days ago' +%Y-%m-%d)
-          
-          # Bokningar senaste veckan
-          BOOKINGS=$(curl -s "$SUPA_URL/rest/v1/bookings?created_at=gte.$WEEK_AGO" \
-            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))")
-          
-          # Totalt antal städare
-          CLEANERS=$(curl -s "$SUPA_URL/rest/v1/cleaners?status=eq.godkänd" \
-            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))")
-          
-          echo "Vecka: $WEEK_AGO till $DATE"
-          echo "Bokningar: $BOOKINGS"
-          echo "Aktiva städare: $CLEANERS"
-          
-          # Skicka rapport via notify
-          curl -s -X POST "$SUPA_URL/functions/v1/notify" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $SUPA_KEY" \
-            -d "{"type":"weekly_report","bookings":$BOOKINGS,"cleaners":$CLEANERS,"week":"$WEEK_AGO"}"
+          python3 - << 'PYTHON'
+import os, json, urllib.request, subprocess
+from datetime import date, timedelta
+
+SUPA_URL = os.environ['SUPA_URL']
+SUPA_KEY = os.environ['SUPA_KEY']
+WEEK_AGO = (date.today() - timedelta(days=7)).isoformat()
+TODAY    = date.today().isoformat()
+
+def fetch(path):
+    r = subprocess.run(['curl','-sf',f"{SUPA_URL}/rest/v1/{path}",
+        '-H',f'apikey: {SUPA_KEY}','-H',f'Authorization: Bearer {SUPA_KEY}'],
+        capture_output=True, text=True)
+    try: return json.loads(r.stdout)
+    except: return []
+
+bookings = fetch(f"bookings?created_at=gte.{WEEK_AGO}T00:00:00")
+cleaners = fetch("cleaners?status=eq.godk%C3%A4nd")
+reviews  = fetch(f"reviews?created_at=gte.{WEEK_AGO}T00:00:00")
+
+b_count = len(bookings) if isinstance(bookings, list) else 0
+c_count = len(cleaners) if isinstance(cleaners, list) else 0
+r_count = len(reviews)  if isinstance(reviews,  list) else 0
+revenue = sum(float(b.get('total_price') or 0) * 0.17 for b in (bookings if isinstance(bookings, list) else []))
+
+print(f"Vecka: {WEEK_AGO} → {TODAY}")
+print(f"Bokningar: {b_count} | Städare: {c_count} | Betyg: {r_count} | Est. intäkt: {revenue:.0f} kr")
+
+payload = json.dumps({"type": "weekly_report", "record": {
+    "week": WEEK_AGO, "bookings": b_count, "cleaners": c_count,
+    "reviews": r_count, "revenue": round(revenue)
+}}).encode()
+
+req = urllib.request.Request(
+    f"{SUPA_URL}/functions/v1/notify", payload,
+    {"Content-Type":"application/json","Authorization":f"Bearer {SUPA_KEY}","apikey":SUPA_KEY},
+    method="POST")
+try:
+    urllib.request.urlopen(req, timeout=15)
+    print("✅ Veckorapport skickad!")
+except Exception as e:
+    print(f"⚠️ Fel: {e}")
+PYTHON
