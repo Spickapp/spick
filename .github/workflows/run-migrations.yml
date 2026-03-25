@@ -12,53 +12,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run migrations via Supabase Management API
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run Migration 004
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          PROJECT_REF="urjeijcncsyuletprydy"
+          supabase db execute --project-ref urjeijcncsyuletprydy \
+            --file supabase/migrations/004_alias.sql
+          echo "✅ 004 klar"
 
-          run_sql() {
-            local label=$1
-            local sql=$2
-            echo "▶ Kör $label..."
-            RESPONSE=$(curl -s -w "\n%{http_code}" \
-              -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
-              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"query\": $(echo "$sql" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')}")
-            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | head -1)
-            echo "Status: $HTTP_CODE"
-            echo "Response: $BODY"
-            if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-              echo "❌ $label misslyckades!"
-              exit 1
-            fi
-            echo "✅ $label klar!"
-          }
-
-          # Migration 004
-          SQL_004=$(cat supabase/migrations/004_alias.sql)
-          run_sql "004_alias" "$SQL_004"
-
-          # Migration 005
-          SQL_005=$(cat supabase/migrations/005_data.sql)
-          run_sql "005_data" "$SQL_005"
-
-          # Migration 006
-          SQL_006=$(cat supabase/migrations/006_keys.sql)
-          run_sql "006_keys" "$SQL_006"
-
-      - name: Verify tables
+      - name: Run Migration 005
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          PROJECT_REF="urjeijcncsyuletprydy"
-          RESULT=$(curl -s \
-            -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query": "SELECT table_name FROM information_schema.tables WHERE table_schema='"'"'public'"'"' AND table_name IN ('"'"'customer_profiles'"'"','"'"'analytics_events'"'"','"'"'key_methods'"'"','"'"'messages'"'"') ORDER BY table_name;"}')
-          echo "Tabeller i databasen: $RESULT"
-          echo "✅ Verifiering klar!"
+          supabase db execute --project-ref urjeijcncsyuletprydy \
+            --file supabase/migrations/005_data.sql
+          echo "✅ 005 klar"
+
+      - name: Run Migration 006
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db execute --project-ref urjeijcncsyuletprydy \
+            --file supabase/migrations/006_keys.sql
+          echo "✅ 006 klar"
+
+      - name: Verify
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db execute --project-ref urjeijcncsyuletprydy \
+            --sql "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
+          echo "✅ Verifiering klar"

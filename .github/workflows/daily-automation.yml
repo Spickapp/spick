@@ -15,15 +15,38 @@ jobs:
           TOMORROW=$(date -d 'tomorrow' +%Y-%m-%d)
           YESTERDAY=$(date -d 'yesterday' +%Y-%m-%d)
           echo "Checking bookings for $TOMORROW and $YESTERDAY"
-          curl -s "${SUPA_URL}/rest/v1/bookings?date=eq.${TOMORROW}&status=in.(bekräftad,ny)&reminder_sent_at=is.null&select=*" -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "
+
+          # Påminnelser - bokningar imorgon
+          curl -s "${SUPA_URL}/rest/v1/bookings?date=eq.${TOMORROW}&status=in.(bekräftad,ny)&reminder_sent_at=is.null&select=*" \
+            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "
 import sys,json,urllib.request
 d=json.load(sys.stdin)
-if not isinstance(d,list): sys.exit(0)
-print(f'Reminders to send: {len(d)}')
+if not isinstance(d,list): print('Inga bokningar'); sys.exit(0)
+print(f'Påminnelser att skicka: {len(d)}')
 for b in d:
   p=json.dumps({'type':'reminder','record':b}).encode()
-  req=urllib.request.Request('$SUPA_URL/functions/v1/swift-endpoint',p,{'Content-Type':'application/json','Authorization':'Bearer $SUPA_KEY','apikey':'$SUPA_KEY'},method='POST')
-  try: urllib.request.urlopen(req,timeout=10); print(f'Sent to {b.get("email")}')
-  except Exception as e: print(f'Error: {e}')
+  req=urllib.request.Request('$SUPA_URL/functions/v1/notify',p,
+    {'Content-Type':'application/json','Authorization':'Bearer $SUPA_KEY','apikey':'$SUPA_KEY'},method='POST')
+  try:
+    urllib.request.urlopen(req,timeout=10)
+    print(f'Skickad till {b.get(\"email\")}')
+  except Exception as e: print(f'Fel: {e}')
 "
-          echo "Daily automation complete!"
+
+          # Betygsförfrågningar - gårdagens bokningar
+          curl -s "${SUPA_URL}/rest/v1/bookings?date=eq.${YESTERDAY}&status=eq.bekräftad&review_sent_at=is.null&select=*" \
+            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "
+import sys,json,urllib.request
+d=json.load(sys.stdin)
+if not isinstance(d,list): print('Inga betygsförfrågningar'); sys.exit(0)
+print(f'Betygsförfrågningar: {len(d)}')
+for b in d:
+  p=json.dumps({'type':'review_request','record':b}).encode()
+  req=urllib.request.Request('$SUPA_URL/functions/v1/notify',p,
+    {'Content-Type':'application/json','Authorization':'Bearer $SUPA_KEY','apikey':'$SUPA_KEY'},method='POST')
+  try:
+    urllib.request.urlopen(req,timeout=10)
+    print(f'Skickad till {b.get(\"email\")}')
+  except Exception as e: print(f'Fel: {e}')
+"
+          echo "✅ Daily automation klar!"
