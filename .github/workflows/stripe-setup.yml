@@ -1,10 +1,13 @@
-name: 'Stripe Setup (kör en gång)'
+name: 'Deploy alla edge functions'
 
 'on':
   workflow_dispatch:
+  push:
+    paths:
+      - 'supabase/functions/**'
 
 jobs:
-  stripe-setup:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +37,12 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Satt alla secrets i Supabase
+      - name: Deploya social-media
+        run: supabase functions deploy social-media --project-ref urjeijcncsyuletprydy --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Satt alla secrets
         run: |
           supabase secrets set \
             STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
@@ -42,9 +50,13 @@ jobs:
             RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
             SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             SKV_API_KEY="${{ secrets.SKV_API_KEY }}" \
+            ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            META_ACCESS_TOKEN="${{ secrets.META_ACCESS_TOKEN }}" \
+            META_PAGE_ID="${{ secrets.META_PAGE_ID }}" \
+            META_IG_ACCOUNT_ID="${{ secrets.META_IG_ACCOUNT_ID }}" \
             --project-ref urjeijcncsyuletprydy
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Klart
-        run: echo "Alla 4 edge functions live - stripe-checkout, stripe-webhook, rut-claim, stripe-connect!"
+        run: echo "✅ 5 edge functions live!"

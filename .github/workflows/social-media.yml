@@ -1,0 +1,47 @@
+name: 'Social Media – Veckoinlägg'
+
+'on':
+  schedule:
+    - cron: '0 7 * * 1'  # Varje måndag kl 09:00 svensk tid (07:00 UTC)
+  workflow_dispatch:      # Kan triggas manuellt för test
+
+jobs:
+  post-social:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigga social-media edge function
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://urjeijcncsyuletprydy.supabase.co/functions/v1/social-media" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -d '{"preview": false}')
+          
+          echo "Svar: $RESPONSE"
+          
+          # Kontrollera att det gick bra
+          OK=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin).get('ok','false'))")
+          if [ "$OK" != "True" ]; then
+            echo "❌ Posting misslyckades"
+            exit 1
+          fi
+          
+          echo "✅ Inlägg postat på Instagram + Facebook!"
+
+      - name: Preview (dry-run) om manuell trigger
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Kör preview-läge för manuell trigger..."
+          curl -s -X POST \
+            "https://urjeijcncsyuletprydy.supabase.co/functions/v1/social-media" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -d '{"preview": true}' | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          print('=== INSTAGRAM ===')
+          print(d.get('ig_post',''))
+          print()
+          print('=== FACEBOOK ===')
+          print(d.get('fb_post',''))
+          "
