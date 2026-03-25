@@ -62,6 +62,18 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 .spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 @media(max-width:900px){nav{padding:1rem 1.5rem;}.page{grid-template-columns:1fr;padding:2rem 1rem 4rem;}.sidebar-card{position:static;}}
+@media(max-width:600px){.f2{grid-template-columns:1fr;}.stepper{padding:1rem 1.5rem;}.step-lbl{display:none;}.fc-head{padding:1.25rem 1.25rem .75rem;}.fc-body{padding:1.25rem;}}
+.stepper{display:flex;align-items:center;padding:1.25rem 2rem;background:#fff;border-bottom:1px solid var(--grd);margin-bottom:0;}
+.step-item{display:flex;align-items:center;gap:.5rem;flex:1;}
+.step-item:last-child{flex:0;}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;transition:all .3s;}
+.step-dot.done{background:var(--g);color:#fff;}
+.step-dot.active{background:var(--g);color:#fff;box-shadow:0 0 0 4px var(--gp);}
+.step-dot.todo{background:var(--grd);color:var(--m);}
+.step-lbl{font-size:.75rem;font-weight:500;color:var(--m);}
+.step-lbl.active{color:var(--g);font-weight:600;}
+.step-line{flex:1;height:2px;background:var(--grd);margin:0 .5rem;}
+.step-line.done{background:var(--g);}
 </style>
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
@@ -86,6 +98,22 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="stadare.html" class="back">← Välj städare</a></nav>
+<div class="stepper" id="stepper">
+  <div class="step-item">
+    <div class="step-dot active" id="sd1">1</div>
+    <span class="step-lbl active" id="sl1">Dina uppgifter</span>
+  </div>
+  <div class="step-line" id="sline1"></div>
+  <div class="step-item">
+    <div class="step-dot todo" id="sd2">2</div>
+    <span class="step-lbl" id="sl2">Tid & adress</span>
+  </div>
+  <div class="step-line" id="sline2"></div>
+  <div class="step-item">
+    <div class="step-dot todo" id="sd3">3</div>
+    <span class="step-lbl" id="sl3">Bekräfta</span>
+  </div>
+</div>
 <div class="page">
   <div class="form-card">
     <div class="fc-head">
@@ -187,7 +215,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 </div>
 
 <script>
-const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
 const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
 const p=new URLSearchParams(location.search);
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
@@ -234,6 +262,30 @@ async function hashPnr(pnr){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(clean));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
+function updateStepper(){
+  const hasPersonal = document.getElementById('fname')?.value && 
+                      document.getElementById('lname')?.value && 
+                      document.getElementById('email')?.value &&
+                      document.getElementById('phone')?.value;
+  const hasTime = document.getElementById('date')?.value && 
+                  document.getElementById('time')?.value;
+  
+  if(hasPersonal && hasTime){
+    ['sd1','sd2'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='step-dot done';el.textContent='✓';}});
+    ['sl1','sl2'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='step-lbl';});
+    ['sline1','sline2'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='step-line done';});
+    const sd3=document.getElementById('sd3');if(sd3){sd3.className='step-dot active';}
+    const sl3=document.getElementById('sl3');if(sl3){sl3.className='step-lbl active';}
+  } else if(hasPersonal){
+    const sd1=document.getElementById('sd1');if(sd1){sd1.className='step-dot done';sd1.textContent='✓';}
+    const sl1=document.getElementById('sl1');if(sl1){sl1.className='step-lbl';}
+    const sline1=document.getElementById('sline1');if(sline1)sline1.className='step-line done';
+    const sd2=document.getElementById('sd2');if(sd2){sd2.className='step-dot active';}
+    const sl2=document.getElementById('sl2');if(sl2){sl2.className='step-lbl active';}
+  }
+}
+document.addEventListener('input', updateStepper);
 
 async function doBook(){
   const fn=document.getElementById('fname').value,ln=document.getElementById('lname').value,

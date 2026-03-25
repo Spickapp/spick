@@ -30,6 +30,13 @@ nav{background:var(--w);padding:1.25rem 5rem;display:flex;align-items:center;jus
 .nl-btn:hover{background:var(--gm);}
 .nl-out{padding:.55rem 1.2rem;border-radius:100px;font-size:.875rem;font-weight:500;color:var(--g);border:1.5px solid var(--g);text-decoration:none;transition:all .2s;}
 .nl-out:hover{background:var(--gp);}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;border:none;background:none;}
+.hamburger span{display:block;width:22px;height:2px;background:var(--t);border-radius:2px;transition:all .3s;}
+.mob-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;}
+.mob-panel{background:var(--w);width:280px;height:100%;margin-left:auto;padding:2rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem;}
+.mob-panel a{font-size:1.1rem;color:var(--t);text-decoration:none;font-weight:500;padding:.75rem 0;border-bottom:1px solid var(--grd);}
+.mob-panel a:last-child{border:none;}
+@media(max-width:768px){.nav-links{display:none;}.hamburger{display:flex;}}
 
 /* HERO */
 .hero{padding:5.5rem 5rem 4rem;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;max-width:1400px;margin:0 auto;}
@@ -215,7 +222,21 @@ footer a:hover{color:var(--gm);}
     <a href="bli-stadare.html" class="nl-out">Bli städare</a>
     <a href="stadare.html" class="nl-btn">Boka städning</a>
   </div>
+  <button class="hamburger" onclick="document.getElementById('mobMenu').style.display='flex'" aria-label="Öppna meny">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<!-- Mobil meny -->
+<div class="mob-menu" id="mobMenu" onclick="this.style.display='none'">
+  <div class="mob-panel" onclick="event.stopPropagation()">
+    <a href="stadare.html">Hitta städare</a>
+    <a href="boka.html">Boka städning</a>
+    <a href="hur-det-funkar.html">Hur det funkar</a>
+    <a href="priser.html">Priser</a>
+    <a href="bli-stadare.html">Bli städare</a>
+    <a href="boka.html" style="background:var(--g);color:#fff;border-radius:100px;text-align:center;padding:.75rem 1.5rem;border:none;">Boka nu →</a>
+  </div>
+</div>
 
 <!-- HERO -->
 <section>
@@ -230,8 +251,8 @@ footer a:hover{color:var(--gm);}
     </div>
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
-      <div class="hs"><div class="hs-val">9 ★</div><div class="hs-lbl">betygsatta städare</div></div>
-      <div class="hs"><div class="hs-val">🇸🇪</div><div class="hs-lbl">Hela Sverige</div></div>
+      <div class="hs"><div class="hs-val" id="stat-cleaners">9</div><div class="hs-lbl">betygsatta städare</div></div>
+      <div class="hs"><div class="hs-val" id="stat-rating">4.9 ★</div><div class="hs-lbl">snittbetyg</div></div>
     </div>
   </div>
   <div class="phone-wrap">
@@ -392,7 +413,7 @@ footer a:hover{color:var(--gm);}
 </footer>
 
 <script>
-const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 function ini(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2);}
 function st(r){return'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
@@ -422,6 +443,28 @@ async function loadCleaners(){
   }).join('');
 }
 loadCleaners();
+loadStats();
+
+async function loadStats(){
+  try {
+    const {data} = await SB.from('cleaners').select('id,avg_rating,review_count').eq('status','godkänd');
+    if(!data?.length) return;
+    const count = data.length;
+    const avgRating = (data.reduce((s,c)=>s+(parseFloat(c.avg_rating)||0),0)/count).toFixed(1);
+    const el = document.getElementById('stat-cleaners');
+    const er = document.getElementById('stat-rating');
+    if(el) el.textContent = count;
+    if(er) er.textContent = avgRating + ' ★';
+    // Uppdatera schema.org
+    const schema = document.querySelector('script[type="application/ld+json"]');
+    if(schema){
+      const d = JSON.parse(schema.textContent);
+      d.aggregateRating.ratingValue = avgRating;
+      d.aggregateRating.reviewCount = String(data.reduce((s,c)=>s+(c.review_count||0),0));
+      schema.textContent = JSON.stringify(d);
+    }
+  } catch(e){}
+}
 </script>
 
 <!-- AI CHAT WIDGET -->

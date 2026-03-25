@@ -60,6 +60,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .key-method-icon{font-size:24px;flex-shrink:0}
 .key-method-text h4{font-size:14px;font-weight:700;margin-bottom:2px}
 .key-method-text p{font-size:12px;color:#888;line-height:1.4}
+.cancel-btn{width:100%;padding:12px;background:transparent;color:#c62828;border:1.5px solid #ffcdd2;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:8px;transition:all .2s}
+.cancel-btn:hover{background:#fff5f5;border-color:#c62828}
+.cancel-confirm{display:none;background:#fff5f5;border:1.5px solid #ffcdd2;border-radius:10px;padding:16px;margin-top:8px}
+.cancel-confirm p{font-size:13px;color:#c62828;margin-bottom:12px;line-height:1.5}
+.cancel-confirm-btns{display:flex;gap:8px}
+.cancel-yes{flex:1;padding:10px;background:#c62828;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.cancel-no{flex:1;padding:10px;background:white;color:#555;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
 .key-details{background:#f8fafc;border-radius:12px;padding:16px;margin-top:12px;display:none}
 .key-details.show{display:block}
 .field{margin-bottom:12px}
@@ -158,6 +165,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="status-tracker">
     <h3>📍 Uppdragets status</h3>
     <div class="status-steps" id="statusSteps"></div>
+<div id="cancelSection" style="margin-top:16px;display:none">
+  <button class="cancel-btn" onclick="showCancelConfirm()">Avboka bokning</button>
+  <div class="cancel-confirm" id="cancelConfirm">
+    <p>Gratis avbokning upp till 24h innan städningen. Är du säker på att du vill avboka?</p>
+    <div class="cancel-confirm-btns">
+      <button class="cancel-yes" onclick="cancelBooking()">Ja, avboka</button>
+      <button class="cancel-no" onclick="hideCancelConfirm()">Behåll bokning</button>
+    </div>
+  </div>
+</div>
   </div>
 </div>
 
@@ -345,6 +362,11 @@ async function loadBooking() {
   document.getElementById('det-price').textContent = price > 0 ? `${Math.round(price * 0.5)} kr (${price} kr - 50% RUT)` : '–';
 
   renderStatusSteps(booking.status || 'pending');
+  // Visa avbokningsknapp om bokningen kan avbokas
+  const cancelSection = document.getElementById('cancelSection');
+  if(cancelSection && ['pending','accepted','ny','bekräftad'].includes(booking.status)){
+    cancelSection.style.display='block';
+  }
 }
 
 // ── NYCKEL ────────────────────────────────
@@ -495,6 +517,31 @@ function showTab(tab) {
 
 // ── INIT ──────────────────────────────────
 loadBooking();
+
+function showCancelConfirm(){document.getElementById('cancelConfirm').style.display='block';}
+function hideCancelConfirm(){document.getElementById('cancelConfirm').style.display='none';}
+async function cancelBooking(){
+  if(!booking?.id) return;
+  const bookDate = new Date(booking.date);
+  const now = new Date();
+  const hoursDiff = (bookDate - now) / (1000*60*60);
+  if(hoursDiff < 24){
+    alert('Avbokning måste ske minst 24 timmar innan städningen.');
+    hideCancelConfirm();
+    return;
+  }
+  const res = await fetch(SUPA_URL+'/rest/v1/bookings?id=eq.'+booking.id, {
+    method:'PATCH',
+    headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({status:'avbokad'})
+  });
+  if(res.ok){
+    document.getElementById('cancelSection').style.display='none';
+    document.getElementById('cancelConfirm').style.display='none';
+    alert('Din bokning är avbokad. Du får en bekräftelse via e-post.');
+    location.reload();
+  }
+}
 </script>
 </body>
 </html>
