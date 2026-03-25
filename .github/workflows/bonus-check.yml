@@ -1,0 +1,37 @@
+name: Bonus Level Check
+on:
+  schedule:
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+jobs:
+  bonus-check:
+    runs-on: ubuntu-latest
+    env:
+      SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+      SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Check and upgrade bonus levels
+        run: |
+          CLEANERS=$(curl -s "${SUPA_URL}/rest/v1/cleaners?status=eq.godkänd&select=id,full_name,email,avg_rating,review_count,bonus_level" -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY")
+          echo "$CLEANERS" | python3 -c "
+import json,sys,os,urllib.request
+d=json.load(sys.stdin)
+if not isinstance(d,list): sys.exit(0)
+LEVELS=[('Platinum',301,4.9,15,3),('Guld',101,4.7,10,5),('Silver',21,4.5,5,7),('Brons',0,0.0,0,10)]
+def get_level(j,r):
+  for n,mj,mr,*_ in LEVELS:
+    if j>=mj and (r>=mr or mr==0): return n
+  return 'Brons'
+for c in d:
+  j=c.get('review_count',0) or 0
+  r=float(c.get('avg_rating',0) or 0)
+  cur=c.get('bonus_level','Brons') or 'Brons'
+  new=get_level(j,r)
+  if new!=cur:
+    body=json.dumps({'bonus_level':new}).encode()
+    req=urllib.request.Request(f\"${SUPA_URL}/rest/v1/cleaners?id=eq.{c['id']}\",body,{'Content-Type':'application/json','Authorization':'Bearer ${SUPA_KEY}','apikey':'${SUPA_KEY}','Prefer':'return=minimal'},method='PATCH')
+    try: urllib.request.urlopen(req,timeout=10); print(f\"Upgraded {c['full_name']}: {cur} -> {new}\")
+    except Exception as e: print(f'Error: {e}')
+  else: print(f\"OK {c['full_name']}: {cur}\")
+"
+          echo "Bonus check complete!"
