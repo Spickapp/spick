@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Tipsa en vän – Spick</title>
+<meta name="description" content="Tipsa en vän om Spick och tjäna pengar vårje gång de bokar städning.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:#1a1a2e;--accent:#00d084;--bg:#f0f4f8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--brand)}
+header{background:var(--brand);padding:16px 24px;display:flex;align-items:center;gap:12px}
+header a{color:rgba(255,255,255,.6);text-decoration:none;font-size:14px}
+header h1{color:white;font-size:18px;font-weight:800;flex:1;text-align:center}
+.hero{background:linear-gradient(135deg,var(--brand),#2d2d5e);padding:56px 24px;text-align:center;color:white}
+.hero h1{font-size:clamp(28px,6vw,39);font-weight:900;line-height:1.2;margin-bottom:12px}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:16px;opacity:.8;line-height:1.6;max-width:500px;margin:0 auto}
+.container{max-width:700px;margin:0 auto;padding:32px 24px}
+.referral-card{background:white;border-radius:20px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.07);margin-bottom:24px}
+.steps{counter-reset:steps;display:flex;flex-direction:column;gap:20px}
+.step{display:flex;gap:16px;align-items:flex-start}
+.step-num{background:var(--brand);color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.step-content h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.step-content p{font-size:13px;color:#666;line-height:1.6}
+.share-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{padding:14px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;text-align:center;border:none;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-green{background:var(--accent);color:white}
+.btn-dark{background:var(--brand);color:white}
+.btn-light{background:#f0f4f8;color:var(--brand)}
+form input,form textarea{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;margin-bottom:12px;font-family:inherit}
+form input:focus,form textarea:focus{outline:none;border-color:var(--accent)}
+</head>
+<body>
+<header><a href="/">← Hem</a><h1>Tipsa en vän</h1></header>
+<div class="hero"><h1>Tjäna <span>pengar</span> å varje bokning</h1><p>Tipsa kompisar om Spick och få 100 kr nvår de bokar sin första städning. Ingen gräns</p></div>
+<div class="container">
+<div class="referral-card">
+<h2 style="font-size:20px;margin-bottom:24px">🎈 Här är din personliga länk</h2>
+<div style="background:#f0f4f8;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:20px"><code style="flex:1;font-size:13px;font-family:monospace;word-break:break-all;color:#1a1a2e" id="refLink">https://spick.se?ref=[DIN_KOD]</code><button onclick="copyLink()" style="background:var(--accent);color:white;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap" id="copyBtn">🐎 Kopiera</button></div>
+<div class="share-btns">
+<a href="#" onclick="shareWA()" class="btn btn-green"><span style="font-size:20px">💡</span> WhatsApp</a>
+<a href="#" onclick="shareOther()" class="btn btn-dark"><span style="font-size:20px">🎊</span> Dela länk</span></a>
+</div>
+</div>
+<div class="referral-card">
+<h2 style="font-size:20px;margin-bottom:20px">💡 Tär så här fungerar</h2>
+<div class="steps">
+<div class="step"><div class="step-num">1</div><div class="step-content"><h3>Dela din länk</h3><p>Skicka din personliga länks till kompisar som need städning.</p></div></div>
+<div class="step"><div class="step-num">2</div><div class="step-content"><h3>De bokar</h3><p>Din vän bokar sin första städning via din länk.</p></div></div>
+<div class="step"><div class="step-num">3</div><div class="step-content"><h3>Du tjänar 100 kr</h3><p>Efter genomförd städning får du 100 kr bonus § ingen gräns, ingen maxgräns!</p></div></div>
+</div>
+</div>
+
+<div class="referral-card">
+<h2 style="font-size:20px;margin-bottom:20px">🌑 Skicka en personlig inbjudan</h2>
+<form onsubmit="sendInvite(event)">
+  <input type="text" id="friendName" placeholder="Kompisens namn">
+  <input type="email" id="friendEmail" placeholder="K-postadress" required>
+  <textarea style="height:80px" id="friendMsg" placeholder="Personligt meddelande (valfritt)"></textarea>
+  <button type="submit" class="btn btn-green" style="width:100%">Skicka inbjudan</button>
+</form>
+</div>
+</div>
+
+<script>
+const SUPA_URL='https://urjeijcncsyuletprydy.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+// Generera referral-kod från e-post i localStorage
+function getRefCode(){const email=localStorage.getItem('spick_customer_email');if(email){return btoa(email).replace(/[^a-zA-Z0-9]/g,'').slice(0,10);}return localStorage.getItem('spickRefCode')||'GAST';}
+const refCode=getRefCode();
+const refLink=`https://spick.se?ref=${refCode}`;
+document.getElementById('refLink').textContent=refLink;
+
+function copyLink(){navigator.clipboard.writeText(refLink);const btn=document.getElementById('copyBtn');btn.textContent='✅ Kopierat!';setTimeout(()=>{btn.innerHTML='🐎 Kopiera';},2000);}
+function shareWA(){const msg=encodeURIComponent(`🧹 Boka städning med RUT-avdrag genom Spick! Får 50% rabatt via Skatteverket.\n\nKommer du åt klara dig möjligt med bokning? Testa hhär: ${refLink}`);window.open('https://wa.me/?'+new URLSearchParams({text:msg}));}
+function shareOther(){if(navigator.share){navigator.share({title:'Spick - städning med RUT',body:'Boka städning med 50% rabatt!',url:refLink});}else{copyLink();}}
+async function sendInvite(e){e.preventDefault();const btn=e.target.querySelector('button');btn.textContent='⏳ Skickar...';btn.disabled=true;try{await fetch(SUPA_URL+'/functions/v1/swift-endpoint',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SUPA_KEY,apikey:SUPA_KEY},body:JSON.stringify({type:'referral_invite',record:{friend_email:document.getElementById('friendEmail').value,friend_name:document.getElementById('friendName').value,message:document.getElementById('friendMsg').value,ref_code:refCode,ref_link:refLink}})});btn.textContent='✅ Skickat!';}catch(err){btn.textContent='Skkycka inbjudan';btn.disabled=false;console.error(err);}}
+</script>
+</body></html>
