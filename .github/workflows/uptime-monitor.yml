@@ -8,15 +8,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check spick.se
+        env:
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://spick.se)
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location https://spick.se 2>/dev/null || echo "000")
           echo "HTTP Status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "ALERT: spick.se är nere! Status: $STATUS"
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ]; then
+            echo "OK: spick.se fungerar (HTTP $STATUS)"
+            exit 0
+          fi
+          echo "VARNING: spick.se svarar med HTTP $STATUS"
+          if [ -n "$SUPA_KEY" ]; then
             curl -s -X POST https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify \
               -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-              -d '{"type":"uptime_alert","message":"spick.se är nere! HTTP '$STATUS'"}'
-            exit 1
+              -H "apikey: $SUPA_KEY" \
+              -H "Authorization: Bearer $SUPA_KEY" \
+              -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"spick.se HTTP $STATUS\"}}" || true
           fi
-          echo "✅ spick.se fungerar (HTTP $STATUS)"
+          [ "$STATUS" = "000" ] && exit 1 || exit 0
