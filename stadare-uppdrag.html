@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mitt uppdrag – Spick</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:#1a1a2e;--accent:#00d084;--bg:#f0f4f8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--brand);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.header{background:var(--brand);padding:12px 20px;flex-shrink:0;display:flex;align-items:center;gap:12px}
+.header a{color:rgba(255,255,255,.5);text-decoration:none;font-size:13px}
+.header-center{flex:1}
+.header-title{color:white;font-size:15px;font-weight:700}
+.header-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px}
+.tabs{display:flex;background:white;border-bottom:2px solid #f0f4f8;flex-shrink:0}
+.tab{flex:1;padding:12px;text-align:center;font-size:13px;font-weight:600;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:var(--brand);border-bottom-color:var(--accent)}
+.content{flex:1;overflow-y:auto;padding:16px}
+
+/* STATUS-KNAPPAR */
+.status-card{background:white;border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.status-card h3{font-size:15px;font-weight:800;margin-bottom:6px}
+.status-card p{font-size:13px;color:#888;margin-bottom:16px;line-height:1.5}
+.current-status{display:flex;align-items:center;gap:10px;background:#f0fff8;border:2px solid var(--accent);border-radius:12px;padding:12px 16px;margin-bottom:16px}
+.current-status .icon{font-size:24px}
+.current-status h4{font-size:14px;font-weight:700;color:var(--brand)}
+.current-status p{font-size:12px;color:#888;margin:0}
+.status-btns{display:flex;flex-direction:column;gap:10px}
+.status-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:2px solid #e0e0e0;background:white;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;width:100%}
+.status-btn:hover{border-color:var(--accent);background:#f0fff8}
+.status-btn.done-btn{border-color:#e0e0e0;opacity:.5}
+.status-btn .btn-icon{font-size:24px;flex-shrink:0}
+.status-btn .btn-text h4{font-size:14px;font-weight:700;margin-bottom:2px}
+.status-btn .btn-text p{font-size:12px;color:#888}
+.btn-arrow{margin-left:auto;color:#ccc;font-size:18px}
+
+/* NYCKEL-SEKTION */
+.key-reveal{background:white;border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.key-reveal h3{font-size:15px;font-weight:800;margin-bottom:4px}
+.key-reveal .desc{font-size:13px;color:#888;margin-bottom:16px;line-height:1.5}
+.key-locked{background:#f8fafc;border-radius:12px;padding:24px;text-align:center;border:2px dashed #e0e0e0}
+.key-locked .lock-icon{font-size:40px;margin-bottom:8px}
+.key-locked p{font-size:13px;color:#aaa;line-height:1.6}
+.key-info{display:none}
+.key-method-display{background:#f0fff8;border:2px solid var(--accent);border-radius:14px;padding:18px;margin-bottom:14px}
+.key-method-display .method-icon{font-size:32px;margin-bottom:8px}
+.key-method-display h4{font-size:16px;font-weight:800;margin-bottom:12px}
+.key-detail-row{display:flex;gap:10px;padding:10px;background:white;border-radius:10px;margin-bottom:8px;align-items:flex-start}
+.key-detail-row .key-label{font-size:12px;color:#888;width:80px;flex-shrink:0;padding-top:1px}
+.key-detail-row .key-val{font-size:14px;font-weight:700;flex:1;word-break:break-all}
+.key-code-big{background:var(--brand);color:white;border-radius:12px;padding:16px;text-align:center;margin:12px 0}
+.key-code-big .code{font-size:36px;font-weight:900;letter-spacing:8px;color:var(--accent)}
+.key-code-big p{font-size:12px;opacity:.6;margin-top:4px}
+.copy-code-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:#f0f4f8;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit}
+.warning-box{background:#fff8e1;border-radius:10px;padding:12px 14px;font-size:12px;color:#e65100;margin-top:10px;display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+.confirm-btn{width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:14px;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* UPPDRAGSINFO */
+.info-card{background:white;border-radius:16px;padding:20px;margin-bottom:14px}
+.info-card h3{font-size:15px;font-weight:800;margin-bottom:12px}
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-label{color:#888}
+.info-value{font-weight:600}
+.checklist{margin-top:4px}
+.check-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;margin-bottom:6px;background:#f8fafc;cursor:pointer;transition:all .2s}
+.check-item.checked{background:#e8f5e9}
+.check-item input{accent-color:var(--accent)}
+.check-item label{font-size:13px;cursor:pointer;flex:1}
+.check-item.checked label{text-decoration:line-through;color:#aaa}
+
+/* FOTO-DOKUMENTATION */
+.photo-section{background:white;border-radius:16px;padding:20px;margin-bottom:14px}
+.photo-section h3{font-size:15px;font-weight:800;margin-bottom:4px}
+.photo-section p{font-size:13px;color:#888;margin-bottom:14px;line-height:1.5}
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.photo-slot{background:#f8fafc;border:2px dashed #e0e0e0;border-radius:12px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.photo-slot:hover{border-color:var(--accent)}
+.photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photo-slot .slot-label{font-size:12px;color:#aaa;margin-top:6px}
+.photo-slot .slot-icon{font-size:28px}
+
+/* CHATT */
+.chat-wrap{display:flex;flex-direction:column;height:100%}
+.messages-area{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.msg-group{display:flex;flex-direction:column}
+.msg-group.me{align-items:flex-end}
+.msg-group.them{align-items:flex-start}
+.msg-group.system{align-items:center}
+.msg-bubble{max-width:78%;padding:10px 14px;border-radius:18px;font-size:13px;line-height:1.5}
+.me .msg-bubble{background:var(--brand);color:white;border-bottom-right-radius:4px}
+.them .msg-bubble{background:white;border-bottom-left-radius:4px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.system .msg-bubble{background:#f0f4f8;color:#888;font-size:12px;text-align:center;border-radius:10px;max-width:90%}
+.msg-meta{font-size:10px;color:#bbb;padding:2px 4px}
+.quick-replies{display:flex;gap:6px;overflow-x:auto;padding:8px 16px;flex-shrink:0;scrollbar-width:none}
+.quick-replies::-webkit-scrollbar{display:none}
+.qr-btn{background:white;border:1.5px solid #e0e0e0;color:#555;padding:7px 14px;border-radius:99px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0}
+.chat-input{background:white;padding:10px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid #f0f4f8;flex-shrink:0}
+.chat-input textarea{flex:1;border:none;outline:none;font-size:14px;resize:none;max-height:80px;font-family:inherit;line-height:1.5}
+.send-btn{width:36px;height:36px;background:var(--accent);border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn svg{width:16px;height:16px;fill:white}
+.photo-btn{width:36px;height:36px;background:#f0f4f8;border:none;border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/stadare-dashboard">←</a>
+  <div class="header-center">
+    <div class="header-title" id="headerTitle">Mitt uppdrag</div>
+    <div class="header-sub" id="headerSub">Laddar...</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('status')">📍 Status</div>
+  <div class="tab" onclick="showTab('key')">🔑 Nyckel</div>
+  <div class="tab" onclick="showTab('uppdrag')">📋 Uppdrag</div>
+  <div class="tab" onclick="showTab('chat')">💬 Chatt</div>
+</div>
+
+<!-- STATUS TAB -->
+<div class="content" id="tab-status">
+  <div class="status-card">
+    <h3>📍 Uppdatera din status</h3>
+    <p>Håll kunden informerad i realtid. Varje statusuppdatering skickar automatiskt en notis.</p>
+
+    <div class="current-status">
+      <div class="icon" id="currentIcon">⏳</div>
+      <div>
+        <h4 id="currentStatusLabel">Väntar på start</h4>
+        <p id="currentStatusDesc">Uppdatera när du är på väg</p>
+      </div>
+    </div>
+
+    <div class="status-btns" id="statusBtns"></div>
+  </div>
+</div>
+
+<!-- NYCKEL TAB -->
+<div class="content" id="tab-key" style="display:none">
+  <div class="key-reveal">
+    <h3>🔑 Nyckelaccess</h3>
+    <p class="desc">Nyckelinfo visas bara för dig och bara för denna bokning. Informationen raderas automatiskt 2 timmar efter avslutat uppdrag.</p>
+
+    <div class="key-locked" id="keyLocked">
+      <div class="lock-icon">🔒</div>
+      <p>Nyckelinformation är låst tills kunden har lagt in sina instruktioner.<br><br>
+      <strong>Om kunden inte lagt in instruktioner</strong> – kontakta dem via chatten.</p>
+    </div>
+
+    <div class="key-info" id="keyInfo">
+      <!-- Fylls i dynamiskt -->
+    </div>
+  </div>
+</div>
+
+<!-- UPPDRAG TAB -->
+<div class="content" id="tab-uppdrag" style="display:none">
+  <div class="info-card">
+    <h3>📋 Uppdragsdetaljer</h3>
+    <div class="info-row"><span class="info-label">Tjänst</span><span class="info-value" id="u-service">–</span></div>
+    <div class="info-row"><span class="info-label">Datum</span><span class="info-value" id="u-date">–</span></div>
+    <div class="info-row"><span class="info-label">Tid</span><span class="info-value" id="u-time">–</span></div>
+    <div class="info-row"><span class="info-label">Adress</span><span class="info-value" id="u-address">–</span></div>
+    <div class="info-row"><span class="info-label">Timmar</span><span class="info-value" id="u-hours">–</span></div>
+    <div class="info-row"><span class="info-label">Din ersättning</span><span class="info-value" id="u-pay" style="color:var(--accent)">–</span></div>
+  </div>
+
+  <div class="info-card">
+    <h3>✅ Städchecklista</h3>
+    <div class="checklist" id="checklist"></div>
+  </div>
+
+  <div class="photo-section">
+    <h3>📷 Foto-dokumentation</h3>
+    <p>Ta foton innan och efter städning. Skyddar dig om kunden klagar, och visar ditt fina arbete!</p>
+    <div class="photo-grid">
+      <div class="photo-slot" onclick="takePhoto('before_1')" id="photo-before_1">
+        <div class="slot-icon">📷</div>
+        <div class="slot-label">Innan – Rum 1</div>
+      </div>
+      <div class="photo-slot" onclick="takePhoto('before_2')" id="photo-before_2">
+        <div class="slot-icon">📷</div>
+        <div class="slot-label">Innan – Rum 2</div>
+      </div>
+      <div class="photo-slot" onclick="takePhoto('after_1')" id="photo-after_1">
+        <div class="slot-icon">📸</div>
+        <div class="slot-label">Efter – Rum 1</div>
+      </div>
+      <div class="photo-slot" onclick="takePhoto('after_2')" id="photo-after_2">
+        <div class="slot-icon">📸</div>
+        <div class="slot-label">Efter – Rum 2</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHATT TAB -->
+<div id="tab-chat" style="display:none;flex:1;flex-direction:column;height:calc(100dvh - 112px);overflow:hidden">
+  <div class="chat-wrap">
+    <div class="messages-area" id="messagesArea">
+      <div style="text-align:center;color:#ccc;padding:40px;font-size:13px">
+        <div style="font-size:32px;margin-bottom:8px">💬</div>
+        Chatta säkert med kunden.<br>Ditt riktiga namn och kontaktinfo delas aldrig.
+      </div>
+    </div>
+    <div class="quick-replies">
+      <button class="qr-btn" onclick="sendQuick(this)">Jag är på väg! 🚗</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Anlänt nu 📍</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Koden fungerade inte 🔑</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Städningen pågår 🧹</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Klart! Hoppas du är nöjd ✨</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Har du några önskemål?</button>
+    </div>
+    <div class="chat-input">
+      <button class="photo-btn" onclick="document.getElementById('chatPhoto').click()">📷</button>
+      <textarea id="chatInput" placeholder="Skriv till kunden..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+      <button class="send-btn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="chatPhoto" accept="image/*" capture="environment" style="display:none" onchange="handleChatPhoto(this)">
+<input type="file" id="docPhoto" accept="image/*" capture="environment" style="display:none" onchange="handleDocPhoto(this)">
+
+<script>
+const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+const params = new URLSearchParams(location.search);
+const BOOKING_ID = params.get('id');
+const MY_EMAIL = sessionStorage.getItem('spick_cleaner')
+  ? JSON.parse(sessionStorage.getItem('spick_cleaner')).email : '';
+const MY_ALIAS = sessionStorage.getItem('spick_cleaner')
+  ? JSON.parse(sessionStorage.getItem('spick_cleaner')).alias : 'Städaren';
+
+let booking = null;
+let keyData = null;
+let currentPhotoSlot = null;
+let messagePolling = null;
+
+// ── STATUSFLÖDE ───────────────────────────
+const STATUS_FLOW = [
+  { key:'on_way',      icon:'🚗', label:'Jag är på väg',        desc:'Kunden notifieras direkt', action:'Sätt – På väg' },
+  { key:'arrived',     icon:'📍', label:'Jag har anlänt',        desc:'Kunden ser att du är framme', action:'Sätt – Anlänt' },
+  { key:'key_access',  icon:'🔑', label:'Jag har fått tillgång', desc:'Nyckeln fungerade OK', action:'Bekräfta nyckelaccess' },
+  { key:'cleaning',    icon:'🧹', label:'Städning pågår',        desc:'Kunden ser att du jobbar', action:'Sätt – Städar nu' },
+  { key:'almost_done', icon:'⏰', label:'Snart klar',            desc:'Ge kunden en förvarning', action:'Sätt – Snart klar' },
+  { key:'done',        icon:'🎉', label:'Klar!',                 desc:'Uppdraget är avslutat', action:'Markera som klar' },
+];
+
+let completedStatuses = [];
+
+function renderStatusBtns() {
+  const btns = document.getElementById('statusBtns');
+  btns.innerHTML = STATUS_FLOW.map(s => {
+    const isDone = completedStatuses.includes(s.key);
+    return `
+      <button class="status-btn ${isDone ? 'done-btn' : ''}"
+        onclick="${isDone ? '' : `updateStatus('${s.key}')`}"
+        ${isDone ? 'disabled' : ''}>
+        <div class="btn-icon">${isDone ? '✅' : s.icon}</div>
+        <div class="btn-text">
+          <h4>${isDone ? s.label + ' ✓' : s.action}</h4>
+          <p>${isDone ? 'Avklarat' : s.desc}</p>
+        </div>
+        ${!isDone ? '<div class="btn-arrow">›</div>' : ''}
+      </button>`;
+  }).join('');
+}
+
+async function updateStatus(status) {
+  await fetch(`${SUPA_URL}/rest/v1/booking_status_log`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      booking_id: BOOKING_ID,
+      cleaner_email: MY_EMAIL,
+      status,
+      created_at: new Date().toISOString()
+    })
+  });
+
+  // Uppdatera bokning
+  await fetch(`${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}`, {
+    method: 'PATCH',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ status, ...(status === 'done' ? { completed_at: new Date().toISOString() } : {}) })
+  });
+
+  completedStatuses.push(status);
+  const step = STATUS_FLOW.find(s => s.key === status);
+  if (step) {
+    document.getElementById('currentIcon').textContent = step.icon;
+    document.getElementById('currentStatusLabel').textContent = step.label;
+    document.getElementById('currentStatusDesc').textContent = 'Status skickad till kunden ✓';
+  }
+
+  renderStatusBtns();
+
+  // Auto-meddelande i chatten
+  const msgs = {
+    on_way: '🚗 Jag är nu på väg till dig! Beräknad ankomst ca 20–30 min.',
+    arrived: '📍 Jag har anlänt till adressen!',
+    key_access: '🔑 Jag har fått tillgång och börjar städa nu.',
+    cleaning: '🧹 Städningen pågår!',
+    almost_done: '⏰ Jag är snart klar!',
+    done: '✨ Städningen är klar! Hoppas du är nöjd. Ha en fin dag!'
+  };
+  if (msgs[status]) sendMessage(msgs[status], 'system');
+}
+
+// ── NYCKELINFO ────────────────────────────
+const METHOD_NAMES = {
+  home: { icon:'🏠', name:'Kunden är hemma', fields:[] },
+  lockbox: { icon:'🔒', name:'Nyckelbox', fields:[{key:'lockbox_code',label:'Kod'},{key:'lockbox_location',label:'Placering'}] },
+  digital: { icon:'📱', name:'Digitalt lås', fields:[{key:'digital_lock_app',label:'App'},{key:'digital_lock_code',label:'Kod'}] },
+  neighbor: { icon:'👋', name:'Granne', fields:[{key:'neighbor_name',label:'Namn'},{key:'neighbor_floor',label:'Lägenhet'}] },
+  doorman: { icon:'🏢', name:'Portvakt', fields:[{key:'doorman_name',label:'Namn'},{key:'special_instructions',label:'Info'}] },
+};
+
+async function loadKeyInfo() {
+  if (!BOOKING_ID) return;
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/key_methods?booking_id=eq.${BOOKING_ID}&select=*&limit=1`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
+  ).then(r => r.json()).catch(() => []);
+
+  if (!res?.length) return;
+  keyData = res[0];
+
+  const method = METHOD_NAMES[keyData.method] || { icon:'🔑', name:keyData.method, fields:[] };
+  document.getElementById('keyLocked').style.display = 'none';
+  const info = document.getElementById('keyInfo');
+  info.style.display = 'block';
+
+  const codeFields = ['lockbox_code', 'digital_lock_code'];
+  const hasCode = codeFields.some(f => keyData[f]);
+  const codeValue = keyData.lockbox_code || keyData.digital_lock_code || null;
+
+  info.innerHTML = `
+    <div class="key-method-display">
+      <div class="method-icon">${method.icon}</div>
+      <h4>${method.name}</h4>
+      ${method.fields.map(f => keyData[f.key] ? `
+        <div class="key-detail-row">
+          <div class="key-label">${f.label}</div>
+          <div class="key-val">${keyData[f.key]}</div>
+        </div>
+      ` : '').join('')}
+      ${hasCode ? `
+        <div class="key-code-big">
+          <div class="code">${codeValue}</div>
+          <p>Kod – tryck för att kopiera</p>
+        </div>
+        <button class="copy-code-btn" onclick="navigator.clipboard.writeText('${codeValue}');this.textContent='✅ Kopierad!'">
+          📋 Kopiera kod
+        </button>
+      ` : ''}
+      ${keyData.special_instructions ? `
+        <div style="background:#fff8e1;border-radius:10px;padding:12px;margin-top:10px;font-size:13px;color:#e65100">
+          💬 <strong>Extra instruktioner:</strong><br>${keyData.special_instructions}
+        </div>
+      ` : ''}
+    </div>
+    <div class="warning-box">
+      <span>⚠️</span>
+      <span>Dela <strong>aldrig</strong> denna information med någon annan. Nyckelinfo raderas automatiskt 2h efter avslutat uppdrag.</span>
+    </div>
+    <button class="confirm-btn" onclick="confirmKeyAccess()">
+      🔑 Bekräfta – Jag har fått tillgång
+    </button>
+  `;
+}
+
+async function confirmKeyAccess() {
+  await fetch(`${SUPA_URL}/rest/v1/key_methods?booking_id=eq.${BOOKING_ID}`, {
+    method: 'PATCH',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ key_confirmed: true, confirmed_at: new Date().toISOString() })
+  });
+  await updateStatus('key_access');
+  document.querySelector('.confirm-btn').textContent = '✅ Tillgång bekräftad!';
+  document.querySelector('.confirm-btn').disabled = true;
+}
+
+// ── CHECKLISTA ────────────────────────────
+const CHECKLISTS = {
+  'Hemstädning': ['Dammsug alla rum','Moppa golv','Torka av kök och bänkar','Städa badrum och toalett','Torka speglar','Töm papperskorgar','Damm av ytor','Bäddad sovrum'],
+  'Storstädning': ['Allt i hemstädning','Rengör ugn och ugnsplåt','Rengör kylskåp','Städa inuti skåp','Tvätta fönster','Rengör bakom möbler','Tvätta lister och dörrkarmar'],
+  'Flyttstädning': ['Allt i storstädning','Rengör hela badrummet grundligt','Avkalka dusch och kranar','Rengör hela köket','Kontrollera alla ytor','Ta foton för protokoll'],
+};
+
+function renderChecklist(service) {
+  const items = CHECKLISTS[service] || CHECKLISTS['Hemstädning'];
+  document.getElementById('checklist').innerHTML = items.map((item, i) => `
+    <div class="check-item" id="ci-${i}" onclick="toggleCheck(${i}, this)">
+      <input type="checkbox" id="cb-${i}">
+      <label for="cb-${i}">${item}</label>
+    </div>
+  `).join('');
+}
+
+function toggleCheck(i, el) {
+  const cb = document.getElementById('cb-' + i);
+  cb.checked = !cb.checked;
+  el.classList.toggle('checked', cb.checked);
+}
+
+// ── FOTO ──────────────────────────────────
+function takePhoto(slot) {
+  currentPhotoSlot = slot;
+  document.getElementById('docPhoto').click();
+}
+
+function handleDocPhoto(input) {
+  const file = input.files[0];
+  if (!file || !currentPhotoSlot) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const slot = document.getElementById('photo-' + currentPhotoSlot);
+    const type = currentPhotoSlot.startsWith('before') ? 'before' : 'after';
+    slot.innerHTML = `<img src="${e.target.result}" alt="Foto"><div style="position:absolute;top:6px;left:6px;background:${type === 'before' ? '#ff9800' : '#00d084'};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">${type === 'before' ? 'INNAN' : 'EFTER'}</div>`;
+    sendMessage(`📷 ${type === 'before' ? 'Foto taget INNAN städning' : 'Foto taget EFTER städning'} – Dokumentation sparad`, 'photo');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── CHATT ─────────────────────────────────
+async function loadMessages() {
+  if (!BOOKING_ID) return;
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/messages?booking_id=eq.${BOOKING_ID}&order=created_at.asc`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
+  ).then(r => r.json()).catch(() => []);
+  if (!res?.length) return;
+  const area = document.getElementById('messagesArea');
+  area.innerHTML = res.map(msg => {
+    const isMe = msg.from_email === MY_EMAIL || msg.from_role === 'cleaner';
+    const isSystem = msg.is_automated || msg.from_role === 'spick';
+    const role = isSystem ? 'system' : isMe ? 'me' : 'them';
+    const time = new Date(msg.created_at).toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
+    return `
+      <div class="msg-group ${role}">
+        ${!isMe && !isSystem ? '<div class="msg-sender">Kunden</div>' : ''}
+        <div class="msg-bubble">${msg.message.replace(/\n/g,'<br>')}</div>
+        <div class="msg-meta">${time}</div>
+      </div>`;
+  }).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+async function sendMessage(text, type = 'text') {
+  if (!text?.trim() || !BOOKING_ID) return;
+  await fetch(`${SUPA_URL}/rest/v1/messages`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      booking_id: BOOKING_ID,
+      from_email: MY_EMAIL,
+      to_email: booking?.email || 'kund@spick.se',
+      from_role: 'cleaner',
+      from_alias: MY_ALIAS,
+      message: text,
+      message_type: type,
+    })
+  });
+  loadMessages();
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  await sendMessage(text);
+}
+
+function sendQuick(btn) {
+  document.getElementById('chatInput').value = btn.textContent;
+  sendMsg();
+}
+
+// ── LADDA BOKNING ─────────────────────────
+async function loadBooking() {
+  if (!BOOKING_ID) return;
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}&select=*`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
+  ).then(r => r.json()).catch(() => []);
+  if (!res?.length) return;
+  booking = res[0];
+  document.getElementById('headerTitle').textContent = booking.service || 'Uppdrag';
+  document.getElementById('headerSub').textContent = booking.date + ' · ' + booking.city;
+  document.getElementById('u-service').textContent = booking.service || '–';
+  document.getElementById('u-date').textContent = booking.date || '–';
+  document.getElementById('u-time').textContent = booking.time || '–';
+  document.getElementById('u-address').textContent = `${booking.address}, ${booking.city}`;
+  document.getElementById('u-hours').textContent = (booking.hours || 3) + ' timmar';
+  const pay = Math.round((Number(booking.price) || 350 * 3) * 0.83);
+  document.getElementById('u-pay').textContent = pay + ' kr';
+  renderChecklist(booking.service || 'Hemstädning');
+
+  // Hämta statuslogg
+  const logs = await fetch(
+    `${SUPA_URL}/rest/v1/booking_status_log?booking_id=eq.${BOOKING_ID}&select=status`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
+  ).then(r => r.json()).catch(() => []);
+  completedStatuses = (logs || []).map(l => l.status);
+  renderStatusBtns();
+}
+
+// ── TABS ──────────────────────────────────
+function showTab(tab) {
+  ['status','key','uppdrag','chat'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? (t === 'chat' ? 'flex' : 'block') : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el, i) =>
+    el.classList.toggle('active', ['status','key','uppdrag','chat'][i] === tab)
+  );
+  if (tab === 'key') loadKeyInfo();
+  if (tab === 'chat') {
+    loadMessages();
+    clearInterval(messagePolling);
+    messagePolling = setInterval(loadMessages, 5000);
+  } else {
+    clearInterval(messagePolling);
+  }
+}
+
+// ── INIT ──────────────────────────────────
+loadBooking();
+</script>
+</body>
+</html>
