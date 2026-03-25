@@ -209,4 +209,4 @@ if failed > 0:
         if r[0] == "❌":
             print(f"  {r[0]} {r[1]}: {r[2]}")
 
-sys.exit(1 if failed > 3 else 0)  # Tillåt upp till 3 fel (edge functions kräver secrets)
+sys.exit(1 if failed > 2 else 0)  # Max 2 kritiska fel tillåtna
