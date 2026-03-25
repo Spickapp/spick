@@ -140,13 +140,23 @@ async function login(){
   loadJobs();
 }
 async function loadJobs(){
-  const res=await fetch(U+'/rest/v1/bookings?city=eq.'+encodeURIComponent(cl.city)+'&order=date.asc&select=*',
+  // Hämta bokningar tilldelade till städaren + nya i staden
+  const [myJobs, cityJobs] = await Promise.all([
+    fetch(U+'/rest/v1/bookings?cleaner_email=eq.'+encodeURIComponent(cl.email)+'&order=date.asc&select=*',
+      {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]),
+    fetch(U+'/rest/v1/bookings?city=eq.'+encodeURIComponent(cl.city)+'&status=eq.ny&order=date.asc&limit=20&select=*',
+      {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[])
+  ]);
+  // Kombinera utan dubbletter
+  const allIds = new Set((myJobs||[]).map(j=>j.id));
+  const res = [...(myJobs||[]), ...(cityJobs||[]).filter(j=>!allIds.has(j.id))];
+  const dummy = await fetch(U+'/rest/v1/bookings?city=eq.'+encodeURIComponent(cl.city)+'&order=date.asc&select=*',
     {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]);
   const js=res||[];
   document.getElementById('sj').textContent=js.length;
   document.getElementById('sp').textContent=js.filter(j=>j.status==='ny'||j.status==='pending').length;
   const som=new Date(new Date().getFullYear(),new Date().getMonth(),1);
-  const earn=js.filter(j=>j.status==='klar'&&new Date(j.date)>=som).reduce((s,j)=>s+Math.round((Number(j.price)||0)*0.83),0);
+  const earn=(myJobs||js).filter(j=>j.status==='klar'&&new Date(j.date)>=som).reduce((s,j)=>s+Math.round((Number(j.price)||0)*0.83),0);
   document.getElementById('se').textContent=earn.toLocaleString('sv')+' kr';
   document.getElementById('me').textContent=earn.toLocaleString('sv')+' kr';
   if(!js.length){document.getElementById('jl').innerHTML='<div class="empty">Inga uppdrag just nu</div>';return;}

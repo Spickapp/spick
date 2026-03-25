@@ -274,6 +274,7 @@ footer a:hover{color:var(--gm);}
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
       <div class="hs"><div class="hs-val" id="stat-cleaners">9</div><div class="hs-lbl">betygsatta städare</div></div>
       <div class="hs"><div class="hs-val" id="stat-rating">4.9 ★</div><div class="hs-lbl">snittbetyg</div></div>
+      <div class="hs"><div class="hs-val" id="stat-bookings">100+</div><div class="hs-lbl">bokningar totalt</div></div>
     </div>
   </div>
   <div class="phone-wrap">
@@ -421,6 +422,8 @@ footer a:hover{color:var(--gm);}
         <li><a href="hur-det-funkar.html">Hur det funkar</a></li>
         <li><a href="faq.html">Vanliga frågor</a></li>
         <li><a href="kontakt.html">Kontakt</a></li>
+        <li><a href="garanti.html">🛡️ Nöjdhetsgaranti</a></li>
+        <li><a href="priser.html">Priser</a></li>
       </ul>
     </div>
     <div>
@@ -434,8 +437,9 @@ footer a:hover{color:var(--gm);}
     <div>
       <h4>Om oss</h4>
       <ul>
+        <li><a href="om-oss.html">Om Spick</a></li>
         <li><a href="integritetspolicy.html">Integritetspolicy</a></li>
-        <li><a href="avtal.html">Villkor</a></li>
+        <li><a href="villkor-stadare.html">Villkor</a></li>
         <li><a href="kontakt.html">Kontakt</a></li>
       </ul>
     </div>
@@ -484,14 +488,20 @@ loadStats();
 
 async function loadStats(){
   try {
-    const {data} = await SB.from('cleaners').select('id,avg_rating,review_count').eq('status','godkänd');
-    if(!data?.length) return;
+    const [{data:cleaners},{data:bookings}] = await Promise.all([
+      SB.from('cleaners').select('id,avg_rating,review_count').eq('status','godkänd'),
+      SB.from('bookings').select('id',{count:'exact',head:true})
+    ]);
+    const data = cleaners || [];
+    if(!data.length) return;
     const count = data.length;
     const avgRating = (data.reduce((s,c)=>s+(parseFloat(c.avg_rating)||0),0)/count).toFixed(1);
     const el = document.getElementById('stat-cleaners');
     const er = document.getElementById('stat-rating');
+    const eb = document.getElementById('stat-bookings');
     if(el) el.textContent = count;
     if(er) er.textContent = avgRating + ' ★';
+    if(eb && bookings !== null) eb.textContent = (bookings||0)+'+'';
     // Uppdatera schema.org
     const schema = document.querySelector('script[type="application/ld+json"]');
     if(schema){
