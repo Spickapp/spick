@@ -93,7 +93,7 @@ stats = {"reminders": 0, "reviews": 0, "winback": 0, "cleaner_reminders": 0, "ex
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 1. Kundpåminnelser (imorgon) ===")
 bookings_tomorrow = supa_get(
-    f"bookings?date=eq.{TOMORROW}&payment_status=eq.paid&reminder_sent=is.null&select=id,customer_name,customer_email,scheduled_date,scheduled_time,service,address,hours,total_price,rut"
+    f"bookings?date=eq.{TOMORROW}&payment_status=eq.paid&reminder_sent=is.null&select=id,customer_name,customer_email,date,time,service,address,hours,total_price,rut"
 )
 for b in bookings_tomorrow:
     price_display = f"{int(b.get('total_price',0))} kr" + (" (efter RUT)" if b.get('rut') else "")
@@ -173,7 +173,7 @@ for b in winback_bookings:
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 4. Städare-påminnelse (uppdrag imorgon) ===")
 cleaner_jobs = supa_get(
-    f"bookings?date=eq.{TOMORROW}&payment_status=eq.paid&cleaner_id=not.is.null&cleaner_reminded=is.null&select=id,scheduled_date,scheduled_time,service,address,hours,cleaner_id,total_price"
+    f"bookings?date=eq.{TOMORROW}&payment_status=eq.paid&cleaner_id=not.is.null&cleaner_reminded=is.null&select=id,date,time,service,address,hours,cleaner_id,total_price"
 )
 # Hämta städare för varje bokning
 for b in cleaner_jobs:
