@@ -1,0 +1,52 @@
+name: Run SQL Migrations
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/run-migrations.yml'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Run Migration 004
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          psql "postgresql://postgres.urjeijcncsyuletprydy:$PGPASSWORD@aws-0-eu-north-1.pooler.supabase.com:6543/postgres" \
+            -f supabase/migrations/004_alias.sql
+          echo "✅ 004 klar"
+
+      - name: Run Migration 005
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          psql "postgresql://postgres.urjeijcncsyuletprydy:$PGPASSWORD@aws-0-eu-north-1.pooler.supabase.com:6543/postgres" \
+            -f supabase/migrations/005_data.sql
+          echo "✅ 005 klar"
+
+      - name: Run Migration 006
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          psql "postgresql://postgres.urjeijcncsyuletprydy:$PGPASSWORD@aws-0-eu-north-1.pooler.supabase.com:6543/postgres" \
+            -f supabase/migrations/006_keys.sql
+          echo "✅ 006 klar"
+
+      - name: Verify tables exist
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          psql "postgresql://postgres.urjeijcncsyuletprydy:$PGPASSWORD@aws-0-eu-north-1.pooler.supabase.com:6543/postgres" \
+            -c "\dt customer_profiles" \
+            -c "\dt analytics_events" \
+            -c "\dt key_methods" \
+            -c "\dt messages" \
+            -c "SELECT column_name FROM information_schema.columns WHERE table_name='cleaners' AND column_name='alias';"
+          echo "✅ Verifiering klar"
