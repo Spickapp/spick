@@ -232,3 +232,32 @@ DROP TRIGGER IF EXISTS on_booking_inserted ON bookings;
 CREATE TRIGGER on_booking_inserted
   AFTER INSERT ON bookings
   FOR EACH ROW EXECUTE FUNCTION upsert_customer_profile();
+
+-- ── ADMIN READ POLICIES (anon kan läsa med rätt filter) ──────────────────
+-- Admin-panelen använder anon key + frontend-lösenord
+-- Dessa policies tillåter läsning för admin-vyer
+
+-- Bokningar: anon kan läsa alla (admin behöver det)
+CREATE POLICY IF NOT EXISTS "Anon read bookings"
+  ON bookings FOR SELECT
+  USING (true);
+
+-- Städaransökningar: anon kan läsa (admin)
+CREATE POLICY IF NOT EXISTS "Anon read applications"
+  ON cleaner_applications FOR SELECT
+  USING (true);
+
+-- Customer profiles: anon kan läsa (admin)
+CREATE POLICY IF NOT EXISTS "Anon read customer profiles"
+  ON customer_profiles FOR SELECT
+  USING (true);
+
+-- Analytics: anon kan läsa (admin dashboard)
+CREATE POLICY IF NOT EXISTS "Anon read analytics"
+  ON analytics_events FOR SELECT
+  USING (true);
+
+-- Messages: anon kan läsa (admin)
+CREATE POLICY IF NOT EXISTS "Anon read messages"
+  ON messages FOR SELECT
+  USING (true);
