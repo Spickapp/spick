@@ -95,6 +95,27 @@ serve(async (req) => {
       `));
     }
 
+    // ── NY BOKNING TILL STÄDARE ───────────────────────────────
+    else if (type === "new_booking_cleaner") {
+      const cleanerEmail = r.cleaner_email;
+      const cname = r.cleaner_name || "Städare";
+      if (cleanerEmail) {
+        await sendEmail(cleanerEmail, `🔔 Ny bokningsbekräftelse – ${r.service || "Städning"} ${r.date || ""}`, wrap(`
+          <h2>Du har fått en ny bekräftad bokning! 🎉</h2>
+          <p>Hej ${cname.split(" ")[0]}! En kund har bekräftat en bokning hos dig.</p>
+          <div class="card">
+            <div class="row"><span class="lbl">Kund</span><span class="val">${r.name || "–"}</span></div>
+            <div class="row"><span class="lbl">Tjänst</span><span class="val">${r.service || "Hemstädning"}</span></div>
+            <div class="row"><span class="lbl">Datum/tid</span><span class="val">${r.date || "–"} ${r.time ? "kl " + r.time : ""}</span></div>
+            <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}, ${r.city || ""}</span></div>
+            <div class="row"><span class="lbl">Timmar</span><span class="val">${r.hours || 3} h</span></div>
+            <div class="row"><span class="lbl">Din ersättning</span><span class="val" style="color:#0F6E56;font-weight:700">${Math.round((r.total_price || 0) * 0.83).toLocaleString("sv")} kr</span></div>
+          </div>
+          <a class="btn" href="https://spick.se/stadare-dashboard.html">Visa i min dashboard →</a>
+        `));
+      }
+    }
+
     // ── ANSÖKAN ───────────────────────────────────────────────
     else if (type === "application") {
       await sendEmail(ADMIN, `👷 Ny städaransökan: ${r.full_name || "okänd"} – ${r.city || ""}`, wrap(`

@@ -563,6 +563,14 @@ function showAlerts(){
 
 async function confirmBooking(id){
   await db.from('bookings').update({status:'bekräftad',confirmed_at:new Date().toISOString()}).eq('id',id);
+  // Skicka notis till städare om ny bokning
+  const b=(window._bookings||[]).find(x=>x.id===id);
+  if(b?.cleaner_email){
+    fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+      method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},
+      body:JSON.stringify({type:'new_booking_cleaner',record:b})
+    }).catch(()=>{});
+  }
   await loadBookings();
 }
 
