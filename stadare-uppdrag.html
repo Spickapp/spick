@@ -452,7 +452,7 @@ function handleDocPhoto(input) {
   reader.onload = e => {
     const slot = document.getElementById('photo-' + currentPhotoSlot);
     const type = currentPhotoSlot.startsWith('before') ? 'before' : 'after';
-    slot.innerHTML = `<img src="${e.target.result}" alt="Foto"><div style="position:absolute;top:6px;left:6px;background:${type === 'before' ? '#ff9800' : '#0F6E56'};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">${type === 'before' ? 'INNAN' : 'EFTER'}</div>`;
+    slot.innerHTML = `<img loading="lazy" src="${e.target.result}" alt="Foto"><div style="position:absolute;top:6px;left:6px;background:${type === 'before' ? '#ff9800' : '#0F6E56'};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">${type === 'before' ? 'INNAN' : 'EFTER'}</div>`;
     sendMessage(`📷 ${type === 'before' ? 'Foto taget INNAN städning' : 'Foto taget EFTER städning'} – Dokumentation sparad`, 'photo');
   };
   reader.readAsDataURL(file);

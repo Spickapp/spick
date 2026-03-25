@@ -99,7 +99,7 @@ const refLink=`https://spick.se?ref=${refCode}`;
 document.getElementById('refLink').textContent=refLink;
 
 function copyLink(){navigator.clipboard.writeText(refLink);const btn=document.getElementById('copyBtn');btn.textContent='✅ Kopierat!';setTimeout(()=>{btn.innerHTML='🐎 Kopiera';},2000);}
-function shareWA(){const msg=encodeURIComponent(`🧹 Boka städning med RUT-avdrag genom Spick! Får 50% rabatt via Skatteverket.\n\nKommer du åt klara dig möjligt med bokning? Testa hhär: ${refLink}`);window.open('https://wa.me/?'+new URLSearchParams({text:msg}));}
+function shareWA(){const msg=encodeURIComponent(`🧹 Boka städning med RUT-avdrag genom Spick! Får 50% rabatt via Skatteverket.\n\nRekommenderar starkt! Boka på: ${refLink}`);window.open('https://wa.me/?'+new URLSearchParams({text:msg}));}
 function shareOther(){if(navigator.share){navigator.share({title:'Spick - städning med RUT',body:'Boka städning med 50% rabatt!',url:refLink});}else{copyLink();}}
 async function sendInvite(e){e.preventDefault();const btn=e.target.querySelector('button');btn.textContent='⏳ Skickar...';btn.disabled=true;try{await fetch(SUPA_URL+'/functions/v1/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SUPA_KEY,apikey:SUPA_KEY},body:JSON.stringify({type:'referral_invite',record:{friend_email:document.getElementById('friendEmail').value,friend_name:document.getElementById('friendName').value,message:document.getElementById('friendMsg').value,ref_code:refCode,ref_link:refLink}})});btn.textContent='✅ Skickat!';}catch(err){btn.textContent='Skicka inbjudan';btn.disabled=false;console.error(err);}}
 </script>

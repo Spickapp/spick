@@ -119,6 +119,15 @@ input:focus{outline:none;border-color:var(--g)}
 <script>
 const U='https://urjeijcncsyuletprydy.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
 let cl=null;
+// Auto-login om sparad email finns
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('spick_cleaner_email');
+  if (saved) {
+    document.querySelector('input[type="email"]').value = saved;
+    setTimeout(login, 300); // Auto-login
+  }
+});
+
 async function login(){
   const e=document.getElementById('le').value.trim();if(!e)return;
   const btn=document.querySelector('.btn');btn.textContent='Loggar in...';btn.disabled=true;
@@ -128,6 +137,7 @@ async function login(){
   if(!res?.length){document.getElementById('lerr').textContent='Ingen städare hittades med den e-postadressen.';document.getElementById('lerr').style.display='block';return;}
   cl=res[0];
   document.getElementById('lerr').style.display='none';
+  localStorage.setItem('spick_cleaner_email', e);
   document.getElementById('ls').style.display='none';
   document.getElementById('dash').style.display='';
   document.getElementById('hn').textContent=cl.full_name?.split(' ')[0]||'';
