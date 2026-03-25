@@ -17,34 +17,36 @@ jobs:
         with:
           version: latest
 
-      - name: Run Migration 004
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase db execute --project-ref urjeijcncsyuletprydy \
-            --file supabase/migrations/004_alias.sql
-          echo "✅ 004 klar"
+      - name: Check CLI version and available commands
+        run: supabase --version && supabase db --help 2>&1 || true
 
-      - name: Run Migration 005
+      - name: Run all migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase db execute --project-ref urjeijcncsyuletprydy \
-            --file supabase/migrations/005_data.sql
-          echo "✅ 005 klar"
+          PROJECT_REF="urjeijcncsyuletprydy"
 
-      - name: Run Migration 006
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase db execute --project-ref urjeijcncsyuletprydy \
-            --file supabase/migrations/006_keys.sql
-          echo "✅ 006 klar"
+          # Hämta DB connection string via Supabase CLI
+          supabase db remote commit --project-ref $PROJECT_REF 2>&1 || true
 
-      - name: Verify
+          # Kör SQL via psql med Supabase connection pooler
+          # Format: postgres://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-eu-north-1.pooler.supabase.com:6543/postgres
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
+
+          echo "▶ Migration 004..."
+          psql "$DB_URL" -f supabase/migrations/004_alias.sql && echo "✅ 004 klar"
+
+          echo "▶ Migration 005..."
+          psql "$DB_URL" -f supabase/migrations/005_data.sql && echo "✅ 005 klar"
+
+          echo "▶ Migration 006..."
+          psql "$DB_URL" -f supabase/migrations/006_keys.sql && echo "✅ 006 klar"
+
+      - name: Verify tables
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase db execute --project-ref urjeijcncsyuletprydy \
-            --sql "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
+          DB_URL="postgresql://postgres.urjeijcncsyuletprydy:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
+          psql "$DB_URL" -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
           echo "✅ Verifiering klar"

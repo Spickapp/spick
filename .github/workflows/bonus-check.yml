@@ -6,25 +6,38 @@ on:
 jobs:
   bonus-check:
     runs-on: ubuntu-latest
-    env:
-      SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
-      SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - name: Check and upgrade bonus levels
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          CLEANERS=$(curl -s "${SUPA_URL}/rest/v1/cleaners?status=eq.godkänd&select=id,full_name,email,avg_rating,review_count,bonus_level" \
-            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY")
+          # godkänd URL-enkodad: godk%C3%A4nd
+          CLEANERS=$(curl -sf "${SUPA_URL}/rest/v1/cleaners?status=eq.godk%C3%A4nd&select=id,full_name,email,avg_rating,review_count,bonus_level" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY")
 
-          echo "$CLEANERS" | python3 << 'PYEOF'
-import json, sys, os, urllib.request
+          echo "Hämtade städare: $(echo $CLEANERS | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else d)')"
+
+          python3 << PYEOF
+import json, os, urllib.request, urllib.error
 
 SUPA_URL = os.environ['SUPA_URL']
 SUPA_KEY = os.environ['SUPA_KEY']
 
-d = json.load(sys.stdin)
+import subprocess
+result = subprocess.run(['curl', '-sf',
+    f"{SUPA_URL}/rest/v1/cleaners?status=eq.godk%C3%A4nd&select=id,full_name,email,avg_rating,review_count,bonus_level",
+    '-H', f'apikey: {SUPA_KEY}',
+    '-H', f'Authorization: Bearer {SUPA_KEY}'
+], capture_output=True, text=True)
+
+d = json.loads(result.stdout)
 if not isinstance(d, list):
-    print("Inga städare hittades")
-    sys.exit(0)
+    print(f"Svar: {d}")
+    exit(0)
+
+print(f"Antal städare: {len(d)}")
 
 LEVELS = [
     ('Platinum', 301, 4.9),
@@ -56,10 +69,12 @@ for c in d:
         try:
             urllib.request.urlopen(req, timeout=10)
             print(f"Uppgraderad {c['full_name']}: {cur} -> {new}")
+        except urllib.error.HTTPError as e:
+            print(f"HTTP-fel {e.code}: {e.read().decode()}")
         except Exception as e:
             print(f"Fel: {e}")
     else:
-        print(f"OK {c['full_name']}: {cur}")
+        print(f"OK {c.get('full_name','?')}: {cur}")
 
-print("✅ Bonus check klar!")
+print("Bonus check klar!")
 PYEOF

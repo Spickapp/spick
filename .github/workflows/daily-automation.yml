@@ -6,47 +6,64 @@ on:
 jobs:
   daily:
     runs-on: ubuntu-latest
-    env:
-      SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
-      SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - name: Send reminders + review requests
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           TOMORROW=$(date -d 'tomorrow' +%Y-%m-%d)
           YESTERDAY=$(date -d 'yesterday' +%Y-%m-%d)
-          echo "Checking bookings for $TOMORROW and $YESTERDAY"
+          echo "Datum: imorgon=$TOMORROW, igår=$YESTERDAY"
 
-          # Påminnelser - bokningar imorgon
-          curl -s "${SUPA_URL}/rest/v1/bookings?date=eq.${TOMORROW}&status=in.(bekräftad,ny)&reminder_sent_at=is.null&select=*" \
-            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "
-import sys,json,urllib.request
-d=json.load(sys.stdin)
-if not isinstance(d,list): print('Inga bokningar'); sys.exit(0)
-print(f'Påminnelser att skicka: {len(d)}')
-for b in d:
-  p=json.dumps({'type':'reminder','record':b}).encode()
-  req=urllib.request.Request('$SUPA_URL/functions/v1/notify',p,
-    {'Content-Type':'application/json','Authorization':'Bearer $SUPA_KEY','apikey':'$SUPA_KEY'},method='POST')
-  try:
-    urllib.request.urlopen(req,timeout=10)
-    print(f'Skickad till {b.get(\"email\")}')
-  except Exception as e: print(f'Fel: {e}')
-"
+          python3 << PYEOF
+import json, os, urllib.request, urllib.error
 
-          # Betygsförfrågningar - gårdagens bokningar
-          curl -s "${SUPA_URL}/rest/v1/bookings?date=eq.${YESTERDAY}&status=eq.bekräftad&review_sent_at=is.null&select=*" \
-            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "
-import sys,json,urllib.request
-d=json.load(sys.stdin)
-if not isinstance(d,list): print('Inga betygsförfrågningar'); sys.exit(0)
-print(f'Betygsförfrågningar: {len(d)}')
-for b in d:
-  p=json.dumps({'type':'review_request','record':b}).encode()
-  req=urllib.request.Request('$SUPA_URL/functions/v1/notify',p,
-    {'Content-Type':'application/json','Authorization':'Bearer $SUPA_KEY','apikey':'$SUPA_KEY'},method='POST')
-  try:
-    urllib.request.urlopen(req,timeout=10)
-    print(f'Skickad till {b.get(\"email\")}')
-  except Exception as e: print(f'Fel: {e}')
-"
-          echo "✅ Daily automation klar!"
+SUPA_URL = os.environ['SUPA_URL']
+SUPA_KEY = os.environ['SUPA_KEY']
+TOMORROW = os.environ.get('TOMORROW', '')
+YESTERDAY = os.environ.get('YESTERDAY', '')
+
+import subprocess
+
+def fetch(path):
+    r = subprocess.run(['curl', '-sf', f"{SUPA_URL}/rest/v1/{path}",
+        '-H', f'apikey: {SUPA_KEY}', '-H', f'Authorization: Bearer {SUPA_KEY}'],
+        capture_output=True, text=True)
+    try:
+        return json.loads(r.stdout)
+    except:
+        return []
+
+def call_notify(payload):
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        f"{SUPA_URL}/functions/v1/notify", body,
+        {'Content-Type': 'application/json',
+         'Authorization': f'Bearer {SUPA_KEY}',
+         'apikey': SUPA_KEY}, method='POST')
+    try:
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception as e:
+        print(f"  Notify-fel (edge function ej deploy?): {e}")
+        return False
+
+# Påminnelser imorgon
+bookings = fetch(f"bookings?date=eq.{TOMORROW}&status=in.(bek%C3%B6frad,ny)&reminder_sent_at=is.null&select=*")
+print(f"Påminnelser att skicka: {len(bookings) if isinstance(bookings, list) else 0}")
+if isinstance(bookings, list):
+    for b in bookings:
+        if call_notify({'type': 'reminder', 'record': b}):
+            print(f"  ✅ Påminnelse skickad: {b.get('email')}")
+
+# Betygsförfrågningar igår
+reviews = fetch(f"bookings?date=eq.{YESTERDAY}&status=eq.bek%C3%B6frad&review_sent_at=is.null&select=*")
+print(f"Betygsförfrågningar: {len(reviews) if isinstance(reviews, list) else 0}")
+if isinstance(reviews, list):
+    for b in reviews:
+        if call_notify({'type': 'review_request', 'record': b}):
+            print(f"  ✅ Betygsförfrågan skickad: {b.get('email')}")
+
+print("Daily automation klar!")
+PYEOF
