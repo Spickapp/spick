@@ -1,5 +1,5 @@
 -- SPICK -- Datamodell
 CREATE TABLE IF NOT EXISTS customer_profiles (id UUID DEFAULT gen_random_uuid() PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT,phone TEXT,total_bookings INTEGER DEFAULT 0,total_spent DECIMAL(12,2) DEFAULT 0,last_visit TIMESTAMPTZ,city TEXT,utm_source TEXT,utm_medium TEXT,utm_campaign TEXT,referral_code TEXT,device_type TEXT,pwa_installed BOOLEAN DEFAULT false,push_subscribed BOOLEAN DEFAULT false,marketing_consent BOOLEAN DEFAULT false,created_at TIMESTAMPTZ DEFAULT NOW(),updated_at TIMESTAMPTZ DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS analytics_events (id UUID DEFAULT gen_random_uuid() PRIMARY KEY,event_type TEXT NOT NULL,session_id TEXT,customer_email TEXT,page TEXT,properties JSONB,device_type TEXT,created_at TIMESTAMPTY DEAULT NOW());
+CREATE TABLE IF NOT EXISTS analytics_events (id UUID DEFAULT gen_random_uuid() PRIMARY KEY,event_type TEXT NOT NULL,session_id TEXT,customer_email TEXT,page TEXT,properties JSONB,device_type TEXT,created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE INDEX IF NOT EXISTS idx_events_type ON analytics_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_created ON analytics_events(created_at);
