@@ -4,6 +4,7 @@ name: Trigger DNS Fix
     branches: [main]
     paths:
       - '.github/workflows/trigger-dns.yml'
+      - '.github/scripts/dns_full_fix.py'
   workflow_dispatch:
 
 jobs:
@@ -11,52 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Saett DNS spick.se till GitHub Pages
+      - name: Kör komplett DNS-fix
         env:
-          U: ${{ secrets.LOOPIA_API_USER }}
-          P: ${{ secrets.LOOPIA_API_PASS }}
+          LOOPIA_USER: ${{ secrets.LOOPIA_API_USER }}
+          LOOPIA_PASS: ${{ secrets.LOOPIA_API_PASS }}
         run: |
-          api() {
-            curl -s -X POST https://api.loopia.se/RPCSERV \
-              -H "Content-Type: text/xml" --max-time 15 -d "$1"
-          }
-          GET_RECORDS="<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>${U}</string></value></param><param><value><string>${P}</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param></params></methodCall>"
-          REMOVE_RID() {
-            SUB="$1"; RID="$2"
-            api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params><param><value><string>${U}</string></value></param><param><value><string>${P}</string></value></param><param><value><string>spick.se</string></value></param><param><value><string>${SUB}</string></value></param><param><value><int>${RID}</int></value></param></params></methodCall>"
-          }
-          ADD_A() {
-            api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>${U}</string></value></param><param><value><string>${P}</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>A</string></value></member><member><n>ttl</n><value><int>300</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$1</string></value></member></struct></value></param></params></methodCall>"
-          }
-
-          echo "=== 1. Nuvarande records ==="
-          RECORDS=$(api "$GET_RECORDS")
-          echo "$RECORDS" | python3 .github/scripts/dns_parse.py list
-
-          echo "=== 2. Tar bort alla A-poster ==="
-          A_IDS=$(echo "$RECORDS" | python3 .github/scripts/dns_parse.py a-ids)
-          echo "Hittade IDs: $A_IDS"
-          for RID in $A_IDS; do
-            echo "  Tar bort record_id=$RID"
-            REMOVE_RID "" "$RID"
-          done
-
-          echo "=== 3. Laegger till GitHub Pages A-poster ==="
-          for IP in 185.199.108.153 185.199.109.153 185.199.110.153 185.199.111.153; do
-            echo "  A -> $IP"
-            ADD_A "$IP"
-          done
-
-          echo "=== 4. www CNAME ==="
-          WWW=$(api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>${U}</string></value></param><param><value><string>${P}</string></value></param><param><value><string>spick.se</string></value></param><param><value><string>www</string></value></param></params></methodCall>")
-          for RID in $(echo "$WWW" | python3 .github/scripts/dns_parse.py all-ids); do
-            REMOVE_RID "www" "$RID"
-          done
-          api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>${U}</string></value></param><param><value><string>${P}</string></value></param><param><value><string>spick.se</string></value></param><param><value><string>www</string></value></param><param><value><struct><member><n>type</n><value><string>CNAME</string></value></member><member><n>ttl</n><value><int>300</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>spickapp.github.io.</string></value></member></struct></value></param></params></methodCall>"
-          echo "  www -> spickapp.github.io"
-
-          echo "=== 5. Verifiera ==="
-          sleep 3
-          api "$GET_RECORDS" | python3 .github/scripts/dns_parse.py list
-          echo "DNS klar! Propagering tar 5-30 min (TTL=300s)"
+          python3 .github/scripts/dns_full_fix.py
