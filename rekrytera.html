@@ -193,4 +193,21 @@ function cookieChoice(accept) {
     <a href="bli-stadare.html" style="padding:.95rem 2rem;border-radius:100px;font-size:.95rem;font-weight:500;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);text-decoration:none;transition:all .2s">Jobba som städare</a>
   </div>
 </section>
+
+<script>
+function calcIncome(){
+  var h=+document.getElementById('hours').value;
+  var r=+document.getElementById('rate').value;
+  var wk=Math.round(h*r*0.83);
+  var mo=Math.round(wk*4.3);
+  document.getElementById('hours-lbl').textContent=h+'h/vecka';
+  document.getElementById('rate-lbl').textContent=r+' kr/h';
+  document.getElementById('cr-rate').textContent=r+' kr/h';
+  var rows=document.querySelectorAll('.cv');
+  if(rows[1]) rows[1].textContent=Math.round(r*0.83)+' kr/h';
+  if(rows[2]) rows[2].textContent=wk.toLocaleString('sv')+' kr/vecka';
+  if(rows[3]) rows[3].textContent=mo.toLocaleString('sv')+' kr/månad';
+}
+calcIncome();
+</script>
 </body></html>

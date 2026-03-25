@@ -60,6 +60,12 @@ footer p{font-size:.8rem;color:#4A4A45;}
 .mob-panel a:last-child{border:none;margin-top:auto;}
 .mob-close{align-self:flex-end;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6B6960;margin-bottom:1rem;}
 @media(max-width:768px){.hamburger{display:flex!important;}}
+
+.faq-search{position:relative;margin-bottom:2rem;}
+.faq-search input{width:100%;padding:1rem 1.25rem 1rem 3rem;border:2px solid var(--grd);border-radius:100px;font-size:1rem;font-family:"DM Sans",sans-serif;outline:none;background:var(--w);transition:border-color .2s;}
+.faq-search input:focus{border-color:var(--g);}
+.faq-search::before{content:"🔍";position:absolute;left:1.1rem;top:50%;transform:translateY(-50%);font-size:1rem;}
+.fq.hidden{display:none;}
 </style>
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
@@ -373,6 +379,32 @@ function cookieChoice(accept) {
 <script>
 function openMobMenu(){document.getElementById('mobOverlay').style.display='block';document.getElementById('mobPanel').classList.add('open');}
 function closeMobMenu(){document.getElementById('mobOverlay').style.display='none';document.getElementById('mobPanel').classList.remove('open');}
+</script>
+
+<script>
+function filterFaq(q){
+  var query=q.toLowerCase().trim();
+  var sections=document.querySelectorAll('.fsec');
+  sections.forEach(function(sec){
+    var items=sec.querySelectorAll('.fi');
+    var anyVisible=false;
+    items.forEach(function(item){
+      var text=item.textContent.toLowerCase();
+      if(!query||text.includes(query)){
+        item.classList.remove('hidden');
+        anyVisible=true;
+      } else {
+        item.classList.add('hidden');
+      }
+    });
+    sec.style.display=anyVisible||!query?'':'none';
+  });
+  if(query){
+    document.querySelectorAll('.fi:not(.hidden) .fq').forEach(function(fq){
+      fq.nextElementSibling.classList.add('open');
+    });
+  }
+}
 </script>
 </body>
 </html>

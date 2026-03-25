@@ -289,8 +289,8 @@ footer a:hover{color:var(--gm);}
     <h1>Boka en städare du<br><span class="green">verkligen litar på</span></h1>
     <p class="hero-sub">Välj bland betygsatta städare i Stockholm, Göteborg, Malmö och fler städer. Boka med RUT-avdrag 50%.</p>
     <div class="hero-btns">
-      <a href="stadare.html" class="btn-main">Boka din första städning →</a>
-      <a href="hur-det-funkar.html" class="btn-sec">Hur funkar det?</a>
+      <a href="boka.html" class="btn-main">Boka städning nu →</a>
+      <a href="stadare.html" class="btn-sec">Se alla städare</a>
     </div>
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
@@ -653,7 +653,24 @@ window.spickSend=async function(){
 .cookie-accept{background:#0F6E56;color:white;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
 .cookie-decline{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.2);padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
 </style>
-  <div id="spick-cookie">
+  
+<div id="sticky-cta">
+  <a href="boka.html">🧹 Boka städning – 50% med RUT</a>
+</div>
+<script>
+(function(){
+  var cta=document.getElementById('sticky-cta');
+  var hero=document.querySelector('.hero');
+  if(!cta||!hero)return;
+  var shown=false;
+  window.addEventListener('scroll',function(){
+    var heroBottom=hero.getBoundingClientRect().bottom;
+    if(heroBottom<0&&!shown){cta.style.display='block';shown=true;}
+    else if(heroBottom>=0&&shown){cta.style.display='none';shown=false;}
+  },{passive:true});
+})();
+</script>
+<div id="spick-cookie">
   <p>🍪 Vi använder cookies för att förbättra din upplevelse och visa relevanta annonser. Läs mer i vår <a href="integritetspolicy.html">integritetspolicy</a>.</p>
   <div class="cookie-btns">
     <button class="cookie-decline" onclick="cookieChoice(false)">Endast nödvändiga</button>
