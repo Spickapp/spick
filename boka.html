@@ -260,6 +260,31 @@ if(p.get('name')){
   document.getElementById('sc-av').style.background=COLORS[n.charCodeAt(0)%COLORS.length];
 }
 if(p.get('rating')) document.getElementById('sc-rating').textContent=p.get('rating');
+
+// Hämta mer info om städaren från Supabase
+if(cleanerId){
+  fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/cleaners?id=eq.'+cleanerId+'&select=full_name,bio,avg_rating,review_count,identity_verified,bonus_level,services',
+    {headers:{apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'}})
+  .then(r=>r.json()).then(d=>{
+    if(!d?.length)return;
+    const c=d[0];
+    if(c.avg_rating) document.getElementById('sc-rating').textContent=parseFloat(c.avg_rating).toFixed(1);
+    // Visa verifierings-badges
+    const badge=document.createElement('div');
+    badge.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;';
+    if(c.identity_verified)badge.innerHTML+='<span style="background:rgba(255,255,255,.2);color:#fff;font-size:.68rem;padding:3px 8px;border-radius:99px">✓ BankID</span>';
+    if(c.bonus_level&&c.bonus_level!=='Brons')badge.innerHTML+='<span style="background:rgba(255,255,255,.2);color:#fff;font-size:.68rem;padding:3px 8px;border-radius:99px">'+c.bonus_level+'</span>';
+    const head=document.querySelector('.sc-head');
+    if(head&&badge.innerHTML)head.appendChild(badge);
+    // Visa antal jobb
+    if(c.review_count){
+      const jobs=document.createElement('div');
+      jobs.style.cssText='font-size:.75rem;color:rgba(255,255,255,.7);margin-top:4px';
+      jobs.textContent=c.review_count+' städningar utförda';
+      head?.appendChild(jobs);
+    }
+  }).catch(()=>{});
+}
 document.getElementById('sc-price').textContent=rate+' kr';
 document.getElementById('sc-rut').textContent='= '+Math.round(rate*.5)+' kr/h med RUT-avdrag';
 
