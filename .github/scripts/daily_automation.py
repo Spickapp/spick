@@ -19,6 +19,23 @@ def fetch(path):
     except:
         return []
 
+def patch(table, id_val, data):
+    """Uppdatera en rad i Supabase"""
+    body = json.dumps(data).encode()
+    req = urllib.request.Request(
+        f"{SUPA_URL}/rest/v1/{table}?id=eq.{id_val}", body,
+        {'Content-Type':'application/json',
+         'Authorization':f'Bearer {SUPA_KEY}',
+         'apikey': SUPA_KEY,
+         'Prefer': 'return=minimal'},
+        method='PATCH')
+    try:
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception as e:
+        print(f"  PATCH-fel: {e}")
+        return False
+
 def notify(payload):
     body = json.dumps(payload).encode()
     req = urllib.request.Request(
@@ -35,14 +52,18 @@ def notify(payload):
 
 bookings = fetch(f"bookings?date=eq.{TOMORROW}&status=in.(bekr%C3%A4ftad,ny)&reminder_sent_at=is.null&select=*")
 print(f"Påminnelser att skicka: {len(bookings)}")
+from datetime import datetime
+NOW = datetime.utcnow().isoformat() + 'Z'
 for b in bookings:
     if notify({'type':'reminder','record':b}):
+        patch('bookings', b['id'], {'reminder_sent_at': NOW})
         print(f"  ✅ {b.get('email')}")
 
 reviews = fetch(f"bookings?date=eq.{YESTERDAY}&status=eq.bekr%C3%A4ftad&review_sent_at=is.null&select=*")
 print(f"Betygsförfrågningar: {len(reviews)}")
 for b in reviews:
     if notify({'type':'review_request','record':b}):
+        patch('bookings', b['id'], {'review_sent_at': NOW})
         print(f"  ✅ {b.get('email')}")
 
 print("✅ Daily automation klar!")
