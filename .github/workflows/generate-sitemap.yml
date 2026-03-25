@@ -29,7 +29,15 @@ jobs:
             || "$f" == "seo-snippet.html" ]] && continue
             PAGE="${f%.html}"
             [[ "$PAGE" == "index" ]] && URL="https://spick.se/" || URL="https://spick.se/$PAGE"
-            echo "  <url><loc>$URL</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>" >> sitemap.xml
+            # Sätt prioritet baserat på sidtyp
+            PRIORITY="0.7"
+            case "$PAGE" in
+              "" | "index") PRIORITY="1.0" ;;
+              "stadare" | "boka" | "bli-stadare") PRIORITY="0.9" ;;
+              "priser" | "hur-det-funkar" | "faq") PRIORITY="0.8" ;;
+              stockholm | goteborg | malmo | uppsala) PRIORITY="0.85" ;;
+            esac
+            echo "  <url><loc>$URL</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>$PRIORITY</priority></url>" >> sitemap.xml
           done
           echo '</urlset>' >> sitemap.xml
           echo "✅ Sitemap: $(grep -c '<url>' sitemap.xml) sidor"
