@@ -428,12 +428,46 @@ async function doBook(){
     // Spara kund i analytics
     if(window.spickTrack) window.spickTrack.bookingCompleted({email:em, service:svc, price:tot});
 
-    if (window.offerPushAfterBooking) {
-      localStorage.setItem('spick_customer_email', em);
-      window.offerPushAfterBooking(em);
-      setTimeout(() => { window.location.href=`tack.html?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&service=${encodeURIComponent(svc)}&address=${encodeURIComponent(addr)}`; }, 2500);
+    // Spara email för push-notiser
+    localStorage.setItem('spick_customer_email', em);
+    if(window.spickTrack) window.spickTrack.bookingCompleted({email:em, service:svc, price:tot});
+
+    // ── Stripe Checkout ────────────────────────────────────────
+    btn.innerHTML='<div class="spin"></div> Öppnar betalning...';
+    const bookingId = data[0]?.id;
+
+    const checkoutRes = await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/stripe-checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+      },
+      body: JSON.stringify({
+        booking_id: bookingId,
+        amount: tot,
+        name: fn + ' ' + ln,
+        email: em,
+        service: svc,
+        date: date,
+        hours: h,
+        rut: useRut
+      })
+    });
+
+    const checkout = await checkoutRes.json();
+
+    if (checkout.url) {
+      if (window.offerPushAfterBooking) {
+        window.offerPushAfterBooking(em);
+        setTimeout(() => { window.location.href = checkout.url; }, 1800);
+      } else {
+        window.location.href = checkout.url;
+      }
     } else {
-      window.location.href=`tack.html?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&service=${encodeURIComponent(svc)}&address=${encodeURIComponent(addr)}`;
+      // Stripe ej konfigurerat – fallback
+      console.warn('Stripe fallback:', checkout.error);
+      window.location.href = `tack.html?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&service=${encodeURIComponent(svc)}&address=${encodeURIComponent(addr)}`;
     }
   }catch(e){
     btn.disabled=false;btn.innerHTML='Bekräfta bokning →';
