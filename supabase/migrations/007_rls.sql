@@ -261,3 +261,4 @@ CREATE POLICY IF NOT EXISTS "Anon read analytics"
 CREATE POLICY IF NOT EXISTS "Anon read messages"
   ON messages FOR SELECT
   USING (true);
+ 
