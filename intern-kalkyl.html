@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Spick – Intern Kalkyl & Mål</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:#1a1a2e;--accent:#00d084;--red:#ef5350;--orange:#ff9800;--blue:#2196f3}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a1a;color:#e0e0e0;min-height:100vh}
+
+/* TOP BAR */
+.topbar{background:#111128;border-bottom:1px solid rgba(255,255,255,.07);padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{color:white;font-size:16px;font-weight:800}
+.topbar h1 span{color:var(--accent)}
+.live-dot{display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.topbar-right{font-size:12px;color:#666}
+
+.container{max-width:1100px;margin:0 auto;padding:24px}
+
+/* SECTION HEADERS */
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#555;margin:28px 0 12px}
+
+/* STAT CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:8px}
+.stat{background:#111128;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
+.stat .label{font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.stat .value{font-size:28px;font-weight:900;color:white}
+.stat .value span{font-size:13px;font-weight:400;color:#555;margin-left:4px}
+.stat .change{font-size:12px;margin-top:4px}
+.pos{color:var(--accent)}
+.neg{color:var(--red)}
+.neutral{color:#666}
+
+/* SLIDERS */
+.calc-panel{background:#111128;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:24px;margin-bottom:14px}
+.calc-panel h3{font-size:14px;font-weight:700;color:#aaa;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.slider-group{margin-bottom:20px}
+.slider-top{display:flex;justify-content:space-between;margin-bottom:8px}
+.slider-label{font-size:12px;color:#666}
+.slider-val{font-size:16px;font-weight:800;color:var(--accent)}
+input[type=range]{width:100%;height:4px;accent-color:var(--accent);border-radius:99px;background:#222}
+.slider-marks{display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:4px}
+
+/* RESULTAT-GRID */
+.result-panel{background:#111128;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:24px;margin-bottom:14px}
+.result-panel h3{font-size:14px;font-weight:700;color:#aaa;margin-bottom:16px}
+.res-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.res-box{background:#0d0d20;border-radius:10px;padding:14px;text-align:center}
+.res-box.green{border-top:3px solid var(--accent)}
+.res-box.blue{border-top:3px solid var(--blue)}
+.res-box.orange{border-top:3px solid var(--orange)}
+.res-box.red{border-top:3px solid var(--red)}
+.res-amount{font-size:20px;font-weight:900;color:white}
+.res-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+
+/* TABELL */
+.table-panel{background:#111128;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:24px;margin-bottom:14px;overflow-x:auto}
+.table-panel h3{font-size:14px;font-weight:700;color:#aaa;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:#555;font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);color:#ccc}
+tr:hover td{background:rgba(255,255,255,.02)}
+.td-green{color:var(--accent);font-weight:700}
+.td-red{color:var(--red)}
+.td-orange{color:var(--orange)}
+
+/* MÅL-PROGRESS */
+.goal-bar{margin-bottom:16px}
+.goal-top{display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px}
+.goal-name{color:#888}
+.goal-amounts{color:#555}
+.goal-amounts strong{color:#aaa}
+.track{height:8px;background:#1a1a2e;border-radius:99px;overflow:hidden}
+.fill{height:100%;border-radius:99px;transition:width .8s ease}
+
+/* PROVISION-TABELL */
+.prov-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+.prov-card{background:#0d0d20;border-radius:12px;padding:16px;text-align:center}
+.prov-icon{font-size:28px;margin-bottom:6px}
+.prov-title{font-size:13px;font-weight:700;color:white;margin-bottom:4px}
+.prov-range{font-size:11px;color:#555;margin-bottom:10px}
+.prov-rate{font-size:22px;font-weight:900;color:var(--accent)}
+.prov-rate-label{font-size:10px;color:#555;margin-top:2px}
+.prov-bonus{font-size:11px;color:#888;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)}
+
+/* BREAKEVEN */
+.breakeven-alert{border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start}
+.breakeven-alert.green{background:rgba(0,208,132,.08);border:1px solid rgba(0,208,132,.2)}
+.breakeven-alert.orange{background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.2)}
+.breakeven-alert.red{background:rgba(239,83,80,.08);border:1px solid rgba(239,83,80,.2)}
+.alert-icon{font-size:24px;flex-shrink:0}
+.alert-text h4{font-size:13px;font-weight:700;margin-bottom:3px}
+.alert-text p{font-size:12px;opacity:.7;line-height:1.5}
+
+/* YEARLY FORECAST */
+.forecast-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:600px){.forecast-grid{grid-template-columns:1fr 1fr}}
+.forecast-month{background:#0d0d20;border-radius:10px;padding:12px;text-align:center}
+.forecast-month .m-name{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px}
+.forecast-month .m-rev{font-size:16px;font-weight:700;color:white;margin:4px 0}
+.forecast-month .m-profit{font-size:11px;font-weight:600}
+.forecast-month.current{border:1px solid rgba(0,208,132,.3);background:rgba(0,208,132,.05)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🧹 <span>Spick</span> – Intern Dashboard</h1>
+  <div class="topbar-right"><span class="live-dot"></span>Live · Uppdateras i realtid</div>
+</div>
+
+<div class="container">
+
+  <!-- INPUTS -->
+  <div class="section-title">⚙️ Scenarioinställningar</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+    <div class="calc-panel">
+      <h3>📋 Volymantaganden</h3>
+      <div class="slider-group">
+        <div class="slider-top"><span class="slider-label">Bokningar per månad</span><span class="slider-val" id="bookings_val">50</span></div>
+        <input type="range" id="bookings" min="1" max="500" value="50" oninput="recalc()">
+        <div class="slider-marks"><span>1</span><span>100</span><span>200</span><span>300</span><span>500</span></div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-top"><span class="slider-label">Snittimmar per bokning</span><span class="slider-val" id="avg_hours_val">3</span>h</div>
+        <input type="range" id="avg_hours" min="2" max="6" value="3" step="0.5" oninput="recalc()">
+        <div class="slider-marks"><span>2h</span><span>3h</span><span>4h</span><span>5h</span><span>6h</span></div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-top"><span class="slider-label">Pris per timme (kundpris)</span><span class="slider-val" id="price_val">350</span> kr</div>
+        <input type="range" id="price_per_hour" min="300" max="500" value="350" step="10" oninput="recalc()">
+        <div class="slider-marks"><span>300</span><span>350</span><span>400</span><span>450</span><span>500</span></div>
+      </div>
+    </div>
+
+    <div class="calc-panel">
+      <h3>💸 Kostnadsposter</h3>
+      <div class="slider-group">
+        <div class="slider-top"><span class="slider-label">Marknadsföring per månad</span><span class="slider-val" id="marketing_val">3 000</span> kr</div>
+        <input type="range" id="marketing" min="0" max="50000" value="3000" step="500" oninput="recalc()">
+        <div class="slider-marks"><span>0</span><span>10k</span><span>25k</span><span>50k</span></div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-top"><span class="slider-label">Fasta kostnader/mån</span><span class="slider-val" id="fixed_val">2 000</span> kr</div>
+        <input type="range" id="fixed_costs" min="0" max="30000" value="2000" step="500" oninput="recalc()">
+        <div class="slider-marks"><span>0</span><span>10k</span><span>20k</span><span>30k</span></div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-top"><span class="slider-label">Provision till städarna</span><span class="slider-val" id="cleaner_pct_val">83</span>%</div>
+        <input type="range" id="cleaner_pct" min="70" max="90" value="83" step="1" oninput="recalc()">
+        <div class="slider-marks"><span>70%</span><span>75%</span><span>80%</span><span>85%</span><span>90%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NYCKELTAL -->
+  <div class="section-title">💰 Nyckeltal denna månad</div>
+  <div class="stats-row">
+    <div class="stat">
+      <div class="label">Total omsättning</div>
+      <div class="value" id="s_revenue">–<span>kr</span></div>
+      <div class="change neutral" id="s_revenue_sub">–</div>
+    </div>
+    <div class="stat">
+      <div class="label">Spicks intäkt (provision)</div>
+      <div class="value" id="s_gross">–<span>kr</span></div>
+      <div class="change neutral" id="s_gross_pct">–% av omsättning</div>
+    </div>
+    <div class="stat">
+      <div class="label">Kostnader totalt</div>
+      <div class="value" id="s_costs">–<span>kr</span></div>
+      <div class="change neutral" id="s_costs_sub">–</div>
+    </div>
+    <div class="stat">
+      <div class="label">Nettovinst</div>
+      <div class="value" id="s_profit" style="color:var(--accent)">–<span>kr</span></div>
+      <div class="change" id="s_margin">–% marginal</div>
+    </div>
+  </div>
+
+  <!-- ALERT -->
+  <div id="alertBox"></div>
+
+  <!-- DETALJERAD BREAKDOWN -->
+  <div class="result-panel">
+    <h3>📊 Ekonomisk breakdown per månad</h3>
+    <div class="res-grid">
+      <div class="res-box green">
+        <div class="res-amount" id="r_revenue">–</div>
+        <div class="res-label">Omsättning</div>
+      </div>
+      <div class="res-box blue">
+        <div class="res-amount" id="r_cleaner_pay">–</div>
+        <div class="res-label">Städarutbetalning</div>
+      </div>
+      <div class="res-box orange">
+        <div class="res-amount" id="r_gross">–</div>
+        <div class="res-label">Bruttovinst</div>
+      </div>
+      <div class="res-box red">
+        <div class="res-amount" id="r_costs">–</div>
+        <div class="res-label">Kostnader</div>
+      </div>
+      <div class="res-box green">
+        <div class="res-amount" id="r_profit">–</div>
+        <div class="res-label">Nettovinst</div>
+      </div>
+      <div class="res-box blue">
+        <div class="res-amount" id="r_per_booking">–</div>
+        <div class="res-label">Vinst/bokning</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MÅL-PROGRESS -->
+  <div class="section-title">🎯 Mål & Progress</div>
+  <div class="result-panel">
+    <h3>Milstolpar – månadsvinst</h3>
+    <div id="goals"></div>
+  </div>
+
+  <!-- BREAKEVEN -->
+  <div class="section-title">📉 Breakeven-analys</div>
+  <div class="table-panel">
+    <h3>Hur många bokningar behövs för att täcka kostnader?</h3>
+    <div id="breakevenTable"></div>
+  </div>
+
+  <!-- PROVISION-PROGRAM -->
+  <div class="section-title">⭐ Städarnas bonusprovision – intern kalkyl</div>
+  <div class="result-panel">
+    <h3>Bonusnivåer och kostnad för Spick</h3>
+    <p style="font-size:12px;color:#555;margin-bottom:16px">Städarna ser bonusnivåerna men inte den exakta procentmodellen. Nedan är din interna kalkyl på vad bonus kostar Spick per nivå.</p>
+    <div class="prov-grid" id="provGrid"></div>
+    <div style="margin-top:16px;padding:14px;background:#0d0d20;border-radius:10px;font-size:12px;color:#666">
+      💡 <strong style="color:#aaa">Strategisk anmärkning:</strong> Bonusprogrammet är en investering i kvalitet. En Guld-städare som kostar dig +10% genererar typiskt <strong style="color:var(--accent)">3x fler återbokningar</strong> och <strong style="color:var(--accent)">5x lägre churn</strong>. ROI är kraftigt positivt.
+    </div>
+  </div>
+
+  <!-- SKALNINGSTABELL -->
+  <div class="section-title">📈 12-månaders prognos</div>
+  <div class="result-panel">
+    <h3>Prognostiserat resultat med <span id="growthRateLabel">20%</span> månadstillväxt</h3>
+    <div style="margin-bottom:16px">
+      <input type="range" id="growthRate" min="0" max="50" value="20" step="5" oninput="recalc()" style="width:200px;accent-color:var(--accent)">
+      <span style="font-size:12px;color:#666;margin-left:8px">Tillväxttakt: <span id="growthRateVal">20</span>%/mån</span>
+    </div>
+    <div class="forecast-grid" id="forecastGrid"></div>
+  </div>
+
+  <!-- KPI-TABELL -->
+  <div class="section-title">📋 KPI-översikt</div>
+  <div class="table-panel">
+    <h3>Nyckeltal per skalningsnivå</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Bokningar/mån</th>
+          <th>Omsättning</th>
+          <th>Spick intäkt</th>
+          <th>Nettovinst</th>
+          <th>Marginal</th>
+          <th>Breakeven?</th>
+        </tr>
+      </thead>
+      <tbody id="kpiTable"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+const NOW = new Date().getMonth();
+
+function fmt(n, decimals = 0) {
+  return Math.round(n).toLocaleString('sv-SE');
+}
+
+function pct(n) {
+  return n.toFixed(1) + '%';
+}
+
+function recalc() {
+  const bookings     = parseInt(document.getElementById('bookings').value);
+  const avgHours     = parseFloat(document.getElementById('avg_hours').value);
+  const pricePerHour = parseInt(document.getElementById('price_per_hour').value);
+  const marketing    = parseInt(document.getElementById('marketing').value);
+  const fixedCosts   = parseInt(document.getElementById('fixed_costs').value);
+  const cleanerPct   = parseInt(document.getElementById('cleaner_pct').value) / 100;
+  const growthRate   = parseInt(document.getElementById('growthRate').value) / 100;
+
+  // Uppdatera labels
+  document.getElementById('bookings_val').textContent = bookings;
+  document.getElementById('avg_hours_val').textContent = avgHours;
+  document.getElementById('price_val').textContent = pricePerHour;
+  document.getElementById('marketing_val').textContent = fmt(marketing);
+  document.getElementById('fixed_val').textContent = fmt(fixedCosts);
+  document.getElementById('cleaner_pct_val').textContent = Math.round(cleanerPct * 100);
+  document.getElementById('growthRateLabel').textContent = Math.round(growthRate * 100) + '%';
+  document.getElementById('growthRateVal').textContent = Math.round(growthRate * 100);
+
+  // Beräkningar
+  const avgBookingValue = pricePerHour * avgHours;
+  const revenue         = bookings * avgBookingValue;
+  const cleanerPay      = revenue * cleanerPct;
+  const spickGross      = revenue - cleanerPay;           // Bruttovinst (provision)
+  const totalCosts      = marketing + fixedCosts;
+  const netProfit       = spickGross - totalCosts;
+  const margin          = spickGross > 0 ? (netProfit / revenue * 100) : 0;
+  const profitPerBooking = bookings > 0 ? netProfit / bookings : 0;
+  const spickPct        = 1 - cleanerPct;
+
+  // Stat cards
+  document.getElementById('s_revenue').innerHTML = fmt(revenue) + '<span> kr</span>';
+  document.getElementById('s_revenue_sub').textContent = `${bookings} bokningar × ${fmt(avgBookingValue)} kr snitt`;
+  document.getElementById('s_gross').innerHTML = fmt(spickGross) + '<span> kr</span>';
+  document.getElementById('s_gross_pct').textContent = pct(spickPct * 100) + ' av omsättning';
+  document.getElementById('s_costs').innerHTML = fmt(totalCosts) + '<span> kr</span>';
+  document.getElementById('s_costs_sub').textContent = `Mkt: ${fmt(marketing)} + Fast: ${fmt(fixedCosts)}`;
+  document.getElementById('s_profit').innerHTML = fmt(netProfit) + '<span> kr</span>';
+
+  const marginEl = document.getElementById('s_margin');
+  marginEl.textContent = pct(margin) + ' nettomarginal';
+  marginEl.className = 'change ' + (margin > 15 ? 'pos' : margin > 0 ? 'neutral' : 'neg');
+
+  // Breakdown
+  document.getElementById('r_revenue').textContent   = fmt(revenue) + ' kr';
+  document.getElementById('r_cleaner_pay').textContent = fmt(cleanerPay) + ' kr';
+  document.getElementById('r_gross').textContent     = fmt(spickGross) + ' kr';
+  document.getElementById('r_costs').textContent     = fmt(totalCosts) + ' kr';
+  document.getElementById('r_profit').textContent    = fmt(netProfit) + ' kr';
+  document.getElementById('r_per_booking').textContent = fmt(profitPerBooking) + ' kr';
+
+  // Alert
+  const alertBox = document.getElementById('alertBox');
+  if (netProfit < 0) {
+    const breakevenBooks = Math.ceil(totalCosts / (avgBookingValue * spickPct));
+    alertBox.innerHTML = `<div class="breakeven-alert red"><span class="alert-icon">🔴</span><div class="alert-text"><h4>Under breakeven</h4><p>Du behöver ${breakevenBooks} bokningar/mån för att täcka kostnader. Öka volymen eller sänk kostnaderna.</p></div></div>`;
+  } else if (margin < 10) {
+    alertBox.innerHTML = `<div class="breakeven-alert orange"><span class="alert-icon">🟡</span><div class="alert-text"><h4>Låg marginal</h4><p>${pct(margin)} marginal. Sträva mot 15-20% för en hållbar affär.</p></div></div>`;
+  } else {
+    alertBox.innerHTML = `<div class="breakeven-alert green"><span class="alert-icon">🟢</span><div class="alert-text"><h4>Lönsam kurs</h4><p>${pct(margin)} marginal – du är på rätt väg! Homemaid når 11%, Spick siktar på ${pct(margin)}.</p></div></div>`;
+  }
+
+  // Mål
+  const goals = [
+    { name: '🌱 Breakeven',       target: totalCosts,          color: '#607d8b' },
+    { name: '📦 5 000 kr/mån',    target: 5000,                color: '#00d084' },
+    { name: '🚀 20 000 kr/mån',   target: 20000,               color: '#2196f3' },
+    { name: '💰 50 000 kr/mån',   target: 50000,               color: '#ff9800' },
+    { name: '🏆 100 000 kr/mån',  target: 100000,              color: '#ffd700' },
+    { name: '🦄 500 000 kr/mån',  target: 500000,              color: '#9c27b0' },
+  ];
+  document.getElementById('goals').innerHTML = goals.map(g => {
+    const pctDone = Math.min(netProfit / g.target * 100, 100);
+    const done = netProfit >= g.target;
+    return `
+      <div class="goal-bar">
+        <div class="goal-top">
+          <span class="goal-name">${done ? '✅ ' : ''}${g.name}</span>
+          <span class="goal-amounts">${fmt(Math.min(netProfit, g.target))} / <strong>${fmt(g.target)}</strong> kr</span>
+        </div>
+        <div class="track"><div class="fill" style="width:${pctDone}%;background:${g.color}"></div></div>
+      </div>`;
+  }).join('');
+
+  // Breakeven-tabell
+  const scenarios = [0.5, 1, 1.5, 2, 3, 5].map(mult => {
+    const mc = Math.round(fixedCosts * mult);
+    const be = Math.ceil((mc + marketing) / (avgBookingValue * spickPct));
+    return { mult, costs: mc + marketing, breakeven: be };
+  });
+  document.getElementById('breakevenTable').innerHTML = `
+    <table>
+      <thead><tr><th>Kostnadsnivå</th><th>Totalkostnad/mån</th><th>Bokningar för breakeven</th><th>vs. Nu</th></tr></thead>
+      <tbody>${scenarios.map(s => `
+        <tr>
+          <td>${s.mult}× fasta kostnader</td>
+          <td>${fmt(s.costs)} kr</td>
+          <td class="${s.breakeven <= bookings ? 'td-green' : 'td-red'}">${s.breakeven} bokningar</td>
+          <td class="${s.breakeven <= bookings ? 'td-green' : 'td-red'}">${bookings >= s.breakeven ? '✅ Uppnått' : `${s.breakeven - bookings} kvar`}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // Provision-program
+  const levels = [
+    { icon:'🥉', title:'Brons',    range:'0–20 uppdrag',   bonus:0,    color:'#cd7f32' },
+    { icon:'🥈', title:'Silver',   range:'21–100 uppdrag', bonus:0.05, color:'#a8a9ad' },
+    { icon:'🏆', title:'Guld',     range:'101–300 uppdrag',bonus:0.10, color:'#ffd700' },
+    { icon:'💎', title:'Platinum', range:'301+ uppdrag',   bonus:0.15, color:'#4f46e5' },
+  ];
+  document.getElementById('provGrid').innerHTML = levels.map(l => {
+    const cleanerHourly = pricePerHour * cleanerPct;
+    const bonusHourly   = cleanerHourly * l.bonus;
+    const spickCost     = l.bonus > 0 ? `Kostar Spick: ${pct(l.bonus * cleanerPct * 100)} extra av omsättning` : 'Ingen extra kostnad';
+    return `
+      <div class="prov-card" style="border-top:3px solid ${l.color}">
+        <div class="prov-icon">${l.icon}</div>
+        <div class="prov-title">${l.title}</div>
+        <div class="prov-range">${l.range}</div>
+        <div class="prov-rate">+${Math.round(l.bonus * 100)}%</div>
+        <div class="prov-rate-label">bonus på ersättning</div>
+        <div class="prov-bonus">${spickCost}<br>Städare: +${fmt(bonusHourly)} kr/h</div>
+      </div>`;
+  }).join('');
+
+  // Prognos
+  const currentMonthIdx = NOW;
+  document.getElementById('forecastGrid').innerHTML = Array.from({length:12}, (_,i) => {
+    const monthBookings = Math.round(bookings * Math.pow(1 + growthRate, i));
+    const mRev     = monthBookings * avgBookingValue;
+    const mProfit  = mRev * spickPct - totalCosts;
+    const isCurrent = i === 0;
+    return `
+      <div class="forecast-month${isCurrent ? ' current' : ''}">
+        <div class="m-name">${MONTHS[(currentMonthIdx + i) % 12]}</div>
+        <div class="m-rev">${fmt(mRev)} kr</div>
+        <div class="m-profit" style="color:${mProfit >= 0 ? 'var(--accent)' : 'var(--red)'}">
+          ${mProfit >= 0 ? '+' : ''}${fmt(mProfit)} kr
+        </div>
+      </div>`;
+  }).join('');
+
+  // KPI-tabell
+  const milestones = [5,10,25,50,100,200,500];
+  document.getElementById('kpiTable').innerHTML = milestones.map(n => {
+    const r   = n * avgBookingValue;
+    const g   = r * spickPct;
+    const np  = g - totalCosts;
+    const m   = r > 0 ? np / r * 100 : 0;
+    const be  = np >= 0;
+    const current = Math.abs(n - bookings) < 5;
+    return `<tr${current ? ' style="background:rgba(0,208,132,.05)"' : ''}>
+      <td>${n}${current ? ' ◀ nu' : ''}</td>
+      <td>${fmt(r)} kr</td>
+      <td class="td-green">${fmt(g)} kr</td>
+      <td class="${np >= 0 ? 'td-green' : 'td-red'}">${fmt(np)} kr</td>
+      <td class="${m > 15 ? 'td-green' : m > 0 ? 'td-orange' : 'td-red'}">${pct(m)}</td>
+      <td>${be ? '<span class="td-green">✅ Ja</span>' : '<span class="td-red">❌ Nej</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+recalc();
+</script>
+</body>
+</html>
