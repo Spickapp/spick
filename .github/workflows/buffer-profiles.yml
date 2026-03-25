@@ -7,12 +7,30 @@ jobs:
   get-profiles:
     runs-on: ubuntu-latest
     steps:
-      - name: Hämta Buffer profiler
+      - name: Hämta Buffer profiler (ny API)
         run: |
-          echo "=== Buffer profiler ==="
-          curl -s "https://api.bufferapp.com/1/profiles.json?access_token=${{ secrets.BUFFER_ACCESS_TOKEN }}" | python3 -c "
+          echo "=== Testar Buffer API ==="
+          
+          # Ny Buffer API
+          RESP=$(curl -s -H "Authorization: Bearer ${{ secrets.BUFFER_ACCESS_TOKEN }}" \
+            "https://api.buffer.com/1/profiles.json")
+          echo "Svar ny API: $RESP"
+          
+          # Gammal Buffer API  
+          RESP2=$(curl -s \
+            "https://api.bufferapp.com/1/profiles.json?access_token=${{ secrets.BUFFER_ACCESS_TOKEN }}")
+          echo "Svar gammal API: $RESP2"
+          
+          # Parsea om JSON
+          echo "$RESP" | python3 -c "
           import sys, json
-          profiles = json.load(sys.stdin)
-          for p in profiles:
-              print(f\"ID: {p['id']} | Service: {p['service']} | Name: {p.get('service_username','')}\")
-          "
+          try:
+              data = json.load(sys.stdin)
+              if isinstance(data, list):
+                  for p in data:
+                      print(f\"ID: {p.get('id','')} | Service: {p.get('service','')} | Name: {p.get('service_username','')}\")
+              else:
+                  print('Svar:', data)
+          except Exception as e:
+              print('Parse-fel:', e)
+          " || true
