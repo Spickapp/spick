@@ -65,5 +65,16 @@ h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var
   </div>
 </div>
 <script src="analytics.js" defer></script>
+
+<script>
+// Erbjud push-notiser efter bokning
+window.addEventListener('load', () => {
+  const email = new URLSearchParams(location.search).get('email') || 
+                localStorage.getItem('spick_customer_email');
+  if (email && window.offerPushAfterBooking) {
+    window.offerPushAfterBooking(email);
+  }
+});
+</script>
 </body>
 </html>

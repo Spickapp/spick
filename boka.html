@@ -392,7 +392,13 @@ async function doBook(){
     // Spara kund i analytics
     if(window.spickTrack) window.spickTrack.bookingCompleted({email:em, service:svc, price:tot});
 
-    window.location.href='tack.html';
+    if (window.offerPushAfterBooking) {
+      localStorage.setItem('spick_customer_email', em);
+      window.offerPushAfterBooking(em);
+      setTimeout(() => { window.location.href='tack.html'; }, 2500);
+    } else {
+      window.location.href='tack.html';
+    }
   }catch(e){
     btn.disabled=false;btn.innerHTML='Bekräfta bokning →';
     alert('Fel: '+e.message);

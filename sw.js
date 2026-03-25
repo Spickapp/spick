@@ -1,5 +1,5 @@
 // SPICK SERVICE WORKER v2.0
-const CACHE = 'spick-v3';
+const CACHE = 'spick-v4';
 const STATIC = [
   '/', '/index.html', '/stadare.html', '/boka.html',
   '/bli-stadare.html', '/hur-det-funkar.html', '/priser.html',
@@ -81,6 +81,35 @@ self.addEventListener('notificationclick', e => {
         }
       }
       if (clients.openWindow) return clients.openWindow(e.notification.data?.url || '/');
+    })
+  );
+});
+
+// ── PUSH NOTIFICATION HANDLER ────────────────────────
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  let data;
+  try { data = e.data.json(); } catch { data = { title: 'Spick', body: e.data.text() }; }
+
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Spick', {
+      body: data.body || '',
+      icon: '/assets/icon-192.png',
+      badge: '/assets/icon-192.png',
+      data: { url: data.url || '/' },
+      actions: data.actions || [],
+      vibrate: [200, 100, 200]
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+      const win = cs.find(c => c.url.includes(self.location.origin));
+      return win ? win.focus().then(w => w.navigate(url)) : clients.openWindow(url);
     })
   );
 });

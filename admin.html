@@ -350,6 +350,28 @@ async function sendAllRatingMails(){
   alert(`✅ Skickade ${sent} betygsmejl!`);
 }
 
+async function notifyCleaners(booking) {
+  try {
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/push', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+      body: JSON.stringify({
+        type: 'cleaner_job',
+        target_type: 'cleaner',
+        data: {
+          service: booking.service,
+          city: booking.city,
+          date: booking.date,
+          pay: Math.round((booking.total_price||0)*0.83)
+        }
+      })
+    });
+    alert('✅ Push-notis skickad till alla städare!');
+  } catch(e) {
+    alert('Kunde inte skicka push: '+e.message);
+  }
+}
+
 async function loadAll(){
   await Promise.all([loadBookings(),loadApps(),loadCleaners(),loadRatings(),loadGuarantees(),loadInvoices(),loadNotifs()]);
   showAlerts();
