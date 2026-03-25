@@ -93,7 +93,7 @@ stats = {"reminders": 0, "reviews": 0, "winback": 0, "cleaner_reminders": 0, "ex
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 1. Kundpåminnelser (imorgon) ===")
 bookings_tomorrow = supa_get(
-    f"bookings?scheduled_date=eq.{TOMORROW}&payment_status=eq.paid&reminder_sent=is.null&select=id,customer_name,customer_email,scheduled_date,scheduled_time,service,address,hours,total_price,rut"
+    f"bookings?date=eq.{TOMORROW}&payment_status=eq.paid&reminder_sent=is.null&select=id,customer_name,customer_email,scheduled_date,scheduled_time,service,address,hours,total_price,rut"
 )
 for b in bookings_tomorrow:
     price_display = f"{int(b.get('total_price',0))} kr" + (" (efter RUT)" if b.get('rut') else "")
@@ -101,8 +101,8 @@ for b in bookings_tomorrow:
 <h2>Påminnelse om din städning imorgon 🌿</h2>
 <p>Hej {b.get('customer_name','')?.split()[0] if b.get('customer_name') else 'där'}! En städare kommer imorgon – här är detaljerna.</p>
 <div class="card">
-  <div class="row"><span class="lbl">Datum</span><span class="val">{b.get('scheduled_date','')}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">{b.get('scheduled_time','09:00')}</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">{b.get('date','')}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">{b.get('time','09:00')}</span></div>
   <div class="row"><span class="lbl">Tjänst</span><span class="val">{b.get('service','Hemstädning')} · {b.get('hours',3)}h</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">{b.get('address','')}</span></div>
   <div class="row"><span class="lbl">Pris</span><span class="val">{price_display}</span></div>
@@ -120,7 +120,7 @@ for b in bookings_tomorrow:
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 2. Recensionsbegäran (igår) ===")
 bookings_yesterday = supa_get(
-    f"bookings?scheduled_date=eq.{YESTERDAY}&payment_status=eq.paid&review_requested=is.null&select=id,customer_name,customer_email,service,cleaner_id"
+    f"bookings?date=eq.{YESTERDAY}&payment_status=eq.paid&review_requested=is.null&select=id,customer_name,customer_email,service,cleaner_id"
 )
 for b in bookings_yesterday:
     name = b.get('customer_name','')
@@ -145,7 +145,7 @@ for b in bookings_yesterday:
 print("\n=== 3. Win-back (30 dagar inaktiva) ===")
 # Hitta kunder med senaste bokning för 30-31 dagar sedan
 winback_bookings = supa_get(
-    f"bookings?scheduled_date=gte.{DAYS31AGO}&scheduled_date=lte.{DAYS30AGO}&payment_status=eq.paid&winback_sent=is.null&select=customer_name,customer_email"
+    f"bookings?date=gte.{DAYS31AGO}&date=lte.{DAYS30AGO}&payment_status=eq.paid&winback_sent=is.null&select=customer_name,customer_email"
 )
 seen = set()
 for b in winback_bookings:
@@ -165,7 +165,7 @@ for b in winback_bookings:
 <a href="https://spick.se/boka.html" class="btn">Boka städning nu →</a>
 """)
     send_email(em, f"Vi saknar dig, {fname}! 🌿 Här är 10% rabatt", html)
-    supa_patch("bookings", f"customer_email=eq.{urllib.parse.quote(em)}&scheduled_date=eq.{DAYS30AGO}", {"winback_sent": TODAY})
+    supa_patch("bookings", f"customer_email=eq.{urllib.parse.quote(em)}&date=eq.{DAYS30AGO}", {"winback_sent": TODAY})
     stats["winback"] += 1
 
 # ═══════════════════════════════════════════════════════════════
@@ -173,7 +173,7 @@ for b in winback_bookings:
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 4. Städare-påminnelse (uppdrag imorgon) ===")
 cleaner_jobs = supa_get(
-    f"bookings?scheduled_date=eq.{TOMORROW}&payment_status=eq.paid&cleaner_id=not.is.null&cleaner_reminded=is.null&select=id,scheduled_date,scheduled_time,service,address,hours,cleaner_id,total_price"
+    f"bookings?date=eq.{TOMORROW}&payment_status=eq.paid&cleaner_id=not.is.null&cleaner_reminded=is.null&select=id,scheduled_date,scheduled_time,service,address,hours,cleaner_id,total_price"
 )
 # Hämta städare för varje bokning
 for b in cleaner_jobs:
@@ -186,8 +186,8 @@ for b in cleaner_jobs:
 <h2>Påminnelse: Du har ett uppdrag imorgon 🧹</h2>
 <p>Hej {c.get('full_name','').split()[0]}! En kund väntar på dig imorgon.</p>
 <div class="card">
-  <div class="row"><span class="lbl">Datum</span><span class="val">{b.get('scheduled_date','')}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">{b.get('scheduled_time','09:00')}</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">{b.get('date','')}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">{b.get('time','09:00')}</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">{b.get('address','')}</span></div>
   <div class="row"><span class="lbl">Tjänst</span><span class="val">{b.get('service','Hemstädning')} · {b.get('hours',3)}h</span></div>
   <div class="row"><span class="lbl">Din intjäning</span><span class="val" style="color:#0F6E56">{earning} kr</span></div>
@@ -195,7 +195,7 @@ for b in cleaner_jobs:
 <p>✅ Ta med all utrustning<br>✅ Var i tid – kunden förväntar sig dig<br>✅ Markera jobbet som klart i appen efter</p>
 <a href="https://spick.se/stadare-dashboard.html" class="btn">Öppna städardashboard →</a>
 """)
-    send_email(c['email'], f"Påminnelse: Städning imorgon kl {b.get('scheduled_time','09:00')} 🧹", html)
+    send_email(c['email'], f"Påminnelse: Städning imorgon kl {b.get('time','09:00')} 🧹", html)
     supa_patch("bookings", f"id=eq.{b['id']}", {"cleaner_reminded": TODAY})
     stats["cleaner_reminders"] += 1
 
@@ -224,7 +224,7 @@ except:
 # 6. ADMIN DAGLIG RAPPORT
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 6. Admin daglig rapport ===")
-todays_bookings = supa_get(f"bookings?scheduled_date=eq.{TODAY}&select=id,service,total_price,payment_status,customer_name,address")
+todays_bookings = supa_get(f"bookings?date=eq.{TODAY}&select=id,service,total_price,payment_status,customer_name,address")
 paid_today = [b for b in todays_bookings if b.get('payment_status') == 'paid']
 revenue_today = sum(b.get('total_price', 0) for b in paid_today)
 

@@ -91,7 +91,7 @@ async function sendEmail(to: string, subject: string, html: string) {
 async function assignBestCleaner(booking: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   const city = (booking.city as string)?.toLowerCase() || "";
   const service = (booking.service as string) || "Hemstädning";
-  const date = booking.scheduled_date as string;
+  const date = booking.date as string;
   
   // Hitta godkända städare i rätt stad med rätt tjänst, sorterade på betyg
   const { data: cleaners } = await sb
@@ -162,8 +162,8 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const fname = name.split(" ")[0];
   const price = `${Math.round(amountPaid)} kr`;
   const rutNote = isRut ? " (efter 50% RUT-avdrag)" : "";
-  const date = booking.scheduled_date || "";
-  const time = booking.scheduled_time || "09:00";
+  const date = booking.date || "";
+  const time = booking.time || "09:00";
   const service = booking.service || "Hemstädning";
   const hours = booking.hours || 3;
   const address = booking.address || "";
@@ -264,7 +264,7 @@ async function handlePaymentFailed(paymentIntent: Record<string, unknown>) {
     "Betalning misslyckades – försök igen ❌",
     wrap(`
 <h2>Betalningen gick inte igenom 😔</h2>
-<p>Hej ${fname}! Tyvärr misslyckades din betalning för ${booking.service} den ${booking.scheduled_date}.</p>
+<p>Hej ${fname}! Tyvärr misslyckades din betalning för ${booking.service} den ${booking.date}.</p>
 <p>Din bokning är sparad – försök betala igen:</p>
 <a href="https://spick.se/boka.html" class="btn">Försök betala igen →</a>
 <p style="font-size:13px;margin-top:16px">Behöver du hjälp? Skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
@@ -301,7 +301,7 @@ async function handleRefund(charge: Record<string, unknown>) {
 <a href="https://spick.se/boka.html" class="btn">Boka igen →</a>
 `)
   );
-  await sendEmail(ADMIN, `↩️ Återbetalning: ${booking.customer_name} – ${Math.round(refundAmount)} kr`, wrap(`<h2>Återbetalning genomförd</h2><p>Kund: ${booking.customer_name}<br>Belopp: ${Math.round(refundAmount)} kr<br>Bokning: ${booking.scheduled_date}</p>`));
+  await sendEmail(ADMIN, `↩️ Återbetalning: ${booking.customer_name} – ${Math.round(refundAmount)} kr`, wrap(`<h2>Återbetalning genomförd</h2><p>Kund: ${booking.customer_name}<br>Belopp: ${Math.round(refundAmount)} kr<br>Bokning: ${booking.date}</p>`));
 }
 
 // ── Huvud-handler ──────────────────────────────────────────────────────────

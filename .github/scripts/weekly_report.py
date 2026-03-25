@@ -70,7 +70,7 @@ th{{background:#F7F7F5;font-weight:600;color:#6B6960}}
 </div></body></html>"""
 
 # ── Hämta data ─────────────────────────────────────────────────
-bookings     = supa_get(f"bookings?created_at=gte.{WEEK_START}T00:00:00&select=id,payment_status,total_price,service,city,rut,customer_email,scheduled_date")
+bookings     = supa_get(f"bookings?created_at=gte.{WEEK_START}T00:00:00&select=id,payment_status,total_price,service,city,rut,customer_email,date")
 paid         = [b for b in bookings if b.get('payment_status') == 'paid']
 revenue      = sum(b.get('total_price', 0) for b in paid)
 rut_count    = sum(1 for b in paid if b.get('rut'))

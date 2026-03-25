@@ -1,5 +1,6 @@
 name: Deploy Supabase Edge Functions
-'on':
+
+on:
   push:
     branches: [main]
     paths:
@@ -12,30 +13,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Install Supabase CLI
+        run: |
+          curl -fsSL https://github.com/supabase/cli/releases/download/v2.22.6/supabase_linux_amd64.tar.gz | tar xz
+          sudo mv supabase /usr/local/bin/supabase
 
-      - name: Deploy alla Edge Functions
+      - name: Deploy alla edge functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          PROJECT="urjeijcncsyuletprydy"
-          for fn in notify geo push claude bankid; do
-            echo "▶ Deploying $fn..."
-            supabase functions deploy $fn --project-ref $PROJECT \
-              --no-verify-jwt 2>&1 && echo "✅ $fn klar!" || echo "⚠️ $fn fel"
+          for fn in supabase/functions/*/; do
+            name=$(basename "$fn")
+            echo "→ Deploying $name..."
+            supabase functions deploy "$name" \
+              --project-ref urjeijcncsyuletprydy \
+              --no-verify-jwt || echo "⚠️ $name misslyckades"
           done
-
-      - name: Sätt Edge Function secrets
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase secrets set \
-            VAPID_PUBLIC_KEY=BFq-Saij81SXRzVsPmNgFBOLPD7CeokFSSszEKTKBFzs2rOzKHSpf9nNYMERDKAdXiNNm2PDNRFJnZtLWPnSdH4 \
-            VAPID_PRIVATE_KEY=9-qIkV5sEL1JpuFyypvOWnGKKJ1XDgdZlZBFKzTn9eE \
-            RESEND_API_KEY=re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB \
-            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} \
-            --project-ref urjeijcncsyuletprydy
-          echo "✅ Secrets satta!"
+          echo "✅ Deployment klar $(date '+%H:%M')"
