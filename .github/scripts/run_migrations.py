@@ -43,3 +43,4 @@ r = subprocess.run(['psql', DB, '-c',
 ], capture_output=True, text=True, env=env)
 print(r.stdout)
 print("\n🎉 Alla migrationer klara!")
+ 
