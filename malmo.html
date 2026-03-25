@@ -81,6 +81,8 @@ footer p{font-size:.8rem;color:#4A4A45;}
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
+<meta property="og:image" content="https://spick.se/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="stadare.html" class="nc">← Alla städare</a></nav>
@@ -117,6 +119,19 @@ footer p{font-size:.8rem;color:#4A4A45;}
   </div>
 </div>
 
+
+<div class="sec" id="cleaners-sec">
+  <div class="sec-tag">Tillgängliga städare</div>
+  <h2 id="cleaners-heading">Städare i Malmö</h2>
+  <div id="cleaners-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem">
+    <div style="grid-column:1/-1;text-align:center;padding:2rem;color:#888">Laddar städare...</div>
+  </div>
+  <div style="text-align:center;margin-top:2rem">
+    <a href="stadare.html?city=Malm%C3%B6" style="display:inline-flex;align-items:center;gap:.5rem;padding:.875rem 2rem;background:var(--g);color:#fff;border-radius:100px;text-decoration:none;font-weight:600;font-size:.9rem">
+      Se alla städare i Malmö →
+    </a>
+  </div>
+</div>
 <div class="faq">
   <div class="sec-tag">Vanliga frågor</div>
   <h2>Om Spick i Malmö</h2>
@@ -146,6 +161,51 @@ async function joinWL(){
   // Skicka välkomstmail till oss
   await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB','Content-Type':'application/json'},body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',subject:'🗺️ Ny väntelisteanmälan: Malmö – '+e,html:'<p>Ny anmälan till väntelistan för <strong>Malmö</strong>: <strong>'+e+'</strong></p>'})});
 }
+
+// Ladda städare för denna stad
+async function loadLocalCleaners(){
+  const city = 'Malmö';
+  const {data} = await SB.from('cleaners')
+    .select('id,full_name,hourly_rate,avg_rating,review_count,city,bio,services,identity_verified,bonus_level')
+    .eq('status','godkänd')
+    .ilike('city', city)
+    .order('avg_rating', {ascending:false})
+    .limit(3);
+  
+  const grid = document.getElementById('cleaners-grid');
+  if(!grid) return;
+  
+  if(!data?.length){
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#888">Inga städare i Malmö ännu – <a href=\"stadare.html\" style=\"color:var(--g)\">se alla städare →</a></div>';
+    return;
+  }
+  
+  const COLORS=['#0F6E56','#534AB7','#D85A30'];
+  function ini(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2);}
+  function stars(r){return'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
+  
+  grid.innerHTML = data.map((c,i) => {
+    const price = c.hourly_rate||350;
+    const rating = parseFloat(c.avg_rating||0).toFixed(1);
+    const bio = (c.bio||'Professionell städare.').slice(0,90);
+    return \`<div style="background:#fff;border-radius:16px;border:1px solid #E8E8E4;padding:1.25rem;display:flex;flex-direction:column;gap:.75rem">
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:\${COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:#fff;flex-shrink:0">\${ini(c.full_name)}</div>
+        <div>
+          \${c.identity_verified?'<span style=\"font-size:.65rem;font-weight:600;color:#0F6E56;background:#E1F5EE;padding:.15rem .5rem;border-radius:99px\">✓ BankID</span><br>':''}
+          <div style="font-size:.9rem;font-weight:600;color:#1C1C1A">\${c.full_name}</div>
+          <div style="font-size:.75rem;color:#6B6960">\${stars(rating)} \${rating} \${c.review_count?'('+c.review_count+')':''nya''}</div>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:#6B6960;line-height:1.5">\${bio}...</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><span style="font-size:1rem;font-weight:700;color:#1C1C1A">\${price} kr</span><span style="font-size:.75rem;color:#6B6960">/h</span></div>
+        <a href="boka.html?name=\${encodeURIComponent(c.full_name)}&rate=\${price}&id=\${c.id}" style="padding:.5rem 1rem;background:#0F6E56;color:#fff;border-radius:99px;font-size:.8rem;font-weight:600;text-decoration:none">Boka →</a>
+      </div>
+    </div>\`;
+  }).join('');
+}
+loadLocalCleaners();
 </script>
 </body>
 </html>

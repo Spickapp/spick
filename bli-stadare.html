@@ -112,6 +112,14 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
+  <!-- Microsoft Clarity heatmaps -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","spick01");
+  </script>
+<meta property="og:image" content="https://spick.se/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="rekrytera.html" class="nc">Varför Spick?</a></nav>
@@ -307,7 +315,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 
 <script>
 const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
-const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
 let svcs=['Hemstädning'],verified=false,hashedPnr='';
 
 function tS(btn,s){btn.classList.toggle('on');svcs=btn.classList.contains('on')?[...svcs,s]:svcs.filter(x=>x!==s);}
@@ -395,13 +403,12 @@ async function doSubmit(){
       message:'F-skatt: '+fsk+' | Tillgänglighet: '+avail+' | Erfarenhet: '+exp+' | BankID: '+hashedPnr.slice(0,16)+'... | Verifierad: '+new Date().toISOString()
     }]);
 
-    // Notis till admin
-    await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
-      body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',
-        subject:'🧹 Ny städaransökan (BankID ✓): '+fn+' '+ln+' – '+city,
-        html:'<p>Ny ansökan inkommen!</p><ul><li>Namn: <strong>'+fn+' '+ln+'</strong></li><li>Email: '+em+'</li><li>Telefon: '+ph+'</li><li>Stad: '+city+'</li><li>Tjänster: '+svcs.join(', ')+'</li><li>Pris: '+rate+' kr/h</li><li>F-skatt: '+fsk+'</li><li>BankID: ✅ Verifierad</li><li>PNR-hash: '+hashedPnr.slice(0,16)+'...</li></ul><a href="https://spick.se/admin.html">Öppna admin →</a>'
-      })
-    });
+    // Notis via edge function
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
+      body:JSON.stringify({type:'application',record:{full_name:fn+' '+ln,email:em,phone:ph,city,services:svcs.join(', '),hourly_rate:rate,has_fskatt:fsk==='ja'}})
+    }).catch(()=>{});
 
     document.getElementById('ov-name').textContent=fn+'!';
     document.getElementById('ov').classList.add('show');
