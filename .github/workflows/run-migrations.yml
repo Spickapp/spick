@@ -17,32 +17,45 @@ jobs:
         with:
           version: latest
 
-      - name: Check available CLI commands
-        run: supabase --version && supabase db --help 2>&1 | head -20
+      - name: Debug - lista tillgängliga CLI-kommandon
+        run: |
+          supabase --version
+          echo "--- db subkommandon ---"
+          supabase db --help 2>&1 || true
+          echo "--- migration subkommandon ---"
+          supabase migration --help 2>&1 || true
 
-      - name: Run migrations
+      - name: Kör migrationer via Supabase Management API (curl)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           PROJECT="urjeijcncsyuletprydy"
+          API="https://api.supabase.com/v1/projects/$PROJECT/database/query"
 
-          # Kör varje migration som inline SQL via supabase db execute
-          echo "▶ Migration 004..."
-          supabase db execute --project-ref $PROJECT < supabase/migrations/004_alias.sql \
-            && echo "✅ 004 klar" || echo "⚠️ 004 (möjligen redan körd)"
+          run_sql() {
+            local label="$1"
+            local sql="$2"
+            echo "▶ Kör $label..."
+            HTTP=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+              -X POST "$API" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"query\":$(python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))" <<< "$sql")}")
+            echo "HTTP $HTTP: $(cat /tmp/resp.json)"
+            [ "$HTTP" = "200" ] && echo "✅ $label klar" || (echo "❌ $label misslyckades"; cat /tmp/resp.json; exit 1)
+          }
 
-          echo "▶ Migration 005..."
-          supabase db execute --project-ref $PROJECT < supabase/migrations/005_data.sql \
-            && echo "✅ 005 klar" || echo "⚠️ 005 (möjligen redan körd)"
+          run_sql "004_alias" "$(cat supabase/migrations/004_alias.sql)"
+          run_sql "005_data"  "$(cat supabase/migrations/005_data.sql)"
+          run_sql "006_keys"  "$(cat supabase/migrations/006_keys.sql)"
 
-          echo "▶ Migration 006..."
-          supabase db execute --project-ref $PROJECT < supabase/migrations/006_keys.sql \
-            && echo "✅ 006 klar" || echo "⚠️ 006 (möjligen redan körd)"
-
-      - name: Verify tables
+      - name: Verifiera tabeller
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          supabase db execute --project-ref urjeijcncsyuletprydy \
-            <<< "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
-          echo "✅ Verifiering klar"
+          curl -s -X POST \
+            "https://api.supabase.com/v1/projects/urjeijcncsyuletprydy/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"SELECT table_name FROM information_schema.tables WHERE table_schema='"'"'public'"'"' AND table_name IN ('"'"'customer_profiles'"'"','"'"'analytics_events'"'"','"'"'key_methods'"'"','"'"'messages'"'"') ORDER BY table_name;"}' \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); [print('✅',r['table_name']) for r in d] if isinstance(d,list) else print(d)"
