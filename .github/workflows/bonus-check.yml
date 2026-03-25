@@ -12,43 +12,35 @@ jobs:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
           SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # godkänd URL-enkodad: godk%C3%A4nd
-          CLEANERS=$(curl -sf "${SUPA_URL}/rest/v1/cleaners?status=eq.godk%C3%A4nd&select=id,full_name,email,avg_rating,review_count,bonus_level" \
-            -H "apikey: $SUPA_KEY" \
-            -H "Authorization: Bearer $SUPA_KEY")
-
-          echo "Hämtade städare: $(echo $CLEANERS | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else d)')"
-
-          python3 << PYEOF
-import json, os, urllib.request, urllib.error
+          python3 - << 'PYTHON'
+import json, os, urllib.request, urllib.error, subprocess
 
 SUPA_URL = os.environ['SUPA_URL']
 SUPA_KEY = os.environ['SUPA_KEY']
 
-import subprocess
-result = subprocess.run(['curl', '-sf',
+result = subprocess.run([
+    'curl', '-sf',
     f"{SUPA_URL}/rest/v1/cleaners?status=eq.godk%C3%A4nd&select=id,full_name,email,avg_rating,review_count,bonus_level",
     '-H', f'apikey: {SUPA_KEY}',
     '-H', f'Authorization: Bearer {SUPA_KEY}'
 ], capture_output=True, text=True)
 
-d = json.loads(result.stdout)
+try:
+    d = json.loads(result.stdout)
+except Exception as e:
+    print(f"JSON-fel: {e}, svar: {result.stdout[:200]}")
+    exit(0)
+
 if not isinstance(d, list):
-    print(f"Svar: {d}")
+    print(f"Oväntat svar: {d}")
     exit(0)
 
 print(f"Antal städare: {len(d)}")
 
-LEVELS = [
-    ('Platinum', 301, 4.9),
-    ('Guld',     101, 4.7),
-    ('Silver',    21, 4.5),
-    ('Brons',      0, 0.0),
-]
-
-def get_level(jobs, rating):
-    for name, min_jobs, min_rating in LEVELS:
-        if jobs >= min_jobs and (rating >= min_rating or min_rating == 0.0):
+LEVELS = [('Platinum',301,4.9),('Guld',101,4.7),('Silver',21,4.5),('Brons',0,0.0)]
+def get_level(j, r):
+    for name, mj, mr in LEVELS:
+        if j >= mj and (r >= mr or mr == 0.0):
             return name
     return 'Brons'
 
@@ -59,22 +51,17 @@ for c in d:
     new    = get_level(jobs, rating)
     if new != cur:
         body = json.dumps({'bonus_level': new}).encode()
-        url  = f"{SUPA_URL}/rest/v1/cleaners?id=eq.{c['id']}"
-        req  = urllib.request.Request(url, body, {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {SUPA_KEY}',
-            'apikey': SUPA_KEY,
-            'Prefer': 'return=minimal'
-        }, method='PATCH')
+        req  = urllib.request.Request(
+            f"{SUPA_URL}/rest/v1/cleaners?id=eq.{c['id']}", body,
+            {'Content-Type':'application/json','Authorization':f'Bearer {SUPA_KEY}',
+             'apikey':SUPA_KEY,'Prefer':'return=minimal'}, method='PATCH')
         try:
             urllib.request.urlopen(req, timeout=10)
             print(f"Uppgraderad {c['full_name']}: {cur} -> {new}")
-        except urllib.error.HTTPError as e:
-            print(f"HTTP-fel {e.code}: {e.read().decode()}")
         except Exception as e:
             print(f"Fel: {e}")
     else:
         print(f"OK {c.get('full_name','?')}: {cur}")
 
 print("Bonus check klar!")
-PYEOF
+PYTHON

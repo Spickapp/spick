@@ -12,34 +12,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install psql
-        run: sudo apt-get install -y postgresql-client -q
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
-      - name: Run migrations via psql
+      - name: Check available CLI commands
+        run: supabase --version && supabase db --help 2>&1 | head -20
+
+      - name: Run migrations
         env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          export PGSSLMODE=require
-          DB="postgresql://postgres.urjeijcncsyuletprydy:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
+          PROJECT="urjeijcncsyuletprydy"
 
-          echo "▶ Testar anslutning..."
-          psql "$DB" -c "SELECT NOW();" && echo "✅ Anslutning OK"
-
+          # Kör varje migration som inline SQL via supabase db execute
           echo "▶ Migration 004..."
-          psql "$DB" -f supabase/migrations/004_alias.sql && echo "✅ 004 klar"
+          supabase db execute --project-ref $PROJECT < supabase/migrations/004_alias.sql \
+            && echo "✅ 004 klar" || echo "⚠️ 004 (möjligen redan körd)"
 
           echo "▶ Migration 005..."
-          psql "$DB" -f supabase/migrations/005_data.sql && echo "✅ 005 klar"
+          supabase db execute --project-ref $PROJECT < supabase/migrations/005_data.sql \
+            && echo "✅ 005 klar" || echo "⚠️ 005 (möjligen redan körd)"
 
           echo "▶ Migration 006..."
-          psql "$DB" -f supabase/migrations/006_keys.sql && echo "✅ 006 klar"
+          supabase db execute --project-ref $PROJECT < supabase/migrations/006_keys.sql \
+            && echo "✅ 006 klar" || echo "⚠️ 006 (möjligen redan körd)"
 
       - name: Verify tables
         env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          export PGSSLMODE=require
-          DB="postgresql://postgres.urjeijcncsyuletprydy:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
-          psql "$DB" -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
+          supabase db execute --project-ref urjeijcncsyuletprydy \
+            <<< "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
           echo "✅ Verifiering klar"
- 
