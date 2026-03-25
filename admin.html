@@ -254,6 +254,12 @@ tr:hover td{background:var(--gr);}
     <div class="view" id="vnotif">
       <div class="topbar"><div class="ptitle">E-postlogg</div></div>
       <div class="card"><div class="ch"><span class="ct" id="notif-ct">Skickade mail</span></div>
+      <div class="card" style="margin-bottom:1rem"><div class="ch"><span class="ct">Kundprofiler</span></div>
+      <table><thead><tr><th>Namn</th><th>Email</th><th>Stad</th><th>Bokningar</th><th>Senast</th></tr></thead>
+      <tbody id="acust"></tbody></table></div>
+      <div class="card" style="margin-bottom:1rem"><div class="ch"><span class="ct">Analytics-events (senaste 100)</span></div>
+      <table><thead><tr><th>Event</th><th>Antal</th></tr></thead>
+      <tbody id="aan"></tbody></table></div>
       <table><thead><tr><th>Typ</th><th>Mottagare</th><th>Status</th><th>Skickat</th></tr></thead>
       <tbody id="an"></tbody></table></div>
     </div>
@@ -370,7 +376,7 @@ async function loadCleaners(){
 }
 
 async function loadRatings(){
-  const {data}=await db.from('ratings').select('*').order('created_at',{ascending:false});
+  const {data}=await db.from('reviews').select('*').order('created_at',{ascending:false});
   window._ratings=data||[];
   document.getElementById('ar').innerHTML=(data||[]).map(r=>'<tr>'
     +'<td>'+r.customer_name+'</td>'
@@ -418,6 +424,29 @@ async function loadInvoices(){
     +'<td>'+sbadge(inv.status)+'</td>'
     +'<td>'+( inv.status==='pending'?'<button class="abtn abtn-b" onclick="sendInvoiceMail(''+inv.id+'')">📧 Skicka</button>':'<span style="color:var(--g);font-size:.8rem">✓ Skickat</span>')+'</td>'
   +'</tr>').join('')||'<tr><td colspan="7" class="empty">Inga fakturor</td></tr>';
+}
+
+async function loadAnalytics(){
+  const {data}=await db.from('analytics_events').select('event_type,page,device_type,created_at').order('created_at',{ascending:false}).limit(100);
+  if(!data?.length) return;
+  const byType={};
+  data.forEach(e=>{byType[e.event_type]=(byType[e.event_type]||0)+1;});
+  const summary=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`<tr><td>${t}</td><td>${c}</td></tr>`).join('');
+  const el=document.getElementById('aan');
+  if(el) el.innerHTML=summary||'<tr><td colspan="2">Inga events</td></tr>';
+}
+
+async function loadCustomers(){
+  const {data}=await db.from('customer_profiles').select('name,email,city,total_bookings,last_visit').order('last_visit',{ascending:false}).limit(100);
+  const el=document.getElementById('acust');
+  if(!el||!data?.length) return;
+  el.innerHTML=data.map(c=>`<tr>
+    <td>${c.name||'–'}</td>
+    <td>${c.email}</td>
+    <td>${c.city||'–'}</td>
+    <td>${c.total_bookings||0}</td>
+    <td>${c.last_visit?new Date(c.last_visit).toLocaleDateString('sv-SE'):'–'}</td>
+  </tr>`).join('');
 }
 
 async function loadNotifs(){

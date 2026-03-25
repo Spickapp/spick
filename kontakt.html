@@ -94,6 +94,7 @@ footer p{font-size:.8rem;color:#4A4A45;}
     src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://spick.se/kontakt.html">
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="index.html" class="back">← Tillbaka</a></nav>
@@ -248,7 +249,21 @@ async function send(){
   const btn=document.getElementById('sbtn');
   btn.disabled=true;btn.innerHTML='<div class="spin"></div> Skickar...';
   try{
-    await SB.from('bookings').insert([{name:fn+' '+ln,email:em,phone:'',service:'Kontakt',message:sub+': '+msg,status:'kontakt',city:'',date:new Date().toISOString().split('T')[0],time:'00:00',hours:0,rut:false,total_price:0}]);
+    // Spara meddelande + notifiera admin via edge function
+    await SB.from('notifications').insert([{
+      type:'contact',
+      recipient_email:'hello@spick.se',
+      subject:'Kontaktformulär: '+sub,
+      status:'pending',
+      sent_at:new Date().toISOString()
+    }]);
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',
+               'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+               'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+      body:JSON.stringify({type:'contact',record:{name:fn+' '+ln,email:em,subject:sub,message:msg}})
+    }).catch(()=>{});
     document.getElementById('ok').classList.add('show');
     btn.innerHTML='✓ Skickat!';
   }catch(e){alert('Fel – maila hello@spick.se');btn.disabled=false;btn.innerHTML='Skicka meddelande';}
