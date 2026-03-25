@@ -308,6 +308,42 @@ function doLogin(){
   }else{document.getElementById('pw').style.borderColor='#DC2626';setTimeout(()=>document.getElementById('pw').style.borderColor='',1500);}
 }
 
+function filterBookings(){
+  const q=(document.getElementById('bookingSearch')?.value||'').toLowerCase();
+  const rows=document.querySelectorAll('#ab tr');
+  rows.forEach(row=>{
+    const txt=row.textContent.toLowerCase();
+    row.style.display=!q||txt.includes(q)?'':'none';
+  });
+}
+
+function exportCSV(){
+  const data=window._bookings||[];
+  if(!data.length){alert('Inga bokningar att exportera.');return;}
+  const cols=['name','email','phone','service','date','time','address','city','hours','total_price','rut','status','created_at'];
+  const header=cols.join(',');
+  const rows=data.map(b=>cols.map(c=>{
+    const v=b[c]||'';
+    return typeof v==='string'&&v.includes(',') ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }).join(','));
+  const csv=[header,...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='spick-bokningar-'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+}
+
+async function sendAllRatingMails(){
+  const data=(window._bookings||[]).filter(b=>b.status==='bekräftad'&&!b.review_sent_at);
+  if(!data.length){alert('Inga klara bokningar att skicka betygsmejl för.');return;}
+  if(!confirm(`Skicka betygsmejl till ${data.length} kunder?`))return;
+  let sent=0;
+  for(const b of data){
+    try{await sendRatingMail(b.id);sent++;}catch(e){}
+  }
+  alert(`✅ Skickade ${sent} betygsmejl!`);
+}
+
 async function loadAll(){
   await Promise.all([loadBookings(),loadApps(),loadCleaners(),loadRatings(),loadGuarantees(),loadInvoices(),loadNotifs()]);
   showAlerts();
@@ -319,6 +355,15 @@ async function loadBookings(){
   document.getElementById('k1').textContent=(data||[]).filter(b=>b.date===today).length;
   document.getElementById('k2').textContent=(data||[]).length;
   document.getElementById('bc').textContent='Bokningar ('+(data||[]).length+')';
+  // Lägg till sök + export om de inte finns
+  const abTable=document.getElementById('ab')?.closest('table');
+  if(abTable && !document.getElementById('bookingSearch')){
+    const toolbar=document.createElement('div');toolbar.className='search-bar';
+    toolbar.innerHTML=`<input id="bookingSearch" class="search-input" placeholder="🔍 Sök kund, email, stad..." oninput="filterBookings()">
+      <button class="export-btn" onclick="exportCSV()">⬇ Exportera CSV</button>
+      <button class="export-btn" onclick="sendAllRatingMails()">⭐ Skicka alla betygsmejl</button>`;
+    abTable.parentNode.insertBefore(toolbar, abTable);
+  }
   const newB=(data||[]).filter(b=>b.status==='ny').length;
   const nb=document.getElementById('nb');
   newB>0?(nb.textContent=newB,nb.style.display='inline'):(nb.style.display='none');
