@@ -6,28 +6,34 @@ on:
       - 'sitemap.xml'
       - '.github/workflows/**'
   workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
   sitemap:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
+          token: ${{ secrets.GH_PAT }}
+
       - name: Generera sitemap.xml
         run: |
           DATE=$(date +%Y-%m-%d)
           echo '<?xml version="1.0" encoding="UTF-8"?>' > sitemap.xml
           echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> sitemap.xml
           for f in *.html; do
-            [[ "$f" == "admin.html" || "$f" == "404.html" || "$f" == "tack.html" ]] && continue
+            [[ "$f" == "admin.html" || "$f" == "404.html" || "$f" == "tack.html" \
+            || "$f" == "index_1.html" || "$f" == "cookie-banner.html" \
+            || "$f" == "seo-snippet.html" ]] && continue
             PAGE="${f%.html}"
             [[ "$PAGE" == "index" ]] && URL="https://spick.se/" || URL="https://spick.se/$PAGE"
             echo "  <url><loc>$URL</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>" >> sitemap.xml
           done
           echo '</urlset>' >> sitemap.xml
           echo "✅ Sitemap: $(grep -c '<url>' sitemap.xml) sidor"
-      
+
       - name: Commit sitemap
         run: |
           git config user.email "hello@spick.se"

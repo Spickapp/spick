@@ -9,13 +9,16 @@ on:
         description: 'Meta Pixel ID (t.ex. 1234567890)'
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   inject:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
 
       - name: Inject tracking i alla HTML-filer
         run: |
