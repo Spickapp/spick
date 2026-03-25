@@ -1,0 +1,19 @@
+name: Setup Push Notifications (VAPID)
+on:
+  workflow_dispatch:
+jobs:
+  setup-vapid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate VAPID keys
+        run: |
+          npm install -g web-push
+          echo "=== VAPID KEYS ==="
+          web-push generate-vapid-keys --json > /tmp/vapid.json
+          cat /tmp/vapid.json
+          PUBLIC=$(cat /tmp/vapid.json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['publicKey'])")
+          PRIVATE=$(cat /tmp/vapid.json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['privateKey'])")
+          echo ""
+          echo "Add to Supabase Secrets:"
+          echo "VAPID_PUBLIC_KEY=$PUBLIC"
+          echo "VAPID_PRIVATE_KEY=$PRIVATE"
