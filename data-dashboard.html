@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Spick – Data Intelligence</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#080818;color:#e0e0e0;min-height:100vh}
+.topbar{background:#0f0f28;border-bottom:1px solid rgba(255,255,255,.06);padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{color:white;font-size:15px;font-weight:800}
+.topbar h1 span{color:#00d084}
+.live{display:flex;align-items:center;gap:6px;font-size:12px;color:#666}
+.live-dot{width:7px;height:7px;background:#00d084;border-radius:50%;animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.2}}
+
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#444;margin:28px 0 12px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:8px}
+.stat{background:#0f0f28;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px}
+.stat .lbl{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.stat .val{font-size:26px;font-weight:900;color:white}
+.stat .sub{font-size:11px;margin-top:3px}
+.up{color:#00d084}.down{color:#ef5350}.neutral{color:#666}
+
+/* PANELS */
+.panel{background:#0f0f28;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:22px;margin-bottom:14px}
+.panel h3{font-size:13px;font-weight:700;color:#aaa;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.panel h3 span{font-size:11px;color:#555;font-weight:400}
+
+/* SEGEMENT BARS */
+.seg-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.seg-label{font-size:12px;color:#666;width:140px;flex-shrink:0}
+.seg-track{flex:1;height:8px;background:#1a1a2e;border-radius:99px;overflow:hidden}
+.seg-fill{height:100%;border-radius:99px}
+.seg-val{font-size:12px;font-weight:700;color:#aaa;width:60px;text-align:right;flex-shrink:0}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{color:#444;font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.03);color:#bbb;vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.02)}
+.g{color:#00d084;font-weight:700}
+.r{color:#ef5350}
+.o{color:#ff9800}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+.badge-green{background:rgba(0,208,132,.15);color:#00d084}
+.badge-red{background:rgba(239,83,80,.15);color:#ef5350}
+.badge-orange{background:rgba(255,152,0,.15);color:#ff9800}
+.badge-blue{background:rgba(33,150,243,.15);color:#2196f3}
+
+/* FUNNEL */
+.funnel{display:flex;flex-direction:column;gap:6px}
+.funnel-step{background:#1a1a2e;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;position:relative}
+.funnel-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(0,208,132,.1);border-radius:8px;transition:width .8s}
+.funnel-name{font-size:12px;color:#888;flex:1;position:relative;z-index:1}
+.funnel-count{font-size:14px;font-weight:700;color:white;position:relative;z-index:1}
+.funnel-pct{font-size:11px;position:relative;z-index:1;width:50px;text-align:right}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* MAP placeholder */
+.map-placeholder{background:#0a0a20;border-radius:10px;height:200px;display:flex;align-items:center;justify-content:center;color:#333;font-size:32px;margin-top:12px}
+
+/* REALTIME */
+.realtime-feed{max-height:280px;overflow-y:auto}
+.feed-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.feed-item:last-child{border-bottom:none}
+.feed-icon{font-size:16px;flex-shrink:0}
+.feed-text{flex:1;color:#888;line-height:1.4}
+.feed-text strong{color:#ccc}
+.feed-time{color:#444;font-size:10px;flex-shrink:0}
+
+/* DATA VÄRDE */
+.value-card{background:linear-gradient(135deg,#0f0f28,#1a1a40);border:1px solid rgba(0,208,132,.15);border-radius:14px;padding:20px;text-align:center}
+.value-card .big{font-size:36px;font-weight:900;color:#00d084}
+.value-card .label{font-size:12px;color:#666;margin-top:4px}
+.value-card .formula{font-size:11px;color:#444;margin-top:8px;font-style:italic}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🧹 <span>Spick</span> Data Intelligence</h1>
+  <div class="live"><div class="live-dot"></div>Live data</div>
+</div>
+
+<div class="container">
+
+  <div class="section-title">📊 Nyckeltal – realtid</div>
+  <div class="stats" id="kpiStats">
+    <div class="stat"><div class="lbl">Besökare idag</div><div class="val" id="visitors">–</div><div class="sub neutral">Laddar...</div></div>
+    <div class="stat"><div class="lbl">Konverteringsgrad</div><div class="val" id="convRate">–</div><div class="sub neutral">Besök → bokning</div></div>
+    <div class="stat"><div class="lbl">Bokningar idag</div><div class="val" id="todayBookings">–</div><div class="sub neutral">–</div></div>
+    <div class="stat"><div class="lbl">Omsättning idag</div><div class="val" id="todayRevenue">–</div><div class="sub neutral">kr</div></div>
+    <div class="stat"><div class="lbl">Aktiva städare</div><div class="val" id="activeCleaners">–</div><div class="sub neutral">Godkända</div></div>
+    <div class="stat"><div class="lbl">Snitt-betyg</div><div class="val" id="avgRating">–</div><div class="sub neutral">Plattformen</div></div>
+  </div>
+
+  <div class="grid2">
+
+    <!-- KONVERTERINGSTRATT -->
+    <div class="panel">
+      <h3>🔽 Konverteringstratt <span>senaste 30 dagarna</span></h3>
+      <div class="funnel" id="funnelChart">
+        <div class="funnel-step"><div class="funnel-bar" style="width:100%"></div><div class="funnel-name">Besök startsidan</div><div class="funnel-count" id="f1">–</div><div class="funnel-pct g">100%</div></div>
+        <div class="funnel-step"><div class="funnel-bar" style="width:65%"></div><div class="funnel-name">Klickade "Boka"</div><div class="funnel-count" id="f2">–</div><div class="funnel-pct o" id="fp2">–%</div></div>
+        <div class="funnel-step"><div class="funnel-bar" style="width:40%"></div><div class="funnel-name">Startade formulär</div><div class="funnel-count" id="f3">–</div><div class="funnel-pct o" id="fp3">–%</div></div>
+        <div class="funnel-step"><div class="funnel-bar" style="width:20%"></div><div class="funnel-name">Fullgjorde bokning</div><div class="funnel-count" id="f4">–</div><div class="funnel-pct g" id="fp4">–%</div></div>
+        <div class="funnel-step"><div class="funnel-bar" style="width:12%"></div><div class="funnel-name">Blivit stamkund</div><div class="funnel-count" id="f5">–</div><div class="funnel-pct g" id="fp5">–%</div></div>
+      </div>
+    </div>
+
+    <!-- ACQUISITION -->
+    <div class="panel">
+      <h3>🎯 Trafikoriginer</h3>
+      <div id="acquisitionChart">
+        <div class="seg-row"><div class="seg-label">🔍 Google organisk</div><div class="seg-track"><div class="seg-fill" style="width:45%;background:#4285f4"></div></div><div class="seg-val" id="a1">–%</div></div>
+        <div class="seg-row"><div class="seg-label">💰 Google Ads</div><div class="seg-track"><div class="seg-fill" style="width:20%;background:#fbbc04"></div></div><div class="seg-val" id="a2">–%</div></div>
+        <div class="seg-row"><div class="seg-label">📘 Facebook/Meta</div><div class="seg-track"><div class="seg-fill" style="width:18%;background:#1877f2"></div></div><div class="seg-val" id="a3">–%</div></div>
+        <div class="seg-row"><div class="seg-label">👥 Referral</div><div class="seg-track"><div class="seg-fill" style="width:10%;background:#00d084"></div></div><div class="seg-val" id="a4">–%</div></div>
+        <div class="seg-row"><div class="seg-label">📱 Direkt</div><div class="seg-track"><div class="seg-fill" style="width:7%;background:#9c27b0"></div></div><div class="seg-val" id="a5">–%</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid3">
+
+    <!-- KUNDSEGMENT -->
+    <div class="panel">
+      <h3>👥 Kundsegment</h3>
+      <div id="segmentChart">
+        <div class="seg-row"><div class="seg-label">💎 Stamkunder (5+)</div><div class="seg-track"><div class="seg-fill" style="width:15%;background:#ffd700"></div></div><div class="seg-val" id="s1">–</div></div>
+        <div class="seg-row"><div class="seg-label">🔄 Återkommande</div><div class="seg-track"><div class="seg-fill" style="width:35%;background:#00d084"></div></div><div class="seg-val" id="s2">–</div></div>
+        <div class="seg-row"><div class="seg-label">1️⃣ Engångskunder</div><div class="seg-track"><div class="seg-fill" style="width:35%;background:#2196f3"></div></div><div class="seg-val" id="s3">–</div></div>
+        <div class="seg-row"><div class="seg-label">🆕 Aldrig bokat</div><div class="seg-track"><div class="seg-fill" style="width:15%;background:#607d8b"></div></div><div class="seg-val" id="s4">–</div></div>
+      </div>
+    </div>
+
+    <!-- DEVICE -->
+    <div class="panel">
+      <h3>📱 Enhetstyper</h3>
+      <div id="deviceChart">
+        <div class="seg-row"><div class="seg-label">📱 Mobil</div><div class="seg-track"><div class="seg-fill" style="width:68%;background:#00d084"></div></div><div class="seg-val">68%</div></div>
+        <div class="seg-row"><div class="seg-label">💻 Desktop</div><div class="seg-track"><div class="seg-fill" style="width:27%;background:#2196f3"></div></div><div class="seg-val">27%</div></div>
+        <div class="seg-row"><div class="seg-label">📟 Tablet</div><div class="seg-track"><div class="seg-fill" style="width:5%;background:#9c27b0"></div></div><div class="seg-val">5%</div></div>
+        <div style="margin-top:16px;font-size:11px;color:#444">
+          <div>PWA installerad: <span class="g" id="pwaCount">–</span></div>
+          <div style="margin-top:4px">Push-prenumeranter: <span class="g" id="pushCount">–</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA-VÄRDE -->
+    <div class="panel">
+      <h3>💰 Datavärde</h3>
+      <div class="value-card" style="margin-bottom:10px">
+        <div class="big" id="dataValue">–</div>
+        <div class="label">Estimerat datavärde</div>
+        <div class="formula">Kunder × LTV × 0.1</div>
+      </div>
+      <div style="font-size:11px;color:#555;line-height:1.8">
+        <div>Kundprofiler: <span class="g" id="profileCount">–</span></div>
+        <div>Städarprofiler: <span class="g" id="cleanerCount">–</span></div>
+        <div>Analytics-events: <span class="g" id="eventCount">–</span></div>
+        <div>Sessions: <span class="g" id="sessionCount">–</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- REALTIDSFEED -->
+  <div class="grid2">
+    <div class="panel">
+      <h3>⚡ Realtidshändelser</h3>
+      <div class="realtime-feed" id="realtimeFeed">
+        <div style="text-align:center;color:#333;padding:40px;font-size:24px">⏳</div>
+      </div>
+    </div>
+
+    <!-- TOPPSTÄDARE -->
+    <div class="panel">
+      <h3>🏆 Toppstädare <span>per performance-poäng</span></h3>
+      <table>
+        <thead><tr><th>Alias</th><th>Stad</th><th>Betyg</th><th>Uppdrag</th><th>Nivå</th></tr></thead>
+        <tbody id="topCleaners"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BETEENDEDATA -->
+  <div class="panel">
+    <h3>🔍 Mest värdefulla datapunkter vi samlar</h3>
+    <div class="grid3" style="gap:10px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#00d084;margin-bottom:8px">👤 PER KUND</div>
+        <table><tbody>
+          <tr><td>Vilka sidor de besökt</td></tr>
+          <tr><td>Scrolldjup per sida</td></tr>
+          <tr><td>Var de lämnar bokningsflödet</td></tr>
+          <tr><td>Tid till första bokning</td></tr>
+          <tr><td>Favoritstädare</td></tr>
+          <tr><td>Föredragen dag/tid</td></tr>
+          <tr><td>RUT-användning</td></tr>
+          <tr><td>Device och browser</td></tr>
+          <tr><td>Varifrån de kom (UTM)</td></tr>
+          <tr><td>Referral-kod som användes</td></tr>
+          <tr><td>NPS-poäng</td></tr>
+          <tr><td>Churn-riskscore</td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#2196f3;margin-bottom:8px">🧹 PER STÄDARE</div>
+        <table><tbody>
+          <tr><td>Acceptansgrad</td></tr>
+          <tr><td>Svarstid på uppdrag</td></tr>
+          <tr><td>Punktlighetsrate</td></tr>
+          <tr><td>Avbokningsfrekvens</td></tr>
+          <tr><td>Geografiska preferenser</td></tr>
+          <tr><td>Uppdragstyp-preferenser</td></tr>
+          <tr><td>Lönsamma tider</td></tr>
+          <tr><td>Betyg per kund-typ</td></tr>
+          <tr><td>Inkomst-trend</td></tr>
+          <tr><td>Churn-risk</td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#ff9800;margin-bottom:8px">🌍 MARKNADSDATA</div>
+        <table><tbody>
+          <tr><td>Utbud vs efterfrågan per stad</td></tr>
+          <tr><td>Ouppfyllda bokningar (gap!)</td></tr>
+          <tr><td>Populäraste tider</td></tr>
+          <tr><td>Säsongsvariationer</td></tr>
+          <tr><td>Väderkorrelationer</td></tr>
+          <tr><td>Priskänslighet</td></tr>
+          <tr><td>Konkurrentpriser</td></tr>
+          <tr><td>Konvertering per kanal</td></tr>
+          <tr><td>Abandonment per steg</td></tr>
+          <tr><td>LTV per acquisition-kanal</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+function fmt(n) { return Math.round(n).toLocaleString('sv-SE'); }
+
+async function loadAll() {
+  const h = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
+
+  // Parallell hämtning av all data
+  const [bookings, cleaners, events, sessions, customers] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/bookings?select=*&order=created_at.desc&limit=100`, { headers: h }).then(r => r.json()).catch(() => []),
+    fetch(`${SUPA_URL}/rest/v1/cleaners?status=eq.godkänd&select=*`, { headers: h }).then(r => r.json()).catch(() => []),
+    fetch(`${SUPA_URL}/rest/v1/analytics_events?select=*&order=created_at.desc&limit=500`, { headers: h }).then(r => r.json()).catch(() => []),
+    fetch(`${SUPA_URL}/rest/v1/user_sessions?select=*&order=created_at.desc&limit=200`, { headers: h }).then(r => r.json()).catch(() => []),
+    fetch(`${SUPA_URL}/rest/v1/customer_profiles?select=*`, { headers: h }).then(r => r.json()).catch(() => []),
+  ]);
+
+  // KPIs
+  const today = new Date().toISOString().split('T')[0];
+  const todayBookings = bookings.filter(b => b.created_at?.startsWith(today));
+  const todayRevenue = todayBookings.reduce((s, b) => s + (Number(b.price) || 0), 0);
+  const avgRating = cleaners.length ? cleaners.reduce((s, c) => s + (Number(c.avg_rating) || 0), 0) / cleaners.length : 0;
+
+  const todaySessions = sessions.filter(s => s.created_at?.startsWith(today));
+  const convRate = todaySessions.length ? (todayBookings.length / todaySessions.length * 100).toFixed(1) : 0;
+
+  document.getElementById('visitors').textContent = fmt(todaySessions.length) || '–';
+  document.getElementById('convRate').textContent = convRate + '%';
+  document.getElementById('todayBookings').textContent = todayBookings.length;
+  document.getElementById('todayRevenue').textContent = fmt(todayRevenue);
+  document.getElementById('activeCleaners').textContent = cleaners.length;
+  document.getElementById('avgRating').textContent = avgRating > 0 ? avgRating.toFixed(1) + '⭐' : '–';
+
+  // Datavärde
+  const totalCustomers = customers.length;
+  const avgLTV = customers.reduce((s, c) => s + (Number(c.total_spent) || 0), 0) / (totalCustomers || 1);
+  const dataValue = Math.round(totalCustomers * avgLTV * 0.1);
+
+  document.getElementById('dataValue').textContent = fmt(dataValue) + ' kr';
+  document.getElementById('profileCount').textContent = fmt(totalCustomers);
+  document.getElementById('cleanerCount').textContent = fmt(cleaners.length);
+  document.getElementById('eventCount').textContent = fmt(events.length);
+  document.getElementById('sessionCount').textContent = fmt(sessions.length);
+
+  // Kundsegment
+  const segs = { stamkund: 0, returning: 0, once: 0, never: 0 };
+  customers.forEach(c => {
+    const b = c.total_bookings || 0;
+    if (b > 5) segs.stamkund++;
+    else if (b > 1) segs.returning++;
+    else if (b === 1) segs.once++;
+    else segs.never++;
+  });
+  document.getElementById('s1').textContent = segs.stamkund;
+  document.getElementById('s2').textContent = segs.returning;
+  document.getElementById('s3').textContent = segs.once;
+  document.getElementById('s4').textContent = segs.never;
+
+  // Toppstädare
+  const topCleaners = [...cleaners]
+    .filter(c => c.avg_rating > 0)
+    .sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0))
+    .slice(0, 8);
+
+  const levelIcon = { Platinum: '💎', Guld: '🏆', Silver: '🥈', Brons: '🥉' };
+  document.getElementById('topCleaners').innerHTML = topCleaners.map(c => `
+    <tr>
+      <td>${c.emoji || '🧹'} ${c.alias || c.full_name}</td>
+      <td>${c.city}</td>
+      <td class="g">${Number(c.avg_rating || 0).toFixed(1)}⭐</td>
+      <td>${c.review_count || 0}</td>
+      <td>${levelIcon[c.bonus_level] || '🥉'} ${c.bonus_level || 'Brons'}</td>
+    </tr>
+  `).join('');
+
+  // Realtidsfeed
+  const feedItems = [...bookings.slice(0, 5).map(b => ({
+    icon: '📅',
+    text: `Ny bokning: <strong>${b.name || 'Kund'}</strong> bokade ${b.service || 'Hemstädning'} i ${b.city}`,
+    time: b.created_at
+  }))].sort((a, b) => new Date(b.time) - new Date(a.time));
+
+  document.getElementById('realtimeFeed').innerHTML = feedItems.length
+    ? feedItems.map(item => `
+        <div class="feed-item">
+          <div class="feed-icon">${item.icon}</div>
+          <div class="feed-text">${item.text}</div>
+          <div class="feed-time">${new Date(item.time).toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' })}</div>
+        </div>
+      `).join('')
+    : '<div style="text-align:center;color:#333;padding:30px">Inga händelser ännu</div>';
+}
+
+loadAll();
+setInterval(loadAll, 30000); // Uppdatera var 30:e sekund
+</script>
+
+</body>
+</html>
