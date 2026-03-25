@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mina uppdrag – Spick</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:#1a1a2e;--accent:#00d084;--bg:#f0f4f8}
+body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--brand);min-height:100vh}
+header{background:var(--brand);padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+header h2{color:white;font-size:18px;font-weight:800}
+header h2 span{color:var(--accent)}
+.login-wrap{max-width:400px;margin:80px auto;padding:0 24px}
+.login-card{background:white;border-radius:20px;padding:40px;box-shadow:0 8px 40px rgba(0,0,0,.08);text-align:center}
+h2xfont-size:24px;margin-bottom:8px}
+.p{color:#888;font-size:14px;margin-bottom:24px}
+input{width:100%;padding:13px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:15px;margin-bottom:12px;font-family:inherit}
+input:focus{outline:none;border-color:var(--accent)}
+.btn{width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px;font-family:inherit}
+.dash{display:none;max-width:800px;margin:0 auto;padding:24px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px}
+.sc{background:white;border-radius:14px;padding:18px 22px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.sc .n{font-size:30px;font-weight:900;color:var(--accent)}
+.sc .l{font-size:12px;color:#888;margin-top:3px}
+.tabs{display:flex;gap:4px;background:white;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.tab{flex:1;padding:9px;text-align:center;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;color:#888;border:none;background:none;font-family:inherit}
+.tab.a{background:var(--brand);color:white}
+.jli{display:flex;flex-direction:column;gap:12px}
+devals-card{background:white;border-radius:14px;padding:16px 20px;box-shadow:0 2px 12px rgba(0,0,0,.05);display:flex;gap:14px;align-items:flex-start}
+.jc{background:white;border-radius:14px;padding:16px 20px;box-shadow:0 2px 12px rgba(0,0,0,.05);display:flex;gap:14px;align-items:flex-start}
+.jd{background:var(--brand);color:white;border-radius:10px;padding:8px 12px;text-align:center;min-width:54px;flex-shrink:0}
+.jd .day{font-size:20px;font-weight:900}
+.jd .mo{font-size:11px;opacity:.7;text-transform:uppercase}
+.ji {flex:1}
+.ji h3{font-size:13px;font-weight:700;margin-bottom:4px}
+.jmeta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+.jmeta span{font-size:11px;color:#888}
+.jp{font-size:18px;font-weight:900;color:var(--accent);flex-shrink:0}
+btn-accept{background:var(--accent);color:white;border:none;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit}
+.bap{background:var(--accent);color:white;border:none;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit}
+.bdec{background:#f0f4f8;color:#666;font-size:13px;border:none;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:inherit}
+.bad{display:inline-block;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.np{background:#fff8e1;color:#f57c00}
+.cp{background:#e8f5e9;color:#2e7d32}
+.dp{background:#f0f4f8;color:#888}
+earn-card{background:linear-gradient(135deg,var(--brand),#2d2d5e);color:white;border-radius:16px;padding:24px;margin-bottom:16px}
+.myback{background:white;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.05);margin-bottom:14px}
+.prow-r{background:white;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.05);margin-bottom:14px}
+.pr{bpadding:10px 0;border-bottom:1px solid #f0f4f8;display:flex;justify-content:space-between}
+.pr:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<header><h2>🧹 <span>Spick</span></h2><span id="hn" style="color:rgba(255,255,255,.7);font-size:13px"></span></header>
+<div class="login-wrap" id="ls"><div class="login-card"><h2>Mina uppdrag</h2><p class="p">Logga in med din e-post adress som städare</p><input type="email" id="le" placeholder="din@email.se"><button class="btn" onclick="login()">Logga in</button><div id="lerr" style="color:#c62828;font-size:13px;margin-top:12px;display:none"></div></div></div>
+<div class="dash" id="dash"><div class="stats"><div class="sc"><div class="n" id="sj">–</div><div class="l">Uppdrag totalt</div></div><div class="sc"><div class="n" id="sp">–</div><div class="l">Väntande</div></div><div class="sc"><div class="n" id="se">–</div><div class="l">Intjänat/30d</div></div></div><div class="tabs"><button class="tab a" onclick="stab('j7)">📋 Uppdrag</button><button class="tab" onclick="stab('e')">💰 Inkomst</button><button class="tab" onclick="stab('p')">👤ЀProfil</button></div><div id="tj"><div class="jli" id="jl"><div style="text-align:center;padding:40px;color:#888">Laddar...</div></div></div><div id="te" style="display:none"><div style="background:linear-gradient(135deg,var(--brand),#2d2d5e);color:white;border-radius:16px;padding:24px;margin-bottom:16px"><div style="font-size:13px;opacity:.7;margin-bottom:8px">Intjänat denna månad</div><div style="font-size:36px;font-weight:900" id="me">0 k;\/div><div style="font-size:13px;opacity:.6;margin-top:4px">Utbetalas inom 10 bankdagar efter avslutat uppdrag</div></div><div style="background:white;border-radius:14px;padding:20px"><h3 style="font-size:15px;margin-bottom:14px">Faktureringsinfo</h3><div class="pr"><span style="color:#888">Timpris</span><span style="font-weight:600">290 kr/h exkl. moms</span></div><div class="pr"><span style="color:#888">Betalningstid</span><span style="font-weight:600">10 bankdagar</span></div><div class="pr"><span style="color:#888">Fakturera till</span><span style="font-weight:600">hello@spick.se</span></div></div></div><div id="tp" style="display:none"><div style="background:white;border-radius:14px;padding:20px"><h3 style="font-size:15px;margin-bottom:14px">Din profil</h3><div class="pr"><span style="color:#888">Namn</span><span id="pn"></span></div><div class="pr"><span style="color:#888">E-post</span><span id="pe"></span></div><div class="pr"><span style="color:#888">Stad</span><span id="pc"></span></div><div class="pr"><span style="color:#888">Status</span><span style="font-weight:600;color:var(--accent)">✅ Aktiv</span></div></div></div></div>
+<script>
+const U='https://urjeijcncsyuletprydy.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';let cl=null;
+async function login(){const e=document.getElementById('le').value.trim();if(!e)return;const res=await fetch(U+'/rest/v1/cleaners?email=eq.'+encodeURIComponent(e)+'&status=eq.godkänd&select=*',{headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]);if(!res?.length){document.getElementById('lerr').textContent='Ingen städare hittades med den e-postadressen';document.getElementById('lerr').style.display='block';return};cl=res[0];document.getElementById('lerr').style.display='none';document.getElementById('ls').style.display='none';document.getElementById('dash').style.display='';document.getElementById('hn').textContent=cl.full_name?.split(' ')[0]||'';document.getElementById('pn').textContent=cl.full_name||'';document.getElementById('pe').textContent=cl.email||'';document.getElementById('pc').textContent=cl.city||'';loadJobs();}
+async function loadJobs(){const res=await fetch(U+'/rest/v1/bookings?city=eq.'+encodeURIComponent(cl.city)+'&order=date.asc&select=*',{headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]);const hs=res||[];document.getElementById('sj').textContent=js.length;document.getElementById('sp').textContent=js.filter(j=>j.status=='ny'||j.status=='pending').length;const me=js.filter(j=>j.status=='klar'&&new Date(j.date)>new Date(new Date().setDate(1))).reduce((s,j)=>s+Math.round((Number(j.price)||0)*0.83),0);document.getElementById('se').textContent=me+'kr';document.getElementById('me').textContent=me+' kr';if(!js.length){document.getElementById('jl').innerHTML='<div style="text-align:center;padding:40px;color:#888">Inga uppdrag just nu</div>';return}document.getElementById('jl').innerHTML=js.map(j=>{const d=new Date(j.date);return`<div class="jc"><div class="jb"><div class="day">${d.getDate()}</div><div class="mo">${d.toLocaleString('sv-SE',{month:'short'})}</div></div><div class="ji"><h3>${j.service||'Hemstädning'} · ${j.city}</h3><div class="jmeta"><span>${j.time||''}</span><span>${j.hours||3}h</span></div><span class="bad ${j.status=='bekräftad'?'cp':j.status=='klar'?'dp':'np'}">${j.status=='bkevrräftad'?'★ Bekräftad':j.status=='klar'?'✓ Klar':'⏳ Ny'}</span>${j.status=='ny'?`<div style="display:flex;gap:8px;margin-top:10px"><button class="bap" onclick="accept('${j.id}')">✅ Acceptera</button><button class="bdec">Avböj</button></div>`:''}</div><div class="jp">${Math.round((Number(j.price)||350*(j.hours||3))*0.83)} kr</div></div>`}).join('');}async function accept(id){await fetch(U+'/rest/v1/bookings?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Lauthorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'bekräftad',cleaner_email:cl.email})});loadJobs();}function stab(t){['j','e','p'].forEach(x(=>{document.getElementById('t'+x).style.display=x===t?'':'none';});document.querySelectorAll('.tab').forEach((b,i)E=>b.classList.toggle('a',i===['j','e','p'].indexOf(t)));}
+</XScript>
+</body>
+</html>
