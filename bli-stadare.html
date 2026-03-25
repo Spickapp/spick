@@ -350,7 +350,7 @@ function uR(){
   document.getElementById('calc4').textContent='Vid 3h/dag 5 dagar/vecka = ~'+month.toLocaleString('sv')+' kr/mån';
 }
 
-function goStep(n){
+function goStep(n, fromPopstate){
   // Validera steg 1
   if(n===2){
     const fn=document.getElementById('fn').value,ln=document.getElementById('ln').value,
@@ -373,7 +373,29 @@ function goStep(n){
   }
   document.getElementById('step'+n)?.classList.add('on');
   window.scrollTo({top:0,behavior:'smooth'});
+
+  // Uppdatera URL-hash utan att ladda om sidan
+  if(!fromPopstate){
+    const labels=['','info','tjanster','pris','bankid'];
+    history.pushState({step:n},'','#'+labels[n]);
+  }
 }
+
+// Bakåtknappen i webbläsaren navigerar mellan steg
+window.addEventListener('popstate',function(e){
+  const step=e.state?.step;
+  if(step>=1&&step<=4) goStep(step,true);
+  else goStep(1,true);
+});
+
+// Läs hash vid sidladdning (t.ex. om användaren refreshar)
+(function(){
+  const hash=window.location.hash;
+  const map={'#info':1,'#tjanster':2,'#pris':3,'#bankid':4};
+  const n=map[hash]||1;
+  if(n>1) goStep(n,true);
+  else history.replaceState({step:1},'','#info');
+})();
 
 async function hashPnr(pnr){
   const clean=pnr.replace(/[^0-9]/g,'');
