@@ -8,7 +8,21 @@
 <meta name="keywords" content="städare malmö, boka städning malmö, hemstädning malmö, RUT-avdrag malmö">
 <link rel="canonical" href="https://spick.se/malmo.html">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+async function joinWaitlist(city, email){
+  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
+    body:JSON.stringify({email,city,utm_source:'waitlist'})
+  }).catch(()=>{});
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body:JSON.stringify({type:'waitlist',record:{city,email}})
+  }).catch(()=>{});
+}
+</script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -91,6 +105,7 @@ footer p{font-size:.8rem;color:#4A4A45;}
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://spick.se/malmo.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Malmö","description":"Boka betygsatta städare i Malmö med RUT-avdrag","url":"https://spick.se/malmo.html","areaServed":"Malmö","priceRange":"250-600 SEK/h","paymentAccepted":"Swish","serviceType":["Hemstädning","Storstädning","Flyttstädning","Fönsterputs"]}</script>
+  <script src="analytics.js" defer></script>
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="stadare.html" class="nc">← Alla städare</a></nav>
@@ -167,7 +182,7 @@ async function joinWL(){
   document.getElementById('wl-ok').style.display='block';
   document.querySelector('.wl-form').style.opacity='.4';
   // Skicka välkomstmail till oss
-  await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB','Content-Type':'application/json'},body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',subject:'🗺️ Ny väntelisteanmälan: Malmö – '+e,html:'<p>Ny anmälan till väntelistan för <strong>Malmö</strong>: <strong>'+e+'</strong></p>'})});
+  await joinWaitlist(city||'', e);
 }
 
 // Ladda städare för denna stad

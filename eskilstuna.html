@@ -6,7 +6,21 @@
 <meta name="description" content="Boka betygsatta städare i Eskilstuna. Hemstädning i Eskilstuna. Betygsatta städare, enkel bokning, nöjdhetsgaranti. RUT-avdrag 50%.">
 <meta name="keywords" content="städare eskilstuna,städning eskilstuna,hemstädning eskilstuna,boka städare eskilstuna">
 <link rel="canonical" href="https://spick.se/eskilstuna.html">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Eskilstuna","description":"Hemstädning i Eskilstuna. Betygsatta städare, enkel bokning, nöjdhetsgaranti.","url":"https://spick.se/eskilstuna.html","areaServed":"Eskilstuna","priceRange":"250-600 SEK/h"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Eskilstuna","description":"Hemstädning i Eskilstuna. Betygsatta städare, enkel bokning, nöjdhetsgaranti.","url":"https://spick.se/eskilstuna.html","areaServed":"Eskilstuna","priceRange":"250-600 SEK/h"}
+async function joinWaitlist(city, email){
+  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
+    body:JSON.stringify({email,city,utm_source:'waitlist'})
+  }).catch(()=>{});
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body:JSON.stringify({type:'waitlist',record:{city,email}})
+  }).catch(()=>{});
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -90,6 +104,7 @@ footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2re
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://spick.se/eskilstuna.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Eskilstuna","description":"Boka betygsatta städare i Eskilstuna med RUT-avdrag","url":"https://spick.se/eskilstuna.html","areaServed":"Eskilstuna","priceRange":"250-600 SEK/h","paymentAccepted":"Swish","serviceType":["Hemstädning","Storstädning","Flyttstädning","Fönsterputs"]}</script>
+  <script src="analytics.js" defer></script>
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="bli-stadare.html" class="nb">Bli städare →</a></nav>
@@ -170,7 +185,7 @@ async function joinWL(){
   const e=document.getElementById('wlem').value;
   if(!e||!e.includes('@')){document.getElementById('wlem').style.borderColor='#DC2626';return;}
   await SB.from('notifications').insert([{type:'waitlist_eskilstuna',recipient_email:e,subject:'Väntelista: Eskilstuna',status:'pending'}]);
-  await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB','Content-Type':'application/json'},body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',subject:'🗺️ Väntelista Eskilstuna: '+e,html:'<p>Ny anmälan till väntelistan för <strong>Eskilstuna</strong>: <strong>'+e+'</strong></p>'})});
+  await joinWaitlist(city||'', e);
   document.getElementById('wlok').style.display='block';
   document.querySelector('.wlform').style.display='none';
 }

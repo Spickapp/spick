@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Spick Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+async function joinWaitlist(city, email){
+  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
+    body:JSON.stringify({email,city,utm_source:'waitlist'})
+  }).catch(()=>{});
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body:JSON.stringify({type:'waitlist',record:{city,email}})
+  }).catch(()=>{});
+}
+</script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--red:#DC2626;--yellow:#D97706;--blue:#2563EB;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -271,7 +285,6 @@ tr:hover td{background:var(--gr);}
 
 <script>
 const SBU='https://urjeijcncsyuletprydy.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',PASS='Sp!ck#Adm1n$2026';
-const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
 const COLS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11','#7C3AED'];
 let db;
 
@@ -564,7 +577,7 @@ async function sendInvoiceMail(invId){
 }
 
 async function sendMail(to,subject,html){
-  const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},body:JSON.stringify({from:'Spick <hello@spick.se>',to,subject,html})}).then(r=>r.json());
+  const r=await joinWaitlist(city||'', e);
   return r;
 }
 

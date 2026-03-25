@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Betygsätt din städning – Spick</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+async function joinWaitlist(city, email){
+  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
+    body:JSON.stringify({email,city,utm_source:'waitlist'})
+  }).catch(()=>{});
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body:JSON.stringify({type:'waitlist',record:{city,email}})
+  }).catch(()=>{});
+}
+</script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -55,6 +69,7 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://spick.se/betyg.html">
+  <script src="analytics.js" defer></script>
 </head>
 <body>
 <div class="card" id="form">
@@ -80,7 +95,6 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
 </div>
 <script>
 const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
-const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
 const p=new URLSearchParams(location.search);
 const bid=p.get('bid'), cname=decodeURIComponent(p.get('cname')||''), preRating=+p.get('rating')||0;
 const LABELS=['','😞 Dåligt','😐 Okej','🙂 Bra','😊 Mycket bra','🤩 Fantastiskt!'];
@@ -118,15 +132,7 @@ async function submit(){
 
     // 2. Om betyg ≤ 2 → trigga nöjdhetsgaranti
     if(chosen<=2 && booking?.email){
-      await fetch('https://api.resend.com/emails',{
-        method:'POST',
-        headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
-        body:JSON.stringify({
-          from:'Spick <hello@spick.se>',to:'hello@spick.se',
-          subject:'🚨 Nöjdhetsgaranti triggrad – '+chosen+'★ – '+(booking?.name||''),
-          html:'<p>Kund <strong>'+(booking?.name||'')+'</strong> ('+booking?.email+') gav betyg <strong>'+chosen+'/5</strong> på städning '+booking?.date+'.</p><p>Kontakta kunden och erbjud kompletterande städning!</p>'
-        })
-      });
+      await joinWaitlist(city||'', e);
       await SB.from('guarantee_requests').insert([{
         booking_id:bid,
         rating_id:rating?.id,

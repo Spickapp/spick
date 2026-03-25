@@ -227,7 +227,6 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 
 <script>
 const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
-const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
 const p=new URLSearchParams(location.search);
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 let rate=+(p.get('rate')||350),useRut=true,cleanerId=p.get('id');
@@ -328,8 +327,8 @@ async function doBook(){
 
     // Mail till kund
     const rutInfo=useRut?`<div style="background:#E1F5EE;padding:12px;border-radius:8px;color:#0F6E56;font-size:14px;margin:12px 0">✓ RUT-avdrag aktivt – du betalar <strong>${tot.toLocaleString('sv')} kr</strong> (sparat ${rut.toLocaleString('sv')} kr)</div>`:'';
-    await fetch('https://api.resend.com/emails',{method:'POST',
-      headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{method:'POST',
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Content-Type':'application/json'},
       body:JSON.stringify({from:'Spick <hello@spick.se>',to:em,
         subject:'✅ Bokningsbekräftelse – '+svc+' '+date+' – Spick',
         html:`<div style="font-family:DM Sans,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff">
@@ -354,8 +353,8 @@ async function doBook(){
     });
 
     // Mail till admin
-    await fetch('https://api.resend.com/emails',{method:'POST',
-      headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{method:'POST',
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Content-Type':'application/json'},
       body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',
         subject:'🔔 NY BOKNING: '+fn+' '+ln+' – '+svc+' '+date,
         html:'<p><strong>Ny bokning!</strong></p><ul><li>Kund: <strong>'+fn+' '+ln+'</strong></li><li>Email: '+em+'</li><li>Telefon: '+ph+'</li><li>Tjänst: '+svc+'</li><li>Datum: '+date+' kl '+time+'</li><li>Adress: '+addr+'</li><li>Timmar: '+h+'h</li><li>Pris: '+tot.toLocaleString('sv')+' kr</li><li>RUT: '+(useRut?'✅ Ja (hash: '+pnrHash.slice(0,12)+'...)':'❌ Nej')+'</li>'+(p.get('name')?'<li>Städare: '+p.get('name')+'</li>':'')+'</ul><a href="https://spick.se/admin.html" style="display:inline-block;padding:10px 20px;background:#0F6E56;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Öppna admin →</a>'

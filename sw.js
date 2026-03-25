@@ -1,9 +1,9 @@
 // SPICK SERVICE WORKER v2.0
-const CACHE = 'spick-v2';
+const CACHE = 'spick-v3';
 const STATIC = [
   '/', '/index.html', '/stadare.html', '/boka.html',
   '/bli-stadare.html', '/hur-det-funkar.html', '/priser.html',
-  '/faq.html', '/404.html', '/manifest.json'
+  '/faq.html', '/404.html', '/profil.html', '/tack.html', '/manifest.json'
 ];
 
 // Installera och precacha
