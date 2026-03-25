@@ -199,6 +199,18 @@ serve(async (req) => {
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
     }
+    else if (type === "contact") {
+      await sendEmail(ADMIN, `📬 Kontakt: ${r.subject || "Meddelande"} – ${r.name || ""}`, wrap(`
+        <h2>Nytt kontaktmeddelande</h2>
+        <div class="card">
+          <div class="row"><span class="lbl">Namn</span><span class="val">${r.name || "–"}</span></div>
+          <div class="row"><span class="lbl">Email</span><span class="val">${r.email || "–"}</span></div>
+          <div class="row"><span class="lbl">Ämne</span><span class="val">${r.subject || "–"}</span></div>
+          <div class="row"><span class="lbl">Meddelande</span><span class="val">${r.message || "–"}</span></div>
+        </div>
+      `));
+    }
+
     else if (type === "ssl_warning") {
       await sendEmail(ADMIN, "🔒 SSL-certifikat snart utgånget!", wrap(`
         <h2>SSL-varning</h2>
