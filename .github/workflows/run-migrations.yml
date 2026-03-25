@@ -12,42 +12,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Install psql
+        run: sudo apt-get install -y postgresql-client -q
 
-      - name: Check CLI version and available commands
-        run: supabase --version && supabase db --help 2>&1 || true
-
-      - name: Run all migrations
+      - name: Run migrations via psql
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          PROJECT_REF="urjeijcncsyuletprydy"
+          export PGSSLMODE=require
+          DB="postgresql://postgres.urjeijcncsyuletprydy:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
 
-          # Hämta DB connection string via Supabase CLI
-          supabase db remote commit --project-ref $PROJECT_REF 2>&1 || true
-
-          # Kör SQL via psql med Supabase connection pooler
-          # Format: postgres://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-eu-north-1.pooler.supabase.com:6543/postgres
-          DB_URL="postgresql://postgres.${PROJECT_REF}:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
+          echo "▶ Testar anslutning..."
+          psql "$DB" -c "SELECT NOW();" && echo "✅ Anslutning OK"
 
           echo "▶ Migration 004..."
-          psql "$DB_URL" -f supabase/migrations/004_alias.sql && echo "✅ 004 klar"
+          psql "$DB" -f supabase/migrations/004_alias.sql && echo "✅ 004 klar"
 
           echo "▶ Migration 005..."
-          psql "$DB_URL" -f supabase/migrations/005_data.sql && echo "✅ 005 klar"
+          psql "$DB" -f supabase/migrations/005_data.sql && echo "✅ 005 klar"
 
           echo "▶ Migration 006..."
-          psql "$DB_URL" -f supabase/migrations/006_keys.sql && echo "✅ 006 klar"
+          psql "$DB" -f supabase/migrations/006_keys.sql && echo "✅ 006 klar"
 
       - name: Verify tables
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          DB_URL="postgresql://postgres.urjeijcncsyuletprydy:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
-          psql "$DB_URL" -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
+          export PGSSLMODE=require
+          DB="postgresql://postgres.urjeijcncsyuletprydy:${SUPABASE_DB_PASSWORD}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
+          psql "$DB" -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"
           echo "✅ Verifiering klar"
- 
