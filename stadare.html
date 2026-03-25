@@ -6,6 +6,8 @@
 <title>Hitta städare nära dig – Spick</title>
 <meta name="description" content="Boka betygsatta städare i hela Sverige. Stockholm, Göteborg, Malmö och fler städer. RUT-avdrag 50%.">
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -69,6 +71,18 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 .book-btn:hover{background:var(--gm);}
 .prof-btn{flex:1;display:block;text-align:center;padding:.75rem;background:var(--gr);color:var(--m);border:1.5px solid var(--grd);border-radius:100px;font-size:.82rem;font-weight:500;text-decoration:none;transition:all .2s;}
 .prof-btn:hover{border-color:var(--g);color:var(--g);}
+.verified-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;font-weight:600;color:var(--g);background:var(--gp);padding:.2rem .6rem;border-radius:100px;margin-bottom:4px;}
+.bonus-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;font-weight:600;padding:.2rem .6rem;border-radius:100px;margin-bottom:4px;margin-left:.3rem;}
+.bonus-brons{background:#FFF8E1;color:#E65100;}
+.bonus-silver{background:#F5F5F5;color:#757575;}
+.bonus-guld{background:#FFF9C4;color:#F57F17;}
+.bonus-platinum{background:#EDE7F6;color:#4527A0;}
+.skeleton{background:linear-gradient(90deg,var(--grd) 25%,#f0f0ec 50%,var(--grd) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:12px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{background:#fff;border-radius:20px;border:1px solid var(--grd);padding:1.5rem;display:flex;flex-direction:column;gap:.75rem;}
+.skel-av{width:64px;height:64px;border-radius:50%;}
+.skel-line{height:14px;border-radius:6px;}
+.skel-btn{height:40px;border-radius:100px;}
 @media(max-width:1024px){.grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:768px){nav{padding:1rem 1.5rem;}.hero{padding:2.5rem 1.5rem;}.hero h1{font-size:1.8rem;}.page{padding:1.5rem 1rem 4rem;}.grid{grid-template-columns:1fr;}.search-bar{flex-direction:column;}}
 </style>
@@ -183,9 +197,25 @@ const ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 const st=r=>'★'.repeat(Math.floor(r||0))+'☆'.repeat(5-Math.floor(r||0));
 
 async function init(){
-  const {data,error}=await SB.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false});
+  // Visa skeleton loading
+  document.getElementById('grid').innerHTML=Array(6).fill(0).map(()=>`
+    <div class="skel-card">
+      <div style="display:flex;gap:1rem;align-items:flex-start">
+        <div class="skeleton skel-av"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:.5rem">
+          <div class="skeleton skel-line" style="width:60%"></div>
+          <div class="skeleton skel-line" style="width:40%"></div>
+          <div class="skeleton skel-line" style="width:50%"></div>
+        </div>
+      </div>
+      <div class="skeleton skel-line" style="width:80%"></div>
+      <div class="skeleton skel-line"></div>
+      <div class="skeleton skel-btn"></div>
+    </div>`).join('');
+
+  const {data,error}=await SB.from('cleaners').select('*').eq('status','godkänd').order('avg_rating',{ascending:false});
   if(error||!data?.length){document.getElementById('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--m)">Inga städare hittades</div>';return;}
-  ALL=data.map((r,i)=>({id:r.id,name:r.full_name||'Okänd',city:r.city||'Stockholm',price:r.hourly_rate||350,rating:r.rating||0,bio:r.bio||'Professionell städare.',tags:Array.isArray(r.services)?r.services:(r.services||'Hemstädning').split(',').map(s=>s.trim()),color:COLORS[i%COLORS.length],top:i===0,jobs:r.jobs_completed||0}));
+  ALL=data.map((r,i)=>({id:r.id,name:r.full_name||'Okänd',city:r.city||'Stockholm',price:r.hourly_rate||350,rating:parseFloat(r.avg_rating||r.rating||0).toFixed(1),bio:r.bio||'Professionell städare.',tags:Array.isArray(r.services)?r.services:(r.services||'Hemstädning').split(',').map(s=>s.trim()),color:COLORS[i%COLORS.length],top:i===0,jobs:r.review_count||r.jobs_completed||0,verified:r.identity_verified||r.bankid_verified||false,bonus:r.bonus_level||'Brons'}));
   render();
 }
 
@@ -241,11 +271,14 @@ function render(){
     <div class="card-head">
       <div class="av" style="background:${c.color}">${ini(c.name)}<div class="dot"></div></div>
       <div style="flex:1">
-        ${c.top&&!cityFilter?'<span class="top-badge">⭐ Toppvald</span><br>':''}
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:4px">
+          ${c.top&&!cityFilter?'<span class="top-badge">⭐ Toppvald</span>':''}
+          ${c.verified?'<span class="verified-badge">✓ BankID</span>':''}
+          ${c.bonus&&c.bonus!=='Brons'?'<span class="bonus-badge bonus-'+c.bonus.toLowerCase()+'">'+c.bonus+'</span>':''}
+        </div>
         <div class="cname">${c.name}</div>
         <div class="cloc">📍 ${c.city}</div>
-        <div><span class="stars">${st(c.rating)}</span><span class="rating">${c.rating||'–'}</span></div>
-        ${c.jobs>0?'<div class="jobs">'+c.jobs+' städningar</div>':''}
+        <div><span class="stars">${st(parseFloat(c.rating))}</span><span class="rating"> ${c.rating}</span>${c.jobs>0?'<span class="jobs"> · '+c.jobs+' jobb</span>':''}</div>
       </div>
     </div>
     <div class="card-body">
