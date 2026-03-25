@@ -1,10 +1,9 @@
 name: Run SQL Migrations
-'on':
+on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/run-migrations.yml'
       - 'supabase/migrations/**'
 
 jobs:
@@ -16,24 +15,13 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.x
 
-      - name: Visa CLI-version och tillgängliga db-kommandon
-        run: |
-          supabase --version
-          supabase db --help 2>&1 || true
-
-      - name: Länka projekt
+      - name: Länka och pusha migrationer
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase link --project-ref urjeijcncsyuletprydy \
-            --password "${{ secrets.SUPABASE_DB_PASSWORD }}" 2>&1 || true
-          echo "✅ Länkning klar"
-
-      - name: Pusha migrationer
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase db push 2>&1
-          echo "✅ db push klar"
+          supabase link --project-ref urjeijcncsyuletprydy
+          supabase db push --password "$SUPABASE_DB_PASSWORD"
+          echo "✅ Migrationer körda"
