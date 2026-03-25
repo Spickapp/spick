@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spick – Boka en städare du verkligen litar på</title>
+<meta name="description" content="Boka en betygsatt städare nära dig i Stockholm. Med RUT-avdrag betalar du bara hälften. Välj din städare och boka direkt.">
+<meta property="og:title" content="Spick – Boka en städare du verkligen litar på">
+<meta property="og:description" content="Välj bland betygsatta städare nära dig. Boka direkt. Med RUT-avdrag betalar du bara hälften.">
+<meta property="og:type" content="website">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--green:#0F6E56;--green-mid:#1D9E75;--green-light:#9FE1CB;--green-pale:#E1F5EE;--black:#0E0E0E;--gray:#F7F7F5;--gray-mid:#E8E8E4;--text:#1C1C1A;--muted:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;color:var(--text);background:white;overflow-x:hidden;}
+
+/* NAV */
+nav{background:white;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-mid);position:sticky;top:0;z-index:100;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:700;color:var(--green);text-decoration:none;}
+.nav-links{display:flex;align-items:center;gap:2rem;}
+.nav-link{font-size:0.9rem;color:var(--muted);text-decoration:none;font-weight:400;transition:color 0.2s;}
+.nav-link:hover{color:var(--green);}
+.nav-cta{display:flex;gap:0.75rem;align-items:center;}
+.btn-outline{padding:0.55rem 1.25rem;border:1.5px solid var(--green);border-radius:100px;font-size:0.875rem;font-weight:500;color:var(--green);background:transparent;cursor:pointer;text-decoration:none;transition:all 0.2s;}
+.btn-outline:hover{background:var(--green-pale);}
+.btn-solid{padding:0.6rem 1.4rem;border-radius:100px;font-size:0.875rem;font-weight:600;color:white;background:var(--green);text-decoration:none;transition:all 0.2s;}
+.btn-solid:hover{background:var(--green-mid);}
+
+/* HERO */
+.hero{background:var(--gray);padding:7rem 5rem 5rem;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;min-height:90vh;}
+.hero-tag{display:inline-flex;align-items:center;gap:0.5rem;background:var(--green-pale);color:var(--green);font-size:0.8rem;font-weight:500;padding:0.35rem 1rem;border-radius:100px;margin-bottom:1.5rem;}
+.hero-tag::before{content:'';width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+h1{font-family:'Playfair Display',serif;font-size:clamp(2.5rem,4.5vw,4rem);font-weight:700;line-height:1.12;letter-spacing:-0.02em;color:var(--black);margin-bottom:1.25rem;}
+h1 span{color:var(--green);}
+.hero-sub{font-size:1.1rem;color:var(--muted);line-height:1.7;max-width:480px;margin-bottom:2.5rem;font-weight:300;}
+.hero-actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;}
+.btn-hero{padding:1rem 2.25rem;border-radius:100px;font-size:1rem;font-weight:600;text-decoration:none;transition:all 0.25s;display:inline-flex;align-items:center;gap:0.5rem;}
+.btn-hero-green{background:var(--green);color:white;}
+.btn-hero-green:hover{background:var(--green-mid);transform:translateY(-2px);box-shadow:0 12px 32px rgba(15,110,86,0.3);}
+.btn-hero-ghost{color:var(--green);font-size:0.9rem;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;}
+.btn-hero-ghost:hover{gap:0.7rem;}
+.hero-stats{display:flex;gap:2.5rem;margin-top:3rem;padding-top:2.5rem;border-top:1px solid var(--gray-mid);}
+.stat-item{display:flex;flex-direction:column;}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--black);}
+.stat-lbl{font-size:0.8rem;color:var(--muted);margin-top:0.15rem;}
+
+/* HERO VISUAL */
+.hero-visual{position:relative;}
+.phone-mockup{background:white;border-radius:32px;padding:1.5rem;box-shadow:0 32px 80px rgba(0,0,0,0.12);max-width:340px;margin:0 auto;}
+.phone-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;}
+.phone-logo{font-family:'Playfair Display',serif;font-weight:700;color:var(--green);font-size:1.1rem;}
+.phone-avatar{width:32px;height:32px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:0.75rem;font-weight:600;}
+.phone-section{font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.75rem;}
+.next-booking{background:var(--green);border-radius:16px;padding:1.25rem;margin-bottom:1rem;}
+.nb-label{font-size:0.7rem;color:rgba(255,255,255,0.7);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.06em;}
+.nb-time{font-family:'Playfair Display',serif;font-size:1.3rem;color:white;font-weight:700;}
+.nb-cleaner{display:flex;align-items:center;justify-content:space-between;margin-top:0.75rem;}
+.nb-cleaner-info{display:flex;align-items:center;gap:0.6rem;}
+.nb-avatar{width:28px;height:28px;background:rgba(255,255,255,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:0.65rem;font-weight:600;}
+.nb-name{font-size:0.8rem;color:white;font-weight:500;}
+.nb-stars{font-size:0.75rem;color:rgba(255,255,255,0.8);}
+.nb-price{font-size:0.9rem;font-weight:700;color:white;background:rgba(255,255,255,0.2);padding:0.25rem 0.6rem;border-radius:8px;}
+.rut-badge{background:var(--green-pale);border-radius:10px;padding:0.6rem 1rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
+.rut-label{font-size:0.75rem;color:var(--green);font-weight:500;}
+.rut-amount{font-size:0.9rem;font-weight:700;color:var(--green);}
+.cleaner-list{display:flex;flex-direction:column;gap:0.6rem;}
+.cleaner-row{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;background:var(--gray);border-radius:12px;}
+.cl-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:0.75rem;font-weight:700;flex-shrink:0;}
+.cl-info{flex:1;}
+.cl-name{font-size:0.85rem;font-weight:500;color:var(--black);}
+.cl-sub{font-size:0.7rem;color:var(--muted);}
+.cl-rating{font-size:0.75rem;color:var(--muted);}
+.badge-float{position:absolute;top:-1rem;right:-1rem;background:white;border-radius:16px;padding:0.75rem 1rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);font-size:0.8rem;font-weight:500;display:flex;align-items:center;gap:0.5rem;color:var(--text);}
+
+/* HOW IT WORKS */
+.section{padding:6rem 5rem;}
+.section-tag{display:inline-block;background:var(--green-pale);color:var(--green);font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.35rem 1rem;border-radius:100px;margin-bottom:1rem;}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,2.75rem);font-weight:700;color:var(--black);margin-bottom:1rem;line-height:1.2;}
+.section-sub{font-size:1rem;color:var(--muted);line-height:1.7;max-width:520px;}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:3.5rem;}
+.step-card{position:relative;}
+.step-num{width:48px;height:48px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:white;margin-bottom:1.25rem;}
+.step-card h3{font-size:1.05rem;font-weight:600;color:var(--black);margin-bottom:0.5rem;}
+.step-card p{font-size:0.875rem;color:var(--muted);line-height:1.7;}
+.step-connector{position:absolute;top:24px;left:calc(48px + 1rem);width:calc(100% - 48px - 1rem);height:1px;background:var(--gray-mid);}
+
+/* RUT */
+.rut-section{background:var(--green);padding:6rem 5rem;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;}
+.rut-section .section-tag{background:rgba(255,255,255,0.15);color:var(--green-light);}
+.rut-section .section-title{color:white;}
+.rut-section .section-sub{color:rgba(255,255,255,0.75);}
+.rut-calc{background:rgba(255,255,255,0.1);border-radius:20px;padding:2rem;}
+.rut-row{display:flex;justify-content:space-between;align-items:center;padding:0.875rem 0;border-bottom:1px solid rgba(255,255,255,0.1);}
+.rut-row:last-child{border-bottom:none;padding-top:1.25rem;}
+.rut-row-label{font-size:0.9rem;color:rgba(255,255,255,0.7);}
+.rut-row-val{font-size:0.9rem;color:white;font-weight:500;}
+.rut-row.total .rut-row-label{color:white;font-weight:600;font-size:1rem;}
+.rut-row.total .rut-row-val{color:#9FE1CB;font-weight:700;font-size:1.2rem;}
+
+/* CLEANERS PREVIEW */
+.cleaners-section{background:var(--gray);padding:6rem 5rem;}
+.cleaners-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3rem;}
+.preview-card{background:white;border-radius:20px;padding:1.75rem;border:1px solid var(--gray-mid);transition:transform 0.2s,box-shadow 0.2s;}
+.preview-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.08);}
+.pc-top{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;}
+.pc-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:white;flex-shrink:0;}
+.pc-name{font-size:1rem;font-weight:600;color:var(--black);}
+.pc-loc{font-size:0.8rem;color:var(--muted);margin-top:2px;}
+.pc-stars{font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:4px;margin-bottom:0.75rem;}
+.pc-stars span{color:#F59E0B;}
+.pc-tags{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;}
+.pc-tag{background:var(--green-pale);color:var(--green);font-size:0.7rem;font-weight:500;padding:0.25rem 0.625rem;border-radius:100px;}
+.pc-price{font-size:0.875rem;color:var(--muted);}
+.pc-price strong{color:var(--black);font-weight:600;}
+.pc-cta{display:block;text-align:center;margin-top:1rem;padding:0.625rem;background:var(--green);color:white;border-radius:100px;font-size:0.875rem;font-weight:500;text-decoration:none;transition:background 0.2s;}
+.pc-cta:hover{background:var(--green-mid);}
+.cleaners-more{text-align:center;margin-top:2.5rem;}
+
+/* TESTIMONIALS */
+.testimonials{padding:6rem 5rem;background:white;}
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3rem;}
+.testimonial{background:var(--gray);border-radius:20px;padding:2rem;}
+.testimonial-stars{color:#F59E0B;font-size:0.9rem;margin-bottom:1rem;}
+.testimonial-text{font-size:0.9rem;color:var(--text);line-height:1.7;margin-bottom:1.25rem;font-style:italic;}
+.testimonial-author{font-size:0.8rem;font-weight:600;color:var(--black);}
+.testimonial-sub{font-size:0.75rem;color:var(--muted);}
+
+/* CTA */
+.cta-section{background:var(--black);padding:7rem 5rem;text-align:center;}
+.cta-section h2{font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3rem);color:white;margin-bottom:1rem;}
+.cta-section p{font-size:1rem;color:#9E9E99;max-width:500px;margin:0 auto 2.5rem;}
+.cta-actions{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;}
+.btn-cta-white{padding:1rem 2.25rem;border-radius:100px;font-size:0.95rem;font-weight:600;background:white;color:var(--green);text-decoration:none;transition:all 0.2s;}
+.btn-cta-white:hover{background:var(--green-pale);}
+.btn-cta-outline{padding:0.95rem 2rem;border-radius:100px;font-size:0.95rem;font-weight:500;border:1.5px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.8);text-decoration:none;transition:all 0.2s;}
+.btn-cta-outline:hover{border-color:white;color:white;}
+
+/* FOOTER */
+footer{background:#080808;padding:5rem 5rem 2.5rem;}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:4rem;}
+.footer-brand p{font-size:0.875rem;color:#5A5A55;line-height:1.7;max-width:270px;margin-top:0.75rem;}
+.footer-col h4{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#5A5A55;margin-bottom:1rem;}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.65rem;}
+.footer-col a{font-size:0.875rem;color:#9E9E99;text-decoration:none;transition:color 0.2s;}
+.footer-col a:hover{color:var(--green-mid);}
+.footer-bottom{border-top:1px solid #1A1A1A;padding-top:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-bottom p{font-size:0.8rem;color:#4A4A45;}
+.footer-bottom a{color:#4A4A45;text-decoration:none;}
+.footer-bottom a:hover{color:#9E9E99;}
+
+@media(max-width:900px){
+  nav{padding:1rem 1.5rem;}
+  .nav-links{display:none;}
+  .hero{grid-template-columns:1fr;padding:4rem 1.5rem 3rem;min-height:auto;}
+  .hero-visual{display:none;}
+  .section,.cleaners-section,.testimonials,.cta-section{padding:4rem 1.5rem;}
+  .rut-section{grid-template-columns:1fr;padding:4rem 1.5rem;}
+  .steps-grid,.cleaners-grid,.testimonials-grid{grid-template-columns:1fr;}
+  .step-connector{display:none;}
+  .footer-grid{grid-template-columns:1fr 1fr;}
+  footer{padding:3rem 1.5rem 2rem;}
+}
+</style>
+
+<!-- Mobilmeny -->
+<style>
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;}
+.hamburger span{display:block;width:22px;height:2px;background:var(--text);transition:all 0.3s;}
+.mobile-menu{display:none;position:fixed;inset:0;background:white;z-index:200;padding:5rem 2rem 2rem;flex-direction:column;gap:1.5rem;}
+.mobile-menu.open{display:flex;}
+.mobile-menu a{font-size:1.25rem;color:var(--text);text-decoration:none;font-weight:500;border-bottom:1px solid var(--gray-mid);padding-bottom:1rem;}
+.mobile-menu .close-btn{position:absolute;top:1.25rem;right:1.5rem;font-size:1.5rem;cursor:pointer;color:var(--muted);}
+@media(max-width:900px){.hamburger{display:flex;}.nav-cta .btn-outline{display:none;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Spick</a>
+  <div class="nav-links">
+    <a href="hur-det-funkar.html" class="nav-link">Hur det funkar</a>
+    <a href="#rut" class="nav-link">RUT-avdrag</a>
+    <a href="stadare.html" class="nav-link">Städare</a>
+    <a href="bli-stadare.html" class="nav-link">Bli städare</a>
+    <a href="faq.html" class="nav-link">FAQ</a>
+  </div>
+  <div class="nav-cta">
+    <a href="bli-stadare.html" class="btn-outline">Bli städare</a>
+    <a href="stadare.html" class="btn-solid">Boka städning</a>
+    <div class="hamburger" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobilmeny -->
+<div class="mobile-menu" id="mobileMenu">
+  <span class="close-btn" onclick="document.getElementById('mobileMenu').classList.remove('open')">✕</span>
+  <a href="stadare.html" onclick="document.getElementById('mobileMenu').classList.remove('open')">Hitta städare</a>
+  <a href="hur-det-funkar.html" onclick="document.getElementById('mobileMenu').classList.remove('open')">Hur det funkar</a>
+  <a href="bli-stadare.html" onclick="document.getElementById('mobileMenu').classList.remove('open')">Bli städare</a>
+  <a href="faq.html" onclick="document.getElementById('mobileMenu').classList.remove('open')">FAQ</a>
+  <a href="kontakt.html" onclick="document.getElementById('mobileMenu').classList.remove('open')">Kontakt</a>
+  <a href="stadare.html" style="background:var(--green);color:white;border-radius:100px;text-align:center;border-bottom:none;padding:1rem;">Boka städning →</a>
+</div>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Spick",
+  "description": "Boka en betygsatt städare i Stockholm. Med RUT-avdrag betalar du bara hälften.",
+  "url": "https://spick.se",
+  "telephone": "+46760505153",
+  "email": "hello@spick.se",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Stockholm",
+    "addressCountry": "SE"
+  },
+  "areaServed": "Stockholm",
+  "serviceType": "Hemstädning",
+  "priceRange": "175–300 kr/h (med RUT)",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "reviewCount": "94"
+  }
+}
+</script>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-tag">● Tillgängliga städare i Stockholm</div>
+    <h1>Boka en städare du <span>verkligen litar på</span></h1>
+    <p class="hero-sub">Välj bland betygsatta städare nära dig. Boka direkt i appen. Med RUT-avdrag betalar du bara hälften – vi fixar resten.</p>
+    <div class="hero-actions">
+      <a href="stadare.html" class="btn-hero btn-hero-green">Boka din första städning →</a>
+      <a href="#how" class="btn-hero-ghost">Hur funkar det? <span>↓</span></a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item"><span class="stat-num">50%</span><span class="stat-lbl">billigare med RUT-avdrag</span></div>
+      <div class="stat-item"><span class="stat-num">4.9★</span><span class="stat-lbl">genomsnittsbetyg</span></div>
+      <div class="stat-item"><span class="stat-num">24h</span><span class="stat-lbl">svar på bokningar</span></div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div style="position:relative;">
+      <div class="badge-float">✅ Bokning bekräftad<br><span style="font-size:0.7rem;color:var(--muted);">Imorgon 09:00 · Sara K.</span></div>
+      <div class="phone-mockup">
+        <div class="phone-header">
+          <span class="phone-logo">Spick</span>
+          <div class="phone-avatar">FH</div>
+        </div>
+        <div class="phone-section">God morgon, Farhad</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--black);margin-bottom:1rem;">Boka en städare</div>
+        <div class="next-booking">
+          <div class="nb-label">Nästa städning</div>
+          <div class="nb-time">Imorgon, 09:00–12:00</div>
+          <div class="nb-cleaner">
+            <div class="nb-cleaner-info">
+              <div class="nb-avatar">SK</div>
+              <div><div class="nb-name">Sara Karlsson</div><div class="nb-stars">★★★★★ 4.97</div></div>
+            </div>
+            <div class="nb-price">525 kr</div>
+          </div>
+        </div>
+        <div class="rut-badge">
+          <span class="rut-label">RUT-avdrag aktivt</span>
+          <span class="rut-amount">–525 kr</span>
+        </div>
+        <div class="phone-section">Tillgängliga städare</div>
+        <div class="cleaner-list">
+          <div class="cleaner-row">
+            <div class="cl-avatar" style="background:#0F6E56;">SK</div>
+            <div class="cl-info"><div class="cl-name">Sara Karlsson</div><div class="cl-sub">Stockholm · 47 städningar</div></div>
+            <div class="cl-rating">★ 4.97</div>
+          </div>
+          <div class="cleaner-row">
+            <div class="cl-avatar" style="background:#7C3AED;">MA</div>
+            <div class="cl-info"><div class="cl-name">Maria Andersson</div><div class="cl-sub">Solna · 31 städningar</div></div>
+            <div class="cl-rating">★ 4.94</div>
+          </div>
+          <div class="cleaner-row">
+            <div class="cl-avatar" style="background:#B45309;">AH</div>
+            <div class="cl-info"><div class="cl-name">Ahmad Hassan</div><div class="cl-sub">Bromma · 28 städningar</div></div>
+            <div class="cl-rating">★ 4.91</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-tag">Hur det funkar</div>
+    <h2 class="section-title">Boka på 3 enkla steg</h2>
+    <p class="section-sub">Ingen app att ladda ner, inga krångliga kontrakt. Välj, boka och koppla av.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-connector"></div>
+        <div class="step-num">1</div>
+        <h3>Välj din städare</h3>
+        <p>Bläddra bland betygsatta städare nära dig. Se profiler, betyg och priser. Välj den som passar dig bäst.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-connector"></div>
+        <div class="step-num">2</div>
+        <h3>Boka datum och tid</h3>
+        <p>Välj när du vill ha städat. Engångsstädning eller återkommande varje vecka – du bestämmer.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Koppla av!</h3>
+        <p>Städaren kommer hem till dig. Du betalar via Swish efter godkänd städning. Enkelt som det.</p>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:3rem;">
+      <a href="stadare.html" class="btn-solid" style="padding:0.875rem 2rem;font-size:0.95rem;">Hitta din städare →</a>
+    </div>
+  </div>
+</section>
+
+<!-- RUT -->
+<section class="rut-section" id="rut">
+  <div>
+    <div class="section-tag">RUT-avdrag</div>
+    <h2 class="section-title">Du betalar bara hälften</h2>
+    <p class="section-sub" style="margin-bottom:2rem;">Tack vare RUT-avdraget betalar du 50% av städarens timpris. Vi hanterar RUT-ansökan åt dig – automatiskt.</p>
+    <a href="stadare.html" class="btn-hero btn-hero-green" style="background:white;color:var(--green);">Boka med RUT-avdrag →</a>
+  </div>
+  <div class="rut-calc">
+    <div class="rut-row">
+      <span class="rut-row-label">Städarens timpris</span>
+      <span class="rut-row-val">350 kr/h</span>
+    </div>
+    <div class="rut-row">
+      <span class="rut-row-label">Antal timmar</span>
+      <span class="rut-row-val">3 timmar</span>
+    </div>
+    <div class="rut-row">
+      <span class="rut-row-label">Totalpris</span>
+      <span class="rut-row-val">1 050 kr</span>
+    </div>
+    <div class="rut-row">
+      <span class="rut-row-label">RUT-avdrag (50%)</span>
+      <span class="rut-row-val" style="color:#9FE1CB;">–525 kr</span>
+    </div>
+    <div class="rut-row total">
+      <span class="rut-row-label">Du betalar</span>
+      <span class="rut-row-val">525 kr</span>
+    </div>
+  </div>
+</section>
+
+<!-- CLEANERS PREVIEW -->
+<section class="cleaners-section">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-tag">Våra städare</div>
+    <h2 class="section-title">Betygsatta städare nära dig</h2>
+    <p class="section-sub">Alla städare på Spick är verifierade, betygsatta av kunder och egenföretagare med F-skatt.</p>
+    <div class="cleaners-grid">
+      <div class="preview-card">
+        <div class="pc-top">
+          <div class="pc-avatar" style="background:#0F6E56;">SK</div>
+          <div><div class="pc-name">Sara Karlsson</div><div class="pc-loc">Stockholm · Östermalm</div></div>
+        </div>
+        <div class="pc-stars"><span>★★★★★</span> 4.97 (47 recensioner)</div>
+        <div class="pc-tags"><span class="pc-tag">Hemstädning</span><span class="pc-tag">Storstädning</span><span class="pc-tag">Fönsterputs</span></div>
+        <p class="pc-price">Från <strong>350 kr/h</strong> · <strong>175 kr/h</strong> med RUT</p>
+        <a href="stadare.html" class="pc-cta">Boka Sara →</a>
+      </div>
+      <div class="preview-card">
+        <div class="pc-top">
+          <div class="pc-avatar" style="background:#7C3AED;">OK</div>
+          <div><div class="pc-name">Olena Kovalenko</div><div class="pc-loc">Stockholm · Södermalm</div></div>
+        </div>
+        <div class="pc-stars"><span>★★★★★</span> 4.89 (19 recensioner)</div>
+        <div class="pc-tags"><span class="pc-tag">Hemstädning</span><span class="pc-tag">Storstädning</span></div>
+        <p class="pc-price">Från <strong>330 kr/h</strong> · <strong>165 kr/h</strong> med RUT</p>
+        <a href="stadare.html" class="pc-cta">Boka Olena →</a>
+      </div>
+      <div class="preview-card">
+        <div class="pc-top">
+          <div class="pc-avatar" style="background:#B45309;">AH</div>
+          <div><div class="pc-name">Ahmad Hassan</div><div class="pc-loc">Bromma · Vällingby</div></div>
+        </div>
+        <div class="pc-stars"><span>★★★★★</span> 4.91 (28 recensioner)</div>
+        <div class="pc-tags"><span class="pc-tag">Hemstädning</span><span class="pc-tag">Kontorsstädning</span></div>
+        <p class="pc-price">Från <strong>320 kr/h</strong> · <strong>160 kr/h</strong> med RUT</p>
+        <a href="stadare.html" class="pc-cta">Boka Ahmad →</a>
+      </div>
+    </div>
+    <div class="cleaners-more">
+      <a href="stadare.html" class="btn-outline" style="padding:0.875rem 2rem;font-size:0.95rem;">Se alla städare →</a>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials">
+  <div style="max-width:1100px;margin:0 auto;text-align:center;">
+    <div class="section-tag">Kundrecensioner</div>
+    <h2 class="section-title">Vad kunderna säger</h2>
+    <div class="testimonials-grid">
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Sara är fantastisk. Lägenheten är alltid fläckfri när hon är klar. Bokar varje vecka nu."</p>
+        <div class="testimonial-author">Linda M.</div>
+        <div class="testimonial-sub">Stockholm · Återkommande kund</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Superenkelt att boka och priset var mycket bättre än jag förväntade mig med RUT-avdraget."</p>
+        <div class="testimonial-author">Marcus T.</div>
+        <div class="testimonial-sub">Solna · Storstädning</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Äntligen ett städbolag där man vet vem som kommer. Ahmad är pålitlig och gör ett perfekt jobb."</p>
+        <div class="testimonial-author">Anna K.</div>
+        <div class="testimonial-sub">Bromma · Hemstädning</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>Redo att boka din första städning?</h2>
+  <p>Välj bland betygsatta städare och boka direkt. Med RUT-avdrag betalar du bara hälften.</p>
+  <div class="cta-actions">
+    <a href="stadare.html" class="btn-cta-white">Hitta en städare →</a>
+    <a href="bli-stadare.html" class="btn-cta-outline">Bli städare</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--green-mid);">Spick</div>
+      <p>Boka en städare du verkligen litar på. Välj bland betygsatta städare nära dig och boka samma person varje gång.</p>
+      <p style="margin-top:1rem;font-size:0.875rem;"><a href="mailto:hello@spick.se">hello@spick.se</a> · <a href="tel:+46760505153" style="color:var(--green-mid);text-decoration:none;">076-050 51 53</a></p>
+    </div>
+    <div class="footer-col">
+      <h4>Kunder</h4>
+      <ul>
+        <li><a href="stadare.html">Hitta städare</a></li>
+        <li><a href="boka.html">Boka städning</a></li>
+        <li><a href="faq.html">Vanliga frågor</a></li>
+        <li><a href="kontakt.html">Kontakt</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Städare</h4>
+      <ul>
+        <li><a href="bli-stadare.html">Bli städare</a></li>
+        <li><a href="rekrytera.html">Varför Spick?</a></li>
+        <li><a href="faq.html">FAQ för städare</a></li>
+        <li><a href="avtal.html">Partneravtal</a></li>
+      </ul>
+    </div>
+    <div class="footer-co

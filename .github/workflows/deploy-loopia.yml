@@ -1,0 +1,36 @@
+name: Deploy till Loopia via FTP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kod
+        uses: actions/checkout@v4
+
+      - name: Deploy till Loopia via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftpcluster.loopia.se
+          username: ${{ secrets.LOOPIA_FTP_USER }}
+          password: ${{ secrets.LOOPIA_FTP_PASS }}
+          server-dir: /public_html/
+          protocol: ftp
+          port: 21
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/backups/**
+            **/*.md
+            **/.github/**
+            **/supabase/**
+            **/files1.zip
+            **/SPICK_KONTEXT.pdf
+
+      - name: Deploy klar!
+        run: echo "spick.se live pa Loopia!"

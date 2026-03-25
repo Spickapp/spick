@@ -1,0 +1,71 @@
+name: Fix DNS via Loopia API
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action'
+        required: true
+        default: full-reset-to-loopia
+        type: choice
+        options: [full-reset-to-loopia, restore-loopia-hosting, fix-github-pages, add-google-mx, verify-dns, list-records]
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run DNS fix
+        env:
+          U: ${{ secrets.LOOPIA_API_USER }}
+          P: ${{ secrets.LOOPIA_API_PASS }}
+        run: |
+          api() { curl -s -X POST https://api.loopia.se/RPCSERV -H "Content-Type: text/xml" -d "$1"; }
+          ACT="${{ github.event.inputs.action }}"
+
+          remove_a() {
+            api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>A</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$1</string></value></member></struct></value></param></params></methodCall>"
+          }
+          add_a() {
+            api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>A</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$1</string></value></member></struct></value></param></params></methodCall>"
+          }
+          remove_cname() {
+            api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string>$1</string></value></param><param><value><struct><member><n>type</n><value><string>CNAME</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>0</int></value></member><member><n>rdata</n><value><string>$2</string></value></member></struct></value></param></params></methodCall>"
+          }
+
+          if [ "$ACT" = "full-reset-to-loopia" ]; then
+            echo "=== FULL RESET - Aterstaller DNS till Loopia hosting ==="
+            
+            echo "--- Tar bort felaktiga @ A-poster ---"
+            for IP in "75.2.60.5" "99.83.190.102" "185.199.108.153" "185.199.109.153" "185.199.110.153" "185.199.111.153"; do
+              echo "Removing @ A $IP"; remove_a "$IP"
+            done
+            
+            echo "--- Lagger till ratt Loopia @ A-poster ---"
+            add_a "194.9.94.85"
+            add_a "194.9.94.86"
+            
+            echo "--- Tar bort www CNAME till GitHub ---"
+            remove_cname "www" "spickapp.github.io."
+            
+            echo "--- Verifierar ---"
+            sleep 2
+            api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param></params></methodCall>" | grep -o '<string>[^<]*</string>' | head -40
+            echo "=== KLAR! spick.se pekar nu pa Loopia ==="
+          
+          elif [ "$ACT" = "verify-dns" ]; then
+            echo "--- A-poster @ ---"
+            dig +short A spick.se @8.8.8.8
+            echo "--- MX ---"
+            dig +short MX spick.se @8.8.8.8
+            echo "--- www ---"
+            dig +short www.spick.se @8.8.8.8
+          
+          elif [ "$ACT" = "list-records" ]; then
+            api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param></params></methodCall>"
+          
+          elif [ "$ACT" = "add-google-mx" ]; then
+            for HOST in "ASPMX.L.GOOGLE.COM." "ALT1.ASPMX.L.GOOGLE.COM." "ALT2.ASPMX.L.GOOGLE.COM." "ALT3.ASPMX.L.GOOGLE.COM." "ALT4.ASPMX.L.GOOGLE.COM."; do
+              PRIO=1
+              [[ "$HOST" == ALT1* || "$HOST" == ALT2* ]] && PRIO=5
+              [[ "$HOST" == ALT3* || "$HOST" == ALT4* ]] && PRIO=10
+              api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><n>type</n><value><string>MX</string></value></member><member><n>ttl</n><value><int>3600</int></value></member><member><n>priority</n><value><int>$PRIO</int></value></member><member><n>rdata</n><value><string>$HOST</string></value></member></struct></value></param></params></methodCall>"
+            done
+          fi

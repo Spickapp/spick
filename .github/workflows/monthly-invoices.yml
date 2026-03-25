@@ -1,0 +1,19 @@
+name: Monthly Invoice Generator
+
+on:
+  schedule:
+    - cron: '0 8 1 * *'  # Kör 08:00 första dagen varje månad
+  workflow_dispatch:
+
+jobs:
+  generate-invoices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate and send monthly invoices
+        run: |
+          echo "Genererar fakturor för $(date -d 'last month' +%B %Y)"
+          curl -X POST "https://urjeijcncsyuletprydy.supabase.co/functions/v1/generate-invoices" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"month": "'$(date -d 'last month' +%Y-%m)'"}'
+          echo "✅ Fakturor genererade och skickade"
