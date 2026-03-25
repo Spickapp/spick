@@ -54,6 +54,7 @@ h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var
   <hr class="divider">
   <div class="btns">
     <a href="min-bokning.html" class="btn-primary">📋 Följ din bokning</a>
+    <button onclick="addToCalendar(new URLSearchParams(location.search).get('date'), new URLSearchParams(location.search).get('time'), new URLSearchParams(location.search).get('service'), new URLSearchParams(location.search).get('address'))" class="btn-secondary" style="cursor:pointer;border:none;width:100%">📅 Lägg till i kalender</button>
     <a href="tipsa-en-van.html" class="btn-secondary">🎁 Tipsa en vän – ni får båda rabatt</a>
     <a href="index.html" class="btn-secondary">← Tillbaka till startsidan</a>
   </div>
@@ -76,5 +77,26 @@ window.addEventListener('load', () => {
   }
 });
 </script>
+<script>
+// Lägg till i kalender
+function addToCalendar(date, time, service, address) {
+  if (!date || !time) return;
+  const start = date.replace(/-/g,'') + 'T' + time.replace(':','') + '00';
+  const end   = date.replace(/-/g,'') + 'T' + (String(parseInt(time)+2).padStart(2,'0')) + time.slice(2) + '00';
+  const ics = [
+    'BEGIN:VCALENDAR','VERSION:2.0','BEGIN:VEVENT',
+    'DTSTART:' + start,
+    'DTEND:' + end,
+    'SUMMARY:Städning – Spick',
+    'DESCRIPTION:' + (service || 'Hemstädning') + ' via Spick.se',
+    'LOCATION:' + (address || ''),
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics], {type:'text/calendar'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'spick-stadning.ics';
+  a.click();
+}</script>
 </body>
 </html>

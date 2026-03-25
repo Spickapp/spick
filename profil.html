@@ -61,6 +61,7 @@ nav{background:var(--w);padding:1.25rem 2rem;display:flex;align-items:center;jus
 <link rel="canonical" href="https://spick.se/profil.html">
   <script src="analytics.js" defer></script>
   <script src="pwa.js" defer></script>
+<script type="application/ld+json" id="cleaner-schema">{}</script>
 </head>
 <body>
 <nav>
@@ -90,7 +91,25 @@ async function load(){
   const bonus=c.bonus_level||'Brons';
 
   // Uppdatera page title
-  document.title=c.full_name+' – Städare i '+c.city+' | Spick';
+  // Uppdatera schema.org dynamiskt
+const schemaEl = document.getElementById('cleaner-schema');
+if (schemaEl) {
+  schemaEl.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": c.full_name,
+    "jobTitle": "Städare",
+    "worksFor": {"@type": "Organization", "name": "Spick"},
+    "address": {"@type": "PostalAddress", "addressLocality": c.city || "Sverige"},
+    "aggregateRating": c.avg_rating ? {
+      "@type": "AggregateRating",
+      "ratingValue": c.avg_rating,
+      "reviewCount": c.review_count || 0,
+      "bestRating": 5
+    } : undefined
+  });
+}
+document.title=c.full_name+' – Städare i '+c.city+' | Spick';
 
   document.getElementById('content').innerHTML=`
     <div class="profile-card">

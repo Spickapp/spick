@@ -149,12 +149,12 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
     </div>
     <div class="fc-body">
       <div class="f2">
-        <div class="f"><label>Förnamn *</label><input type="text" id="fname" placeholder="Anna"></div>
+        <div class="f"><label>Förnamn *</label><input type="text" id="fname" placeholder="Anna" autocomplete="given-name"></div>
         <div class="f"><label>Efternamn *</label><input type="text" id="lname" placeholder="Svensson"></div>
       </div>
-      <div class="f"><label>E-post *</label><input type="email" id="email" placeholder="anna@email.se"></div>
+      <div class="f"><label>E-post *</label><input type="email" id="email" placeholder="anna@email.se" autocomplete="email"></div>
       <div class="f"><label>Telefon *</label><input type="tel" id="phone" placeholder="070 123 45 67"></div>
-      <div class="f"><label>Adress *</label><input type="text" id="address" placeholder="Storgatan 1, Stockholm"></div>
+      <div class="f"><label>Adress *</label><input type="text" id="address" placeholder="Storgatan 1, Stockholm" autocomplete="street-address"></div>
       <div class="f2">
         <div class="f"><label>Datum *</label><input type="date" id="date" min=""></div>
         <div class="f"><label>Tid *</label>
@@ -425,9 +425,9 @@ async function doBook(){
     if (window.offerPushAfterBooking) {
       localStorage.setItem('spick_customer_email', em);
       window.offerPushAfterBooking(em);
-      setTimeout(() => { window.location.href='tack.html'; }, 2500);
+      setTimeout(() => { window.location.href=`tack.html?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&service=${encodeURIComponent(svc)}&address=${encodeURIComponent(addr)}`; }, 2500);
     } else {
-      window.location.href='tack.html';
+      window.location.href=`tack.html?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&service=${encodeURIComponent(svc)}&address=${encodeURIComponent(addr)}`;
     }
   }catch(e){
     btn.disabled=false;btn.innerHTML='Bekräfta bokning →';
