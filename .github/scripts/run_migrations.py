@@ -1,0 +1,40 @@
+import os, json, urllib.request, urllib.error, sys
+
+TOKEN   = os.environ['SUPABASE_ACCESS_TOKEN']
+PROJECT = "urjeijcncsyuletprydy"
+API     = f"https://api.supabase.com/v1/projects/{PROJECT}/database/query"
+
+def run_sql(label, filepath):
+    print(f"\n▶ {label}...")
+    with open(filepath, 'r', encoding='utf-8') as f:
+        sql = f.read()
+    body = json.dumps({"query": sql}).encode('utf-8')
+    req  = urllib.request.Request(API, body, {
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type":  "application/json"
+    }, method="POST")
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        data = json.loads(resp.read().decode())
+        print(f"✅ {label} klar!")
+    except urllib.error.HTTPError as e:
+        err = e.read().decode()
+        print(f"HTTP {e.code}: {err}")
+        if "already exists" in err or "42P07" in err or "42701" in err:
+            print(f"⚠️  {label} redan körd - OK")
+        else:
+            print(f"❌ {label} misslyckades")
+            sys.exit(1)
+
+run_sql("004_alias", "supabase/migrations/004_alias.sql")
+run_sql("005_data",  "supabase/migrations/005_data.sql")
+run_sql("006_keys",  "supabase/migrations/006_keys.sql")
+
+print("\n▶ Verifierar tabeller...")
+body = json.dumps({"query": "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('customer_profiles','analytics_events','key_methods','messages') ORDER BY table_name;"}).encode()
+req  = urllib.request.Request(API, body, {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}, method="POST")
+resp = urllib.request.urlopen(req, timeout=30)
+data = json.loads(resp.read().decode())
+for r in (data if isinstance(data, list) else []):
+    print(f"  ✅ {r.get('table_name')}")
+print("\n✅ Alla migrationer klara!")
