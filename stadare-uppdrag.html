@@ -120,7 +120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     fbq('init', '874536122252551');
     fbq('track', 'PageView');
   </script>
-  <noscript><img height="1" width="1" style="display:none"
+  <noscript><img height="1" width="1" style="display:none" alt=""
     src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -269,6 +269,7 @@ let booking = null;
 let keyData = null;
 let currentPhotoSlot = null;
 let messagePolling = null;
+let currentStatus = null;
 
 // ── STATUSFLÖDE ───────────────────────────
 const STATUS_FLOW = [
@@ -562,6 +563,16 @@ function showTab(tab) {
 
 // ── INIT ──────────────────────────────────
 loadBooking();
+// Polla bokningsstatus var 30s (för realtidsuppdatering)
+setInterval(async () => {
+  if (!BOOKING_ID) return;
+  const res = await fetch(`${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}&select=status,cleaner_email,cleaner_name`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
+  const d = await res.json();
+  if (d?.[0]?.status !== currentStatus) {
+    loadBooking(); // Ladda om vid statusändring
+  }
+}, 30000);
 </script>
   <style>
 #spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:white;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}

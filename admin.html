@@ -119,7 +119,7 @@ tr:hover td{background:var(--gr);}
     fbq('init', '874536122252551');
     fbq('track', 'PageView');
   </script>
-  <noscript><img height="1" width="1" style="display:none"
+  <noscript><img height="1" width="1" style="display:none" alt=""
     src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
 </head>
 <body>
@@ -305,6 +305,12 @@ function doLogin(){
     const {createClient}=supabase;db=createClient(SBU,KEY);
     loadAll();
     setInterval(loadAll,60000); // auto-refresh varje minut
+    // Auto-logout efter 4 timmar av inaktivitet
+    let inactivity=setTimeout(()=>{alert('Session utgången – logga in igen.');logout();}, 4*60*60*1000);
+    ['click','keypress','mousemove'].forEach(e=>document.addEventListener(e,()=>{
+      clearTimeout(inactivity);
+      inactivity=setTimeout(()=>{alert('Session utgången – logga in igen.');logout();}, 4*60*60*1000);
+    },{passive:true}));
   }else{document.getElementById('pw').style.borderColor='#DC2626';setTimeout(()=>document.getElementById('pw').style.borderColor='',1500);}
 }
 
