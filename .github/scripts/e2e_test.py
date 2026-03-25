@@ -208,3 +208,4 @@ if failed > 0:
             print(f"  {r[0]} {r[1]}: {r[2]}")
 
 sys.exit(1 if failed > 2 else 0)  # Max 2 kritiska fel tillåtna
+# trigger e2e 1774442457
