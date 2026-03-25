@@ -6,20 +6,8 @@
 <meta name="description" content="Boka betygsatta städare i Halmstad. Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag. RUT-avdrag 50%.">
 <meta name="keywords" content="städare halmstad,städning halmstad,hemstädning halmstad,boka städare halmstad">
 <link rel="canonical" href="https://spick.se/halmstad.html">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Halmstad","description":"Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag.","url":"https://spick.se/halmstad.html","areaServed":"Halmstad","priceRange":"250-600 SEK/h"}
-async function joinWaitlist(city, email){
-  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
-    body:JSON.stringify({email,city,utm_source:'waitlist'})
-  }).catch(()=>{});
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body:JSON.stringify({type:'waitlist',record:{city,email}})
-  }).catch(()=>{});
-}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Halmstad","description":"Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag.","url":"https://spick.se/halmstad.html","areaServed":"Halmstad","priceRange":"250-600 SEK/h"}
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -167,6 +155,20 @@ async function joinWL(){
   await joinWaitlist(city||'', e);
   document.getElementById('wlok').style.display='block';
   document.querySelector('.wlform').style.display='none';
+}
+</script>
+<script>
+async function joinWaitlist(city, email) {
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
+    body: JSON.stringify({email, city, utm_source:'waitlist'})
+  }).catch(()=>{});
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body: JSON.stringify({type:'waitlist', record:{city, email}})
+  }).catch(()=>{});
 }
 </script>
 </body></html>
