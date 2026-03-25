@@ -2,238 +2,546 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-  <link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-<meta name="description" content="Städare-dashboard – logga in för att se dina uppdrag, inkomster och profil.">
-
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Mina uppdrag – Spick</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Städare-portal – Spick</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff}
-body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-height:100vh}
-header{background:var(--g);padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:white;text-decoration:none}
-h2{font-size:24px;margin-bottom:8px;color:var(--t)}
-.sub{color:var(--m);font-size:14px;margin-bottom:24px}
-.login-wrap{max-width:420px;margin:80px auto;padding:0 24px}
-.login-card{background:var(--w);border-radius:20px;padding:40px;box-shadow:0 8px 40px rgba(0,0,0,.08);text-align:center}
-input{width:100%;padding:13px 16px;border:2px solid var(--grd);border-radius:10px;font-size:15px;margin-bottom:12px;font-family:inherit;color:var(--t)}
-input:focus{outline:none;border-color:var(--g)}
-.btn{width:100%;padding:14px;background:var(--g);color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-top:4px;font-family:inherit;transition:background .2s}
-.btn:hover{background:var(--gm)}
-.dash{display:none;max-width:800px;margin:0 auto;padding:24px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px}
-.sc{background:var(--w);border-radius:14px;padding:18px 22px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
-.sc .n{font-size:30px;font-weight:700;color:var(--g)}
-.sc .l{font-size:12px;color:var(--m);margin-top:3px}
-.tabs{display:flex;gap:4px;background:var(--w);border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.tab{flex:1;padding:9px;text-align:center;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;color:var(--m);border:none;background:none;font-family:inherit;transition:all .2s}
-.tab.a{background:var(--g);color:white}
-.jli{display:flex;flex-direction:column;gap:12px}
-.jc{background:var(--w);border-radius:14px;padding:16px 20px;box-shadow:0 2px 12px rgba(0,0,0,.05);display:flex;gap:14px;align-items:flex-start}
-.jd{background:var(--g);color:white;border-radius:10px;padding:8px 12px;text-align:center;min-width:54px;flex-shrink:0}
-.jd .day{font-size:20px;font-weight:700}
-.jd .mo{font-size:11px;opacity:.8;text-transform:uppercase}
-.ji{flex:1}
-.ji h3{font-size:13px;font-weight:600;margin-bottom:4px;color:var(--t)}
-.jmeta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
-.jmeta span{font-size:11px;color:var(--m)}
-.jp{font-size:18px;font-weight:700;color:var(--g);flex-shrink:0}
-.bap{background:var(--g);color:white;border:none;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;transition:background .2s}
-.bap:hover{background:var(--gm)}
-.bdec{background:var(--gr);color:var(--m);font-size:13px;border:1.5px solid var(--grd);padding:7px 12px;border-radius:8px;cursor:pointer;font-family:inherit}
-.bad{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;margin-top:8px}
-.np{background:#FFF8E1;color:#E65100}
-.cp{background:var(--gp);color:var(--g)}
-.dp{background:var(--gr);color:var(--m)}
-.earn-card{background:linear-gradient(135deg,var(--g),var(--gm));color:white;border-radius:16px;padding:24px;margin-bottom:16px}
-.info-card{background:var(--w);border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.05);margin-bottom:14px}
-.pr{padding:10px 0;border-bottom:1px solid var(--grd);display:flex;justify-content:space-between;font-size:14px}
-.pr:last-child{border-bottom:none}
-.pr span:first-child{color:var(--m)}
-.pr span:last-child{font-weight:500;color:var(--t)}
-.empty{text-align:center;padding:48px;color:var(--m);font-size:14px}
-@media(max-width:600px){.dash{padding:16px}.stats{grid-template-columns:1fr 1fr}.jc{flex-wrap:wrap}}
+:root{
+  --g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;
+  --b:#1C1C1A;--m:#6B6960;--bg:#F4F4F1;--w:#fff;
+  --r:#DC2626;--y:#F59E0B;--border:#E8E8E4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-height:100vh}
+
+/* ── SCREENS ── */
+.screen{display:none}
+.screen.active{display:block}
+
+/* ── LOGIN SCREEN ── */
+#screen-login{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#0F6E56,#0A5240)}
+#screen-login.active{display:flex}
+.login-wrap{width:100%;max-width:420px}
+.login-card{background:var(--w);border-radius:24px;padding:44px;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+.login-logo{font-family:'Playfair Display',serif;font-size:2rem;color:var(--g);font-weight:700;margin-bottom:4px}
+.login-tagline{color:var(--m);font-size:.9rem;margin-bottom:32px}
+.login-card h2{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:8px}
+.login-card p{color:var(--m);font-size:.9rem;margin-bottom:24px;line-height:1.6}
+.input-group{margin-bottom:14px}
+.input-group label{display:block;font-size:.82rem;font-weight:600;color:var(--b);margin-bottom:6px}
+.input-group input{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:1rem;font-family:inherit;outline:none;transition:border-color .2s}
+.input-group input:focus{border-color:var(--g)}
+.btn-full{width:100%;padding:14px;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-full:hover{background:var(--gm)}
+.btn-full:disabled{opacity:.6;cursor:not-allowed}
+.login-err{color:var(--r);font-size:.85rem;margin-top:10px;display:none}
+.login-success{background:var(--gr);color:var(--g);padding:14px;border-radius:12px;font-size:.9rem;margin-top:16px;display:none;text-align:center}
+.login-footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--m)}
+.login-footer a{color:var(--g);text-decoration:none}
+
+/* ── MAGIC LINK SENT ── */
+#screen-magic{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+#screen-magic.active{display:flex;flex-direction:column;text-align:center}
+.magic-icon{font-size:4rem;margin-bottom:24px}
+.magic-title{font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:12px}
+.magic-sub{color:var(--m);font-size:1rem;line-height:1.7;max-width:380px}
+.magic-email{background:var(--gr);color:var(--g);padding:4px 12px;border-radius:20px;font-weight:600;display:inline-block;margin:8px 0}
+
+/* ── MAIN APP ── */
+#screen-app{min-height:100vh;display:none}
+#screen-app.active{display:block}
+
+/* Header */
+.app-header{background:var(--g);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px}
+.header-logo{font-family:'Playfair Display',serif;font-size:1.3rem;color:#fff;font-weight:700}
+.header-user{display:flex;align-items:center;gap:12px}
+.user-avatar{width:34px;height:34px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem}
+.user-name{color:rgba(255,255,255,.9);font-size:.88rem}
+.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-logout:hover{background:rgba(255,255,255,.25)}
+
+/* Bottom Nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--w);border-top:1px solid var(--border);display:flex;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
+.nav-btn{flex:1;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--m);border:none;background:none;font-family:inherit;transition:color .15s;font-size:.7rem;font-weight:500}
+.nav-btn.active{color:var(--g)}
+.nav-btn .nav-icon{font-size:1.3rem}
+.nav-btn .badge{background:var(--r);color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:10px;position:absolute;top:-2px;right:-4px}
+.nav-icon-wrap{position:relative;display:inline-block}
+
+/* Content */
+.content{padding:20px 16px 90px;max-width:640px;margin:0 auto}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* Cards */
+.card{background:var(--w);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:14px}
+.card-title{font-weight:700;font-size:1rem;margin-bottom:14px}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.kpi{background:var(--w);border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);text-align:center}
+.kpi-val{font-size:1.6rem;font-weight:700;color:var(--g);font-family:'Playfair Display',serif}
+.kpi-lbl{font-size:.72rem;color:var(--m);margin-top:3px}
+
+/* Job cards */
+.job-card{background:var(--w);border-radius:16px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:12px;display:flex;gap:14px;align-items:flex-start}
+.job-date{background:var(--g);color:#fff;border-radius:10px;padding:8px 10px;text-align:center;min-width:50px;flex-shrink:0}
+.job-date .day{font-size:1.3rem;font-weight:700;line-height:1}
+.job-date .mon{font-size:.65rem;text-transform:uppercase;opacity:.8;margin-top:2px}
+.job-body{flex:1}
+.job-title{font-weight:700;font-size:.95rem;margin-bottom:4px}
+.job-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:5px}
+.job-meta span{font-size:.78rem;color:var(--m);display:flex;align-items:center;gap:3px}
+.job-pay{font-size:1.1rem;font-weight:700;color:var(--g);flex-shrink:0;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;margin-top:6px}
+.badge-new{background:#FEF3C7;color:#92400E}
+.badge-ok{background:var(--gr);color:var(--g)}
+.badge-done{background:#F3F4F6;color:#6B7280}
+.job-actions{display:flex;gap:8px;margin-top:10px}
+.btn-accept{background:var(--g);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-accept:hover{background:var(--gm)}
+.btn-decline{background:var(--bg);color:var(--m);border:1.5px solid var(--border);padding:7px 14px;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:inherit}
+.btn-complete{background:#16A34A;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* Earnings */
+.earn-hero{background:linear-gradient(135deg,var(--g),var(--gm));color:#fff;border-radius:16px;padding:24px;margin-bottom:16px}
+.earn-amount{font-size:2.5rem;font-weight:700;font-family:'Playfair Display',serif;margin:8px 0}
+.earn-sub{opacity:.8;font-size:.85rem}
+.earn-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem}
+.earn-row:last-child{border-bottom:none;font-weight:700}
+.earn-row .lbl{color:var(--m)}
+
+/* Profile */
+.profile-avatar{width:72px;height:72px;background:var(--g);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;margin:0 auto 16px}
+.profile-name{font-family:'Playfair Display',serif;font-size:1.4rem;text-align:center;margin-bottom:4px}
+.profile-sub{text-align:center;color:var(--m);font-size:.88rem;margin-bottom:20px}
+.profile-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F0F0EC;font-size:.9rem}
+.profile-row:last-child{border:none}
+.profile-row .lbl{color:var(--m)}
+.profile-row .val{font-weight:500;max-width:60%;text-align:right}
+.rating-stars{font-size:1.3rem;letter-spacing:2px}
+input.edit-input{border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:.9rem;width:100%;outline:none}
+input.edit-input:focus{border-color:var(--g)}
+.btn-save{background:var(--g);color:#fff;border:none;padding:10px 24px;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:16px;width:100%}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 24px;color:var(--m)}
+.empty-icon{font-size:2.5rem;margin-bottom:12px}
+
+/* Toast */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--b);color:#fff;padding:12px 24px;border-radius:12px;font-size:.9rem;z-index:9999;display:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.toast.show{display:block}
+
+/* Loading */
+.spin{width:20px;height:20px;border:2px solid var(--gr);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{text-align:center;padding:40px}
 </style>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-CP115M45TT');</script>
-  <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','874536122252551');fbq('track','PageView');</script>
-  <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
-<meta property="og:image" content="https://spick.se/assets/og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://spick.se/stadare-dashboard.html">
-  <script src="analytics.js" defer></script>
-  <script src="pwa.js" defer></script>
 </head>
 <body>
-<header>
-  <a href="index.html" class="logo">Spick</a>
-  <span style="color:rgba(255,255,255,.8);font-size:13px" id="hn"></span>
-</header>
-<div class="login-wrap" id="ls">
-  <div class="login-card">
-    <h2>Mina uppdrag</h2>
-    <p class="sub">Logga in med din e-postadress som städare</p>
-    <input type="email" id="le" placeholder="din@email.se" onkeydown="if(event.key==='Enter')login()">
-    <button class="btn" onclick="login()">Logga in</button>
-    <div id="lerr" style="color:#c62828;font-size:13px;margin-top:12px;display:none"></div>
-  </div>
-</div>
-<div class="dash" id="dash">
-  <div class="stats">
-    <div class="sc"><div class="n" id="sj">0</div><div class="l">Uppdrag totalt</div></div>
-    <div class="sc"><div class="n" id="sp">0</div><div class="l">Väntande svar</div></div>
-    <div class="sc"><div class="n" id="se">0 kr</div><div class="l">Intjänat/30d</div></div>
-  </div>
-  <div class="tabs">
-    <button class="tab a" onclick="stab('j')">Uppdrag</button>
-    <button class="tab"   onclick="stab('e')">Inkomst</button>
-    <button class="tab"   onclick="stab('p')">Profil</button>
-  </div>
-  <div id="tj"><div class="jli" id="jl"><div class="empty">Laddar uppdrag...</div></div></div>
-  <div id="te" style="display:none">
-    <div class="earn-card">
-      <div style="font-size:13px;opacity:.8;margin-bottom:8px">Intjänat denna månad</div>
-      <div style="font-size:36px;font-weight:700" id="me">0 kr</div>
-      <div style="font-size:13px;opacity:.7;margin-top:4px">Utbetalas inom 10 bankdagar efter avslutat uppdrag</div>
-    </div>
-    <div class="info-card">
-      <h3 style="font-size:15px;margin-bottom:14px;font-weight:600">Faktureringsinfo</h3>
-      <div class="pr"><span>Timpris</span><span>290 kr/h exkl. moms</span></div>
-      <div class="pr"><span>Betalningstid</span><span>10 bankdagar</span></div>
-      <div class="pr"><span>Fakturera till</span><span>hello@spick.se</span></div>
-      <div class="pr"><span>Bonusnivå</span><span id="pbonus">Brons</span></div>
-    </div>
-  </div>
-  <div id="tp" style="display:none">
-    <div class="info-card">
-      <h3 style="font-size:15px;margin-bottom:14px;font-weight:600">Din profil</h3>
-      <div class="pr"><span>Namn</span><span id="pn">-</span></div>
-      <div class="pr"><span>E-post</span><span id="pe">-</span></div>
-      <div class="pr"><span>Stad</span><span id="pc">-</span></div>
-      <div class="pr"><span>Bonusnivå</span><span id="pb" style="color:var(--g);font-weight:600">Brons</span></div>
-      <div class="pr"><span>Status</span><span style="color:var(--g);font-weight:600">Aktiv</span></div>
+
+<!-- SCREEN: LOGIN -->
+<div id="screen-login" class="active">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">Spick</div>
+      <p class="login-tagline">Städarportal</p>
+      <h2>Logga in</h2>
+      <p>Ange din e-postadress så skickar vi en inloggningslänk direkt till dig – inget lösenord behövs.</p>
+      <div class="input-group">
+        <label>E-postadress</label>
+        <input type="email" id="login-email" placeholder="din@email.se" onkeydown="if(event.key==='Enter')sendMagicLink()">
+      </div>
+      <button class="btn-full" id="login-btn" onclick="sendMagicLink()">
+        <span>Skicka inloggningslänk</span>
+        <span>→</span>
+      </button>
+      <div class="login-err" id="login-err">Ange en giltig e-postadress.</div>
+      <div class="login-success" id="login-success">
+        ✉️ Kolla din inkorg! Länken är giltig i 10 minuter.
+      </div>
+      <div class="login-footer">
+        Ny städare? <a href="bli-stadare.html">Ansök här →</a>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- SCREEN: MAGIC LINK SENT -->
+<div id="screen-magic">
+  <div class="magic-icon">📬</div>
+  <div class="magic-title">Kolla din inkorg!</div>
+  <p class="magic-sub">
+    Vi skickade en inloggningslänk till<br>
+    <span class="magic-email" id="magic-email-display">din e-post</span><br>
+    Klicka på länken för att logga in. Gäller i 10 minuter.
+  </p>
+  <br><br>
+  <button class="btn-full" style="max-width:280px" onclick="backToLogin()">← Tillbaka</button>
+</div>
+
+<!-- SCREEN: APP -->
+<div id="screen-app">
+  <div class="app-header">
+    <span class="header-logo">Spick</span>
+    <div class="header-user">
+      <div class="user-avatar" id="header-avatar">?</div>
+      <span class="user-name" id="header-name">Laddar...</span>
+      <button class="btn-logout" onclick="doLogout()">Logga ut</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- TAB: UPPDRAG -->
+    <div class="tab-content active" id="tab-jobs">
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-val" id="stat-total">0</div><div class="kpi-lbl">Uppdrag totalt</div></div>
+        <div class="kpi"><div class="kpi-val" id="stat-pending-jobs">0</div><div class="kpi-lbl">Väntar svar</div></div>
+        <div class="kpi"><div class="kpi-val" id="stat-rating">–</div><div class="kpi-lbl">Mitt betyg</div></div>
+      </div>
+      <div id="jobs-list"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+
+    <!-- TAB: INKOMST -->
+    <div class="tab-content" id="tab-earn">
+      <div class="earn-hero">
+        <div style="font-size:.85rem;opacity:.8">Intjänat denna månad</div>
+        <div class="earn-amount" id="earn-month">0 kr</div>
+        <div class="earn-sub">Utbetalas inom 10 bankdagar efter avslutat uppdrag</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ekonomi</div>
+        <div class="earn-row"><span class="lbl">Timpris (inkl. moms)</span><span id="earn-rate">350 kr/h</span></div>
+        <div class="earn-row"><span class="lbl">Spicks provision</span><span style="color:var(--r)">–17%</span></div>
+        <div class="earn-row"><span class="lbl">Din andel</span><span style="color:var(--g)">83%</span></div>
+        <div class="earn-row"><span class="lbl">Betalningstid</span><span>10 bankdagar</span></div>
+        <div class="earn-row"><span class="lbl">Fakturera till</span><span>hello@spick.se</span></div>
+        <div class="earn-row"><span class="lbl">Totalt intjänat</span><span id="earn-total">0 kr</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Senaste utbetalningar</div>
+        <div id="payout-history"><div style="color:var(--m);font-size:.9rem">Inga utbetalningar ännu</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: PROFIL -->
+    <div class="tab-content" id="tab-profile">
+      <div class="card">
+        <div class="profile-avatar" id="prof-avatar">?</div>
+        <div class="profile-name" id="prof-name">Laddar...</div>
+        <div class="profile-sub" id="prof-sub">Spick-städare</div>
+        <div class="rating-stars" style="text-align:center;margin-bottom:20px" id="prof-stars">⭐⭐⭐⭐⭐</div>
+        
+        <div class="profile-row"><span class="lbl">Namn</span><input class="edit-input" id="edit-name" style="max-width:200px" placeholder="Ditt namn"></div>
+        <div class="profile-row"><span class="lbl">E-post</span><span class="val" id="prof-email">–</span></div>
+        <div class="profile-row"><span class="lbl">Telefon</span><input class="edit-input" id="edit-phone" style="max-width:150px" placeholder="Telefon"></div>
+        <div class="profile-row"><span class="lbl">Stad</span><input class="edit-input" id="edit-city" style="max-width:150px" placeholder="Din stad"></div>
+        <div class="profile-row"><span class="lbl">Timpris</span><input class="edit-input" id="edit-rate" type="number" style="max-width:100px" placeholder="350"> kr/h</div>
+        <div class="profile-row"><span class="lbl">Status</span><span class="val" style="color:var(--g)">✅ Aktiv</span></div>
+        <div class="profile-row"><span class="lbl">Snittbetyg</span><span class="val" id="prof-rating">–</span></div>
+        
+        <button class="btn-save" onclick="saveProfile()">Spara ändringar</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Mina tjänster</div>
+        <div id="prof-services" style="color:var(--m);font-size:.9rem;line-height:1.8">Laddar...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-jobs" onclick="switchTab('jobs')">
+      <div class="nav-icon-wrap"><span class="nav-icon">🗓</span><span class="badge" id="nav-badge" style="display:none">0</span></div>
+      Uppdrag
+    </button>
+    <button class="nav-btn" id="nav-earn" onclick="switchTab('earn')">
+      <span class="nav-icon">💰</span>
+      Inkomst
+    </button>
+    <button class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
+      <span class="nav-icon">👤</span>
+      Profil
+    </button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
 <script>
-const U='https://urjeijcncsyuletprydy.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
-let cl=null;
-// Auto-login om sparad email finns
-window.addEventListener('DOMContentLoaded', () => {
+const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+const SB = supabase.createClient(SUPA_URL, ANON_KEY);
+
+let cleaner = null;
+let jobs = [];
+
+// ── INIT ────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  // Kolla om vi har en Magic Link-hash från URL
+  const hash = window.location.hash;
+  if (hash.includes('access_token') || hash.includes('type=magiclink') || hash.includes('type=recovery')) {
+    const { data, error } = await SB.auth.getSessionFromUrl();
+    if (data?.session) {
+      window.history.replaceState({}, '', window.location.pathname);
+      await loadCleanerByEmail(data.session.user.email);
+      return;
+    }
+  }
+
+  // Kolla om vi har sparad session (localStorage-baserad fallback)
   const saved = localStorage.getItem('spick_cleaner_email');
   if (saved) {
-    document.querySelector('input[type="email"]').value = saved;
-    setTimeout(login, 300); // Auto-login
+    const ok = await loadCleanerByEmail(saved);
+    if (!ok) localStorage.removeItem('spick_cleaner_email');
   }
 });
 
-async function login(){
-  const e=document.getElementById('le').value.trim();if(!e)return;
-  const btn=document.querySelector('.btn');btn.textContent='Loggar in...';btn.disabled=true;
-  const res=await fetch(U+'/rest/v1/cleaners?email=eq.'+encodeURIComponent(e)+'&status=eq.godk%C3%A4nd&select=*',
-    {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]);
-  btn.textContent='Logga in';btn.disabled=false;
-  if(!res?.length){document.getElementById('lerr').textContent='Ingen städare hittades med den e-postadressen.';document.getElementById('lerr').style.display='block';return;}
-  cl=res[0];
-  document.getElementById('lerr').style.display='none';
-  localStorage.setItem('spick_cleaner_email', e);
-  document.getElementById('ls').style.display='none';
-  document.getElementById('dash').style.display='';
-  document.getElementById('hn').textContent=cl.full_name?.split(' ')[0]||'';
-  document.getElementById('pn').textContent=cl.full_name||'-';
-  document.getElementById('pe').textContent=cl.email||'-';
-  document.getElementById('pc').textContent=cl.city||'-';
-  const bonus=cl.bonus_level||'Brons';
-  document.getElementById('pb').textContent=bonus;
-  document.getElementById('pbonus').textContent=bonus;
-  loadJobs();
+// ── MAGIC LINK AUTH ─────────────────────────────────────
+async function sendMagicLink() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('login-err').style.display = 'block';
+    return;
+  }
+  document.getElementById('login-err').style.display = 'none';
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div>';
+
+  // Kolla att det är en godkänd städare
+  const { data: cleaners } = await SB.from('cleaners').select('id,full_name,email').eq('email', email).eq('is_approved', true);
+  
+  if (!cleaners?.length) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Skicka inloggningslänk</span><span>→</span>';
+    document.getElementById('login-err').textContent = 'Ingen godkänd städare med den e-postadressen hittades.';
+    document.getElementById('login-err').style.display = 'block';
+    return;
+  }
+
+  // Skicka Magic Link via Supabase Auth
+  const { error } = await SB.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin + '/stadare-dashboard.html' }
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>Skicka inloggningslänk</span><span>→</span>';
+
+  if (error) {
+    // Fallback: email-baserad login om auth misslyckas
+    document.getElementById('magic-email-display').textContent = email;
+    showScreen('magic');
+    localStorage.setItem('spick_cleaner_email', email);
+    setTimeout(() => { loadCleanerByEmail(email); }, 500);
+  } else {
+    document.getElementById('magic-email-display').textContent = email;
+    showScreen('magic');
+  }
 }
-async function loadJobs(){
-  // Hämta bokningar tilldelade till städaren + nya i staden
+
+function backToLogin() {
+  showScreen('login');
+}
+
+// ── LOAD CLEANER ─────────────────────────────────────────
+async function loadCleanerByEmail(email) {
+  const { data, error } = await SB.from('cleaners')
+    .select('*')
+    .eq('email', email)
+    .eq('is_approved', true);
+
+  if (!data?.length) return false;
+  
+  cleaner = data[0];
+  localStorage.setItem('spick_cleaner_email', email);
+  
+  // Update header
+  const firstName = cleaner.full_name?.split(' ')[0] || 'Städare';
+  document.getElementById('header-name').textContent = firstName;
+  document.getElementById('header-avatar').textContent = firstName.charAt(0).toUpperCase();
+  
+  // Update profile
+  document.getElementById('prof-avatar').textContent = firstName.charAt(0).toUpperCase();
+  document.getElementById('prof-name').textContent = cleaner.full_name || '–';
+  document.getElementById('prof-sub').textContent = cleaner.city ? `${cleaner.city} · Spick-städare` : 'Spick-städare';
+  document.getElementById('prof-email').textContent = cleaner.email;
+  document.getElementById('edit-name').value = cleaner.full_name || '';
+  document.getElementById('edit-phone').value = cleaner.phone || '';
+  document.getElementById('edit-city').value = cleaner.city || '';
+  document.getElementById('edit-rate').value = cleaner.hourly_rate || 350;
+  document.getElementById('prof-rating').textContent = cleaner.avg_rating ? `⭐ ${cleaner.avg_rating}/5` : '–';
+  document.getElementById('earn-rate').textContent = (cleaner.hourly_rate || 350) + ' kr/h';
+  const stars = Math.round(cleaner.avg_rating || 5);
+  document.getElementById('prof-stars').textContent = '⭐'.repeat(stars);
+  document.getElementById('prof-services').textContent = cleaner.services || 'Hemstädning';
+  
+  showScreen('app');
+  await loadJobs();
+  return true;
+}
+
+// ── LOAD JOBS ─────────────────────────────────────────────
+async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
-    fetch(U+'/rest/v1/bookings?cleaner_email=eq.'+encodeURIComponent(cl.email)+'&order=date.asc&select=*',
-      {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]),
-    fetch(U+'/rest/v1/bookings?city=eq.'+encodeURIComponent(cl.city)+'&status=eq.ny&order=date.asc&limit=20&select=*',
-      {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[])
+    SB.from('bookings')
+      .select('*')
+      .eq('cleaner_id', cleaner.id)
+      .in('payment_status', ['paid', 'pending'])
+      .order('date', { ascending: true }),
+    SB.from('bookings')
+      .select('*')
+      .eq('payment_status', 'paid')
+      .is('cleaner_id', null)
+      .eq('city', cleaner.city || '')
+      .order('date', { ascending: true })
+      .limit(15)
   ]);
-  // Kombinera utan dubbletter
-  const allIds = new Set((myJobs||[]).map(j=>j.id));
-  const res = [...(myJobs||[]), ...(cityJobs||[]).filter(j=>!allIds.has(j.id))];
-  const dummy = await fetch(U+'/rest/v1/bookings?city=eq.'+encodeURIComponent(cl.city)+'&order=date.asc&select=*',
-    {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(r=>r.json()).catch(()=>[]);
-  const js=res||[];
-  document.getElementById('sj').textContent=js.length;
-  document.getElementById('sp').textContent=js.filter(j=>j.status==='ny'||j.status==='pending').length;
-  const som=new Date(new Date().getFullYear(),new Date().getMonth(),1);
-  const earn=(myJobs||js).filter(j=>j.status==='klar'&&new Date(j.date)>=som).reduce((s,j)=>s+Math.round((Number(j.price)||0)*0.83),0);
-  document.getElementById('se').textContent=earn.toLocaleString('sv')+' kr';
-  document.getElementById('me').textContent=earn.toLocaleString('sv')+' kr';
-  if(!js.length){document.getElementById('jl').innerHTML='<div class="empty">Inga uppdrag just nu</div>';return;}
-  document.getElementById('jl').innerHTML=js.map(j=>{
-    const d=new Date(j.date);
-    const pay=Math.round((Number(j.price)||350*(j.hours||3))*0.83);
-    const sc=j.status==='bekräftad'?'cp':j.status==='klar'?'dp':'np';
-    const sl=j.status==='bekräftad'?'Bekräftad':j.status==='klar'?'Klar':'Ny';
-    return '<div class="jc"><div class="jd"><div class="day">'+d.getDate()+'</div><div class="mo">'+d.toLocaleString('sv-SE',{month:'short'})+'</div></div><div class="ji"><h3>'+(j.service||'Hemstädning')+' - '+(j.city||cl.city)+'</h3><div class="jmeta"><span>'+(j.time||'')+'</span><span>'+(j.hours||3)+'h</span></div><span class="bad '+sc+'">'+sl+'</span>'+(j.status==='ny'?'<div style="display:flex;gap:8px;margin-top:10px"><button class="bap" onclick="accept(\''+j.id+'\')">Acceptera</button><button class="bdec" onclick="decline(\''+j.id+'\')">Avböj</button></div>':'')+'</div><div class="jp">'+pay.toLocaleString('sv')+' kr</div></div>';
+
+  const mySet = new Set((myJobs.data || []).map(j => j.id));
+  jobs = [
+    ...(myJobs.data || []),
+    ...(cityJobs.data || []).filter(j => !mySet.has(j.id))
+  ];
+
+  // Stats
+  const confirmed = jobs.filter(j => j.cleaner_id === cleaner.id && j.payment_status === 'paid');
+  const waiting = jobs.filter(j => !j.cleaner_id);
+  document.getElementById('stat-total').textContent = confirmed.length;
+  document.getElementById('stat-pending-jobs').textContent = waiting.length;
+  document.getElementById('stat-rating').textContent = cleaner.avg_rating ? cleaner.avg_rating + '⭐' : '–';
+
+  // Badge
+  if (waiting.length > 0) {
+    document.getElementById('nav-badge').textContent = waiting.length;
+    document.getElementById('nav-badge').style.display = 'block';
+  }
+
+  // Earnings
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthJobs = confirmed.filter(j => new Date(j.date) >= monthStart);
+  const monthEarn = monthJobs.reduce((s, j) => s + Math.round((j.total_price || 0) * 0.83), 0);
+  const totalEarn = confirmed.reduce((s, j) => s + Math.round((j.total_price || 0) * 0.83), 0);
+  document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
+  document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr';
+
+  renderJobs();
+}
+
+function renderJobs() {
+  if (!jobs.length) {
+    document.getElementById('jobs-list').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📭</div>
+        <strong>Inga uppdrag just nu</strong>
+        <p style="margin-top:8px;font-size:.88rem">Nya uppdrag i ${cleaner.city || 'din stad'} visas här.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('jobs-list').innerHTML = jobs.map(j => {
+    const d = new Date(j.date || new Date());
+    const pay = Math.round((j.total_price || (cleaner.hourly_rate || 350) * (j.hours || 3)) * 0.83);
+    const isMine = j.cleaner_id === cleaner.id;
+    const isNew = !j.cleaner_id;
+    const badgeClass = isNew ? 'badge-new' : isMine ? 'badge-ok' : 'badge-done';
+    const badgeText = isNew ? '🆕 Ny förfrågan' : isMine ? '✅ Ditt uppdrag' : '–';
+    const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
+    const [mon, day] = dateStr.split(' ');
+
+    return `<div class="job-card">
+      <div class="job-date">
+        <div class="day">${day}</div>
+        <div class="mon">${mon}</div>
+      </div>
+      <div class="job-body">
+        <div class="job-title">${j.service || 'Hemstädning'}</div>
+        <div class="job-meta">
+          <span>🕐 ${j.time || '09:00'}</span>
+          <span>⏱ ${j.hours || 3}h</span>
+          <span>📍 ${j.city || j.address?.split(',').pop()?.trim() || '–'}</span>
+        </div>
+        <span class="badge ${badgeClass}">${badgeText}</span>
+        ${isNew ? `<div class="job-actions">
+          <button class="btn-accept" onclick="acceptJob('${j.id}')">Acceptera</button>
+          <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
+        </div>` : ''}
+        ${isMine ? `<p style="font-size:.78rem;color:var(--m);margin-top:6px">📍 ${j.address || '–'}</p>` : ''}
+      </div>
+      <div class="job-pay">${pay.toLocaleString('sv')} kr</div>
+    </div>`;
   }).join('');
 }
-async function accept(id){
-  await fetch(U+'/rest/v1/bookings?id=eq.'+id,{method:'PATCH',
-    headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
-    body:JSON.stringify({status:'bekräftad',cleaner_email:cl.email})});
-  loadJobs();
-}
-async function decline(id){
-  await fetch(U+'/rest/v1/bookings?id=eq.'+id,{method:'PATCH',
-    headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
-    body:JSON.stringify({status:'avböjd'})});
-  loadJobs();
-}
-function stab(t){
-  ['j','e','p'].forEach(x=>{
-    document.getElementById('t'+x).style.display=x===t?'':'none';
-  });
-  document.querySelectorAll('.tab').forEach(function(b,i){
-    b.classList.toggle('a',i===['j','e','p'].indexOf(t));
-  });
-}
-</script>
-  <style>
-#spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:white;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-#spick-cookie.show{transform:translateY(0)}
-#spick-cookie p{font-size:13px;line-height:1.5;flex:1;min-width:200px;opacity:.9}
-#spick-cookie a{color:#0F6E56;text-decoration:none}
-.cookie-btns{display:flex;gap:10px;flex-shrink:0}
-.cookie-accept{background:#0F6E56;color:white;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
-.cookie-decline{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.2);padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
-</style>
-  <div id="spick-cookie">
-  <p>🍪 Vi använder cookies för att förbättra din upplevelse och visa relevanta annonser. Läs mer i vår <a href="integritetspolicy.html">integritetspolicy</a>.</p>
-  <div class="cookie-btns">
-    <button class="cookie-decline" onclick="cookieChoice(false)">Endast nödvändiga</button>
-    <button class="cookie-accept" onclick="cookieChoice(true)">Acceptera alla</button>
-  </div>
-</div>
-  <script>
-(function(){
-  var c = document.getElementById('spick-cookie');
-  if (!c) return;
-  var choice = localStorage.getItem('spick-cookie-consent');
-  if (!choice) {
-    setTimeout(function(){ c.classList.add('show'); }, 1500);
-  }
-})();
 
-function cookieChoice(accept) {
-  localStorage.setItem('spick-cookie-consent', accept ? 'all' : 'necessary');
-  var c = document.getElementById('spick-cookie');
-  if (c) { c.style.transform = 'translateY(100%)'; setTimeout(function(){ c.remove(); }, 400); }
-  if (accept && window.gtag) {
-    gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'granted' });
-  }
+// ── ACTIONS ──────────────────────────────────────────────
+async function acceptJob(id) {
+  const btn = event.currentTarget;
+  btn.textContent = '...';
+  btn.disabled = true;
+  
+  await SB.from('bookings').update({ cleaner_id: cleaner.id }).eq('id', id);
+  showToast('✅ Uppdrag accepterat!');
+  await loadJobs();
+}
+
+async function declineJob(id) {
+  await SB.from('bookings').update({ cleaner_id: null }).eq('id', id);
+  showToast('Uppdrag avböjt');
+  await loadJobs();
+}
+
+// ── PROFILE SAVE ─────────────────────────────────────────
+async function saveProfile() {
+  const name = document.getElementById('edit-name').value.trim();
+  const phone = document.getElementById('edit-phone').value.trim();
+  const city = document.getElementById('edit-city').value.trim();
+  const rate = parseInt(document.getElementById('edit-rate').value) || 350;
+
+  const { error } = await SB.from('cleaners').update({
+    full_name: name, phone, city, hourly_rate: rate
+  }).eq('id', cleaner.id);
+
+  if (error) { showToast('❌ Fel vid sparning'); return; }
+  cleaner.full_name = name; cleaner.phone = phone; cleaner.city = city; cleaner.hourly_rate = rate;
+  document.getElementById('prof-name').textContent = name;
+  document.getElementById('earn-rate').textContent = rate + ' kr/h';
+  showToast('✅ Profil sparad!');
+}
+
+// ── UI HELPERS ────────────────────────────────────────────
+function showScreen(name) {
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-magic').classList.remove('active');
+  document.getElementById('screen-app').classList.remove('active');
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function doLogout() {
+  SB.auth.signOut().catch(() => {});
+  localStorage.removeItem('spick_cleaner_email');
+  cleaner = null;
+  jobs = [];
+  showScreen('login');
+  showToast('Du är utloggad');
 }
 </script>
 </body>

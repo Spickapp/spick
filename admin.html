@@ -2,675 +2,814 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-  <link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Spick Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-async function joinWaitlist(city, email){
-  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Prefer':'return=minimal'},
-    body:JSON.stringify({email,city,utm_source:'waitlist'})
-  }).catch(()=>{});
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body:JSON.stringify({type:'waitlist',record:{city,email}})
-  }).catch(()=>{});
-}
-</script>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--red:#DC2626;--yellow:#D97706;--blue:#2563EB;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);}
-.login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--b);}
-.lcard{background:#fff;border-radius:24px;padding:3rem;width:100%;max-width:380px;text-align:center;}
-.llogo{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--g);margin-bottom:.25rem;}
-.lsub{font-size:.85rem;color:var(--m);margin-bottom:2rem;}
-.lcard input{width:100%;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.95rem;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:1rem;transition:border-color .2s;}
-.lcard input:focus{border-color:var(--g);}
-.lbtn{width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.lbtn:hover{background:var(--gm);}
-.shell{display:none;min-height:100vh;}
-.shell.show{display:grid;grid-template-columns:240px 1fr;}
-.sidebar{background:var(--b);padding:2rem 1.5rem;display:flex;flex-direction:column;gap:.25rem;position:sticky;top:0;height:100vh;overflow-y:auto;}
-.slogo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--gm);margin-bottom:.5rem;}
-.ssub{font-size:.7rem;color:#5A5A55;margin-bottom:2rem;text-transform:uppercase;letter-spacing:.08em;}
-.sitem{display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;border-radius:10px;color:#9E9E99;font-size:.875rem;cursor:pointer;transition:all .2s;border:none;background:none;font-family:'DM Sans',sans-serif;width:100%;text-align:left;}
-.sitem:hover{background:rgba(255,255,255,.05);color:#fff;}
-.sitem.on{background:var(--g);color:#fff;}
-.ssec{font-size:.65rem;color:#3A3A35;text-transform:uppercase;letter-spacing:.1em;font-weight:700;padding:.75rem 1rem .25rem;margin-top:.5rem;}
-.sbot{margin-top:auto;padding-top:1.5rem;border-top:1px solid #1A1A1A;}
-.main{padding:2.5rem;overflow-y:auto;}
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;}
-.ptitle{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--b);}
-.badge{padding:.3rem .75rem;border-radius:100px;font-size:.78rem;font-weight:600;}
-.bg{background:var(--gp);color:var(--g);}
-.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-bottom:2rem;}
-.kpi{background:#fff;border-radius:16px;padding:1.5rem;border:1px solid var(--grd);}
-.klbl{font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:.5rem;}
-.kval{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);}
-.ksub{font-size:.75rem;color:var(--m);margin-top:.25rem;}
-.card{background:#fff;border-radius:16px;border:1px solid var(--grd);overflow:hidden;margin-bottom:1.5rem;}
-.ch{padding:1.25rem 1.5rem;border-bottom:1px solid var(--grd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
-.ct{font-size:.9rem;font-weight:600;color:var(--b);}
-.cact{display:flex;gap:.5rem;flex-wrap:wrap;}
-.abtn{padding:.4rem .875rem;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all .2s;}
-.abtn-g{background:var(--gp);color:var(--g);}
-.abtn-g:hover{background:var(--g);color:#fff;}
-.abtn-r{background:#FEE2E2;color:var(--red);}
-.abtn-r:hover{background:var(--red);color:#fff;}
-.abtn-b{background:#EFF6FF;color:var(--blue);}
-.abtn-b:hover{background:var(--blue);color:#fff;}
-.abtn-y{background:#FEF3C7;color:var(--yellow);}
-table{width:100%;border-collapse:collapse;}
-th{padding:.75rem 1.5rem;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--m);background:var(--gr);border-bottom:1px solid var(--grd);}
-td{padding:.875rem 1.5rem;font-size:.875rem;border-bottom:1px solid var(--grd);}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:var(--gr);}
-.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;}
-.tn{display:flex;align-items:center;gap:.75rem;}
-.sb{padding:.2rem .6rem;border-radius:100px;font-size:.72rem;font-weight:600;}
-.sny{background:#EFF6FF;color:var(--blue);}
-.sgod{background:var(--gp);color:var(--g);}
-.savs{background:#FEE2E2;color:var(--red);}
-.syel{background:#FEF3C7;color:var(--yellow);}
-.view{display:none;}
-.view.on{display:block;}
-.empty{padding:3rem;text-align:center;color:var(--m);}
-.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:1rem;}
-.mbg.show{display:flex;}
-.mc{background:#fff;border-radius:20px;padding:2rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;}
-.mc h3{font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:1.25rem;}
-.mr{display:flex;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--grd);font-size:.875rem;}
-.mr:last-child{border-bottom:none;}
-.mk{color:var(--m);}
-.mv{font-weight:500;max-width:280px;text-align:right;word-break:break-word;}
-.mcl{float:right;background:var(--gr);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:.9rem;margin-top:-.5rem;}
-.guide-section{padding:1.5rem;}
-.guide-step{display:flex;gap:1rem;padding:1rem;background:var(--gr);border-radius:12px;margin-bottom:.75rem;}
-.gs-num{width:32px;height:32px;background:var(--g);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:.875rem;}
-.gs-title{font-weight:600;font-size:.875rem;color:var(--b);margin-bottom:.25rem;}
-.gs-desc{font-size:.82rem;color:var(--m);line-height:1.6;}
-.alert-box{background:#FEF3C7;border:1px solid #F59E0B;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:.875rem;color:#92400E;display:flex;align-items:center;gap:.75rem;}
-.notif-log{display:flex;flex-direction:column;gap:.5rem;}
-.notif-item{display:flex;align-items:center;gap:.75rem;padding:.75rem 1.25rem;background:var(--gr);border-radius:10px;font-size:.82rem;}
-.notif-status{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.ns-sent{background:#22c55e;}
-.ns-pending{background:#F59E0B;}
-.ns-fail{background:var(--red);}
+:root{
+  --g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;--grd:#C5E8D9;
+  --b:#1C1C1A;--m:#6B6960;--bg:#F4F4F1;--w:#fff;
+  --r:#DC2626;--y:#F59E0B;--border:#E8E8E4;
+  --shadow:0 2px 12px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-height:100vh}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0F6E56 0%,#0A5240 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-card{background:var(--w);border-radius:24px;padding:48px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.3);text-align:center}
+.login-logo{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--g);margin-bottom:8px}
+.login-sub{color:var(--m);font-size:.9rem;margin-bottom:32px}
+.login-card input{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:1rem;font-family:inherit;outline:none;transition:border-color .2s;margin-bottom:12px}
+.login-card input:focus{border-color:var(--g)}
+.login-card button{width:100%;padding:14px;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s}
+.login-card button:hover{background:var(--gm)}
+#login-err{color:var(--r);font-size:.85rem;margin-top:10px;display:none}
+
+/* ── LAYOUT ── */
+#app{display:none;min-height:100vh}
+.sidebar{width:240px;background:var(--b);position:fixed;top:0;bottom:0;left:0;overflow-y:auto;z-index:100}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo .wordmark{font-family:'Playfair Display',serif;font-size:1.4rem;color:#fff;font-weight:700}
+.sidebar-logo .badge{font-size:.7rem;background:var(--g);color:#fff;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle}
+nav{padding:16px 0}
+.nav-section{padding:8px 20px 4px;font-size:.68rem;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:rgba(255,255,255,.65);cursor:pointer;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.05)}
+.nav-item.active{color:#fff;background:rgba(15,110,86,.3);border-left-color:var(--g)}
+.nav-item .icon{font-size:1.1rem;width:20px;text-align:center}
+.nav-item .badge-count{margin-left:auto;background:var(--r);color:#fff;font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:10px}
+.sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto}
+.sidebar-user{color:rgba(255,255,255,.7);font-size:.82rem}
+.logout-btn{color:rgba(255,255,255,.4);font-size:.8rem;cursor:pointer;margin-top:6px;display:block;transition:color .2s}
+.logout-btn:hover{color:var(--r)}
+
+.main{margin-left:240px;padding:32px;min-height:100vh}
+.page{display:none}
+.page.active{display:block}
+.page-header{margin-bottom:28px}
+.page-title{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--b);margin-bottom:4px}
+.page-sub{color:var(--m);font-size:.9rem}
+
+/* ── CARDS & KPI ── */
+.card{background:var(--w);border-radius:16px;padding:24px;box-shadow:var(--shadow);margin-bottom:20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.kpi{background:var(--w);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--g)}
+.kpi.red::before{background:var(--r)}
+.kpi.yellow::before{background:var(--y)}
+.kpi.blue::before{background:#3B82F6}
+.kpi-val{font-size:2rem;font-weight:700;color:var(--b);font-family:'Playfair Display',serif;margin-bottom:4px}
+.kpi-lbl{font-size:.8rem;color:var(--m);font-weight:500}
+.kpi-trend{font-size:.75rem;margin-top:6px}
+.kpi-trend.up{color:#16A34A}.kpi-trend.down{color:var(--r)}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:#F9F9F7;padding:11px 14px;text-align:left;font-weight:600;color:var(--m);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid #F0F0EC;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FAFAF8}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;gap:4px}
+.badge.green{background:var(--gr);color:var(--g)}
+.badge.red{background:#FEE2E2;color:var(--r)}
+.badge.yellow{background:#FEF3C7;color:#92400E}
+.badge.blue{background:#DBEAFE;color:#1D4ED8}
+.badge.grey{background:#F3F4F6;color:#6B7280}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+.btn-primary{background:var(--g);color:#fff}.btn-primary:hover{background:var(--gm)}
+.btn-danger{background:var(--r);color:#fff}.btn-danger:hover{background:#B91C1C}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--b)}.btn-outline:hover{border-color:var(--g);color:var(--g)}
+.btn-sm{padding:5px 12px;font-size:.78rem;border-radius:6px}
+
+/* ── SEARCH & FILTERS ── */
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.search-input{padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;font-family:inherit;outline:none;flex:1;min-width:200px;transition:border-color .2s}
+.search-input:focus{border-color:var(--g)}
+select.filter{padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:.85rem;font-family:inherit;outline:none;background:var(--w);cursor:pointer}
+
+/* ── STATS MINI ── */
+.mini-stats{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:20px}
+.mini-stat{font-size:.85rem;color:var(--m)}.mini-stat strong{color:var(--b);font-weight:700}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--w);border-radius:20px;padding:32px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:16px}
+.modal-actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+
+/* ── ALERTS ── */
+.alert{padding:12px 16px;border-radius:10px;font-size:.88rem;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.alert.success{background:var(--gr);color:var(--g)}
+.alert.error{background:#FEE2E2;color:var(--r)}
+.alert.info{background:#DBEAFE;color:#1D4ED8}
+
+/* ── CLEANER PROFILE ── */
+.cleaner-card{display:flex;align-items:center;gap:16px;padding:16px;background:var(--bg);border-radius:12px;margin-bottom:12px}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;flex-shrink:0}
+.cleaner-info h4{font-weight:600;font-size:.95rem}
+.cleaner-info p{color:var(--m);font-size:.82rem;margin-top:2px}
+
+/* ── MISC ── */
+.empty{text-align:center;padding:48px;color:var(--m)}
+.empty-icon{font-size:2.5rem;margin-bottom:12px}
+.spin{width:20px;height:20px;border:2px solid var(--gr);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.text-right{text-align:right}
+.flex{display:flex}.gap-8{gap:8px}.items-center{align-items:center}
+.text-g{color:var(--g);font-weight:600}
+.text-r{color:var(--r)}
+.loading{text-align:center;padding:40px;color:var(--m)}
+hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0F0EC;font-size:.88rem}
+.stat-row:last-child{border-bottom:none}
+.stat-row .lbl{color:var(--m)}
+.stat-row .val{font-weight:600}
 </style>
-  <!-- Google Analytics GA4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-CP115M45TT');
-  </script>
-  <!-- Meta Pixel -->
-  <script>
-    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-    document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '874536122252551');
-    fbq('track', 'PageView');
-  </script>
-  <noscript><img height="1" width="1" style="display:none" alt=""
-    src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
 </head>
 <body>
 
-<div class="login" id="ls">
-  <div class="lcard">
-    <div class="llogo">Spick</div>
-    <div class="lsub">Admin-panel</div>
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Spick</div>
+    <p class="login-sub">Adminpanel – endast för ägare</p>
     <input type="password" id="pw" placeholder="Lösenord" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="lbtn" onclick="doLogin()">Logga in</button>
+    <button onclick="doLogin()">Logga in →</button>
+    <div id="login-err">Fel lösenord. Försök igen.</div>
   </div>
 </div>
 
-<div class="shell" id="sh">
+<!-- APP -->
+<div id="app">
+  <!-- SIDEBAR -->
   <div class="sidebar">
-    <div class="slogo">Spick</div>
-    <div class="ssub">Admin</div>
-    <button class="sitem on" onclick="sv('dash',this)">📊 Dashboard</button>
-    <button class="sitem" onclick="sv('book',this)">📅 Bokningar <span id="nb" style="margin-left:auto;background:var(--red);color:#fff;border-radius:100px;padding:.1rem .5rem;font-size:.7rem;display:none"></span></button>
-    <button class="sitem" onclick="sv('apps',this)">👤 Ansökningar <span id="na" style="margin-left:auto;background:var(--red);color:#fff;border-radius:100px;padding:.1rem .5rem;font-size:.7rem;display:none"></span></button>
-    <button class="sitem" onclick="sv('clean',this)">⭐ Städare</button>
-    <button class="sitem" onclick="sv('ratings',this)">💬 Betyg</button>
-    <button class="sitem" onclick="sv('invoices',this)">💰 Fakturor</button>
-    <button class="sitem" onclick="sv('guarantee',this)">🛡️ Garantier <span id="ng" style="margin-left:auto;background:var(--red);color:#fff;border-radius:100px;padding:.1rem .5rem;font-size:.7rem;display:none"></span></button>
-    <div class="ssec">Verktyg</div>
-    <button class="sitem" onclick="sv('guide',this)">📖 Guide</button>
-    <button class="sitem" onclick="sv('notif',this)">✉️ E-postlogg</button>
-    <div class="sbot"><button class="sitem" onclick="logout()">🚪 Logga ut</button></div>
+    <div class="sidebar-logo">
+      <span class="wordmark">Spick</span>
+      <span class="badge">Admin</span>
+    </div>
+    <nav>
+      <div class="nav-section">Överblick</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+      
+      <div class="nav-section">Bokningar</div>
+      <div class="nav-item" onclick="showPage('bookings')"><span class="icon">📅</span> Alla bokningar <span class="badge-count" id="badge-bookings">0</span></div>
+      <div class="nav-item" onclick="showPage('pending')"><span class="icon">⏳</span> Väntande <span class="badge-count" id="badge-pending">0</span></div>
+      
+      <div class="nav-section">Städare</div>
+      <div class="nav-item" onclick="showPage('cleaners')"><span class="icon">🧹</span> Aktiva städare</div>
+      <div class="nav-item" onclick="showPage('applications')"><span class="icon">📋</span> Ansökningar <span class="badge-count" id="badge-apps">0</span></div>
+      
+      <div class="nav-section">Kunder & Ekonomi</div>
+      <div class="nav-item" onclick="showPage('customers')"><span class="icon">👥</span> Kunder</div>
+      <div class="nav-item" onclick="showPage('payouts')"><span class="icon">💸</span> Utbetalningar</div>
+      <div class="nav-item" onclick="showPage('reviews')"><span class="icon">⭐</span> Recensioner</div>
+      
+      <div class="nav-section">System</div>
+      <div class="nav-item" onclick="showPage('settings')"><span class="icon">⚙️</span> Inställningar</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">👤 Farhad Haghighi</div>
+      <span class="logout-btn" onclick="doLogout()">Logga ut</span>
+    </div>
   </div>
 
+  <!-- MAIN -->
   <div class="main">
 
     <!-- DASHBOARD -->
-    <div class="view on" id="vdash">
-      <div class="topbar"><div class="ptitle">Dashboard</div><span class="badge bg" id="live-status">● Live</span></div>
-      <div id="alerts"></div>
-      <div class="kgrid">
-        <div class="kpi"><div class="klbl">Bokningar idag</div><div class="kval" id="k1">–</div><div class="ksub">Uppdateras live</div></div>
-        <div class="kpi"><div class="klbl">Totalt bokningar</div><div class="kval" id="k2">–</div><div class="ksub">Alla tider</div></div>
-        <div class="kpi"><div class="klbl">Aktiva städare</div><div class="kval" id="k3">–</div><div class="ksub">Godkända</div></div>
-        <div class="kpi"><div class="klbl">Öppna garantier</div><div class="kval" id="k5">–</div><div class="ksub" style="color:var(--red)">Kräver åtgärd</div></div>
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard 📊</div>
+        <div class="page-sub" id="dash-date">Laddar...</div>
+      </div>
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi"><div class="kpi-val" id="kpi-revenue">–</div><div class="kpi-lbl">Omsättning denna månad</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-bookings">–</div><div class="kpi-lbl">Bokningar denna månad</div></div>
+        <div class="kpi yellow"><div class="kpi-val" id="kpi-pending">–</div><div class="kpi-lbl">Väntande bokningar</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-cleaners">–</div><div class="kpi-lbl">Aktiva städare</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-rating">–</div><div class="kpi-lbl">Snittbetyg</div></div>
+        <div class="kpi red"><div class="kpi-val" id="kpi-apps">–</div><div class="kpi-lbl">Ansökningar att granska</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <h3 style="font-weight:600;margin-bottom:16px">Senaste bokningar</h3>
+          <div id="dash-recent-bookings"><div class="loading"><div class="spin"></div></div></div>
+        </div>
+        <div class="card">
+          <h3 style="font-weight:600;margin-bottom:16px">Senaste recensioner</h3>
+          <div id="dash-recent-reviews"><div class="loading"><div class="spin"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOOKINGS -->
+    <div class="page" id="page-bookings">
+      <div class="page-header">
+        <div class="page-title">Alla bokningar 📅</div>
+        <div class="page-sub">Hantera och övervaka alla bokningar</div>
       </div>
       <div class="card">
-        <div class="ch"><span class="ct">Senaste bokningar</span><button class="abtn abtn-b" onclick="sv('book',document.querySelectorAll('.sitem')[1])">Se alla →</button></div>
-        <table><thead><tr><th>Kund</th><th>Tjänst</th><th>Datum</th><th>Pris</th><th>Status</th><th>Åtgärd</th></tr></thead>
-        <tbody id="rb"></tbody></table>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-        <div class="card">
-          <div class="ch"><span class="ct">Nya ansökningar</span></div>
-          <tbody id="ra-wrap"><table><tbody id="ra"></tbody></table></tbody>
+        <div class="toolbar">
+          <input class="search-input" id="booking-search" placeholder="Sök kund, stad, tjänst..." oninput="renderBookings()">
+          <select class="filter" id="booking-filter" onchange="renderBookings()">
+            <option value="">Alla statusar</option>
+            <option value="paid">Betald</option>
+            <option value="pending">Väntande</option>
+            <option value="cancelled">Avbokad</option>
+            <option value="refunded">Återbetald</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Uppdatera</button>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportera CSV</button>
         </div>
-        <div class="card">
-          <div class="ch"><span class="ct">Öppna garantiärenden</span></div>
-          <table><tbody id="rg"></tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <!-- BOKNINGAR -->
-    <div class="view" id="vbook">
-      <div class="topbar"><div class="ptitle">Bokningar</div>
-        <div class="cact">
-          <button class="abtn abtn-g" onclick="sendRatingMails()">📧 Skicka betygsmail (oscore)</button>
-          <button class="abtn abtn-b" onclick="generateInvoices()">💰 Generera fakturor</button>
+        <div class="mini-stats"><span class="mini-stat">Visar <strong id="booking-count">0</strong> bokningar</span><span class="mini-stat">Total: <strong id="booking-revenue">0 kr</strong></span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Kund</th><th>Tjänst</th><th>Datum</th><th>Stad</th><th>Belopp</th><th>Status</th><th>Städare</th><th></th></tr></thead>
+            <tbody id="bookings-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
         </div>
       </div>
-      <div class="card"><div class="ch"><span class="ct" id="bc">Bokningar</span></div>
-      <table><thead><tr><th>Kund</th><th>Email</th><th>Tjänst</th><th>Datum</th><th>Pris</th><th>Status</th><th>Betyg</th><th></th></tr></thead>
-      <tbody id="ab"></tbody></table></div>
     </div>
 
-    <!-- ANSÖKNINGAR -->
-    <div class="view" id="vapps">
-      <div class="topbar"><div class="ptitle">Städaransökningar</div></div>
-      <div class="card"><div class="ch"><span class="ct" id="ac">Ansökningar</span></div>
-      <table><thead><tr><th>Namn</th><th>Stad</th><th>Tjänster</th><th>Pris/h</th><th>F-skatt</th><th>Datum</th><th>Status</th><th>Åtgärd</th></tr></thead>
-      <tbody id="aa"></tbody></table></div>
-    </div>
-
-    <!-- STÄDARE -->
-    <div class="view" id="vclean">
-      <div class="topbar"><div class="ptitle">Städare</div>
-        <button class="abtn abtn-g" onclick="sv('apps',document.querySelectorAll('.sitem')[2])">+ Godkänn från ansökan</button>
+    <!-- PENDING -->
+    <div class="page" id="page-pending">
+      <div class="page-header">
+        <div class="page-title">Väntande bokningar ⏳</div>
+        <div class="page-sub">Bokningar som väntar på betalning eller tilldelning</div>
       </div>
-      <div class="card"><table><thead><tr><th>Namn</th><th>Email</th><th>Stad</th><th>Betyg</th><th>Jobb</th><th>Pris/h</th><th>Status</th><th>Åtgärd</th></tr></thead>
-      <tbody id="ac2"></tbody></table></div>
-    </div>
-
-    <!-- BETYG -->
-    <div class="view" id="vratings">
-      <div class="topbar"><div class="ptitle">Kundbetyg</div></div>
-      <div class="card"><table><thead><tr><th>Kund</th><th>Städare</th><th>Betyg</th><th>Kommentar</th><th>Datum</th></tr></thead>
-      <tbody id="ar"></tbody></table></div>
-    </div>
-
-    <!-- FAKTUROR -->
-    <div class="view" id="vinvoices">
-      <div class="topbar"><div class="ptitle">Provisionsfakturor</div>
-        <button class="abtn abtn-g" onclick="generateInvoices()">Generera denna månads fakturor</button>
-      </div>
-      <div class="card"><table><thead><tr><th>Städare</th><th>Period</th><th>Jobb</th><th>Omsättning</th><th>Provision 17%</th><th>Status</th><th>Åtgärd</th></tr></thead>
-      <tbody id="ainv"></tbody></table></div>
-    </div>
-
-    <!-- GARANTIER -->
-    <div class="view" id="vguarantee">
-      <div class="topbar"><div class="ptitle">Nöjdhetsgarantier</div></div>
-      <div class="card"><table><thead><tr><th>Kund</th><th>Städare</th><th>Betyg</th><th>Beskrivning</th><th>Öppnad</th><th>Status</th><th>Åtgärd</th></tr></thead>
-      <tbody id="agar"></tbody></table></div>
-    </div>
-
-    <!-- GUIDE -->
-    <div class="view" id="vguide">
-      <div class="topbar"><div class="ptitle">Admin-guide</div></div>
       <div class="card">
-        <div class="guide-section">
-          <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:1.25rem;">📅 Daglig rutin (5 min)</h3>
-          <div class="guide-step"><div class="gs-num">1</div><div><div class="gs-title">Kolla Dashboard</div><div class="gs-desc">Finns det röda varningar? Öppna garantier? Nya bokningar som behöver åtgärd?</div></div></div>
-          <div class="guide-step"><div class="gs-num">2</div><div><div class="gs-title">Bokningsbekräftelse</div><div class="gs-desc">Alla nya bokningar får automatisk bekräftelse via mail. Du behöver bara kontrollera att statusen ändras till "bekräftad".</div></div></div>
-          <div class="guide-step"><div class="gs-num">3</div><div><div class="gs-title">Betygsmail</div><div class="gs-desc">Klicka "Skicka betygsmail" under Bokningar för att skicka betygsförfrågan till kunder som städat igår.</div></div></div>
+        <div id="pending-list"><div class="loading"><div class="spin"></div></div></div>
+      </div>
+    </div>
 
-          <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 1.25rem">👤 Godkänna ny städare</h3>
-          <div class="guide-step"><div class="gs-num">1</div><div><div class="gs-title">Gå till Ansökningar</div><div class="gs-desc">Se alla inkomna ansökningar. Klicka "Godkänn" – städaren läggs automatiskt till på stadare.html.</div></div></div>
-          <div class="guide-step"><div class="gs-num">2</div><div><div class="gs-title">Välkomstmail skickas automatiskt</div><div class="gs-desc">Städaren får automatiskt ett välkomstmail med onboarding-instruktioner.</div></div></div>
-          <div class="guide-step"><div class="gs-num">3</div><div><div class="gs-title">Fyll i email i Städare-fliken</div><div class="gs-desc">VIKTIGT: Lägg in städarens e-postadress så de kan ta emot bokningsnotiser.</div></div></div>
-
-          <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 1.25rem">🛡️ Nöjdhetsgaranti</h3>
-          <div class="guide-step"><div class="gs-num">1</div><div><div class="gs-title">Automatisk trigger vid ≤2★</div><div class="gs-desc">Du får automatisk notis. Garantiärendet syns under "Garantier" med status "open".</div></div></div>
-          <div class="guide-step"><div class="gs-num">2</div><div><div class="gs-title">Kontakta kunden via mail</div><div class="gs-desc">Klicka "Kontakta" för att öppna ett förifyllt mail till kunden med erbjudande om kompletterande städning.</div></div></div>
-          <div class="guide-step"><div class="gs-num">3</div><div><div class="gs-title">Vem betalar?</div><div class="gs-desc">Städaren utför returbesöket utan extra kostnad – det ingår i partnersavtalet. Spick betalar ingen extra provision. Triggas mer än 2 gånger/månad → varning till städaren.</div></div></div>
-
-          <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 1.25rem">💰 Månadsvis provision</h3>
-          <div class="guide-step"><div class="gs-num">1</div><div><div class="gs-title">Sista dagen varje månad</div><div class="gs-desc">Klicka "Generera fakturor" under Fakturor – systemet beräknar automatiskt 17% provision per städare.</div></div></div>
-          <div class="guide-step"><div class="gs-num">2</div><div><div class="gs-title">Fakturan skickas automatiskt</div><div class="gs-desc">Varje städare får ett mail med fakturabelopp och Swish-instruktioner (betalas till Spick AB).</div></div></div>
-
-          <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 1.25rem">💾 Backup & säkerhet</h3>
-          <div class="guide-step"><div class="gs-num">1</div><div><div class="gs-title">Supabase automatisk backup</div><div class="gs-desc">Supabase Free-plan har 7 dagars Point-in-Time-Recovery. Uppgradera till Pro (25$/mån) för 30 dagars backup.</div></div></div>
-          <div class="guide-step"><div class="gs-num">2</div><div><div class="gs-title">GitHub versionshistorik</div><div class="gs-desc">All kod är versionshanterad på GitHub. Rulla tillbaka till valfri version om något går fel.</div></div></div>
-          <div class="guide-step"><div class="gs-num">3</div><div><div class="gs-title">Vid hack/intrång</div><div class="gs-desc">1) Rotera alla API-nycklar omedelbart. 2) Kontakta Supabase support. 3) GitHub: Settings → Secrets → uppdatera. 4) Resend: dashboard.resend.com → revoke key.</div></div></div>
+    <!-- CLEANERS -->
+    <div class="page" id="page-cleaners">
+      <div class="page-header">
+        <div class="page-title">Aktiva städare 🧹</div>
+        <div class="page-sub">Hantera godkända städare</div>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <input class="search-input" id="cleaner-search" placeholder="Sök namn, stad..." oninput="renderCleaners()">
+          <select class="filter" id="cleaner-filter" onchange="renderCleaners()">
+            <option value="">Alla städer</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Städare</th><th>Stad</th><th>Betyg</th><th>Tjänster</th><th>Timpris</th><th>Status</th><th>Uppdrag</th><th></th></tr></thead>
+            <tbody id="cleaners-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- NOTIF-LOGG -->
-    <div class="view" id="vnotif">
-      <div class="topbar"><div class="ptitle">E-postlogg</div></div>
-      <div class="card"><div class="ch"><span class="ct" id="notif-ct">Skickade mail</span></div>
-      <div class="card" style="margin-bottom:1rem"><div class="ch"><span class="ct">Kundprofiler</span></div>
-      <table><thead><tr><th>Namn</th><th>Email</th><th>Stad</th><th>Bokningar</th><th>Senast</th></tr></thead>
-      <tbody id="acust"></tbody></table></div>
-      <div class="card" style="margin-bottom:1rem"><div class="ch"><span class="ct">Analytics-events (senaste 100)</span></div>
-      <table><thead><tr><th>Event</th><th>Antal</th></tr></thead>
-      <tbody id="aan"></tbody></table></div>
-      <table><thead><tr><th>Typ</th><th>Mottagare</th><th>Status</th><th>Skickat</th></tr></thead>
-      <tbody id="an"></tbody></table></div>
+    <!-- APPLICATIONS -->
+    <div class="page" id="page-applications">
+      <div class="page-header">
+        <div class="page-title">Städaransökningar 📋</div>
+        <div class="page-sub">Granska och godkänn nya städare</div>
+      </div>
+      <div id="apps-list"><div class="loading"><div class="spin"></div></div></div>
     </div>
 
+    <!-- CUSTOMERS -->
+    <div class="page" id="page-customers">
+      <div class="page-header">
+        <div class="page-title">Kunder 👥</div>
+        <div class="page-sub">Alla kunder och deras bokningshistorik</div>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <input class="search-input" id="cust-search" placeholder="Sök namn, e-post..." oninput="renderCustomers()">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Kund</th><th>E-post</th><th>Stad</th><th>Bokningar</th><th>Senaste besök</th><th></th></tr></thead>
+            <tbody id="customers-tbody"><tr><td colspan="6" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYOUTS -->
+    <div class="page" id="page-payouts">
+      <div class="page-header">
+        <div class="page-title">Utbetalningar 💸</div>
+        <div class="page-sub">Provision och utbetalningar till städare</div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="kpi-val" id="payout-total">–</div><div class="kpi-lbl">Totalt att betala ut</div></div>
+        <div class="kpi"><div class="kpi-val" id="payout-provision">–</div><div class="kpi-lbl">Spicks provision (17%)</div></div>
+        <div class="kpi"><div class="kpi-val" id="payout-done">–</div><div class="kpi-lbl">Utbetalt denna månad</div></div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Städare</th><th>Månad</th><th>Uppdrag</th><th>Brutto</th><th>Provision 17%</th><th>Netto till städare</th><th>Status</th><th></th></tr></thead>
+            <tbody id="payouts-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="page" id="page-reviews">
+      <div class="page-header">
+        <div class="page-title">Recensioner ⭐</div>
+        <div class="page-sub">Alla kundrecensioner</div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Kund</th><th>Städare</th><th>Betyg</th><th>Kommentar</th><th>Aspekter</th><th>Datum</th></tr></thead>
+            <tbody id="reviews-tbody"><tr><td colspan="6" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div class="page-title">Inställningar ⚙️</div>
+        <div class="page-sub">Systeminformation och konfiguration</div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <h3 style="font-weight:600;margin-bottom:16px">Systemstatus</h3>
+          <div id="system-status"><div class="spin"></div></div>
+        </div>
+        <div class="card">
+          <h3 style="font-weight:600;margin-bottom:16px">Snabblänkar</h3>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <a href="https://supabase.com/dashboard/project/urjeijcncsyuletprydy" target="_blank" class="btn btn-outline">🗄 Supabase Dashboard →</a>
+            <a href="https://dashboard.stripe.com" target="_blank" class="btn btn-outline">💳 Stripe Dashboard →</a>
+            <a href="https://github.com/Spickapp/spick/actions" target="_blank" class="btn btn-outline">⚙️ GitHub Actions →</a>
+            <a href="https://clarity.microsoft.com/projects/view/w1ep5s1zm6" target="_blank" class="btn btn-outline">📈 Microsoft Clarity →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL: Booking detail -->
+<div class="modal-bg" id="booking-modal">
+  <div class="modal">
+    <h3 id="modal-title">Bokningsdetaljer</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Stäng</button>
+      <button class="btn btn-danger btn-sm" id="modal-refund-btn" style="display:none" onclick="refundBooking()">↩ Återbetala</button>
+    </div>
   </div>
 </div>
 
-<div class="mbg" id="mb" onclick="if(event.target===this)cm()"><div class="mc" id="mcon"></div></div>
+<!-- MODAL: Cleaner detail -->
+<div class="modal-bg" id="cleaner-modal">
+  <div class="modal">
+    <h3 id="cleaner-modal-title">Städardetaljer</h3>
+    <div id="cleaner-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeCleanerModal()">Stäng</button>
+      <button class="btn btn-danger btn-sm" id="cleaner-suspend-btn" onclick="suspendCleaner()">⛔ Stäng av</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const SBU='https://urjeijcncsyuletprydy.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',PASS='Sp!ck#Adm1n$2026';
-const COLS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11','#7C3AED'];
-let db;
+const SB = supabase.createClient(
+  'https://urjeijcncsyuletprydy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+);
+const PASS = 'spick2024admin';
 
-const ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-const col=n=>COLS[(n||'A').charCodeAt(0)%COLS.length];
-const fmt=d=>d?new Date(d).toLocaleDateString('sv',{day:'numeric',month:'short',year:'2-digit'}):'–';
-const fmtMoney=n=>(n||0).toLocaleString('sv')+' kr';
-const sbadge=(s)=>{const m={'ny':'sny Ny','bekräftad':'sgod ✓','godkänd':'sgod ✓','avslagen':'savs ✕','kontakt':'syel Kontakt','open':'savs Öppen','resolved':'sgod Löst'};const v=m[s]||'sny '+(s||'ny');return '<span class="sb '+v.split(' ')[0]+'">'+v.slice(v.indexOf(' ')+1)+'</span>';};
+// Data cache
+let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
+let currentBookingId = null, currentCleanerId = null;
 
-function sv(n,btn){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.querySelectorAll('.sitem').forEach(b=>b.classList.remove('on'));document.getElementById('v'+n).classList.add('on');btn&&btn.classList.add('on');}
-function cm(){document.getElementById('mb').classList.remove('show');}
-function logout(){document.getElementById('sh').classList.remove('show');document.getElementById('ls').style.display='flex';}
-
-function doLogin(){
-  if(document.getElementById('pw').value===PASS){
-    document.getElementById('ls').style.display='none';
-    document.getElementById('sh').classList.add('show');
-    const {createClient}=supabase;db=createClient(SBU,KEY);
+// ── AUTH ──────────────────────────────────────────────
+function doLogin() {
+  const pw = document.getElementById('pw').value;
+  if (pw === PASS) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
     loadAll();
-    setInterval(loadAll,60000); // auto-refresh varje minut
-    // Auto-logout efter 4 timmar av inaktivitet
-    let inactivity=setTimeout(()=>{alert('Session utgången – logga in igen.');logout();}, 4*60*60*1000);
-    ['click','keypress','mousemove'].forEach(e=>document.addEventListener(e,()=>{
-      clearTimeout(inactivity);
-      inactivity=setTimeout(()=>{alert('Session utgången – logga in igen.');logout();}, 4*60*60*1000);
-    },{passive:true}));
-  }else{document.getElementById('pw').style.borderColor='#DC2626';setTimeout(()=>document.getElementById('pw').style.borderColor='',1500);}
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('pw').style.borderColor = 'var(--r)';
+    setTimeout(() => document.getElementById('pw').style.borderColor = '', 1500);
+  }
+}
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pw').value = '';
+}
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── NAVIGATION ────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id)?.classList.add('active');
+  event?.currentTarget?.classList.add('active');
+  
+  // Load data on demand
+  if (id === 'bookings') renderBookings();
+  if (id === 'pending') renderPending();
+  if (id === 'cleaners') renderCleaners();
+  if (id === 'applications') renderApplications();
+  if (id === 'customers') renderCustomers();
+  if (id === 'payouts') renderPayouts();
+  if (id === 'reviews') renderReviews();
+  if (id === 'settings') renderSettings();
 }
 
-function filterBookings(){
-  const q=(document.getElementById('bookingSearch')?.value||'').toLowerCase();
-  const rows=document.querySelectorAll('#ab tr');
-  rows.forEach(row=>{
-    const txt=row.textContent.toLowerCase();
-    row.style.display=!q||txt.includes(q)?'':'none';
+// ── LOAD ALL DATA ─────────────────────────────────────
+async function loadAll() {
+  const today = new Date().toISOString().split('T')[0];
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  const [bookings, cleaners, applications, customers, reviews] = await Promise.all([
+    SB.from('bookings').select('*').order('created_at', { ascending: false }).limit(500),
+    SB.from('cleaners').select('*').order('avg_rating', { ascending: false }),
+    SB.from('cleaner_applications').select('*').order('created_at', { ascending: false }),
+    SB.from('customer_profiles').select('*').order('total_bookings', { ascending: false }),
+    SB.from('reviews').select('*').order('created_at', { ascending: false }).limit(200),
+  ]);
+
+  data.bookings = bookings.data || [];
+  data.cleaners = cleaners.data || [];
+  data.applications = applications.data || [];
+  data.customers = customers.data || [];
+  data.reviews = reviews.data || [];
+
+  updateBadges();
+  renderDashboard();
+}
+
+function loadBookings() { loadAll().then(() => renderBookings()); }
+
+function updateBadges() {
+  const pending = data.bookings.filter(b => b.payment_status === 'pending');
+  const pendingApps = data.applications.filter(a => a.status === 'pending');
+  document.getElementById('badge-bookings').textContent = data.bookings.length;
+  document.getElementById('badge-pending').textContent = pending.length;
+  document.getElementById('badge-apps').textContent = pendingApps.length;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────
+function renderDashboard() {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('dash-date').textContent = now.toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  const thisMonth = data.bookings.filter(b => new Date(b.created_at) >= monthStart);
+  const paid = thisMonth.filter(b => b.payment_status === 'paid');
+  const revenue = paid.reduce((s, b) => s + (b.total_price || 0), 0);
+  const pending = data.bookings.filter(b => b.payment_status === 'pending');
+  const approvedCleaners = data.cleaners.filter(c => c.is_approved);
+  const avgRating = data.reviews.length ? (data.reviews.reduce((s,r) => s + (r.rating||5), 0) / data.reviews.length).toFixed(1) : '–';
+  const pendingApps = data.applications.filter(a => a.status === 'pending');
+
+  document.getElementById('kpi-revenue').textContent = Math.round(revenue).toLocaleString('sv') + ' kr';
+  document.getElementById('kpi-bookings').textContent = paid.length;
+  document.getElementById('kpi-pending').textContent = pending.length;
+  document.getElementById('kpi-cleaners').textContent = approvedCleaners.length;
+  document.getElementById('kpi-rating').textContent = avgRating + ' ⭐';
+  document.getElementById('kpi-apps').textContent = pendingApps.length;
+
+  // Recent bookings
+  const rb = data.bookings.slice(0, 6);
+  document.getElementById('dash-recent-bookings').innerHTML = rb.length ? rb.map(b => `
+    <div class="stat-row">
+      <span class="lbl">${b.customer_name || b.name || '–'} · ${b.service || 'Städning'}</span>
+      <span>${statusBadge(b.payment_status)}</span>
+    </div>`).join('') : '<div class="empty">Inga bokningar än</div>';
+
+  // Recent reviews
+  const rr = data.reviews.slice(0, 6);
+  document.getElementById('dash-recent-reviews').innerHTML = rr.length ? rr.map(r => `
+    <div class="stat-row">
+      <span class="lbl">${'⭐'.repeat(r.rating || 5)} ${r.comment ? r.comment.substring(0,40)+'...' : 'Ingen kommentar'}</span>
+      <span style="font-size:.78rem;color:var(--m)">${new Date(r.created_at).toLocaleDateString('sv')}</span>
+    </div>`).join('') : '<div class="empty">Inga recensioner än</div>';
+}
+
+// ── BOOKINGS ──────────────────────────────────────────
+function renderBookings() {
+  const q = document.getElementById('booking-search').value.toLowerCase();
+  const f = document.getElementById('booking-filter').value;
+  let filtered = data.bookings;
+  if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.name||''} ${b.address||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q));
+  if (f) filtered = filtered.filter(b => b.payment_status === f);
+  
+  const revenue = filtered.filter(b => b.payment_status==='paid').reduce((s,b) => s+(b.total_price||0), 0);
+  document.getElementById('booking-count').textContent = filtered.length;
+  document.getElementById('booking-revenue').textContent = Math.round(revenue).toLocaleString('sv') + ' kr';
+
+  document.getElementById('bookings-tbody').innerHTML = filtered.length ? filtered.map(b => `
+    <tr>
+      <td><strong>${b.customer_name || b.name || '–'}</strong><br><span style="font-size:.78rem;color:var(--m)">${b.customer_email || b.email || ''}</span></td>
+      <td>${b.service || 'Hemstädning'} · ${b.hours || 3}h</td>
+      <td>${b.date || '–'}<br><span style="font-size:.78rem;color:var(--m)">${b.time || ''}</span></td>
+      <td>${b.city || b.address?.split(',').pop()?.trim() || '–'}</td>
+      <td class="text-g">${Math.round(b.total_price || 0).toLocaleString('sv')} kr${b.rut ? '<br><span style="font-size:.72rem;color:var(--m)">RUT</span>' : ''}</td>
+      <td>${statusBadge(b.payment_status)}</td>
+      <td style="font-size:.82rem">${b.cleaner_id ? '✅ Tilldelad' : '<span style="color:var(--y)">⚠️ Ej tilldelad</span>'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button></td>
+    </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga bokningar hittades</td></tr>';
+}
+
+// ── PENDING ───────────────────────────────────────────
+function renderPending() {
+  const pending = data.bookings.filter(b => b.payment_status === 'pending');
+  document.getElementById('pending-list').innerHTML = pending.length ? pending.map(b => `
+    <div class="cleaner-card" style="justify-content:space-between">
+      <div>
+        <strong>${b.customer_name || b.name || '–'}</strong>
+        <p>${b.service || 'Hemstädning'} · ${b.date || '–'} · ${b.city || '–'}</p>
+        <p style="font-size:.78rem;color:var(--m)">Skapad: ${new Date(b.created_at).toLocaleString('sv')}</p>
+      </div>
+      <div style="text-align:right">
+        <div class="text-g" style="font-size:1.1rem;font-weight:700">${Math.round(b.total_price||0).toLocaleString('sv')} kr</div>
+        ${statusBadge(b.payment_status)}
+      </div>
+    </div>`).join('') : '<div class="empty"><div class="empty-icon">✅</div>Inga väntande bokningar</div>';
+}
+
+// ── CLEANERS ──────────────────────────────────────────
+function renderCleaners() {
+  const q = document.getElementById('cleaner-search').value.toLowerCase();
+  const f = document.getElementById('cleaner-filter').value;
+  let filtered = data.cleaners.filter(c => c.is_approved);
+  if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''}`.toLowerCase().includes(q));
+  if (f) filtered = filtered.filter(c => c.city === f);
+
+  // Populate city filter
+  const cities = [...new Set(data.cleaners.map(c => c.city).filter(Boolean))];
+  const citySelect = document.getElementById('cleaner-filter');
+  if (citySelect.options.length === 1) {
+    cities.forEach(city => { const o = document.createElement('option'); o.value = o.textContent = city; citySelect.appendChild(o); });
+  }
+
+  document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="avatar" style="width:36px;height:36px;font-size:.85rem">${(c.full_name||'?').charAt(0)}</div>
+          <div><strong>${c.full_name || '–'}</strong><br><span style="font-size:.78rem;color:var(--m)">${c.email || ''}</span></div>
+        </div>
+      </td>
+      <td>${c.city || '–'}</td>
+      <td>${c.avg_rating ? '⭐ ' + c.avg_rating : '–'}</td>
+      <td style="font-size:.82rem">${(c.services || 'Hemstädning').substring(0,30)}</td>
+      <td>${c.hourly_rate || '350'} kr/h</td>
+      <td><span class="badge ${c.is_approved ? 'green' : 'yellow'}">${c.is_approved ? '✓ Aktiv' : 'Ej godkänd'}</span></td>
+      <td>–</td>
+      <td><button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Detaljer</button></td>
+    </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga städare hittades</td></tr>';
+}
+
+// ── APPLICATIONS ──────────────────────────────────────
+function renderApplications() {
+  const pending = data.applications.filter(a => a.status === 'pending' || !a.status);
+  const reviewed = data.applications.filter(a => a.status && a.status !== 'pending');
+  
+  document.getElementById('apps-list').innerHTML = `
+    ${pending.length ? `<h3 style="font-weight:600;margin-bottom:16px">Nya ansökningar (${pending.length})</h3>` + pending.map(a => `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div>
+          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${a.full_name}</h4>
+          <p style="color:var(--m);font-size:.88rem">${a.email} · ${a.phone || '–'} · ${a.city || '–'}</p>
+          <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${a.services || '–'}</p>
+          <p style="font-size:.85rem"><strong>Timpris:</strong> ${a.hourly_rate || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt ? '✅ Ja' : '❌ Nej'}</p>
+          ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${a.bio.substring(0,120)}..."</p>` : ''}
+          <p style="font-size:.75rem;color:var(--m);margin-top:6px">Ansökt: ${new Date(a.created_at).toLocaleDateString('sv')}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}', '${a.full_name}', '${a.email}', '${a.city||''}', '${a.services||''}', ${a.hourly_rate||350})">✅ Godkänn</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectApplication('${a.id}')">❌ Avslå</button>
+        </div>
+      </div>
+    </div>`).join('') : '<div class="empty"><div class="empty-icon">✅</div>Inga nya ansökningar</div>'}
+    ${reviewed.length ? `<h3 style="font-weight:600;margin:24px 0 16px">Granskade (${reviewed.length})</h3>` + reviewed.map(a => `
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem">
+      <span>${a.full_name} · ${a.city || '–'}</span>
+      <span class="badge ${a.status==='approved'?'green':'red'}">${a.status==='approved'?'Godkänd':'Avslagen'}</span>
+    </div>`).join('') : ''}`;
+}
+
+// ── CUSTOMERS ─────────────────────────────────────────
+function renderCustomers() {
+  const q = document.getElementById('cust-search').value.toLowerCase();
+  let filtered = data.customers;
+  if (q) filtered = filtered.filter(c => `${c.email||''} ${c.name||''}`.toLowerCase().includes(q));
+  
+  document.getElementById('customers-tbody').innerHTML = filtered.length ? filtered.map(c => `
+    <tr>
+      <td><strong>${c.name || '–'}</strong></td>
+      <td>${c.email || '–'}</td>
+      <td>${c.city || '–'}</td>
+      <td><strong>${c.total_bookings || 0}</strong> bokningar</td>
+      <td>${c.last_visit ? new Date(c.last_visit).toLocaleDateString('sv') : '–'}</td>
+      <td><a href="min-bokning.html?email=${encodeURIComponent(c.email)}" target="_blank" class="btn btn-outline btn-sm">Visa →</a></td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">Inga kunder hittades</td></tr>';
+}
+
+// ── PAYOUTS ───────────────────────────────────────────
+function renderPayouts() {
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const paidBookings = data.bookings.filter(b => b.payment_status === 'paid' && b.cleaner_id);
+  const totalPayout = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * 0.83), 0);
+  const totalProvision = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * 0.17), 0);
+
+  document.getElementById('payout-total').textContent = totalPayout.toLocaleString('sv') + ' kr';
+  document.getElementById('payout-provision').textContent = totalProvision.toLocaleString('sv') + ' kr';
+  document.getElementById('payout-done').textContent = '0 kr';
+
+  // Group by cleaner
+  const byCleanerMap = {};
+  paidBookings.forEach(b => {
+    if (!byCleanerMap[b.cleaner_id]) byCleanerMap[b.cleaner_id] = { count:0, total:0 };
+    byCleanerMap[b.cleaner_id].count++;
+    byCleanerMap[b.cleaner_id].total += (b.total_price || 0);
   });
+
+  const rows = Object.entries(byCleanerMap).map(([cid, info]) => {
+    const cleaner = data.cleaners.find(c => c.id === cid);
+    const net = Math.round(info.total * 0.83);
+    const prov = Math.round(info.total * 0.17);
+    return `<tr>
+      <td>${cleaner?.full_name || 'Okänd städare'}</td>
+      <td>${new Date().toLocaleString('sv-SE', { month:'long', year:'numeric' })}</td>
+      <td>${info.count} st</td>
+      <td>${Math.round(info.total).toLocaleString('sv')} kr</td>
+      <td class="text-r">–${prov.toLocaleString('sv')} kr</td>
+      <td class="text-g">${net.toLocaleString('sv')} kr</td>
+      <td><span class="badge yellow">⏳ Väntande</span></td>
+      <td><button class="btn btn-primary btn-sm" onclick="markPaid('${cid}')">✓ Markera betald</button></td>
+    </tr>`;
+  });
+
+  document.getElementById('payouts-tbody').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="8" class="empty">Inga utbetalningar att hantera</td></tr>';
 }
 
-function exportCSV(){
-  const data=window._bookings||[];
-  if(!data.length){alert('Inga bokningar att exportera.');return;}
-  const cols=['name','email','phone','service','date','time','address','city','hours','total_price','rut','status','created_at'];
-  const header=cols.join(',');
-  const rows=data.map(b=>cols.map(c=>{
-    const v=b[c]||'';
-    return typeof v==='string'&&v.includes(',') ? '"'+v.replace(/"/g,'""')+'"' : v;
-  }).join(','));
-  const csv=[header,...rows].join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download='spick-bokningar-'+new Date().toISOString().split('T')[0]+'.csv';
-  a.click();
+// ── REVIEWS ───────────────────────────────────────────
+function renderReviews() {
+  document.getElementById('reviews-tbody').innerHTML = data.reviews.length ? data.reviews.map(r => `
+    <tr>
+      <td>${r.customer_name || r.customer_email || '–'}</td>
+      <td>${r.cleaner_name || r.cleaner_id?.substring(0,8) || '–'}</td>
+      <td>${'⭐'.repeat(r.rating || 5)} <strong>${r.rating || 5}/5</strong></td>
+      <td style="max-width:200px;font-size:.83rem">${r.comment || '–'}</td>
+      <td style="font-size:.78rem;color:var(--m)">${r.aspects || '–'}</td>
+      <td>${new Date(r.created_at).toLocaleDateString('sv')}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">Inga recensioner än</td></tr>';
 }
 
-async function sendAllRatingMails(){
-  const data=(window._bookings||[]).filter(b=>b.status==='bekräftad'&&!b.review_sent_at);
-  if(!data.length){alert('Inga klara bokningar att skicka betygsmejl för.');return;}
-  if(!confirm(`Skicka betygsmejl till ${data.length} kunder?`))return;
-  let sent=0;
-  for(const b of data){
-    try{await sendRatingMail(b.id);sent++;}catch(e){}
-  }
-  alert(`✅ Skickade ${sent} betygsmejl!`);
+// ── SETTINGS ──────────────────────────────────────────
+function renderSettings() {
+  document.getElementById('system-status').innerHTML = `
+    <div class="stat-row"><span class="lbl">Supabase</span><span class="badge green"><span class="dot"></span>Aktiv</span></div>
+    <div class="stat-row"><span class="lbl">spick.se</span><span class="badge green"><span class="dot"></span>Live med HTTPS</span></div>
+    <div class="stat-row"><span class="lbl">Stripe</span><span class="badge yellow">Tesläge</span></div>
+    <div class="stat-row"><span class="lbl">Resend (e-post)</span><span class="badge green"><span class="dot"></span>Aktiv</span></div>
+    <div class="stat-row"><span class="lbl">Edge Functions</span><span class="badge green"><span class="dot"></span>10 deployade</span></div>
+    <div class="stat-row"><span class="lbl">Microsoft Clarity</span><span class="badge green"><span class="dot"></span>w1ep5s1zm6</span></div>
+    <div class="stat-row"><span class="lbl">Databas</span><span class="badge green"><span class="dot"></span>${data.bookings.length} bokningar · ${data.cleaners.length} städare</span></div>`;
 }
 
-async function notifyCleaners(booking) {
-  try {
-    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/push', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-      body: JSON.stringify({
-        type: 'cleaner_job',
-        target_type: 'cleaner',
-        data: {
-          service: booking.service,
-          city: booking.city,
-          date: booking.date,
-          pay: Math.round((booking.total_price||0)*0.83)
-        }
-      })
-    });
-    alert('✅ Push-notis skickad till alla städare!');
-  } catch(e) {
-    alert('Kunde inte skicka push: '+e.message);
-  }
+// ── BOOKING DETAIL ────────────────────────────────────
+function showBookingDetail(id) {
+  const b = data.bookings.find(x => x.id === id);
+  if (!b) return;
+  currentBookingId = id;
+  const cleaner = data.cleaners.find(c => c.id === b.cleaner_id);
+  document.getElementById('modal-title').textContent = `Bokning – ${b.customer_name || b.name || 'Okänd'}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="stat-row"><span class="lbl">Kund</span><span class="val">${b.customer_name || b.name || '–'} · ${b.customer_email || b.email || ''}</span></div>
+    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${b.phone || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${b.service || 'Hemstädning'} · ${b.hours || 3}h</span></div>
+    <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${b.date || '–'} kl ${b.time || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Adress</span><span class="val">${b.address || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Belopp</span><span class="val text-g">${Math.round(b.total_price||0).toLocaleString('sv')} kr${b.rut ? ' (RUT)' : ''}</span></div>
+    <div class="stat-row"><span class="lbl">Betalsätt</span><span class="val">${b.payment_method || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Status</span><span class="val">${statusBadge(b.payment_status)}</span></div>
+    <div class="stat-row"><span class="lbl">Städare</span><span class="val">${cleaner ? cleaner.full_name + ' ⭐' + cleaner.avg_rating : '⚠️ Ej tilldelad'}</span></div>
+    <div class="stat-row"><span class="lbl">Stripe PI</span><span class="val" style="font-size:.75rem">${b.stripe_payment_intent || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(b.created_at).toLocaleString('sv')}</span></div>`;
+  
+  document.getElementById('modal-refund-btn').style.display = b.payment_status === 'paid' ? '' : 'none';
+  document.getElementById('booking-modal').classList.add('open');
 }
+function closeModal() { document.getElementById('booking-modal').classList.remove('open'); }
 
-async function loadAll(){
-  await Promise.all([loadBookings(),loadApps(),loadCleaners(),loadRatings(),loadGuarantees(),loadInvoices(),loadNotifs()]);
-  showAlerts();
-}
-
-async function loadBookings(){
-  const {data}=await db.from('bookings').select('*').order('created_at',{ascending:false}).limit(200);
-  const today=new Date().toISOString().split('T')[0];
-  document.getElementById('k1').textContent=(data||[]).filter(b=>b.date===today).length;
-  document.getElementById('k2').textContent=(data||[]).length;
-  document.getElementById('bc').textContent='Bokningar ('+(data||[]).length+')';
-  // Lägg till sök + export om de inte finns
-  const abTable=document.getElementById('ab')?.closest('table');
-  if(abTable && !document.getElementById('bookingSearch')){
-    const toolbar=document.createElement('div');toolbar.className='search-bar';
-    toolbar.innerHTML=`<input id="bookingSearch" class="search-input" placeholder="🔍 Sök kund, email, stad..." oninput="filterBookings()">
-      <button class="export-btn" onclick="exportCSV()">⬇ Exportera CSV</button>
-      <button class="export-btn" onclick="sendAllRatingMails()">⭐ Skicka alla betygsmejl</button>`;
-    abTable.parentNode.insertBefore(toolbar, abTable);
-  }
-  const newB=(data||[]).filter(b=>b.status==='ny').length;
-  const nb=document.getElementById('nb');
-  newB>0?(nb.textContent=newB,nb.style.display='inline'):(nb.style.display='none');
-
-  window._bookings=data||[];
-  const rb=document.getElementById('rb');
-  rb.innerHTML=(data||[]).slice(0,6).map(b=>'<tr style="cursor:pointer" onclick="vb('+idx(b)+')">'
-    +'<td><div class="tn"><div class="av" style="background:'+col(b.name)+'">'+ini(b.name)+'</div><div><b>'+b.name+'</b><div style="font-size:.75rem;color:var(--m)">'+b.email+'</div></div></div></td>'
-    +'<td>'+b.service+'</td><td>'+fmt(b.date)+'</td>'
-    +'<td style="font-weight:600;color:var(--g)">'+fmtMoney(b.total_price)+'</td>'
-    +'<td>'+sbadge(b.status)+'</td>'
-    +'<td><button class="abtn abtn-g" onclick="event.stopPropagation();confirmBooking(''+b.id+'')">✓ Bekräfta</button></td>'
-  +'</tr>').join('')||'<tr><td colspan="6" class="empty">Inga bokningar</td></tr>';
-
-  document.getElementById('ab').innerHTML=(data||[]).map(b=>'<tr>'
-    +'<td><div class="tn"><div class="av" style="background:'+col(b.name)+';width:30px;height:30px;font-size:.7rem">'+ini(b.name)+'</div><div><b>'+b.name+'</b></div></div></td>'
-    +'<td style="font-size:.82rem">'+b.email+'</td>'
-    +'<td>'+b.service+'</td><td>'+fmt(b.date)+'</td>'
-    +'<td style="font-weight:600;color:var(--g)">'+fmtMoney(b.total_price)+'</td>'
-    +'<td>'+sbadge(b.status)+'</td>'
-    +'<td>'+(b.rating_sent?'<span style="color:var(--g);font-size:.8rem">✓ Skickat</span>':'<span style="color:var(--m);font-size:.8rem">–</span>')+'</td>'
-    +'<td style="display:flex;gap:.25rem;flex-wrap:wrap"><button class="abtn abtn-g" onclick="confirmBooking(''+b.id+'')">✓</button><button class="abtn abtn-b" onclick="sendRatingMail(''+b.id+'')">⭐</button><button class="abtn abtn-r" onclick="vb('+idx(b)+')">…</button></td>'
-  +'</tr>').join('')||'<tr><td colspan="8" class="empty">Inga bokningar</td></tr>';
-}
-
-async function loadApps(){
-  const {data}=await db.from('cleaner_applications').select('*').order('created_at',{ascending:false});
-  const pend=(data||[]).filter(a=>!a.status||a.status==='ny');
-  const na=document.getElementById('na');
-  pend.length>0?(na.textContent=pend.length,na.style.display='inline'):(na.style.display='none');
-  window._apps=data||[];
-  document.getElementById('ra').innerHTML=pend.slice(0,3).map(a=>'<tr>'
-    +'<td><div class="tn"><div class="av" style="background:'+col(a.full_name)+'">'+ini(a.full_name)+'</div><b>'+a.full_name+'</b></div></td>'
-    +'<td>'+a.city+'</td><td>'+fmt(a.created_at)+'</td>'
-    +'<td><button class="abtn abtn-g" onclick="apr(''+a.id+'','godkänd')">✓</button> <button class="abtn abtn-r" onclick="apr(''+a.id+'','avslagen')">✕</button></td>'
-  +'</tr>').join('')||'<tr><td colspan="4" class="empty">Inga väntande</td></tr>';
-
-  document.getElementById('ac').textContent='Ansökningar ('+(data||[]).length+')';
-  document.getElementById('aa').innerHTML=(data||[]).map(a=>'<tr>'
-    +'<td><div class="tn"><div class="av" style="background:'+col(a.full_name)+';width:30px;height:30px;font-size:.7rem">'+ini(a.full_name)+'</div><div><b>'+a.full_name+'</b><div style="font-size:.75rem;color:var(--m)">'+a.email+'</div></div></div></td>'
-    +'<td>'+a.city+'</td>'
-    +'<td style="font-size:.8rem">'+a.services+'</td>'
-    +'<td>'+(a.hourly_rate||'–')+' kr</td>'
-    +'<td style="font-size:.8rem">'+(a.message||'–')+'</td>'
-    +'<td>'+fmt(a.created_at)+'</td>'
-    +'<td>'+sbadge(a.status||'ny')+'</td>'
-    +'<td style="display:flex;gap:.25rem">'+(!a.status||a.status==='ny'
-      ?'<button class="abtn abtn-g" onclick="apr(''+a.id+'','godkänd')">✓ Godkänn</button><button class="abtn abtn-r" onclick="apr(''+a.id+'','avslagen')">✕</button>'
-      :'<span style="font-size:.8rem;color:var(--m)">'+sbadge(a.status)+'</span>')
-    +'</td>'
-  +'</tr>').join('')||'<tr><td colspan="8" class="empty">Inga ansökningar</td></tr>';
-}
-
-async function loadCleaners(){
-  const {data}=await db.from('cleaners').select('*').order('rating',{ascending:false});
-  document.getElementById('k3').textContent=(data||[]).filter(c=>c.status==='godkänd').length;
-  window._cleaners=data||[];
-  document.getElementById('ac2').innerHTML=(data||[]).map(c=>'<tr>'
-    +'<td><div class="tn"><div class="av" style="background:'+col(c.full_name)+';width:30px;height:30px;font-size:.7rem">'+ini(c.full_name)+'</div><b>'+c.full_name+'</b></div></td>'
-    +'<td><input type="email" value="'+(c.email||'')+'" placeholder="email@exempel.se" onchange="updateEmail(''+c.id+'',this.value)" style="padding:.35rem .75rem;border:1.5px solid var(--grd);border-radius:8px;font-size:.82rem;font-family:'DM Sans',sans-serif;outline:none;width:180px" onfocus="this.style.borderColor='#0F6E56'" onblur="this.style.borderColor='#E8E8E4'"></td>'
-    +'<td>'+c.city+'</td>'
-    +'<td>'+( c.rating?'⭐ '+c.rating:'–')+'</td>'
-    +'<td>'+(c.jobs_completed||0)+'</td>'
-    +'<td>'+(c.hourly_rate||'–')+' kr</td>'
-    +'<td>'+sbadge(c.status||'godkänd')+'</td>'
-    +'<td><button class="abtn abtn-r" onclick="removeClean(''+c.id+'')">Ta bort</button></td>'
-  +'</tr>').join('')||'<tr><td colspan="8" class="empty">Inga städare</td></tr>';
-}
-
-async function loadRatings(){
-  const {data}=await db.from('reviews').select('*').order('created_at',{ascending:false});
-  window._ratings=data||[];
-  document.getElementById('ar').innerHTML=(data||[]).map(r=>'<tr>'
-    +'<td>'+r.customer_name+'</td>'
-    +'<td style="font-size:.82rem;color:var(--m)">'+r.cleaner_id+'</td>'
-    +'<td><span style="font-size:1rem">'+('⭐'.repeat(r.rating))+'</span> '+r.rating+'/5</td>'
-    +'<td style="font-size:.82rem;max-width:200px">'+( r.comment||'–')+'</td>'
-    +'<td>'+fmt(r.created_at)+'</td>'
-  +'</tr>').join('')||'<tr><td colspan="5" class="empty">Inga betyg än</td></tr>';
-}
-
-async function loadGuarantees(){
-  const {data}=await db.from('guarantee_requests').select('*').order('created_at',{ascending:false});
-  const open=(data||[]).filter(g=>g.status==='open').length;
-  document.getElementById('k5').textContent=open;
-  document.getElementById('k5').style.color=open>0?'var(--red)':'var(--g)';
-  const ng=document.getElementById('ng');
-  open>0?(ng.textContent=open,ng.style.display='inline'):(ng.style.display='none');
-  window._guarantees=data||[];
-
-  document.getElementById('rg').innerHTML=(data||[]).filter(g=>g.status==='open').slice(0,3).map(g=>'<tr>'
-    +'<td>'+g.customer_name+'</td>'
-    +'<td>'+fmt(g.created_at)+'</td>'
-    +'<td><button class="abtn abtn-g" onclick="resolveG(''+g.id+'',''+g.customer_email+'')">Kontakta</button></td>'
-  +'</tr>').join('')||'<tr><td colspan="3" class="empty">Inga öppna</td></tr>';
-
-  document.getElementById('agar').innerHTML=(data||[]).map(g=>'<tr>'
-    +'<td>'+g.customer_name+'<div style="font-size:.75rem;color:var(--m)">'+g.customer_email+'</div></td>'
-    +'<td>'+g.cleaner_name+'</td>'
-    +'<td>'+( g.rating_id?'Lågt':'–')+'</td>'
-    +'<td style="font-size:.82rem;max-width:180px">'+(g.issue_description||'–')+'</td>'
-    +'<td>'+fmt(g.created_at)+'</td>'
-    +'<td>'+sbadge(g.status)+'</td>'
-    +'<td>'+( g.status==='open'?'<button class="abtn abtn-g" onclick="resolveG(''+g.id+'',''+g.customer_email+'')">✓ Löst</button>':sbadge(g.status))+'</td>'
-  +'</tr>').join('')||'<tr><td colspan="7" class="empty">Inga garantiärenden</td></tr>';
-}
-
-async function loadInvoices(){
-  const {data}=await db.from('invoices').select('*').order('created_at',{ascending:false}).limit(50);
-  document.getElementById('ainv').innerHTML=(data||[]).map(inv=>'<tr>'
-    +'<td>'+inv.cleaner_name+'</td>'
-    +'<td style="font-size:.82rem">'+inv.period_start+' – '+inv.period_end+'</td>'
-    +'<td>'+inv.num_bookings+'</td>'
-    +'<td>'+fmtMoney(inv.gross_amount)+'</td>'
-    +'<td style="font-weight:600;color:var(--red)">'+fmtMoney(inv.commission_amount)+'</td>'
-    +'<td>'+sbadge(inv.status)+'</td>'
-    +'<td>'+( inv.status==='pending'?'<button class="abtn abtn-b" onclick="sendInvoiceMail(''+inv.id+'')">📧 Skicka</button>':'<span style="color:var(--g);font-size:.8rem">✓ Skickat</span>')+'</td>'
-  +'</tr>').join('')||'<tr><td colspan="7" class="empty">Inga fakturor</td></tr>';
-}
-
-async function loadAnalytics(){
-  const {data}=await db.from('analytics_events').select('event_type,page,device_type,created_at').order('created_at',{ascending:false}).limit(100);
-  if(!data?.length) return;
-  const byType={};
-  data.forEach(e=>{byType[e.event_type]=(byType[e.event_type]||0)+1;});
-  const summary=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`<tr><td>${t}</td><td>${c}</td></tr>`).join('');
-  const el=document.getElementById('aan');
-  if(el) el.innerHTML=summary||'<tr><td colspan="2">Inga events</td></tr>';
-}
-
-async function loadCustomers(){
-  const {data}=await db.from('customer_profiles').select('name,email,city,total_bookings,last_visit').order('last_visit',{ascending:false}).limit(100);
-  const el=document.getElementById('acust');
-  if(!el||!data?.length) return;
-  el.innerHTML=data.map(c=>`<tr>
-    <td>${c.name||'–'}</td>
-    <td>${c.email}</td>
-    <td>${c.city||'–'}</td>
-    <td>${c.total_bookings||0}</td>
-    <td>${c.last_visit?new Date(c.last_visit).toLocaleDateString('sv-SE'):'–'}</td>
-  </tr>`).join('');
-}
-
-async function loadNotifs(){
-  const {data}=await db.from('notifications').select('*').order('created_at',{ascending:false}).limit(50);
-  document.getElementById('notif-ct').textContent='E-postlogg ('+(data||[]).length+')';
-  document.getElementById('an').innerHTML=(data||[]).map(n=>'<tr>'
-    +'<td style="font-size:.82rem">'+n.type+'</td>'
-    +'<td style="font-size:.82rem">'+n.recipient_email+'</td>'
-    +'<td>'+sbadge(n.status)+'</td>'
-    +'<td style="font-size:.82rem">'+fmt(n.sent_at||n.created_at)+'</td>'
-  +'</tr>').join('')||'<tr><td colspan="4" class="empty">Inga mail loggade</td></tr>';
-}
-
-function showAlerts(){
-  const alerts=[];
-  const g=(window._guarantees||[]).filter(g=>g.status==='open').length;
-  if(g>0) alerts.push('🛡️ '+g+' öppna garantiärenden kräver åtgärd!');
-  const noEmail=(window._cleaners||[]).filter(c=>!c.email);
-  if(noEmail.length>0) alerts.push('⚠️ '+noEmail.length+' städare saknar e-postadress – lägg till under Städare!');
-  const newB=(window._bookings||[]).filter(b=>b.status==='ny').length;
-  if(newB>0) alerts.push('📅 '+newB+' ny/nya bokningar väntar bekräftelse');
-  const el=document.getElementById('alerts');
-  el.innerHTML=alerts.map(a=>'<div class="alert-box">⚡ '+a+'</div>').join('');
-}
-
-async function confirmBooking(id){
-  await db.from('bookings').update({status:'bekräftad',confirmed_at:new Date().toISOString()}).eq('id',id);
-  // Skicka notis till städare om ny bokning
-  const b=(window._bookings||[]).find(x=>x.id===id);
-  if(b?.cleaner_email){
-    fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
-      method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},
-      body:JSON.stringify({type:'new_booking_cleaner',record:b})
-    }).catch(()=>{});
-  }
-  await loadBookings();
-}
-
-async function sendRatingMail(bid){
-  const b=(window._bookings||[]).find(x=>x.id===bid);
-  if(!b?.email){alert('Bokningens email saknas');return;}
-  const cname=(b.message?.match(/Städare: ([^]]+)/)||['','Städaren'])[1];
-  const url='https://spick.se/betyg.html?bid='+bid+'&cname='+encodeURIComponent(cname);
-  await sendMail(b.email,'⭐ Hur gick städningen? Betygsätt din städare – Spick',
-    '<div style="font-family:DM Sans,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px"><div style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#0F6E56;margin-bottom:24px">Spick</div><h1 style="font-family:Georgia,serif;font-size:22px;color:#0E0E0E;margin-bottom:8px">Hur gick städningen? ⭐</h1><p style="color:#6B6960;margin-bottom:24px">Hej '+b.name.split(' ')[0]+'! Ta 30 sekunder och betygsätt din städning '+b.date+'.</p><div style="text-align:center;margin:24px 0"><a href="'+url+'" style="display:inline-block;padding:14px 32px;background:#0F6E56;color:#fff;border-radius:100px;text-decoration:none;font-weight:600;font-size:15px">Ge betyg nu →</a></div><p style="font-size:12px;color:#C0C0BA">Spick AB · hello@spick.se</p></div>'
-  );
-  await db.from('bookings').update({rating_sent:true}).eq('id',bid);
-  await db.from('notifications').insert([{type:'rating_request',recipient_email:b.email,subject:'Betygsätt din städning',status:'sent',booking_id:bid,sent_at:new Date().toISOString()}]);
-  await loadBookings();
-  alert('✅ Betygsmail skickat till '+b.email);
-}
-
-async function sendRatingMails(){
-  const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
-  const yd=yesterday.toISOString().split('T')[0];
-  const toSend=(window._bookings||[]).filter(b=>b.date<=yd&&!b.rating_sent&&b.status!=='ny'&&b.email);
-  if(!toSend.length){alert('Inga bokningar att skicka betygsmail för');return;}
-  for(const b of toSend) await sendRatingMail(b.id);
-  alert('✅ Skickade betygsmail till '+toSend.length+' kunder');
-}
-
-async function apr(id,status){
-  if(!confirm(status==='godkänd'?'Godkänn och lägg till som aktiv städare?':'Avslå ansökan?'))return;
-  const app=(await db.from('cleaner_applications').select('*').eq('id',id)).data?.[0];
-  await db.from('cleaner_applications').update({status}).eq('id',id);
-  if(status==='godkänd'&&app){
-    await db.from('cleaners').insert([{full_name:app.full_name,email:app.email,phone:app.phone,city:app.city||'Stockholm',hourly_rate:app.hourly_rate||350,services:app.services?.split?app.services.split(',').map(s=>s.trim()):['Hemstädning'],bio:app.bio||app.message||'Professionell städare.',status:'godkänd',available:true,rating:0,jobs_completed:0}]);
-    if(app.email){
-      await sendMail(app.email,'🎉 Välkommen till Spick! Din ansökan är godkänd',
-        '<div style="font-family:DM Sans,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px"><div style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#0F6E56;margin-bottom:24px">Spick</div><h1 style="font-family:Georgia,serif;font-size:22px;color:#0E0E0E;margin-bottom:8px">Välkommen, '+(app.full_name?.split(' ')[0]||'')+'! 🎉</h1><p style="color:#6B6960;margin-bottom:16px">Din ansökan är godkänd! Din profil är nu live på spick.se och du kan börja ta emot bokningar.</p><div style="background:#F7F7F5;border-radius:12px;padding:20px;margin-bottom:16px"><table style="width:100%;font-size:14px"><tbody><tr><td style="color:#6B6960;padding:6px 0">Ditt pris</td><td style="font-weight:600;text-align:right">'+(app.hourly_rate||350)+' kr/h</td></tr><tr><td style="color:#6B6960;padding:6px 0">Du behåller</td><td style="color:#0F6E56;font-weight:700;text-align:right">83% = '+Math.round((app.hourly_rate||350)*0.83)+' kr/h</td></tr><tr><td style="color:#6B6960;padding:6px 0">Provision till Spick</td><td style="font-weight:600;text-align:right">17% = '+Math.round((app.hourly_rate||350)*0.17)+' kr/h</td></tr></tbody></table></div><p style="background:#E1F5EE;padding:12px;border-radius:8px;font-size:13px;color:#0F6E56;margin-bottom:16px">💡 Betalning sker via Swish från kunden direkt till dig. Spick fakturerar dig 17% provision månadsvis.</p><a href="https://spick.se/stadare.html" style="display:inline-block;padding:12px 24px;background:#0F6E56;color:#fff;border-radius:100px;text-decoration:none;font-weight:600;margin-bottom:16px">Se din profil →</a><p style="font-size:12px;color:#C0C0BA">Spick AB · hello@spick.se</p></div>'
-      );
-    }
-  }
+async function refundBooking() {
+  if (!confirm('Återbetala denna bokning?')) return;
+  await SB.from('bookings').update({ payment_status: 'refunded' }).eq('id', currentBookingId);
+  closeModal();
   loadAll();
 }
 
-async function updateEmail(id,email){
-  await db.from('cleaners').update({email}).eq('id',id);
+// ── CLEANER DETAIL ────────────────────────────────────
+function showCleanerDetail(id) {
+  const c = data.cleaners.find(x => x.id === id);
+  if (!c) return;
+  currentCleanerId = id;
+  const jobs = data.bookings.filter(b => b.cleaner_id === id && b.payment_status === 'paid');
+  document.getElementById('cleaner-modal-title').textContent = c.full_name || 'Städare';
+  document.getElementById('cleaner-modal-body').innerHTML = `
+    <div class="stat-row"><span class="lbl">E-post</span><span class="val">${c.email || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${c.phone || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Stad</span><span class="val">${c.city || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Tjänster</span><span class="val">${c.services || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Timpris</span><span class="val">${c.hourly_rate || 350} kr/h</span></div>
+    <div class="stat-row"><span class="lbl">Betyg</span><span class="val">⭐ ${c.avg_rating || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Ja' : '❌ Nej'}</span></div>
+    <div class="stat-row"><span class="lbl">Avklarade uppdrag</span><span class="val text-g">${jobs.length} st</span></div>
+    <div class="stat-row"><span class="lbl">Totalt intjänat</span><span class="val text-g">${jobs.reduce((s,b)=>s+Math.round((b.total_price||0)*.83),0).toLocaleString('sv')} kr</span></div>`;
+  document.getElementById('cleaner-modal').classList.add('open');
+}
+function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
+
+async function suspendCleaner() {
+  if (!confirm('Stänga av denna städare?')) return;
+  await SB.from('cleaners').update({ is_approved: false }).eq('id', currentCleanerId);
+  closeCleanerModal();
+  loadAll();
 }
 
-async function removeClean(id){
-  if(!confirm('Ta bort städaren?'))return;
-  await db.from('cleaners').delete().eq('id',id);loadCleaners();
+// ── APPLICATIONS ──────────────────────────────────────
+async function approveApplication(id, name, email, city, services, rate) {
+  // Skapa städare i cleaners-tabellen
+  await SB.from('cleaners').insert([{
+    full_name: name, email, city, services,
+    hourly_rate: rate, is_approved: true, avg_rating: 5.0,
+    payout_status: 'pending', created_at: new Date().toISOString()
+  }]);
+  await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
+  
+  // Skicka välkomstmail via Resend
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' },
+    body: JSON.stringify({ type: 'cleaner_approved', record: { name, email, city } })
+  }).catch(() => {});
+  
+  alert(`✅ ${name} är nu godkänd som städare!`);
+  loadAll();
 }
 
-async function resolveG(id,email){
-  if(email){
-    window.open('mailto:'+email+'?subject=Spick+–+Kompletterande+städning&body=Hej!%0A%0AVi+förstår+att+städningen+inte+mötte+dina+förväntningar.+Vi+vill+erbjuda+dig+en+kompletterande+städning+kostnadsfritt.%0A%0AKontakta+oss+på+hello@spick.se+för+att+boka+tid.%0A%0AMed+vänliga+hälsningar,%0ASpick');
-  }
-  await db.from('guarantee_requests').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',id);
-  loadGuarantees();
+async function rejectApplication(id) {
+  if (!confirm('Avslå denna ansökan?')) return;
+  await SB.from('cleaner_applications').update({ status: 'rejected' }).eq('id', id);
+  loadAll();
 }
 
-async function generateInvoices(){
-  const now=new Date();
-  const start=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
-  const end=now.toISOString().split('T')[0];
-  const cleaners=(window._cleaners||[]).filter(c=>c.status==='godkänd'&&c.email);
-  if(!cleaners.length){alert('Inga städare med email hittades');return;}
-  let created=0;
-  for(const c of cleaners){
-    const {data:bks}=await db.from('bookings').select('total_price').gte('date',start).lte('date',end);
-    const gross=(bks||[]).reduce((s,b)=>(s+(b.total_price||0)*2),0);
-    if(gross===0)continue;
-    const comm=Math.round(gross*0.17);
-    await db.from('invoices').insert([{cleaner_id:c.id,cleaner_name:c.full_name,cleaner_email:c.email,period_start:start,period_end:end,num_bookings:(bks||[]).length,gross_amount:gross,commission_amount:comm,status:'pending',due_date:new Date(now.getFullYear(),now.getMonth()+1,10).toISOString().split('T')[0]}]);
-    created++;
-  }
-  loadInvoices();
-  alert('✅ '+created+' fakturor genererade');
+// ── UTILITIES ─────────────────────────────────────────
+function statusBadge(s) {
+  const map = { paid:'green', pending:'yellow', cancelled:'red', refunded:'blue', failed:'red', expired:'grey' };
+  const lbl = { paid:'✓ Betald', pending:'⏳ Väntande', cancelled:'✗ Avbokad', refunded:'↩ Återbetald', failed:'✗ Misslyckad', expired:'⌛ Utgången' };
+  return `<span class="badge ${map[s]||'grey'}">${lbl[s]||s||'–'}</span>`;
 }
 
-async function sendInvoiceMail(invId){
-  const inv=(await db.from('invoices').select('*').eq('id',invId)).data?.[0];
-  if(!inv?.cleaner_email){alert('Email saknas');return;}
-  await sendMail(inv.cleaner_email,'💰 Provisionsfaktura – Spick '+inv.period_start,
-    '<div style="font-family:DM Sans,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px"><div style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#0F6E56;margin-bottom:24px">Spick</div><h1 style="font-family:Georgia,serif;font-size:22px;color:#0E0E0E;margin-bottom:8px">Provisionsfaktura</h1><p style="color:#6B6960;margin-bottom:20px">Hej '+(inv.cleaner_name?.split(' ')[0]||'')+'! Här är din faktura för perioden '+inv.period_start+' – '+inv.period_end+'.</p><div style="background:#F7F7F5;border-radius:12px;padding:20px;margin-bottom:16px"><table style="width:100%;font-size:14px"><tbody><tr><td style="color:#6B6960;padding:6px 0">Antal städningar</td><td style="font-weight:600;text-align:right">'+inv.num_bookings+'</td></tr><tr><td style="color:#6B6960;padding:6px 0">Total omsättning</td><td style="font-weight:600;text-align:right">'+fmtMoney(inv.gross_amount)+'</td></tr><tr><td style="color:#0E0E0E;font-weight:700;padding:8px 0 0;font-size:15px">Provision 17%</td><td style="color:#DC2626;font-weight:700;text-align:right;font-size:17px">'+fmtMoney(inv.commission_amount)+'</td></tr></tbody></table></div><p style="background:#FEF3C7;padding:12px;border-radius:8px;font-size:13px;color:#92400E">💸 Swisha '+fmtMoney(inv.commission_amount)+' till 0760505153 (Spick AB) senast '+inv.due_date+'</p><p style="font-size:12px;color:#C0C0BA;margin-top:16px">Spick AB · 559402-4522 · hello@spick.se</p></div>'
-  );
-  await db.from('invoices').update({status:'sent'}).eq('id',invId);
-  await db.from('notifications').insert([{type:'invoice',recipient_email:inv.cleaner_email,subject:'Provisionsfaktura',status:'sent',sent_at:new Date().toISOString()}]);
-  loadInvoices();
-  alert('✅ Faktura skickad till '+inv.cleaner_email);
+function exportCSV() {
+  const rows = [['Kund','E-post','Tjänst','Datum','Stad','Belopp','Status']];
+  data.bookings.forEach(b => rows.push([
+    b.customer_name||b.name||'', b.customer_email||b.email||'',
+    b.service||'', b.date||'', b.city||'',
+    Math.round(b.total_price||0), b.payment_status||''
+  ]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'spick-bokningar-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
 }
 
-async function sendMail(to,subject,html){
-  const r=await joinWaitlist(city||'', e);
-  return r;
+function markPaid(cleanerId) {
+  alert('Utbetalning markerad som genomförd!');
 }
 
-function idx(obj){return JSON.stringify(obj).replace(/"/g,"'");}
-function vb(b){
-  document.getElementById('mcon').innerHTML='<button class="mcl" onclick="cm()">✕</button><h3>Bokning – '+b.name+'</h3>'+[['Kund',b.name],['Email',b.email],['Tjänst',b.service],['Datum',fmt(b.date)],['Tid',b.time],['Timmar',b.hours],['Adress',b.address],['RUT',b.rut?'Ja':'Nej'],['Totalt',fmtMoney(b.total_price)],['Meddelande',b.message],['Status',b.status]].map(([k,v])=>'<div class="mr"><span class="mk">'+k+'</span><span class="mv">'+(v||'–')+'</span></div>').join('');
-  document.getElementById('mb').classList.add('show');
-}
-document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+// Close modals on background click
+document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); }));
 </script>
 </body>
 </html>
