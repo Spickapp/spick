@@ -10,48 +10,152 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Kör DNS fix direkt
+      - name: Felsök och sätt DNS → GitHub Pages
         env:
           U: ${{ secrets.LOOPIA_API_USER }}
           P: ${{ secrets.LOOPIA_API_PASS }}
         run: |
-          api() { curl -s -X POST https://api.loopia.se/RPCSERV \
-            -H "Content-Type: text/xml" -d "$1"; }
-
-          add_a() {
-            echo "➕ A-post: $1"
-            api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><name>type</name><value><string>A</string></value></member><member><name>ttl</name><value><int>3600</int></value></member><member><name>priority</name><value><int>0</int></value></member><member><name>rdata</name><value><string>$1</string></value></member></struct></value></param></params></methodCall>"
+          api() {
+            curl -s -X POST https://api.loopia.se/RPCSERV \
+              -H "Content-Type: text/xml" \
+              --max-time 15 \
+              -d "$1"
           }
 
-          remove_a() {
-            echo "➖ Tar bort A-post: $1"
-            api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param><param><value><struct><member><name>type</name><value><string>A</string></value></member><member><name>ttl</name><value><int>3600</int></value></member><member><name>priority</name><value><int>0</int></value></member><member><name>rdata</name><value><string>$1</string></value></member></struct></value></param></params></methodCall>"
-          }
+          echo "=== STEG 1: Hämta alla nuvarande records ==="
+          RECORDS=$(api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params>
+            <param><value><string>${U}</string></value></param>
+            <param><value><string>${P}</string></value></param>
+            <param><value><string>spick.se</string></value></param>
+            <param><value><string></string></value></param>
+          </params></methodCall>")
+          echo "Nuvarande records:"
+          echo "$RECORDS" | python3 -c "
+import sys, re
+data = sys.stdin.read()
+# Hitta alla record-structs
+records = re.findall(r'<struct>(.*?)</struct>', data, re.DOTALL)
+for r in records:
+    rtype = re.search(r'<n>type</n>\s*<value><string>([^<]+)</string>', r)
+    rdata = re.search(r'<n>rdata</n>\s*<value><string>([^<]+)</string>', r)
+    rid   = re.search(r'<n>record_id</n>\s*<value><int>([^<]+)</int>', r)
+    if rtype and rdata:
+        print(f'  {rtype.group(1):8} id={rid.group(1) if rid else \"?\"}  {rdata.group(1)}')
+" 2>/dev/null || echo "$RECORDS" | head -50
 
-          add_cname() {
-            echo "➕ CNAME: $1 → $2"
-            api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string>$1</string></value></param><param><value><struct><member><name>type</name><value><string>CNAME</string></value></member><member><name>ttl</name><value><int>3600</int></value></member><member><name>priority</name><value><int>0</int></value></member><member><name>rdata</name><value><string>$2</string></value></member></struct></value></param></params></methodCall>"
-          }
+          echo ""
+          echo "=== STEG 2: Extrahera record_id för alla A-poster ==="
+          A_IDS=$(echo "$RECORDS" | python3 -c "
+import sys, re
+data = sys.stdin.read()
+structs = re.findall(r'<struct>(.*?)</struct>', data, re.DOTALL)
+ids = []
+for s in structs:
+    rtype = re.search(r'<n>type</n>\s*<value><string>([^<]+)</string>', s)
+    rid   = re.search(r'<n>record_id</n>\s*<value><int>([^<]+)</int>', s)
+    if rtype and rtype.group(1) == 'A' and rid:
+        ids.append(rid.group(1))
+print(' '.join(ids))
+" 2>/dev/null)
+          echo "A-post record_ids att ta bort: $A_IDS"
 
-          echo "=== 1. Tar bort gamla Loopia A-poster ==="
-          for IP in "194.9.94.85" "194.9.94.86" "75.2.60.5" "99.83.190.102"; do
-            remove_a "$IP"
+          echo ""
+          echo "=== STEG 3: Ta bort alla A-poster via record_id ==="
+          for RID in $A_IDS; do
+            echo "  Tar bort record_id=$RID..."
+            RESULT=$(api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params>
+              <param><value><string>${U}</string></value></param>
+              <param><value><string>${P}</string></value></param>
+              <param><value><string>spick.se</string></value></param>
+              <param><value><string></string></value></param>
+              <param><value><int>${RID}</int></value></param>
+            </params></methodCall>")
+            echo "  → $(echo $RESULT | grep -o '<string>[^<]*</string>' | head -1)"
           done
 
-          echo "=== 2. Lägger till GitHub Pages A-poster ==="
-          add_a "185.199.108.153"
-          add_a "185.199.109.153"
-          add_a "185.199.110.153"
-          add_a "185.199.111.153"
+          echo ""
+          echo "=== STEG 4: Lägg till GitHub Pages A-poster ==="
+          for IP in "185.199.108.153" "185.199.109.153" "185.199.110.153" "185.199.111.153"; do
+            echo "  Lägger till A → $IP"
+            RESULT=$(api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params>
+              <param><value><string>${U}</string></value></param>
+              <param><value><string>${P}</string></value></param>
+              <param><value><string>spick.se</string></value></param>
+              <param><value><string></string></value></param>
+              <param><value><struct>
+                <member><name>type</name><value><string>A</string></value></member>
+                <member><name>ttl</name><value><int>300</int></value></member>
+                <member><name>priority</name><value><int>0</int></value></member>
+                <member><name>rdata</name><value><string>${IP}</string></value></member>
+              </struct></value></param>
+            </params></methodCall>")
+            echo "  → $(echo $RESULT | grep -o '<string>[^<]*</string>' | head -1)"
+          done
 
-          echo "=== 3. Lägger till www CNAME ==="
-          add_cname "www" "spickapp.github.io."
+          echo ""
+          echo "=== STEG 5: Sätt www CNAME → spickapp.github.io ==="
+          # Ta bort gamla www-records
+          WWW_RECORDS=$(api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params>
+            <param><value><string>${U}</string></value></param>
+            <param><value><string>${P}</string></value></param>
+            <param><value><string>spick.se</string></value></param>
+            <param><value><string>www</string></value></param>
+          </params></methodCall>")
+          WWW_IDS=$(echo "$WWW_RECORDS" | python3 -c "
+import sys, re
+data = sys.stdin.read()
+structs = re.findall(r'<struct>(.*?)</struct>', data, re.DOTALL)
+ids = [re.search(r'<n>record_id</n>\s*<value><int>([^<]+)</int>', s).group(1)
+       for s in structs
+       if re.search(r'<n>record_id</n>\s*<value><int>([^<]+)</int>', s)]
+print(' '.join(ids))
+" 2>/dev/null)
+          for RID in $WWW_IDS; do
+            api "<?xml version='1.0'?><methodCall><methodName>removeZoneRecord</methodName><params>
+              <param><value><string>${U}</string></value></param>
+              <param><value><string>${P}</string></value></param>
+              <param><value><string>spick.se</string></value></param>
+              <param><value><string>www</string></value></param>
+              <param><value><int>${RID}</int></value></param>
+            </params></methodCall>" > /dev/null
+          done
 
-          echo "=== 4. Verifierar nuvarande records ==="
+          api "<?xml version='1.0'?><methodCall><methodName>addZoneRecord</methodName><params>
+            <param><value><string>${U}</string></value></param>
+            <param><value><string>${P}</string></value></param>
+            <param><value><string>spick.se</string></value></param>
+            <param><value><string>www</string></value></param>
+            <param><value><struct>
+              <member><name>type</name><value><string>CNAME</string></value></member>
+              <member><name>ttl</name><value><int>300</int></value></member>
+              <member><name>priority</name><value><int>0</int></value></member>
+              <member><name>rdata</name><value><string>spickapp.github.io.</string></value></member>
+            </struct></value></param>
+          </params></methodCall>" > /dev/null
+          echo "  www → spickapp.github.io ✅"
+
+          echo ""
+          echo "=== STEG 6: Verifiera slutresultat ==="
           sleep 3
-          RESULT=$(api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params><param><value><string>$U</string></value></param><param><value><string>$P</string></value></param><param><value><string>spick.se</string></value></param><param><value><string></string></value></param></params></methodCall>")
-          echo "$RESULT" | grep -o '<string>[^<]*</string>' | grep -v "^<string></string>$"
+          FINAL=$(api "<?xml version='1.0'?><methodCall><methodName>getZoneRecords</methodName><params>
+            <param><value><string>${U}</string></value></param>
+            <param><value><string>${P}</string></value></param>
+            <param><value><string>spick.se</string></value></param>
+            <param><value><string></string></value></param>
+          </params></methodCall>")
+          echo "Nuvarande A-poster för spick.se:"
+          echo "$FINAL" | python3 -c "
+import sys, re
+data = sys.stdin.read()
+structs = re.findall(r'<struct>(.*?)</struct>', data, re.DOTALL)
+for s in structs:
+    rtype = re.search(r'<n>type</n>\s*<value><string>([^<]+)</string>', s)
+    rdata = re.search(r'<n>rdata</n>\s*<value><string>([^<]+)</string>', s)
+    if rtype and rdata:
+        print(f'  {rtype.group(1):8} {rdata.group(1)}')
+" 2>/dev/null
 
-          echo "✅ DNS uppdaterat! spick.se → GitHub Pages"
-          echo "⏳ Propagering tar 1-24h (vanligtvis 15-30 min)"
-# DNS trigger 1774439549
+          echo ""
+          echo "✅ DNS klar! spick.se → GitHub Pages"
+          echo "⏳ Propagering tar 5-30 min (TTL=300s)"
+          echo "🔍 Kontrollera: https://www.whatsmydns.net/#A/spick.se"
