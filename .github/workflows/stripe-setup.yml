@@ -1,0 +1,115 @@
+name: 'Stripe Setup (kör en gång)'
+
+'on':
+  workflow_dispatch:
+
+jobs:
+  stripe-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skapa Stripe webhook + spara secret automatiskt
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_REPO: Spickapp/spick
+        run: |
+          echo "🔧 Skapar Stripe webhook..."
+
+          RESPONSE=$(curl -s -X POST https://api.stripe.com/v1/webhook_endpoints \
+            -u "$STRIPE_SECRET_KEY:" \
+            -d "url=https://urjeijcncsyuletprydy.supabase.co/functions/v1/stripe-webhook" \
+            -d "enabled_events[]=checkout.session.completed" \
+            -d "enabled_events[]=checkout.session.expired" \
+            -d "enabled_events[]=payment_intent.payment_failed" \
+            -d "description=Spick betalningswebhook")
+
+          echo "Stripe svar: $RESPONSE"
+
+          WEBHOOK_SECRET=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('secret',''))")
+
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "❌ Kunde inte hämta webhook secret"
+            exit 1
+          fi
+
+          echo "✅ Webhook secret hämtad"
+
+          # Hämta GitHub public key för kryptering
+          PUB_KEY_RESP=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$GH_REPO/actions/secrets/public-key")
+          
+          KEY_ID=$(echo $PUB_KEY_RESP | python3 -c "import sys,json; print(json.load(sys.stdin)['key_id'])")
+          PUB_KEY=$(echo $PUB_KEY_RESP | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])")
+
+          # Kryptera webhook secret med GitHub public key
+          ENCRYPTED=$(python3 -c "
+          import base64, sys
+          from nacl import encoding, public
+
+          pub_key = public.PublicKey(base64.b64decode('$PUB_KEY'))
+          box = public.SealedBox(pub_key)
+          encrypted = box.encrypt('$WEBHOOK_SECRET'.encode())
+          print(base64.b64encode(encrypted).decode())
+          ")
+
+          # Sätt STRIPE_WEBHOOK_SECRET som GitHub Secret
+          curl -s -X PUT \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/$GH_REPO/actions/secrets/STRIPE_WEBHOOK_SECRET" \
+            -d "{\"encrypted_value\":\"$ENCRYPTED\",\"key_id\":\"$KEY_ID\"}"
+
+          echo "✅ STRIPE_WEBHOOK_SECRET sparad i GitHub Secrets!"
+
+      - name: Installera PyNaCl för nästa steg
+        run: pip install pynacl --break-system-packages
+
+      - name: Deploy Supabase functions
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploya stripe-checkout
+        run: |
+          supabase functions deploy stripe-checkout \
+            --project-ref urjeijcncsyuletprydy \
+            --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploya stripe-webhook
+        run: |
+          supabase functions deploy stripe-webhook \
+            --project-ref urjeijcncsyuletprydy \
+            --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Sätt Stripe secrets i Supabase edge functions
+        run: |
+          supabase secrets set \
+            STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
+            SUPABASE_SERVICE_ROLE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            --project-ref urjeijcncsyuletprydy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Kör SQL-migration
+        run: |
+          supabase db push \
+            --project-ref urjeijcncsyuletprydy \
+            --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: ✅ Klart
+        run: |
+          echo "🎉 Stripe fullständigt konfigurerat!"
+          echo "- Webhook skapad i Stripe"
+          echo "- STRIPE_WEBHOOK_SECRET sparad i GitHub"
+          echo "- Edge functions driftsatta"
+          echo "- SQL-migration körd"
+          echo "- Supabase secrets satta"
