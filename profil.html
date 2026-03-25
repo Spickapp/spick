@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Städarprofil – Spick</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff}
+body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-height:100vh}
+nav{background:var(--w);padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10}
+.logo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--g);text-decoration:none}
+.back{font-size:.875rem;color:var(--m);text-decoration:none}
+.back:hover{color:var(--g)}
+.page{max-width:760px;margin:0 auto;padding:2.5rem 1.5rem 6rem}
+.profile-card{background:var(--w);border-radius:20px;border:1px solid var(--grd);overflow:hidden;margin-bottom:1.25rem}
+.profile-hero{background:linear-gradient(135deg,#085041,var(--g));padding:2.5rem 2rem 2rem;display:flex;gap:1.5rem;align-items:flex-end}
+.avatar{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:#fff;border:4px solid rgba(255,255,255,.3);flex-shrink:0}
+.profile-name{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:#fff;margin-bottom:4px}
+.profile-loc{font-size:.875rem;color:rgba(255,255,255,.75)}
+.badges{display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap}
+.badge{font-size:.72rem;font-weight:600;padding:.25rem .7rem;border-radius:100px;background:rgba(255,255,255,.2);color:#fff}
+.profile-body{padding:1.75rem 2rem}
+.stars{color:#F59E0B;font-size:1rem}
+.rating-big{font-size:1.3rem;font-weight:700;color:var(--t);margin-left:.25rem}
+.reviews-count{font-size:.8rem;color:var(--m);margin-left:.25rem}
+.section-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--m);margin:1.5rem 0 .75rem}
+.tags{display:flex;flex-wrap:wrap;gap:.5rem}
+.tag{font-size:.78rem;padding:.3rem .8rem;border-radius:100px;background:var(--gp);color:var(--g);font-weight:500}
+.bio{font-size:.9rem;color:var(--m);line-height:1.7}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin:1.5rem 0}
+.stat{text-align:center;background:var(--gr);border-radius:12px;padding:1rem}
+.stat-val{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--g)}
+.stat-lbl{font-size:.72rem;color:var(--m);margin-top:2px}
+.book-section{background:var(--w);border-radius:20px;border:1px solid var(--grd);padding:1.75rem 2rem}
+.price-row{display:flex;align-items:baseline;gap:.5rem;margin-bottom:1.25rem}
+.price{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--t)}
+.price-unit{font-size:.9rem;color:var(--m)}
+.price-rut{font-size:.78rem;color:var(--g);font-weight:500;background:var(--gp);padding:.2rem .65rem;border-radius:100px}
+.book-btn{display:block;width:100%;text-align:center;padding:1rem;background:var(--g);color:#fff;border-radius:100px;font-size:1rem;font-weight:600;text-decoration:none;transition:background .2s}
+.book-btn:hover{background:var(--gm)}
+.guarantee{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--m);margin-top:.875rem;justify-content:center}
+.loading{text-align:center;padding:6rem 2rem;color:var(--m)}
+.spinner{width:36px;height:36px;border:3px solid var(--grd);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-CP115M45TT');</script>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Spick</a>
+  <a href="stadare.html" class="back">← Alla städare</a>
+</nav>
+<div class="page">
+  <div id="content"><div class="loading"><div class="spinner"></div>Laddar profil...</div></div>
+</div>
+<script>
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
+const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+const id=new URLSearchParams(location.search).get('id');
+
+async function load(){
+  if(!id){document.getElementById('content').innerHTML='<div class="loading">Ingen städare vald.</div>';return;}
+  const {data,error}=await SB.from('cleaners').select('*').eq('id',id).eq('status','godkänd').single();
+  if(error||!data){document.getElementById('content').innerHTML='<div class="loading">Städaren hittades inte.</div>';return;}
+  const c=data;
+  const ini=(c.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const color=COLORS[Math.abs(c.id?.charCodeAt(0)||0)%COLORS.length];
+  const rating=parseFloat(c.avg_rating||c.rating||0).toFixed(1);
+  const stars='★'.repeat(Math.floor(rating))+'☆'.repeat(5-Math.floor(rating));
+  const tags=Array.isArray(c.services)?c.services:(c.services||'Hemstädning').split(',').map(s=>s.trim());
+  const price=c.hourly_rate||350;
+  const bonus=c.bonus_level||'Brons';
+
+  // Uppdatera page title
+  document.title=c.full_name+' – Städare i '+c.city+' | Spick';
+
+  document.getElementById('content').innerHTML=`
+    <div class="profile-card">
+      <div class="profile-hero">
+        <div class="avatar" style="background:${color}">${ini}</div>
+        <div>
+          <div class="profile-name">${c.full_name}</div>
+          <div class="profile-loc">📍 ${c.city||'Sverige'}</div>
+          <div class="badges">
+            ${c.identity_verified||c.bankid_verified?'<span class="badge">✓ BankID</span>':''}
+            ${c.has_fskatt||c.has_insurance?'<span class="badge">F-skatt</span>':''}
+            <span class="badge">${bonus}</span>
+          </div>
+        </div>
+      </div>
+      <div class="profile-body">
+        <div><span class="stars">${stars}</span><span class="rating-big">${rating}</span><span class="reviews-count">(${c.review_count||0} omdömen)</span></div>
+        <div class="stats-row">
+          <div class="stat"><div class="stat-val">${c.review_count||0}</div><div class="stat-lbl">Städningar</div></div>
+          <div class="stat"><div class="stat-val">${rating}</div><div class="stat-lbl">Betyg</div></div>
+          <div class="stat"><div class="stat-val">${price} kr</div><div class="stat-lbl">Per timme</div></div>
+        </div>
+        <div class="section-title">Tjänster</div>
+        <div class="tags">${tags.map(t=>'<span class="tag">'+t+'</span>').join('')}</div>
+        <div class="section-title">Om ${c.full_name?.split(' ')[0]}</div>
+        <div class="bio">${c.bio||'Professionell och noggrann städare med hög servicegrad.'}</div>
+      </div>
+    </div>
+    <div class="book-section">
+      <div class="price-row">
+        <span class="price">${price} kr</span>
+        <span class="price-unit">/timme</span>
+        <span class="price-rut">${Math.round(price*.5)} kr med RUT</span>
+      </div>
+      <a class="book-btn" href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${price}&rating=${rating}&id=${c.id}">Boka ${c.full_name?.split(' ')[0]} →</a>
+      <div class="guarantee">🛡️ 100% nöjdhetsgaranti – eller städar vi om gratis</div>
+    </div>`;
+}
+load();
+</script>
+</body>
+</html>

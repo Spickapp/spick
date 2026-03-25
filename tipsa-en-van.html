@@ -7,7 +7,7 @@
 <meta name="description" content="Tipsa en vän om Spick och tjäna pengar vårje gång de bokar städning.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--brand:#1a1a2e;--accent:#00d084;--bg:#f0f4f8}
+:root{--brand:var(--t);--accent:var(--g);--bg:#f0f4f8}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--brand)}
 header{background:var(--brand);padding:16px 24px;display:flex;align-items:center;gap:12px}
 header a{color:rgba(255,255,255,.6);text-decoration:none;font-size:14px}
@@ -59,7 +59,7 @@ form input:focus,form textarea:focus{outline:none;border-color:var(--accent)}
 <div class="container">
 <div class="referral-card">
 <h2 style="font-size:20px;margin-bottom:24px">🎈 Här är din personliga länk</h2>
-<div style="background:#f0f4f8;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:20px"><code style="flex:1;font-size:13px;font-family:monospace;word-break:break-all;color:#1a1a2e" id="refLink">https://spick.se?ref=[DIN_KOD]</code><button onclick="copyLink()" style="background:var(--accent);color:white;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap" id="copyBtn">🐎 Kopiera</button></div>
+<div style="background:#f0f4f8;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:20px"><code style="flex:1;font-size:13px;font-family:monospace;word-break:break-all;color:#1C1C1A" id="refLink">https://spick.se?ref=[DIN_KOD]</code><button onclick="copyLink()" style="background:var(--accent);color:white;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap" id="copyBtn">🐎 Kopiera</button></div>
 <div class="share-btns">
 <a href="#" onclick="shareWA()" class="btn btn-green"><span style="font-size:20px">💡</span> WhatsApp</a>
 <a href="#" onclick="shareOther()" class="btn btn-dark"><span style="font-size:20px">🎊</span> Dela länk</span></a>
@@ -98,6 +98,6 @@ document.getElementById('refLink').textContent=refLink;
 function copyLink(){navigator.clipboard.writeText(refLink);const btn=document.getElementById('copyBtn');btn.textContent='✅ Kopierat!';setTimeout(()=>{btn.innerHTML='🐎 Kopiera';},2000);}
 function shareWA(){const msg=encodeURIComponent(`🧹 Boka städning med RUT-avdrag genom Spick! Får 50% rabatt via Skatteverket.\n\nKommer du åt klara dig möjligt med bokning? Testa hhär: ${refLink}`);window.open('https://wa.me/?'+new URLSearchParams({text:msg}));}
 function shareOther(){if(navigator.share){navigator.share({title:'Spick - städning med RUT',body:'Boka städning med 50% rabatt!',url:refLink});}else{copyLink();}}
-async function sendInvite(e){e.preventDefault();const btn=e.target.querySelector('button');btn.textContent='⏳ Skickar...';btn.disabled=true;try{await fetch(SUPA_URL+'/functions/v1/swift-endpoint',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SUPA_KEY,apikey:SUPA_KEY},body:JSON.stringify({type:'referral_invite',record:{friend_email:document.getElementById('friendEmail').value,friend_name:document.getElementById('friendName').value,message:document.getElementById('friendMsg').value,ref_code:refCode,ref_link:refLink}})});btn.textContent='✅ Skickat!';}catch(err){btn.textContent='Skkycka inbjudan';btn.disabled=false;console.error(err);}}
+async function sendInvite(e){e.preventDefault();const btn=e.target.querySelector('button');btn.textContent='⏳ Skickar...';btn.disabled=true;try{await fetch(SUPA_URL+'/functions/v1/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SUPA_KEY,apikey:SUPA_KEY},body:JSON.stringify({type:'referral_invite',record:{friend_email:document.getElementById('friendEmail').value,friend_name:document.getElementById('friendName').value,message:document.getElementById('friendMsg').value,ref_code:refCode,ref_link:refLink}})});btn.textContent='✅ Skickat!';}catch(err){btn.textContent='Skicka inbjudan';btn.disabled=false;console.error(err);}}
 </script>
 </body></html>
