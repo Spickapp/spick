@@ -10,7 +10,7 @@ jobs:
       - name: Rensa gamla notifikationer
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
-          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           echo "=== Databasunderhåll ==="
           MONTH_AGO=$(date -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)
@@ -23,3 +23,10 @@ jobs:
           
           echo "✅ Rensade $DELETED gamla notiser"
           echo "Underhåll klart: $(date)"
+
+          # Rensa analytics äldre än 90 dagar
+          THREE_MONTHS=$(date -d '90 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          curl -s -X DELETE "$SUPA_URL/rest/v1/analytics_events?created_at=lt.$THREE_MONTHS" \
+            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" \
+            -H "Prefer: return=minimal" > /dev/null
+          echo "✅ Analytics rensade (>90 dagar)"

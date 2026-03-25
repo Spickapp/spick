@@ -5,30 +5,61 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-
 jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
       - name: Backup Supabase data
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           mkdir -p backups
-          curl -s "https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?select=*" -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > backups/bookings_$(date +%Y%m%d).json
-          curl -s "https://urjeijcncsyuletprydy.supabase.co/rest/v1/cleaners?select=*" -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > backups/cleaners_$(date +%Y%m%d).json
-          curl -s "https://urjeijcncsyuletprydy.supabase.co/rest/v1/ratings?select=*" -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > backups/ratings_$(date +%Y%m%d).json
+          DATE=$(date +%Y%m%d)
+
+          for TABLE in bookings cleaners cleaner_applications reviews referrals; do
+            curl -sf "$SUPA_URL/rest/v1/${TABLE}?select=*&limit=10000" \
+              -H "apikey: $SUPA_KEY" \
+              -H "Authorization: Bearer $SUPA_KEY" \
+              -o "backups/${TABLE}_${DATE}.json" \
+              && echo "✅ $TABLE" || echo "⚠️ $TABLE (kan vara tom)"
+          done
+
+          # Rensa backups äldre än 30 dagar
+          find backups/ -name "*.json" -mtime +30 -delete
+          echo "✅ Backup klar: $(date)"
+
       - name: Commit backup
         run: |
           git config user.email "backup@spick.se"
           git config user.name "Spick Backup"
           git add backups/
-          git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d)"
+          git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d) [skip ci]"
           git push || true
+
   health-check:
     runs-on: ubuntu-latest
     steps:
       - name: Check spick.se
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://spick.se)
-          echo "Status: $STATUS"
-          [ "$STATUS" = "200" ] && echo "✅ Live" || echo "❌ Nere: $STATUS"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://spick.se)
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ spick.se är uppe!"
+          else
+            echo "❌ spick.se svarar med $STATUS"
+            # Notifiera via Supabase
+            curl -s -X POST "$SUPA_URL/functions/v1/notify" \
+              -H "Content-Type: application/json" \
+              -H "apikey: $SUPA_KEY" \
+              -H "Authorization: Bearer $SUPA_KEY" \
+              -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"spick.se svarar med HTTP $STATUS\"}}"
+            exit 1
+          fi

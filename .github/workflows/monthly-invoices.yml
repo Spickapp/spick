@@ -1,19 +1,98 @@
 name: Monthly Invoice Generator
-
 on:
   schedule:
-    - cron: '0 8 1 * *'  # Kör 08:00 första dagen varje månad
+    - cron: '0 8 1 * *'
   workflow_dispatch:
-
 jobs:
   generate-invoices:
     runs-on: ubuntu-latest
     steps:
-      - name: Generate and send monthly invoices
+      - name: Generera och skicka månadsfakturor
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          echo "Genererar fakturor för $(date -d 'last month' +%B %Y)"
-          curl -X POST "https://urjeijcncsyuletprydy.supabase.co/functions/v1/generate-invoices" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"month": "'$(date -d 'last month' +%Y-%m)'"}'
-          echo "✅ Fakturor genererade och skickade"
+          python3 - << 'PYTHON'
+import os, json, urllib.request, subprocess
+from datetime import date, timedelta
+
+SUPA_URL = os.environ['SUPA_URL']
+SUPA_KEY = os.environ['SUPA_KEY']
+
+# Förra månadens period
+today = date.today()
+if today.month == 1:
+    first = date(today.year-1, 12, 1)
+    last  = date(today.year,   1,  1) - timedelta(days=1)
+else:
+    first = date(today.year, today.month-1, 1)
+    last  = date(today.year, today.month,   1) - timedelta(days=1)
+
+month_str = first.strftime('%Y-%m')
+print(f"Genererar fakturor för {month_str} ({first} → {last})")
+
+def fetch(path):
+    r = subprocess.run(['curl','-sf',f"{SUPA_URL}/rest/v1/{path}",
+        '-H',f'apikey: {SUPA_KEY}','-H',f'Authorization: Bearer {SUPA_KEY}'],
+        capture_output=True, text=True)
+    try: return json.loads(r.stdout)
+    except: return []
+
+def post(path, body):
+    data = json.dumps(body).encode()
+    req  = urllib.request.Request(
+        f"{SUPA_URL}/rest/v1/{path}", data,
+        {"Content-Type":"application/json","apikey":SUPA_KEY,
+         "Authorization":f"Bearer {SUPA_KEY}","Prefer":"return=minimal"},
+        method="POST")
+    try: urllib.request.urlopen(req, timeout=15); return True
+    except: return False
+
+# Hämta klara bokningar förra månaden
+bookings = fetch(f"bookings?date=gte.{first}&date=lte.{last}&status=eq.klar&select=*")
+if not isinstance(bookings, list): bookings = []
+print(f"Klara bokningar: {len(bookings)}")
+
+# Gruppera per städare
+from collections import defaultdict
+by_cleaner = defaultdict(list)
+for b in bookings:
+    email = b.get('cleaner_email') or 'okänd'
+    by_cleaner[email].append(b)
+
+total_provision = 0
+for email, jobs in by_cleaner.items():
+    revenue    = sum(float(j.get('total_price') or 0) for j in jobs)
+    provision  = round(revenue * 0.17)
+    total_provision += provision
+    print(f"  {email}: {len(jobs)} jobb, {revenue:.0f} kr, provision: {provision} kr")
+    
+    # Spara faktura i DB
+    post("invoices", {
+        "cleaner_email": email,
+        "period": month_str,
+        "num_bookings": len(jobs),
+        "gross_revenue": revenue,
+        "provision_amount": provision,
+        "status": "pending"
+    })
+
+print(f"\nTotal provision: {total_provision} kr")
+
+# Skicka veckorapport via notify
+body = json.dumps({"type":"weekly_report","record":{
+    "week": month_str,
+    "bookings": len(bookings),
+    "cleaners": len(by_cleaner),
+    "revenue": total_provision
+}}).encode()
+req = urllib.request.Request(
+    f"{SUPA_URL}/functions/v1/notify", body,
+    {"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":f"Bearer {SUPA_KEY}"},
+    method="POST")
+try:
+    urllib.request.urlopen(req, timeout=15)
+    print("✅ Månadsrapport skickad!")
+except Exception as e:
+    print(f"⚠️ Notify-fel: {e}")
+PYTHON
