@@ -7,30 +7,23 @@ jobs:
   get-profiles:
     runs-on: ubuntu-latest
     steps:
-      - name: Hämta Buffer profiler (ny API)
+      - name: Hämta Buffer profiler
         run: |
-          echo "=== Testar Buffer API ==="
-          
-          # Ny Buffer API
-          RESP=$(curl -s -H "Authorization: Bearer ${{ secrets.BUFFER_ACCESS_TOKEN }}" \
+          echo "=== Buffer profiler ==="
+          RESP=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.BUFFER_ACCESS_TOKEN }}" \
+            -H "Content-Type: application/json" \
             "https://api.buffer.com/1/profiles.json")
-          echo "Svar ny API: $RESP"
-          
-          # Gammal Buffer API  
-          RESP2=$(curl -s \
-            "https://api.bufferapp.com/1/profiles.json?access_token=${{ secrets.BUFFER_ACCESS_TOKEN }}")
-          echo "Svar gammal API: $RESP2"
-          
-          # Parsea om JSON
+          echo "Råsvar: $RESP"
           echo "$RESP" | python3 -c "
           import sys, json
           try:
               data = json.load(sys.stdin)
               if isinstance(data, list):
                   for p in data:
-                      print(f\"ID: {p.get('id','')} | Service: {p.get('service','')} | Name: {p.get('service_username','')}\")
+                      print(f\">>> ID: {p.get('id','')} | Service: {p.get('service','')} | Name: {p.get('service_username','')}\")
               else:
-                  print('Svar:', data)
+                  print('Svar:', json.dumps(data, indent=2))
           except Exception as e:
               print('Parse-fel:', e)
           " || true
