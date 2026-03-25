@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Min bokning – Spick</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:#1a1a2e;--accent:#00d084;--bg:#f0f4f8;--msg-me:#1a1a2e;--msg-them:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--brand);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+.header{background:var(--brand);padding:12px 20px;flex-shrink:0;display:flex;align-items:center;gap:12px}
+.header a{color:rgba(255,255,255,.5);text-decoration:none;font-size:13px}
+.header-center{flex:1}
+.header-title{color:white;font-size:15px;font-weight:700}
+.header-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px}
+.status-pill{background:rgba(0,208,132,.15);color:#00d084;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(0,208,132,.3)}
+
+/* TABS */
+.tabs{display:flex;background:white;border-bottom:2px solid #f0f4f8;flex-shrink:0}
+.tab{flex:1;padding:12px;text-align:center;font-size:13px;font-weight:600;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s}
+.tab.active{color:var(--brand);border-bottom-color:var(--accent)}
+
+/* MAIN CONTENT */
+.content{flex:1;overflow-y:auto;padding:16px}
+
+/* BOOKING CARD */
+.booking-card{background:white;border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.booking-card h3{font-size:15px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-label{color:#888}
+.info-value{font-weight:600}
+
+/* STATUS TRACKER */
+.status-tracker{background:white;border-radius:16px;padding:20px;margin-bottom:14px}
+.status-tracker h3{font-size:15px;font-weight:800;margin-bottom:16px}
+.status-steps{display:flex;flex-direction:column;gap:0}
+.status-step{display:flex;gap:14px;padding:10px 0;position:relative}
+.status-step::before{content:'';position:absolute;left:17px;top:38px;bottom:-10px;width:2px;background:#e0e0e0}
+.status-step:last-child::before{display:none}
+.step-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;z-index:1}
+.step-icon.done{background:#e8f5e9}
+.step-icon.active{background:var(--accent);animation:glow 2s infinite}
+.step-icon.pending{background:#f5f5f5}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(0,208,132,.3)}50%{box-shadow:0 0 0 8px rgba(0,208,132,0)}}
+.step-text{flex:1;padding-top:4px}
+.step-text h4{font-size:13px;font-weight:700}
+.step-text p{font-size:11px;color:#aaa;margin-top:1px}
+.step-time{font-size:11px;color:#aaa;padding-top:6px}
+
+/* NYCKELHANTERING */
+.key-card{background:white;border-radius:16px;padding:20px;margin-bottom:14px}
+.key-card h3{font-size:15px;font-weight:800;margin-bottom:4px}
+.key-card .desc{font-size:13px;color:#888;margin-bottom:16px;line-height:1.5}
+.key-methods{display:flex;flex-direction:column;gap:10px}
+.key-method{border:2px solid #e0e0e0;border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:flex-start;gap:12px}
+.key-method.selected{border-color:var(--accent);background:#f0fff8}
+.key-method-icon{font-size:24px;flex-shrink:0}
+.key-method-text h4{font-size:14px;font-weight:700;margin-bottom:2px}
+.key-method-text p{font-size:12px;color:#888;line-height:1.4}
+.key-details{background:#f8fafc;border-radius:12px;padding:16px;margin-top:12px;display:none}
+.key-details.show{display:block}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:6px}
+.field input,.field textarea{width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--accent)}
+.field textarea{resize:none;min-height:60px}
+.key-warning{background:#fff8e1;border-radius:10px;padding:10px 14px;font-size:12px;color:#e65100;margin-top:10px;display:flex;gap:8px}
+.btn-save{width:100%;padding:13px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;margin-top:12px;font-family:inherit}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.messages-area{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.msg-group{display:flex;flex-direction:column;gap:4px}
+.msg-group.me{align-items:flex-end}
+.msg-group.them{align-items:flex-start}
+.msg-group.system{align-items:center}
+.msg-bubble{max-width:78%;padding:10px 14px;border-radius:18px;font-size:13px;line-height:1.5;position:relative}
+.me .msg-bubble{background:var(--brand);color:white;border-bottom-right-radius:4px}
+.them .msg-bubble{background:white;color:var(--brand);border-bottom-left-radius:4px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.system .msg-bubble{background:#f0f4f8;color:#888;font-size:12px;text-align:center;border-radius:10px;max-width:90%}
+.msg-meta{font-size:10px;color:#bbb;padding:0 4px}
+.msg-sender{font-size:11px;color:#aaa;padding:0 4px 2px}
+.msg-type-badge{display:inline-block;background:rgba(0,208,132,.15);color:#00d084;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;margin-bottom:4px}
+.photo-msg{max-width:200px;border-radius:12px;overflow:hidden}
+.photo-msg img{width:100%;display:block}
+
+/* SNABB-SVAR */
+.quick-replies{display:flex;gap:6px;overflow-x:auto;padding:8px 16px;flex-shrink:0;scrollbar-width:none}
+.quick-replies::-webkit-scrollbar{display:none}
+.qr-btn{background:white;border:1.5px solid #e0e0e0;color:#555;padding:7px 14px;border-radius:99px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;transition:all .2s}
+.qr-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* INPUT */
+.chat-input{background:white;padding:10px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid #f0f4f8;flex-shrink:0}
+.chat-input textarea{flex:1;border:none;outline:none;font-size:14px;resize:none;max-height:80px;font-family:inherit;line-height:1.5}
+.send-btn{width:36px;height:36px;background:var(--accent);border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn svg{width:16px;height:16px;fill:white}
+.attach-btn{width:36px;height:36px;background:#f0f4f8;border:none;border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+@media(min-width:600px){
+  body{max-width:480px;margin:0 auto;box-shadow:0 0 40px rgba(0,0,0,.15)}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/">←</a>
+  <div class="header-center">
+    <div class="header-title" id="headerTitle">Min bokning</div>
+    <div class="header-sub" id="headerSub">Laddar...</div>
+  </div>
+  <div class="status-pill" id="statusPill">–</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('status')">📍 Status</div>
+  <div class="tab" onclick="showTab('key')">🔑 Nyckel</div>
+  <div class="tab" onclick="showTab('chat')" id="chatTab">💬 Chatt</div>
+</div>
+
+<!-- STATUS TAB -->
+<div class="content" id="tab-status">
+  <div class="booking-card">
+    <h3>📋 Bokningsdetaljer</h3>
+    <div class="info-row"><span class="info-label">Tjänst</span><span class="info-value" id="det-service">–</span></div>
+    <div class="info-row"><span class="info-label">Datum</span><span class="info-value" id="det-date">–</span></div>
+    <div class="info-row"><span class="info-label">Tid</span><span class="info-value" id="det-time">–</span></div>
+    <div class="info-row"><span class="info-label">Adress</span><span class="info-value" id="det-address">–</span></div>
+    <div class="info-row"><span class="info-label">Din städare</span><span class="info-value" id="det-cleaner">–</span></div>
+    <div class="info-row"><span class="info-label">Timmar</span><span class="info-value" id="det-hours">–</span></div>
+    <div class="info-row"><span class="info-label">Pris efter RUT</span><span class="info-value" id="det-price" style="color:var(--accent)">–</span></div>
+  </div>
+
+  <div class="status-tracker">
+    <h3>📍 Uppdragets status</h3>
+    <div class="status-steps" id="statusSteps"></div>
+  </div>
+</div>
+
+<!-- NYCKEL TAB -->
+<div class="content" id="tab-key" style="display:none">
+  <div class="key-card">
+    <h3>🔑 Hur kommer städaren in?</h3>
+    <p class="desc">Välj hur din städare ska få tillgång till ditt hem. Informationen delas säkert med din bokade städare.</p>
+
+    <div class="key-methods" id="keyMethods">
+
+      <div class="key-method" onclick="selectKey(this, 'home')">
+        <div class="key-method-icon">🏠</div>
+        <div class="key-method-text">
+          <h4>Jag är hemma</h4>
+          <p>Du öppnar dörren när städaren anländer</p>
+        </div>
+      </div>
+
+      <div class="key-method" onclick="selectKey(this, 'lockbox')">
+        <div class="key-method-icon">🔒</div>
+        <div class="key-method-text">
+          <h4>Nyckelbox (kod)</h4>
+          <p>En nyckelbox med nyckel sitter vid dörren</p>
+        </div>
+        <div class="key-details" id="key-lockbox">
+          <div class="field"><label>Kod till nyckelboxen</label><input type="text" id="lockbox_code" placeholder="T.ex. 1234"></div>
+          <div class="field"><label>Var sitter boxen?</label><input type="text" id="lockbox_location" placeholder="T.ex. vid dörren, under brevlådan"></div>
+          <div class="key-warning">⚠️ Dela aldrig din kod med obehöriga. Vi rekommenderar att du byter koden efter varje städning.</div>
+        </div>
+      </div>
+
+      <div class="key-method" onclick="selectKey(this, 'digital')">
+        <div class="key-method-icon">📱</div>
+        <div class="key-method-text">
+          <h4>Digitalt lås</h4>
+          <p>Yale, GLUE, Danalock eller liknande</p>
+        </div>
+        <div class="key-details" id="key-digital">
+          <div class="field"><label>Lås-app</label><input type="text" id="digital_app" placeholder="T.ex. Yale Access, GLUE, Danalock"></div>
+          <div class="field"><label>Engångskod / PIN</label><input type="text" id="digital_code" placeholder="Engångskod för städdagen"></div>
+          <div class="key-warning">💡 Skapa en engångskod som gäller bara städningsdagen för maximal säkerhet.</div>
+        </div>
+      </div>
+
+      <div class="key-method" onclick="selectKey(this, 'neighbor')">
+        <div class="key-method-icon">👋</div>
+        <div class="key-method-text">
+          <h4>Granne har nyckel</h4>
+          <p>En granne lämnar ut nyckeln till städaren</p>
+        </div>
+        <div class="key-details" id="key-neighbor">
+          <div class="field"><label>Grannens namn</label><input type="text" id="neighbor_name" placeholder="Anna Karlsson"></div>
+          <div class="field"><label>Lägenhetsnummer / våning</label><input type="text" id="neighbor_floor" placeholder="Lgh 1102 / Våning 3"></div>
+          <div class="key-warning">💡 Informera gärna grannen i förväg om att städaren kommer.</div>
+        </div>
+      </div>
+
+      <div class="key-method" onclick="selectKey(this, 'doorman')">
+        <div class="key-method-icon">🏢</div>
+        <div class="key-method-text">
+          <h4>Portvakt / Reception</h4>
+          <p>Nyckel lämnas hos portvakt eller i receptionen</p>
+        </div>
+        <div class="key-details" id="key-doorman">
+          <div class="field"><label>Portvaktens namn (om känt)</label><input type="text" id="doorman_name" placeholder="Valfritt"></div>
+          <div class="field"><label>Instruktioner</label><textarea id="doorman_instructions" placeholder="T.ex. 'Nyckel lämnas i reception, säg att det gäller städning åt Anna, lgh 302'"></textarea></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="field" style="margin-top:16px">
+      <label>Extra instruktioner till städaren</label>
+      <textarea id="special_instructions" placeholder="T.ex. 'Hunden är inte hemma', 'Ring på och vänta 30 sek', 'Larmet är avslaget'" style="width:100%;padding:11px 14px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;resize:none;min-height:70px"></textarea>
+    </div>
+
+    <button class="btn-save" onclick="saveKeyMethod()">🔑 Spara nyckelinstruktioner</button>
+    <p style="font-size:11px;color:#aaa;text-align:center;margin-top:10px">Instruktionerna delas säkert bara med din bokade städare</p>
+  </div>
+</div>
+
+<!-- CHAT TAB -->
+<div id="tab-chat" style="display:none;flex:1;flex-direction:column;height:calc(100dvh - 112px);overflow:hidden">
+  <div class="chat-wrap">
+    <div class="messages-area" id="messagesArea">
+      <div style="text-align:center;color:#ccc;padding:40px;font-size:13px">
+        <div style="font-size:32px;margin-bottom:8px">💬</div>
+        Här kan du chatta säkert med din städare.<br>Dina riktiga kontaktuppgifter delas aldrig.
+      </div>
+    </div>
+
+    <div class="quick-replies" id="quickReplies">
+      <button class="qr-btn" onclick="sendQuick(this)">Jag är hemma 🏠</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Koden fungerar inte 🔑</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Hur länge tar det?</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Tack, bra jobbat! 👍</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Kan du börja med köket?</button>
+      <button class="qr-btn" onclick="sendQuick(this)">Varsågod och städa ✨</button>
+    </div>
+
+    <div class="chat-input">
+      <button class="attach-btn" onclick="attachPhoto()" title="Skicka foto">📷</button>
+      <textarea id="chatInput" placeholder="Skriv ett meddelande..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+      <button class="send-btn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
+
+<script>
+const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+// Hämta booking ID från URL
+const params = new URLSearchParams(location.search);
+const BOOKING_ID = params.get('id');
+const MY_EMAIL = localStorage.getItem('spick_customer_email') || params.get('email') || '';
+
+let booking = null;
+let selectedKeyMethod = null;
+let messagePolling = null;
+
+// ── STATUS-STEG ──────────────────────────
+const STATUS_STEPS = [
+  { key: 'pending',      icon: '📋', label: 'Bokning mottagen',       desc: 'Vi matchar dig med en städare' },
+  { key: 'accepted',     icon: '✅', label: 'Städare tilldelad',       desc: 'Din städare har accepterat' },
+  { key: 'on_way',       icon: '🚗', label: 'Städaren på väg',         desc: 'Beräknad ankomst ca 30 min' },
+  { key: 'arrived',      icon: '📍', label: 'Anlänt till adressen',    desc: 'Städaren är utanför' },
+  { key: 'key_access',   icon: '🔑', label: 'Tillgång till hemmet',    desc: 'Städningen börjar snart' },
+  { key: 'cleaning',     icon: '🧹', label: 'Städning pågår',          desc: 'Ditt hem städas just nu' },
+  { key: 'done',         icon: '🎉', label: 'Klar!',                   desc: 'Städningen är avslutad' },
+];
+
+function renderStatusSteps(currentStatus) {
+  const currentIdx = STATUS_STEPS.findIndex(s => s.key === currentStatus);
+  const el = document.getElementById('statusSteps');
+  el.innerHTML = STATUS_STEPS.map((step, i) => {
+    const isDone   = i < currentIdx;
+    const isActive = i === currentIdx;
+    const cls = isDone ? 'done' : isActive ? 'active' : 'pending';
+    return `
+      <div class="status-step">
+        <div class="step-icon ${cls}">${isDone ? '✓' : step.icon}</div>
+        <div class="step-text">
+          <h4 style="color:${isActive ? 'var(--brand)' : isDone ? '#aaa' : '#ccc'}">${step.label}</h4>
+          <p>${isActive ? step.desc : isDone ? 'Avklarat' : 'Väntar...'}</p>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── LADDA BOKNING ─────────────────────────
+async function loadBooking() {
+  if (!BOOKING_ID) {
+    document.getElementById('headerSub').textContent = 'Ingen bokning hittad';
+    return;
+  }
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}&select=*`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
+  ).then(r => r.json()).catch(() => []);
+
+  if (!res?.length) return;
+  booking = res[0];
+
+  document.getElementById('headerTitle').textContent = booking.service || 'Min bokning';
+  document.getElementById('headerSub').textContent = booking.date;
+  document.getElementById('statusPill').textContent =
+    { ny: '⏳ Ny', pending: '⏳ Ny', bekräftad: '✅ Bekräftad',
+      on_way: '🚗 På väg', cleaning: '🧹 Pågår', done: '✅ Klar' }[booking.status] || booking.status;
+
+  document.getElementById('det-service').textContent = booking.service || 'Hemstädning';
+  document.getElementById('det-date').textContent = booking.date || '–';
+  document.getElementById('det-time').textContent = booking.time || '–';
+  document.getElementById('det-address').textContent = `${booking.address}, ${booking.city}`;
+  document.getElementById('det-cleaner').textContent = booking.cleaner_name || '🔄 Tilldelas snart';
+  document.getElementById('det-hours').textContent = (booking.hours || 3) + ' timmar';
+  const price = Number(booking.price) || 0;
+  document.getElementById('det-price').textContent = price > 0 ? `${Math.round(price * 0.5)} kr (${price} kr - 50% RUT)` : '–';
+
+  renderStatusSteps(booking.status || 'pending');
+}
+
+// ── NYCKEL ────────────────────────────────
+function selectKey(el, method) {
+  document.querySelectorAll('.key-method').forEach(m => m.classList.remove('selected'));
+  document.querySelectorAll('.key-details').forEach(d => d.classList.remove('show'));
+  el.classList.add('selected');
+  selectedKeyMethod = method;
+  const details = document.getElementById('key-' + method);
+  if (details) details.classList.add('show');
+}
+
+async function saveKeyMethod() {
+  if (!selectedKeyMethod) { alert('Välj en nyckelmetod'); return; }
+  const data = {
+    booking_id: BOOKING_ID,
+    customer_email: MY_EMAIL || booking?.email,
+    method: selectedKeyMethod,
+    lockbox_code: document.getElementById('lockbox_code')?.value || null,
+    lockbox_location: document.getElementById('lockbox_location')?.value || null,
+    digital_lock_code: document.getElementById('digital_code')?.value || null,
+    digital_lock_app: document.getElementById('digital_app')?.value || null,
+    neighbor_name: document.getElementById('neighbor_name')?.value || null,
+    neighbor_floor: document.getElementById('neighbor_floor')?.value || null,
+    doorman_name: document.getElementById('doorman_name')?.value || null,
+    special_instructions: document.getElementById('special_instructions')?.value || null,
+  };
+
+  await fetch(`${SUPA_URL}/rest/v1/key_methods`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify(data)
+  });
+
+  // Skicka systemmeddelande till städaren
+  const methodNames = { home:'är hemma', lockbox:'nyckelbox (kod satt)', digital:'digitalt lås', neighbor:'granne har nyckel', doorman:'hos portvakt' };
+  await sendMessage(`🔑 Kunden har satt nyckelmetod: ${methodNames[selectedKeyMethod] || selectedKeyMethod}. ${data.special_instructions || ''}`, 'system');
+
+  alert('✅ Nyckelinstruktioner sparade! Städaren ser dem nu.');
+}
+
+// ── MEDDELANDEN ───────────────────────────
+function renderMessage(msg) {
+  const isMe = msg.from_email === MY_EMAIL || msg.from_role === 'customer';
+  const isSystem = msg.is_automated || msg.from_role === 'spick';
+  const role = isSystem ? 'system' : isMe ? 'me' : 'them';
+  const time = new Date(msg.created_at).toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
+
+  const badges = {
+    key_confirm: '🔑 Nyckel',
+    on_way: '🚗 På väg',
+    arrived: '📍 Anlänt',
+    done: '✅ Klar',
+    issue: '⚠️ Problem',
+    photo: '📷 Foto',
+  };
+
+  return `
+    <div class="msg-group ${role}">
+      ${!isMe && !isSystem ? `<div class="msg-sender">${msg.from_alias || 'Städaren'}</div>` : ''}
+      ${badges[msg.message_type] ? `<div class="msg-type-badge">${badges[msg.message_type]}</div>` : ''}
+      ${msg.photo_url ? `<div class="photo-msg"><img src="${msg.photo_url}" alt="Foto"></div>` : ''}
+      <div class="msg-bubble">${msg.message.replace(/\n/g,'<br>')}</div>
+      <div class="msg-meta">${time}</div>
+    </div>`;
+}
+
+async function loadMessages() {
+  if (!BOOKING_ID) return;
+  const res = await fetch(
+    `${SUPA_URL}/rest/v1/messages?booking_id=eq.${BOOKING_ID}&order=created_at.asc`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
+  ).then(r => r.json()).catch(() => []);
+
+  if (!res?.length) return;
+  const area = document.getElementById('messagesArea');
+  area.innerHTML = res.map(renderMessage).join('');
+  area.scrollTop = area.scrollHeight;
+
+  // Markera som lästa
+  fetch(`${SUPA_URL}/rest/v1/messages?booking_id=eq.${BOOKING_ID}&to_email=eq.${MY_EMAIL}&is_read=eq.false`, {
+    method: 'PATCH',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ is_read: true, read_at: new Date().toISOString() })
+  }).catch(() => {});
+}
+
+async function sendMessage(text, type = 'text') {
+  if (!text?.trim() || !BOOKING_ID) return;
+  await fetch(`${SUPA_URL}/rest/v1/messages`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      booking_id: BOOKING_ID,
+      from_email: MY_EMAIL || 'kund@spick.se',
+      to_email: booking?.cleaner_email || 'system@spick.se',
+      from_role: 'customer',
+      from_alias: 'Kunden',
+      message: text,
+      message_type: type,
+    })
+  });
+  loadMessages();
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  await sendMessage(text);
+}
+
+function sendQuick(btn) {
+  document.getElementById('chatInput').value = btn.textContent;
+  sendMsg();
+}
+
+function attachPhoto() {
+  document.getElementById('photoInput').click();
+}
+
+async function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  // I produktion: ladda upp till Supabase Storage
+  // Här: simulera
+  await sendMessage('📷 [Foto skickat]', 'photo');
+}
+
+// ── TABS ──────────────────────────────────
+function showTab(tab) {
+  ['status','key','chat'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? (t === 'chat' ? 'flex' : 'block') : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el, i) =>
+    el.classList.toggle('active', ['status','key','chat'][i] === tab)
+  );
+  if (tab === 'chat') {
+    loadMessages();
+    clearInterval(messagePolling);
+    messagePolling = setInterval(loadMessages, 5000);
+  } else {
+    clearInterval(messagePolling);
+  }
+}
+
+// ── INIT ──────────────────────────────────
+loadBooking();
+</script>
+</body>
+</html>
