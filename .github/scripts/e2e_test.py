@@ -76,14 +76,19 @@ print("\n3. Bokningsflöde")
 TEST_EMAIL = f"test+{uuid.uuid4().hex[:6]}@spick-test.se"
 booking_data = {
     "name": "Test Testsson",
+    "customer_name": "Test Testsson",
     "email": TEST_EMAIL,
+    "customer_email": TEST_EMAIL,
     "phone": "0701234567",
     "address": "Testgatan 1, Stockholm",
+    "city": "Stockholm",
     "service": "Hemstädning",
     "date": (date.today() + timedelta(days=3)).isoformat(),
+    "time": "10:00",
     "hours": 3,
     "rut": True,
-    "total_price": 525,
+    "total_price": 525.0,
+    "payment_status": "pending",
     "status": "ny"
 }
 
