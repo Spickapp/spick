@@ -1,15 +1,17 @@
 name: Weekly Business Report
-'on':
+on:
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '0 6 * * 1'  # Måndag 08:00 svensk tid
   workflow_dispatch:
+
 jobs:
   report:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generera och skicka veckorapport
+      - name: Generera veckorapport
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
           SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: python3 .github/scripts/weekly_report.py

@@ -1,15 +1,17 @@
 name: Daily Automation
-'on':
+on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 6 * * *'  # 08:00 svensk tid (UTC+2 sommar)
   workflow_dispatch:
+
 jobs:
   daily:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Send reminders + review requests
+      - name: Run daily automation
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
           SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: python3 .github/scripts/daily_automation.py

@@ -2,35 +2,155 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-  <link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-
-<meta name="description" content="Betygsätt din städning på Spick. Din feedback hjälper oss hålla hög kvalitet.">
-
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Betygsätt din städning – Spick</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}.card{background:white;border-radius:24px;padding:40px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.08);text-align:center}.logo{font-size:32px;margin-bottom:4px}.logo-text{font-size:18px;font-weight:800;color:#1C1C1A;margin-bottom:28px}h1{font-size:22px;font-weight:800;color:#1C1C1A;margin-bottom:8px}.sub{color:#888;font-size:14px;margin-bottom:32px;line-height:1.6}.stars{display:flex;justify-content:center;gap:8px;margin-bottom:20px}.star{font-size:44px;cursor:pointer;transition:transform .15s;filter:grayscale(1);opacity:.3}.star.active{filter:none;opacity:1;transform:scale(1.15)}.rating-label{font-size:15px;font-weight:700;color:#1C1C1A;min-height:24px;margin-bottom:16px}.quick-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:24px}.tag{background:#f0f4f8;border:1.5px solid #e0e0e0;color:#555;padding:6px 14px;border-radius:99px;font-size:12px;cursor:pointer}.tag.selected{background:#0F6E56;border-color:#0F6E56;color:white}.comment-wrap textarea{width:100%;padding:14px 16px;border:2px solid #e0e0e0;border-radius:12px;font-size:14px;resize:none;min-height:80px;margin-bottom:24px}.submit-btn{width:100%;padding:15px;background:#0F6E56;color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}.submit-btn:disabled{background:#e0e0e0;cursor:not-allowed}.success{display:none}</style>  <!-- Google Analytics GA4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-CP115M45TT');
-  </script>
-  <!-- Meta Pixel -->
-  <script>
-    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-    document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '874536122252551');
-    fbq('track', 'PageView');
-  </script>
-  <noscript><img height="1" width="1" style="display:none" alt=""
-    src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
-<meta property="og:image" content="https://spick.se/assets/og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://spick.se/betygsatt.html">
-  <script src="analytics.js" defer></script>
-</head><body><div class="card"><div id="formSection"><div class="logo">🧹</div><div class="logo-text">Spick</div><h1>Hur gick städningen?</h1><p class="sub">Din feedback hÜjpälper oss att halla hög kvalitet.</p><div class="stars" id="starsRow"><span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span></div><div class="rating-label" id="ratingLabel">Välj ett betyg</div><div class="quick-tags" id="quickTags"></div><div class="comment-wrap"><textarea id="comment" placeholder="Skriv kommentar (valfritt)..."></textarea></div><button class="submit-btn" id="submitBtn" disabled onclick="submitReview()">Skicka betyg</button></div><div class="success" id="successSection"><div style="font-size:64px" id="successIcon">⭐</div><h2 id="successTitle">Tack för ditt betyg!</h2><p id="successText">Ditt betyg hÜjpälper oss att leverera toppkvalitet.</p><a href="index.html" style="display:inline-block;background:#f0f4f8;color:#1C1C1A;padding:12px 28px;border-radius:12px;font-weight:600;text-decoration:none">← Tillbaka</a></div></div><script>const SUPA='https://urjeijcncsyuletprydy.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';let rat=0,tags=[];const params=new URLSearchParams(location.search),bid=params.get('id'),pre=parseInt(params.get('rating')||'0');const TBR={1:['Dök inte upp','Dålig kvalitet'],2:['Under förväntan','Missat detaljer'],3:['Okej','Kunde vara bättre'],4:['Bra städning','Punktlig','Noggrant'],5:['Fantastisk!','Supernoggrant','Rekommenderar']};const LB=['','Väldigt missnöjd','Missnöjd','Okej','Nöjd','Mycket nöjd!'];document.querySelectorAll('.star').forEach((s,i)=>{s.addEventListener('click',()=>setR(i+1));s.addEventListener('mouseenter',()=>hl(i+1));s.addEventListener('mouseleave',()=>hl(rat));});function hl(n){document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('active',i<n));}function setR(n){rat=n;hl(n);document.getElementById('ratingLabel').textContent=LB[n];document.getElementById('submitBtn').disabled=false;tags=[];document.getElementById('quickTags').innerHTML=(TBR[n]||[]).map(t=>`<span class="tag" onclick="toggleTag(this,'${t}')">${t}</span>`).join('');}function toggleTag(el,t){el.classList.toggle('selected');el.classList.contains('selected')?tags.push(t):tags=tags.filter(x=>x!v==t);}async function submitReview(){if(!rat)return;const btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='㏳ Skickar...';const c=[...tags,document.getElementById('comment').value.trim()].filter(Boolean).join(', ');try{if(bid)await fetch(SUPA+'/rest/v1/reviews',{method:'POST',headers:{Authorization:'Bearer '+KEY,apikey:KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({booking_id:bid,cleaner_rating:rat,cleaner_comment:c})});document.getElementById('formSection').style.display='none';document.getElementById('successSection').style.display='block';}catch(e){btn.disabled=false;btn.textContent='Skicka betyg';}]}if(pre>=1&&pre<=5)setTimeout(()=>setR(pre),300);</script></body></html>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--gold:#F59E0B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px}
+.logo{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--g);text-decoration:none;margin-bottom:32px;display:block}
+.card{background:#fff;border-radius:24px;padding:40px 32px;max-width:480px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.07)}
+h1{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--b);margin-bottom:8px;text-align:center}
+.sub{color:var(--m);text-align:center;margin-bottom:32px;font-size:.95rem;line-height:1.6}
+.stars-wrap{display:flex;justify-content:center;gap:8px;margin-bottom:24px}
+.star{font-size:2.8rem;cursor:pointer;transition:transform .1s;line-height:1;user-select:none}
+.star:hover,.star.active{transform:scale(1.1)}
+.star-label{text-align:center;color:var(--m);font-size:.9rem;margin-bottom:20px;min-height:1.3em}
+.f{margin-bottom:16px}
+label{display:block;font-size:.85rem;font-weight:600;color:var(--b);margin-bottom:6px}
+textarea,input{width:100%;padding:12px 16px;border:1.5px solid #E8E8E4;border-radius:12px;font-size:.95rem;font-family:'DM Sans',sans-serif;resize:vertical;transition:border-color .2s;outline:none}
+textarea:focus,input:focus{border-color:var(--g)}
+.aspects{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.aspect{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;border:1.5px solid #E8E8E4;border-radius:12px;cursor:pointer;transition:all .2s;text-align:center}
+.aspect.on{border-color:var(--g);background:var(--gr)}
+.aspect-icon{font-size:1.4rem}
+.aspect-label{font-size:.75rem;font-weight:600;color:var(--m)}
+.aspect.on .aspect-label{color:var(--g)}
+.btn{width:100%;padding:14px;background:var(--g);color:#fff;border:none;border-radius:100px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s}
+.btn:hover:not(:disabled){background:var(--gm)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success{text-align:center;padding:20px 0}
+.success-icon{font-size:4rem;margin-bottom:16px}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<a href="index.html" class="logo">Spick</a>
+<div class="card" id="form-card">
+  <h1>Hur gick städningen?</h1>
+  <p class="sub">Din recension hjälper oss att hålla hög kvalitet och hjälper din städare att växa</p>
+
+  <div class="stars-wrap" id="stars">
+    <span class="star" data-v="1">⭐</span>
+    <span class="star" data-v="2">⭐</span>
+    <span class="star" data-v="3">⭐</span>
+    <span class="star" data-v="4">⭐</span>
+    <span class="star" data-v="5">⭐</span>
+  </div>
+  <div class="star-label" id="star-label">Välj ett betyg</div>
+
+  <div class="aspects">
+    <div class="aspect" data-a="Punktlighet" onclick="toggleAspect(this)">
+      <span class="aspect-icon">⏰</span>
+      <span class="aspect-label">Punktlighet</span>
+    </div>
+    <div class="aspect" data-a="Noggrannhet" onclick="toggleAspect(this)">
+      <span class="aspect-icon">✨</span>
+      <span class="aspect-label">Noggrannhet</span>
+    </div>
+    <div class="aspect" data-a="Bemötande" onclick="toggleAspect(this)">
+      <span class="aspect-icon">😊</span>
+      <span class="aspect-label">Bemötande</span>
+    </div>
+    <div class="aspect" data-a="Resultat" onclick="toggleAspect(this)">
+      <span class="aspect-icon">🏠</span>
+      <span class="aspect-label">Slutresultat</span>
+    </div>
+  </div>
+
+  <div class="f">
+    <label>Kommentar (valfritt)</label>
+    <textarea id="comment" rows="3" placeholder="Berätta om din upplevelse..."></textarea>
+  </div>
+
+  <button class="btn" id="sbtn" onclick="submit()" disabled>Skicka betyg →</button>
+</div>
+
+<script>
+const SB = supabase.createClient(
+  'https://urjeijcncsyuletprydy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+);
+
+const params = new URLSearchParams(window.location.search);
+const bid = params.get('bid');
+let rating = 0;
+const aspects = [];
+const labels = ['','Inte bra alls','Kunde vara bättre','Okej','Bra!','Utmärkt! ⭐'];
+
+document.querySelectorAll('.star').forEach(s => {
+  s.addEventListener('click', () => {
+    rating = +s.dataset.v;
+    document.querySelectorAll('.star').forEach((st,i) => st.classList.toggle('active', i < rating));
+    document.getElementById('star-label').textContent = labels[rating] || '';
+    document.getElementById('sbtn').disabled = false;
+  });
+});
+
+function toggleAspect(el) {
+  el.classList.toggle('on');
+  const a = el.dataset.a;
+  const i = aspects.indexOf(a);
+  if (i > -1) aspects.splice(i, 1);
+  else aspects.push(a);
+}
+
+async function submit() {
+  if (!rating) return;
+  const btn = document.getElementById('sbtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div>';
+
+  // Hämta bokning för cleaner_id
+  let cleanerId = null;
+  if (bid) {
+    const { data } = await SB.from('bookings').select('cleaner_id').eq('id', bid);
+    cleanerId = data?.[0]?.cleaner_id || null;
+  }
+
+  // Spara recension
+  const { error } = await SB.from('reviews').insert([{
+    booking_id: bid || null,
+    cleaner_id: cleanerId,
+    rating,
+    aspects: aspects.join(', '),
+    comment: document.getElementById('comment').value.trim() || null,
+    created_at: new Date().toISOString()
+  }]);
+
+  // Uppdatera städarens snittbetyg om vi har cleaner_id
+  if (cleanerId && !error) {
+    const { data: reviews } = await SB.from('reviews').select('rating').eq('cleaner_id', cleanerId);
+    if (reviews?.length) {
+      const avg = reviews.reduce((s,r) => s + r.rating, 0) / reviews.length;
+      await SB.from('cleaners').update({ avg_rating: Math.round(avg * 10) / 10 }).eq('id', cleanerId);
+    }
+  }
+
+  // Visa success
+  document.getElementById('form-card').innerHTML = `
+<div class="success">
+  <div class="success-icon">🌟</div>
+  <h1>Tack för ditt betyg!</h1>
+  <p style="color:var(--m);margin:12px 0 28px;line-height:1.6">Ditt betyg hjälper oss att hålla hög kvalitet och hjälper din städare att växa.</p>
+  <a href="boka.html" style="display:block;background:var(--g);color:#fff;padding:14px;border-radius:100px;text-decoration:none;font-weight:600">Boka nästa städning →</a>
+  <a href="index.html" style="display:block;color:var(--g);padding:12px;text-decoration:none;font-weight:600;margin-top:8px">Tillbaka till startsidan</a>
+</div>`;
+}
+</script>
+</body>
+</html>
