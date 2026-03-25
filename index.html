@@ -569,20 +569,49 @@ window.spickOpen=function(){
   fab.style.display='none';chat.style.display='flex';
   if(!opened){opened=true;setTimeout(()=>addMsg('Hej! 👋 Jag är Spicks AI-assistent. Jag hjälper dig med frågor om bokning, RUT-avdrag, priser och mer. Vad kan jag hjälpa dig med?',false),200);}
   document.getElementById('spick-inp').focus();
+  document.getElementById('spick-inp').onkeydown=e=>{{if(e.key==='Enter')window.spickSend();}};
 };
 window.spickClose=function(){
   document.getElementById('spick-fab').style.display='flex';
   document.getElementById('spick-chat').style.display='none';
 };
-window.spickSend=function(){
+const CHAT_HISTORY=[];
+window.spickSend=async function(){
   const inp=document.getElementById('spick-inp');
   const msg=inp.value.trim();if(!msg)return;
   addMsg(msg,true);inp.value='';
-  setTimeout(()=>addMsg(getReply(msg),false),500);
+  CHAT_HISTORY.push({role:'user',content:msg});
+  
+  // Visa typing
+  const tm=document.createElement('div');
+  tm.className='sc-msg-bot';tm.id='sc-typing';
+  tm.innerHTML='<span style="opacity:.5">skriver...</span>';
+  document.getElementById('spick-chat-msgs').appendChild(tm);
+  
+  // Försök AI, fallback på lokala svar
+  try{
+    const res=await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/claude',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',
+        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+      body:JSON.stringify({messages:CHAT_HISTORY})
+    });
+    const d=await res.json();
+    tm.remove();
+    const reply=d.reply||getReply(msg);
+    addMsg(reply,false);
+    CHAT_HISTORY.push({role:'assistant',content:reply});
+  }catch(e){
+    tm.remove();
+    const fb=getReply(msg);
+    addMsg(fb,false);
+    CHAT_HISTORY.push({role:'assistant',content:fb});
+  }
 };
 })();
 </script>
-<script src="/analytics.js"></script>
+<script src="analytics.js"></script>
   <style>
 #spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:white;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #spick-cookie.show{transform:translateY(0)}
