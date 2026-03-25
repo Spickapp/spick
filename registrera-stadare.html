@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Registrera dig – Spick</title>
+<meta name="description" content="Bli städare hos Spick. Verifiera med BankID och välj ditt arbetspseudonym.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:#1a1a2e;--accent:#00d084;--bankid:#193E8F;--bg:#f0f4f8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--brand);min-height:100vh}
+
+header{background:var(--brand);padding:16px 24px;display:flex;align-items:center;gap:12px}
+header a{color:rgba(255,255,255,.6);text-decoration:none;font-size:14px}
+header h1{color:white;font-size:18px;font-weight:800;flex:1;text-align:center}
+
+.container{max-width:560px;margin:0 auto;padding:32px 24px}
+
+/* STEG-INDIKATOR */
+.steps-nav{display:flex;align-items:center;justify-content:center;margin-bottom:32px;gap:0}
+.step-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;transition:all .3s;flex-shrink:0}
+.step-dot.done{background:var(--accent);color:white}
+.step-dot.active{background:var(--brand);color:white;box-shadow:0 0 0 4px rgba(0,208,132,.2)}
+.step-dot.pending{background:#e0e0e0;color:#aaa}
+.step-line{height:2px;flex:1;max-width:60px;background:#e0e0e0}
+.step-line.done{background:var(--accent)}
+.steps-labels{display:flex;justify-content:center;gap:0;margin-top:8px;margin-bottom:24px}
+.step-label{font-size:10px;color:#aaa;text-align:center;width:80px;line-height:1.3}
+.step-label.active{color:var(--brand);font-weight:600}
+.step-label.done{color:var(--accent)}
+
+/* KORT */
+.card{background:white;border-radius:20px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.07);margin-bottom:16px}
+.card h2{font-size:20px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.card p.desc{font-size:14px;color:#666;margin-bottom:24px;line-height:1.6}
+
+/* BANKID */
+.bankid-btn{width:100%;background:var(--bankid);color:white;border:none;border-radius:14px;padding:18px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:12px;transition:opacity .2s;margin-bottom:12px}
+.bankid-btn:hover{opacity:.9}
+.bankid-btn svg{width:28px;height:28px;flex-shrink:0}
+.bankid-btn.loading{opacity:.7;cursor:not-allowed}
+.bankid-qr{background:#f8fafc;border-radius:14px;padding:24px;text-align:center;margin:16px 0;display:none}
+.bankid-qr canvas{border-radius:8px;margin-bottom:12px}
+.bankid-qr p{font-size:13px;color:#666;line-height:1.5}
+.bankid-status{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;font-size:13px;margin-top:12px;display:none}
+.bankid-status.waiting{background:#e3f2fd;color:#1565c0}
+.bankid-status.success{background:#e8f5e9;color:#2e7d32}
+.bankid-status.error{background:#ffebee;color:#c62828}
+.spinner{width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:#ccc;font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#e0e0e0}
+
+.verified-box{background:#e8f5e9;border:2px solid var(--accent);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;display:none}
+.verified-icon{font-size:28px;flex-shrink:0}
+.verified-text h4{font-size:14px;font-weight:700;color:#2e7d32;margin-bottom:2px}
+.verified-text p{font-size:12px;color:#388e3c}
+
+/* ALIAS */
+.alias-preview{background:linear-gradient(135deg,var(--brand),#2d2d5e);border-radius:14px;padding:24px;text-align:center;margin-bottom:20px;color:white}
+.alias-avatar{width:64px;height:64px;border-radius:50%;background:var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.alias-name{font-size:22px;font-weight:900;margin-bottom:4px}
+.alias-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);padding:4px 12px;border-radius:99px;font-size:12px;opacity:.8}
+.alias-tip{background:#f0fff8;border-radius:10px;padding:12px 16px;font-size:13px;color:#2e7d32;margin-bottom:16px;display:flex;gap:8px}
+
+/* LÖSENORD */
+.pass-strength{height:4px;border-radius:99px;background:#f0f4f8;margin-top:6px;overflow:hidden}
+.pass-fill{height:100%;border-radius:99px;transition:width .3s,background .3s}
+.pass-label{font-size:11px;color:#888;margin-top:4px}
+.pass-toggle{position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:#aaa;font-size:16px;user-select:none}
+
+/* GDPR */
+.gdpr-box{background:#f0f4ff;border-radius:12px;padding:16px 20px;margin:16px 0;font-size:13px;color:#3730a3;display:flex;gap:10px}
+.gdpr-box .gdpr-icon{font-size:20px;flex-shrink:0}
+.gdpr-list{list-style:none;padding:0;margin-top:6px}
+.gdpr-list li{padding:3px 0;display:flex;align-items:center;gap:6px;font-size:12px;color:#555}
+.gdpr-list li::before{content:'🔒';font-size:11px}
+
+/* FÄLT */
+.field{margin-bottom:16px;position:relative}
+.field label{display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:7px}
+.field input,.field select{width:100%;padding:13px 16px;border:2px solid #e0e0e0;border-radius:12px;font-size:15px;font-family:inherit;transition:border .2s;background:white}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.field.has-toggle input{padding-right:44px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-hint{font-size:11px;color:#aaa;margin-top:4px}
+
+/* KNAPPAR */
+.btn-primary{width:100%;padding:15px;background:var(--accent);color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;margin-top:8px}
+.btn-primary:hover{opacity:.9}
+.btn-primary:disabled{background:#ccc;cursor:not-allowed}
+.btn-secondary{width:100%;padding:12px;background:#f0f4f8;color:#666;border:none;border-radius:12px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:8px}
+
+/* CHECKBOX */
+.check-row{display:flex;align-items:flex-start;gap:10px;padding:12px;background:#f8fafc;border-radius:10px;margin-bottom:8px;cursor:pointer}
+.check-row input{margin-top:2px;accent-color:var(--accent);flex-shrink:0}
+.check-row span{font-size:13px;color:#555;line-height:1.5}
+.check-row a{color:var(--accent);text-decoration:none}
+
+/* SUCCESS */
+.success-screen{display:none;text-align:center;padding:20px 0}
+.success-icon-big{font-size:72px;margin-bottom:16px}
+
+@media(max-width:480px){.field-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <a href="/bli-stadare">← Tillbaka</a>
+  <h1>Registrera dig</h1>
+</header>
+
+<div class="container">
+
+  <!-- STEG-NAVIGATION -->
+  <div class="steps-nav">
+    <div class="step-dot active" id="dot1">1</div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-dot pending" id="dot2">2</div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-dot pending" id="dot3">3</div>
+    <div class="step-line" id="line3"></div>
+    <div class="step-dot pending" id="dot4">4</div>
+  </div>
+  <div class="steps-labels">
+    <div class="step-label active" id="lbl1">BankID</div>
+    <div class="step-label" id="lbl2">Alias</div>
+    <div class="step-label" id="lbl3">Lösenord</div>
+    <div class="step-label" id="lbl4">Klart</div>
+  </div>
+
+  <!-- STEG 1: BANKID -->
+  <div id="step1">
+    <div class="card">
+      <h2>🏦 Verifiera med BankID</h2>
+      <p class="desc">Vi behöver verifiera din identitet för att säkerställa trygghet för våra kunder. <strong>Ditt riktiga namn visas aldrig</strong> för kunder eller andra städare.</p>
+
+      <div class="gdpr-box">
+        <div class="gdpr-icon">🔒</div>
+        <div>
+          <strong style="font-size:13px;color:#3730a3">Så skyddar vi din identitet</strong>
+          <ul class="gdpr-list">
+            <li>Ditt personnummer krypteras och lagras aldrig i klartext</li>
+            <li>Kunder ser bara ditt alias och betyg</li>
+            <li>Vi delar aldrig din identitet med tredje part</li>
+            <li>Du kan begära radering av all data när som helst</li>
+          </ul>
+        </div>
+      </div>
+
+      <button class="bankid-btn" onclick="startBankID('mobile')" id="bankidMobileBtn">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="20" fill="white" fill-opacity="0.15"/>
+          <text x="50" y="68" text-anchor="middle" font-size="52" font-weight="900" fill="white">🔐</text>
+        </svg>
+        BankID på den här enheten
+      </button>
+
+      <button class="bankid-btn" onclick="startBankID('qr')" id="bankidQRBtn" style="background:#2c5282">
+        📱 BankID på annan enhet (QR-kod)
+      </button>
+
+      <div class="bankid-qr" id="qrBox">
+        <div style="width:200px;height:200px;background:#f0f4f8;border-radius:12px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:48px">📱</div>
+        <p><strong>Öppna BankID-appen</strong> på din mobil och scanna QR-koden</p>
+        <p style="margin-top:6px;color:#aaa;font-size:12px">QR-koden uppdateras automatiskt</p>
+      </div>
+
+      <div class="bankid-status" id="bankidStatus">
+        <div class="spinner"></div>
+        <span id="bankidStatusText">Väntar på BankID...</span>
+      </div>
+
+      <div class="verified-box" id="verifiedBox">
+        <div class="verified-icon">✅</div>
+        <div class="verified-text">
+          <h4>Identitet verifierad!</h4>
+          <p id="verifiedName">Välkommen!</p>
+        </div>
+      </div>
+
+      <div class="divider">eller</div>
+
+      <p style="font-size:12px;color:#aaa;text-align:center;line-height:1.6">
+        Har du inte BankID? <a href="https://www.bankid.com/privatpersoner/skaffa-bankid" target="_blank" style="color:var(--accent)">Skaffa BankID gratis →</a><br>
+        Problem? Kontakta <a href="/cdn-cgi/l/email-protection#a4ccc1c8c8cbe4d7d4cdc7cf8ad7c1" style="color:var(--accent)"><span class="__cf_email__" data-cfemail="a6cec3cacac9e6d5d6cfc5cd88d5c3">[email&#160;protected]</span></a>
+      </p>
+    </div>
+    <button class="btn-primary" id="step1Next" onclick="goToStep(2)" disabled>Nästa steg →</button>
+  </div>
+
+  <!-- STEG 2: ALIAS & PROFIL -->
+  <div id="step2" style="display:none">
+    <div class="card">
+      <h2>🎭 Välj ditt alias</h2>
+      <p class="desc">Kunder ser bara ditt alias – aldrig ditt riktiga namn. Välj ett namn du trivs med!</p>
+
+      <div class="alias-preview" id="aliasPreview">
+        <div class="alias-avatar" id="aliasAvatar">🧹</div>
+        <div class="alias-name" id="aliasDisplay">Ditt alias</div>
+        <div class="alias-badge">⭐ Ny städare · <span id="aliasCityDisplay">–</span></div>
+      </div>
+
+      <div class="alias-tip">
+        <span>💡</span>
+        <span>Tips: Välj ett enkelt förnamn eller ett smeknamn. Undvik ditt riktiga fullständiga namn. <strong>Exempel: "Anna S.", "Städaren Maria", "Kalle från Söder"</strong></span>
+      </div>
+
+      <div class="field">
+        <label>Ditt alias / arbetsnamn *</label>
+        <input type="text" id="aliasInput" placeholder="T.ex. 'Anna S.' eller 'Städaren Per'" maxlength="30"
+          oninput="updateAlias(this.value)">
+        <div class="field-hint">1–30 tecken · Visas för kunder</div>
+      </div>
+
+      <div class="field">
+        <label>Välj en emoji som representerar dig</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="emojiPicker">
+          🧹 🌟 💪 😊 🏡 ✨ 🌸 🦋 🌈 🎯 🔥 💎
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Stad du arbetar i *</label>
+          <select id="aliasCity" onchange="document.getElementById('aliasCityDisplay').textContent=this.value">
+            <option value="">Välj stad...</option>
+            <option>Stockholm</option><option>Göteborg</option><option>Malmö</option>
+            <option>Uppsala</option><option>Linköping</option><option>Örebro</option>
+            <option>Västerås</option><option>Helsingborg</option><option>Norrköping</option>
+            <option>Jönköping</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Hemadress (för geo-matchning)</label>
+          <input type="text" id="homeAddress" placeholder="Gatan 1" autocomplete="street-address">
+          <div class="field-hint">Visas ALDRIG för kunder</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Ditt arbetsområde (radie från hemmet)</label>
+        <select id="serviceRadius">
+          <option value="5">5 km – Bara nära hemmet</option>
+          <option value="10" selected>10 km – Normalt område</option>
+          <option value="15">15 km – Lite längre</option>
+          <option value="20">20 km – Hela stan</option>
+          <option value="30">30 km – Hela regionen</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Kort beskrivning av dig (visas på profilen)</label>
+        <input type="text" id="bio" placeholder="T.ex. 'Erfaren städare med 5 års erfarenhet. Noggrann och pålitlig!'" maxlength="120">
+        <div class="field-hint">Max 120 tecken · Frivilligt</div>
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="goToStep(1)">← Tillbaka</button>
+    <button class="btn-primary" onclick="validateStep2()">Nästa steg →</button>
+  </div>
+
+  <!-- STEG 3: LÖSENORD & KONTAKT -->
+  <div id="step3" style="display:none">
+    <div class="card">
+      <h2>🔑 Välj lösenord</h2>
+      <p class="desc">Välj ett starkt lösenord för ditt Spick-konto. Du loggar in med din e-post och lösenord.</p>
+
+      <div class="field">
+        <label>E-postadress *</label>
+        <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
+        <div class="field-hint">Din arbets-e-post – visas inte för kunder</div>
+      </div>
+
+      <div class="field">
+        <label>Telefon *</label>
+        <input type="tel" id="phoneInput" placeholder="070 123 45 67" autocomplete="tel">
+        <div class="field-hint">Används för uppdragsnotiser · Visas inte för kunder</div>
+      </div>
+
+      <div class="field has-toggle">
+        <label>Lösenord *</label>
+        <input type="password" id="passInput" placeholder="Minst 8 tecken" oninput="checkPass(this.value)" autocomplete="new-password">
+        <span class="pass-toggle" onclick="togglePass('passInput', this)">👁️</span>
+        <div class="pass-strength"><div class="pass-fill" id="passFill"></div></div>
+        <div class="pass-label" id="passLabel">Välj ett starkt lösenord</div>
+      </div>
+
+      <div class="field has-toggle">
+        <label>Bekräfta lösenord *</label>
+        <input type="password" id="pass2Input" placeholder="Upprepa lösenordet" autocomplete="new-password">
+        <span class="pass-toggle" onclick="togglePass('pass2Input', this)">👁️</span>
+      </div>
+
+      <div style="margin-top:20px">
+        <label class="check-row">
+          <input type="checkbox" id="chkTerms">
+          <span>Jag accepterar <a href="/villkor-stadare" target="_blank">villkoren för uppdragstagare</a> och bekräftar att jag är egenföretagare med F-skattsedel.</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="chkGdpr">
+          <span>Jag förstår att Spick behandlar mina personuppgifter enligt <a href="/integritetspolicy" target="_blank">integritetspolicyn</a> och att mitt riktiga namn aldrig visas för kunder.</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="chkMarketing">
+          <span>Jag vill få tips om nya uppdrag och nyheter från Spick (valfritt).</span>
+        </label>
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="goToStep(2)">← Tillbaka</button>
+    <button class="btn-primary" id="submitBtn" onclick="submitRegistration()">Slutför registrering ✓</button>
+  </div>
+
+  <!-- STEG 4: KLART -->
+  <div id="step4" style="display:none">
+    <div class="card">
+      <div class="success-screen" style="display:block">
+        <div class="success-icon-big">🎉</div>
+        <h2 style="font-size:26px;font-weight:900;margin-bottom:8px">Välkommen till Spick!</h2>
+        <p style="color:#666;font-size:15px;line-height:1.7;margin-bottom:8px">
+          Din ansökan är skickad! Vi granskar den inom <strong>24 timmar</strong>.
+        </p>
+        <div style="background:#f0fff8;border-radius:14px;padding:20px;margin:20px 0;text-align:left">
+          <div style="font-size:13px;color:#2e7d32;font-weight:700;margin-bottom:10px">📋 Dina kontouppgifter</div>
+          <div style="font-size:14px;color:#444;line-height:2">
+            <div>🎭 Alias: <strong id="confirmedAlias">–</strong></div>
+            <div>📧 E-post: <strong id="confirmedEmail">–</strong></div>
+            <div>📍 Stad: <strong id="confirmedCity">–</strong></div>
+            <div>✅ Identitet: <strong style="color:#2e7d32">Verifierad med BankID</strong></div>
+          </div>
+        </div>
+        <a href="/stadare-dashboard" style="display:block;background:var(--accent);color:white;padding:14px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;margin-top:16px">
+          🚀 Gå till min dashboard
+        </a>
+        <a href="/" style="display:block;background:#f0f4f8;color:#666;padding:12px;border-radius:12px;font-size:14px;text-decoration:none;margin-top:8px">
+          ← Tillbaka till startsidan
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+let verifiedPersonalNumber = null;
+let selectedEmoji = '🧹';
+let currentStep = 1;
+
+// ── STEG-NAVIGATION ──────────────────────────
+function goToStep(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById(`step${i}`).style.display = i === n ? 'block' : 'none';
+    const dot = document.getElementById(`dot${i}`);
+    const lbl = document.getElementById(`lbl${i}`);
+    if (i < n) { dot.className='step-dot done'; dot.textContent='✓'; lbl.className='step-label done'; }
+    else if (i === n) { dot.className='step-dot active'; dot.textContent=i; lbl.className='step-label active'; }
+    else { dot.className='step-dot pending'; dot.textContent=i; lbl.className='step-label'; }
+    if (i < n && document.getElementById(`line${i}`)) document.getElementById(`line${i}`).className='step-line done';
+  });
+  currentStep = n;
+  window.scrollTo(0,0);
+}
+
+// ── BANKID SIMULATION ────────────────────────
+// I produktion: integrera med Freja eID eller GrandID/BankID API
+async function startBankID(method) {
+  const statusEl = document.getElementById('bankidStatus');
+  const statusText = document.getElementById('bankidStatusText');
+  statusEl.className = 'bankid-status waiting';
+  statusEl.style.display = 'flex';
+
+  if (method === 'qr') {
+    document.getElementById('qrBox').style.display = 'block';
+  }
+
+  // DEMO: Simulerar BankID-flöde
+  // I produktion: POST till /functions/v1/bankid -> polling
+  statusText.textContent = 'Öppna BankID-appen och godkänn...';
+
+  // Simulera 3 sekunders väntan
+  await new Promise(r => setTimeout(r, 3000));
+
+  // SUCCESS - i produktion returnerar BankID API:
+  // { personalNumber: "199001011234", name: "Anna Andersson", givenName: "Anna" }
+  verifiedPersonalNumber = 'DEMO-VERIFIED';
+  const fakeFirstName = 'Anna'; // Hämtas från BankID
+
+  statusEl.className = 'bankid-status success';
+  statusEl.style.display = 'flex';
+  statusText.textContent = '✅ BankID verifierat!';
+  document.getElementById('qrBox').style.display = 'none';
+
+  const vBox = document.getElementById('verifiedBox');
+  vBox.style.display = 'flex';
+  document.getElementById('verifiedName').textContent =
+    `Välkommen, ${fakeFirstName}! Din identitet är verifierad och skyddad.`;
+
+  document.getElementById('step1Next').disabled = false;
+
+  // Förslå alias baserat på förnamn
+  setTimeout(() => {
+    document.getElementById('aliasInput').value = fakeFirstName + ' S.';
+    updateAlias(fakeFirstName + ' S.');
+  }, 500);
+}
+
+// ── ALIAS ────────────────────────────────────
+function updateAlias(val) {
+  document.getElementById('aliasDisplay').textContent = val || 'Ditt alias';
+  document.getElementById('aliasAvatar').textContent = selectedEmoji;
+}
+
+// Emoji picker
+document.getElementById('emojiPicker').querySelectorAll = null; // Fix
+document.addEventListener('DOMContentLoaded', () => {
+  const picker = document.getElementById('emojiPicker');
+  const emojis = picker.textContent.trim().split(' ');
+  picker.innerHTML = emojis.map(e => `
+    <span onclick="selectEmoji('${e}', this)"
+      style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:2px solid transparent;transition:all .2s"
+      class="emoji-opt">${e}</span>
+  `).join('');
+});
+
+function selectEmoji(emoji, el) {
+  document.querySelectorAll('.emoji-opt').forEach(e => e.style.borderColor='transparent');
+  el.style.borderColor = '#00d084';
+  el.style.background = '#f0fff8';
+  selectedEmoji = emoji;
+  document.getElementById('aliasAvatar').textContent = emoji;
+}
+
+function validateStep2() {
+  const alias = document.getElementById('aliasInput').value.trim();
+  const city = document.getElementById('aliasCity').value;
+  if (!alias) { alert('Ange ditt alias'); return; }
+  if (alias.length < 2) { alert('Alias måste vara minst 2 tecken'); return; }
+  if (!city) { alert('Välj din stad'); return; }
+  goToStep(3);
+}
+
+// ── LÖSENORD ─────────────────────────────────
+function checkPass(val) {
+  const fill = document.getElementById('passFill');
+  const label = document.getElementById('passLabel');
+  let strength = 0;
+  if (val.length >= 8) strength++;
+  if (/[A-Z]/.test(val)) strength++;
+  if (/[0-9]/.test(val)) strength++;
+  if (/[^A-Za-z0-9]/.test(val)) strength++;
+  const colors = ['#ef5350','#ff9800','#fdd835','#00d084'];
+  const labels = ['Svagt','Okej','Bra','Starkt 💪'];
+  fill.style.width = (strength * 25) + '%';
+  fill.style.background = colors[strength-1] || '#e0e0e0';
+  label.textContent = strength > 0 ? labels[strength-1] : 'Välj ett starkt lösenord';
+}
+
+function togglePass(id, icon) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  icon.textContent = el.type === 'password' ? '👁️' : '🙈';
+}
+
+// ── REGISTRERING ─────────────────────────────
+async function submitRegistration() {
+  const email = document.getElementById('emailInput').value.trim();
+  const phone = document.getElementById('phoneInput').value.trim();
+  const pass1 = document.getElementById('passInput').value;
+  const pass2 = document.getElementById('pass2Input').value;
+  const alias = document.getElementById('aliasInput').value.trim();
+  const city = document.getElementById('aliasCity').value;
+  const radius = document.getElementById('serviceRadius').value;
+  const bio = document.getElementById('bio').value.trim();
+  const homeAddr = document.getElementById('homeAddress').value.trim();
+
+  if (!email || !phone || !pass1) { alert('Fyll i alla obligatoriska fält'); return; }
+  if (pass1 !== pass2) { alert('Lösenorden matchar inte'); return; }
+  if (pass1.length < 8) { alert('Lösenordet måste vara minst 8 tecken'); return; }
+  if (!document.getElementById('chkTerms').checked) { alert('Du måste godkänna villkoren'); return; }
+  if (!document.getElementById('chkGdpr').checked) { alert('Du måste godkänna GDPR-informationen'); return; }
+  if (!verifiedPersonalNumber) { alert('Verifiera din identitet med BankID först'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Registrerar...';
+
+  // Hash lösenordet på klienten innan det skickas (enkel demo - i prod: server-side bcrypt)
+  const passHash = await hashPassword(pass1);
+
+  const cleanerData = {
+    // Alias-data (visas för kunder)
+    full_name: alias,
+    alias: alias,
+    emoji: selectedEmoji,
+    city,
+    bio,
+    home_address: homeAddr,
+    service_radius_km: parseInt(radius),
+
+    // Kontaktdata (dold för kunder)
+    email,
+    phone,
+    password_hash: passHash,
+
+    // Verifieringsdata (krypterad)
+    identity_verified: true,
+    verified_at: new Date().toISOString(),
+    // I produktion: bankid_reference sparas krypterad, aldrig personnummer i klartext
+    bankid_verified: true,
+
+    // Status
+    status: 'pending',
+    bonus_level: 'Brons',
+    avg_rating: 0,
+    review_count: 0,
+
+    // GDPR
+    marketing_consent: document.getElementById('chkMarketing').checked,
+    gdpr_consent: true,
+    gdpr_consent_at: new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/cleaner_applications`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY,
+        Authorization: `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ ...cleanerData, full_name: alias })
+    });
+
+    if (res.ok || res.status === 201) {
+      // Visa bekräftelse
+      document.getElementById('confirmedAlias').textContent = alias + ' ' + selectedEmoji;
+      document.getElementById('confirmedEmail').textContent = email;
+      document.getElementById('confirmedCity').textContent = city;
+      goToStep(4);
+    } else {
+      throw new Error('Serverfel');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Slutför registrering ✓';
+    alert('Något gick fel. Försök igen eller kontakta hello@spick.se');
+  }
+}
+
+// Enkel password hash (i produktion: bcrypt på server-sidan via Edge Function)
+async function hashPassword(pass) {
+  const msgBuffer = new TextEncoder().encode(pass
