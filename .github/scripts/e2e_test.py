@@ -209,3 +209,4 @@ if failed > 0:
 
 sys.exit(1 if failed > 2 else 0)  # Max 2 kritiska fel tillåtna
 # trigger e2e 1774442457
+# e2e trigger
