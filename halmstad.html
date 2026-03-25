@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Städare Halmstad – Boka med RUT-avdrag | Spick</title>
+<meta name="description" content="Boka betygsatta städare i Halmstad. Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag. RUT-avdrag 50%.">
+<meta name="keywords" content="städare halmstad,städning halmstad,hemstädning halmstad,boka städare halmstad">
+<link rel="canonical" href="https://spick.se/halmstad.html">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Halmstad","description":"Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag.","url":"https://spick.se/halmstad.html","areaServed":"Halmstad","priceRange":"250-600 SEK/h"}</script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:var(--t);}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
+.nb{padding:.55rem 1.25rem;background:var(--g);color:#fff;border-radius:100px;font-size:.875rem;font-weight:600;text-decoration:none;}
+.hero{background:linear-gradient(135deg,#061a11,var(--g));padding:6rem 5rem;color:#fff;}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,4vw,3.5rem);font-weight:700;line-height:1.1;margin-bottom:1rem;}
+.hero h1 em{color:var(--gl);font-style:normal;}
+.hero p{font-size:1.05rem;color:rgba(255,255,255,.8);max-width:560px;line-height:1.7;margin-bottom:2.5rem;}
+.hstats{display:flex;gap:3rem;margin-top:3.5rem;flex-wrap:wrap;}
+.hs-v{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;color:var(--gl);}
+.hs-l{font-size:.8rem;color:rgba(255,255,255,.6);margin-top:.2rem;}
+.wl{padding:5rem 2rem;background:var(--gr);}
+.wlb{max-width:600px;margin:0 auto;text-align:center;}
+.wli{font-size:4rem;margin-bottom:1.5rem;}
+h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);margin-bottom:.875rem;}
+.wlb p{font-size:1rem;color:var(--m);line-height:1.7;margin-bottom:1.5rem;}
+.disc{display:inline-block;background:#FEF3C7;color:#B45309;font-size:.875rem;font-weight:700;padding:.5rem 1.25rem;border-radius:100px;margin-bottom:2rem;}
+.wlform{display:flex;gap:.75rem;max-width:420px;margin:0 auto 1rem;flex-wrap:wrap;justify-content:center;}
+.wlform input{flex:1;min-width:200px;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;}
+.wlform input:focus{border-color:var(--g);}
+.wlbtn{padding:.875rem 1.75rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.wlbtn:hover{background:var(--gm);}
+.wl-ok{color:var(--g);font-size:.9rem;margin-top:.75rem;font-weight:600;display:none;}
+.why{padding:5rem 2rem;max-width:1000px;margin:0 auto;}
+.sec-tag{display:inline-block;background:var(--gp);color:var(--g);font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .875rem;border-radius:100px;margin-bottom:.875rem;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2rem;}
+.gc{background:#fff;border-radius:18px;padding:1.5rem;border:1px solid var(--grd);}
+.gi{font-size:1.5rem;margin-bottom:.75rem;}
+.gc h3{font-size:.95rem;font-weight:600;color:var(--b);margin-bottom:.4rem;}
+.gc p{font-size:.82rem;color:var(--m);line-height:1.65;}
+.faq{padding:5rem 2rem;max-width:760px;margin:0 auto;}
+.fi{border:1.5px solid var(--grd);border-radius:14px;margin-bottom:.75rem;overflow:hidden;}
+.fq{padding:1.1rem 1.5rem;cursor:pointer;font-size:.9rem;font-weight:500;display:flex;justify-content:space-between;align-items:center;}
+.fq:hover{background:var(--gr);}
+.fi.open .fq{background:var(--gp);color:var(--g);}
+.fa{display:none;padding:1rem 1.5rem 1.25rem;font-size:.875rem;color:var(--m);line-height:1.75;border-top:1px solid var(--grd);}
+.fi.open .fa{display:block;}
+.cta{background:var(--b);padding:6rem 5rem;text-align:center;}
+.cta h2{color:#fff;margin-bottom:1rem;}
+.cta p{color:#9E9E99;max-width:500px;margin:0 auto 2.5rem;line-height:1.7;}
+.cta a{display:inline-block;padding:1rem 2.75rem;background:var(--g);color:#fff;border-radius:100px;font-size:1rem;font-weight:700;text-decoration:none;}
+.cta a:hover{background:var(--gm);}
+.rekr{background:var(--gp);padding:3rem 5rem;text-align:center;}
+.rekr h3{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--g);margin-bottom:.5rem;}
+.rekr p{font-size:.9rem;color:var(--g);margin-bottom:1.25rem;}
+.rekr a{display:inline-block;padding:.75rem 2rem;background:var(--g);color:#fff;border-radius:100px;font-size:.875rem;font-weight:600;text-decoration:none;}
+footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
+footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2rem;font-weight:700;}footer p{font-size:.8rem;color:#4A4A45;}
+@media(max-width:900px){nav,footer{padding:1rem 1.5rem;}.hero,.cta,.rekr{padding:4rem 1.5rem;}.grid3{grid-template-columns:1fr;}}
+</style>  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-CP115M45TT');
+  </script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '874536122252551');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
+</head>
+<body>
+<nav><a href="index.html" class="logo">Spick</a><a href="bli-stadare.html" class="nb">Bli städare →</a></nav>
+<div class="hero">
+  <h1>Städare i <em>Halmstad</em><br>du verkligen litar på</h1>
+  <p>Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag. Med RUT-avdrag betalar du bara hälften av priset.</p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap">
+    <a href="#waitlist" style="display:inline-flex;align-items:center;gap:.5rem;padding:1rem 2.25rem;background:#fff;color:var(--g);border-radius:100px;text-decoration:none;font-weight:700;font-size:.95rem;transition:all .2s">Anmäl mig – 20% rabatt →</a>
+    <a href="stadare.html" style="display:inline-flex;align-items:center;gap:.5rem;padding:1rem 2rem;border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:100px;text-decoration:none;font-size:.9rem">Se alla städare</a>
+  </div>
+  <div class="hstats">
+    <div><div class="hs-v">Snart</div><div class="hs-l">Lansering i Halmstad</div></div>
+    <div><div class="hs-v">50%</div><div class="hs-l">billigare med RUT</div></div>
+    <div><div class="hs-v">4.9★</div><div class="hs-l">Snittbetyg Sverige</div></div>
+    <div><div class="hs-v">83%</div><div class="hs-l">Städaren behåller</div></div>
+  </div>
+</div>
+<div class="wl" id="waitlist">
+  <div class="wlb">
+    <div class="wli">🗺️</div>
+    <h2>Spick lanserar i Halmstad!</h2>
+    <p>Vi rekryterar just nu städare i Halmstad. Anmäl dig på väntelistan – du får ett mejl samma dag vi lanserar och 20% rabatt på din första bokning!</p>
+    <div class="disc">🎁 20% rabatt för dig som anmäler dig nu</div>
+    <div class="wlform">
+      <input type="email" id="wlem" placeholder="din@email.se">
+      <button class="wlbtn" onclick="joinWL()">Notifiera mig →</button>
+    </div>
+    <div class="wl-ok" id="wlok">✅ Tack! Vi hör av oss när Spick lanserar i Halmstad. 20% rabatt väntar!</div>
+  </div>
+</div>
+<div class="why">
+  <div class="sec-tag">Varför Spick?</div>
+  <h2>Städning i Halmstad – enkelt och tryggt</h2>
+  <div class="grid3">
+    <div class="gc"><div class="gi">🔒</div><h3>BankID-verifierade städare</h3><p>Alla städare identifieras med BankID. Du vet alltid vem som kommer hem till dig i Halmstad.</p></div>
+    <div class="gc"><div class="gi">⭐</div><h3>Äkta betyg – inga fejk</h3><p>Varje betyg är från en riktig kund. Bästa städaren i Halmstad rankas högst och får mest jobb.</p></div>
+    <div class="gc"><div class="gi">💰</div><h3>RUT-avdrag 50%</h3><p>Betala bara hälften tack vare RUT-avdraget. Vi hanterar allt automatiskt.</p></div>
+    <div class="gc"><div class="gi">📱</div><h3>Boka online 24/7</h3><p>Boka hemstädning i Halmstad när som helst. Bekräftelse inom 2 timmar.</p></div>
+    <div class="gc"><div class="gi">🛡️</div><h3>Nöjdhetsgaranti</h3><p>Inte nöjd? Vi fixar en kompletterande städning kostnadsfritt inom 24h.</p></div>
+    <div class="gc"><div class="gi">💳</div><h3>Betala via Swish</h3><p>Enkel och säker betalning via Swish direkt till städaren efter godkänd städning.</p></div>
+  </div>
+</div>
+<div class="rekr">
+  <h3>Bor du i Halmstad och vill städa?</h3>
+  <p>Tjäna 250–600 kr/h på dina egna villkor. Sätt ditt eget pris och välj dina tider.</p>
+  <a href="bli-stadare.html?city=Halmstad">Ansök som städare i Halmstad →</a>
+</div>
+<div class="faq">
+  <div class="sec-tag">Frågor om städning i Halmstad</div>
+  <h2>Vanliga frågor</h2>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>När lanserar Spick i Halmstad?</span><span>▾</span></div><div class="fa">Vi rekryterar städare i Halmstad just nu. Anmäl dig på väntelistan ovan så får du ett mejl direkt vid lansering!</div></div>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Gäller RUT-avdraget i Halmstad?</span><span>▾</span></div><div class="fa">Ja! RUT-avdraget gäller hela Sverige inklusive Halmstad. Du betalar 50% och vi hanterar resten med Skatteverket automatiskt.</div></div>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Hur verifieras städarna?</span><span>▾</span></div><div class="fa">Alla städare identifieras med BankID, verifieras med F-skattsedel och genomgår referenstagning. Du vet alltid vem som kommer.</div></div>
+  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Kan jag jobba som städare i Halmstad?</span><span>▾</span></div><div class="fa">Absolut! Ansök via knappen ovan. Du sätter ditt eget pris 250–600 kr/h och behåller 83% av intäkterna. Inga fasta tider – jobba när du vill.</div></div>
+</div>
+<div class="cta">
+  <h2>Redo för Halmstad?</h2>
+  <p>Anmäl dig på väntelistan och var bland de första i Halmstad att boka via Spick.</p>
+  <a href="#waitlist">Anmäl mig nu →</a>
+</div>
+<footer><span>Spick</span><p>Städare i Halmstad och hela Sverige</p><p>© 2026 Spick AB · hello@spick.se</p></footer>
+<script>
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+async function joinWL(){
+  const e=document.getElementById('wlem').value;
+  if(!e||!e.includes('@')){document.getElementById('wlem').style.borderColor='#DC2626';return;}
+  await SB.from('notifications').insert([{type:'waitlist_halmstad',recipient_email:e,subject:'Väntelista: Halmstad',status:'pending'}]);
+  await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB','Content-Type':'application/json'},body:JSON.stringify({from:'Spick <hello@spick.se>',to:'hello@spick.se',subject:'🗺️ Väntelista Halmstad: '+e,html:'<p>Ny anmälan till väntelistan för <strong>Halmstad</strong>: <strong>'+e+'</strong></p>'})});
+  document.getElementById('wlok').style.display='block';
+  document.querySelector('.wlform').style.display='none';
+}
+</script>
+</body></html>

@@ -1,0 +1,29 @@
+name: Daily Automation
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    env:
+      SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+      SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Send reminders + review requests
+        run: |
+          TOMORROW=$(date -d 'tomorrow' +%Y-%m-%d)
+          YESTERDAY=$(date -d 'yesterday' +%Y-%m-%d)
+          echo "Checking bookings for $TOMORROW and $YESTERDAY"
+          curl -s "${SUPA_URL}/rest/v1/bookings?date=eq.${TOMORROW}&status=in.(bekräftad,ny)&reminder_sent_at=is.null&select=*" -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "
+import sys,json,urllib.request
+d=json.load(sys.stdin)
+if not isinstance(d,list): sys.exit(0)
+print(f'Reminders to send: {len(d)}')
+for b in d:
+  p=json.dumps({'type':'reminder','record':b}).encode()
+  req=urllib.request.Request('$SUPA_URL/functions/v1/swift-endpoint',p,{'Content-Type':'application/json','Authorization':'Bearer $SUPA_KEY','apikey':'$SUPA_KEY'},method='POST')
+  try: urllib.request.urlopen(req,timeout=10); print(f'Sent to {b.get("email")}')
+  except Exception as e: print(f'Error: {e}')
+"
+          echo "Daily automation complete!"

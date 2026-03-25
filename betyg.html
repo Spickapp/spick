@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Betygsätt din städning – Spick</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--gr);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;}
+.card{background:#fff;border-radius:24px;padding:3rem;max-width:480px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.1);}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);margin-bottom:2rem;display:block;}
+h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:var(--b);margin-bottom:.5rem;}
+.sub{font-size:.95rem;color:var(--m);line-height:1.7;margin-bottom:2.5rem;}
+.stars{display:flex;justify-content:center;gap:.5rem;margin-bottom:2rem;}
+.star{font-size:3rem;cursor:pointer;transition:transform .15s;filter:grayscale(1);opacity:.4;}
+.star:hover,.star.active{filter:none;opacity:1;transform:scale(1.15);}
+.selected-label{font-size:1rem;font-weight:600;color:var(--g);min-height:1.5rem;margin-bottom:1.5rem;}
+.comment-box{width:100%;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;resize:none;transition:border-color .2s;min-height:100px;margin-bottom:1.5rem;}
+.comment-box:focus{border-color:var(--g);}
+.submit-btn{width:100%;padding:1rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+.submit-btn:hover:not(:disabled){background:var(--gm);}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+.done{display:none;text-align:center;}
+.done-icon{font-size:4rem;margin-bottom:1rem;}
+.done h2{font-family:'Playfair Display',serif;font-size:1.75rem;color:var(--b);margin-bottom:.5rem;}
+.done p{font-size:.95rem;color:var(--m);margin-bottom:2rem;line-height:1.7;}
+.done a{display:inline-block;padding:.875rem 2rem;background:var(--g);color:#fff;border-radius:100px;text-decoration:none;font-weight:600;transition:background .2s;}
+.done a:hover{background:var(--gm);}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-CP115M45TT');
+  </script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '874536122252551');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
+</head>
+<body>
+<div class="card" id="form">
+  <a href="index.html" class="logo">Spick</a>
+  <h1>Hur gick städningen?</h1>
+  <p class="sub" id="sub">Betygsätt din städare – det tar bara 30 sekunder och hjälper andra att välja rätt.</p>
+  <div class="stars" id="stars">
+    <span class="star" data-v="1" onclick="setRating(1)">⭐</span>
+    <span class="star" data-v="2" onclick="setRating(2)">⭐</span>
+    <span class="star" data-v="3" onclick="setRating(3)">⭐</span>
+    <span class="star" data-v="4" onclick="setRating(4)">⭐</span>
+    <span class="star" data-v="5" onclick="setRating(5)">⭐</span>
+  </div>
+  <div class="selected-label" id="lbl"></div>
+  <textarea class="comment-box" id="cmt" placeholder="Berätta gärna mer – vad var bra eller vad kan förbättras? (valfritt)"></textarea>
+  <button class="submit-btn" id="btn" onclick="submit()" disabled>Skicka betyg</button>
+</div>
+<div class="done" id="done">
+  <div class="done-icon" id="doneIcon">🎉</div>
+  <h2 id="doneTitle">Tack för ditt betyg!</h2>
+  <p id="doneSub">Ditt betyg hjälper andra kunder att hitta bra städare. Vi uppskattar det!</p>
+  <a href="stadare.html">Boka igen →</a>
+</div>
+<script>
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+const RESEND='re_KxTTppVD_MZkRApNRrB236wNTFZ32vfdB';
+const p=new URLSearchParams(location.search);
+const bid=p.get('bid'), cname=decodeURIComponent(p.get('cname')||''), preRating=+p.get('rating')||0;
+const LABELS=['','😞 Dåligt','😐 Okej','🙂 Bra','😊 Mycket bra','🤩 Fantastiskt!'];
+let chosen=preRating||0;
+
+if(cname) document.getElementById('sub').textContent='Betygsätt '+cname+' – det tar bara 30 sekunder.';
+if(preRating) setRating(preRating);
+
+function setRating(n){
+  chosen=n;
+  document.querySelectorAll('.star').forEach((s,i)=>{
+    s.classList.toggle('active',i<n);
+  });
+  document.getElementById('lbl').textContent=LABELS[n]||'';
+  document.getElementById('btn').disabled=false;
+}
+
+async function submit(){
+  if(!chosen)return;
+  const btn=document.getElementById('btn');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spin"></div> Sparar...';
+  try{
+    // 1. Spara betyg
+    const {data:booking}=await SB.from('bookings').select('*').eq('id',bid).single();
+    const {data:rating,error}=await SB.from('ratings').insert([{
+      booking_id:bid,
+      cleaner_id:booking?.cleaner_id,
+      customer_name:booking?.name,
+      customer_email:booking?.email,
+      rating:chosen,
+      comment:document.getElementById('cmt').value
+    }]).select().single();
+    if(error)throw error;
+
+    // 2. Om betyg ≤ 2 → trigga nöjdhetsgaranti
+    if(chosen<=2 && booking?.email){
+      await fetch('https://api.resend.com/emails',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+RESEND,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          from:'Spick <hello@spick.se>',to:'hello@spick.se',
+          subject:'🚨 Nöjdhetsgaranti triggrad – '+chosen+'★ – '+(booking?.name||''),
+          html:'<p>Kund <strong>'+(booking?.name||'')+'</strong> ('+booking?.email+') gav betyg <strong>'+chosen+'/5</strong> på städning '+booking?.date+'.</p><p>Kontakta kunden och erbjud kompletterande städning!</p>'
+        })
+      });
+      await SB.from('guarantee_requests').insert([{
+        booking_id:bid,
+        rating_id:rating?.id,
+        customer_name:booking?.name,
+        customer_email:booking?.email,
+        cleaner_name:cname,
+        issue_description:'Betyg '+chosen+'/5. Kommentar: '+document.getElementById('cmt').value
+      }]);
+    }
+
+    // Visa bekräftelse
+    document.getElementById('form').style.display='none';
+    const done=document.getElementById('done');
+    done.style.display='block';
+    if(chosen<=2){
+      document.getElementById('doneIcon').textContent='🛡️';
+      document.getElementById('doneTitle').textContent='Tack – vi aktiverar garantin!';
+      document.getElementById('doneSub').textContent='Vi kontaktar dig inom 24h för att ordna en kompletterande städning kostnadsfritt.';
+    }
+  }catch(e){
+    btn.disabled=false;
+    btn.innerHTML='Skicka betyg';
+    alert('Något gick fel – försök igen.');
+  }
+}
+</script>
+</body>
+</html>

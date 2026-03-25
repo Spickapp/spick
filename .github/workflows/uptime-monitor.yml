@@ -1,0 +1,22 @@
+name: Uptime Monitor
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check spick.se
+        run: |
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://spick.se)
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "ALERT: spick.se är nere! Status: $STATUS"
+            curl -s -X POST https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+              -d '{"type":"uptime_alert","message":"spick.se är nere! HTTP '$STATUS'"}'
+            exit 1
+          fi
+          echo "✅ spick.se fungerar (HTTP $STATUS)"

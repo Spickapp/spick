@@ -1,0 +1,35 @@
+name: Weekly Business Report
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generera veckorapport
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "=== SPICK VECKORAPPORT ==="
+          DATE=$(date +%Y-%m-%d)
+          WEEK_AGO=$(date -d '7 days ago' +%Y-%m-%d)
+          
+          # Bokningar senaste veckan
+          BOOKINGS=$(curl -s "$SUPA_URL/rest/v1/bookings?created_at=gte.$WEEK_AGO" \
+            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))")
+          
+          # Totalt antal städare
+          CLEANERS=$(curl -s "$SUPA_URL/rest/v1/cleaners?status=eq.godkänd" \
+            -H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))")
+          
+          echo "Vecka: $WEEK_AGO till $DATE"
+          echo "Bokningar: $BOOKINGS"
+          echo "Aktiva städare: $CLEANERS"
+          
+          # Skicka rapport via notify
+          curl -s -X POST "$SUPA_URL/functions/v1/notify" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -d "{"type":"weekly_report","bookings":$BOOKINGS,"cleaners":$CLEANERS,"week":"$WEEK_AGO"}"

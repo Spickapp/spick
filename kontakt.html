@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontakt & Support – Spick</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);}
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);}
+.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
+.back{font-size:.875rem;color:var(--m);text-decoration:none;}
+.back:hover{color:var(--g);}
+.page{max-width:1100px;margin:0 auto;padding:4rem 2rem 6rem;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:start;}
+.tag{display:inline-block;background:var(--gp);color:var(--g);font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.35rem 1rem;border-radius:100px;margin-bottom:1rem;}
+h1{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;color:var(--b);margin-bottom:1rem;line-height:1.15;}
+.intro{font-size:1rem;color:var(--m);line-height:1.7;margin-bottom:2.5rem;}
+
+/* AI CHAT */
+.ai-card{background:linear-gradient(135deg,#0a2a1e,var(--g));border-radius:20px;padding:2rem;margin-bottom:1.25rem;color:#fff;cursor:pointer;transition:transform .2s;text-decoration:none;display:block;}
+.ai-card:hover{transform:translateY(-2px);}
+.ai-badge{background:rgba(159,225,203,.2);color:#9FE1CB;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.3rem .875rem;border-radius:100px;display:inline-block;margin-bottom:.875rem;}
+.ai-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:.5rem;}
+.ai-sub{font-size:.875rem;color:rgba(255,255,255,.75);line-height:1.65;margin-bottom:1.25rem;}
+.ai-features{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1.25rem;}
+.ai-feat{font-size:.78rem;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:.4rem;}
+.ai-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:#fff;color:var(--g);border-radius:100px;font-size:.875rem;font-weight:700;text-decoration:none;transition:background .2s;}
+.ai-btn:hover{background:var(--gp);}
+.pulse{width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block;animation:pulse 2s infinite;margin-right:.3rem;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.8);}}
+
+/* CONTACT CARDS */
+.contact-cards{display:flex;flex-direction:column;gap:.875rem;margin-bottom:2.5rem;}
+.cc{background:#fff;border-radius:16px;padding:1.4rem 1.5rem;display:flex;align-items:center;gap:1.25rem;border:1.5px solid var(--grd);transition:all .2s;text-decoration:none;}
+.cc:hover{border-color:var(--g);transform:translateX(4px);}
+.cc-icon{width:46px;height:46px;background:var(--gp);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.cc-label{font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+.cc-val{font-size:.95rem;font-weight:600;color:var(--b);margin-top:1px;}
+.cc-sub{font-size:.75rem;color:var(--m);margin-top:2px;}
+.hours{background:#fff;border-radius:16px;padding:1.5rem;border:1px solid var(--grd);}
+.hours h3{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--m);margin-bottom:1rem;}
+.hr{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--grd);font-size:.875rem;}
+.hr:last-child{border-bottom:none;}
+.hd{color:var(--t);}
+.ht{color:var(--m);}
+.ht.on{color:var(--g);font-weight:500;}
+
+/* FORM */
+.form-card{background:#fff;border-radius:20px;border:1px solid var(--grd);overflow:hidden;}
+.form-head{padding:1.75rem 2rem 1.25rem;border-bottom:1px solid var(--grd);}
+.form-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--b);}
+.form-sub{font-size:.875rem;color:var(--m);margin-top:.25rem;}
+.form-body{padding:1.75rem 2rem;}
+.f{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem;}
+.f label{font-size:.78rem;font-weight:500;color:var(--m);}
+.f input,.f select,.f textarea{padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--g);}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.sbtn{width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+.sbtn:hover:not(:disabled){background:var(--gm);}
+.sbtn:disabled{opacity:.6;cursor:not-allowed;}
+.success{display:none;background:var(--gp);border-radius:12px;padding:1.25rem;text-align:center;margin-top:1rem;}
+.success.show{display:block;}
+.success p{font-size:.9rem;color:var(--g);font-weight:500;}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-top:0;}
+footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2rem;font-weight:700;}
+footer p{font-size:.8rem;color:#4A4A45;}
+@media(max-width:900px){nav,footer{padding:1rem 1.5rem;}.page{grid-template-columns:1fr;padding:2rem 1rem 4rem;}.ai-features{grid-template-columns:1fr;}}
+</style>
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-CP115M45TT');
+  </script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '874536122252551');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
+</head>
+<body>
+<nav><a href="index.html" class="logo">Spick</a><a href="index.html" class="back">← Tillbaka</a></nav>
+
+<div class="page">
+  <div>
+    <div class="tag">Support & kontakt</div>
+    <h1>Hur kan vi hjälpa dig?</h1>
+    <p class="intro">Vår AI-assistent svarar direkt på dina frågor – dygnet runt. För mer komplexa ärenden, skicka ett meddelande så återkommer vi via e-post.</p>
+
+    <!-- AI CHAT CARD -->
+    <a href="#ai-chat" class="ai-card" onclick="openChat();return false;">
+      <div class="ai-badge"><span class="pulse"></span>AI-support · Alltid online</div>
+      <div class="ai-title">Chatta med vår AI-assistent</div>
+      <div class="ai-sub">Få svar direkt på frågor om bokning, RUT-avdrag, städare och mer – utan väntetid.</div>
+      <div class="ai-features">
+        <div class="ai-feat">⚡ Svar inom sekunder</div>
+        <div class="ai-feat">🕐 Dygnet runt</div>
+        <div class="ai-feat">📚 Vet allt om Spick</div>
+        <div class="ai-feat">🔒 Säkert & privat</div>
+      </div>
+      <span class="ai-btn">Starta AI-chatt →</span>
+    </a>
+
+    <div class="contact-cards">
+      <a href="mailto:hello@spick.se" class="cc">
+        <div class="cc-icon">✉️</div>
+        <div>
+          <div class="cc-label">E-post</div>
+          <div class="cc-val">hello@spick.se</div>
+          <div class="cc-sub">Svar inom 2 timmar på vardagar</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="hours">
+      <h3>Svarstider</h3>
+      <div class="hr"><span class="hd">AI-support</span><span class="ht on">Alltid tillgänglig 24/7</span></div>
+      <div class="hr"><span class="hd">E-post (vardagar)</span><span class="ht on">Svar inom 2 timmar</span></div>
+      <div class="hr"><span class="hd">E-post (helger)</span><span class="ht">Svar nästa vardag</span></div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-head">
+      <div class="form-title">Skicka ett meddelande</div>
+      <div class="form-sub">Vi svarar via e-post inom 2 timmar på vardagar</div>
+    </div>
+    <div class="form-body">
+      <div class="f2">
+        <div class="f"><label>Förnamn *</label><input type="text" id="fn" placeholder="Anna"></div>
+        <div class="f"><label>Efternamn *</label><input type="text" id="ln" placeholder="Svensson"></div>
+      </div>
+      <div class="f"><label>E-post *</label><input type="email" id="em" placeholder="anna@email.se"></div>
+      <div class="f">
+        <label>Ärende *</label>
+        <select id="sub">
+          <option value="">Välj ärende...</option>
+          <option>Fråga om bokning</option>
+          <option>Problem med min städare</option>
+          <option>Fråga om RUT-avdrag</option>
+          <option>Avbokning eller ändring</option>
+          <option>Jag vill bli städare</option>
+          <option>Tekniskt problem</option>
+          <option>Övrigt</option>
+        </select>
+      </div>
+      <div class="f"><label>Meddelande *</label><textarea id="msg" rows="5" placeholder="Beskriv ditt ärende så hjälper vi dig snabbt..."></textarea></div>
+      <button class="sbtn" id="sbtn" onclick="send()">Skicka meddelande</button>
+      <div class="success" id="ok"><p>✅ Meddelande skickat! Vi svarar via e-post inom 2 timmar.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- AI CHAT WIDGET -->
+<div id="chatWidget" style="display:none;position:fixed;bottom:2rem;right:2rem;width:380px;max-height:520px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.2);z-index:1000;display:none;flex-direction:column;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#0a2a1e,#0F6E56);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:.7rem;color:#9FE1CB;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem;"><span class="pulse"></span>AI-support · Online</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:#fff;">Spick Assistent</div>
+    </div>
+    <button onclick="closeChat()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;">✕</button>
+  </div>
+  <div id="chatMessages" style="flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:.875rem;max-height:320px;">
+    <div style="background:#F7F7F5;border-radius:12px 12px 12px 4px;padding:.875rem 1rem;font-size:.875rem;color:#1C1C1A;line-height:1.6;max-width:90%;">
+      Hej! 👋 Jag är Spicks AI-assistent. Jag kan hjälpa dig med frågor om bokning, RUT-avdrag, städare och mer. Vad kan jag hjälpa dig med?
+    </div>
+  </div>
+  <div style="padding:.875rem 1.25rem;border-top:1px solid #E8E8E4;display:flex;gap:.5rem;">
+    <input id="chatInput" type="text" placeholder="Skriv din fråga..." onkeydown="if(event.key==='Enter')sendMsg()" style="flex:1;padding:.625rem 1rem;border:1.5px solid #E8E8E4;border-radius:100px;font-size:.875rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;">
+    <button onclick="sendMsg()" style="padding:.625rem 1.25rem;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">Skicka</button>
+  </div>
+</div>
+
+<!-- Floating chat button -->
+<div id="chatFab" onclick="openChat()" style="position:fixed;bottom:2rem;right:2rem;width:60px;height:60px;background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(15,110,86,.4);z-index:999;font-size:1.5rem;transition:transform .2s;">💬</div>
+
+<footer><span>Spick</span><p>hello@spick.se</p><p>© 2026 Spick AB · 559402-4522</p></footer>
+
+<script>
+const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','sb_publishable_PK2XJ5jxU9c1jqaiG-TApg_pCWhc4_3');
+
+function openChat(){
+  document.getElementById('chatWidget').style.display='flex';
+  document.getElementById('chatFab').style.display='none';
+  document.getElementById('chatInput').focus();
+}
+function closeChat(){
+  document.getElementById('chatWidget').style.display='none';
+  document.getElementById('chatFab').style.display='flex';
+}
+
+// AI-svar baserade på nyckelord
+function getAIResponse(msg){
+  const m=msg.toLowerCase();
+  if(m.includes('rut')||m.includes('avdrag'))return 'RUT-avdraget ger dig 50% rabatt på städning! Du betalar bara hälften och vi hanterar allt automatiskt med Skatteverket. Maxavdraget är 75 000 kr/år. <a href="priser.html" style="color:#0F6E56">Läs mer om priser →</a>';
+  if(m.includes('boka')||m.includes('bokning'))return 'Du bokar enkelt via vår bokningssida! Välj städare, datum och tid. Vi bekräftar inom 2 timmar. <a href="stadare.html" style="color:#0F6E56">Hitta en städare →</a>';
+  if(m.includes('avbok')||m.includes('ändra'))return 'Avbokning är gratis upp till 24h innan städningen. Skicka ett meddelande via formuläret nedan eller maila hello@spick.se så fixar vi det direkt.';
+  if(m.includes('pris')||m.includes('kostar')||m.includes('kr'))return 'Priserna varierar beroende på städare (250-600 kr/h). Med RUT-avdrag betalar du bara hälften! <a href="priser.html" style="color:#0F6E56">Se alla priser →</a>';
+  if(m.includes('städare')||m.includes('hitta'))return 'Vi har 9 betygsatta städare i Stockholm! Du kan filtrera på stad, tjänst och betyg. <a href="stadare.html" style="color:#0F6E56">Se alla städare →</a>';
+  if(m.includes('flytt')||m.includes('flytta'))return 'Vår flyttstädning är besiktningsgodkänd – perfekt för att få tillbaka din deposition. <a href="stadare.html" style="color:#0F6E56">Boka flyttstädning →</a>';
+  if(m.includes('bli städare')||m.includes('jobba'))return 'Vill du bli städare? Du sätter ditt eget pris (250-600 kr/h) och behåller 83%! <a href="bli-stadare.html" style="color:#0F6E56">Ansök nu →</a>';
+  if(m.includes('betalning')||m.includes('swish')||m.includes('betala'))return 'Du betalar via Swish direkt till städaren efter utförd och godkänd städning. Inga förskottsbetalningar!';
+  if(m.includes('hej')||m.includes('hallå')||m.includes('hi'))return 'Hej! 😊 Hur kan jag hjälpa dig idag? Fråga mig gärna om bokning, priser, RUT-avdrag eller städare!';
+  return 'Tack för din fråga! För mer detaljerad hjälp, skicka ett e-postmeddelande till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så återkommer vi inom 2 timmar. Är det något mer jag kan hjälpa med?';
+}
+
+function addMsg(txt,isUser){
+  const c=document.getElementById('chatMessages');
+  const d=document.createElement('div');
+  d.style.cssText=isUser
+    ?'background:#0F6E56;color:#fff;border-radius:12px 12px 4px 12px;padding:.875rem 1rem;font-size:.875rem;line-height:1.6;max-width:85%;align-self:flex-end;'
+    :'background:#F7F7F5;color:#1C1C1A;border-radius:12px 12px 12px 4px;padding:.875rem 1rem;font-size:.875rem;line-height:1.6;max-width:90%;';
+  d.innerHTML=txt;
+  c.appendChild(d);
+  c.scrollTop=c.scrollHeight;
+}
+
+function sendMsg(){
+  const inp=document.getElementById('chatInput');
+  const msg=inp.value.trim();
+  if(!msg)return;
+  addMsg(msg,true);
+  inp.value='';
+  setTimeout(()=>addMsg(getAIResponse(msg),false),600);
+}
+
+async function send(){
+  const fn=document.getElementById('fn').value,ln=document.getElementById('ln').value,
+    em=document.getElementById('em').value,sub=document.getElementById('sub').value,msg=document.getElementById('msg').value;
+  if(!fn||!ln||!em||!sub||!msg){alert('Fyll i alla obligatoriska fält.');return;}
+  const btn=document.getElementById('sbtn');
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div> Skickar...';
+  try{
+    await SB.from('bookings').insert([{name:fn+' '+ln,email:em,phone:'',service:'Kontakt',message:sub+': '+msg,status:'kontakt',city:'',date:new Date().toISOString().split('T')[0],time:'00:00',hours:0,rut:false,total_price:0}]);
+    document.getElementById('ok').classList.add('show');
+    btn.innerHTML='✓ Skickat!';
+  }catch(e){alert('Fel – maila hello@spick.se');btn.disabled=false;btn.innerHTML='Skicka meddelande';}
+}
+</script>
+</body>
+</html>
