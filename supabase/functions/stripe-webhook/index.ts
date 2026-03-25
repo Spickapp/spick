@@ -141,6 +141,18 @@ serve(async (req) => {
       `));
     }
 
+    // ── Automatisk RUT-ansökan till Skatteverket ──────────────
+    if (isRut && bookingId) {
+      fetch(`${SUPABASE_URL}/functions/v1/rut-claim`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+        body: JSON.stringify({ booking_id: bookingId }),
+      }).catch((e) => console.error("RUT-anrop misslyckades:", e));
+    }
+
     // ── Mail till admin: bekräftelse med betalning ─────────────
     await sendEmail(ADMIN, `💰 BETALD BOKNING: ${name} – ${b.service || ""} ${b.date || ""}`, wrap(`
       <h2>Bokning betald! 💰</h2>
