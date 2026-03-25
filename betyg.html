@@ -134,7 +134,18 @@ async function submit(){
 
     // 2. Om betyg ≤ 2 → trigga nöjdhetsgaranti
     if(chosen<=2 && booking?.email){
-      await joinWaitlist(city||'', e);
+      // Notifiera admin om garantiärende
+      await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',
+          'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+          'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+        body:JSON.stringify({type:'guarantee',record:{
+          customer_email:booking?.email,customer_name:booking?.name,
+          cleaner_name:cname,rating:chosen,
+          comment:document.getElementById('cmt').value
+        }})
+      }).catch(()=>{});
       await SB.from('guarantee_requests').insert([{
         booking_id:bid,
         rating_id:rating?.id,

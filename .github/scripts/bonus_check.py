@@ -47,6 +47,22 @@ for c in cleaners:
         try:
             urllib.request.urlopen(req, timeout=10)
             print(f"Uppgraderad {c['full_name']}: {cur} -> {new}")
+            # Notifiera städaren via email
+            emoji = {'Platinum':'💎','Guld':'🥇','Silver':'🥈'}.get(new, '🥉')
+            bonus_body = json.dumps({"type": "cleaner_approved", "record": {
+                "email": c['email'],
+                "full_name": c['full_name'],
+                "hourly_rate": 290,
+                "bonus_upgrade": True,
+                "bonus_level": new,
+                "bonus_emoji": emoji
+            }}).encode()
+            bonus_req = urllib.request.Request(
+                f"{SUPA_URL}/functions/v1/notify", bonus_body,
+                {"Content-Type":"application/json","Authorization":f"Bearer {SUPA_KEY}","apikey":SUPA_KEY},
+                method="POST")
+            try: urllib.request.urlopen(bonus_req, timeout=10)
+            except: pass
         except Exception as e:
             print(f"Fel: {e}")
     else:
