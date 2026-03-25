@@ -1,0 +1,24 @@
+name: E2E Test Suite
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/e2e_test.py'
+      - '.github/workflows/e2e-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kör E2E-tester
+        env:
+          SUPA_ANON: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPA_SKEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python3 .github/scripts/e2e_test.py
+
+      - name: Sammanfattning
+        if: always()
+        run: echo "Kolla loggarna ovan för detaljerade testresultat"
