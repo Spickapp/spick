@@ -29,6 +29,11 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      - name: Deploya stripe-connect
+        run: supabase functions deploy stripe-connect --project-ref urjeijcncsyuletprydy --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Satt alla secrets i Supabase
         run: |
           supabase secrets set \
@@ -42,4 +47,4 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Klart
-        run: echo "Alla edge functions live!"
+        run: echo "Alla 4 edge functions live - stripe-checkout, stripe-webhook, rut-claim, stripe-connect!"
