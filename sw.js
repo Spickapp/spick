@@ -1,0 +1,8 @@
+// SPICK SERVICE WORKER v1.0
+const CACHE_NAME='spick-v1';
+const PRECACHE_URLS=['/','/boka.html','/ai-support.html','/bli-stadare.html','/404.html','/manifest.json'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(PRECACHE_URLS).catch(()=>{})).then(()=>self.skipWaiting()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const url=new URL(e.request.url);if(url.pathname.startsWith('/rest/')||url.pathname.startsWith('/functions/'))return;e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request).then(r=>{if(r.ok&&r.type==='basic'){const c=r.clone();caches.open(CACHE_NAME).then(cache=>cache.put(e.request,c));}return r;}).catch(()=>null)));});
+self.addEventListener('push',e=>{let data={title:'🧹 Spick',body:'Nytt meddelande',icon:'/images/icon-192.png',url:'/'};if(e.data){try{data={...data,...e.data.json()};}catch(err){data.body=e.data.text();}}e.waitUntil(self.registration.showNotification(data.title,{body:data.body,icon:data.icon,tag:'spick',data:{url:data.url},vibrate:[100,50,100]}));});
+self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window'}).then(cl=>{for(const c of cl){if(c.url.includes('spick.se')&&'focus' in c){c.navigate(e.notification.data?.url||'/');return c.focus();}}if(clients.openWindow)return clients.openWindow(e.notification.data?.url||'/');})});});
