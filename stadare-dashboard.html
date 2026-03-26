@@ -468,26 +468,38 @@ const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'
 const MONTHLY_GOAL = 10000; // kr – kan sättas per städare framöver
 
 // ── INIT ────────────────────────────────────────────────────
-window.addEventListener('load', async () => {
-  // Kolla om det finns en magic-link hash i URL
+// Kör direkt – load-eventet kan ha hänt redan (readyState='complete')
+async function init() {
   const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    // Magic link – låt onAuthStateChange hantera det (triggas automatiskt av Supabase)
-    showScreen('login'); // Visa login-skärmen medan vi väntar
-    document.getElementById('login-btn').disabled = true;
-    document.getElementById('login-btn').querySelector('span').textContent = 'Verifierar länk...';
+  // Magic link i URL – onAuthStateChange tar hand om det
+  if (hash && (hash.includes('access_token') || hash.includes('type=signup'))) {
+    showScreen('login');
+    const btn = document.getElementById('login-btn');
+    if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
     return;
   }
-
   // Kolla befintlig session
-  const { data: { session } } = await SB.auth.getSession();
-  if (session?.user?.email) {
-    await loadCleanerByEmail(session.user.email);
-  } else {
+  try {
+    const { data: { session } } = await SB.auth.getSession();
+    if (session?.user?.email) {
+      await loadCleanerByEmail(session.user.email);
+    } else {
+      showScreen('login');
+      const errEl = document.getElementById('login-err');
+      if (errEl) errEl.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('Init-fel:', e);
     showScreen('login');
-    document.getElementById('login-err').style.display = 'none';
   }
-});
+}
+
+// Kör init oavsett readyState
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init(); // Kör direkt om DOM redan är klar
+}
 
 SB.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session) {
