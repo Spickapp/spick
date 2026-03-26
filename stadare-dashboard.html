@@ -232,6 +232,15 @@ input.edit-input:focus{border-color:var(--g)}
         <div class="card-title">Senaste utbetalningar</div>
         <div id="payout-history"><div style="color:var(--m);font-size:.9rem">Inga utbetalningar ännu</div></div>
       </div>
+      <div class="card" id="connect-card">
+        <div class="card-title">💳 Anslut bankkonto</div>
+        <p style="font-size:.875rem;color:var(--m);margin-bottom:1rem;line-height:1.6">Anslut ditt bankkonto via Stripe för att ta emot automatiska utbetalningar.</p>
+        <div id="connect-status">
+          <button onclick="startStripeConnect()" id="connect-btn" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">
+            Anslut bankkonto via Stripe →
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: PROFIL -->
@@ -550,6 +559,43 @@ function doLogout() {
   jobs = [];
   showScreen('login');
   showToast('Du är utloggad');
+}
+
+// ── STRIPE CONNECT ───────────────────────────────────────
+async function startStripeConnect() {
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true;
+  btn.textContent = 'Förbereder...';
+  try {
+    const res = await callFn('stripe-connect', {
+      action: 'onboard_cleaner',
+      cleaner_id: cleanerData?.id,
+      email: cleanerData?.email,
+      name: cleanerData?.full_name
+    });
+    if (res.onboarding_url) {
+      window.location.href = res.onboarding_url;
+    } else {
+      alert('Fel: ' + (res.error || 'Okänt fel'));
+      btn.disabled = false;
+      btn.textContent = 'Anslut bankkonto via Stripe →';
+    }
+  } catch(e) {
+    alert('Tekniskt fel – försök igen');
+    btn.disabled = false;
+    btn.textContent = 'Anslut bankkonto via Stripe →';
+  }
+}
+
+async function checkConnectStatus() {
+  if (!cleanerData?.stripe_account_id) return;
+  const card = document.getElementById('connect-card');
+  if (!card) return;
+  if (cleanerData.payout_status === 'active') {
+    document.getElementById('connect-status').innerHTML = '<div style="color:var(--g);font-weight:600">✅ Bankkonto anslutet – utbetalningar aktiva</div>';
+  } else if (cleanerData.stripe_account_id) {
+    document.getElementById('connect-status').innerHTML = '<div style="color:#854D0E;font-weight:500;margin-bottom:.75rem">⏳ Väntar på Stripe-verifiering</div><button onclick="startStripeConnect()" style="padding:.625rem 1.25rem;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer">Fortsätt registrering →</button>';
+  }
 }
 </script>
 </body>
