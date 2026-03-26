@@ -26,6 +26,9 @@ serve(async (req) => {
 
     const params = new URLSearchParams();
     params.append("mode", "payment");
+    // ESCROW: Håll betalningen – ta ut pengar först när städning bekräftad klar
+    // capture_method=manual = auktorisera nu, ta ut senare via stripe-webhook
+    params.append("payment_intent_data[capture_method]", "manual");
     params.append("currency", "sek");
     params.append("customer_email", email);
     params.append("success_url", `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${booking_id}&service=${encodeURIComponent(service || "Städning")}&date=${encodeURIComponent(date || "")}`);

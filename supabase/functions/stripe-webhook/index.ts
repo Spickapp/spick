@@ -305,6 +305,37 @@ async function handleRefund(charge: Record<string, unknown>) {
 }
 
 // ── Huvud-handler ──────────────────────────────────────────────────────────
+
+// ── FÅNGA BETALNING (escrow → faktisk debitering) ─────────────────────────
+async function capturePayment(bookingId: string) {
+  const { data: booking } = await sb.from("bookings")
+    .select("stripe_payment_intent,total_price,customer_email,email,service")
+    .eq("id", bookingId).single();
+  
+  if (!booking?.stripe_payment_intent) return;
+  
+  // Capture payment via Stripe API
+  const captureRes = await fetch(
+    `https://api.stripe.com/v1/payment_intents/${booking.stripe_payment_intent}/capture`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    }
+  );
+  
+  const captured = await captureRes.json();
+  if (captured.status === "succeeded") {
+    await sb.from("bookings").update({ 
+      payment_status: "captured",
+      captured_at: new Date().toISOString()
+    }).eq("id", bookingId);
+    console.log("✅ Betalning captured för bokning:", bookingId);
+  }
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 

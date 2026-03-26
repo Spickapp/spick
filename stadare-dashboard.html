@@ -482,11 +482,22 @@ function renderJobs() {
           <span>📍 ${j.city || j.address?.split(',').pop()?.trim() || '–'}</span>
         </div>
         <span class="badge ${badgeClass}">${badgeText}</span>
+        ${isMine && j.status !== 'klar' ? `<button onclick="markJobDone('${j.id}')" style="width:100%;margin-top:.5rem;padding:.5rem;background:#DCFCE7;color:#166534;border:1.5px solid #BBF7D0;border-radius:8px;font-weight:600;cursor:pointer;font-size:.82rem">✅ Markera som klar – frigör betalning</button>` : ''}
+        ${isMine && j.status === 'klar' ? `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:.5rem">✅ Klar – betalning på väg</div>` : ''}
         ${isNew ? `<div class="job-actions">
           <button class="btn-accept" onclick="acceptJob('${j.id}')">Acceptera</button>
           <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
         </div>` : ''}
-        ${isMine ? `<p style="font-size:.78rem;color:var(--m);margin-top:6px">📍 ${j.address || '–'}</p>` : ''}
+        ${isMine ? (() => {
+          const d = new Date(j.date);
+          const now = new Date();
+          const hoursUntil = (d - now) / 3600000;
+          const showFullAddr = hoursUntil <= 24;
+          const area = j.city || (j.address || '').split(',').pop()?.trim() || '–';
+          return showFullAddr
+            ? `<p style="font-size:.78rem;color:var(--g);font-weight:600;margin-top:6px">📍 ${j.address || area} <span style="font-size:.7rem;color:var(--g)">(Synlig)</span></p>`
+            : `<p style="font-size:.78rem;color:var(--m);margin-top:6px">📍 Område: ${area} <span style="font-size:.7rem;color:#F59E0B">🔒 Exakt adress synlig 24h innan</span></p>`;
+        })() : ''}
       </div>
       <div class="job-pay">${pay.toLocaleString('sv')} kr</div>
     </div>`;

@@ -220,6 +220,21 @@ serve(async (req) => {
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
     }
+    else if (type === "job_completed") {
+      const r = payload.record || {};
+      subject = `✅ Städningen är klar – betygsätt din städare!`;
+      html = wrap(`
+<h2>Städningen är klar! 🌿</h2>
+<p><strong>${r.cleaner_name || "Din städare"}</strong> har markerat städningen som klar.</p>
+<div class="card">
+  <p style="margin:0;font-size:14px;color:#6B6960">Betalningen frigörs automatiskt. Är du inte nöjd? Kontakta oss inom 24h så aktiverar vi garantin.</p>
+</div>
+<a href="https://spick.se/betygsatt.html?bid=${r.booking_id || ''}" class="btn">⭐ Betygsätt städningen →</a>
+<a href="https://spick.se/garanti.html" style="display:block;text-align:center;margin-top:12px;color:#DC2626;font-size:13px">Inte nöjd? Aktivera garantin →</a>
+`);
+      const { data: bk } = await sb.from("bookings").select("customer_email,email").eq("id", r.booking_id).single();
+      if (bk) to = bk.customer_email || bk.email || ADMIN;
+    }
     else if (type === "cleaner_accepted") {
       const r = payload.record || {};
       subject = `✅ Städare bekräftad – ${r.cleaner_name || "din städare"} är på väg!`;
