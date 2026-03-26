@@ -75,6 +75,13 @@ nav{background:var(--w);padding:1.25rem 2rem;display:flex;align-items:center;jus
 <div class="page">
   <div id="content"><div class="loading"><div class="spinner"></div>Laddar profil...</div></div>
 </div>
+    <!-- RECENSIONER -->
+    <div style="margin-top:1.5rem">
+      <h3 style="font-size:.9rem;font-weight:700;margin-bottom:1rem">Recensioner</h3>
+      <div id="reviews-list">
+        <div style="text-align:center;padding:1.5rem;color:#6B6960;font-size:.82rem">Laddar recensioner...</div>
+      </div>
+    </div>
 <script>
 const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
@@ -203,6 +210,31 @@ function cookieChoice(accept) {
 <script>
 function openMobMenu(){document.getElementById('mobOverlay').style.display='block';document.getElementById('mobPanel').classList.add('open');}
 function closeMobMenu(){document.getElementById('mobOverlay').style.display='none';document.getElementById('mobPanel').classList.remove('open');}
+
+// Hämta recensioner
+async function loadReviews(cleanerId) {
+  if(!cleanerId) return;
+  try {
+    const r = await fetch(`https://urjeijcncsyuletprydy.supabase.co/rest/v1/reviews?cleaner_id=eq.${cleanerId}&select=rating,comment,created_at&order=created_at.desc&limit=10`, {
+      headers:{apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'}
+    });
+    const data = await r.json();
+    const el = document.getElementById('reviews-list');
+    if(!el) return;
+    if(!data.length) { el.innerHTML = '<div style="text-align:center;padding:1rem;color:#6B6960;font-size:.82rem">Inga recensioner ännu – bli den första att boka!</div>'; return; }
+    el.innerHTML = data.map(rev => `
+      <div style="border-bottom:1px solid #E8E8E4;padding:.875rem 0">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
+          <span style="color:#f59e0b">${'★'.repeat(rev.rating||5)}</span>
+          <span style="font-size:.72rem;color:#6B6960">${new Date(rev.created_at).toLocaleDateString('sv-SE')}</span>
+        </div>
+        <p style="font-size:.82rem;color:#1C1C1A;line-height:1.6">${rev.comment||'Rekommenderar starkt!'}</p>
+      </div>`).join('');
+  } catch(e) {
+    const el = document.getElementById('reviews-list');
+    if(el) el.innerHTML = '';
+  }
+}
 </script>
 </body>
 </html>

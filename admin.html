@@ -917,6 +917,86 @@ async function confirmAssign() {
   await loadAll();
 }
 
+
+// Admin keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if(e.ctrlKey || e.metaKey) {
+    if(e.key==='1') { switchTab('bookings'); e.preventDefault(); }
+    if(e.key==='2') { switchTab('cleaners'); e.preventDefault(); }
+    if(e.key==='3') { switchTab('customers'); e.preventDefault(); }
+    if(e.key==='f') { document.querySelector('input[type=search],input[placeholder*="ök"]')?.focus(); e.preventDefault(); }
+  }
+});
+
+// Pagination helper
+let currentPage = {bookings:1, cleaners:1, customers:1};
+const PAGE_SIZE = 25;
+
+function paginate(data, type) {
+  const page = currentPage[type] || 1;
+  const start = (page-1)*PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const total = data.length;
+  const totalPages = Math.ceil(total/PAGE_SIZE);
+  return {
+    items: data.slice(start, end),
+    total, totalPages, page,
+    hasPrev: page > 1,
+    hasNext: page < totalPages
+  };
+}
+
+function renderPagination(containerId, type, total) {
+  const page = currentPage[type] || 1;
+  const totalPages = Math.ceil(total/PAGE_SIZE);
+  const el = document.getElementById(containerId);
+  if(!el || totalPages <= 1) return;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;font-size:.82rem;color:#6B6960">
+      <span>${Math.min((page-1)*PAGE_SIZE+1,total)}–${Math.min(page*PAGE_SIZE,total)} av ${total}</span>
+      <div style="display:flex;gap:.5rem">
+        <button onclick="changePage('${type}',-1)" ${page<=1?'disabled':''} style="padding:.35rem .75rem;border:1px solid #E8E8E4;border-radius:6px;cursor:pointer;background:${page<=1?'#f9f9f9':'#fff'}">← Föregående</button>
+        <span style="padding:.35rem .625rem">Sida ${page}/${totalPages}</span>
+        <button onclick="changePage('${type}',1)" ${page>=totalPages?'disabled':''} style="padding:.35rem .75rem;border:1px solid #E8E8E4;border-radius:6px;cursor:pointer;background:${page>=totalPages?'#f9f9f9':'#fff'}">Nästa →</button>
+      </div>
+    </div>`;
+}
+
+function changePage(type, dir) {
+  currentPage[type] = (currentPage[type]||1) + dir;
+  if(type==='bookings' && typeof renderBookings==='function') renderBookings();
+  if(type==='cleaners' && typeof renderCleaners==='function') renderCleaners();
+  if(type==='customers' && typeof renderCustomers==='function') renderCustomers();
+}
+
+// Bulk-select för städare
+let selectedCleaners = new Set();
+function toggleSelectCleaner(id) {
+  if(selectedCleaners.has(id)) selectedCleaners.delete(id);
+  else selectedCleaners.add(id);
+  updateBulkBar();
+}
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  if(!bar) return;
+  if(selectedCleaners.size > 0) {
+    bar.style.display = 'flex';
+    bar.querySelector('.bulk-count').textContent = selectedCleaners.size + ' valda';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+async function bulkApprove() {
+  if(!selectedCleaners.size) return;
+  if(!confirm(`Godkänn ${selectedCleaners.size} städare?`)) return;
+  const ids = Array.from(selectedCleaners);
+  for(const id of ids) {
+    await approveCleaner(id).catch(()=>{});
+  }
+  selectedCleaners.clear();
+  updateBulkBar();
+  if(typeof renderCleaners==='function') renderCleaners();
+}
 </script>
 </body>
 </html>

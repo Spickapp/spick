@@ -858,6 +858,32 @@ async function markJobDone(id) {
   showToast('✅ Klart! Betalningen frigörs inom 1-2 bankdagar.');
   await loadJobs();
 }
+
+function checkOnboarding(cleanerData) {
+  const done = JSON.parse(localStorage.getItem('spick_ob_'+cleanerData?.id)||'[]');
+  const totalJobs = cleanerData?.review_count || 0;
+  // Visa bara för nya städare (<3 uppdrag) och om inte dismissed
+  if (totalJobs < 3 && !localStorage.getItem('spick_ob_done')) {
+    document.getElementById('onboarding-check').style.display = 'block';
+    done.forEach(n => markObStep(n));
+  }
+}
+function completeOnboarding(n) {
+  markObStep(n);
+  const el = document.getElementById('ob'+n);
+  if(el) el.parentElement.style.opacity = '.5';
+  const done = JSON.parse(localStorage.getItem('spick_ob_all')||'[]');
+  if(!done.includes(n)) done.push(n);
+  localStorage.setItem('spick_ob_all', JSON.stringify(done));
+  if(done.length >= 4) {
+    document.getElementById('onboarding-check').style.display = 'none';
+    localStorage.setItem('spick_ob_done','1');
+  }
+}
+function markObStep(n) {
+  const el = document.getElementById('ob'+n);
+  if(el) { el.textContent = '✓'; el.style.background = 'rgba(255,255,255,.3)'; el.style.border = 'none'; }
+}
 </script>
 </body>
 </html>
