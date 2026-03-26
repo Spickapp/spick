@@ -191,6 +191,43 @@ if isinstance(apps, list):
 else:
     ok("cleaner_applications blockerad utan auth", "RLS fungerar")
 
+# ─── 7b. SÄKERHETSFUNKTIONER ────────────────────────
+print("\n7b. Säkerhetsfunktioner")
+# Kolla att customer_reports-tabellen finns
+res = req("GET", "/rest/v1/customer_reports?limit=1")
+if isinstance(res, list):
+    ok("customer_reports tabell", "finns")
+else:
+    fail("customer_reports tabell", str(res)[:100])
+
+# Kolla att referrals-tabellen finns
+res = req("GET", "/rest/v1/referrals?limit=1")
+if isinstance(res, list):
+    ok("referrals tabell", "finns")
+else:
+    fail("referrals tabell", str(res)[:100])
+
+# Kolla att push_subscriptions-tabellen finns
+res = req("GET", "/rest/v1/push_subscriptions?limit=1")
+if isinstance(res, list):
+    ok("push_subscriptions tabell", "finns")
+else:
+    fail("push_subscriptions tabell", str(res)[:100])
+
+# Kolla sqm-kolumn i bookings
+res = req("GET", "/rest/v1/bookings?select=sqm&limit=1")
+if not (isinstance(res, dict) and res.get("code")):
+    ok("bookings.sqm kolumn", "finns")
+else:
+    fail("bookings.sqm kolumn", str(res)[:100])
+
+# Kolla säkerhetskolumner
+res = req("GET", "/rest/v1/bookings?select=checked_in_at,photo_before_url,swish_payment_id&limit=1")
+if not (isinstance(res, dict) and res.get("code")):
+    ok("bookings säkerhetskolumner", "checkin, foto, swish finns")
+else:
+    fail("bookings säkerhetskolumner", str(res)[:100])
+
 # ─── 8. CLEANUP ──────────────────────────────────────
 print("\n8. Städning av testdata")
 if bid:

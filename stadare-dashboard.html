@@ -484,7 +484,12 @@ function renderJobs() {
           <span>📍 ${j.city || j.address?.split(',').pop()?.trim() || '–'}</span>
         </div>
         <span class="badge ${badgeClass}">${badgeText}</span>
-        ${isMine && j.status !== 'klar' ? `<button onclick="markJobDone('${j.id}')" style="width:100%;margin-top:.5rem;padding:.5rem;background:#DCFCE7;color:#166534;border:1.5px solid #BBF7D0;border-radius:8px;font-weight:600;cursor:pointer;font-size:.82rem">✅ Markera som klar – frigör betalning</button>` : ''}
+        ${isMine && !j.checked_in_at && j.status !== 'klar' ? `<button onclick="checkInGPS('${j.id}')" style="width:100%;margin-top:.5rem;padding:.5rem;background:#DBEAFE;color:#1E40AF;border:1.5px solid #BFDBFE;border-radius:8px;font-weight:600;cursor:pointer;font-size:.82rem">📍 Checka in – jag är på plats</button>` : ''}
+        ${isMine && j.checked_in_at ? `<div style="display:flex;gap:.375rem;margin-top:.375rem">
+          <button onclick="takePhoto('${j.id}','before')" style="flex:1;padding:.375rem;background:${j.photo_before_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_before_url?'#166534':'#374151'};border:1px solid ${j.photo_before_url?'#BBF7D0':'#E5E7EB'};border-radius:6px;font-size:.7rem;font-weight:600;cursor:pointer">${j.photo_before_url?'✅ Foto in':'📸 Innan'}</button>
+          <button onclick="takePhoto('${j.id}','after')" style="flex:1;padding:.375rem;background:${j.photo_after_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_after_url?'#166534':'#374151'};border:1px solid ${j.photo_after_url?'#BBF7D0':'#E5E7EB'};border-radius:6px;font-size:.7rem;font-weight:600;cursor:pointer">${j.photo_after_url?'✅ Foto ut':'📸 Efter'}</button>
+        </div>` : ''}
+        ${isMine && j.checked_in_at && j.status !== 'klar' ? `<button onclick="markJobDone('${j.id}')" style="width:100%;margin-top:.5rem;padding:.5rem;background:#DCFCE7;color:#166534;border:1.5px solid #BBF7D0;border-radius:8px;font-weight:600;cursor:pointer;font-size:.82rem">✅ Markera som klar – frigör betalning</button>` : ''}
         ${isMine && j.status === 'klar' ? `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:.5rem">✅ Klar – betalning på väg</div>` : ''}
         ${isNew ? `<div class="job-actions">
           <button class="btn-accept" onclick="acceptJob('${j.id}')">Acceptera</button>
