@@ -267,7 +267,15 @@ async function send(){
   const btn=document.getElementById('sbtn');
   btn.disabled=true;btn.innerHTML='<div class="spin"></div> Skickar...';
   try{
-    // Spara meddelande + notifiera admin via edge function
+    // Spara meddelande till messages + notifications
+    await SB.from('messages').insert([{
+      from_email:em,
+      to_email:'hello@spick.se',
+      subject:'Kontaktformulär: '+sub,
+      body:'Från: '+fn+' '+ln+'\nEmail: '+em+'\nÄmne: '+sub+'\n\n'+msg,
+      type:'contact',
+      status:'ny'
+    }]).then(()=>{}).catch(()=>{});
     await SB.from('notifications').insert([{
       type:'contact',
       recipient_email:'hello@spick.se',

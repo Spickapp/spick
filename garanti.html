@@ -178,6 +178,96 @@ footer p{font-size:.8rem;color:#4A4A45}
   </div>
 </div>
 
+<!-- REKLAMATIONSFORMULÄR -->
+<div style="background:#F7F7F5;padding:4rem 2rem;">
+  <div style="max-width:640px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <span style="display:inline-block;background:#E1F5EE;color:#0F6E56;font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.35rem 1rem;border-radius:100px;margin-bottom:.75rem;">Aktivera garantin</span>
+      <h2 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:#0E0E0E;margin-bottom:.5rem;">Inte nöjd? Vi fixar det</h2>
+      <p style="font-size:.95rem;color:#6B6960;line-height:1.7;">Fyll i formuläret nedan så kontaktar vi dig inom 2 timmar och bokar en kostnadsfri omstädning.</p>
+    </div>
+    <div style="background:#fff;border-radius:20px;border:1px solid #E8E8E4;padding:2rem;">
+      <div style="display:flex;flex-direction:column;gap:.875rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div class="gf"><label class="gl">Namn *</label><input id="gr-name" type="text" placeholder="Anna Andersson" class="gi"></div>
+          <div class="gf"><label class="gl">E-post *</label><input id="gr-email" type="email" placeholder="anna@email.se" class="gi"></div>
+        </div>
+        <div class="gf"><label class="gl">Boknings-ID eller datum *</label><input id="gr-booking" type="text" placeholder="t.ex. 2026-03-26 eller boknings-ID" class="gi"></div>
+        <div class="gf"><label class="gl">Vad är problemet? *</label><textarea id="gr-desc" rows="4" placeholder="Beskriv vad som inte uppfyllde förväntningarna..." class="gi" style="resize:vertical;"></textarea></div>
+        <div class="gf"><label class="gl">Önskat kontaktsätt</label>
+          <select id="gr-contact" class="gi">
+            <option value="email">E-post</option>
+            <option value="telefon">Telefon</option>
+          </select>
+        </div>
+        <div id="gr-success" style="display:none;background:#E1F5EE;border-radius:12px;padding:1.25rem;text-align:center;">
+          <p style="font-size:.95rem;color:#0F6E56;font-weight:600;">✅ Reklamation mottagen!</p>
+          <p style="font-size:.85rem;color:#1D9E75;margin-top:.25rem;">Vi hör av oss inom 2 timmar.</p>
+        </div>
+        <button id="gr-btn" onclick="submitGaranti()" style="width:100%;padding:.875rem;background:#0F6E56;color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;">
+          Aktivera garantin →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.gf{display:flex;flex-direction:column;gap:.4rem;}
+.gl{font-size:.78rem;font-weight:500;color:#6B6960;}
+.gi{padding:.75rem 1rem;border:1.5px solid #E8E8E4;border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;width:100%;}
+.gi:focus{border-color:#0F6E56;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _SB = supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
+
+async function submitGaranti() {
+  const name = document.getElementById('gr-name').value.trim();
+  const email = document.getElementById('gr-email').value.trim();
+  const booking = document.getElementById('gr-booking').value.trim();
+  const desc = document.getElementById('gr-desc').value.trim();
+  const contact = document.getElementById('gr-contact').value;
+
+  if (!name || !email || !booking || !desc) {
+    alert('Fyll i alla obligatoriska fält (*)');
+    return;
+  }
+
+  const btn = document.getElementById('gr-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Skickar...';
+
+  try {
+    // Spara till Supabase messages-tabell
+    await _SB.from('messages').insert({
+      from_email: email,
+      to_email: 'hello@spick.se',
+      subject: `Garantireklamation – ${name}`,
+      body: `Namn: ${name}\nE-post: ${email}\nBokning: ${booking}\nKontaktsätt: ${contact}\n\nBeskrivning:\n${desc}`,
+      type: 'garanti',
+      status: 'ny'
+    });
+
+    // Skicka notis till admin via edge function
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' },
+      body: JSON.stringify({
+        type: 'garanti_reklamation',
+        record: { name, email, booking, desc, contact }
+      })
+    });
+
+    document.getElementById('gr-success').style.display = 'block';
+    document.getElementById('gr-btn').style.display = 'none';
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Aktivera garantin →';
+    alert('Något gick fel. Maila hello@spick.se direkt.');
+  }
+}
+</script>
+
 <footer>
   <span>Spick</span>
   <p>hello@spick.se &nbsp;·&nbsp; © 2026 Spick AB &nbsp;·&nbsp; 559402-4522</p>
