@@ -79,6 +79,7 @@ serve(async (req) => {
       "https://spick.se/assets/og-image.jpg");
 
     params.append("allow_promotion_codes", "true");
+    params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
     // Klarna kräver telefonnummer
     if (phone) params.append("payment_method_options[klarna][setup_future_usage]", "none");
     params.append("billing_address_collection", "auto");
