@@ -7,6 +7,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const BUFFER_ACCESS_TOKEN  = Deno.env.get("BUFFER_ACCESS_TOKEN")!;
+// Känd Buffer kanal-ID för Spick.se (hämtad 2026-03-26)
+const BUFFER_CHANNEL_ID    = Deno.env.get("BUFFER_CHANNEL_ID") || "69c417e0af47dacb69542274";
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY       = Deno.env.get("RESEND_API_KEY")!;

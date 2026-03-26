@@ -13,8 +13,14 @@ jobs:
         env:
           BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
         run: |
+          if [ -z "$BUFFER_TOKEN" ]; then
+            echo "⚠️ BUFFER_ACCESS_TOKEN ej konfigurerat"
+            echo "Känd kanal-ID från Buffer: 69c417e0af47dacb69542274 (Spick.se)"
+            echo "Hämta din access token: https://buffer.com/developers/apps"
+            exit 0
+          fi
           echo "=== Buffer profil-IDs ==="
-          curl -s "https://api.bufferapp.com/1/profiles.json?access_token=$BUFFER_TOKEN" | \
+          curl -s "https://api.buffer.com/1/profiles.json?access_token=$BUFFER_TOKEN" | \
             python3 -c "
 import sys, json
 try:
@@ -26,4 +32,4 @@ try:
         print('Svar:', json.dumps(profiles, indent=2)[:500])
 except Exception as e:
     print('Fel:', e)
-"
+" || echo "Kunde ej hämta profiler"
