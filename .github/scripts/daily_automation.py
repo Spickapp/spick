@@ -24,16 +24,23 @@ DAYS30AGO = (date.today() - timedelta(days=30)).isoformat()
 DAYS31AGO = (date.today() - timedelta(days=31)).isoformat()
 
 def supa_get(path):
-    r = subprocess.run([
-        'curl', '-sf', f"{SUPA_URL}/rest/v1/{path}",
-        '-H', f'apikey: {SUPA_KEY}',
-        '-H', f'Authorization: Bearer {SUPA_KEY}',
-        '-H', 'Accept: application/json'
-    ], capture_output=True, text=True)
     try:
+        r = subprocess.run([
+            'curl', '-sf', f"{SUPA_URL}/rest/v1/{path}",
+            '-H', f'apikey: {SUPA_KEY}',
+            '-H', f'Authorization: Bearer {SUPA_KEY}',
+            '-H', 'Accept: application/json'
+        ], capture_output=True, text=True, timeout=15)
+        if not r.stdout.strip():
+            print(f"  ⚠️ Tom svar från {path[:50]}")
+            return []
         d = json.loads(r.stdout)
+        if isinstance(d, dict) and d.get('code'):
+            print(f"  ⚠️ Supabase fel: {d.get('message','')}")
+            return []
         return d if isinstance(d, list) else []
-    except:
+    except Exception as e:
+        print(f"  ⚠️ supa_get fel: {e}")
         return []
 
 def supa_patch(table, filter_str, data):
