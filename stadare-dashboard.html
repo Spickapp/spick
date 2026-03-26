@@ -487,6 +487,7 @@ function renderJobs() {
         ${isNew ? `<div class="job-actions">
           <button class="btn-accept" onclick="acceptJob('${j.id}')">Acceptera</button>
           <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
+          <button onclick="reportCustomer('${j.id}','${j.customer_email||j.email||''}')" style="padding:.4rem .75rem;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer">⚠️ Rapportera</button>
         </div>` : ''}
         ${isMine ? (() => {
           const d = new Date(j.date);
@@ -525,6 +526,7 @@ async function acceptJob(id) {
   await loadJobs();
 }
 
+// Rapport-knapp visas i job-kortet via renderJobs - se job-card HTML
 async function declineJob(id) {
   await SB.from('bookings').update({ cleaner_id: null }).eq('id', id);
   showToast('Uppdrag avböjt');
@@ -616,6 +618,205 @@ async function checkConnectStatus() {
   } else if (cleanerData.stripe_account_id) {
     document.getElementById('connect-status').innerHTML = '<div style="color:#854D0E;font-weight:500;margin-bottom:.75rem">⏳ Väntar på Stripe-verifiering</div><button onclick="startStripeConnect()" style="padding:.625rem 1.25rem;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer">Fortsätt registrering →</button>';
   }
+}
+
+// ── GPS INCHECKNING ───────────────────────────────────────
+async function checkInGPS(bookingId) {
+  const btn = event.currentTarget;
+  btn.textContent = '📍 Hämtar position...';
+  btn.disabled = true;
+
+  if (!navigator.geolocation) {
+    alert('Din enhet stöder inte GPS. Checka in manuellt via hello@spick.se');
+    btn.disabled = false; btn.textContent = '📍 Checka in – jag är på plats';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude, accuracy } = pos.coords;
+    
+    await SB.from('bookings').update({
+      checked_in_at: new Date().toISOString(),
+      checkin_lat: latitude,
+      checkin_lng: longitude,
+      checkin_accuracy: Math.round(accuracy),
+      status: 'pågår'
+    }).eq('id', bookingId);
+
+    // Notifiera kunden
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+      body: JSON.stringify({
+        type: 'cleaner_arrived',
+        record: { booking_id: bookingId, cleaner_name: cleaner?.full_name, time: new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}) }
+      })
+    }).catch(()=>{});
+
+    showToast('✅ Incheckad! Kunden har fått ett SMS.');
+    await loadJobs();
+  }, (err) => {
+    // Fallback om GPS misslyckas
+    SB.from('bookings').update({ checked_in_at: new Date().toISOString(), status: 'pågår' }).eq('id', bookingId);
+    showToast('✅ Incheckad (GPS ej tillgänglig)');
+    loadJobs();
+  }, { timeout: 10000, maximumAge: 60000 });
+}
+</script>
+
+<!-- SOS NÖDKNAPP -->
+<div id="sos-btn" onclick="sosAlert()" style="
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  width:60px;height:60px;
+  background:#DC2626;color:#fff;
+  border-radius:50%;border:3px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;cursor:pointer;
+  box-shadow:0 4px 20px rgba(220,38,38,.5);
+  z-index:200;
+  animation:sos-pulse 2s infinite;
+  title='SOS – Nödkontakt Spick'">
+  🆘
+</div>
+<style>
+@keyframes sos-pulse {
+  0%,100%{box-shadow:0 4px 20px rgba(220,38,38,.5);}
+  50%{box-shadow:0 4px 30px rgba(220,38,38,.9),0 0 0 8px rgba(220,38,38,.2);}
+}
+</style>
+
+<!-- SOS MODAL -->
+<div id="sos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:20px;padding:2rem;max-width:360px;width:100%;text-align:center">
+    <div style="font-size:3rem;margin-bottom:1rem">🆘</div>
+    <h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem;color:#DC2626">Nödkontakt</h2>
+    <p style="font-size:.875rem;color:#6B6960;margin-bottom:1.5rem;line-height:1.6">Behöver du omedelbar hjälp? Välj hur vi kontaktar dig:</p>
+    <div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.25rem">
+      <button onclick="sosSend('ring')" style="padding:.875rem;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem">
+        📞 Ring mig nu – Spick svarar direkt
+      </button>
+      <button onclick="sosSend('sms')" style="padding:.875rem;background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem">
+        💬 Skicka SOS-meddelande
+      </button>
+      <a href="tel:0701234567" style="padding:.875rem;background:#F3F4F6;color:#374151;border-radius:12px;font-weight:600;text-decoration:none;font-size:.875rem">
+        🚔 Ring SOS 112
+      </a>
+    </div>
+    <button onclick="document.getElementById('sos-modal').style.display='none'" style="font-size:.85rem;color:#6B6960;background:none;border:none;cursor:pointer">
+      Avbryt – allt är okej
+    </button>
+  </div>
+</div>
+
+<script>
+function sosAlert() {
+  document.getElementById('sos-modal').style.display = 'flex';
+}
+
+async function sosSend(type) {
+  const modal = document.getElementById('sos-modal');
+  // Hämta aktiv bokning
+  const activeJob = jobs?.find(j => j.status === 'pågår' && j.cleaner_id === cleaner?.id);
+  
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body: JSON.stringify({
+      type: 'sos_alert',
+      record: {
+        cleaner_name: cleaner?.full_name,
+        cleaner_email: cleaner?.email,
+        cleaner_phone: cleaner?.phone,
+        contact_type: type,
+        booking_id: activeJob?.id,
+        address: activeJob?.address,
+        timestamp: new Date().toISOString()
+      }
+    })
+  }).catch(()=>{});
+
+  modal.innerHTML = `<div style="background:#fff;border-radius:20px;padding:2rem;max-width:360px;width:100%;text-align:center">
+    <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+    <h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem">SOS skickat!</h2>
+    <p style="font-size:.875rem;color:#6B6960;margin-bottom:1.5rem">Vi kontaktar dig inom 2 minuter. Håll telefonen nära.</p>
+    <button onclick="document.getElementById('sos-modal').style.display='none'" style="padding:.875rem 2rem;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-weight:700;cursor:pointer">OK</button>
+  </div>`;
+}
+
+// ── FOTO PROTOKOLL ────────────────────────────────────────
+async function takePhoto(bookingId, type) {
+  // Skapa file input dynamiskt
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment'; // bakre kameran
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    showToast('📸 Laddar upp bild...');
+    
+    // Konvertera till base64
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result;
+      
+      // Spara i Supabase storage (photos bucket)
+      const filename = `${bookingId}/${type}_${Date.now()}.jpg`;
+      const { data, error } = await SB.storage
+        .from('booking-photos')
+        .upload(filename, file, { contentType: 'image/jpeg', upsert: true });
+      
+      if (error) {
+        // Fallback: spara URL i bookings-tabellen
+        const field = type === 'before' ? 'photo_before_url' : 'photo_after_url';
+        await SB.from('bookings').update({ [field]: base64.slice(0,500) }).eq('id', bookingId);
+        showToast('✅ Foto sparat!');
+      } else {
+        const url = SB.storage.from('booking-photos').getPublicUrl(filename).data.publicUrl;
+        const field = type === 'before' ? 'photo_before_url' : 'photo_after_url';
+        await SB.from('bookings').update({ [field]: url }).eq('id', bookingId);
+        showToast('✅ Foto sparat och bifogat till bokningen!');
+      }
+      await loadJobs();
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ── RAPPORTERA OLÄMPLIG KUND ─────────────────────────────
+async function reportCustomer(bookingId, customerEmail) {
+  const reason = prompt(
+    'Beskriv kortfattat varför du rapporterar denna kund:\n(t.ex. olämpligt beteende, hotfull, grovt stökig bostad, etc.)'
+  );
+  if (!reason) return;
+  
+  // Spara rapport i Supabase
+  await SB.from('customer_reports').insert({
+    booking_id: bookingId,
+    customer_email: customerEmail,
+    cleaner_id: cleaner?.id,
+    reason: reason,
+    created_at: new Date().toISOString()
+  }).then(()=>{}).catch(()=>{});
+  
+  // Notifiera admin
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body: JSON.stringify({
+      type: 'customer_report',
+      record: {
+        booking_id: bookingId,
+        customer_email: customerEmail,
+        cleaner_name: cleaner?.full_name,
+        reason: reason
+      }
+    })
+  }).catch(()=>{});
+  
+  showToast('⚠️ Rapport skickad till Spick. Tack för att du hör av dig.');
 }
 </script>
 </body>

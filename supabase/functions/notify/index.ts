@@ -220,6 +220,55 @@ serve(async (req) => {
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
     }
+    else if (type === "customer_report") {
+      const r = payload.record || {};
+      subject = `⚠️ Kundrapport från ${r.cleaner_name || "städare"}`;
+      html = wrap(`
+<h2>⚠️ Kund rapporterad</h2>
+<div class="card">
+  <div class="row"><span class="lbl">Städare</span><span class="val">${r.cleaner_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${r.customer_email || "–"}</span></div>
+  <div class="row"><span class="lbl">Boknings-ID</span><span class="val">${r.booking_id || "–"}</span></div>
+  <div class="row"><span class="lbl">Orsak</span><span class="val">${r.reason || "–"}</span></div>
+</div>
+<p style="color:#92400E">Utred och vidta åtgärd om nödvändigt (varning/blockering).</p>
+<a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
+`);
+      to = ADMIN;
+    }
+    else if (type === "cleaner_arrived") {
+      const r = payload.record || {};
+      subject = `✅ ${r.cleaner_name || "Din städare"} har anlänt – städningen startar!`;
+      html = wrap(`
+<h2>Din städare är på plats! 🌿</h2>
+<p><strong>${r.cleaner_name || "Din städare"}</strong> checkade in kl. ${r.time || "nu"}.</p>
+<div class="card">
+  <p style="margin:0;font-size:14px;color:#6B6960">Städningen är igång. Du får ett mail när den är klar och redo att godkännas.</p>
+</div>
+<a href="https://spick.se/garanti.html" style="display:block;text-align:center;margin-top:12px;color:#6B6960;font-size:13px">Inte hemma? Se vad som ingår i städningen →</a>
+`);
+      const { data: bk } = await sb.from("bookings").select("customer_email,email").eq("id", r.booking_id).single();
+      if (bk) to = bk.customer_email || bk.email || ADMIN;
+    }
+        else if (type === "sos_alert") {
+      const r = payload.record || {};
+      subject = `🆘 SOS NÖDLARM – ${r.cleaner_name || "Städare"} behöver hjälp!`;
+      html = wrap(`
+<div style="background:#FEE2E2;border-radius:12px;padding:20px;margin-bottom:20px;border:2px solid #DC2626">
+  <h2 style="color:#DC2626;margin:0">🆘 NÖDLARM AKTIVERAT</h2>
+</div>
+<div class="card">
+  <div class="row"><span class="lbl">Städare</span><span class="val">${r.cleaner_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Telefon</span><span class="val">${r.cleaner_phone || "–"}</span></div>
+  <div class="row"><span class="lbl">Email</span><span class="val">${r.cleaner_email || "–"}</span></div>
+  <div class="row"><span class="lbl">Kontakttyp</span><span class="val">${r.contact_type === 'ring' ? '📞 Ber om samtal' : '💬 SMS-kontakt'}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${new Date(r.timestamp || Date.now()).toLocaleString('sv-SE')}</span></div>
+</div>
+<p style="color:#DC2626;font-weight:700;font-size:16px">Kontakta städaren OMEDELBART!</p>
+`);
+      to = ADMIN;
+    }
     else if (type === "job_completed") {
       const r = payload.record || {};
       subject = `✅ Städningen är klar – betygsätt din städare!`;
