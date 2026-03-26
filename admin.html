@@ -652,7 +652,7 @@ function renderApplications() {
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
         <div>
-          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${a.full_name}</h4>
+          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${a.name || a.full_name || '–'}</h4>
           <p style="color:var(--m);font-size:.88rem">${a.email} · ${a.phone || '–'} · ${a.city || '–'}</p>
           <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${a.services || '–'}</p>
           <p style="font-size:.85rem"><strong>Timpris:</strong> ${a.hourly_rate || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt ? '✅ Ja' : '❌ Nej'}</p>
@@ -660,14 +660,14 @@ function renderApplications() {
           <p style="font-size:.75rem;color:var(--m);margin-top:6px">Ansökt: ${new Date(a.created_at).toLocaleDateString('sv')}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}', '${a.full_name}', '${a.email}', '${a.city||''}', '${a.services||''}', ${a.hourly_rate||350})">✅ Godkänn</button>
+          <button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}', '${a.name || a.full_name}', '${a.email}', '${a.city||''}', '${a.services||''}', ${a.hourly_rate||350})">✅ Godkänn</button>
           <button class="btn btn-danger btn-sm" onclick="rejectApplication('${a.id}')">❌ Avslå</button>
         </div>
       </div>
     </div>`).join('') : '<div class="empty"><div class="empty-icon">✅</div>Inga nya ansökningar</div>'}
     ${reviewed.length ? `<h3 style="font-weight:600;margin:24px 0 16px">Granskade (${reviewed.length})</h3>` + reviewed.map(a => `
     <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem">
-      <span>${a.full_name} · ${a.city || '–'}</span>
+      <span>${a.name || a.full_name || '–'} · ${a.city || '–'}</span>
       <span class="badge ${a.status==='approved'?'green':'red'}">${a.status==='approved'?'Godkänd':'Avslagen'}</span>
     </div>`).join('') : ''}`;
 }
