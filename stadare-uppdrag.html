@@ -611,6 +611,63 @@ function cookieChoice(accept) {
     gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'granted' });
   }
 }
+
+// GPS incheckning
+function doCheckin() {
+  const btn = document.getElementById('checkin-btn');
+  const status = document.getElementById('checkin-status');
+  if(!navigator.geolocation) {
+    status.textContent = '⚠ GPS ej tillgängligt på denna enhet';
+    status.style.display = 'block'; status.style.color = '#dc2626';
+    return;
+  }
+  btn.textContent = '⏳ Hämtar position...';
+  btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const {latitude:lat, longitude:lng} = pos.coords;
+      const bid = new URLSearchParams(location.search).get('bid') || new URLSearchParams(location.search).get('id');
+      const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+      if(bid) {
+        fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?id=eq.'+bid, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},
+          body: JSON.stringify({
+            status:'pågår',
+            checkin_time: new Date().toISOString(),
+            checkin_lat: lat,
+            checkin_lng: lng
+          })
+        });
+      }
+      btn.textContent = '✅ Incheckad!';
+      btn.style.background = '#16a34a';
+      status.textContent = `✅ Incheckad ${new Date().toLocaleTimeString('sv-SE')} · ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      status.style.color = '#166534';
+      status.style.display = 'block';
+      document.getElementById('checkin-block').style.borderColor = '#16a34a';
+    },
+    err => {
+      btn.textContent = '📍 Checka in nu';
+      btn.disabled = false;
+      status.textContent = '⚠ Kunde inte hämta GPS – tillåt platsåtkomst i webbläsaren';
+      status.style.color = '#dc2626';
+      status.style.display = 'block';
+    },
+    {enableHighAccuracy:true, timeout:10000}
+  );
+}
+
+// Öppna Google Maps vägbeskrivning
+function openDirections() {
+  const addrEl = document.getElementById('job-address') || document.querySelector('[id*="address"]');
+  const addr = addrEl?.textContent?.trim() || new URLSearchParams(location.search).get('address') || '';
+  if(addr) {
+    window.open('https://maps.google.com/?q=' + encodeURIComponent(addr) + '&travelmode=transit', '_blank');
+  } else {
+    alert('Adress saknas – kontakta kunden');
+  }
+}
 </script>
 </body>
 </html>

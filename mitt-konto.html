@@ -459,6 +459,17 @@ function logout() {
   document.getElementById('portalSection').style.display = 'none';
   document.getElementById('emailInput').value = '';
 }
+
+function editProfile() {
+  const name = prompt("Ditt namn:", document.getElementById('profile-name')?.textContent || "");
+  const phone = prompt("Telefonnummer:", document.getElementById('profile-phone')?.textContent || "");
+  if(name || phone) {
+    // Spara lokalt för nu – faktisk Supabase-update kräver auth
+    if(name) document.getElementById('profile-name').textContent = name;
+    if(phone) document.getElementById('profile-phone').textContent = phone;
+    alert("✅ Profil uppdaterad!");
+  }
+}
 </script>
 </body>
 </html>
