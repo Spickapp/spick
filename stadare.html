@@ -479,8 +479,12 @@ function updateMapMarkers() {
     bounds.push([lat, lng]);
   });
   
-  if (bounds.length > 0) {
+  if (bounds.length > 1) {
     _map.fitBounds(bounds, { padding: [40, 40] });
+  } else if (bounds.length === 1) {
+    _map.setView(bounds[0], 12);
+  } else {
+    _map.setView([59.33, 18.07], 6); // Sverige default
   }
 }
 
