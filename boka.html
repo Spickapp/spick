@@ -99,6 +99,17 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 .mob-panel a:last-child{border:none;margin-top:auto;}
 .mob-close{align-self:flex-end;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6B6960;margin-bottom:1rem;}
 @media(max-width:768px){.hamburger{display:flex!important;}}
+
+/* iOS zoom-prevention: inputs behöver minst 16px */
+input, select, textarea {
+  font-size: 16px !important;
+}
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+}
 </style>
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
@@ -173,9 +184,10 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
           <div id="addr-suggestions" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #0F6E56;border-radius:0 0 12px 12px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)"></div>
         </div>
       <div class="f2">
-        <div class="f"><label>Datum *</label><input type="date" id="date" min="" required style="min-height:44px"></div>
+        <div class="f"><label>Datum *</label><input type="date" id="date" min="" required style="min-height:44px" oninput="updateCalendarLink()">
+    <a id="cal-hint" href="#" target="_blank" style="display:none;font-size:.73rem;color:#0F6E56;font-weight:600;align-items:center;gap:.3rem;margin-top:.3rem" onclick="event.stopPropagation()">📅 Förhandslägg i Google Calendar</a></div>
         <div class="f"><label>Tid *</label>
-          <select id="time" required style="min-height:44px">
+          <select id="time" required style="min-height:44px" onchange="updateCalendarLink()">
             <option value="">Välj tid...</option>
             <option>07:00</option><option>08:00</option><option>09:00</option>
             <option>10:00</option><option>11:00</option><option>12:00</option>
@@ -602,7 +614,12 @@ async function doBook(){
         service: svc,
         date: date,
         hours: h,
-        rut: useRut
+        rut: useRut,
+        cleaner_id: cleanerId || '',
+        cleaner_name: decodeURIComponent(p.get('name')||''),
+        phone: ph||'',
+        address: addr||'',
+        sqm: sqm||0
       })
     });
 
