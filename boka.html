@@ -182,12 +182,23 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
             <option>Kontorsstädning</option><option>Trapphus</option>
           </select>
         </div>
-        <div class="f"><label>Antal timmar *</label>
-          <select id="hours" onchange="calcPrice()">
-            <option value="2">2 timmar</option><option value="3" selected>3 timmar</option>
-            <option value="4">4 timmar</option><option value="5">5 timmar</option>
-            <option value="6">6 timmar</option><option value="8">8 timmar</option>
-          </select>
+        <div class="f">
+          <label>Bostadsyta (kvm) *</label>
+          <div style="position:relative">
+            <input type="number" id="sqm" placeholder="t.ex. 65" min="20" max="300" 
+              oninput="calcHoursFromSqm()" 
+              style="width:100%;padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;background:#fff;">
+            <span style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);font-size:.85rem;color:var(--m)">m²</span>
+          </div>
+          <div id="sqm-hint" style="font-size:.75rem;color:var(--g);margin-top:.35rem;display:none">
+            ⏱ Uppskattad tid: <strong id="sqm-hours-text">–</strong>
+          </div>
+        </div>
+        <div class="f"><label>Antal timmar</label>
+          <input type="text" id="hours-display" readonly
+            style="background:var(--gr);cursor:not-allowed;padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;color:var(--m)"
+            placeholder="Beräknas från kvm">
+          <input type="hidden" id="hours" value="3">
         </div>
       </div>
 
@@ -316,12 +327,82 @@ function calcPrice(){
   const h=+document.getElementById('hours').value||3;
   const gross=rate*h,rut=useRut?Math.round(gross*.5):0,tot=gross-rut;
   document.getElementById('c-rate').textContent=rate+' kr/h';
+  const sqmVal = document.getElementById('sqm')?.value;
+  const sqmRow = document.getElementById('c-sqm-row');
+  if (sqmRow) sqmRow.style.display = sqmVal ? 'flex' : 'none';
+  if (sqmVal && document.getElementById('c-sqm')) {
+    document.getElementById('c-sqm').textContent = sqmVal + ' m²';
+  }
   document.getElementById('c-hours').textContent=h+' h';
   document.getElementById('c-gross').textContent=gross.toLocaleString('sv')+' kr';
   document.getElementById('c-rut').textContent='−'+rut.toLocaleString('sv')+' kr';
   document.getElementById('c-rut-row').style.display=useRut?'flex':'none';
   document.getElementById('c-tot').textContent=tot.toLocaleString('sv')+' kr';
 }
+
+
+// ── BERÄKNA TIMMAR FRÅN KVM ──────────────────────────────
+function calcHoursFromSqm() {
+  const sqm = +document.getElementById('sqm').value || 0;
+  const svc = document.getElementById('service').value || 'Hemstädning';
+  const hint = document.getElementById('sqm-hint');
+  const hoursDisplay = document.getElementById('hours-display');
+  const hoursInput = document.getElementById('hours');
+
+  if (!sqm || sqm < 10) {
+    hint.style.display = 'none';
+    return;
+  }
+
+  // Timberäkning per tjänst och kvm
+  let hours;
+  if (svc === 'Storstädning') {
+    // Storstädning tar längre tid – ca 1h per 25 kvm
+    if (sqm <= 40)       hours = 2;
+    else if (sqm <= 60)  hours = 3;
+    else if (sqm <= 80)  hours = 4;
+    else if (sqm <= 100) hours = 5;
+    else if (sqm <= 130) hours = 6;
+    else if (sqm <= 160) hours = 7;
+    else                 hours = 8;
+  } else if (svc === 'Flyttstädning') {
+    // Flyttstädning är mest tidskrävande
+    if (sqm <= 40)       hours = 3;
+    else if (sqm <= 60)  hours = 4;
+    else if (sqm <= 80)  hours = 5;
+    else if (sqm <= 100) hours = 6;
+    else if (sqm <= 130) hours = 7;
+    else if (sqm <= 160) hours = 8;
+    else                 hours = 9;
+  } else if (svc === 'Fönsterputs') {
+    // Fönsterputs beror mer på antal fönster än yta
+    if (sqm <= 50)       hours = 2;
+    else if (sqm <= 100) hours = 3;
+    else                 hours = 4;
+  } else {
+    // Hemstädning – ca 1h per 30 kvm
+    if (sqm <= 35)       hours = 2;
+    else if (sqm <= 55)  hours = 2.5;
+    else if (sqm <= 75)  hours = 3;
+    else if (sqm <= 95)  hours = 3.5;
+    else if (sqm <= 120) hours = 4;
+    else if (sqm <= 150) hours = 5;
+    else                 hours = 6;
+  }
+
+  // Avrunda till närmaste halvtimme
+  hours = Math.round(hours * 2) / 2;
+
+  hoursInput.value = hours;
+  hoursDisplay.value = hours + (hours % 1 === 0 ? ' timmar' : ' timmar');
+  document.getElementById('sqm-hours-text').textContent = hours + ' timmar';
+  hint.style.display = 'block';
+
+  calcPrice();
+}
+
+// Uppdatera timmar när tjänst byts
+document.getElementById('service')?.addEventListener('change', calcHoursFromSqm);
 
 async function hashPnr(pnr){
   const clean=pnr.replace(/[^0-9]/g,'');
@@ -372,6 +453,7 @@ async function doBook(){
     {id:'date',    val:date, msg:'Välj datum'},
     {id:'time',    val:time, msg:'Välj tid'},
     {id:'service', val:svc,  msg:'Välj tjänst'},
+    {id:'sqm', val:document.getElementById('sqm')?.value, msg:'Ange bostadsyta i kvm'},
   ];
   required.forEach(({id,val,msg})=>{
     if(!val){
