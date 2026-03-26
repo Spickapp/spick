@@ -16,23 +16,27 @@ jobs:
       PROJECT_ID: urjeijcncsyuletprydy
     steps:
       - uses: actions/checkout@v4
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - run: supabase link --project-ref $PROJECT_ID
-      # Reparera: ta bort gamla version 20260325 från historiken (kördes manuellt)
-      - run: supabase migration repair --status reverted 20260325 || true
-      # Markera alla manuellt körda migrationer som applied
-      - run: supabase migration repair --status applied 20260325000001 || true
-      - run: supabase migration repair --status applied 20260325000002 || true
-      - run: supabase migration repair --status applied 20260325000003 || true
-      - run: supabase migration repair --status applied 20260325000004 || true
-      - run: supabase migration repair --status applied 20260325000005 || true
-      - run: supabase migration repair --status applied 20260325000006 || true
-      - run: supabase migration repair --status applied 20260326000001 || true
-      - run: supabase migration repair --status applied 20260326000002 || true
-      - run: supabase migration repair --status applied 20260326000003 || true
-      - run: supabase migration repair --status applied 20260326000004 || true
-      - run: supabase migration repair --status applied 20260326000005 || true
-      # Pusha eventuella nya migrationer
-      - run: supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+
+      - name: Link projekt
+        run: supabase link --project-ref $PROJECT_ID
+
+      # Markera alla tidigare manuellt körda migrationer som applied
+      # (förhindrar att de körs om igen)
+      - name: Markera gamla migrationer som applied
+        run: |
+          for id in \
+            001 002 003 004 005 006 007 008 009 010 \
+            20260325000001 20260325000002 20260325000003 \
+            20260325000004 20260325000005 20260325000006 \
+            20260326000001 20260326000002 20260326000003 \
+            20260326000004 20260326000005 \
+            20260326100001 20260326200001; do
+            supabase migration repair --status applied "$id" 2>/dev/null || true
+          done
+
+      - name: Kör nya migrationer
+        run: supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
