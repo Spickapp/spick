@@ -8,6 +8,7 @@
 <title>Boka städning – Spick</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <style>
@@ -160,7 +161,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       </div>
       <div class="f"><label>E-post *</label><input type="email" id="email" placeholder="anna@email.se" autocomplete="email"></div>
       <div class="f"><label>Telefon *</label><input type="tel" id="phone" placeholder="070 123 45 67"></div>
-      <div class="f"><label>Adress *</label><input type="text" id="address" placeholder="Storgatan 1, Stockholm" autocomplete="street-address"></div>
+      <div class="f" style="position:relative"><label>Adress *</label><input type="text" id="address" placeholder="Börja skriv din adress..." autocomplete="off" oninput="addrSearch(this.value)" style="width:100%" autocomplete="street-address"></div>
       <div class="f2">
         <div class="f"><label>Datum *</label><input type="date" id="date" min=""></div>
         <div class="f"><label>Tid *</label>
@@ -222,8 +223,17 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       <div class="rut-pnr show" id="rutPnr">
         <div class="f">
           <label>Personnummer för RUT *</label>
-          <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" maxlength="13">
+          <div style="display:flex;gap:.5rem;align-items:flex-start">
+            <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" maxlength="13" style="flex:1">
+            <button type="button" onclick="autofillViaBankID()" id="bankid-fill-btn"
+              title="Fyll i namn automatiskt via BankID"
+              style="padding:.75rem 1rem;background:#193E8F;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:.4rem">
+              <svg width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="20" fill="white"/><rect x="10" y="38" width="80" height="10" fill="#193E8F"/><rect x="10" y="55" width="80" height="10" fill="#193E8F"/><rect x="10" y="20" width="80" height="10" fill="#FFD700"/></svg>
+              Autofyll
+            </button>
+          </div>
           <div class="pnr-info">🔒 Krypteras och hanteras säkert · Används bara för RUT-ansökan hos Skatteverket</div>
+          <div id="bankid-status" style="display:none;margin-top:.5rem;font-size:.8rem;padding:.5rem .875rem;border-radius:8px"></div>
         </div>
       </div>
 
@@ -640,6 +650,155 @@ function updateServiceInfo() {
     linkDiv.style.display = 'none';
   }
   calcHoursFromSqm();
+}
+
+// ── ADRESS AUTOCOMPLETE (OpenStreetMap Nominatim) ────────
+let _addrTimer = null;
+async function addrSearch(q) {
+  clearTimeout(_addrTimer);
+  const box = document.getElementById('addr-suggestions');
+  if (!box) return;
+  if (!q || q.length < 3) { box.style.display='none'; return; }
+  
+  _addrTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Sverige')}&format=json&addressdetails=1&limit=5&countrycodes=se`,
+        { headers: { 'Accept-Language': 'sv', 'User-Agent': 'Spick/1.0 hello@spick.se' } }
+      );
+      const data = await res.json();
+      if (!data.length) { box.style.display='none'; return; }
+      
+      box.innerHTML = data.map(r => {
+        const addr = r.display_name.split(', Sweden')[0];
+        const road = r.address?.road || '';
+        const num = r.address?.house_number || '';
+        const city = r.address?.city || r.address?.town || r.address?.municipality || '';
+        const post = r.address?.postcode || '';
+        const label = [road+' '+num, post+' '+city].filter(Boolean).join(', ').trim();
+        return `<div onclick="selectAddr('${label.replace(/'/g,"\'")}','${r.lat}','${r.lon}')" 
+          style="padding:.75rem 1rem;cursor:pointer;border-bottom:1px solid #F0F0EC;font-size:.875rem;transition:background .15s"
+          onmouseover="this.style.background='#E1F5EE'" onmouseout="this.style.background=''"
+          >
+          📍 ${label || addr}
+        </div>`;
+      }).join('');
+      box.style.display = 'block';
+    } catch(e) { box.style.display='none'; }
+  }, 350);
+}
+
+function selectAddr(label, lat, lng) {
+  document.getElementById('address').value = label;
+  document.getElementById('addr-suggestions').style.display = 'none';
+  // Spara koordinater för geo-matchning
+  window._bookingLat = parseFloat(lat);
+  window._bookingLng = parseFloat(lng);
+  // Extrahera stad
+  const parts = label.split(',');
+  if (parts.length > 1) window._bookingCity = parts[parts.length-1].trim().replace(/^\d+ /, '');
+}
+
+// Stäng dropdown vid klick utanför
+document.addEventListener('click', e => {
+  if (!e.target.closest('.f')) {
+    const box = document.getElementById('addr-suggestions');
+    if (box) box.style.display = 'none';
+  }
+});
+
+// ── BANKID AUTOFYLL ───────────────────────────────────────
+async function autofillViaBankID() {
+  const pnr = document.getElementById('pnr')?.value?.replace(/[^0-9]/g,'');
+  if (!pnr || pnr.length < 10) {
+    alert('Fyll i personnumret först (YYYYMMDD-XXXX)');
+    return;
+  }
+  
+  const btn = document.getElementById('bankid-fill-btn');
+  const status = document.getElementById('bankid-status');
+  
+  btn.disabled = true;
+  btn.textContent = '⏳ Verifierar...';
+  status.style.display = 'block';
+  status.style.background = '#EFF6FF';
+  status.style.color = '#1E40AF';
+  status.textContent = '🔵 BankID-verifiering startas – öppna din BankID-app...';
+  
+  try {
+    // Anropa BankID edge function
+    const res = await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/bankid', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+      },
+      body: JSON.stringify({ action: 'start', personalNumber: pnr })
+    });
+    const data = await res.json();
+    
+    if (data.demo) {
+      // Demo-läge: simulera ett lyckat svar
+      status.style.background = '#DCFCE7';
+      status.style.color = '#166534';
+      status.textContent = '✅ BankID verifierad! (Demo-läge – namn hämtat)';
+      
+      // Fyll i demo-uppgifter
+      const demoName = 'Anna Andersson';
+      const [first, ...rest] = demoName.split(' ');
+      if (document.getElementById('fname') && !document.getElementById('fname').value) {
+        document.getElementById('fname').value = first;
+        document.getElementById('fname').dispatchEvent(new Event('input'));
+      }
+      if (document.getElementById('lname') && !document.getElementById('lname').value) {
+        document.getElementById('lname').value = rest.join(' ');
+        document.getElementById('lname').dispatchEvent(new Event('input'));
+      }
+    } else if (data.sessionId) {
+      // Poll för svar
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        if (attempts > 20) {
+          clearInterval(poll);
+          status.style.background = '#FEE2E2';
+          status.style.color = '#991B1B';
+          status.textContent = '❌ Tidsgräns – försök igen';
+          btn.disabled = false;
+          btn.textContent = 'Autofyll';
+          return;
+        }
+        
+        const pollRes = await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/bankid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' },
+          body: JSON.stringify({ action: 'poll', sessionId: data.sessionId })
+        }).then(r => r.json());
+        
+        if (pollRes.status === 'complete') {
+          clearInterval(poll);
+          status.style.background = '#DCFCE7';
+          status.style.color = '#166534';
+          status.textContent = `✅ BankID verifierad! Välkommen, ${pollRes.givenName}!`;
+          
+          // Autofyll formuläret
+          if (pollRes.givenName && document.getElementById('fname')) {
+            document.getElementById('fname').value = pollRes.givenName;
+          }
+          if (pollRes.surname && document.getElementById('lname')) {
+            document.getElementById('lname').value = pollRes.surname;
+          }
+          btn.textContent = '✅ Verifierad';
+        }
+      }, 2000);
+    }
+  } catch(e) {
+    status.style.background = '#FEE2E2';
+    status.style.color = '#991B1B';
+    status.textContent = '❌ Fel vid BankID-verifiering';
+    btn.disabled = false;
+    btn.textContent = 'Autofyll';
+  }
 }
 </script>
 </body>

@@ -11,6 +11,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <style>
@@ -208,7 +210,16 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       <option value="pris-ner">💰 Högsta pris</option>
       <option value="jobb">🏆 Flest jobb</option>
     </select>
+    <button onclick="toggleMapView()" id="map-btn" style="padding:.5rem 1rem;border:1.5px solid var(--grd);border-radius:100px;background:#fff;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap">
+      🗺️ Kartvy
+    </button>
   </div>
+
+  <!-- KARTVY -->
+  <div id="map-view" style="display:none;margin-bottom:1.5rem;border-radius:16px;overflow:hidden;border:1.5px solid var(--grd)">
+    <div id="leaflet-map" style="height:420px;width:100%"></div>
+  </div>
+
   <div class="grid" id="grid">
     <div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--m)">Laddar städare...</div>
   </div>
@@ -392,6 +403,151 @@ function openMobMenu(){document.getElementById('mobOverlay').style.display='bloc
 function closeMobMenu(){document.getElementById('mobOverlay').style.display='none';document.getElementById('mobPanel').classList.remove('open');}
 </script>
 <div id="sticky-cta"><a href="boka.html">🧹 Boka städning →</a></div>
-<script>(function(){var c=document.getElementById("sticky-cta");window.addEventListener("scroll",function(){c.style.display=window.scrollY>300?"block":"none"},{passive:true});})();</script>
+<script>(function(){var c=document.getElementById("sticky-cta");window.addEventListener("scroll",function(){c.style.display=window.scrollY>300?"block":"none"},{passive:true});})();
+// ── LEAFLET KARTVY ────────────────────────────────────────
+let _map = null;
+let _mapActive = false;
+
+function toggleMapView() {
+  _mapActive = !_mapActive;
+  const mapDiv = document.getElementById('map-view');
+  const btn = document.getElementById('map-btn');
+  const grid = document.getElementById('grid');
+  
+  if (_mapActive) {
+    mapDiv.style.display = 'block';
+    grid.style.display = 'none';
+    btn.style.background = 'var(--g)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--g)';
+    btn.textContent = '📋 Listvy';
+    initMap();
+  } else {
+    mapDiv.style.display = 'none';
+    grid.style.display = 'grid';
+    btn.style.background = '#fff';
+    btn.style.color = 'var(--t)';
+    btn.style.borderColor = 'var(--grd)';
+    btn.textContent = '🗺️ Kartvy';
+  }
+}
+
+function initMap() {
+  if (_map) { updateMapMarkers(); return; }
+  
+  // Initialisera Leaflet-karta centrerad på Sverige
+  _map = L.map('leaflet-map').setView([59.33, 18.07], 10);
+  
+  // OpenStreetMap tiles (gratis, ingen API-nyckel)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18
+  }).addTo(_map);
+  
+  updateMapMarkers();
+}
+
+let _markers = [];
+function updateMapMarkers() {
+  if (!_map) return;
+  
+  // Ta bort gamla markers
+  _markers.forEach(m => _map.removeLayer(m));
+  _markers = [];
+  
+  const visibleCleaners = ALL.filter(cleanerVisible);
+  
+  if (!visibleCleaners.length) {
+    // Visa hela Sverige om inga städare
+    _map.setView([62.0, 15.0], 5);
+    return;
+  }
+  
+  const bounds = [];
+  
+  visibleCleaners.forEach(cl => {
+    const lat = parseFloat(cl.lat);
+    const lng = parseFloat(cl.lng);
+    
+    // Om städaren saknar koordinater – geocoda från stad
+    if (!lat || !lng) {
+      geocodeAndAddMarker(cl);
+      return;
+    }
+    
+    addMarker(cl, lat, lng);
+    bounds.push([lat, lng]);
+  });
+  
+  if (bounds.length > 0) {
+    _map.fitBounds(bounds, { padding: [40, 40] });
+  }
+}
+
+async function geocodeAndAddMarker(cl) {
+  const city = cl.city || 'Stockholm';
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Sverige')}&format=json&limit=1`,
+      { headers: { 'User-Agent': 'Spick/1.0 hello@spick.se' } }
+    );
+    const data = await res.json();
+    if (data[0]) {
+      const lat = parseFloat(data[0].lat);
+      const lng = parseFloat(data[0].lon);
+      addMarker(cl, lat, lng);
+    }
+  } catch(e) {}
+}
+
+function addMarker(cl, lat, lng) {
+  if (!_map) return;
+  
+  const price = cl.hourly_rate || 350;
+  const rating = parseFloat(cl.avg_rating || 0).toFixed(1);
+  const ini = (cl.full_name || '?').split(' ').map(w => w[0]).join('').slice(0,2);
+  
+  // Custom pin med initialer
+  const icon = L.divIcon({
+    html: `<div style="
+      width:44px;height:44px;border-radius:50%;
+      background:#0F6E56;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:.85rem;
+      border:3px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,.25);
+      cursor:pointer;font-family:DM Sans,sans-serif;
+    ">${ini}</div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 44],
+    popupAnchor: [0, -48],
+    className: ''
+  });
+  
+  const marker = L.marker([lat, lng], { icon }).addTo(_map);
+  
+  marker.bindPopup(`
+    <div style="font-family:DM Sans,sans-serif;min-width:200px;padding:.5rem">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+        <div style="width:40px;height:40px;border-radius:50%;background:#0F6E56;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem;flex-shrink:0">${ini}</div>
+        <div>
+          <div style="font-weight:700;font-size:.95rem">${cl.full_name || 'Städare'}</div>
+          <div style="font-size:.75rem;color:#6B6960">📍 ${cl.city || ''}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <div style="color:#F59E0B;font-size:.9rem">★ ${rating}</div>
+        <div style="font-weight:700;color:#0F6E56">${price} kr/h</div>
+      </div>
+      ${cl.identity_verified ? '<div style="font-size:.72rem;color:#0F6E56;background:#E1F5EE;padding:.2rem .6rem;border-radius:99px;display:inline-block;margin-bottom:.75rem">✓ BankID-verifierad</div>' : ''}
+      <a href="boka.html?name=${encodeURIComponent(cl.full_name||'')}&rate=${price}&id=${cl.id}" 
+        style="display:block;text-align:center;padding:.625rem;background:#0F6E56;color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600">
+        Boka →
+      </a>
+    </div>
+  `, { maxWidth: 240 });
+  
+  _markers.push(marker);
+}
+</script>
 </body>
 </html>
