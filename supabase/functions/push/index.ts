@@ -32,7 +32,32 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    const { type, data, target_email, target_type } = await req.json();
+    const body = await req.json();
+    const { type, data, target_email, target_type, action, subscription, booking_id } = body;
+
+    // Hantera subscribe-action från frontend
+    if (action === "subscribe" && subscription) {
+      // Spara subscription i Supabase
+      const subRes = await fetch(SUPA_URL + "/rest/v1/push_subscriptions", {
+        method: "POST",
+        headers: {
+          apikey: SUPA_KEY,
+          Authorization: "Bearer " + SUPA_KEY,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal"
+        },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          p256dh: subscription.keys?.p256dh,
+          auth: subscription.keys?.auth,
+          booking_id: booking_id || null,
+          created_at: new Date().toISOString()
+        })
+      });
+      return new Response(JSON.stringify({ ok: subRes.ok }), {
+        headers: { "Content-Type": "application/json", ...CORS }
+      });
+    }
 
     // Bygg notification
     const notifications: Record<string, any> = {
