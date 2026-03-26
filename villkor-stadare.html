@@ -158,5 +158,49 @@ footer a{font-size:.8rem;color:#4A4A45;text-decoration:none}
     <a href="kontakt.html">Kontakt</a>
   </div>
 </footer>
+
+<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #E8E8E4;padding:1.25rem 2rem;display:flex;justify-content:space-between;align-items:center;z-index:100;box-shadow:0 -4px 24px rgba(0,0,0,.08)">
+  <div style="font-size:.85rem;color:#6B6960">Spick AB · Org.nr 559402-4522 · Version 1.0 · 2026-01-01</div>
+  <button onclick="acceptVillkor()" id="accept-btn" style="background:#0F6E56;color:#fff;border:none;padding:.875rem 2rem;border-radius:100px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;font-size:.95rem">
+    ✅ Jag godkänner villkoren
+  </button>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _sb = supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
+
+async function acceptVillkor() {
+  const btn = document.getElementById('accept-btn');
+  btn.textContent = '⏳ Sparar...';
+  btn.disabled = true;
+  
+  const email = localStorage.getItem('spick_cleaner_email') || sessionStorage.getItem('spick_cleaner_email');
+  
+  if (email) {
+    await _sb.from('cleaners').update({
+      terms_accepted: true,
+      terms_accepted_at: new Date().toISOString(),
+      terms_version: '1.0'
+    }).eq('email', email);
+  }
+  
+  // Spara i localStorage oavsett
+  localStorage.setItem('spick_terms_accepted', '1.0');
+  localStorage.setItem('spick_terms_accepted_at', new Date().toISOString());
+  
+  btn.textContent = '✅ Villkor godkända!';
+  btn.style.background = '#166534';
+  
+  setTimeout(() => {
+    window.location.href = 'stadare-dashboard.html';
+  }, 1500);
+}
+
+// Kolla om redan godkänt
+if (localStorage.getItem('spick_terms_accepted')) {
+  document.getElementById('accept-btn').textContent = '✅ Redan godkänt';
+  document.getElementById('accept-btn').style.background = '#166534';
+}
+</script>
 </body>
 </html>
