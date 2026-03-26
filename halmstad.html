@@ -13,7 +13,7 @@
 {"@context":"https://schema.org","@type":"LocalBusiness","name":"Spick Halmstad","description":"Betygsatta städare i Halmstad. Boka hemstädning eller storstädning med RUT-avdrag.","url":"https://spick.se/halmstad.html","areaServed":"Halmstad","priceRange":"250-600 SEK/h"}
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
 *{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:var(--t);}
@@ -251,6 +251,6 @@ async function loadLocalCleaners(){
   function stars(r){return'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
   grid.innerHTML=data.map((cl,i)=>{const price=cl.hourly_rate||350;const rating=parseFloat(cl.avg_rating||0).toFixed(1);const bio=(cl.bio||'Professionell städare.').slice(0,90);return `<div style="background:#fff;border-radius:16px;border:1px solid #E8E8E4;padding:1.25rem;display:flex;flex-direction:column;gap:.75rem"><div style="display:flex;gap:.75rem;align-items:center"><div style="width:48px;height:48px;border-radius:50%;background:${COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:#fff;flex-shrink:0">${ini(cl.full_name)}</div><div>${cl.identity_verified?'<span style="font-size:.65rem;font-weight:600;color:#0F6E56;background:#E1F5EE;padding:.15rem .5rem;border-radius:99px">✓ BankID</span><br>':''}<div style="font-size:.9rem;font-weight:600;color:#1C1C1A">${cl.full_name}</div><div style="font-size:.75rem;color:#6B6960">${stars(rating)} ${rating} ${cl.review_count?'('+cl.review_count+')':''}</div></div></div><div style="font-size:.8rem;color:#6B6960;line-height:1.5">${bio}...</div><div style="display:flex;align-items:center;justify-content:space-between"><div><span style="font-size:1rem;font-weight:700;color:#1C1C1A">${price} kr</span><span style="font-size:.75rem;color:#6B6960">/h</span></div><a href="boka.html?name=${encodeURIComponent(cl.full_name)}&rate=${price}&id=${cl.id}" style="padding:.5rem 1rem;background:#0F6E56;color:#fff;border-radius:99px;font-size:.8rem;font-weight:600;text-decoration:none">Boka →</a></div></div>`;}).join('');
 }
-loadLocalCleaners();
+document.addEventListener("DOMContentLoaded", loadLocalCleaners);
 </script>
 </body></html>
