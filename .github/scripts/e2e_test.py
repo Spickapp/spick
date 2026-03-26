@@ -53,7 +53,7 @@ print("="*50 + "\n")
 
 # ─── 1. DATABASE CONNECTIVITY ────────────────────────
 print("1. Databas-anslutning")
-res = req("GET", "/rest/v1/cleaners?limit=1&is_approved=eq.true")
+res = req("GET", "/rest/v1/cleaners?limit=1&status=eq.godkänd")
 if isinstance(res, list):
     ok("Supabase REST API", f"{len(res)} städare hittad")
 else:
@@ -61,7 +61,7 @@ else:
 
 # ─── 2. CLEANERS TABLE ───────────────────────────────
 print("\n2. Städare-tabell")
-cleaners = req("GET", "/rest/v1/cleaners?is_approved=eq.true&select=id,full_name,city,avg_rating,review_count,identity_verified,bonus_level")
+cleaners = req("GET", "/rest/v1/cleaners?status=eq.godkänd&select=id,full_name,city,avg_rating,review_count,identity_verified,bonus_level")
 if isinstance(cleaners, list):
     ok("Läsa städare (RLS)", f"{len(cleaners)} godkända städare")
     if cleaners:

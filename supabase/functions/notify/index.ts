@@ -335,6 +335,21 @@ serve(async (req) => {
 `);
       to = ADMIN;
     }
+    else if (type === "referral_invite") {
+      const r = payload.record || {};
+      subject = `🧹 ${r.friend_name || "Din vän"} bjuder dig på Spick-rabatt!`;
+      to = r.friend_email || ADMIN;
+      html = wrap(`
+<h2>Du har blivit rekommenderad! 🎉</h2>
+<p>En vän tror att du skulle gilla Spick – Sveriges smidigaste städtjänst med RUT-avdrag.</p>
+${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${r.message}"</p></div>` : ''}
+<div class="card">
+  <p style="margin:0;font-size:14px;color:#6B6960">Boka din första städning med din väns länk och få 10% rabatt på din första bokning!</p>
+</div>
+<a href="${r.ref_link || 'https://spick.se'}" class="btn">Boka städning med rabatt →</a>
+<p style="font-size:12px;color:#9B9B95;margin-top:16px">Rekommenderad av en vän. Avregistrera dig: <a href="mailto:hello@spick.se">hello@spick.se</a></p>
+`);
+    }
     else if (type === "contact") {
       await sendEmail(ADMIN, `📬 Kontakt: ${r.subject || "Meddelande"} – ${r.name || ""}`, wrap(`
         <h2>Nytt kontaktmeddelande</h2>
