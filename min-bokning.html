@@ -21,6 +21,20 @@ nav{background:#fff;border-bottom:1px solid #EBEBEB;padding:16px 24px;display:fl
 h1{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--b);margin-bottom:8px}
 .sub{color:var(--m);font-size:.95rem;margin-bottom:24px}
 .card{background:#fff;border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.live-banner{background:linear-gradient(135deg,#0F6E56,#0A5240);color:#fff;border-radius:14px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.live-dot{width:10px;height:10px;background:#22C55E;border-radius:50%;animation:lpulse 1.2s infinite;flex-shrink:0}
+@keyframes lpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.progress-steps{display:flex;gap:0;margin:16px 0}
+.p-step{flex:1;text-align:center;padding:10px 6px;font-size:.72rem;color:var(--m);position:relative}
+.p-step.done{color:var(--g);font-weight:600}
+.p-step.active{color:var(--b);font-weight:700}
+.p-step::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--border)}
+.p-step.done::before{background:var(--g)}
+.p-step.active::before{background:var(--g);opacity:.4}
+.p-step .p-icon{font-size:1.3rem;display:block;margin-bottom:4px}
+.maps-btn{display:flex;align-items:center;gap:8px;background:#4285F4;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-size:.85rem;font-weight:600;margin-top:10px;width:fit-content}
+.cancel-btn{background:#FEE2E2;color:#DC2626;border:1.5px solid #FECACA;padding:10px 20px;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.rebook-btn{background:var(--g);color:#fff;padding:10px 20px;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;border:none;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .status{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:100px;font-size:.85rem;font-weight:600;margin-bottom:16px}
 .status.paid{background:var(--gr);color:var(--g)}
 .status.pending{background:#FEF3C7;color:#92400E}
@@ -125,6 +139,14 @@ async function load() {
   }
 
   renderBooking(b, cleaner);
+  window._booking = b;
+  
+  // Real-time polling var 30s om städning pågår idag
+  const dateTime = new Date((b.scheduled_date||b.date)+'T'+(b.time||'09:00')+':00');
+  const isToday = new Date().toDateString() === dateTime.toDateString();
+  if (isToday && b.payment_status === 'paid' && b.status !== 'klar') {
+    setInterval(load, 30000);
+  }
 }
 
 function renderBooking(b, cleaner) {
@@ -164,6 +186,32 @@ const dateLabel = isToday ? 'Idag' : isTomorrow ? 'Imorgon' : d2;
     </div>
   </div>` : ''}
   ${b.rut ? '<div class="row"><span class="lbl">RUT-avdrag</span><span class="val" style="color:var(--g)">✅ Ansökt automatiskt</span></div>' : ''}
+  ${b.key_info ? `<div class="row"><span class="lbl">🔑 Nyckelinfo</span><span class="val">${b.key_info}</span></div>` : ''}
+  ${b.customer_notes ? `<div class="row"><span class="lbl">📝 Dina noteringar</span><span class="val">${b.customer_notes}</span></div>` : ''}
+</div>
+
+<!-- Live-status om städning pågår idag -->
+${isToday && b.status === 'pågår' ? `
+<div class="live-banner">
+  <div class="live-dot"></div>
+  <div>
+    <div style="font-weight:700;font-size:.95rem">Städning pågår just nu!</div>
+    <div style="font-size:.78rem;opacity:.85">${cleaner ? cleaner.full_name : 'Din städare'} är på plats</div>
+  </div>
+</div>` : ''}
+
+<!-- Progress-steps -->
+<div class="progress-steps">
+  <div class="p-step ${isPaid?'done':'active'}"><span class="p-icon">✅</span>Bekräftad</div>
+  <div class="p-step ${b.status==='pågår'?'active':b.status==='klar'||isPast?'done':''}"><span class="p-icon">${b.status==='pågår'?'🧹':b.status==='klar'?'✅':'⏳'}</span>Städas</div>
+  <div class="p-step ${b.status==='klar'?'done':''}"><span class="p-icon">${b.status==='klar'?'⭐':'💫'}</span>Klar</div>
+</div>
+
+<!-- Google Maps-länk -->
+${b.address && isPaid ? `<a href="https://maps.google.com/?q=${encodeURIComponent(b.address||'')}" target="_blank" class="maps-btn">📍 ${b.address}</a>` : ''}
+
+<!-- Noteringar KOMMENTAT -->
+<div style="display:none">
 </div>
 
 ${cleaner ? `

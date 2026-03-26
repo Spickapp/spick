@@ -195,6 +195,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-section">Kunder & Ekonomi</div>
       <div class="nav-item" onclick="showPage('customers')"><span class="icon">👥</span> Kunder</div>
       <div class="nav-item" onclick="showPage('payouts')"><span class="icon">💸</span> Utbetalningar</div>
+      <div class="nav-item" onclick="showPage('subscriptions')"><span class="icon">🔄</span> Prenumerationer <span class="badge-count" id="badge-subs">0</span></div>
       <div class="nav-item" onclick="showPage('reviews')"><span class="icon">⭐</span> Recensioner</div>
       
       <div class="nav-section">System</div>
@@ -216,7 +217,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="page-sub" id="dash-date">Laddar...</div>
       </div>
       <div class="kpi-grid" id="kpi-grid">
-        <div class="kpi"><div class="kpi-val" id="kpi-revenue">–</div><div class="kpi-lbl">Omsättning denna månad</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-revenue">–</div><div class="kpi-lbl">Omsättning denna månad</div><div class="kpi-trend up" id="kpi-revenue-trend"></div></div>
         <div class="kpi"><div class="kpi-val" id="kpi-bookings">–</div><div class="kpi-lbl">Bokningar denna månad</div></div>
         <div class="kpi yellow"><div class="kpi-val" id="kpi-pending">–</div><div class="kpi-lbl">Väntande bokningar</div></div>
         <div class="kpi"><div class="kpi-val" id="kpi-cleaners">–</div><div class="kpi-lbl">Aktiva städare</div></div>
@@ -267,6 +268,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <option value="refunded">Återbetald</option>
           </select>
           <button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Uppdatera</button>
+          <button class="btn btn-primary btn-sm" onclick="autoAssignAll()">🤖 Auto-tilldela alla</button>
           <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportera CSV</button>
         </div>
         <div class="mini-stats"><span class="mini-stat">Visar <strong id="booking-count">0</strong> bokningar</span><span class="mini-stat">Total: <strong id="booking-revenue">0 kr</strong></span></div>
@@ -359,6 +361,33 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <table>
             <thead><tr><th>Städare</th><th>Månad</th><th>Uppdrag</th><th>Brutto</th><th>Provision 17%</th><th>Netto till städare</th><th>Status</th><th></th></tr></thead>
             <tbody id="payouts-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBSCRIPTIONS -->
+    <div class="page" id="page-subscriptions">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Prenumerationer 🔄</div>
+          <div class="page-sub">Återkommande bokningar – din stabilaste intäktsström</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="createNextBookings()">⚡ Skapa nästa bokningar</button>
+          <button class="btn btn-outline btn-sm" onclick="loadAll().then(renderSubscriptions)">↻ Uppdatera</button>
+        </div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="kpi-val" id="sub-count">–</div><div class="kpi-lbl">Aktiva prenumerationer</div></div>
+        <div class="kpi"><div class="kpi-val" id="sub-mrr">–</div><div class="kpi-lbl">Månadsintäkt (MRR)</div></div>
+        <div class="kpi"><div class="kpi-val" id="sub-arr">–</div><div class="kpi-lbl">Årsintäkt (ARR)</div></div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Kund</th><th>Tjänst</th><th>Frekvens</th><th>Stad</th><th>Belopp</th><th>Nästa datum</th><th>Status</th><th>Städare</th><th></th></tr></thead>
+            <tbody id="subs-tbody"><tr><td colspan="9" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -522,6 +551,7 @@ function showPage(id) {
   if (id === 'pending') renderPending();
   if (id === 'cleaners') renderCleaners();
   if (id === 'applications') renderApplications();
+  if (id === 'subscriptions') renderSubscriptions();
   if (id === 'customers') renderCustomers();
   if (id === 'payouts') renderPayouts();
   if (id === 'reviews') renderReviews();
@@ -677,6 +707,11 @@ async function loadAll() {
   data.bookings = bookings.data || [];
   data.cleaners = cleaners.data || [];
   data.applications = applications.data || [];
+  
+  // Hämta prenumerationer
+  const { data: subs } = await SB.from('subscriptions').select('*').order('created_at',{ascending:false});
+  data.subscriptions = subs || [];
+  document.getElementById('badge-subs').textContent = (subs||[]).filter(s=>s.status==='aktiv').length || '';
   data.customers = customers.data || [];
   data.reviews = reviews.data || [];
 
@@ -710,6 +745,19 @@ function renderDashboard() {
   const pendingApps = data.applications.filter(a => a.status === 'pending');
 
   document.getElementById('kpi-revenue').textContent = Math.round(revenue).toLocaleString('sv') + ' kr';
+  // Trend vs förra månaden
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastRevenue = data.bookings.filter(b => {
+    const bd = new Date(b.paid_at || b.created_at);
+    return b.payment_status === 'paid' && bd >= lastMonthStart && bd <= lastMonthEnd;
+  }).reduce((s,b) => s+(b.total_price||0), 0);
+  const trendEl = document.getElementById('kpi-revenue-trend');
+  if (trendEl && lastRevenue > 0) {
+    const diff = Math.round((revenue-lastRevenue)/lastRevenue*100);
+    trendEl.textContent = diff > 0 ? `↑ ${diff}% vs förra månaden` : `↓ ${Math.abs(diff)}% vs förra månaden`;
+    trendEl.className = 'kpi-trend ' + (diff >= 0 ? 'up' : 'down');
+  }
   document.getElementById('kpi-bookings').textContent = paid.length;
   document.getElementById('kpi-pending').textContent = pending.length;
   document.getElementById('kpi-cleaners').textContent = approvedCleaners.length;
@@ -918,6 +966,159 @@ function renderPayouts() {
 }
 
 // ── REVIEWS ───────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════
+// PRENUMERATIONER
+// ═══════════════════════════════════════════════════════════
+async function renderSubscriptions() {
+  const { data: subs } = await SB.from('subscriptions').select('*').order('created_at', {ascending:false});
+  const all = subs || [];
+  const active = all.filter(s => s.status === 'aktiv');
+  
+  // KPIs
+  const freqMultiplier = {veckovis:4.3, 'varannan-vecka':2.15, månadsvis:1};
+  const mrr = active.reduce((s,sub) => {
+    const m = freqMultiplier[sub.frequency] || 1;
+    return s + ((sub.total_price || 0) * m);
+  }, 0);
+  
+  document.getElementById('sub-count').textContent = active.length;
+  document.getElementById('sub-mrr').textContent = Math.round(mrr).toLocaleString('sv') + ' kr';
+  document.getElementById('sub-arr').textContent = Math.round(mrr * 12).toLocaleString('sv') + ' kr';
+  document.getElementById('badge-subs').textContent = active.length;
+  
+  const rows = all.map(s => {
+    const freq = {veckovis:'Varje vecka 🔄', 'varannan-vecka':'Varannan vecka', månadsvis:'Månadsvis'}[s.frequency] || s.frequency;
+    const statusBadge = s.status === 'aktiv' ? '<span class="badge green">✅ Aktiv</span>' : 
+                        s.status === 'pausad' ? '<span class="badge yellow">⏸ Pausad</span>' :
+                        '<span class="badge grey">Avslutad</span>';
+    const discountedPrice = s.total_price ? Math.round(s.total_price * (1 - (s.discount_percent||0)/100)) : '–';
+    return `<tr>
+      <td><strong>${s.customer_name || '–'}</strong><br><span style="font-size:.75rem;color:var(--m)">${s.customer_email||''}</span></td>
+      <td>${s.service || 'Hemstädning'} · ${s.hours||3}h</td>
+      <td>${freq}</td>
+      <td>${s.city || '–'}</td>
+      <td style="color:var(--g);font-weight:600">${discountedPrice} kr${s.discount_percent ? ` <span style="font-size:.7rem;color:#16A34A">-${s.discount_percent}%</span>` : ''}</td>
+      <td>${s.next_booking_date || '–'}</td>
+      <td>${statusBadge}</td>
+      <td>${s.preferred_cleaner_id ? data.cleaners.find(c=>c.id===s.preferred_cleaner_id)?.full_name || 'Tilldelas' : 'Auto'}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="createBookingFromSub('${s.id}')">📅 Boka</button>
+        ${s.status === 'aktiv' ? `<button class="btn btn-sm btn-outline" style="margin-top:4px" onclick="pauseSub('${s.id}')">⏸</button>` : `<button class="btn btn-sm btn-outline" style="margin-top:4px" onclick="activateSub('${s.id}')">▶️</button>`}
+      </td>
+    </tr>`;
+  });
+  
+  document.getElementById('subs-tbody').innerHTML = rows.length ? rows.join('') : 
+    '<tr><td colspan="9" class="empty">Inga prenumerationer ännu</td></tr>';
+}
+
+async function createBookingFromSub(subId) {
+  const { data: sub } = await SB.from('subscriptions').select('*').eq('id', subId).single();
+  if (!sub) return;
+  const nextDate = prompt('Nästa bokningsdatum (YYYY-MM-DD):', sub.next_booking_date || new Date().toISOString().split('T')[0]);
+  if (!nextDate) return;
+  const { error } = await SB.from('bookings').insert([{
+    customer_name: sub.customer_name,
+    customer_email: sub.customer_email,
+    customer_phone: sub.customer_phone,
+    address: sub.address,
+    city: sub.city,
+    service: sub.service,
+    hours: sub.hours,
+    total_price: sub.total_price,
+    rut: sub.rut,
+    date: nextDate,
+    scheduled_date: nextDate,
+    time: sub.preferred_time || '09:00',
+    payment_status: 'pending',
+    is_recurring: true,
+    subscription_id: sub.id,
+    key_info: sub.key_info,
+    customer_notes: sub.customer_notes,
+  }]);
+  if (!error) {
+    const nextFreq = {veckovis:7,'varannan-vecka':14,månadsvis:30}[sub.frequency]||14;
+    const next = new Date(nextDate);
+    next.setDate(next.getDate()+nextFreq);
+    await SB.from('subscriptions').update({next_booking_date:next.toISOString().split('T')[0]}).eq('id',subId);
+    showToast('✅ Bokning skapad!');
+    loadAll();
+  }
+}
+
+async function createNextBookings() {
+  const { data: subs } = await SB.from('subscriptions').select('*').eq('status','aktiv');
+  if (!subs?.length) { showToast('Inga aktiva prenumerationer'); return; }
+  const today = new Date().toISOString().split('T')[0];
+  const soon = subs.filter(s => s.next_booking_date && s.next_booking_date <= 
+    new Date(Date.now()+7*24*3600000).toISOString().split('T')[0]);
+  if (!soon.length) { showToast('Inga bokningar att skapa närmaste 7 dagarna'); return; }
+  if (!confirm(`Skapa ${soon.length} bokningar för nästa vecka?`)) return;
+  for (const sub of soon) await createBookingFromSub(sub.id);
+}
+
+async function pauseSub(id) {
+  await SB.from('subscriptions').update({status:'pausad'}).eq('id',id);
+  showToast('⏸ Prenumeration pausad');
+  renderSubscriptions();
+}
+async function activateSub(id) {
+  await SB.from('subscriptions').update({status:'aktiv'}).eq('id',id);
+  showToast('▶️ Prenumeration aktiverad');
+  renderSubscriptions();
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-ASSIGN
+// ═══════════════════════════════════════════════════════════
+async function autoAssignAll() {
+  const unassigned = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
+  if (!unassigned.length) { showToast('✅ Alla bokningar har städare!'); return; }
+  if (!confirm(`Auto-tilldela ${unassigned.length} bokningar?`)) return;
+  
+  let assigned = 0;
+  for (const booking of unassigned) {
+    const city = (booking.city || '').toLowerCase();
+    const eligible = data.cleaners.filter(c => {
+      if (!c.is_approved) return false;
+      const cc = (c.city || '').toLowerCase();
+      return cc === city || cc.includes(city) || city.includes(cc);
+    }).sort((a,b) => (b.avg_rating||0)-(a.avg_rating||0));
+    
+    if (!eligible.length) continue;
+    
+    // Kolla konflikt
+    for (const cl of eligible) {
+      const conflict = data.bookings.some(b => b.cleaner_id === cl.id && 
+        (b.date === booking.date || b.scheduled_date === booking.scheduled_date) && 
+        b.id !== booking.id && b.payment_status === 'paid');
+      if (!conflict) {
+        await SB.from('bookings').update({cleaner_id:cl.id, cleaner_name:cl.full_name}).eq('id',booking.id);
+        assigned++;
+        break;
+      }
+    }
+  }
+  showToast(`✅ Tilldelade ${assigned} av ${unassigned.length} bokningar`);
+  loadAll();
+}
+
+// showToast om det inte finns
+function showToast(msg) {
+  let t = document.getElementById('admin-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'admin-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1C1C1A;color:#fff;padding:10px 22px;border-radius:12px;font-size:.875rem;font-weight:500;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 3000);
+}
+
 function renderReviews() {
   document.getElementById('reviews-tbody').innerHTML = data.reviews.length ? data.reviews.map(r => `
     <tr>

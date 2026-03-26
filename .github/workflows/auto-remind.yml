@@ -1,0 +1,18 @@
+name: Auto-remind (var 30:e minut)
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kör auto-remind
+        run: |
+          curl -s -X POST \
+            "https://urjeijcncsyuletprydy.supabase.co/functions/v1/auto-remind" \
+            -H "Content-Type: application/json" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+            -d '{}' | jq .

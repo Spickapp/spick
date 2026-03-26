@@ -108,14 +108,23 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
 
   if (!cleaners?.length) return null;
 
-  // Filtrera på stad och tjänst
+  // Filtrera på stad och tjänst med prioritering
   const eligible = cleaners.filter(c => {
     const cleanerCity = (c.city as string)?.toLowerCase() || "";
-    const cleanerServices = (c.services as string) || "";
-    return cleanerCity.includes(city) || city.includes(cleanerCity) || city === "";
+    // Exakt stad-match
+    if (cleanerCity === city) return true;
+    // Partiell match
+    if (cleanerCity.includes(city) || city.includes(cleanerCity)) return true;
+    // Stor-Stockholm fallback
+    const storsthlm = ["stockholm","solna","sundbyberg","nacka","bromma","lidingö","huddinge","hägersten"];
+    if (storsthlm.includes(city) && storsthlm.some(s => cleanerCity.includes(s))) return true;
+    return false;
   });
 
-  if (!eligible.length) return cleaners[0]; // Fallback: bästa städare oavsett stad
+  // Fallback om ingen i rätt stad
+  const pool = eligible.length ? eligible : cleaners;
+  
+  console.log(`Auto-assign: ${pool.length} kandidater för ${city}`);
 
   // Kolla att städaren inte redan är bokad samma dag
   for (const cleaner of eligible) {
@@ -175,8 +184,11 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
     stripe_session_id: stripeSessionId,
     stripe_payment_intent: session.payment_intent,
     paid_at: new Date().toISOString(),
-    ...(cleaner ? { cleaner_id: cleaner.id, cleaner_name: cleaner.full_name } : {}),
+    reminders_sent: [],
+    ...(cleaner ? { cleaner_id: cleaner.id, cleaner_name: cleaner.full_name, cleaner_email: cleaner.email } : {}),
     ...(metadata.sqm ? { sqm: parseInt(metadata.sqm) } : {}),
+    ...(metadata.key_info ? { key_info: metadata.key_info } : {}),
+    ...(metadata.customer_notes ? { customer_notes: metadata.customer_notes } : {}),
   }).eq("id", bookingId);
 
   const name = booking.customer_name || "Kunden";
