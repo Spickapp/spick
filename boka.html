@@ -230,10 +230,10 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
           <div style="display:flex;gap:.5rem;align-items:flex-start">
             <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" maxlength="13" style="flex:1">
             <button type="button" onclick="autofillViaBankID()" id="bankid-fill-btn"
-              title="Fyll i namn automatiskt via BankID"
+              title="Fyll i namn och adress automatiskt via BankID"
               style="padding:.75rem 1rem;background:#193E8F;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:.4rem">
               <svg width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="20" fill="white"/><rect x="10" y="38" width="80" height="10" fill="#193E8F"/><rect x="10" y="55" width="80" height="10" fill="#193E8F"/><rect x="10" y="20" width="80" height="10" fill="#FFD700"/></svg>
-              Autofyll
+              BankID Autofyll
             </button>
           </div>
           <div class="pnr-info">🔒 Krypteras och hanteras säkert · Används bara för RUT-ansökan hos Skatteverket</div>
@@ -244,7 +244,22 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       <div class="f"><label>Önskemål / kommentar</label>
         <textarea id="msg" rows="3" placeholder="T.ex. allergi mot vissa rengöringsmedel, nyckeln ligger under mattan..."></textarea>
       </div>
-      <button class="submit-btn" id="sbtn" onclick="doBook()">Bekräfta bokning →</button>
+
+      <!-- BETALNINGSVAL -->
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.78rem;font-weight:500;color:var(--m);display:block;margin-bottom:.5rem">Betalningsmetod</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <label style="display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;cursor:pointer;transition:all .2s;background:#fff" id="pay-card-label">
+            <input type="radio" name="pay-method" id="pay-method" value="stripe" checked style="accent-color:var(--g)" onchange="updatePayLabel()">
+            <span style="font-size:.85rem">💳 Kort / Klarna</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem;border:1.5px solid var(--grd);border-radius:12px;cursor:pointer;transition:all .2s;background:#fff" id="pay-swish-label">
+            <input type="radio" name="pay-method" value="swish" style="accent-color:var(--g)" onchange="updatePayLabel(); document.getElementById('pay-method').value='swish'">
+            <span style="font-size:.85rem">🔵 Swish</span>
+          </label>
+        </div>
+      </div>
+            <button class="submit-btn" id="sbtn" onclick="doBook()">Bekräfta bokning →</button>
       <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.875rem;font-size:.8rem;color:var(--m)">
         <span>🛡️</span>
         <span>100% nöjdhetsgaranti – inte nöjd? <a href="garanti.html"</a>
@@ -535,6 +550,12 @@ async function doBook(){
     localStorage.setItem('spick_customer_email', em);
     if(window.spickTrack) window.spickTrack.bookingCompleted({email:em, service:svc, price:tot});
 
+    // ── Betalningsmetod: Stripe eller Swish ─────────────────────────
+    const payMethod = document.getElementById('pay-method')?.value || 'stripe';
+    if (payMethod === 'swish') {
+      await doSwishPayment(bookingId, tot, em, fn+' '+ln);
+      return;
+    }
     // ── Stripe Checkout ────────────────────────────────────────
     btn.innerHTML='<div class="spin"></div> Öppnar betalning...';
     const bookingId = data[0]?.id;
@@ -748,7 +769,7 @@ async function autofillViaBankID() {
       status.style.color = '#166534';
       status.textContent = '✅ BankID verifierad! (Demo-läge – namn hämtat)';
       
-      // Fyll i demo-uppgifter
+      // Fyll i demo-uppgifter (namn + adress via SPAR i produktion)
       const demoName = 'Anna Andersson';
       const [first, ...rest] = demoName.split(' ');
       if (document.getElementById('fname') && !document.getElementById('fname').value) {
@@ -759,6 +780,10 @@ async function autofillViaBankID() {
         document.getElementById('lname').value = rest.join(' ');
         document.getElementById('lname').dispatchEvent(new Event('input'));
       }
+      // I produktion: data.address fylls i automatiskt via SPAR
+      // if (data.address?.full && document.getElementById('address')) {
+      //   document.getElementById('address').value = data.address.full;
+      // }
     } else if (data.sessionId) {
       // Poll för svar
       let attempts = 0;
