@@ -634,6 +634,22 @@ async function hashPassword(pass) {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// Live PNR-validering
+function validatePNR(val) {
+  const el = document.getElementById('pnrInput') || document.querySelector('[placeholder*="personnummer" i],[placeholder*="YYYYMMDD" i]');
+  const hint = document.getElementById('pnr-hint');
+  if(!el) return;
+  const digits = val.replace(/[^0-9]/g,'');
+  const isValid = digits.length === 10 || digits.length === 12;
+  el.style.borderColor = val.length === 0 ? '' : isValid ? '#16a34a' : '#f59e0b';
+  if(hint) {
+    hint.textContent = val.length === 0 ? 'Format: YYYYMMDD-XXXX' 
+      : isValid ? '✓ Verkar korrekt' 
+      : `${digits.length}/10 siffror`;
+    hint.style.color = isValid ? '#166534' : '#854d0e';
+  }
+}
 </script>
 </body>
 </html>

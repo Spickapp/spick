@@ -111,6 +111,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 #sticky-cta{display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:990;}
 #sticky-cta a{display:inline-flex;align-items:center;gap:.5rem;background:var(--g);color:#fff;padding:.875rem 2rem;border-radius:100px;font-weight:700;font-size:.95rem;text-decoration:none;box-shadow:0 8px 28px rgba(15,110,86,.45);}
 @media(min-width:769px){#sticky-cta{display:none!important;}}
+@media(min-width:640px){.hide-mobile{display:block!important}}
 </style>
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
@@ -147,13 +148,14 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 </script>
 </head>
 <body>
-<nav>
-  <a href="index.html" class="logo">Spick</a>
-  <a href="index.html" class="back">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-    Tillbaka
-  </a>
-<button class="hamburger" onclick="openMobMenu()" aria-label="Meny"><span></span><span></span><span></span></button>
+<nav class="nav-bar" style="display:flex;justify-content:space-between;align-items:center;padding:.875rem 1.5rem;background:#fff;border-bottom:1px solid var(--border,#E8E8E4);position:sticky;top:0;z-index:30">
+  <a href="index.html" class="logo" style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:#0F6E56;text-decoration:none">Spick</a>
+  <div style="display:flex;align-items:center;gap:1.25rem">
+    <a href="hur-det-funkar.html" style="font-size:.8rem;color:#6B6960;text-decoration:none;display:none" class="hide-mobile">Hur det funkar</a>
+    <a href="priser.html" style="font-size:.8rem;color:#6B6960;text-decoration:none;display:none" class="hide-mobile">Priser</a>
+    <a href="bli-stadare-guide.html" style="font-size:.8rem;color:#6B6960;text-decoration:none">Bli städare</a>
+    <a href="boka.html" style="background:#0F6E56;color:#fff;padding:.5rem 1.125rem;border-radius:99px;font-size:.8rem;font-weight:600;text-decoration:none">Boka städning</a>
+  </div>
 </nav>
 
 <div class="hero">
@@ -264,7 +266,7 @@ async function init(){
     </div>`).join('');
 
   const {data,error}=await SB.from('cleaners').select('*').eq('status','godkänd').order('avg_rating',{ascending:false});
-  if(error||!data?.length){document.getElementById('grid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem">
+  if(error||!data?.length){document.getElementById('grid').innerHTML=`<div id="error-state" style="grid-column:1/-1;text-align:center;padding:3rem 1rem">
   <div style="font-size:2rem;margin-bottom:1rem">😕</div>
   <div style="font-weight:600;margin-bottom:.5rem">Något gick fel</div>
   <div style="color:var(--m);font-size:.875rem;margin-bottom:1.5rem">Kunde inte ladda städare. Kontrollera din anslutning.</div>
@@ -386,7 +388,7 @@ document.addEventListener("DOMContentLoaded", init);
   if (!c) return;
   var choice = localStorage.getItem('spick-cookie-consent');
   if (!choice) {
-    setTimeout(function(){ c.classList.add('show'); }, 1500);
+    setTimeout(function(){ c.classList.add('show'); }, 3000);
   }
 })();
 
