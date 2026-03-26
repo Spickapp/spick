@@ -35,7 +35,8 @@ form input,form textarea{width:100%;padding:12px 16px;border:2px solid #e0e0e0;b
 form input:focus,form textarea:focus{outline:none;border-color:var(--accent)}
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -104,7 +105,36 @@ document.getElementById('refLink').textContent=refLink;
 function copyLink(){navigator.clipboard.writeText(refLink);const btn=document.getElementById('copyBtn');btn.textContent='✅ Kopierat!';setTimeout(()=>{btn.innerHTML='🐎 Kopiera';},2000);}
 function shareWA(){const msg=encodeURIComponent(`🧹 Boka städning med RUT-avdrag genom Spick! Får 50% rabatt via Skatteverket.\n\nRekommenderar starkt! Boka på: ${refLink}`);window.open('https://wa.me/?'+new URLSearchParams({text:msg}));}
 function shareOther(){if(navigator.share){navigator.share({title:'Spick - städning med RUT',body:'Boka städning med 50% rabatt!',url:refLink});}else{copyLink();}}
-async function sendInvite(e){e.preventDefault();const btn=e.target.querySelector('button');btn.textContent='⏳ Skickar...';btn.disabled=true;try{await fetch(SUPA_URL+'/functions/v1/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SUPA_KEY,apikey:SUPA_KEY},body:JSON.stringify({type:'referral_invite',record:{friend_email:document.getElementById('friendEmail').value,friend_name:document.getElementById('friendName').value,message:document.getElementById('friendMsg').value,ref_code:refCode,ref_link:refLink}})});btn.textContent='✅ Skickat!';}catch(err){btn.textContent='Skicka inbjudan';btn.disabled=false;console.error(err);}}
+async function sendInvite(e){
+  e.preventDefault();
+  const btn=e.target.querySelector('button');
+  const friendEmail=document.getElementById('friendEmail').value;
+  const friendName=document.getElementById('friendName').value;
+  const friendMsg=document.getElementById('friendMsg').value;
+  btn.textContent='⏳ Skickar...';btn.disabled=true;
+  try{
+    // Spara referral i Supabase
+    const SB=supabase.createClient(SUPA_URL,SUPA_KEY);
+    await SB.from('referrals').insert({
+      referrer_email:localStorage.getItem('spick_customer_email')||'okänd',
+      referred_email:friendEmail,
+      ref_code:refCode,
+      status:'skickad',
+      created_at:new Date().toISOString()
+    });
+    // Skicka email via notify
+    await fetch(SUPA_URL+'/functions/v1/notify',{method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+SUPA_KEY,apikey:SUPA_KEY},
+      body:JSON.stringify({type:'referral_invite',record:{
+        friend_email:friendEmail,friend_name:friendName,
+        message:friendMsg,ref_code:refCode,ref_link:refLink
+      }})
+    });
+    btn.textContent='✅ Skickat!';
+  }catch(err){
+    btn.textContent='Skicka inbjudan';btn.disabled=false;console.error(err);
+  }
+}
 </script>
   <style>
 #spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:white;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}

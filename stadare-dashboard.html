@@ -414,9 +414,8 @@ async function loadJobs() {
       .select('*')
       .eq('payment_status', 'paid')
       .is('cleaner_id', null)
-      .eq('city', cleaner.city || '')
       .order('date', { ascending: true })
-      .limit(15)
+      .limit(20)
   ]);
 
   const mySet = new Set((myJobs.data || []).map(j => j.id));
@@ -500,8 +499,18 @@ async function acceptJob(id) {
   btn.textContent = '...';
   btn.disabled = true;
   
-  await SB.from('bookings').update({ cleaner_id: cleaner.id }).eq('id', id);
-  showToast('✅ Uppdrag accepterat!');
+  await SB.from('bookings').update({ 
+    cleaner_id: cleaner.id,
+    status: 'bekräftad',
+    cleaner_name: cleaner.full_name
+  }).eq('id', id);
+  // Notifiera kunden
+  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body: JSON.stringify({type:'cleaner_accepted',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_rating:cleaner.avg_rating}})
+  }).catch(()=>{});
+  showToast('✅ Uppdrag accepterat – kund notifierad!');
   await loadJobs();
 }
 

@@ -74,6 +74,9 @@ const SB = supabase.createClient(
 
 const params = new URLSearchParams(window.location.search);
 const bid = params.get('bid');
+if (!bid) {
+  document.getElementById('booking-content').innerHTML = '<div style="text-align:center;padding:4rem 2rem"><div style="font-size:3rem;margin-bottom:1rem">😕</div><h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem">Bokningslänk saknas</h2><p style="color:#6B6960;margin-bottom:1.5rem">Öppna länken från din bokningsbekräftelse eller gå till Mitt konto.</p><a href="mitt-konto.html" style="background:#0F6E56;color:#fff;padding:.875rem 2rem;border-radius:100px;text-decoration:none;font-weight:600">Gå till Mitt konto →</a></div>';
+}
 const email = params.get('email');
 
 const statusMap = {

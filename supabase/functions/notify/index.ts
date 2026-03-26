@@ -220,6 +220,35 @@ serve(async (req) => {
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
     }
+    else if (type === "cleaner_accepted") {
+      const r = payload.record || {};
+      subject = `✅ Städare bekräftad – ${r.cleaner_name || "din städare"} är på väg!`;
+      html = wrap(`
+<h2>Din städare är bekräftad! 🌿</h2>
+<p>Goda nyheter – <strong>${r.cleaner_name || "din städare"}</strong> (⭐ ${r.cleaner_rating || "5.0"}) har accepterat ditt uppdrag.</p>
+<div class="card">
+  <p style="margin:0;font-size:14px;color:#6B6960">Du får en påminnelse 24h innan städningen. Städaren anländer på bokad tid.</p>
+</div>
+<a href="https://spick.se/mitt-konto.html" class="btn">Visa min bokning →</a>
+`);
+      // Skicka till kunden – hämta email från booking
+      const { data: bk } = await sb.from("bookings").select("customer_email,email").eq("id", r.booking_id).single();
+      if (bk) to = bk.customer_email || bk.email || ADMIN;
+    }
+    else if (type === "booking_cancelled") {
+      const r = payload.record || {};
+      subject = `❌ Bokning avbokad – ${r.booking_id || ""}`;
+      html = wrap(`
+<h2>Bokning avbokad av kund</h2>
+<div class="card">
+  <div class="row"><span class="lbl">Boknings-ID</span><span class="val">${r.booking_id || "–"}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${r.email || "–"}</span></div>
+  <div class="row"><span class="lbl">Tidpunkt</span><span class="val">${new Date().toLocaleString("sv-SE")}</span></div>
+</div>
+<a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
+`);
+      to = ADMIN;
+    }
     else if (type === "garanti_reklamation") {
       const r = payload.record || {};
       subject = `🔴 Garantireklamation – ${r.name || "Kund"}`;
