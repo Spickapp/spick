@@ -603,7 +603,7 @@ async function submitRegistration() {
 
 // Enkel password hash (i produktion: bcrypt på server-sidan via Edge Function)
 async function hashPassword(pass) {
-  const msgBuffer = new TextEncoder().encode(pass
+  const msgBuffer = new TextEncoder().encode(pass);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
