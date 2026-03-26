@@ -846,7 +846,7 @@ async function approveApplication(id, name, email, city, services, rate) {
   await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' },
-    body: JSON.stringify({ type: 'cleaner_approved', record: { name, email, city } })
+    body: JSON.stringify({ type: 'cleaner_approved', record: { full_name: name, name, email, city, hourly_rate: rate } })
   }).catch(() => {});
   
   alert(`✅ ${name} är nu godkänd som städare!`);
