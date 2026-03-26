@@ -28,7 +28,7 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | spick.se | ✅ Live | GitHub Pages |
 | Supabase DB | ✅ Live | 26 migrationer körda |
 | Stripe | ✅ Live mode | sk_live_ + whsec_ satta i GitHub + Supabase |
-| Stripe Webhook | ⚠️ Delvis | Secrets klara – ENDPOINT saknas i Stripe Dashboard |
+| Stripe Webhook | ✅ Live | whsec_al4z5aWMSGg5Q5Qpf9WERYl7FUeREFHl synkat till Supabase |
 | Resend mail | ✅ Live | RESEND_API_KEY satt |
 | Edge Functions | ✅ Deployade | Alla 11 st |
 | Daily automation | ✅ 08:00 | Påminnelser, win-back, admin-rapport |
@@ -78,10 +78,8 @@ Sara Lindqvist, Kofi Mensah, Natasha Petrov, Mohammed Al-Farsi, Anna-Lena Berg
 3. Formulärkort behöver `position:relative; z-index:2` för att ligga ovanpå overlays
 4. goStep() i formulär: använd explicit for-loop, inte forEach med classList.add('')
 
-## Kvarstående för Farhad (1 sak)
-1. Stripe webhook endpoint i Stripe Dashboard:
-   URL: https://urjeijcncsyuletprydy.supabase.co/functions/v1/stripe-webhook
-   Events: checkout.session.completed, payment_intent.payment_failed, charge.refunded
+## Kvarstående för Farhad
+✅ KLART – Stripe webhook endpoint satt + whsec_ synkat
 
 ## Nästa dev-prioriteringar
 1. End-to-end testbokning med Stripe test-kort 4242...
