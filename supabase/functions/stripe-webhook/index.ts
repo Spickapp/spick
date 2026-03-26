@@ -19,6 +19,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, stripe-signature",
+};
+
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
@@ -339,6 +345,7 @@ async function capturePayment(bookingId: string) {
 }
 
 serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   // Direkt capture-anrop från städardashboard
   if (req.method === "POST" && req.url.includes("?action=capture")) {
     const { booking_id } = await req.json().catch(() => ({}));
