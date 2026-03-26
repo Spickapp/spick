@@ -10,7 +10,7 @@ Gå till: https://supabase.com/dashboard/project/urjeijcncsyuletprydy/settings/v
 |--------|-------|--------|
 | `STRIPE_SECRET_KEY` | `sk_live_51TEsG3FQ...` | ✅ Satt |
 | `STRIPE_PUBLISHABLE_KEY` | `pk_live_51TEsG3FQ...` | ✅ Satt |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_MWbvuu...` | ✅ Satt |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_al4z5a...` | ✅ Uppdaterad 2026-03-26 |
 | `RESEND_API_KEY` | Din nyckel | ✅ Satt |
 | `ANTHROPIC_API_KEY` | Din nyckel | ✅ Satt |
 | `GRANDID_API_KEY` | Skaffa på grandid.com | ⏳ Demo |
