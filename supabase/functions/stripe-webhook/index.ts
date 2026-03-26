@@ -151,8 +151,21 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const booking = bookings?.[0];
   if (!booking) { console.error("Bokning ej hittad:", bookingId); return; }
 
-  // Tilldela städare
-  const cleaner = await assignBestCleaner(booking);
+  // Tilldela städare - prioritera den som kunden valde
+  const preferredCleanerId = (session.metadata as Record<string, string>)?.cleaner_id;
+  let cleaner = null;
+  if (preferredCleanerId) {
+    const { data: preferred } = await sb
+      .from("cleaners")
+      .select("id, full_name, email, avg_rating")
+      .eq("id", preferredCleanerId)
+      .eq("status", "godkänd")
+      .single();
+    cleaner = preferred;
+  }
+  if (!cleaner) {
+    cleaner = await assignBestCleaner(booking);
+  }
 
   // Uppdatera bokning
   const metadata = session.metadata as Record<string, string> || {};

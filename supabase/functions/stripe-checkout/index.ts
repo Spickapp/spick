@@ -13,7 +13,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    const { booking_id, amount, name, email, service, date, hours, rut, sqm, address, phone } = await req.json();
+    const { booking_id, amount, name, email, service, date, hours, rut, sqm, address, phone, cleaner_id, cleaner_name } = await req.json();
 
     if (!booking_id || !amount || !email) {
       return new Response(JSON.stringify({ error: "Saknade fält" }), {
@@ -38,6 +38,8 @@ serve(async (req) => {
     if (address) params.append("metadata[address]", address.slice(0, 200));
     if (phone) params.append("metadata[phone]", phone);
     params.append("metadata[rut]", rut ? "true" : "false");
+    if (cleaner_id) params.append("metadata[cleaner_id]", cleaner_id);
+    if (cleaner_name) params.append("metadata[cleaner_name]", cleaner_name.slice(0, 100));
 
     // Betalmetoder: kort (klarna kräver separat aktivering i Stripe Dashboard)
     params.append("payment_method_types[]", "card");
