@@ -262,3 +262,6 @@ if paid_today or new_applications:
     send_email(ADMIN, f"Spick daglig rapport {TODAY} – {len(paid_today)} städningar", html)
 
 print(f"\n✅ Klar! {stats}")
+
+import sys
+sys.exit(0)
