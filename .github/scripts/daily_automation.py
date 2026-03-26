@@ -145,7 +145,7 @@ for b in bookings_yesterday:
 print("\n=== 3. Win-back (30 dagar inaktiva) ===")
 # Hitta kunder med senaste bokning för 30-31 dagar sedan
 winback_bookings = supa_get(
-    f"bookings?date=gte.{DAYS31AGO}&date=lte.{DAYS30AGO}&payment_status=eq.paid&winback_sent=is.null&select=customer_name,customer_email"
+    f"bookings?date=gte.{DAYS31AGO}&date=lte.{DAYS30AGO}&payment_status=eq.paid&winback_sent=is.null&select=customer_name,customer_email,email,name"
 )
 seen = set()
 for b in winback_bookings:
@@ -153,7 +153,7 @@ for b in winback_bookings:
     if not em or em in seen:
         continue
     seen.add(em)
-    fname = b.get('customer_name','').split()[0] if b.get('customer_name') else 'där'
+    fname = (b.get('customer_name') or b.get('name') or '').split()[0] or 'där'
     html = wrap(f"""
 <h2>Vi saknar dig, {fname}! 🌿</h2>
 <p>Det har gått ett tag sedan din senaste städning. Dags att ta hand om hemmet igen?</p>

@@ -51,6 +51,9 @@ serve(async (req) => {
     // Faktura (PDF) skickas automatiskt via Stripe
     params.append("invoice_creation[enabled]", "true");
 
+    // Tillåt rabattkoder (win-back: VÄLKOMMEN10)
+    params.append("allow_promotion_codes", "true");
+
     const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
