@@ -145,8 +145,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   <div class="login-card">
     <div class="login-logo">Spick</div>
     <p class="login-sub">Adminpanel – endast för ägare</p>
-    <input type="password" id="pw" placeholder="Lösenord" onkeydown="if(event.key==='Enter')doLogin()">
-    <button onclick="doLogin()">Logga in →</button>
+    <p style="font-size:.85rem;color:#6B6960;text-align:center;margin-bottom:1rem">En inloggningslänk skickas till <strong>hello@spick.se</strong></p>
+    <input type="hidden" id="pw" value="auth">
+    <button onclick="doLogin()">Skicka inloggningslänk →</button>
     <div id="login-err">Fel lösenord. Försök igen.</div>
   </div>
 </div>
@@ -396,26 +397,61 @@ const SB = supabase.createClient(
   'https://urjeijcncsyuletprydy.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
 );
-const PASS = 'jIDm%ZxDT7QGOeL9U9CqnQqy';
-
-// Data cache
+// ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
+const ADMIN_EMAIL = 'hello@spick.se';
 let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
 let currentBookingId = null, currentCleanerId = null;
 
-// ── AUTH ──────────────────────────────────────────────
-function doLogin() {
-  const pw = document.getElementById('pw').value;
-  if (pw === PASS) {
+// Kolla om redan inloggad
+SB.auth.getSession().then(({ data: { session } }) => {
+  if (session?.user?.email === ADMIN_EMAIL) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     loadAll();
-  } else {
+  }
+});
+
+// Lyssna på auth-ändringar
+SB.auth.onAuthStateChange((event, session) => {
+  if (session?.user?.email === ADMIN_EMAIL) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadAll();
+  } else if (event === 'SIGNED_OUT') {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+
+async function doLogin() {
+  const pw = document.getElementById('pw').value.trim();
+  if (!pw) return;
+  const btn = document.querySelector('.login-btn') || document.querySelector('button');
+  if (btn) { btn.textContent = '⏳ Skickar...'; btn.disabled = true; }
+  
+  // Skicka magic link till admin-email
+  const { error } = await SB.auth.signInWithOtp({ 
+    email: ADMIN_EMAIL,
+    options: { emailRedirectTo: 'https://spick.se/admin.html' }
+  });
+  
+  if (error) {
+    document.getElementById('login-err').textContent = 'Fel: ' + error.message;
     document.getElementById('login-err').style.display = 'block';
-    document.getElementById('pw').style.borderColor = 'var(--r)';
-    setTimeout(() => document.getElementById('pw').style.borderColor = '', 1500);
+    if (btn) { btn.textContent = 'Logga in'; btn.disabled = false; }
+  } else {
+    document.getElementById('login-err').style.display = 'none';
+    document.getElementById('pw').style.display = 'none';
+    const info = document.querySelector('.login-sub') || document.createElement('p');
+    info.style.cssText = 'color:#0F6E56;font-weight:600;text-align:center;margin-top:1rem';
+    info.textContent = '✅ Inloggningslänk skickad till hello@spick.se – kolla din e-post!';
+    document.querySelector('.login-card, form, .login-wrap')?.appendChild(info);
+    if (btn) { btn.textContent = 'Länk skickad ✅'; }
   }
 }
-function doLogout() {
+
+async function doLogout() {
+  await SB.auth.signOut();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('pw').value = '';
@@ -531,7 +567,7 @@ function renderBookings() {
       <td>${b.city || b.address?.split(',').pop()?.trim() || '–'}</td>
       <td class="text-g">${Math.round(b.total_price || 0).toLocaleString('sv')} kr${b.rut ? '<br><span style="font-size:.72rem;color:var(--m)">RUT</span>' : ''}</td>
       <td>${statusBadge(b.payment_status)}</td>
-      <td style="font-size:.82rem">${b.cleaner_id ? '✅ Tilldelad' : '<span style="color:var(--y)">⚠️ Ej tilldelad</span>'}</td>
+      <td style="font-size:.82rem">${b.cleaner_id ? ('✅ ' + (b.cleaner_name || 'Tilldelad')) : `<span style="color:var(--r)">⚠️ Ej tilldelad</span> <button onclick="openAssignModal('${b.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0F6E56;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:.25rem">Tilldela</button>`}</td>
       <td><button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button></td>
     </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga bokningar hittades</td></tr>';
 }
@@ -637,6 +673,21 @@ function renderCustomers() {
 function renderPayouts() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const paidBookings = data.bookings.filter(b => b.payment_status === 'paid' && b.cleaner_id);
+  
+  // Varning om obetalda/otilldelade bokningar (bug #29)
+  const pendingAlert = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
+  const unpaidAlert = data.bookings.filter(b => b.payment_status === 'pending');
+  const alertDiv = document.getElementById('admin-alerts') || (() => {
+    const d = document.createElement('div');
+    d.id = 'admin-alerts';
+    d.style.cssText = 'margin:1rem 0;display:flex;gap:.75rem;flex-wrap:wrap';
+    document.querySelector('.main-content, main, .content')?.prepend(d);
+    return d;
+  })();
+  alertDiv.innerHTML = [
+    pendingAlert.length ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:.75rem 1rem;font-size:.85rem;cursor:pointer" onclick="document.getElementById('booking-filter').value='paid';renderBookings()">⚠️ <strong>${pendingAlert.length}</strong> betalda bokningar saknar städare – <u>Tilldela nu</u></div>` : '',
+    unpaidAlert.length ? `<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:.75rem 1rem;font-size:.85rem">🔴 <strong>${unpaidAlert.length}</strong> obetalda bokningar</div>` : ''
+  ].join('');
   const totalPayout = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * 0.83), 0);
   const totalProvision = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * 0.17), 0);
 
@@ -810,6 +861,55 @@ function markPaid(cleanerId) {
 
 // Close modals on background click
 document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); }));
+
+// ── MANUELL STÄDAR-TILLDELNING (bug #28) ─────────────
+async function openAssignModal(bookingId) {
+  currentBookingId = bookingId;
+  // Hämta godkända städare
+  const { data: cleaners } = await SB.from('cleaners')
+    .select('id,full_name,city,avg_rating')
+    .eq('status','godkänd')
+    .order('avg_rating', { ascending: false });
+  
+  let opts = cleaners?.map(c => 
+    `<option value="${c.id}">${c.full_name} (${c.city}) ⭐${c.avg_rating||'–'}</option>`
+  ).join('') || '<option>Inga städare hittades</option>';
+  
+  const modal = document.createElement('div');
+  modal.id = 'assign-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px;padding:2rem;max-width:400px;width:100%">
+      <h3 style="font-family:Playfair Display,serif;margin-bottom:1rem">Tilldela städare</h3>
+      <select id="assign-select" style="width:100%;padding:.75rem;border:1.5px solid #E8E8E4;border-radius:12px;font-size:.9rem;margin-bottom:1rem">
+        ${opts}
+      </select>
+      <div style="display:flex;gap:.75rem">
+        <button onclick="document.getElementById('assign-modal').remove()" 
+          style="flex:1;padding:.75rem;border:1.5px solid #E8E8E4;border-radius:10px;background:none;cursor:pointer">Avbryt</button>
+        <button onclick="confirmAssign()" 
+          style="flex:1;padding:.75rem;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">Tilldela</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmAssign() {
+  const cleanerId = document.getElementById('assign-select').value;
+  const cleaner = data.cleaners?.find(c => c.id === cleanerId);
+  if (!cleanerId || !currentBookingId) return;
+  
+  await SB.from('bookings').update({ 
+    cleaner_id: cleanerId, 
+    cleaner_name: cleaner?.full_name,
+    status: 'bekräftad'
+  }).eq('id', currentBookingId);
+  
+  document.getElementById('assign-modal').remove();
+  showToast('✅ Städare tilldelad!');
+  await loadAll();
+}
+
 </script>
 </body>
 </html>

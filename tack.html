@@ -109,7 +109,14 @@ setTimeout(confetti, 300);
 
 // Tracka konvertering
 if (typeof gtag !== 'undefined') {
-  gtag('event', 'purchase', { transaction_id: sessionId || bid, value: 0, currency: 'SEK' });
+  const _p = new URLSearchParams(location.search);
+  const _service = _p.get('service') || 'Städning';
+  gtag('event', 'purchase', {
+    transaction_id: sessionId || bid,
+    value: 525,
+    currency: 'SEK',
+    items: [{ item_name: _service, item_category: 'Städning', price: 525, quantity: 1 }]
+  });
 }
 </script>
 <script>
