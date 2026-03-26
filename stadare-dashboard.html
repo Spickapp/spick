@@ -884,6 +884,78 @@ function markObStep(n) {
   const el = document.getElementById('ob'+n);
   if(el) { el.textContent = '✓'; el.style.background = 'rgba(255,255,255,.3)'; el.style.border = 'none'; }
 }
+
+function renderMonthlySummary(jobs) {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  
+  const monthJobs = jobs.filter(j => {
+    const d = new Date(j.date || j.created_at);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  });
+  
+  const totalEarnings = monthJobs
+    .filter(j => j.status === 'klar')
+    .reduce((sum, j) => sum + (j.total_price || 0), 0);
+  
+  const completedCount = monthJobs.filter(j => j.status === 'klar').length;
+  const upcomingCount = monthJobs.filter(j => j.status === 'bekräftad' || j.status === 'pending').length;
+  
+  const el = document.getElementById('monthly-summary');
+  if(!el) return;
+  
+  const monthName = now.toLocaleDateString('sv-SE', {month:'long'});
+  
+  el.innerHTML = `
+    <div style="background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:14px;padding:1.25rem;color:#fff;margin-bottom:1.25rem">
+      <div style="font-size:.72rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">${monthName} – din månad</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;text-align:center">
+        <div>
+          <div style="font-size:1.4rem;font-weight:800">${totalEarnings.toLocaleString('sv-SE')} kr</div>
+          <div style="font-size:.7rem;opacity:.75">intjänat</div>
+        </div>
+        <div>
+          <div style="font-size:1.4rem;font-weight:800">${completedCount}</div>
+          <div style="font-size:.7rem;opacity:.75">avklarade</div>
+        </div>
+        <div>
+          <div style="font-size:1.4rem;font-weight:800">${upcomingCount}</div>
+          <div style="font-size:.7rem;opacity:.75">kommande</div>
+        </div>
+      </div>
+    </div>`;
+}
+function renderNextJob(jobs) {
+  const upcoming = jobs
+    .filter(j => (j.status === 'bekräftad' || j.status === 'pending') && new Date(j.date) >= new Date())
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+  
+  const el = document.getElementById('next-job-widget');
+  if(!el) return;
+  
+  if(!upcoming.length) {
+    el.innerHTML = '<div style="background:#F7F7F5;border:1.5px dashed #E8E8E4;border-radius:12px;padding:1.25rem;text-align:center;font-size:.82rem;color:#6B6960;margin-bottom:1rem">Inga kommande uppdrag – se till att ditt schema är aktivt!</div>';
+    return;
+  }
+  
+  const next = upcoming[0];
+  const dateStr = new Date(next.date).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long'});
+  const daysUntil = Math.ceil((new Date(next.date) - new Date()) / (1000*60*60*24));
+  const urgency = daysUntil <= 1 ? '#dc2626' : daysUntil <= 3 ? '#d97706' : '#0F6E56';
+  
+  el.innerHTML = `
+    <div style="background:#fff;border:1.5px solid ${urgency};border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <span style="font-size:.7rem;font-weight:700;color:${urgency};text-transform:uppercase;letter-spacing:.05em">
+          ${daysUntil === 0 ? '🔴 IDAG' : daysUntil === 1 ? '🟡 IMORGON' : `Om ${daysUntil} dagar`}
+        </span>
+        <span style="font-size:.72rem;color:#6B6960">${next.time || '–'}</span>
+      </div>
+      <div style="font-weight:600;font-size:.9rem">${next.service || 'Städning'}</div>
+      <div style="font-size:.78rem;color:#6B6960;margin-top:.2rem">${dateStr}</div>
+    </div>`;
+}
 </script>
 </body>
 </html>

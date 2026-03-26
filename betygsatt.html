@@ -36,6 +36,24 @@ textarea:focus,input:focus{border-color:var(--g)}
 .success-icon{font-size:4rem;margin-bottom:16px}
 .spin{display:inline-block;width:20px;height:20px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+.aspect-btn{
+  padding:.4rem .9rem;
+  border:1.5px solid #E8E8E4;
+  border-radius:99px;
+  font-size:.78rem;
+  cursor:pointer;
+  font-family:inherit;
+  background:#fff;
+  transition:all .12s;
+  color:#1C1C1A;
+}
+.aspect-btn.selected{
+  background:#E1F5EE;
+  border-color:#0F6E56;
+  color:#0F6E56;
+  font-weight:600;
+}
 </style>
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
@@ -179,6 +197,30 @@ async function submit() {
 <script>
 (function(){var c=document.getElementById('spick-cookie');if(!c)return;var ch=localStorage.getItem('spick-cookie-consent');if(!ch)setTimeout(function(){c.classList.add('show');},1500);})();
 function cookieChoice(accept){localStorage.setItem('spick-cookie-consent',accept?'all':'necessary');var c=document.getElementById('spick-cookie');if(c){c.style.transform='translateY(100%)';setTimeout(function(){c.remove();},400);}if(accept&&window.gtag)gtag('consent','update',{analytics_storage:'granted',ad_storage:'granted'});}
+
+// Touch-support för stjärnor på mobil
+document.addEventListener('DOMContentLoaded', function() {
+  const starsEl = document.getElementById('stars');
+  if(!starsEl) return;
+  starsEl.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = starsEl.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const starWidth = rect.width / 5;
+    const starNum = Math.ceil(x / starWidth);
+    if(starNum >= 1 && starNum <= 5 && typeof setRating === 'function') {
+      setRating(starNum);
+    }
+  }, {passive: false});
+});
+
+const selectedAspects = new Set();
+function toggleAspect(btn, aspect) {
+  btn.classList.toggle('selected');
+  if(selectedAspects.has(aspect)) selectedAspects.delete(aspect);
+  else selectedAspects.add(aspect);
+}
 </script>
 </body>
 </html>
