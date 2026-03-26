@@ -574,19 +574,26 @@ async function goStep2() {
 
 // ── KALENDER ──────────────────────────────────────────────────────────────────
 async function loadGlobalAvailability() {
+  const fallbackAvail = [1,2,3,4,5].map(d => ({
+    cleaner_id:null, day_of_week:d, start_time:'08:00', end_time:'17:00'
+  }));
   try {
-    // Hämta alla aktiva städares tillgänglighet i ett anrop
     const [availRes, blockedRes, bookingsRes] = await Promise.all([
       fetch(`${SUPA}/rest/v1/cleaner_availability?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H}),
       fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H}),
       fetch(`${SUPA}/rest/v1/bookings?status=neq.avbokad&select=cleaner_id,date,time&order=date.asc`, {headers:H})
     ]);
-    state.availability = await availRes.json();
-    state.blocked = await blockedRes.json();
-    state.bookings = await bookingsRes.json();
+    const avail   = await availRes.json();
+    const blocked = await blockedRes.json();
+    const bookings= await bookingsRes.json();
+    // Validera att vi fick arrayer (skyddar mot saknade tabeller)
+    state.availability = Array.isArray(avail)   && avail.length   > 0 ? avail   : fallbackAvail;
+    state.blocked      = Array.isArray(blocked) ? blocked : [];
+    state.bookings     = Array.isArray(bookings)? bookings: [];
   } catch(e) {
-    // Fallback: visa alla vardagar
-    state.availability = [];
+    state.availability = fallbackAvail;
+    state.blocked      = [];
+    state.bookings     = [];
   }
 }
 
@@ -734,7 +741,9 @@ async function loadAvailableCleaners() {
       return svcs.includes(state.service.toLowerCase()) || svcs.includes('hem') || svcs.length === 0;
     });
     // Filtrera: har tillgänglighet denna dag (baserat på availability-tabell)
-    const dayAvail = state.availability.filter(a => a.day_of_week === dow).map(a => a.cleaner_id);
+    const dayAvail = Array.isArray(state.availability)
+      ? state.availability.filter(a => a.day_of_week === dow && a.cleaner_id).map(a => a.cleaner_id)
+      : [];
     if (dayAvail.length > 0) {
       cleaners = cleaners.filter(c => dayAvail.includes(c.id));
     }
