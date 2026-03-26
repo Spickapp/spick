@@ -27,7 +27,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 .nav-cta{background:var(--g);color:#fff;border:none;padding:.5rem 1.25rem;border-radius:99px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none}
 
 /* HERO */
-.hero{background:var(--g);color:#fff;padding:4rem 1.5rem 3rem;position:relative;overflow:hidden}
+.hero{background:var(--g);color:#fff;padding:2rem 1.5rem;position:relative;overflow:visible}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 20%, rgba(255,255,255,.07) 0%, transparent 60%)}
 .hero-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 420px;gap:4rem;align-items:center}
 @media(max-width:780px){.hero-inner{grid-template-columns:1fr;gap:2.5rem}}
@@ -50,7 +50,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 .lp:hover,.lp.on{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.4)}
 
 /* FORM CARD */
-.fc{background:#fff;border-radius:20px;padding:1.75rem;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+.fc{background:#fff;border-radius:20px;padding:1.75rem;box-shadow:0 24px 60px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
 .ft{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:var(--b);margin-bottom:.25rem}
 .fs{font-size:.75rem;color:var(--m);margin-bottom:1.5rem}
 
@@ -547,7 +547,9 @@ function goStep(n) {
   var next = document.getElementById('step' + n);
   if (next) {
     next.className = 'fstep on';
-    next.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Scrolla till toppen av kortets scroll-container
+    var fc = next.closest('.fc');
+    if (fc) fc.scrollTop = 0;
   }
 }
 
