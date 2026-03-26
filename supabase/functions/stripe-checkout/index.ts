@@ -53,9 +53,6 @@ serve(async (req) => {
     params.append("line_items[0][price_data][product_data][images][]",
       "https://spick.se/assets/og-image.jpg");
 
-    // Faktura (PDF) skickas automatiskt via Stripe
-    params.append("invoice_creation[enabled]", "true");
-
     // Tillåt rabattkoder (win-back: VÄLKOMMEN10)
     params.append("allow_promotion_codes", "true");
 
