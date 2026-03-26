@@ -175,12 +175,18 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       </div>
       <div class="f2">
         <div class="f"><label>Tjänst *</label>
-          <select id="service">
+          <select id="service" onchange="updateServiceInfo()">
             <option value="">Välj tjänst...</option>
             <option>Hemstädning</option><option>Storstädning</option>
             <option>Flyttstädning</option><option>Fönsterputs</option>
             <option>Kontorsstädning</option><option>Trapphus</option>
           </select>
+        </div>
+        <div id="service-info-link" style="display:none;margin-top:-.5rem;margin-bottom:.5rem">
+          <a id="service-link" href="tjanster.html" target="_blank" 
+            style="font-size:.78rem;color:var(--g);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem">
+            📋 Vad ingår i vald tjänst? →
+          </a>
         </div>
         <div class="f">
           <label>Bostadsyta (kvm) *</label>
@@ -615,6 +621,26 @@ function cookieChoice(accept) {
 <script>
 function openMobMenu(){document.getElementById('mobOverlay').style.display='block';document.getElementById('mobPanel').classList.add('open');}
 function closeMobMenu(){document.getElementById('mobOverlay').style.display='none';document.getElementById('mobPanel').classList.remove('open');}
+
+function updateServiceInfo() {
+  const svc = document.getElementById('service').value;
+  const linkDiv = document.getElementById('service-info-link');
+  const link = document.getElementById('service-link');
+  const tabMap = {
+    'Hemstädning': '#svc-hem',
+    'Storstädning': '#svc-stor', 
+    'Flyttstädning': '#svc-flytt',
+    'Fönsterputs': '#svc-fonster',
+    'Trapphus': '#svc-hem'
+  };
+  if (svc && tabMap[svc]) {
+    link.href = 'tjanster.html' + tabMap[svc];
+    linkDiv.style.display = 'block';
+  } else {
+    linkDiv.style.display = 'none';
+  }
+  calcHoursFromSqm();
+}
 </script>
 </body>
 </html>
