@@ -50,7 +50,15 @@ def post_data(path, body):
         print(f"POST-fel ({path}): {e}")
         return False
 
-bookings = fetch(f"bookings?date=gte.{first}&date=lte.{last}&status=eq.klar&select=*")
+bookings_klar = fetch(f"bookings?date=gte.{first}&date=lte.{last}&status=eq.klar&select=*")
+bookings_paid = fetch(f"bookings?date=gte.{first}&date=lte.{last}&payment_status=eq.captured&select=*")
+# Kombinera - klar eller captured
+seen_ids = set()
+bookings = []
+for b in bookings_klar + bookings_paid:
+    if isinstance(b, dict) and b.get('id') not in seen_ids:
+        seen_ids.add(b.get('id'))
+        bookings.append(b)
 if not isinstance(bookings, list):
     bookings = []
 
