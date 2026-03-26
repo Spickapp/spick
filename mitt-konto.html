@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mitt konto – Spick</title>
+<meta name="description" content="Se dina bokningar, historik och hantera ditt Spick-konto.">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-CP115M45TT');
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626}
+body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-height:100vh}
+nav{background:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);position:sticky;top:0;z-index:10}
+.logo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--g);text-decoration:none}
+.nav-links{display:flex;gap:1.5rem;align-items:center}
+.nav-links a{font-size:.875rem;color:var(--m);text-decoration:none}
+.nav-links a:hover{color:var(--g)}
+
+/* LOGIN */
+.login-wrap{max-width:420px;margin:5rem auto;padding:0 1.5rem}
+.login-card{background:#fff;border-radius:20px;border:1px solid var(--grd);padding:2.5rem 2rem}
+.login-icon{width:64px;height:64px;background:var(--gp);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.75rem;margin:0 auto 1.5rem}
+.login-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:.5rem}
+.login-sub{font-size:.875rem;color:var(--m);text-align:center;margin-bottom:2rem;line-height:1.6}
+.field{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem}
+.field label{font-size:.78rem;font-weight:500;color:var(--m)}
+.field input{padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.95rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--g)}
+.btn-primary{width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-primary:hover:not(:disabled){background:var(--gm)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.error-msg{background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:.875rem 1rem;font-size:.85rem;color:var(--r);margin-bottom:1rem;display:none}
+.error-msg.show{display:block}
+
+/* PORTAL */
+.portal{max-width:760px;margin:0 auto;padding:2rem 1.5rem 6rem;display:none}
+.portal-header{background:linear-gradient(135deg,#085041,var(--g));border-radius:20px;padding:2rem;margin-bottom:1.5rem;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.portal-name{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700}
+.portal-email{font-size:.875rem;opacity:.8;margin-top:.25rem}
+.portal-stats{display:flex;gap:1.5rem}
+.ps{text-align:center}
+.ps-val{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700}
+.ps-lbl{font-size:.72rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em}
+.logout-btn{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:.5rem 1.25rem;border-radius:100px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s}
+.logout-btn:hover{background:rgba(255,255,255,.25)}
+
+/* TABS */
+.tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;background:#fff;border-radius:12px;padding:.375rem;border:1px solid var(--grd)}
+.tab-btn{flex:1;padding:.625rem;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;background:none;color:var(--m);transition:all .2s}
+.tab-btn.active{background:var(--g);color:#fff;font-weight:600}
+
+/* BOKNINGAR */
+.booking-card{background:#fff;border-radius:16px;border:1px solid var(--grd);padding:1.5rem;margin-bottom:1rem;transition:box-shadow .2s}
+.booking-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.bc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+.bc-service{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700}
+.bc-status{font-size:.75rem;font-weight:600;padding:.3rem .875rem;border-radius:100px}
+.status-pending{background:#FEF9C3;color:#854D0E}
+.status-paid{background:#DCFCE7;color:#166534}
+.status-confirmed{background:#DBEAFE;color:#1E40AF}
+.status-completed{background:var(--gp);color:var(--g)}
+.status-cancelled{background:#FEE2E2;color:#991B1B}
+.status-ny{background:#F3F4F6;color:#374151}
+.bc-meta{display:grid;grid-template-columns:1fr 1fr;gap:.625rem;margin-bottom:1rem}
+.bc-item{display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:var(--m)}
+.bc-item span{font-size:1rem}
+.bc-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:1rem;border-top:1px solid var(--grd);flex-wrap:wrap;gap:.75rem}
+.bc-price{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700}
+.bc-rut{font-size:.75rem;color:var(--g);background:var(--gp);padding:.2rem .625rem;border-radius:100px;margin-left:.5rem}
+.bc-actions{display:flex;gap:.5rem}
+.btn-sm{padding:.5rem 1rem;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:none;transition:all .2s}
+.btn-outline{background:none;border:1.5px solid var(--grd);color:var(--t)}
+.btn-outline:hover{border-color:var(--g);color:var(--g)}
+.btn-danger{background:#FEE2E2;color:var(--r)}
+.btn-danger:hover{background:#FECACA}
+.btn-link{background:var(--gp);color:var(--g)}
+.btn-link:hover{background:#C6EBD9}
+
+/* CLEANER INFO */
+.cleaner-info{background:var(--gr);border-radius:10px;padding:.875rem 1rem;display:flex;align-items:center;gap:.875rem;margin-bottom:1rem}
+.cleaner-avatar{width:40px;height:40px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;flex-shrink:0}
+.cleaner-name{font-size:.875rem;font-weight:600}
+.cleaner-rating{font-size:.75rem;color:var(--m);margin-top:1px}
+
+/* EMPTY */
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+.empty-icon{font-size:3rem;margin-bottom:1rem}
+.empty-title{font-size:1.1rem;font-weight:600;color:var(--t);margin-bottom:.5rem}
+.empty-sub{font-size:.875rem;line-height:1.6}
+.btn-cta{display:inline-block;margin-top:1.5rem;padding:.875rem 2rem;background:var(--g);color:#fff;border-radius:100px;font-weight:600;text-decoration:none;font-size:.95rem}
+
+/* PROFIL */
+.profile-form{background:#fff;border-radius:16px;border:1px solid var(--grd);padding:1.75rem}
+.pf-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-bottom:1.25rem}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.save-row{display:flex;justify-content:flex-end;margin-top:1.25rem}
+.save-btn{padding:.75rem 1.75rem;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.9rem}
+.save-btn:hover{background:var(--gm)}
+.success-toast{display:none;background:#DCFCE7;color:#166534;padding:.875rem 1rem;border-radius:10px;margin-bottom:1rem;font-size:.875rem;font-weight:500}
+.success-toast.show{display:block}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:20px;padding:2rem;max-width:400px;width:100%}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:.75rem}
+.modal-sub{font-size:.875rem;color:var(--m);line-height:1.6;margin-bottom:1.5rem}
+.modal-actions{display:flex;gap:.75rem}
+.btn-cancel-modal{flex:1;padding:.75rem;border:1.5px solid var(--grd);border-radius:10px;background:none;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer}
+.btn-confirm{flex:1;padding:.75rem;background:var(--r);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer}
+
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:640px){.f2{grid-template-columns:1fr}.bc-meta{grid-template-columns:1fr}.portal-stats{gap:1rem}.ps-val{font-size:1.4rem}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Spick</a>
+  <div class="nav-links">
+    <a href="boka.html">Boka städning</a>
+    <a href="kontakt.html">Kontakt</a>
+  </div>
+</nav>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginSection">
+  <div class="login-card">
+    <div class="login-icon">🏠</div>
+    <h1 class="login-title">Mitt konto</h1>
+    <p class="login-sub">Ange din e-postadress för att se dina bokningar och hantera ditt konto.</p>
+    <div class="error-msg" id="loginError">E-postadressen hittades inte. Kontrollera och försök igen.</div>
+    <div class="field">
+      <label>E-postadress</label>
+      <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="login()">
+      Visa mina bokningar →
+    </button>
+    <p style="font-size:.75rem;color:var(--m);text-align:center;margin-top:1rem;line-height:1.6">
+      Inget lösenord krävs. Vi visar dina bokningar baserat på din e-post.
+    </p>
+  </div>
+</div>
+
+<!-- PORTAL -->
+<div class="portal" id="portalSection">
+  <div class="portal-header">
+    <div>
+      <div class="portal-name" id="portalName">Välkommen!</div>
+      <div class="portal-email" id="portalEmail"></div>
+    </div>
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+      <div class="portal-stats">
+        <div class="ps"><div class="ps-val" id="statBookings">0</div><div class="ps-lbl">Bokningar</div></div>
+        <div class="ps"><div class="ps-val" id="statSpent">0</div><div class="ps-lbl">kr sparat RUT</div></div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logga ut</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('bookings')">📋 Mina bokningar</button>
+    <button class="tab-btn" onclick="showTab('upcoming')">📅 Kommande</button>
+    <button class="tab-btn" onclick="showTab('profile')">👤 Profil</button>
+  </div>
+
+  <div id="tabBookings">
+    <div id="bookingsList"></div>
+  </div>
+
+  <div id="tabUpcoming" style="display:none">
+    <div id="upcomingList"></div>
+  </div>
+
+  <div id="tabProfile" style="display:none">
+    <div class="success-toast" id="saveToast">✅ Profil sparad!</div>
+    <div class="profile-form">
+      <div class="pf-title">Din profil</div>
+      <div class="f2">
+        <div class="field"><label>Förnamn</label><input type="text" id="pfName" placeholder="Anna"></div>
+        <div class="field"><label>Telefon</label><input type="tel" id="pfPhone" placeholder="070-123 45 67"></div>
+      </div>
+      <div class="field"><label>E-post</label><input type="email" id="pfEmail" disabled style="background:var(--gr);cursor:not-allowed"></div>
+      <div class="field"><label>Stad</label><input type="text" id="pfCity" placeholder="Stockholm"></div>
+      <div class="save-row">
+        <button class="save-btn" onclick="saveProfile()">Spara ändringar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AVBOKA MODAL -->
+<div class="modal-bg" id="cancelModal">
+  <div class="modal">
+    <div class="modal-title">Avboka städning?</div>
+    <p class="modal-sub" id="cancelModalText">Är du säker på att du vill avboka? Kontakta oss om du behöver boka om.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeCancelModal()">Behåll bokning</button>
+      <button class="btn-confirm" onclick="confirmCancel()">Ja, avboka</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB = supabase.createClient(
+  'https://urjeijcncsyuletprydy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+);
+
+let currentEmail = '';
+let allBookings = [];
+let cancelBookingId = null;
+
+// ── AUTO-LOGIN ────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('spick_customer_email');
+  const urlEmail = new URLSearchParams(location.search).get('email');
+  const email = urlEmail || saved;
+  if (email) {
+    document.getElementById('emailInput').value = email;
+    login();
+  }
+  document.getElementById('emailInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+});
+
+// ── LOGIN ────────────────────────────────────
+async function login() {
+  const email = document.getElementById('emailInput').value.trim().toLowerCase();
+  if (!email || !email.includes('@')) return;
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div>';
+  document.getElementById('loginError').classList.remove('show');
+
+  // Hämta bokningar för denna e-post
+  const { data: bookings } = await SB
+    .from('bookings')
+    .select('*')
+    .or(`email.eq.${email},customer_email.eq.${email}`)
+    .order('created_at', { ascending: false });
+
+  if (!bookings || bookings.length === 0) {
+    // Kolla om de kanske har fel e-post – visa tydligt felmeddelande
+    document.getElementById('loginError').classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Visa mina bokningar →';
+    return;
+  }
+
+  currentEmail = email;
+  localStorage.setItem('spick_customer_email', email);
+  allBookings = bookings;
+  showPortal(bookings, email);
+}
+
+// ── PORTAL ───────────────────────────────────
+function showPortal(bookings, email) {
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('portalSection').style.display = 'block';
+
+  // Header
+  const name = bookings[0]?.customer_name || bookings[0]?.name || email.split('@')[0];
+  document.getElementById('portalName').textContent = 'Hej, ' + name.split(' ')[0] + '!';
+  document.getElementById('portalEmail').textContent = email;
+
+  // Stats
+  const paid = bookings.filter(b => b.payment_status === 'paid');
+  const rutSaved = paid.reduce((s, b) => s + (b.rut ? (b.total_price || 0) * 0.5 * 0.3 : 0), 0);
+  document.getElementById('statBookings').textContent = bookings.length;
+  document.getElementById('statSpent').textContent = Math.round(rutSaved);
+
+  // Profil-fält
+  document.getElementById('pfEmail').value = email;
+  document.getElementById('pfName').value = bookings[0]?.customer_name || bookings[0]?.name || '';
+  document.getElementById('pfPhone').value = bookings[0]?.phone || '';
+  document.getElementById('pfCity').value = bookings[0]?.city || '';
+
+  renderBookings('all');
+}
+
+// ── RENDER BOOKINGS ──────────────────────────
+function renderBookings(filter) {
+  const now = new Date();
+  let filtered = allBookings;
+
+  if (filter === 'upcoming') {
+    filtered = allBookings.filter(b => {
+      const d = new Date(b.date || b.scheduled_date);
+      return d >= now && !['cancelled','avbokad'].includes(b.status);
+    });
+  }
+
+  const container = filter === 'upcoming'
+    ? document.getElementById('upcomingList')
+    : document.getElementById('bookingsList');
+
+  if (!filtered.length) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">${filter === 'upcoming' ? '📅' : '🧹'}</div>
+        <div class="empty-title">${filter === 'upcoming' ? 'Inga kommande bokningar' : 'Inga bokningar ännu'}</div>
+        <div class="empty-sub">${filter === 'upcoming' ? 'Du har inga planerade städningar.' : 'Boka din första städning idag!'}</div>
+        <a href="boka.html" class="btn-cta">Boka städning →</a>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(b => bookingCard(b)).join('');
+}
+
+function bookingCard(b) {
+  const date = b.date || b.scheduled_date || '';
+  const time = b.time || b.scheduled_time || '';
+  const status = b.status || b.payment_status || 'ny';
+  const price = b.total_price || 0;
+  const rutPrice = b.rut ? Math.round(price * 0.5) : price;
+
+  const statusLabel = {
+    'paid': 'Betald', 'pending': 'Inväntar betalning', 'ny': 'Ny',
+    'confirmed': 'Bekräftad', 'bekräftad': 'Bekräftad',
+    'completed': 'Genomförd', 'klar': 'Genomförd',
+    'cancelled': 'Avbokad', 'avbokad': 'Avbokad', 'failed': 'Misslyckad'
+  }[status] || status;
+
+  const statusClass = {
+    'paid': 'status-paid', 'pending': 'status-pending', 'ny': 'status-ny',
+    'confirmed': 'status-confirmed', 'bekräftad': 'status-confirmed',
+    'completed': 'status-completed', 'klar': 'status-completed',
+    'cancelled': 'status-cancelled', 'avbokad': 'status-cancelled', 'failed': 'status-cancelled'
+  }[status] || 'status-ny';
+
+  const canCancel = !['cancelled','avbokad','klar','completed'].includes(status);
+  const canReview = ['paid','completed','klar'].includes(status) && !b.review_requested;
+  const dateStr = date ? new Date(date).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long'}) : '–';
+
+  const cleanerHtml = b.cleaner_id ? `
+    <div class="cleaner-info">
+      <div class="cleaner-avatar">${(b.cleaner_name || 'S').charAt(0)}</div>
+      <div>
+        <div class="cleaner-name">${b.cleaner_name || 'Städare tilldelad'}</div>
+        <div class="cleaner-rating">⭐ ${b.cleaner_rating || '5.0'} betyg</div>
+      </div>
+    </div>` : '';
+
+  return `
+    <div class="booking-card">
+      <div class="bc-top">
+        <div class="bc-service">${b.service || 'Hemstädning'}</div>
+        <div class="bc-status ${statusClass}">${statusLabel}</div>
+      </div>
+      ${cleanerHtml}
+      <div class="bc-meta">
+        <div class="bc-item"><span>📅</span> ${dateStr}</div>
+        <div class="bc-item"><span>🕐</span> ${time || '–'}</div>
+        <div class="bc-item"><span>📍</span> ${b.address || b.city || '–'}</div>
+        <div class="bc-item"><span>⏱</span> ${b.hours || '–'} timmar</div>
+      </div>
+      <div class="bc-bottom">
+        <div>
+          <span class="bc-price">${rutPrice} kr</span>
+          ${b.rut ? `<span class="bc-rut">efter RUT-avdrag</span>` : ''}
+        </div>
+        <div class="bc-actions">
+          <a href="min-bokning.html?bid=${b.id}" class="btn-sm btn-outline">Detaljer</a>
+          ${canReview ? `<a href="betygsatt.html?bid=${b.id}" class="btn-sm btn-link">Betygsätt</a>` : ''}
+          ${canCancel ? `<button class="btn-sm btn-danger" onclick="openCancelModal('${b.id}', '${b.service || 'städning'}')">Avboka</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── TABS ─────────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tabBookings').style.display = tab === 'bookings' ? 'block' : 'none';
+  document.getElementById('tabUpcoming').style.display = tab === 'upcoming' ? 'block' : 'none';
+  document.getElementById('tabProfile').style.display = tab === 'profile' ? 'block' : 'none';
+  if (tab === 'upcoming') renderBookings('upcoming');
+}
+
+// ── AVBOKA ───────────────────────────────────
+function openCancelModal(id, service) {
+  cancelBookingId = id;
+  document.getElementById('cancelModalText').textContent =
+    `Är du säker på att du vill avboka din ${service}? Kontakta oss om du vill boka om istället.`;
+  document.getElementById('cancelModal').classList.add('show');
+}
+function closeCancelModal() {
+  document.getElementById('cancelModal').classList.remove('show');
+  cancelBookingId = null;
+}
+async function confirmCancel() {
+  if (!cancelBookingId) return;
+  await SB.from('bookings').update({
+    status: 'avbokad',
+    cancelled_at: new Date().toISOString()
+  }).eq('id', cancelBookingId);
+  allBookings = allBookings.map(b =>
+    b.id === cancelBookingId ? {...b, status: 'avbokad', cancelled_at: new Date().toISOString()} : b
+  );
+  closeCancelModal();
+  renderBookings('all');
+}
+
+// ── SPARA PROFIL ─────────────────────────────
+async function saveProfile() {
+  const name = document.getElementById('pfName').value.trim();
+  const phone = document.getElementById('pfPhone').value.trim();
+  const city = document.getElementById('pfCity').value.trim();
+  await SB.from('customer_profiles').upsert({
+    email: currentEmail, name, phone, city, updated_at: new Date().toISOString()
+  }, { onConflict: 'email' });
+  document.getElementById('saveToast').classList.add('show');
+  setTimeout(() => document.getElementById('saveToast').classList.remove('show'), 3000);
+}
+
+// ── LOGOUT ───────────────────────────────────
+function logout() {
+  localStorage.removeItem('spick_customer_email');
+  currentEmail = '';
+  allBookings = [];
+  document.getElementById('loginSection').style.display = 'block';
+  document.getElementById('portalSection').style.display = 'none';
+  document.getElementById('emailInput').value = '';
+}
+</script>
+</body>
+</html>
