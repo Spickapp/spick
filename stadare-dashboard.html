@@ -523,18 +523,20 @@ async function sendMagicLink() {
   const btn = document.getElementById('login-btn');
   btn.disabled = true; btn.querySelector('span').textContent = 'Skickar...';
 
-  const { data: cleaners } = await SB.from('cleaners').select('id').eq('email', email).eq('is_approved', true);
-  if (!cleaners?.length) {
-    showErr('Ingen godkänd städare hittades med denna e-post.');
-    btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk';
+  // Skicka magic link direkt – ingen DB-kontroll här.
+  // Om personen inte är godkänd städare visas ett fel EFTER inloggning istället.
+  const { error } = await SB.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: 'https://spick.se/stadare-dashboard.html' }
+  });
+
+  if (error) {
+    showErr('Fel: ' + error.message);
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'Skicka inloggningslänk';
     return;
   }
 
-  const { error } = await SB.auth.signInWithOtp({
-    email, options: { emailRedirectTo: 'https://spick.se/stadare-dashboard.html' }
-  });
-
-  if (error) { showErr('Fel: ' + error.message); btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; return; }
   document.getElementById('magic-email').textContent = email;
   showScreen('magic');
 }
