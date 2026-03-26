@@ -39,9 +39,8 @@ serve(async (req) => {
     if (phone) params.append("metadata[phone]", phone);
     params.append("metadata[rut]", rut ? "true" : "false");
 
-    // Betalmetoder: Klarna + kortbetalning
+    // Betalmetoder: kort (klarna kräver separat aktivering i Stripe Dashboard)
     params.append("payment_method_types[]", "card");
-    params.append("payment_method_types[]", "klarna");
 
     // Produktrad
     params.append("line_items[0][quantity]", "1");
