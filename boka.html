@@ -863,7 +863,22 @@ function validatePNR(val) {
 }
 
 function autofillBankID() {
-  alert('BankID-integration kräver aktiv GrandID-licens. Fyll i personnummer manuellt tills vidare.');
+  // BankID-autofyll kräver GrandID-licens (grandid.com)
+  // Tills vidare: guida kunden att fylla i manuellt
+  const btn = document.querySelector('button[onclick="autofillBankID()"]');
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.innerHTML = '✓ Fyll i nedan';
+    btn.style.background = '#6B7280';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2000);
+  }
+  const hint = document.getElementById('pnr-hint');
+  if (hint) {
+    hint.textContent = '→ Ange ditt personnummer manuellt (YYYYMMDD-XXXX) för att ansöka om RUT-avdrag';
+    hint.style.color = 'var(--g)';
+    hint.style.fontWeight = '500';
+  }
+  document.getElementById('pnr')?.focus();
 }
 
 // Adress-autocomplete

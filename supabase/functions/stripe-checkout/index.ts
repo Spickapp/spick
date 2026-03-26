@@ -42,8 +42,8 @@ serve(async (req) => {
 
     const params = new URLSearchParams();
     params.append("mode", "payment");
-    // ESCROW: auktorisera nu, capture när städning klar (via stripe-webhook)
-    params.append("payment_intent_data[capture_method]", "manual");
+    // Betalning auktoriseras direkt vid checkout
+    // Klarna kräver automatic capture (manual stöds ej)
     params.append("currency", "sek");
     params.append("customer_email", email);
     params.append("success_url",
@@ -79,6 +79,8 @@ serve(async (req) => {
       "https://spick.se/assets/og-image.jpg");
 
     params.append("allow_promotion_codes", "true");
+    // Klarna kräver telefonnummer
+    if (phone) params.append("payment_method_options[klarna][setup_future_usage]", "none");
     params.append("billing_address_collection", "auto");
 
     const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
