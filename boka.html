@@ -737,7 +737,8 @@ async function loadAvailableCleaners() {
     let cleaners = await res.json();
     // Filtrera: har tjänsten
     cleaners = cleaners.filter(c => {
-      const svcs = (c.services||'').toLowerCase();
+      const svcsRaw = Array.isArray(c.services) ? c.services.join(',') : (c.services||'');
+      const svcs = svcsRaw.toLowerCase();
       return svcs.includes(state.service.toLowerCase()) || svcs.includes('hem') || svcs.length === 0;
     });
     // Filtrera: har tillgänglighet denna dag (baserat på availability-tabell)
