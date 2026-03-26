@@ -826,6 +826,33 @@ async function reportCustomer(bookingId, customerEmail) {
   
   showToast('⚠️ Rapport skickad till Spick. Tack för att du hör av dig.');
 }
+
+// ── MARKERA JOBB KLART (triggar escrow-utbetalning) ─────────────────────────
+async function markJobDone(id) {
+  if (!confirm('Är städningen klar? Kunden bekräftar och betalningen frigörs.')) return;
+  
+  await SB.from('bookings').update({ 
+    status: 'klar', 
+    completed_at: new Date().toISOString() 
+  }).eq('id', id);
+  
+  // Frigör escrow-betalning via Stripe capture-endpoint
+  fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/stripe-webhook?action=capture', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body: JSON.stringify({ booking_id: id })
+  }).catch(()=>{});
+  
+  // Notifiera kund att städningen är klar + begär betygsättning
+  fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+    body: JSON.stringify({ type: 'job_completed', record: { booking_id: id, cleaner_name: cleaner?.full_name } })
+  }).catch(()=>{});
+  
+  showToast('✅ Klart! Betalningen frigörs inom 1-2 bankdagar.');
+  await loadJobs();
+}
 </script>
 </body>
 </html>

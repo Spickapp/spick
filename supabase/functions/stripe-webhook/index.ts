@@ -339,6 +339,13 @@ async function capturePayment(bookingId: string) {
 }
 
 serve(async (req) => {
+  // Direkt capture-anrop från städardashboard
+  if (req.method === "POST" && req.url.includes("?action=capture")) {
+    const { booking_id } = await req.json().catch(() => ({}));
+    if (booking_id) await capturePayment(booking_id);
+    return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+  }
+  
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   const body = await req.text();
