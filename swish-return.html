@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Betalning via Swish – Spick</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:#F7F7F5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.card{background:#fff;border-radius:16px;padding:2.5rem 2rem;max-width:440px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+.icon{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 1.25rem}
+.icon.pending{background:#fef3c7}
+.icon.success{background:#E1F5EE}
+.icon.error{background:#fee2e2}
+h1{font-size:1.3rem;font-weight:700;margin-bottom:.625rem;color:#1C1C1A}
+p{font-size:.875rem;color:#6B6960;line-height:1.7;margin-bottom:1.5rem}
+.btn{display:block;padding:.875rem;border-radius:12px;font-weight:600;font-size:.9rem;text-decoration:none;transition:all .15s;margin-bottom:.625rem}
+.btn-green{background:#0F6E56;color:#fff}
+.btn-green:hover{background:#085041}
+.btn-outline{border:1.5px solid #E8E8E4;color:#1C1C1A}
+.btn-outline:hover{border-color:#0F6E56;color:#0F6E56}
+.steps{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem;text-align:left}
+.step{display:flex;align-items:center;gap:.75rem;font-size:.82rem;padding:.625rem .875rem;background:#F7F7F5;border-radius:9px}
+.step-n{width:22px;height:22px;border-radius:50%;background:#0F6E56;color:#fff;font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#spinner{display:inline-block;width:20px;height:20px;border:2px solid #E8E8E4;border-top-color:#0F6E56;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <!-- Pending state (default) -->
+  <div id="state-pending">
+    <div id="spinner"></div>
+    <div class="icon pending">⏳</div>
+    <h1>Väntar på Swish-betalning</h1>
+    <p>Öppna Swish-appen på din mobil och godkänn betalningen. Sidan uppdateras automatiskt.</p>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div>Öppna Swish-appen</div>
+      <div class="step"><div class="step-n">2</div>Godkänn betalningsbegäran</div>
+      <div class="step"><div class="step-n">3</div>Klart – bokningen bekräftas direkt!</div>
+    </div>
+    <a href="min-bokning.html" class="btn btn-outline" id="check-btn">Kontrollera manuellt</a>
+  </div>
+
+  <!-- Success state -->
+  <div id="state-success" style="display:none">
+    <div class="icon success">✅</div>
+    <h1>Betalning mottagen!</h1>
+    <p>Din Swish-betalning är bekräftad. Bokningen är klar och du får en bekräftelse via e-post inom kort.</p>
+    <a href="tack.html" class="btn btn-green" id="tack-link">Se din bokning →</a>
+    <a href="index.html" class="btn btn-outline">Tillbaka till startsidan</a>
+  </div>
+
+  <!-- Error state -->
+  <div id="state-error" style="display:none">
+    <div class="icon error">❌</div>
+    <h1>Betalning misslyckades</h1>
+    <p>Swish-betalningen genomfördes inte. Ingen debitering har skett. Du kan försöka igen eller välja kortbetalning.</p>
+    <a href="javascript:history.back()" class="btn btn-green">Försök igen →</a>
+    <a href="index.html" class="btn btn-outline">Tillbaka till startsidan</a>
+  </div>
+</div>
+
+<script>
+const p = new URLSearchParams(location.search);
+const bid = p.get('bid') || p.get('booking_id');
+const status = p.get('status');
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+function show(state) {
+  ['pending','success','error'].forEach(s => {
+    document.getElementById('state-'+s).style.display = s===state ? 'block' : 'none';
+  });
+}
+
+// Om status redan känt från URL
+if(status === 'success') {
+  show('success');
+  if(bid) document.getElementById('tack-link').href = 'tack.html?bid='+bid;
+} else if(status === 'cancelled' || status === 'error') {
+  show('error');
+} else if(bid) {
+  // Polla Supabase tills betalning bekräftad (max 2 min)
+  let polls = 0;
+  const poll = setInterval(async () => {
+    try {
+      polls++;
+      if(polls > 24) { clearInterval(poll); show('error'); return; }
+      const r = await fetch(`https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?id=eq.${bid}&select=payment_status`, {
+        headers:{apikey:KEY,Authorization:'Bearer '+KEY}
+      });
+      const data = await r.json();
+      const pStatus = data?.[0]?.payment_status;
+      if(pStatus === 'paid') {
+        clearInterval(poll);
+        document.getElementById('tack-link').href = 'tack.html?bid='+bid;
+        show('success');
+      } else if(pStatus === 'failed') {
+        clearInterval(poll); show('error');
+      }
+    } catch(e) { /* stille fail */ }
+  }, 5000);
+}
+</script>
+</body>
+</html>
