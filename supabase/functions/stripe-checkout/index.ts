@@ -13,7 +13,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    const { booking_id, amount, name, email, service, date, hours, rut } = await req.json();
+    const { booking_id, amount, name, email, service, date, hours, rut, sqm, address, phone } = await req.json();
 
     if (!booking_id || !amount || !email) {
       return new Response(JSON.stringify({ error: "Saknade fält" }), {
@@ -34,6 +34,9 @@ serve(async (req) => {
     params.append("success_url", `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${booking_id}&service=${encodeURIComponent(service || "Städning")}&date=${encodeURIComponent(date || "")}`);
     params.append("cancel_url", `${BASE_URL}/boka.html?cancelled=1`);
     params.append("metadata[booking_id]", booking_id);
+    if (sqm) params.append("metadata[sqm]", sqm.toString());
+    if (address) params.append("metadata[address]", address.slice(0, 200));
+    if (phone) params.append("metadata[phone]", phone);
     params.append("metadata[rut]", rut ? "true" : "false");
 
     // Betalmetoder: Klarna + kortbetalning

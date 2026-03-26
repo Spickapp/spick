@@ -810,11 +810,16 @@ async function suspendCleaner() {
 // ── APPLICATIONS ──────────────────────────────────────
 async function approveApplication(id, name, email, city, services, rate) {
   // Skapa städare i cleaners-tabellen
-  await SB.from('cleaners').insert([{
-    full_name: name, email, city, services,
-    hourly_rate: rate, is_approved: true, avg_rating: 5.0,
-    payout_status: 'pending', created_at: new Date().toISOString()
-  }]);
+  const { data: existing } = await SB.from('cleaners').select('id').eq('email', email).single();
+  if (existing) {
+    await SB.from('cleaners').update({ status: 'godkänd', is_approved: true }).eq('email', email);
+  } else {
+    await SB.from('cleaners').insert([{
+      full_name: name, email, city, services,
+      hourly_rate: rate, status: 'godkänd', is_approved: true, avg_rating: 5.0,
+      review_count: 0, payout_status: 'pending', created_at: new Date().toISOString()
+    }]);
+  }
   await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
   
   // Skicka välkomstmail via Resend

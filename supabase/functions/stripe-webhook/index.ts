@@ -149,13 +149,15 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const cleaner = await assignBestCleaner(booking);
 
   // Uppdatera bokning
+  const metadata = session.metadata as Record<string, string> || {};
   await sb.from("bookings").update({
     payment_status: "paid",
     payment_method: (session.payment_method_types as string[])?.[0] || "card",
     stripe_session_id: stripeSessionId,
     stripe_payment_intent: session.payment_intent,
     paid_at: new Date().toISOString(),
-    ...(cleaner ? { cleaner_id: cleaner.id } : {})
+    ...(cleaner ? { cleaner_id: cleaner.id, cleaner_name: cleaner.full_name } : {}),
+    ...(metadata.sqm ? { sqm: parseInt(metadata.sqm) } : {}),
   }).eq("id", bookingId);
 
   const name = booking.customer_name || "Kunden";
