@@ -523,9 +523,9 @@ async function doBook(){
   if(useRut&&pnr) pnrHash=await hashPnr(pnr);
 
   const booking={
-    name:fn+' '+ln,customer_name:fn+' '+ln,customer_email:em,email:em,phone:ph,address:addr,city:addr.split(',').pop()?.trim()||'Sverige',date,time,service:svc,hours:h,sqm:+document.getElementById('sqm')?.value||null,
+    name:fn+' '+ln,customer_name:fn+' '+ln,customer_email:em,email:em,phone:ph,address:addr,city:addr.split(',').pop()?.trim()||'Sverige',date,time,service:svc,hours:h,
     rut:useRut,total_price:tot,status:'ny',
-    message:(p.get('name')?'Städare: '+p.get('name'):'')+(pnrHash?' | PNR-hash: '+pnrHash.slice(0,12)+'...':'')
+    message:(p.get('name')?'Städare: '+p.get('name'):'')+(pnrHash?' | PNR-hash: '+pnrHash.slice(0,12)+'...':'')+(document.getElementById('sqm')?.value?' | kvm: '+document.getElementById('sqm').value:'')
   };
   if(cleanerId) booking.cleaner_id=cleanerId;
 
