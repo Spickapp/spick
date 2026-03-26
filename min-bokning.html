@@ -115,7 +115,7 @@ function renderBooking(b, cleaner) {
   const [statusClass, statusText] = statusMap[b.payment_status] || ['pending','Okänd status'];
   const isPaid = b.payment_status === 'paid';
   const fname = b.customer_name?.split(' ')[0] || '';
-  const date = new Date(b.scheduled_date);
+  const date = new Date(b.date);
   const isPast = date < new Date();
   const isToday = date.toDateString() === new Date().toDateString();
   const isTomorrow = date.toDateString() === new Date(Date.now()+86400000).toDateString();
@@ -125,17 +125,28 @@ function renderBooking(b, cleaner) {
   const step2Done = isPaid && (isPast || isToday);
   const step3Done = b.review_requested;
 
-  const dateLabel = isToday ? 'Idag' : isTomorrow ? 'Imorgon' : b.scheduled_date;
+  const d2 = b.date || b.scheduled_date || '';
+const dateLabel = isToday ? 'Idag' : isTomorrow ? 'Imorgon' : d2;
   const price = b.total_price ? `${Math.round(b.total_price)} kr${b.rut ? ' (efter RUT)' : ''}` : '–';
 
   document.getElementById('content').innerHTML = `
 <div class="card">
   <div class="status ${statusClass}">${statusText}</div>
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service || 'Hemstädning'} · ${b.hours || 3}h</span></div>
-  <div class="row"><span class="lbl">Datum</span><span class="val">${dateLabel} ${b.scheduled_date !== dateLabel ? b.scheduled_date : ''}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">${b.scheduled_time || '09:00'}</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${dateLabel} ${b.date !== dateLabel ? b.date : ''}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${b.time || '09:00'}</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">${b.address || '–'}</span></div>
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}</span></div>
+  ${cleaner ? `
+  <div style="background:#E1F5EE;border-radius:10px;padding:.875rem 1rem;display:flex;align-items:center;gap:.875rem;margin:.75rem 0">
+    <div style="width:44px;height:44px;border-radius:50%;background:#0F6E56;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">
+      ${(cleaner.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2)}
+    </div>
+    <div>
+      <div style="font-size:.875rem;font-weight:700;color:#0F6E56">${cleaner.full_name || 'Din städare'}</div>
+      <div style="font-size:.78rem;color:#1D9E75">⭐ ${cleaner.avg_rating || '5.0'} · ${cleaner.city || ''}</div>
+    </div>
+  </div>` : ''}
   ${b.rut ? '<div class="row"><span class="lbl">RUT-avdrag</span><span class="val" style="color:var(--g)">✅ Ansökt automatiskt</span></div>' : ''}
 </div>
 
@@ -163,7 +174,7 @@ ${cleaner ? `
     <div class="tl-item">
       <div class="tl-dot ${step2Done?'done':step1Done?'active':'todo'}"></div>
       <div class="tl-text">Städning genomförd</div>
-      <div class="tl-sub">${step2Done ? 'Klar ✅' : `Planerad ${dateLabel} kl ${b.scheduled_time||'09:00'}`}</div>
+      <div class="tl-sub">${step2Done ? 'Klar ✅' : `Planerad ${dateLabel} kl ${b.time||'09:00'}`}</div>
     </div>
     <div class="tl-item">
       <div class="tl-dot ${step3Done?'done':'todo'}"></div>
@@ -179,6 +190,12 @@ ${isPaid && !isPast ? `
   <button onclick="cancelBooking('${b.id}')" class="btn btn-danger">Avboka städning</button>
 </div>` : ''}
 ${!isPaid && b.payment_status === 'pending' ? `<a href="boka.html" class="btn btn-primary" style="margin-top:8px">Försök betala igen →</a>` : ''}
+${!isPast && isPaid && !['cancelled','avbokad','klar'].includes(b.status) ? `
+  <div style="text-align:center;margin-top:1rem">
+    <button onclick="cancelBooking('${b.id}')" style="padding:.625rem 1.5rem;background:#FEE2E2;color:#DC2626;border:1.5px solid #FECACA;border-radius:100px;font-size:.85rem;font-weight:600;cursor:pointer">
+      Avboka städning
+    </button>
+  </div>` : ''}
 ${isPast && isPaid && !b.review_requested ? `<a href="betygsatt.html?bid=${b.id}" class="btn btn-primary" style="margin-top:8px">⭐ Betygsätt städningen →</a>` : ''}
   `;
 }

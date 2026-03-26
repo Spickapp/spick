@@ -303,6 +303,7 @@ const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhb
 const p=new URLSearchParams(location.search);
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 let rate=+(p.get('rate')||350),useRut=true,cleanerId=p.get('id');
+window._getUseRut = () => useRut; // exponera för testning
 const ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 
 // Sätt min-datum till imorgon
@@ -551,9 +552,9 @@ async function doBook(){
     if(window.spickTrack) window.spickTrack.bookingCompleted({email:em, service:svc, price:tot});
 
     // ── Betalningsmetod: Stripe eller Swish ─────────────────────────
-    const payMethod = document.getElementById('pay-method')?.value || 'stripe';
+    const payMethod = document.querySelector('[name="pay-method"]:checked')?.value || 'stripe';
     if (payMethod === 'swish') {
-      await doSwishPayment(bookingId, tot, em, fn+' '+ln);
+      await doSwishPayment(data[0]?.id, tot, em, fn+' '+ln);
       return;
     }
     // ── Stripe Checkout ────────────────────────────────────────
