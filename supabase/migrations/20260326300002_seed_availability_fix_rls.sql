@@ -1,24 +1,70 @@
 -- ============================================================
--- FIX: cleaner_availability seed + säker bookings RLS
+-- FIX: Skapa cleaner_availability om den saknas, seeda data
+-- och säkra bookings RLS
 -- ============================================================
 
--- 1. Ge alla godkända städare som saknar schema ett standard mån-fre 08-17
+-- 1. Skapa tabellen om den inte redan finns
+CREATE TABLE IF NOT EXISTS cleaner_availability (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  cleaner_id    UUID NOT NULL REFERENCES cleaners(id) ON DELETE CASCADE,
+  day_of_week   SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  start_time    TIME NOT NULL DEFAULT '08:00',
+  end_time      TIME NOT NULL DEFAULT '17:00',
+  is_active     BOOLEAN DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(cleaner_id, day_of_week)
+);
+
+CREATE TABLE IF NOT EXISTS cleaner_blocked_dates (
+  id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  cleaner_id   UUID NOT NULL REFERENCES cleaners(id) ON DELETE CASCADE,
+  blocked_date DATE NOT NULL,
+  reason       TEXT,
+  created_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(cleaner_id, blocked_date)
+);
+
+-- 2. Index
+CREATE INDEX IF NOT EXISTS idx_avail_cleaner    ON cleaner_availability(cleaner_id);
+CREATE INDEX IF NOT EXISTS idx_avail_dow        ON cleaner_availability(day_of_week) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_blocked_cleaner  ON cleaner_blocked_dates(cleaner_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_date     ON cleaner_blocked_dates(blocked_date);
+
+-- 3. RLS
+ALTER TABLE cleaner_availability  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cleaner_blocked_dates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read availability"     ON cleaner_availability;
+DROP POLICY IF EXISTS "Public read blocked dates"    ON cleaner_blocked_dates;
+DROP POLICY IF EXISTS "Service role manage availability" ON cleaner_availability;
+DROP POLICY IF EXISTS "Service role manage blocked"  ON cleaner_blocked_dates;
+
+CREATE POLICY "Public read availability"
+  ON cleaner_availability FOR SELECT USING (true);
+CREATE POLICY "Public read blocked dates"
+  ON cleaner_blocked_dates FOR SELECT USING (true);
+CREATE POLICY "Service role manage availability"
+  ON cleaner_availability FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role manage blocked"
+  ON cleaner_blocked_dates FOR ALL USING (auth.role() = 'service_role');
+
+-- 4. Seed: ge alla godkända städare mån–fre 08-17 om de saknar schema
 INSERT INTO cleaner_availability (cleaner_id, day_of_week, start_time, end_time, is_active)
 SELECT c.id, d.day, '08:00'::time, '17:00'::time, true
 FROM cleaners c
-CROSS JOIN (VALUES (1),(2),(3),(4),(5)) AS d(day)  -- mån=1 ... fre=5
+CROSS JOIN (VALUES (1),(2),(3),(4),(5)) AS d(day)
 WHERE c.status = 'godkänd'
   AND NOT EXISTS (
     SELECT 1 FROM cleaner_availability a
     WHERE a.cleaner_id = c.id AND a.day_of_week = d.day
   );
 
--- 2. Ta bort den osäkra öppna SELECT-policyn som exponerar alla kunders data
-DROP POLICY IF EXISTS "Public can read bookings by id"      ON bookings;
-DROP POLICY IF EXISTS "Cleaner update booking status"       ON bookings;
+-- 5. Säkra bookings RLS – ta bort USING(true) som exponerar alla kunders data
+DROP POLICY IF EXISTS "Public can read bookings by id"   ON bookings;
+DROP POLICY IF EXISTS "Cleaner update booking status"    ON bookings;
+DROP POLICY IF EXISTS "Read booking by uuid"             ON bookings;
+DROP POLICY IF EXISTS "Assigned cleaner update booking"  ON bookings;
 
--- 3. Kunder kan läsa sin bokning via authenticated session (magic link)
-DROP POLICY IF EXISTS "Read booking by uuid" ON bookings;
 CREATE POLICY "Read booking by uuid"
   ON bookings FOR SELECT
   USING (
@@ -29,15 +75,9 @@ CREATE POLICY "Read booking by uuid"
     ))
   );
 
--- 4. Städare kan uppdatera status på sin tilldelade bokning
-DROP POLICY IF EXISTS "Assigned cleaner update booking" ON bookings;
 CREATE POLICY "Assigned cleaner update booking"
   ON bookings FOR UPDATE
   USING (
     auth.role() = 'service_role'
     OR cleaner_id = auth.uid()
   );
-
--- 5. Index på cleaner_availability för snabbare kalenderrendering
-CREATE INDEX IF NOT EXISTS idx_availability_dow
-  ON cleaner_availability(day_of_week) WHERE is_active = true;
