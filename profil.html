@@ -235,6 +235,15 @@ async function loadReviews(cleanerId) {
     if(el) el.innerHTML = '';
   }
 }
+
+// Uppdatera alla boka-knappar med rätt parametrar
+document.querySelectorAll('a[href="boka.html"]').forEach(a => {
+  if(window._cleanerData) {
+    const c = window._cleanerData;
+    const price = c.price || c.hourly_rate || 350;
+    a.href = `boka.html?name=${encodeURIComponent(c.full_name)}&rate=${price}&id=${c.id}`;
+  }
+});
 </script>
 </body>
 </html>
