@@ -496,44 +496,78 @@ const SB = supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
 );
 
-let svcs = ['Hemstädning'], days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag'];
-let currentStep = 1;
+let svcs = ['Hemstädning'];
+let days  = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag'];
+let step  = 1;
 
-// LANGUAGE
+/* ── SPRÅKVÄXLING ─────────────────────────────────────── */
 function setLang(lang, btn) {
   document.querySelectorAll('.lp').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   document.querySelectorAll('.lang-block').forEach(b => b.classList.remove('show'));
-  document.getElementById('txt-' + lang).classList.add('show');
+  var el = document.getElementById('txt-' + lang);
+  if (el) el.classList.add('show');
 }
 
-// FORM NAVIGATION
+/* ── STEG-NAVIGATION ──────────────────────────────────── */
 function goStep(n) {
-  if (n > currentStep) {
-    if (!validateStep(currentStep)) return;
+  // Validera nuvarande steg innan vi går vidare
+  if (n > step && !validate(step)) return;
+
+  // Göm nuvarande steg
+  var cur = document.getElementById('step' + step);
+  if (cur) cur.className = 'fstep';
+
+  // Uppdatera steg-indikatorer
+  for (var i = 1; i <= 4; i++) {
+    var dot   = document.getElementById('si'  + i);
+    var line  = document.getElementById('sl'  + i);
+    var label = document.getElementById('lbl' + i);
+    if (!dot) continue;
+
+    if (i < n) {
+      // Klart
+      dot.className   = 'si done';
+      if (line)  line.className  = 'sline done';
+      if (label) { label.className = 'sl'; }
+    } else if (i === n) {
+      // Aktivt
+      dot.className   = 'si active';
+      if (label) { label.className = 'sl on'; }
+    } else {
+      // Kommande
+      dot.className   = 'si';
+      if (line)  line.className  = 'sline';
+      if (label) { label.className = 'sl'; }
+    }
   }
-  document.getElementById('step' + currentStep).classList.remove('on');
-  ['si','sl','lbl'].forEach(pre => {
-    const el = document.getElementById(pre + currentStep);
-    if (el) { el.classList.remove('active'); if (pre === 'si') el.classList.add('done'); }
-  });
-  currentStep = n;
-  const ns = document.getElementById('step' + n);
-  if (ns) ns.classList.add('on');
-  document.getElementById('si' + n)?.classList.add('active');
-  document.getElementById('lbl' + n)?.classList.add('on');
-  if (n > 1) document.getElementById('sl' + (n-1))?.classList.add('done');
-  ns?.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  // Visa nytt steg
+  step = n;
+  var next = document.getElementById('step' + n);
+  if (next) {
+    next.className = 'fstep on';
+    next.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
-function validateStep(s) {
-  let ok = true;
+/* ── VALIDERING ───────────────────────────────────────── */
+function validate(s) {
+  var ok = true;
   if (s === 1) {
-    [['fn','fn-err'],['ln','ln-err'],['em','em-err'],['ph','ph-err']].forEach(([id,err]) => {
-      const el = document.getElementById(id);
-      const valid = el.value.trim().length > 1 && (id !== 'em' || el.value.includes('@'));
-      el.classList.toggle('input-err', !valid);
-      document.getElementById(err).style.display = valid ? 'none' : 'block';
+    var fields = [
+      ['fn',  'fn-err',  'Ange förnamn'],
+      ['ln',  'ln-err',  'Ange efternamn'],
+      ['em',  'em-err',  'Ange giltig e-post'],
+      ['ph',  'ph-err',  'Ange telefonnummer']
+    ];
+    fields.forEach(function(f) {
+      var el  = document.getElementById(f[0]);
+      var err = document.getElementById(f[1]);
+      var val = el ? el.value.trim() : '';
+      var valid = val.length > 1 && (f[0] !== 'em' || val.indexOf('@') > -1);
+      if (el)  el.style.borderColor  = valid ? '' : '#dc2626';
+      if (err) err.style.display      = valid ? 'none' : 'block';
       if (!valid) ok = false;
     });
   }
@@ -541,72 +575,89 @@ function validateStep(s) {
   return ok;
 }
 
+/* ── TJÄNSTER & DAGAR ─────────────────────────────────── */
 function tS(btn, svc) {
   btn.classList.toggle('on');
-  if (btn.classList.contains('on')) { if(!svcs.includes(svc)) svcs.push(svc); }
-  else svcs = svcs.filter(s => s !== svc);
+  if (btn.classList.contains('on')) {
+    if (svcs.indexOf(svc) === -1) svcs.push(svc);
+  } else {
+    svcs = svcs.filter(function(s) { return s !== svc; });
+  }
 }
+
 function tD(btn, day) {
   btn.classList.toggle('on');
-  if (btn.classList.contains('on')) { if(!days.includes(day)) days.push(day); }
-  else days = days.filter(d => d !== day);
+  if (btn.classList.contains('on')) {
+    if (days.indexOf(day) === -1) days.push(day);
+  } else {
+    days = days.filter(function(d) { return d !== day; });
+  }
 }
 
-// PRICE CALC
-document.getElementById('price')?.addEventListener('input', function() {
-  const rate = parseInt(this.value) || 350;
-  const keep = Math.round(rate * 0.83);
-  document.getElementById('keep-pct').textContent = keep + ' kr/h (83%)';
-});
+/* ── PRISVISNING ──────────────────────────────────────── */
+var priceEl = document.getElementById('price');
+if (priceEl) {
+  priceEl.addEventListener('input', function() {
+    var rate = parseInt(this.value) || 350;
+    var keep = document.getElementById('keep-pct');
+    if (keep) keep.textContent = Math.round(rate * 0.83) + ' kr/h (83%)';
+  });
+}
 
-// EARNINGS CALC
+/* ── INKOMSTKALKYLATOR ───────────────────────────────── */
 function calcEarnings() {
-  const rate = parseInt(document.getElementById('c-rate').value) || 350;
-  const hours = parseInt(document.getElementById('c-hours').value) || 20;
-  const weekly = Math.round(rate * hours * 0.83);
-  const monthly = Math.round(weekly * 4.33);
-  document.getElementById('c-result').textContent = weekly.toLocaleString('sv') + ' kr/v';
-  document.getElementById('c-month').textContent = '≈ ' + monthly.toLocaleString('sv') + ' kr/mån efter Spick-provision';
+  var rate   = parseInt((document.getElementById('c-rate')  || {}).value) || 350;
+  var hours  = parseInt((document.getElementById('c-hours') || {}).value) || 20;
+  var weekly = Math.round(rate * hours * 0.83);
+  var monthly = Math.round(weekly * 4.33);
+  var res = document.getElementById('c-result');
+  var mon = document.getElementById('c-month');
+  if (res) res.textContent = weekly.toLocaleString('sv') + ' kr/v';
+  if (mon) mon.textContent = '≈ ' + monthly.toLocaleString('sv') + ' kr/mån efter Spick-provision';
 }
 calcEarnings();
 
-// SUBMIT
+/* ── SKICKA ANSÖKAN ───────────────────────────────────── */
 async function submitForm() {
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Skickar...';
-  const pnr = document.getElementById('pnr').value.trim();
-  if (pnr.length < 11) {
-    document.getElementById('pnr').classList.add('input-err');
-    btn.disabled = false;
-    btn.textContent = 'Skicka ansökan ✓';
+  var btn = document.getElementById('submit-btn');
+  var pnr = (document.getElementById('pnr') || {}).value || '';
+  if (pnr.trim().length < 11) {
+    var pnrEl = document.getElementById('pnr');
+    if (pnrEl) pnrEl.style.borderColor = '#dc2626';
     return;
   }
+  btn.disabled = true;
+  btn.textContent = '⏳ Skickar...';
   try {
-    const data = {
-      full_name: (document.getElementById('fn').value + ' ' + document.getElementById('ln').value).trim(),
-      email: document.getElementById('em').value.trim().toLowerCase(),
-      phone: document.getElementById('ph').value.trim(),
-      city: document.getElementById('city').value,
-      services: svcs.join(', '),
-      hourly_rate: parseInt(document.getElementById('price').value) || 350,
-      has_fskatt: document.getElementById('fskatt').value === 'ja',
-      has_insurance: document.getElementById('insurance').value === 'ja',
-      bio: document.getElementById('bio').value.trim(),
-      languages: document.getElementById('langs').value.trim(),
-      status: 'pending',
+    var data = {
+      full_name:   ((document.getElementById('fn').value || '') + ' ' + (document.getElementById('ln').value || '')).trim(),
+      email:       (document.getElementById('em').value || '').trim().toLowerCase(),
+      phone:       (document.getElementById('ph').value || '').trim(),
+      city:        (document.getElementById('city').value || ''),
+      services:    svcs.join(', '),
+      hourly_rate: parseInt((document.getElementById('price') || {}).value) || 350,
+      has_fskatt:  (document.getElementById('fskatt') || {}).value === 'ja',
+      has_insurance: (document.getElementById('insurance') || {}).value === 'ja',
+      bio:         ((document.getElementById('bio') || {}).value || '').trim(),
+      languages:   ((document.getElementById('langs') || {}).value || '').trim(),
+      status:      'pending',
       available_days: days.join(', ')
     };
-    const { error } = await SB.from('cleaner_applications').insert([data]);
-    if (error) throw error;
-    // Notifiera admin via edge function
-    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    var res = await SB.from('cleaner_applications').insert([data]);
+    if (res.error) throw res.error;
+    // Admin-notis
+    fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-      body: JSON.stringify({type:'application', record:{...data, full_name: data.full_name}})
-    }).catch(()=>{});
-    document.getElementById('step4').classList.remove('on');
-    document.getElementById('step-done').classList.add('on');
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+      },
+      body: JSON.stringify({ type: 'application', record: data })
+    }).catch(function(){});
+    // Visa tack-steg
+    document.querySelectorAll('.fstep').forEach(function(el) { el.className = 'fstep'; });
+    var done = document.getElementById('step-done');
+    if (done) done.className = 'fstep on';
   } catch(e) {
     alert('Något gick fel. Försök igen eller maila hello@spick.se\n' + e.message);
     btn.disabled = false;
@@ -614,11 +665,11 @@ async function submitForm() {
   }
 }
 
-// FAQ
+/* ── FAQ ──────────────────────────────────────────────── */
 function tFaq(el) {
-  const item = el.closest('.faq-item');
-  const wasOpen = item.classList.contains('open');
-  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  var item = el.closest('.faq-item');
+  var wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(function(i) { i.classList.remove('open'); });
   if (!wasOpen) item.classList.add('open');
 }
 </script>
