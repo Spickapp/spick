@@ -1,272 +1,314 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
-<meta name="description" content="Din Spick-dashboard – se kommande uppdrag, intäkter och hantera din tillgänglighet.">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Städare-portal – Spick</title>
-<link rel="canonical" href="https://spick.se/stadare-dashboard.html">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Min dashboard | Spick">
-<meta property="og:description" content="Se dina uppdrag, intäkter och hantera din tillgänglighet som städare på Spick.">
-<meta property="og:url" content="https://spick.se/stadare-dashboard.html">
-<meta property="og:image" content="https://spick.se/assets/og-image.jpg">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Min dashboard | Spick">
-<meta name="twitter:description" content="Se dina uppdrag, intäkter och hantera din tillgänglighet som städare på Spick.">
 <meta name="robots" content="noindex">
+<link rel="canonical" href="https://spick.se/stadare-dashboard.html">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-:root{
-  --g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;
-  --b:#1C1C1A;--m:#6B6960;--bg:#F4F4F1;--w:#fff;
-  --r:#DC2626;--y:#F59E0B;--border:#E8E8E4;
-}
+:root{--g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#F4F4F1;--w:#fff;--r:#DC2626;--y:#F59E0B;--border:#E8E8E4;}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-height:100vh}
 
-/* ── SCREENS ── */
+/* SCREENS */
 .screen{display:none}
-.screen.active{display:block}
+#screen-login.active{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#0F6E56,#0A5240)}
+#screen-magic.active{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;background:var(--bg)}
+#screen-app.active{display:block;min-height:100vh}
 
-/* ── LOGIN SCREEN ── */
-#screen-login{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#0F6E56,#0A5240)}
-#screen-login.active{display:flex}
-.login-wrap{width:100%;max-width:420px}
-.login-card{background:var(--w);border-radius:24px;padding:44px;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+/* LOGIN */
+.login-wrap{width:100%;max-width:400px}
+.login-card{background:var(--w);border-radius:24px;padding:40px;box-shadow:0 24px 80px rgba(0,0,0,.25)}
 .login-logo{font-family:'Playfair Display',serif;font-size:2rem;color:var(--g);font-weight:700;margin-bottom:4px}
-.login-tagline{color:var(--m);font-size:.9rem;margin-bottom:32px}
-.login-card h2{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:8px}
-.login-card p{color:var(--m);font-size:.9rem;margin-bottom:24px;line-height:1.6}
-.input-group{margin-bottom:14px}
-.input-group label{display:block;font-size:.82rem;font-weight:600;color:var(--b);margin-bottom:6px}
-.input-group input{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:1rem;font-family:inherit;outline:none;transition:border-color .2s}
-.input-group input:focus{border-color:var(--g)}
+.login-tagline{color:var(--m);font-size:.88rem;margin-bottom:28px}
+.login-card h2{font-family:'Playfair Display',serif;font-size:1.25rem;margin-bottom:8px}
+.login-card p{color:var(--m);font-size:.88rem;margin-bottom:20px;line-height:1.6}
+.inp-grp{margin-bottom:14px}
+.inp-grp label{display:block;font-size:.8rem;font-weight:600;margin-bottom:5px}
+.inp-grp input{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:1rem;font-family:inherit;outline:none;transition:border-color .2s}
+.inp-grp input:focus{border-color:var(--g)}
 .btn-full{width:100%;padding:14px;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-full:hover{background:var(--gm)}
 .btn-full:disabled{opacity:.6;cursor:not-allowed}
-.login-err{color:var(--r);font-size:.85rem;margin-top:10px;display:none}
-.login-success{background:var(--gr);color:var(--g);padding:14px;border-radius:12px;font-size:.9rem;margin-top:16px;display:none;text-align:center}
-.login-footer{margin-top:24px;text-align:center;font-size:.82rem;color:var(--m)}
-.login-footer a{color:var(--g);text-decoration:none}
-
-/* ── MAGIC LINK SENT ── */
-#screen-magic{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
-#screen-magic.active{display:flex;flex-direction:column;text-align:center}
-.magic-icon{font-size:4rem;margin-bottom:24px}
-.magic-title{font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:12px}
-.magic-sub{color:var(--m);font-size:1rem;line-height:1.7;max-width:380px}
+.login-err{color:var(--r);font-size:.83rem;margin-top:10px;display:none}
+.login-success{background:var(--gr);color:var(--g);padding:14px;border-radius:12px;font-size:.88rem;margin-top:16px;display:none;text-align:center}
+.magic-icon{font-size:4rem;margin-bottom:20px}
+.magic-title{font-family:'Playfair Display',serif;font-size:1.75rem;margin-bottom:10px}
+.magic-sub{color:var(--m);font-size:.95rem;line-height:1.7;max-width:360px}
 .magic-email{background:var(--gr);color:var(--g);padding:4px 12px;border-radius:20px;font-weight:600;display:inline-block;margin:8px 0}
 
-/* ── MAIN APP ── */
-#screen-app{min-height:100vh;display:none}
-#screen-app.active{display:block}
-
-/* Header */
-.app-header{background:var(--g);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px}
-.header-logo{font-family:'Playfair Display',serif;font-size:1.3rem;color:#fff;font-weight:700}
-.header-user{display:flex;align-items:center;gap:12px}
-.user-avatar{width:34px;height:34px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem}
-.user-name{color:rgba(255,255,255,.9);font-size:.88rem}
-.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:inherit;transition:background .2s}
+/* APP SHELL */
+.app-header{background:var(--g);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:200}
+.header-logo{font-family:'Playfair Display',serif;font-size:1.25rem;color:#fff;font-weight:700}
+.header-right{display:flex;align-items:center;gap:10px}
+.avatar{width:34px;height:34px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.88rem}
+.user-name{color:rgba(255,255,255,.9);font-size:.82rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:inherit}
 .btn-logout:hover{background:rgba(255,255,255,.25)}
 
-/* Bottom Nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--w);border-top:1px solid var(--border);display:flex;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
-.nav-btn{flex:1;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--m);border:none;background:none;font-family:inherit;transition:color .15s;font-size:.7rem;font-weight:500}
-.nav-btn.active{color:var(--g)}
-.nav-btn .nav-icon{font-size:1.3rem}
-.nav-btn .badge{background:var(--r);color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:10px;position:absolute;top:-2px;right:-4px}
-.nav-icon-wrap{position:relative;display:inline-block}
+/* NEXT JOB BANNER */
+.next-banner{background:linear-gradient(135deg,#0F6E56,#0A5240);color:#fff;padding:14px 20px;display:none}
+.next-banner.show{display:flex;align-items:center;gap:14px}
+.next-label{font-size:.72rem;opacity:.8;margin-bottom:2px}
+.next-info{font-weight:600;font-size:.95rem}
+.next-countdown{background:rgba(255,255,255,.2);border-radius:10px;padding:8px 14px;text-align:center;white-space:nowrap;flex-shrink:0}
+.next-countdown .cnt-num{font-size:1.3rem;font-weight:700;font-family:'Playfair Display',serif}
+.next-countdown .cnt-lbl{font-size:.6rem;opacity:.8}
 
-/* Content */
-.content{padding:20px 16px 90px;max-width:640px;margin:0 auto}
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--w);border-top:1px solid var(--border);display:flex;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
+.nav-btn{flex:1;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--m);border:none;background:none;font-family:inherit;font-size:.68rem;font-weight:500;transition:color .15s}
+.nav-btn.active{color:var(--g)}
+.nav-btn .ni{font-size:1.3rem}
+.ni-wrap{position:relative;display:inline-block}
+.nbadge{background:var(--r);color:#fff;font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:10px;position:absolute;top:-3px;right:-5px;min-width:16px;text-align:center}
+
+/* CONTENT */
+.content{padding:16px 16px 90px;max-width:640px;margin:0 auto}
 .tab-content{display:none}
 .tab-content.active{display:block}
 
-/* Cards */
-.card{background:var(--w);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:14px}
-.card-title{font-weight:700;font-size:1rem;margin-bottom:14px}
+/* CARDS */
+.card{background:var(--w);border-radius:16px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:12px}
+.card-title{font-weight:700;font-size:.95rem;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{font-size:.75rem;color:var(--m);font-weight:400}
 
-/* KPI row */
-.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
-.kpi{background:var(--w);border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);text-align:center}
-.kpi-val{font-size:1.6rem;font-weight:700;color:var(--g);font-family:'Playfair Display',serif}
-.kpi-lbl{font-size:.72rem;color:var(--m);margin-top:3px}
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:var(--w);border-radius:14px;padding:14px 10px;box-shadow:0 2px 12px rgba(0,0,0,.06);text-align:center}
+.kpi-val{font-size:1.5rem;font-weight:700;color:var(--g);font-family:'Playfair Display',serif}
+.kpi-lbl{font-size:.68rem;color:var(--m);margin-top:2px}
 
-/* Job cards */
-.job-card{background:var(--w);border-radius:16px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:12px;display:flex;gap:14px;align-items:flex-start}
-.job-date{background:var(--g);color:#fff;border-radius:10px;padding:8px 10px;text-align:center;min-width:50px;flex-shrink:0}
-.job-date .day{font-size:1.3rem;font-weight:700;line-height:1}
-.job-date .mon{font-size:.65rem;text-transform:uppercase;opacity:.8;margin-top:2px}
-.job-body{flex:1}
-.job-title{font-weight:700;font-size:.95rem;margin-bottom:4px}
-.job-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:5px}
-.job-meta span{font-size:.78rem;color:var(--m);display:flex;align-items:center;gap:3px}
-.job-pay{font-size:1.1rem;font-weight:700;color:var(--g);flex-shrink:0;white-space:nowrap}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;margin-top:6px}
+/* GOAL BAR */
+.goal-bar-wrap{margin:10px 0 4px}
+.goal-bar-track{background:#E8E8E4;border-radius:99px;height:8px;overflow:hidden}
+.goal-bar-fill{background:linear-gradient(90deg,var(--g),#22C55E);height:100%;border-radius:99px;transition:width .6s ease}
+.goal-labels{display:flex;justify-content:space-between;font-size:.7rem;color:var(--m);margin-top:4px}
+
+/* JOB CARD */
+.job-card{background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05);margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;border-left:3px solid transparent}
+.job-card.mine{border-left-color:var(--g)}
+.job-card.new-job{border-left-color:var(--y)}
+.job-card.done-job{border-left-color:#6B6960;opacity:.7}
+.job-date{text-align:center;min-width:40px;flex-shrink:0}
+.day{font-size:1.5rem;font-weight:700;font-family:'Playfair Display',serif;line-height:1}
+.mon{font-size:.65rem;color:var(--m);text-transform:uppercase}
+.job-body{flex:1;min-width:0}
+.job-title{font-weight:600;font-size:.92rem;margin-bottom:5px}
+.job-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:.75rem;color:var(--m);margin-bottom:6px}
+.job-pay{font-size:1.05rem;font-weight:700;color:var(--g);white-space:nowrap;flex-shrink:0;font-family:'Playfair Display',serif}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
 .badge-new{background:#FEF3C7;color:#92400E}
-.badge-ok{background:var(--gr);color:var(--g)}
+.badge-ok{background:#D1FAE5;color:#065F46}
 .badge-done{background:#F3F4F6;color:#6B7280}
-.job-actions{display:flex;gap:8px;margin-top:10px}
-.btn-accept{background:var(--g);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s}
+.badge-inprogress{background:#DBEAFE;color:#1E40AF}
+.job-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.btn-accept{padding:.4rem .875rem;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
 .btn-accept:hover{background:var(--gm)}
-.btn-decline{background:var(--bg);color:var(--m);border:1.5px solid var(--border);padding:7px 14px;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:inherit}
-.btn-complete{background:#16A34A;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-decline{padding:.4rem .875rem;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit}
+.action-btn{padding:.4rem .75rem;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;border:none}
 
-/* Earnings */
-.earn-hero{background:linear-gradient(135deg,var(--g),var(--gm));color:#fff;border-radius:16px;padding:24px;margin-bottom:16px}
-.earn-amount{font-size:2.5rem;font-weight:700;font-family:'Playfair Display',serif;margin:8px 0}
-.earn-sub{opacity:.8;font-size:.85rem}
-.earn-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem}
+/* TIMER */
+.job-timer{background:#DBEAFE;color:#1E40AF;border-radius:8px;padding:6px 10px;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:6px;margin-top:6px}
+.timer-dot{width:7px;height:7px;background:#1E40AF;border-radius:50%;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* EARN TAB */
+.earn-hero{background:linear-gradient(135deg,var(--g),var(--gm));color:#fff;border-radius:16px;padding:22px;margin-bottom:12px}
+.earn-amount{font-size:2.5rem;font-weight:700;font-family:'Playfair Display',serif;margin:6px 0 2px}
+.earn-sub{opacity:.75;font-size:.78rem}
+.earn-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:.85rem}
 .earn-row:last-child{border-bottom:none;font-weight:700}
 .earn-row .lbl{color:var(--m)}
 
-/* Profile */
-.profile-avatar{width:72px;height:72px;background:var(--g);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;margin:0 auto 16px}
-.profile-name{font-family:'Playfair Display',serif;font-size:1.4rem;text-align:center;margin-bottom:4px}
-.profile-sub{text-align:center;color:var(--m);font-size:.88rem;margin-bottom:20px}
-.profile-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F0F0EC;font-size:.9rem}
-.profile-row:last-child{border:none}
-.profile-row .lbl{color:var(--m)}
-.profile-row .val{font-weight:500;max-width:60%;text-align:right}
-.rating-stars{font-size:1.3rem;letter-spacing:2px}
-input.edit-input{border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:.9rem;width:100%;outline:none}
-input.edit-input:focus{border-color:var(--g)}
-.btn-save{background:var(--g);color:#fff;border:none;padding:10px 24px;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:16px;width:100%}
+/* WEEK CHART */
+.week-chart{display:flex;align-items:flex-end;gap:6px;height:60px;margin:14px 0 8px}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{width:100%;background:linear-gradient(180deg,var(--g),#22C55E);border-radius:4px 4px 0 0;min-height:2px;transition:height .4s ease}
+.bar.empty{background:#E8E8E4}
+.bar-lbl{font-size:.6rem;color:var(--m)}
+.bar-val{font-size:.58rem;color:var(--g);font-weight:600}
 
-/* Empty state */
-.empty{text-align:center;padding:48px 24px;color:var(--m)}
-.empty-icon{font-size:2.5rem;margin-bottom:12px}
+/* PROFILE */
+.prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--g),var(--gm));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;font-weight:700;margin:0 auto 10px;font-family:'Playfair Display',serif}
+.prof-name{font-family:'Playfair Display',serif;font-size:1.3rem;text-align:center;margin-bottom:4px}
+.prof-sub{color:var(--m);font-size:.82rem;text-align:center;margin-bottom:14px}
+.prof-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:.88rem}
+.prof-row:last-child{border-bottom:none}
+.prof-row .lbl{color:var(--m);font-size:.82rem}
+.edit-input{padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;font-family:inherit;outline:none;width:auto}
+.edit-input:focus{border-color:var(--g)}
+.btn-save{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:16px}
+.sched-day{display:grid;grid-template-columns:80px 1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.sched-day:last-child{border-bottom:none}
+.sched-day label{font-weight:500}
+.sched-time{padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem;font-family:inherit;outline:none}
+.sched-time:focus{border-color:var(--g)}
+.toggle-wrap{display:flex;align-items:center;gap:8px}
+.toggle{width:40px;height:22px;background:#E5E7EB;border-radius:99px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--g)}
+.toggle::after{content:'';width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s}
+.toggle.on::after{transform:translateX(18px)}
 
-/* Toast */
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--b);color:#fff;padding:12px 24px;border-radius:12px;font-size:.9rem;z-index:9999;display:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.2)}
-.toast.show{display:block}
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--m)}
+.empty-icon{font-size:3rem;margin-bottom:12px}
 
-/* Loading */
-.spin{width:20px;height:20px;border:2px solid var(--gr);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading{text-align:center;padding:40px}
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1C1C1A;color:#fff;padding:10px 22px;border-radius:12px;font-size:.875rem;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:9999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* SOS */
+#sos-btn{position:fixed;bottom:80px;right:16px;width:52px;height:52px;background:var(--r);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 20px rgba(220,38,38,.4);z-index:150;animation:sosPulse 2s infinite}
+@keyframes sosPulse{0%,100%{box-shadow:0 4px 20px rgba(220,38,38,.4)}50%{box-shadow:0 4px 30px rgba(220,38,38,.7)}}
+#sos-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-end}
+#sos-modal.show{display:flex}
+.sos-sheet{background:var(--w);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:640px;margin:0 auto}
+
+/* STATUS CHIP */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
+.chip-live{background:#DCFCE7;color:#166534}
+.chip-offline{background:#F3F4F6;color:#6B7280}
+
+/* REAL-TIME DOT */
+.rt-dot{width:7px;height:7px;background:#22C55E;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
+
+/* RATING STARS */
+.stars{color:#F59E0B;font-size:1rem}
+
+/* SCROLL TO TOP */
+.scroll-top{position:fixed;bottom:100px;right:16px;width:40px;height:40px;background:var(--g);color:#fff;border:none;border-radius:50%;font-size:1.1rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.15);opacity:0;transition:opacity .3s;z-index:100}
+.scroll-top.visible{opacity:1}
+
+@media(max-width:400px){.kpi-val{font-size:1.25rem}}
 </style>
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-CP115M45TT');
-</script>
-  <!-- Meta Pixel -->
-  <script>
-    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-    document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '874536122252551');
-    fbq('track', 'PageView');
-  </script>
-  <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id=874536122252551&ev=PageView&noscript=1"/></noscript>
-  <!-- Microsoft Clarity -->
-  <script type="text/javascript">
-    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");
-  </script>
 </head>
 <body>
 
-<!-- SCREEN: LOGIN -->
-<div id="screen-login" class="active">
+<!-- ── LOGIN ── -->
+<div id="screen-login" class="screen">
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-logo">Spick</div>
-      <p class="login-tagline">Städarportal</p>
-      <h2>Logga in</h2>
-      <p>Ange din e-postadress så skickar vi en inloggningslänk direkt till dig – inget lösenord behövs.</p>
-      <div class="input-group">
+      <div class="login-tagline">Städarportalen · Logga in för att se dina uppdrag</div>
+      <h2>Välkommen tillbaka 👋</h2>
+      <p>Ange din e-post så skickar vi en inloggningslänk direkt till dig.</p>
+      <div class="inp-grp">
         <label>E-postadress</label>
-        <input type="email" id="login-email" placeholder="din@email.se" onkeydown="if(event.key==='Enter')sendMagicLink()">
+        <input type="email" id="login-email" placeholder="din@email.se" autocomplete="email">
       </div>
       <button class="btn-full" id="login-btn" onclick="sendMagicLink()">
         <span>Skicka inloggningslänk</span>
-        <span>→</span>
       </button>
-      <div class="login-err" id="login-err">Ange en giltig e-postadress.</div>
-      <div class="login-success" id="login-success">
-        ✉️ Kolla din inkorg! Länken är giltig i 10 minuter.
-      </div>
-      <div class="login-footer">
-        Ny städare? <a href="bli-stadare.html">Ansök här →</a>
+      <div class="login-err" id="login-err"></div>
+      <div class="login-success" id="login-ok">📬 Kolla din inbox!</div>
+      <div style="text-align:center;margin-top:20px;font-size:.8rem;color:var(--m)">
+        Inte städare ännu? <a href="bli-stadare.html" style="color:var(--g);font-weight:600">Ansök här →</a>
       </div>
     </div>
   </div>
 </div>
 
-<!-- SCREEN: MAGIC LINK SENT -->
-<div id="screen-magic">
+<!-- ── MAGIC LINK ── -->
+<div id="screen-magic" class="screen">
   <div class="magic-icon">📬</div>
-  <div class="magic-title">Kolla din inkorg!</div>
-  <p class="magic-sub">
-    Vi skickade en inloggningslänk till<br>
-    <span class="magic-email" id="magic-email-display">din e-post</span><br>
-    Klicka på länken för att logga in. Gäller i 10 minuter.
-  </p>
-  <br><br>
-  <button class="btn-full" style="max-width:280px" onclick="backToLogin()">← Tillbaka</button>
+  <div class="magic-title">Kolla din inbox!</div>
+  <div class="magic-sub">Vi har skickat en inloggningslänk till<br>
+    <span class="magic-email" id="magic-email">din@email.se</span><br>
+    Klicka på länken för att logga in.
+  </div>
+  <button class="btn-full" style="max-width:280px;margin-top:28px" onclick="backToLogin()">← Tillbaka</button>
 </div>
 
-<!-- SCREEN: APP -->
-<div id="screen-app">
+<!-- ── APP ── -->
+<div id="screen-app" class="screen">
+
+  <!-- Header -->
   <div class="app-header">
-    <span class="header-logo">Spick</span>
-    <div class="header-user">
-      <a href="utbildning-stadare.html" style="font-size:.72rem;color:rgba(255,255,255,.75);text-decoration:none;margin-right:.75rem;display:none" class="hide-xs">📚 Akademin</a>
-      <div class="user-avatar" id="header-avatar">?</div>
-      <span class="user-name" id="header-name">Laddar...</span>
-      <button class="btn-logout" onclick="doLogout()">Logga ut</button>
+    <div class="header-logo">Spick</div>
+    <div class="header-right">
+      <div class="chip chip-live" id="rt-status" style="display:none"><span class="rt-dot"></span> Live</div>
+      <div class="user-name" id="hdr-name">–</div>
+      <div class="avatar" id="hdr-avatar">?</div>
+      <button class="btn-logout" onclick="doLogout()">Ut</button>
+    </div>
+  </div>
+
+  <!-- Next job banner (visas om du har jobb idag) -->
+  <div class="next-banner" id="next-banner">
+    <div style="flex:1">
+      <div class="next-label">Nästa uppdrag</div>
+      <div class="next-info" id="next-info">–</div>
+      <div style="font-size:.72rem;opacity:.75;margin-top:2px" id="next-addr">–</div>
+    </div>
+    <div class="next-countdown">
+      <div class="cnt-num" id="cnt-num">–</div>
+      <div class="cnt-lbl" id="cnt-lbl">timmar kvar</div>
     </div>
   </div>
 
   <div class="content">
+
     <!-- TAB: UPPDRAG -->
     <div class="tab-content active" id="tab-jobs">
       <div class="kpi-row">
-        <div class="kpi"><div class="kpi-val" id="stat-total">0</div><div class="kpi-lbl">Mina uppdrag totalt</div></div>
-        <div class="kpi"><div class="kpi-val" id="stat-pending-jobs">0</div><div class="kpi-lbl">Väntar svar</div></div>
-        <div class="kpi"><div class="kpi-val" id="stat-rating">–</div><div class="kpi-lbl">Mitt betyg</div></div>
+        <div class="kpi"><div class="kpi-val" id="stat-total">–</div><div class="kpi-lbl">Mina uppdrag</div></div>
+        <div class="kpi"><div class="kpi-val" id="stat-pending-jobs">–</div><div class="kpi-lbl">Lediga i din stad</div></div>
+        <div class="kpi"><div class="kpi-val" id="stat-rating">–</div><div class="kpi-lbl">Snittbetyg</div></div>
       </div>
-      <div id="jobs-list"><div class="loading"><div class="spin"></div></div></div>
+
+      <!-- Mål för månaden -->
+      <div class="card" id="goal-card" style="display:none">
+        <div class="card-title">🎯 Månadsmål <span id="goal-pct-label">0%</span></div>
+        <div class="goal-bar-wrap">
+          <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar" style="width:0%"></div></div>
+          <div class="goal-labels"><span id="goal-current">0 kr</span><span id="goal-target">Mål: 10 000 kr</span></div>
+        </div>
+        <div style="font-size:.75rem;color:var(--m);margin-top:6px" id="goal-msg"></div>
+      </div>
+
+      <div id="jobs-list"><div style="text-align:center;padding:40px;color:var(--m)"><div style="font-size:2rem;margin-bottom:10px">⏳</div>Laddar uppdrag...</div></div>
     </div>
 
     <!-- TAB: INKOMST -->
     <div class="tab-content" id="tab-earn">
       <div class="earn-hero">
-        <div style="font-size:.85rem;opacity:.8">Intjänat denna månad</div>
+        <div style="font-size:.8rem;opacity:.8">Intjänat denna månad</div>
         <div class="earn-amount" id="earn-month">0 kr</div>
-        <div class="earn-sub">Utbetalas inom 10 bankdagar efter avslutat uppdrag</div>
+        <div class="earn-sub">Utbetalas inom 10 bankdagar från månadsslut</div>
       </div>
+
+      <!-- Veckograf -->
+      <div class="card">
+        <div class="card-title">Intäkter per dag (senaste 7 dagarna)</div>
+        <div class="week-chart" id="week-chart">
+          <div class="bar-wrap"><div class="bar empty" style="height:4px"></div><div class="bar-lbl">–</div></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">Ekonomi</div>
-        <div class="earn-row"><span class="lbl">Timpris (inkl. moms)</span><span id="earn-rate">350 kr/h</span></div>
+        <div class="earn-row"><span class="lbl">Ditt timpris</span><span id="earn-rate">350 kr/h</span></div>
         <div class="earn-row"><span class="lbl">Spicks provision</span><span style="color:var(--r)">–17%</span></div>
-        <div class="earn-row"><span class="lbl">Din andel</span><span style="color:var(--g)">83%</span></div>
-        <div class="earn-row"><span class="lbl">Betalningstid</span><span>10 bankdagar</span></div>
+        <div class="earn-row"><span class="lbl">Din andel</span><span style="color:var(--g);font-weight:600">83%</span></div>
+        <div class="earn-row"><span class="lbl">Betalningstid</span><span>10 bankdagar från månadsslut</span></div>
         <div class="earn-row"><span class="lbl">Fakturera till</span><span>hello@spick.se</span></div>
-        <div class="earn-row"><span class="lbl">Totalt intjänat</span><span id="earn-total">0 kr</span></div>
+        <div class="earn-row"><span class="lbl">Totalt intjänat (alla tider)</span><span id="earn-total" style="color:var(--g);font-weight:700">0 kr</span></div>
       </div>
+
       <div class="card">
-        <div class="card-title">Senaste utbetalningar</div>
-        <div id="payout-history"><div style="color:var(--m);font-size:.9rem">Inga utbetalningar ännu</div></div>
+        <div class="card-title">Betalda uppdrag denna månad</div>
+        <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna månad.</div>
       </div>
-      <div class="card" id="connect-card">
+
+      <div class="card">
         <div class="card-title">💳 Anslut bankkonto</div>
-        <p style="font-size:.875rem;color:var(--m);margin-bottom:1rem;line-height:1.6">Anslut ditt bankkonto via Stripe för att ta emot automatiska utbetalningar.</p>
+        <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Anslut ditt bankkonto via Stripe för automatiska utbetalningar.</p>
         <div id="connect-status">
-          <button onclick="startStripeConnect()" id="connect-btn" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">
-            Anslut bankkonto via Stripe →
-          </button>
+          <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit">Anslut via Stripe →</button>
         </div>
       </div>
     </div>
@@ -274,61 +316,93 @@ input.edit-input:focus{border-color:var(--g)}
     <!-- TAB: PROFIL -->
     <div class="tab-content" id="tab-profile">
       <div class="card">
-        <div class="profile-avatar" id="prof-avatar">?</div>
-        <div class="profile-name" id="prof-name">Laddar...</div>
-        <div class="profile-sub" id="prof-sub">Spick-städare</div>
-        <div class="rating-stars" style="text-align:center;margin-bottom:20px" id="prof-stars">⭐⭐⭐⭐⭐</div>
-        
-        <div class="profile-row"><span class="lbl">Namn</span><input class="edit-input" id="edit-name" style="max-width:200px" placeholder="Ditt namn"></div>
-        <div class="profile-row"><span class="lbl">E-post</span><span class="val" id="prof-email">–</span></div>
-        <div class="profile-row"><span class="lbl">Telefon</span><input class="edit-input" id="edit-phone" style="max-width:150px" placeholder="Telefon"></div>
-        <div class="profile-row"><span class="lbl">Stad</span><input class="edit-input" id="edit-city" style="max-width:150px" placeholder="Din stad"></div>
-        <div class="profile-row"><span class="lbl">Timpris</span><input class="edit-input" id="edit-rate" type="number" style="max-width:100px" placeholder="350"> kr/h</div>
-        <div class="profile-row"><span class="lbl">Status</span><span class="val" style="color:var(--g)">✅ Aktiv</span></div>
-        <div class="profile-row"><span class="lbl">Snittbetyg</span><span class="val" id="prof-rating">–</span></div>
-        
-        <button class="btn-save" onclick="saveProfile()">Spara ändringar</button>
+        <div class="prof-avatar" id="prof-avatar">?</div>
+        <div class="prof-name" id="prof-name">Laddar...</div>
+        <div class="prof-sub" id="prof-sub">Spick-städare</div>
+        <div style="text-align:center;margin-bottom:16px">
+          <span class="stars" id="prof-stars">⭐⭐⭐⭐⭐</span>
+          <span style="font-size:.8rem;color:var(--m);margin-left:6px" id="prof-rating-txt"></span>
+        </div>
+
+        <div class="prof-row"><span class="lbl">Namn</span><input class="edit-input" id="edit-name" placeholder="Ditt namn" style="max-width:180px"></div>
+        <div class="prof-row"><span class="lbl">E-post</span><span id="prof-email" style="font-size:.85rem;color:var(--m)">–</span></div>
+        <div class="prof-row"><span class="lbl">Telefon</span><input class="edit-input" id="edit-phone" placeholder="07X-XXX XX XX" style="max-width:160px"></div>
+        <div class="prof-row"><span class="lbl">Stad</span><input class="edit-input" id="edit-city" placeholder="Stockholm" style="max-width:140px"></div>
+        <div class="prof-row"><span class="lbl">Timpris</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="edit-input" id="edit-rate" type="number" min="250" max="600" style="max-width:80px">
+            <span style="font-size:.82rem;color:var(--m)">kr/h · du får <strong style="color:var(--g)" id="edit-keep">291 kr/h</strong></span>
+          </div>
+        </div>
+        <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="2" style="max-width:220px;resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea></div>
+        <div class="prof-row"><span class="lbl">Status</span><span style="color:var(--g);font-size:.85rem">✅ Aktiv</span></div>
+        <button class="btn-save" onclick="saveProfile()">💾 Spara ändringar</button>
       </div>
 
-      <!-- VECKOSCHEMA -->
-      <div class="card" style="margin-top:1rem">
+      <!-- Veckoschema -->
+      <div class="card">
         <div class="card-title">🗓 Mitt veckoschema</div>
-        <p style="font-size:.78rem;color:var(--m);margin-bottom:1rem">Välj vilka dagar och tider du är tillgänglig. Kunder kan bara boka under dessa tider.</p>
-        <div id="schedule-grid" style="display:flex;flex-direction:column;gap:.5rem">
-          <!-- Fylls av JS -->
-        </div>
-        <button onclick="saveSchedule()" style="margin-top:1rem;width:100%;background:var(--g);color:#fff;border:none;padding:.75rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">💾 Spara schema</button>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px">Välj vilka dagar och tider du är tillgänglig.</p>
+        <div id="schedule-grid"></div>
+        <button onclick="saveSchedule()" style="margin-top:12px;width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">Spara schema</button>
         <div id="schedule-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
+
+      <!-- Tjänster -->
       <div class="card">
-        <div class="card-title">Mina tjänster</div>
-        <div id="prof-services" style="color:var(--m);font-size:.9rem;line-height:1.8">Laddar...</div>
+        <div class="card-title">🧹 Mina tjänster</div>
+        <div id="prof-services" style="color:var(--m);font-size:.88rem;line-height:1.8">Laddar...</div>
+      </div>
+
+      <!-- Mina betyg -->
+      <div class="card">
+        <div class="card-title">⭐ Senaste recensioner</div>
+        <div id="my-reviews" style="color:var(--m);font-size:.85rem">Inga recensioner än.</div>
+      </div>
+
+      <!-- Länk till akademin -->
+      <div class="card" style="background:linear-gradient(135deg,var(--gr),#fff);border:1px solid #A7F3D0">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:2.5rem">📚</div>
+          <div>
+            <div style="font-weight:700;margin-bottom:4px">Spick Akademin</div>
+            <div style="font-size:.82rem;color:var(--m);margin-bottom:10px">Slutför din utbildning och bygg din karriär.</div>
+            <a href="utbildning-stadare.html" style="display:inline-flex;align-items:center;gap:6px;background:var(--g);color:#fff;padding:8px 16px;border-radius:10px;font-size:.82rem;font-weight:600;text-decoration:none">Gå till akademin →</a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </div><!-- /content -->
 
   <!-- BOTTOM NAV -->
   <div class="bottom-nav">
     <button class="nav-btn active" id="nav-jobs" onclick="switchTab('jobs')">
-      <div class="nav-icon-wrap"><span class="nav-icon">🗓</span><span class="badge" id="nav-badge" style="display:none">0</span></div>
+      <div class="ni-wrap"><span class="ni">🗓</span><span class="nbadge" id="nav-badge" style="display:none">0</span></div>
       Uppdrag
     </button>
-    <button class="nav-btn" onclick="window.location.href='utbildning-stadare.html'" style="position:relative">
-      <span class="nav-icon">📚</span>
-      Akademin
-    </button>
     <button class="nav-btn" id="nav-earn" onclick="switchTab('earn')">
-      <span class="nav-icon">💰</span>
-      Inkomst
+      <span class="ni">💰</span>Inkomst
     </button>
     <button class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
-      <span class="nav-icon">👤</span>
-      Profil
+      <span class="ni">👤</span>Profil
     </button>
+  </div>
+</div><!-- /screen-app -->
+
+<!-- SOS -->
+<div id="sos-btn" title="SOS Nödknapp" onclick="document.getElementById('sos-modal').classList.add('show')">🆘</div>
+<div id="sos-modal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="sos-sheet">
+    <h3 style="font-size:1.1rem;margin-bottom:8px;color:var(--r)">🚨 Nödläge?</h3>
+    <p style="font-size:.85rem;color:var(--m);margin-bottom:20px">Om du känner dig otrygg eller har en nödsituation:</p>
+    <div style="display:grid;gap:10px">
+      <button onclick="sosSend('112')" style="padding:.875rem;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem">📞 Ring 112 – Nödläge</button>
+      <button onclick="sosSend('spick')" style="padding:.875rem;background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem">📩 Notifiera Spick direkt</button>
+      <button onclick="document.getElementById('sos-modal').classList.remove('show')" style="padding:.75rem;background:#F3F4F6;color:#374151;border:none;border-radius:12px;font-size:.9rem;cursor:pointer">Stäng</button>
+    </div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -336,674 +410,539 @@ const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
 const SB = supabase.createClient(SUPA_URL, ANON_KEY);
 
-let cleaner = null;
-let jobs = [];
+let cleaner = null, jobs = [], realtimeCh = null, countdownTimer = null;
+const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
+const MONTHLY_GOAL = 10000; // kr – kan sättas per städare framöver
 
-// ── INIT ────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async () => {
-  // Kolla om vi har en Magic Link-hash från URL
-  const hash = window.location.hash;
-  if (hash.includes('access_token') || hash.includes('type=magiclink') || hash.includes('type=recovery')) {
+// ── INIT ────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  const { data: { session } } = await SB.auth.getSession();
+  if (!session) {
     const { data, error } = await SB.auth.getSessionFromUrl();
     if (data?.session) {
-      window.history.replaceState({}, '', window.location.pathname);
       await loadCleanerByEmail(data.session.user.email);
-      return;
+    } else {
+      showScreen('login');
     }
-  }
-
-  // Kolla om vi har sparad session (localStorage-baserad fallback)
-  const saved = localStorage.getItem('spick_cleaner_email');
-  if (saved) {
-    const ok = await loadCleanerByEmail(saved);
-    if (!ok) localStorage.removeItem('spick_cleaner_email');
+  } else {
+    await loadCleanerByEmail(session.user.email);
   }
 });
 
-// ── MAGIC LINK AUTH ─────────────────────────────────────
+SB.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    await loadCleanerByEmail(session.user.email);
+  } else if (event === 'SIGNED_OUT') {
+    showScreen('login');
+  }
+});
+
+// ── AUTH ─────────────────────────────────────────────────────
 async function sendMagicLink() {
-  const email = document.getElementById('login-email').value.trim();
-  if (!email || !email.includes('@')) {
-    document.getElementById('login-err').style.display = 'block';
-    return;
-  }
-  document.getElementById('login-err').style.display = 'none';
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email || !email.includes('@')) { showErr('Ange en giltig e-postadress.'); return; }
   const btn = document.getElementById('login-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spin"></div>';
+  btn.disabled = true; btn.querySelector('span').textContent = 'Skickar...';
 
-  // Kolla att det är en godkänd städare
-  const { data: cleaners } = await SB.from('cleaners').select('id,full_name,email').eq('email', email).eq('is_approved', true);
-  
+  const { data: cleaners } = await SB.from('cleaners').select('id').eq('email', email).eq('is_approved', true);
   if (!cleaners?.length) {
-    btn.disabled = false;
-    btn.innerHTML = '<span>Skicka inloggningslänk</span><span>→</span>';
-    document.getElementById('login-err').textContent = 'Ingen godkänd städare med den e-postadressen hittades.';
-    document.getElementById('login-err').style.display = 'block';
+    showErr('Ingen godkänd städare hittades med denna e-post.');
+    btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk';
     return;
   }
 
-  // Skicka Magic Link via Supabase Auth
   const { error } = await SB.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin + '/stadare-dashboard.html' }
+    email, options: { emailRedirectTo: 'https://spick.se/stadare-dashboard.html' }
   });
 
-  btn.disabled = false;
-  btn.innerHTML = '<span>Skicka inloggningslänk</span><span>→</span>';
-
-  if (error) {
-    // Fallback: email-baserad login om auth misslyckas
-    document.getElementById('magic-email-display').textContent = email;
-    showScreen('magic');
-    localStorage.setItem('spick_cleaner_email', email);
-    setTimeout(() => { loadCleanerByEmail(email); }, 500);
-  } else {
-    document.getElementById('magic-email-display').textContent = email;
-    showScreen('magic');
-  }
+  if (error) { showErr('Fel: ' + error.message); btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; return; }
+  document.getElementById('magic-email').textContent = email;
+  showScreen('magic');
 }
 
-function backToLogin() {
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function backToLogin() { showScreen('login'); }
+
+async function doLogout() {
+  if (realtimeCh) SB.removeChannel(realtimeCh);
+  await SB.auth.signOut().catch(() => {});
+  cleaner = null; jobs = [];
   showScreen('login');
 }
 
-// ── LOAD CLEANER ─────────────────────────────────────────
+// ── LOAD CLEANER ─────────────────────────────────────────────
 async function loadCleanerByEmail(email) {
   const { data, error } = await SB.from('cleaners')
     .select('*')
     .eq('email', email)
-    .eq('is_approved', true);
+    .eq('is_approved', true)
+    .single();
 
-  if (!data?.length) return false;
-  
-  cleaner = data[0];
-  localStorage.setItem('spick_cleaner_email', email);
-  
-  // Update header
-  const firstName = cleaner.full_name?.split(' ')[0] || 'Städare';
-  document.getElementById('header-name').textContent = firstName;
-  document.getElementById('header-avatar').textContent = firstName.charAt(0).toUpperCase();
-  
-  // Update profile
-  document.getElementById('prof-avatar').textContent = firstName.charAt(0).toUpperCase();
+  if (error || !data) {
+    showErr('Kontot hittades inte. Kontakta hello@spick.se');
+    showScreen('login');
+    return;
+  }
+
+  cleaner = data;
+  // Sätt header-info
+  const initials = (cleaner.full_name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('hdr-avatar').textContent = initials;
+  document.getElementById('hdr-name').textContent = (cleaner.full_name || '').split(' ')[0];
+  document.getElementById('prof-avatar').textContent = initials;
   document.getElementById('prof-name').textContent = cleaner.full_name || '–';
-  document.getElementById('prof-sub').textContent = cleaner.city ? `${cleaner.city} · Spick-städare` : 'Spick-städare';
+  document.getElementById('prof-sub').textContent = `Städare i ${cleaner.city || 'din stad'}`;
   document.getElementById('prof-email').textContent = cleaner.email;
   document.getElementById('edit-name').value = cleaner.full_name || '';
   document.getElementById('edit-phone').value = cleaner.phone || '';
   document.getElementById('edit-city').value = cleaner.city || '';
   document.getElementById('edit-rate').value = cleaner.hourly_rate || 350;
-  document.getElementById('prof-rating').textContent = cleaner.avg_rating ? `⭐ ${cleaner.avg_rating}/5` : '–';
+  document.getElementById('edit-bio').value = cleaner.bio || '';
+  updateKeep();
   document.getElementById('earn-rate').textContent = (cleaner.hourly_rate || 350) + ' kr/h';
-  const stars = Math.round(cleaner.avg_rating || 5);
-  document.getElementById('prof-stars').textContent = '⭐'.repeat(stars);
-  document.getElementById('prof-services').textContent = cleaner.services || 'Hemstädning';
-  
-  showScreen('app');
-  await loadJobs();
-  return true;
-}
-
-// ── LOAD JOBS ─────────────────────────────────────────────
-async function loadJobs() {
-  const [myJobs, cityJobs] = await Promise.all([
-    SB.from('bookings')
-      .select('*')
-      .eq('cleaner_id', cleaner.id)
-      .in('payment_status', ['paid', 'pending'])
-      .order('date', { ascending: true }),
-    SB.from('bookings')
-      .select('*')
-      .eq('payment_status', 'paid')
-      .is('cleaner_id', null)
-      .order('date', { ascending: true })
-      .limit(20)
-  ]);
-
-  const mySet = new Set((myJobs.data || []).map(j => j.id));
-  jobs = [
-    ...(myJobs.data || []),
-    ...(cityJobs.data || []).filter(j => !mySet.has(j.id))
-  ];
-
-  // Stats
-  const confirmed = jobs.filter(j => j.cleaner_id === cleaner.id && j.payment_status === 'paid');
-  const waiting = jobs.filter(j => !j.cleaner_id);
-  document.getElementById('stat-total').textContent = confirmed.length;
-  document.getElementById('stat-pending-jobs').textContent = waiting.length;
-  document.getElementById('stat-rating').textContent = cleaner.avg_rating ? cleaner.avg_rating + '⭐' : '–';
-
-  // Badge
-  if (waiting.length > 0) {
-    document.getElementById('nav-badge').textContent = waiting.length;
-    document.getElementById('nav-badge').style.display = 'block';
+  const svcText = Array.isArray(cleaner.services) ? cleaner.services.join(', ') : (cleaner.services || '–');
+  document.getElementById('prof-services').textContent = svcText;
+  const rating = cleaner.avg_rating;
+  if (rating) {
+    const stars = '⭐'.repeat(Math.round(rating));
+    document.getElementById('prof-stars').textContent = stars;
+    document.getElementById('prof-rating-txt').textContent = `${rating}/5 (${cleaner.review_count || 0} betyg)`;
   }
 
-  // Earnings
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const monthJobs = confirmed.filter(j => new Date(j.date) >= monthStart);
-  const monthEarn = monthJobs.reduce((s, j) => s + Math.round((j.total_price || 0) * 0.83), 0);
-  const totalEarn = confirmed.reduce((s, j) => s + Math.round((j.total_price || 0) * 0.83), 0);
-  document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
-  // Kolla Stripe Connect-status
-  checkStripeStatus();
-  document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr';
+  buildSchedule();
+  showScreen('app');
+  await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
+  setupRealtime();
+}
 
+// ── JOBS ─────────────────────────────────────────────────────
+async function loadJobs() {
+  const [myJobs, cityJobs] = await Promise.all([
+    SB.from('bookings').select('*').eq('cleaner_id', cleaner.id).in('payment_status', ['paid','pending']).order('scheduled_date', { ascending: true }),
+    SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).eq('city', cleaner.city || '').order('scheduled_date', { ascending: true }).limit(15)
+  ]);
+
+  // Fallback om city-filter ger 0 resultat
+  let openJobs = cityJobs.data || [];
+  if (!openJobs.length) {
+    const { data: allOpen } = await SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('scheduled_date', { ascending: true }).limit(10);
+    openJobs = allOpen || [];
+  }
+
+  const mySet = new Set((myJobs.data || []).map(j => j.id));
+  jobs = [...(myJobs.data || []), ...openJobs.filter(j => !mySet.has(j.id))];
+
+  updateStats();
   renderJobs();
+  renderEarnings();
+  updateNextBanner();
+}
+
+function updateStats() {
+  const myConfirmed = jobs.filter(j => j.cleaner_id === cleaner.id && j.payment_status === 'paid');
+  const open = jobs.filter(j => !j.cleaner_id);
+  document.getElementById('stat-total').textContent = myConfirmed.length;
+  document.getElementById('stat-pending-jobs').textContent = open.length;
+  document.getElementById('stat-rating').textContent = cleaner.avg_rating ? cleaner.avg_rating + '★' : '–';
+
+  const badge = document.getElementById('nav-badge');
+  if (open.length > 0) { badge.textContent = open.length; badge.style.display = 'block'; }
+  else { badge.style.display = 'none'; }
 }
 
 function renderJobs() {
   if (!jobs.length) {
-    document.getElementById('jobs-list').innerHTML = `
-      <div class="empty">
-        <div class="empty-icon">📭</div>
-        <strong>Inga uppdrag just nu</strong>
-        <p style="margin-top:8px;font-size:.88rem">Nya uppdrag i ${cleaner.city || 'din stad'} visas här.</p>
-      </div>`;
+    document.getElementById('jobs-list').innerHTML = `<div class="empty"><div class="empty-icon">📭</div><strong>Inga uppdrag just nu</strong><p style="margin-top:8px;font-size:.85rem">Nya uppdrag i ${cleaner.city||'din stad'} visas här – automatiskt i realtid.</p></div>`;
     return;
   }
 
-  document.getElementById('jobs-list').innerHTML = jobs.map(j => {
-    const d = new Date(j.date || new Date());
-    const pay = Math.round((j.total_price || (cleaner.hourly_rate || 350) * (j.hours || 3)) * 0.83);
-    const isMine = j.cleaner_id === cleaner.id;
-    const isNew = !j.cleaner_id;
-    const badgeClass = isNew ? 'badge-new' : isMine ? 'badge-ok' : 'badge-done';
-    const badgeText = isNew ? '🆕 Ny förfrågan' : isMine ? '✅ Ditt uppdrag' : '–';
-    const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
-    const [mon, day] = dateStr.split(' ');
+  // Sortera: mina bekräftade → öppna → klara
+  const sorted = [...jobs].sort((a, b) => {
+    const aMine = a.cleaner_id === cleaner.id, bMine = b.cleaner_id === cleaner.id;
+    const aOpen = !a.cleaner_id, bOpen = !b.cleaner_id;
+    const aDone = a.status === 'klar', bDone = b.status === 'klar';
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    if (aMine !== bMine) return aMine ? -1 : 1;
+    if (aOpen !== bOpen) return aOpen ? -1 : 1;
+    return new Date(a.scheduled_date||a.date||0) - new Date(b.scheduled_date||b.date||0);
+  });
 
-    return `<div class="job-card">
-      <div class="job-date">
-        <div class="day">${day}</div>
-        <div class="mon">${mon}</div>
-      </div>
-      <div class="job-body">
-        <div class="job-title">${j.service || 'Hemstädning'}</div>
-        <div class="job-meta">
-          <span>🕐 ${j.time || '09:00'}</span>
-          <span>⏱ ${j.hours || 3}h</span>
-          <span>📍 ${j.city || j.address?.split(',').pop()?.trim() || '–'}</span>
-        </div>
-        <span class="badge ${badgeClass}">${badgeText}</span>
-        ${isMine && !j.checked_in_at && j.status !== 'klar' ? `<button onclick="checkInGPS('${j.id}')" style="width:100%;margin-top:.5rem;padding:.5rem;background:#DBEAFE;color:#1E40AF;border:1.5px solid #BFDBFE;border-radius:8px;font-weight:600;cursor:pointer;font-size:.82rem">📍 Checka in – jag är på plats</button>` : ''}
-        ${isMine && j.checked_in_at ? `<div style="display:flex;gap:.375rem;margin-top:.375rem">
-          <button onclick="takePhoto('${j.id}','before')" style="flex:1;padding:.375rem;background:${j.photo_before_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_before_url?'#166534':'#374151'};border:1px solid ${j.photo_before_url?'#BBF7D0':'#E5E7EB'};border-radius:6px;font-size:.7rem;font-weight:600;cursor:pointer">${j.photo_before_url?'✅ Foto in':'📸 Innan'}</button>
-          <button onclick="takePhoto('${j.id}','after')" style="flex:1;padding:.375rem;background:${j.photo_after_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_after_url?'#166534':'#374151'};border:1px solid ${j.photo_after_url?'#BBF7D0':'#E5E7EB'};border-radius:6px;font-size:.7rem;font-weight:600;cursor:pointer">${j.photo_after_url?'✅ Foto ut':'📸 Efter'}</button>
-        </div>` : ''}
-        ${isMine && j.checked_in_at && j.status !== 'klar' ? `<button onclick="markJobDone('${j.id}')" style="width:100%;margin-top:.5rem;padding:.5rem;background:#DCFCE7;color:#166534;border:1.5px solid #BBF7D0;border-radius:8px;font-weight:600;cursor:pointer;font-size:.82rem">✅ Markera som klar – frigör betalning</button>` : ''}
-        ${isMine && j.status === 'klar' ? `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:.5rem">✅ Klar – betalning på väg</div>` : ''}
-        ${isNew ? `<div class="job-actions">
-          <button class="btn-accept" onclick="acceptJob('${j.id}')">Acceptera</button>
-          <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
-          <button onclick="reportCustomer('${j.id}','${j.customer_email||j.email||''}')" style="padding:.4rem .75rem;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer">⚠️ Rapportera</button>
-        </div>` : ''}
-        ${isMine ? (() => {
-          const d = new Date(j.date);
-          const now = new Date();
-          const hoursUntil = (d - now) / 3600000;
-          const showFullAddr = hoursUntil <= 24;
-          const area = j.city || (j.address || '').split(',').pop()?.trim() || '–';
-          return showFullAddr
-            ? `<p style="font-size:.78rem;color:var(--g);font-weight:600;margin-top:6px">📍 ${j.address || area} <span style="font-size:.7rem;color:var(--g)">(Synlig)</span></p>`
-            : `<p style="font-size:.78rem;color:var(--m);margin-top:6px">📍 Område: ${area} <span style="font-size:.7rem;color:#F59E0B">🔒 Exakt adress synlig 24h innan</span></p>`;
-        })() : ''}
-      </div>
-      <div class="job-pay">${pay.toLocaleString('sv')} kr</div>
+  document.getElementById('jobs-list').innerHTML = sorted.map(j => jobCard(j)).join('');
+
+  // Starta timers för aktiva jobb
+  sorted.filter(j => j.checked_in_at && j.status !== 'klar' && j.cleaner_id === cleaner.id).forEach(j => startTimer(j));
+
+  // Mål
+  updateGoal();
+}
+
+function jobCard(j) {
+  const d = new Date(j.scheduled_date || j.date || new Date());
+  const isMine = j.cleaner_id === cleaner.id;
+  const isOpen = !j.cleaner_id;
+  const isDone = j.status === 'klar';
+  const isActive = isMine && j.checked_in_at && !isDone;
+  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.hours||3)) * 0.83);
+  const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
+  const [mon, day] = dateStr.split(' ');
+  const hoursUntil = (d - new Date()) / 3600000;
+  const showAddr = isMine && hoursUntil <= 24;
+
+  let badgeHtml = '';
+  if (isOpen) badgeHtml = `<span class="badge badge-new">🆕 Ny förfrågan</span>`;
+  else if (isDone) badgeHtml = `<span class="badge badge-done">✅ Klar</span>`;
+  else if (isActive) badgeHtml = `<span class="badge badge-inprogress">🧹 Pågår</span>`;
+  else if (isMine) badgeHtml = `<span class="badge badge-ok">✅ Bekräftat</span>`;
+
+  let actionsHtml = '';
+  if (isOpen) {
+    actionsHtml = `<div class="job-actions">
+      <button class="btn-accept" onclick="acceptJob('${j.id}')">✓ Acceptera</button>
+      <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
     </div>`;
-  }).join('');
+  } else if (isMine && !j.checked_in_at && !isDone) {
+    actionsHtml = `<button onclick="checkInGPS('${j.id}')" class="action-btn" style="width:100%;margin-top:8px;background:#DBEAFE;color:#1E40AF;padding:.5rem">📍 Checka in – jag är på plats</button>`;
+  }
+
+  if (isMine && j.checked_in_at && !isDone) {
+    actionsHtml += `
+    <div class="job-timer" id="timer-${j.id}">
+      <span class="timer-dot"></span>
+      <span>Tid på plats: </span><span id="timer-txt-${j.id}" style="font-weight:700">00:00</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button onclick="takePhoto('${j.id}','before')" class="action-btn" style="flex:1;background:${j.photo_before_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_before_url?'#166534':'#374151'};padding:.35rem">${j.photo_before_url?'✅':'📸'} Innan</button>
+      <button onclick="takePhoto('${j.id}','after')" class="action-btn" style="flex:1;background:${j.photo_after_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_after_url?'#166534':'#374151'};padding:.35rem">${j.photo_after_url?'✅':'📸'} Efter</button>
+    </div>
+    <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;padding:.5rem;font-size:.82rem">✅ Markera som klar – frigör betalning</button>`;
+  }
+
+  if (isDone && isMine) {
+    actionsHtml += `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:6px">✅ Klar – utbetalning på väg</div>`;
+  }
+
+  const addrHtml = isMine ? `<div style="font-size:.75rem;margin-top:5px;${showAddr?'color:var(--g);font-weight:600':'color:var(--m)'}">
+    📍 ${showAddr ? (j.address || j.city || '–') : `Område: ${j.city || '–'} ${hoursUntil > 24 ? '<span style="color:#F59E0B">🔒 Adress synlig 24h innan</span>' : ''}` }
+  </div>` : '';
+
+  return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}">
+    <div class="job-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
+    <div class="job-body">
+      <div class="job-title">${j.service || 'Hemstädning'}</div>
+      <div class="job-meta">
+        <span>🕐 ${j.time || j.scheduled_time || '09:00'}</span>
+        <span>⏱ ${j.hours || 3}h</span>
+        <span>📍 ${j.city || '–'}</span>
+        ${j.customer_name && isMine ? `<span>👤 ${j.customer_name.split(' ')[0]}</span>` : ''}
+      </div>
+      ${badgeHtml}
+      ${addrHtml}
+      ${actionsHtml}
+    </div>
+    <div class="job-pay">${pay.toLocaleString('sv')} kr</div>
+  </div>`;
 }
 
-// ── ACTIONS ──────────────────────────────────────────────
+// ── GOAL WIDGET ──────────────────────────────────────────────
+function updateGoal() {
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthJobs = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'klar' && new Date(j.scheduled_date||j.date) >= monthStart);
+  const earned = monthJobs.reduce((s, j) => s + Math.round((j.total_price||0) * 0.83), 0);
+  const pct = Math.min(100, Math.round((earned / MONTHLY_GOAL) * 100));
+  const card = document.getElementById('goal-card');
+  card.style.display = 'block';
+  document.getElementById('goal-bar').style.width = pct + '%';
+  document.getElementById('goal-pct-label').textContent = pct + '%';
+  document.getElementById('goal-current').textContent = earned.toLocaleString('sv') + ' kr';
+  document.getElementById('goal-target').textContent = 'Mål: ' + MONTHLY_GOAL.toLocaleString('sv') + ' kr';
+  if (pct >= 100) document.getElementById('goal-msg').textContent = '🎉 Grattis – du har nått ditt mål denna månad!';
+  else if (pct >= 75) document.getElementById('goal-msg').textContent = '🔥 Nästan i mål! ' + (MONTHLY_GOAL - earned).toLocaleString('sv') + ' kr kvar.';
+  else if (pct > 0) document.getElementById('goal-msg').textContent = `${pct}% av månadsmålet uppnått.`;
+  else document.getElementById('goal-msg').textContent = 'Acceptera ditt första uppdrag denna månad!';
+}
+
+// ── NEXT JOB BANNER ─────────────────────────────────────────
+function updateNextBanner() {
+  const myUpcoming = jobs.filter(j => j.cleaner_id === cleaner.id && j.status !== 'klar' && new Date(j.scheduled_date||j.date) > new Date()).sort((a,b) => new Date(a.scheduled_date||a.date) - new Date(b.scheduled_date||b.date));
+  const next = myUpcoming[0];
+  if (!next) { document.getElementById('next-banner').classList.remove('show'); return; }
+  const d = new Date(next.scheduled_date || next.date);
+  const hoursUntil = (d - new Date()) / 3600000;
+  document.getElementById('next-info').textContent = `${next.service||'Hemstädning'} · ${d.toLocaleDateString('sv-SE',{weekday:'short',month:'short',day:'numeric'})} ${next.time||''}`;
+  document.getElementById('next-addr').textContent = hoursUntil <= 24 ? (next.address || next.city || '') : `Område: ${next.city || '–'}`;
+  if (hoursUntil < 1) {
+    document.getElementById('cnt-num').textContent = Math.round(hoursUntil * 60);
+    document.getElementById('cnt-lbl').textContent = 'min kvar';
+  } else {
+    document.getElementById('cnt-num').textContent = Math.round(hoursUntil);
+    document.getElementById('cnt-lbl').textContent = 'timmar kvar';
+  }
+  document.getElementById('next-banner').classList.add('show');
+}
+
+// ── EARNINGS TAB ─────────────────────────────────────────────
+function renderEarnings() {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const myDone = jobs.filter(j => j.cleaner_id === cleaner.id && j.payment_status === 'paid');
+  const monthDone = myDone.filter(j => new Date(j.scheduled_date||j.date) >= monthStart);
+  const monthEarn = monthDone.reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
+  const totalEarn = myDone.reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
+  document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
+  document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr';
+
+  // Månadsuppdrag
+  const jobRows = monthDone.length ? monthDone.map(j => {
+    const d = new Date(j.scheduled_date||j.date);
+    const pay = Math.round((j.total_price||0)*0.83);
+    return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.83rem">
+      <span>${j.service||'Städning'} · ${d.toLocaleDateString('sv-SE',{month:'short',day:'numeric'})}</span>
+      <span style="color:var(--g);font-weight:600">+${pay.toLocaleString('sv')} kr</span>
+    </div>`;
+  }).join('') : '<div style="color:var(--m);padding:8px 0">Inga klarade uppdrag denna månad.</div>';
+  document.getElementById('earn-jobs-list').innerHTML = jobRows;
+
+  // Veckograf
+  renderWeekChart(myDone);
+}
+
+function renderWeekChart(doneJobs) {
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6-i));
+    return { date: d, earn: 0, label: d.toLocaleDateString('sv-SE',{weekday:'short'}) };
+  });
+  doneJobs.forEach(j => {
+    const jd = new Date(j.scheduled_date||j.date);
+    const match = days.find(d => d.date.toDateString() === jd.toDateString());
+    if (match) match.earn += Math.round((j.total_price||0)*0.83);
+  });
+  const maxEarn = Math.max(...days.map(d => d.earn), 1);
+  document.getElementById('week-chart').innerHTML = days.map(d => `
+    <div class="bar-wrap">
+      <div class="bar-val">${d.earn ? d.earn.toLocaleString('sv') : ''}</div>
+      <div class="bar ${d.earn?'':'empty'}" style="height:${Math.round((d.earn/maxEarn)*52)+4}px"></div>
+      <div class="bar-lbl">${d.label.slice(0,3)}</div>
+    </div>`).join('');
+}
+
+// ── REVIEWS ─────────────────────────────────────────────────
+async function loadMyReviews() {
+  const { data } = await SB.from('reviews').select('*').eq('cleaner_id', cleaner.id).order('created_at', {ascending:false}).limit(5);
+  if (!data?.length) return;
+  document.getElementById('my-reviews').innerHTML = data.map(r => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <span style="font-size:.85rem;font-weight:600">${r.customer_name || 'Anonym'}</span>
+        <span style="color:#F59E0B;font-size:.85rem">${'⭐'.repeat(r.rating||5)}</span>
+      </div>
+      ${r.comment ? `<div style="font-size:.8rem;color:var(--m);margin-top:4px;line-height:1.5">"${r.comment}"</div>` : ''}
+    </div>`).join('');
+}
+
+// ── TIMER ────────────────────────────────────────────────────
+function startTimer(job) {
+  const start = new Date(job.checked_in_at);
+  const tick = () => {
+    const el = document.getElementById('timer-txt-' + job.id);
+    if (!el) return;
+    const diff = Math.floor((new Date() - start) / 1000);
+    const h = Math.floor(diff/3600), m = Math.floor((diff%3600)/60), s = diff%60;
+    el.textContent = h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── REAL-TIME ────────────────────────────────────────────────
+function setupRealtime() {
+  realtimeCh = SB.channel('bookings-rt')
+    .on('postgres_changes', {event:'*',schema:'public',table:'bookings'}, () => {
+      loadJobs();
+      showToast('🔄 Uppdateringar mottagna');
+    })
+    .subscribe(status => {
+      document.getElementById('rt-status').style.display = status === 'SUBSCRIBED' ? 'inline-flex' : 'none';
+    });
+}
+
+// ── ACTIONS ─────────────────────────────────────────────────
 async function acceptJob(id) {
-  const btn = event.currentTarget;
-  btn.textContent = '...';
-  btn.disabled = true;
-  
-  await SB.from('bookings').update({ 
-    cleaner_id: cleaner.id,
-    status: 'bekräftad',
-    cleaner_name: cleaner.full_name
-  }).eq('id', id);
-  // Notifiera kunden
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body: JSON.stringify({type:'cleaner_accepted',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_rating:cleaner.avg_rating}})
+  const job = jobs.find(j => j.id === id);
+  await SB.from('bookings').update({cleaner_id:cleaner.id,status:'bekräftad',cleaner_name:cleaner.full_name}).eq('id', id);
+  await fetch(`${SUPA_URL}/functions/v1/notify`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
+    body:JSON.stringify({type:'cleaner_accepted',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_rating:cleaner.avg_rating}})
   }).catch(()=>{});
-  showToast('✅ Uppdrag accepterat – kund notifierad!');
-  await loadJobs();
+  showToast('✅ Uppdrag accepterat!');
+  loadJobs();
 }
 
-// Rapport-knapp visas i job-kortet via renderJobs - se job-card HTML
 async function declineJob(id) {
-  await SB.from('bookings').update({ cleaner_id: null }).eq('id', id);
+  await SB.from('bookings').update({cleaner_id:null}).eq('id', id);
   showToast('Uppdrag avböjt');
-  await loadJobs();
+  loadJobs();
 }
 
-// ── PROFILE SAVE ─────────────────────────────────────────
+async function checkInGPS(bookingId) {
+  showToast('📍 Hämtar position...');
+  const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000})).catch(() => null);
+  await SB.from('bookings').update({
+    checked_in_at: new Date().toISOString(),
+    status: 'pågår',
+    ...(pos ? {checkin_lat:pos.coords.latitude,checkin_lng:pos.coords.longitude} : {})
+  }).eq('id', bookingId);
+  showToast('✅ Incheckad! Städningen kan börja.');
+  loadJobs();
+}
+
+async function markJobDone(id) {
+  if (!confirm('Markera städningen som klar?')) return;
+  await SB.from('bookings').update({status:'klar',completed_at:new Date().toISOString()}).eq('id', id);
+  await fetch(`${SUPA_URL}/functions/v1/notify`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
+    body:JSON.stringify({type:'job_done',record:{booking_id:id,cleaner_name:cleaner.full_name}})
+  }).catch(()=>{});
+  showToast('🎉 Jobb klart! Kunden notifieras.');
+  loadJobs();
+}
+
+async function takePhoto(bookingId, type) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.onchange = async () => {
+    const file = input.files[0]; if (!file) return;
+    showToast('📤 Laddar upp foto...');
+    const path = `bookings/${bookingId}/${type}_${Date.now()}.jpg`;
+    const { data, error } = await SB.storage.from('photos').upload(path, file, {cacheControl:'3600',upsert:true});
+    if (error) { showToast('❌ Uppladdning misslyckades'); return; }
+    const url = SB.storage.from('photos').getPublicUrl(path).data.publicUrl;
+    const col = type === 'before' ? 'photo_before_url' : 'photo_after_url';
+    await SB.from('bookings').update({[col]:url}).eq('id', bookingId);
+    showToast('✅ Foto sparat!');
+    loadJobs();
+  };
+  input.click();
+}
+
+// ── PROFILE ─────────────────────────────────────────────────
+function updateKeep() {
+  const rate = parseInt(document.getElementById('edit-rate').value) || 350;
+  document.getElementById('edit-keep').textContent = Math.round(rate * 0.83) + ' kr/h';
+}
+document.getElementById('edit-rate').addEventListener('input', updateKeep);
+
 async function saveProfile() {
   const name = document.getElementById('edit-name').value.trim();
   const phone = document.getElementById('edit-phone').value.trim();
   const city = document.getElementById('edit-city').value.trim();
   const rate = parseInt(document.getElementById('edit-rate').value) || 350;
-
-  const { error } = await SB.from('cleaners').update({
-    full_name: name, phone, city, hourly_rate: rate
-  }).eq('id', cleaner.id);
-
+  const bio = document.getElementById('edit-bio').value.trim();
+  const {error} = await SB.from('cleaners').update({full_name:name,phone,city,hourly_rate:rate,bio}).eq('id',cleaner.id);
   if (error) { showToast('❌ Fel vid sparning'); return; }
-  cleaner.full_name = name; cleaner.phone = phone; cleaner.city = city; cleaner.hourly_rate = rate;
+  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio});
   document.getElementById('prof-name').textContent = name;
   document.getElementById('earn-rate').textContent = rate + ' kr/h';
   showToast('✅ Profil sparad!');
 }
 
-// ── UI HELPERS ────────────────────────────────────────────
+// ── SCHEDULE ─────────────────────────────────────────────────
+function buildSchedule() {
+  const saved = cleaner.availability_schedule || {};
+  document.getElementById('schedule-grid').innerHTML = DAYS.map((day, i) => {
+    const key = day.toLowerCase();
+    const s = saved[key] || {};
+    const active = s.active !== false;
+    return `<div class="sched-day">
+      <div class="toggle-wrap">
+        <div class="toggle ${active?'on':''}" id="tog-${i}" onclick="toggleDay(${i})"></div>
+        <label>${day.slice(0,3)}</label>
+      </div>
+      <input class="sched-time" type="time" id="start-${i}" value="${s.start||'08:00'}">
+      <input class="sched-time" type="time" id="end-${i}" value="${s.end||'17:00'}">
+    </div>`;
+  }).join('');
+}
+
+function toggleDay(i) {
+  const tog = document.getElementById('tog-'+i);
+  tog.classList.toggle('on');
+}
+
+async function saveSchedule() {
+  const sched = {};
+  DAYS.forEach((day,i) => {
+    const key = day.toLowerCase();
+    const tog = document.getElementById('tog-'+i);
+    sched[key] = {active:tog.classList.contains('on'),start:document.getElementById('start-'+i).value,end:document.getElementById('end-'+i).value};
+  });
+  const {error} = await SB.from('cleaners').update({availability_schedule:sched}).eq('id',cleaner.id);
+  const msg = document.getElementById('schedule-msg');
+  if (error) { msg.textContent = '❌ Fel'; msg.style.color='var(--r)'; }
+  else { msg.textContent = '✅ Schema sparat!'; msg.style.color='var(--g)'; cleaner.availability_schedule = sched; }
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
+
+// ── STRIPE CONNECT ───────────────────────────────────────────
+async function startStripeConnect() {
+  showToast('Öppnar Stripe...');
+  const {data:{session}} = await SB.auth.getSession();
+  const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+(session?.access_token||ANON_KEY)},
+    body:JSON.stringify({cleaner_id:cleaner.id,email:cleaner.email,name:cleaner.full_name})
+  }).catch(()=>null);
+  if (res?.ok) {
+    const {url} = await res.json();
+    if (url) window.open(url,'_blank');
+  } else { showToast('❌ Kontakta hello@spick.se'); }
+}
+
+async function checkConnectStatus() {
+  if (!cleaner.stripe_account_id) return;
+  document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
+}
+
+// ── SOS ─────────────────────────────────────────────────────
+function sosSend(type) {
+  if (type === '112') { window.location.href = 'tel:112'; return; }
+  fetch(`${SUPA_URL}/functions/v1/notify`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
+    body:JSON.stringify({type:'sos',record:{cleaner_name:cleaner.full_name,email:cleaner.email,city:cleaner.city,time:new Date().toISOString()}})
+  });
+  document.getElementById('sos-modal').classList.remove('show');
+  showToast('🚨 Spick har notifierats!');
+}
+
+// ── UI HELPERS ───────────────────────────────────────────────
 function showScreen(name) {
-  document.getElementById('screen-login').classList.remove('active');
-  document.getElementById('screen-magic').classList.remove('active');
-  document.getElementById('screen-app').classList.remove('active');
-  const el = document.getElementById('screen-' + name);
-  if (el) el.classList.add('active');
+  ['login','magic','app'].forEach(s => document.getElementById('screen-'+s).classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
 }
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  document.getElementById('nav-' + tab).classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab)?.classList.add('active');
+  if (tab === 'earn') renderEarnings();
 }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-function doLogout() {
-  SB.auth.signOut().catch(() => {});
-  localStorage.removeItem('spick_cleaner_email');
-  cleaner = null;
-  jobs = [];
-  showScreen('login');
-  showToast('Du är utloggad');
-}
-
-// ── STRIPE CONNECT ───────────────────────────────────────
-async function startStripeConnect() {
-  const btn = document.getElementById('connect-btn');
-  btn.disabled = true;
-  btn.textContent = 'Förbereder...';
-  try {
-    const res = await callFn('stripe-connect', {
-      action: 'onboard_cleaner',
-      cleaner_id: cleanerData?.id,
-      email: cleanerData?.email,
-      name: cleanerData?.full_name
-    });
-    if (res.onboarding_url) {
-      window.location.href = res.onboarding_url;
-    } else {
-      alert('Fel: ' + (res.error || 'Okänt fel'));
-      btn.disabled = false;
-      btn.textContent = 'Anslut bankkonto via Stripe →';
-    }
-  } catch(e) {
-    alert('Tekniskt fel – försök igen');
-    btn.disabled = false;
-    btn.textContent = 'Anslut bankkonto via Stripe →';
-  }
-}
-
-async function checkConnectStatus() {
-  if (!cleanerData?.stripe_account_id) return;
-  const card = document.getElementById('connect-card');
-  if (!card) return;
-  if (cleanerData.payout_status === 'active') {
-    document.getElementById('connect-status').innerHTML = '<div style="color:var(--g);font-weight:600">✅ Bankkonto anslutet – utbetalningar aktiva</div>';
-  } else if (cleanerData.stripe_account_id) {
-    document.getElementById('connect-status').innerHTML = '<div style="color:#854D0E;font-weight:500;margin-bottom:.75rem">⏳ Väntar på Stripe-verifiering</div><button onclick="startStripeConnect()" style="padding:.625rem 1.25rem;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer">Fortsätt registrering →</button>';
-  }
-}
-
-// ── GPS INCHECKNING ───────────────────────────────────────
-async function checkInGPS(bookingId) {
-  const btn = event.currentTarget;
-  btn.textContent = '📍 Hämtar position...';
-  btn.disabled = true;
-
-  if (!navigator.geolocation) {
-    alert('Din enhet stöder inte GPS. Checka in manuellt via hello@spick.se');
-    btn.disabled = false; btn.textContent = '📍 Checka in – jag är på plats';
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    const { latitude, longitude, accuracy } = pos.coords;
-    
-    await SB.from('bookings').update({
-      checked_in_at: new Date().toISOString(),
-      checkin_lat: latitude,
-      checkin_lng: longitude,
-      checkin_accuracy: Math.round(accuracy),
-      status: 'pågår'
-    }).eq('id', bookingId);
-
-    // Notifiera kunden
-    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-      body: JSON.stringify({
-        type: 'cleaner_arrived',
-        record: { booking_id: bookingId, cleaner_name: cleaner?.full_name, time: new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}) }
-      })
-    }).catch(()=>{});
-
-    showToast('✅ Incheckad! Kunden har fått ett SMS.');
-    await loadJobs();
-  }, (err) => {
-    // Fallback om GPS misslyckas
-    SB.from('bookings').update({ checked_in_at: new Date().toISOString(), status: 'pågår' }).eq('id', bookingId);
-    showToast('✅ Incheckad (GPS ej tillgänglig)');
-    loadJobs();
-  }, { timeout: 10000, maximumAge: 60000 });
-}
-</script>
-
-<!-- STRIPE CONNECT BANNER -->
-<div id="stripe-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:.875rem 1.5rem;z-index:150;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
-  <div style="font-size:.875rem;color:#92400E;font-weight:600">💳 Anslut ditt bankkonto för att kunna ta emot utbetalningar</div>
-  <a href="#" style="background:#F59E0B;color:#fff;padding:.5rem 1.25rem;border-radius:100px;font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap">Anslut nu →</a>
-</div>
-
-<!-- SOS NÖDKNAPP -->
-<div id="sos-btn" onclick="sosAlert()" style="
-  position:fixed;bottom:1.5rem;right:1.5rem;
-  width:60px;height:60px;
-  background:#DC2626;color:#fff;
-  border-radius:50%;border:3px solid #fff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.4rem;cursor:pointer;
-  box-shadow:0 4px 20px rgba(220,38,38,.5);
-  z-index:200;
-  animation:sos-pulse 2s infinite;
-  title='SOS – Nödkontakt Spick'">
-  🆘
-</div>
-<style>
-@keyframes sos-pulse {
-  0%,100%{box-shadow:0 4px 20px rgba(220,38,38,.5);}
-  50%{box-shadow:0 4px 30px rgba(220,38,38,.9),0 0 0 8px rgba(220,38,38,.2);}
-}
-</style>
-
-<!-- SOS MODAL -->
-<div id="sos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;padding:1rem">
-  <div style="background:#fff;border-radius:20px;padding:2rem;max-width:360px;width:100%;text-align:center">
-    <div style="font-size:3rem;margin-bottom:1rem">🆘</div>
-    <h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem;color:#DC2626">Nödkontakt</h2>
-    <p style="font-size:.875rem;color:#6B6960;margin-bottom:1.5rem;line-height:1.6">Behöver du omedelbar hjälp? Välj hur vi kontaktar dig:</p>
-    <div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.25rem">
-      <button onclick="sosSend('ring')" style="padding:.875rem;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem">
-        📞 Ring mig nu – Spick svarar direkt
-      </button>
-      <button onclick="sosSend('sms')" style="padding:.875rem;background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem">
-        💬 Skicka SOS-meddelande
-      </button>
-      <a href="tel:0701234567" style="padding:.875rem;background:#F3F4F6;color:#374151;border-radius:12px;font-weight:600;text-decoration:none;font-size:.875rem">
-        🚔 Ring SOS 112
-      </a>
-    </div>
-    <button onclick="document.getElementById('sos-modal').style.display='none'" style="font-size:.85rem;color:#6B6960;background:none;border:none;cursor:pointer">
-      Avbryt – allt är okej
-    </button>
-  </div>
-</div>
-
-<script>
-function sosAlert() {
-  document.getElementById('sos-modal').style.display = 'flex';
-}
-
-async function sosSend(type) {
-  const modal = document.getElementById('sos-modal');
-  // Hämta aktiv bokning
-  const activeJob = jobs?.find(j => j.status === 'pågår' && j.cleaner_id === cleaner?.id);
-  
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body: JSON.stringify({
-      type: 'sos_alert',
-      record: {
-        cleaner_name: cleaner?.full_name,
-        cleaner_email: cleaner?.email,
-        cleaner_phone: cleaner?.phone,
-        contact_type: type,
-        booking_id: activeJob?.id,
-        address: activeJob?.address,
-        timestamp: new Date().toISOString()
-      }
-    })
-  }).catch(()=>{});
-
-  modal.innerHTML = `<div style="background:#fff;border-radius:20px;padding:2rem;max-width:360px;width:100%;text-align:center">
-    <div style="font-size:3rem;margin-bottom:1rem">✅</div>
-    <h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem">SOS skickat!</h2>
-    <p style="font-size:.875rem;color:#6B6960;margin-bottom:1.5rem">Vi kontaktar dig inom 2 minuter. Håll telefonen nära.</p>
-    <button onclick="document.getElementById('sos-modal').style.display='none'" style="padding:.875rem 2rem;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-weight:700;cursor:pointer">OK</button>
-  </div>`;
-}
-
-// ── FOTO PROTOKOLL ────────────────────────────────────────
-async function takePhoto(bookingId, type) {
-  // Skapa file input dynamiskt
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.capture = 'environment'; // bakre kameran
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    showToast('📸 Laddar upp bild...');
-    
-    // Konvertera till base64
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target.result;
-      
-      // Spara i Supabase storage (photos bucket)
-      const filename = `${bookingId}/${type}_${Date.now()}.jpg`;
-      const { data, error } = await SB.storage
-        .from('booking-photos')
-        .upload(filename, file, { contentType: 'image/jpeg', upsert: true });
-      
-      if (error) {
-        // Fallback: spara URL i bookings-tabellen
-        const field = type === 'before' ? 'photo_before_url' : 'photo_after_url';
-        await SB.from('bookings').update({ [field]: base64.slice(0,500) }).eq('id', bookingId);
-        showToast('✅ Foto sparat!');
-      } else {
-        const url = SB.storage.from('booking-photos').getPublicUrl(filename).data.publicUrl;
-        const field = type === 'before' ? 'photo_before_url' : 'photo_after_url';
-        await SB.from('bookings').update({ [field]: url }).eq('id', bookingId);
-        showToast('✅ Foto sparat och bifogat till bokningen!');
-      }
-      await loadJobs();
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-}
-
-// ── RAPPORTERA OLÄMPLIG KUND ─────────────────────────────
-async function reportCustomer(bookingId, customerEmail) {
-  const reason = prompt(
-    'Beskriv kortfattat varför du rapporterar denna kund:\n(t.ex. olämpligt beteende, hotfull, grovt stökig bostad, etc.)'
-  );
-  if (!reason) return;
-  
-  // Spara rapport i Supabase
-  await SB.from('customer_reports').insert({
-    booking_id: bookingId,
-    customer_email: customerEmail,
-    cleaner_id: cleaner?.id,
-    reason: reason,
-    created_at: new Date().toISOString()
-  }).then(()=>{}).catch(()=>{});
-  
-  // Notifiera admin
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body: JSON.stringify({
-      type: 'customer_report',
-      record: {
-        booking_id: bookingId,
-        customer_email: customerEmail,
-        cleaner_name: cleaner?.full_name,
-        reason: reason
-      }
-    })
-  }).catch(()=>{});
-  
-  showToast('⚠️ Rapport skickad till Spick. Tack för att du hör av dig.');
-}
-
-// ── MARKERA JOBB KLART (triggar escrow-utbetalning) ─────────────────────────
-async function markJobDone(id) {
-  if (!confirm('Är städningen klar? Kunden bekräftar och betalningen frigörs.')) return;
-  
-  await SB.from('bookings').update({ 
-    status: 'klar', 
-    completed_at: new Date().toISOString() 
-  }).eq('id', id);
-  
-  // Frigör escrow-betalning via Stripe capture-endpoint
-  fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/stripe-webhook?action=capture', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body: JSON.stringify({ booking_id: id })
-  }).catch(()=>{});
-  
-  // Notifiera kund att städningen är klar + begär betygsättning
-  fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
-    body: JSON.stringify({ type: 'job_completed', record: { booking_id: id, cleaner_name: cleaner?.full_name } })
-  }).catch(()=>{});
-  
-  showToast('✅ Klart! Betalningen frigörs inom 1-2 bankdagar.');
-  await loadJobs();
-}
-
-function checkOnboarding(cleanerData) {
-  const done = JSON.parse(localStorage.getItem('spick_ob_'+cleanerData?.id)||'[]');
-  const totalJobs = cleanerData?.review_count || 0;
-  // Visa bara för nya städare (<3 uppdrag) och om inte dismissed
-  if (totalJobs < 3 && !localStorage.getItem('spick_ob_done')) {
-    document.getElementById('onboarding-check').style.display = 'block';
-    done.forEach(n => markObStep(n));
-  }
-}
-function completeOnboarding(n) {
-  markObStep(n);
-  const el = document.getElementById('ob'+n);
-  if(el) el.parentElement.style.opacity = '.5';
-  const done = JSON.parse(localStorage.getItem('spick_ob_all')||'[]');
-  if(!done.includes(n)) done.push(n);
-  localStorage.setItem('spick_ob_all', JSON.stringify(done));
-  if(done.length >= 4) {
-    document.getElementById('onboarding-check').style.display = 'none';
-    localStorage.setItem('spick_ob_done','1');
-  }
-}
-function markObStep(n) {
-  const el = document.getElementById('ob'+n);
-  if(el) { el.textContent = '✓'; el.style.background = 'rgba(255,255,255,.3)'; el.style.border = 'none'; }
-}
-
-function renderMonthlySummary(jobs) {
-  const now = new Date();
-  const thisMonth = now.getMonth();
-  const thisYear = now.getFullYear();
-  
-  const monthJobs = jobs.filter(j => {
-    const d = new Date(j.date || j.created_at);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  });
-  
-  const totalEarnings = monthJobs
-    .filter(j => j.status === 'klar')
-    .reduce((sum, j) => sum + (j.total_price || 0), 0);
-  
-  const completedCount = monthJobs.filter(j => j.status === 'klar').length;
-  const upcomingCount = monthJobs.filter(j => j.status === 'bekräftad' || j.status === 'pending').length;
-  
-  const el = document.getElementById('monthly-summary');
-  if(!el) return;
-  
-  const monthName = now.toLocaleDateString('sv-SE', {month:'long'});
-  
-  el.innerHTML = `
-    <div style="background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:14px;padding:1.25rem;color:#fff;margin-bottom:1.25rem">
-      <div style="font-size:.72rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">${monthName} – din månad</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;text-align:center">
-        <div>
-          <div style="font-size:1.4rem;font-weight:800">${totalEarnings.toLocaleString('sv-SE')} kr</div>
-          <div style="font-size:.7rem;opacity:.75">intjänat</div>
-        </div>
-        <div>
-          <div style="font-size:1.4rem;font-weight:800">${completedCount}</div>
-          <div style="font-size:.7rem;opacity:.75">avklarade</div>
-        </div>
-        <div>
-          <div style="font-size:1.4rem;font-weight:800">${upcomingCount}</div>
-          <div style="font-size:.7rem;opacity:.75">kommande</div>
-        </div>
-      </div>
-    </div>`;
-}
-function renderNextJob(jobs) {
-  const upcoming = jobs
-    .filter(j => (j.status === 'bekräftad' || j.status === 'pending') && new Date(j.date) >= new Date())
-    .sort((a,b) => new Date(a.date) - new Date(b.date));
-  
-  const el = document.getElementById('next-job-widget');
-  if(!el) return;
-  
-  if(!upcoming.length) {
-    el.innerHTML = '<div style="background:#F7F7F5;border:1.5px dashed #E8E8E4;border-radius:12px;padding:1.25rem;text-align:center;font-size:.82rem;color:#6B6960;margin-bottom:1rem">Inga kommande uppdrag – se till att ditt schema är aktivt!</div>';
-    return;
-  }
-  
-  const next = upcoming[0];
-  const dateStr = new Date(next.date).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long'});
-  const daysUntil = Math.ceil((new Date(next.date) - new Date()) / (1000*60*60*24));
-  const urgency = daysUntil <= 1 ? '#dc2626' : daysUntil <= 3 ? '#d97706' : '#0F6E56';
-  
-  el.innerHTML = `
-    <div style="background:#fff;border:1.5px solid ${urgency};border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-        <span style="font-size:.7rem;font-weight:700;color:${urgency};text-transform:uppercase;letter-spacing:.05em">
-          ${daysUntil === 0 ? '🔴 IDAG' : daysUntil === 1 ? '🟡 IMORGON' : `Om ${daysUntil} dagar`}
-        </span>
-        <span style="font-size:.72rem;color:#6B6960">${next.time || '–'}</span>
-      </div>
-      <div style="font-weight:600;font-size:.9rem">${next.service || 'Städning'}</div>
-      <div style="font-size:.78rem;color:#6B6960;margin-top:.2rem">${dateStr}</div>
-    </div>`;
-}
-
-// Service Worker + Push
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(()=>{});
-}
+// Service Worker
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>

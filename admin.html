@@ -223,14 +223,29 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="kpi"><div class="kpi-val" id="kpi-rating">–</div><div class="kpi-lbl">Snittbetyg</div></div>
         <div class="kpi red"><div class="kpi-val" id="kpi-apps">–</div><div class="kpi-lbl">Ansökningar att granska</div></div>
       </div>
+      <!-- Alerts -->
+      <div id="admin-alert-row" style="margin-bottom:16px"></div>
+
+      <!-- Global snabbsök -->
+      <div class="card" style="padding:14px 20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:1.1rem">🔍</span>
+          <input id="global-search" class="search-input" style="border:none;padding:6px 0;font-size:.95rem;flex:1" placeholder="Sök kunder, städare, bokningar..." oninput="globalSearch(this.value)">
+          <span id="global-results-count" style="font-size:.78rem;color:var(--m)"></span>
+        </div>
+        <div id="global-results" style="margin-top:10px;display:none"></div>
+      </div>
+
       <div class="two-col">
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">Senaste bokningar</h3>
+          <h3 style="font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between">Senaste bokningar <span style="font-size:.75rem;font-weight:400;color:var(--m)" id="last-refresh">–</span></h3>
           <div id="dash-recent-bookings"><div class="loading"><div class="spin"></div></div></div>
         </div>
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">Senaste recensioner</h3>
-          <div id="dash-recent-reviews"><div class="loading"><div class="spin"></div></div></div>
+          <h3 style="font-weight:600;margin-bottom:14px">Aktivitetsflöde 🔔</h3>
+          <div id="activity-feed" style="max-height:320px;overflow-y:auto">
+            <div style="color:var(--m);font-size:.85rem;text-align:center;padding:20px">Laddar aktiviteter...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -299,9 +314,12 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
     <!-- APPLICATIONS -->
     <div class="page" id="page-applications">
-      <div class="page-header">
-        <div class="page-title">Städaransökningar 📋</div>
-        <div class="page-sub">Granska och godkänn nya städare</div>
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Städaransökningar 📋</div>
+          <div class="page-sub">Granska och godkänn nya städare</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadAll().then(renderApplications)">↻ Uppdatera</button>
       </div>
       <div id="apps-list"><div class="loading"><div class="spin"></div></div></div>
     </div>
@@ -388,6 +406,18 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   </div><!-- /main -->
 </div><!-- /app -->
 
+<!-- MODAL: Quick Action -->
+<div class="modal-bg" id="quick-modal">
+  <div class="modal" style="max-width:400px">
+    <h3 id="quick-modal-title">Snabbåtgärd</h3>
+    <div id="quick-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('quick-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn btn-primary" id="quick-modal-confirm" onclick="">Bekräfta</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Booking detail -->
 <div class="modal-bg" id="booking-modal">
   <div class="modal">
@@ -428,6 +458,7 @@ SB.auth.getSession().then(({ data: { session } }) => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     loadAll();
+    setTimeout(setupRealtime, 1000);
   }
 });
 
@@ -437,6 +468,7 @@ SB.auth.onAuthStateChange((event, session) => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     loadAll();
+    setTimeout(setupRealtime, 1000);
   } else if (event === 'SIGNED_OUT') {
     document.getElementById('app').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
@@ -497,6 +529,139 @@ function showPage(id) {
 }
 
 // ── LOAD ALL DATA ─────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════
+// REAL-TIME + AKTIVITETSFLÖDE
+// ═══════════════════════════════════════════════════════════════
+let realtimeCh = null;
+const activityLog = [];
+
+function setupRealtime() {
+  realtimeCh = SB.channel('admin-rt')
+    .on('postgres_changes', {event:'INSERT',schema:'public',table:'bookings'}, payload => {
+      addActivity('🛒', `Ny bokning: ${payload.new.service||'Städning'} · ${payload.new.customer_name||payload.new.email||''}`, 'green');
+      loadAll();
+    })
+    .on('postgres_changes', {event:'UPDATE',schema:'public',table:'bookings'}, payload => {
+      const r = payload.new;
+      if (r.payment_status === 'paid' && payload.old.payment_status !== 'paid')
+        addActivity('💳', `Betalning mottagen: ${r.customer_name||r.email||''} – ${(r.total_price||0).toLocaleString('sv')} kr`, 'green');
+      else if (r.status === 'klar')
+        addActivity('✅', `Städning klar: ${r.service||'Städning'} · ${r.city||''}`, 'blue');
+      loadAll();
+    })
+    .on('postgres_changes', {event:'INSERT',schema:'public',table:'cleaner_applications'}, payload => {
+      addActivity('📋', `Ny ansökan: ${payload.new.name||payload.new.email||''}`, 'yellow');
+      loadAll();
+    })
+    .on('postgres_changes', {event:'INSERT',schema:'public',table:'reviews'}, payload => {
+      addActivity('⭐', `Nytt betyg: ${payload.new.rating||5}★ – ${payload.new.customer_name||'Anonym'}`, 'yellow');
+      loadAll();
+    })
+    .subscribe(status => {
+      const dot = document.getElementById('rt-indicator');
+      if (dot) dot.style.background = status === 'SUBSCRIBED' ? '#22C55E' : '#6B7280';
+    });
+}
+
+function addActivity(icon, text, color) {
+  const colors = {green:'#D1FAE5',yellow:'#FEF3C7',blue:'#DBEAFE',red:'#FEE2E2'};
+  const textColors = {green:'#065F46',yellow:'#92400E',blue:'#1E40AF',red:'#991B1B'};
+  activityLog.unshift({icon,text,color,time:new Date()});
+  if (activityLog.length > 50) activityLog.pop();
+  renderActivityFeed();
+  // Browser notification
+  if (Notification.permission === 'granted') {
+    new Notification('Spick Admin · ' + icon, {body:text,silent:false});
+  }
+}
+
+function renderActivityFeed() {
+  const el = document.getElementById('activity-feed');
+  if (!el) return;
+  if (!activityLog.length) {
+    el.innerHTML = '<div style="color:var(--m);font-size:.85rem;text-align:center;padding:20px">Inga aktiviteter ännu. Real-time aktiv.</div>';
+    return;
+  }
+  el.innerHTML = activityLog.map(a => {
+    const ago = Math.round((new Date()-a.time)/60000);
+    const agoStr = ago < 1 ? 'just nu' : ago < 60 ? ago+'m sedan' : Math.round(ago/60)+'h sedan';
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem">
+      <span style="font-size:1rem;flex-shrink:0">${a.icon}</span>
+      <div style="flex:1">${a.text}</div>
+      <span style="font-size:.72rem;color:var(--m);white-space:nowrap;flex-shrink:0">${agoStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL SÖKNING
+// ═══════════════════════════════════════════════════════════════
+function globalSearch(q) {
+  const res = document.getElementById('global-results');
+  const cnt = document.getElementById('global-results-count');
+  if (!q || q.length < 2) { res.style.display = 'none'; cnt.textContent = ''; return; }
+  q = q.toLowerCase();
+  const hits = [];
+
+  // Sök bokningar
+  data.bookings.filter(b => `${b.customer_name||''} ${b.email||''} ${b.customer_email||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q)).slice(0,3).forEach(b => {
+    hits.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem;cursor:pointer" onclick="showPage('bookings');showBookingDetail('${b.id}')">
+      <span>📅 ${b.service||'Städning'} · ${b.customer_name||b.email||'–'} · ${b.city||'–'}</span>
+      <span style="color:var(--m);font-size:.75rem">${statusBadge(b.payment_status).replace(/<[^>]+>/g,'')}</span>
+    </div>`);
+  });
+
+  // Sök städare
+  data.cleaners.filter(c => `${c.full_name||''} ${c.email||''} ${c.city||''}`.toLowerCase().includes(q)).slice(0,3).forEach(cl => {
+    hits.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem;cursor:pointer" onclick="showPage('cleaners');showCleanerDetail('${cl.id}')">
+      <span>🧹 ${cl.full_name||'–'} · ${cl.city||'–'} · ${cl.avg_rating||'–'}★</span>
+      <span style="color:var(--m);font-size:.75rem">${cl.hourly_rate||350} kr/h</span>
+    </div>`);
+  });
+
+  // Sök kunder
+  data.customers.filter(cu => `${cu.email||''} ${cu.name||''}`.toLowerCase().includes(q)).slice(0,3).forEach(cu => {
+    hits.push(`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem">
+      <span>👤 ${cu.email||'–'}</span>
+    </div>`);
+  });
+
+  if (!hits.length) { res.innerHTML = '<div style="color:var(--m);font-size:.83rem;padding:8px 0">Inga resultat.</div>'; }
+  else { res.innerHTML = hits.join(''); }
+  cnt.textContent = hits.length + ' träffar';
+  res.style.display = 'block';
+}
+
+// Stäng global sökning vid klick utanför
+document.addEventListener('click', e => {
+  if (!e.target.closest('#global-search') && !e.target.closest('#global-results')) {
+    const r = document.getElementById('global-results');
+    if (r) r.style.display = 'none';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════════
+function renderAlerts() {
+  const el = document.getElementById('admin-alert-row');
+  if (!el) return;
+  const alerts = [];
+  const unpaidAssigned = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
+  const pending = data.bookings.filter(b => b.payment_status === 'pending');
+  const newApps = data.applications.filter(a => a.status === 'pending' || !a.status);
+  if (unpaidAssigned.length) alerts.push(`<div class="alert info" style="cursor:pointer" onclick="showPage('bookings')">⚠️ <strong>${unpaidAssigned.length}</strong> betalda bokningar saknar städare – <u>Tilldela nu</u></div>`);
+  if (pending.length > 3) alerts.push(`<div class="alert" style="background:#FEF3C7;color:#92400E">💳 <strong>${pending.length}</strong> bokningar väntar på betalning</div>`);
+  if (newApps.length) alerts.push(`<div class="alert info" style="cursor:pointer" onclick="showPage('applications')">📋 <strong>${newApps.length}</strong> nya ansökningar att granska</div>`);
+  el.innerHTML = alerts.join('');
+}
+
+// Begär notis-tillstånd
+if (Notification && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
 async function loadAll() {
   const today = new Date().toISOString().split('T')[0];
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
@@ -531,6 +696,7 @@ function updateBadges() {
 
 // ── DASHBOARD ─────────────────────────────────────────
 function renderDashboard() {
+  renderActivityFeed(); // Uppdatera aktivitetsflödet
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   document.getElementById('dash-date').textContent = now.toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -547,6 +713,13 @@ function renderDashboard() {
   document.getElementById('kpi-bookings').textContent = paid.length;
   document.getElementById('kpi-pending').textContent = pending.length;
   document.getElementById('kpi-cleaners').textContent = approvedCleaners.length;
+  
+  // Uppdatera sist-refresh
+  const rEl = document.getElementById('last-refresh');
+  if (rEl) rEl.textContent = 'Uppdaterat ' + new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+  
+  // Alerts
+  renderAlerts();
   document.getElementById('kpi-rating').textContent = avgRating + ' ⭐';
   document.getElementById('kpi-apps').textContent = pendingApps.length;
 
@@ -657,10 +830,12 @@ function renderApplications() {
           <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${a.services || '–'}</p>
           <p style="font-size:.85rem"><strong>Timpris:</strong> ${a.hourly_rate || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt ? '✅ Ja' : '❌ Nej'}</p>
           ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${a.bio.substring(0,120)}..."</p>` : ''}
+          ${a.available_days ? `<p style="font-size:.82rem;margin-top:4px"><strong>Tillgängliga dagar:</strong> ${a.available_days}</p>` : ''}
+          ${a.languages ? `<p style="font-size:.82rem"><strong>Språk:</strong> ${a.languages}</p>` : ''}
           <p style="font-size:.75rem;color:var(--m);margin-top:6px">Ansökt: ${new Date(a.created_at).toLocaleDateString('sv')}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}', '${a.name || a.full_name}', '${a.email}', '${a.city||''}', '${a.services||''}', ${a.hourly_rate||350})">✅ Godkänn</button>
+          <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="approveApplication('${a.id}', '${a.name || a.full_name}', '${a.email}', '${a.city||''}', '${a.services||''}', ${a.hourly_rate||350})">✅ Godkänn</button>
           <button class="btn btn-danger btn-sm" onclick="rejectApplication('${a.id}')">❌ Avslå</button>
         </div>
       </div>
