@@ -1017,7 +1017,7 @@ async function renderSubscriptions() {
   const freqMultiplier = {veckovis:4.3, 'varannan-vecka':2.15, månadsvis:1};
   const mrr = active.reduce((s,sub) => {
     const m = freqMultiplier[sub.frequency] || 1;
-    return s + ((sub.total_price || 0) * m);
+    return s + ((sub.price || sub.total_price || 0) * m);
   }, 0);
   
   document.getElementById('sub-count').textContent = active.length;
@@ -1030,7 +1030,7 @@ async function renderSubscriptions() {
     const statusBadge = s.status === 'aktiv' ? '<span class="badge green">✅ Aktiv</span>' : 
                         s.status === 'pausad' ? '<span class="badge yellow">⏸ Pausad</span>' :
                         '<span class="badge grey">Avslutad</span>';
-    const discountedPrice = s.total_price ? Math.round(s.total_price * (1 - (s.discount_percent||0)/100)) : '–';
+    const discountedPrice = (s.price||s.total_price) ? Math.round((s.price||s.total_price) * (1 - (s.discount_percent||0)/100)) : '–';
     return `<tr>
       <td><strong>${s.customer_name || '–'}</strong><br><span style="font-size:.75rem;color:var(--m)">${s.customer_email||''}</span></td>
       <td>${s.service || 'Hemstädning'} · ${s.hours||3}h</td>
@@ -1064,7 +1064,7 @@ async function createBookingFromSub(subId) {
     city: sub.city,
     service: sub.service,
     hours: sub.hours,
-    total_price: sub.total_price,
+    total_price: sub.price || sub.total_price,
     rut: sub.rut,
     date: nextDate,
     scheduled_date: nextDate,

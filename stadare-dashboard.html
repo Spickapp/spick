@@ -563,14 +563,14 @@ async function loadCleanerByEmail(email) {
 // ── JOBS ─────────────────────────────────────────────────────
 async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
-    SB.from('bookings').select('*, key_info, customer_notes, reminders_sent').eq('cleaner_id', cleaner.id).in('payment_status', ['paid','pending']).order('scheduled_date', { ascending: true }),
-    SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).eq('city', cleaner.city || '').order('scheduled_date', { ascending: true }).limit(15)
+    SB.from('bookings').select('*, key_info, customer_notes, reminders_sent').eq('cleaner_id', cleaner.id).in('payment_status', ['paid','pending']).order('date', { ascending: true }),
+    SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).eq('city', cleaner.city || '').order('date', { ascending: true }).limit(15)
   ]);
 
   // Fallback om city-filter ger 0 resultat
   let openJobs = cityJobs.data || [];
   if (!openJobs.length) {
-    const { data: allOpen } = await SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('scheduled_date', { ascending: true }).limit(10);
+    const { data: allOpen } = await SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('date', { ascending: true }).limit(10);
     openJobs = allOpen || [];
   }
 

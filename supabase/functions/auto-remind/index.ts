@@ -57,7 +57,7 @@ serve(async (req) => {
       .neq("status", "avbokad");
 
     for (const b of bookings || []) {
-      const dateStr  = b.scheduled_date || b.date;
+      const dateStr  = b.date || b.scheduled_date;
       if (!dateStr) continue;
       const dateTime = new Date(`${dateStr}T${(b.time || b.scheduled_time || "09:00")}:00`);
       const hoursLeft = (dateTime.getTime() - now.getTime()) / 3_600_000;
