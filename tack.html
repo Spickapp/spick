@@ -112,5 +112,20 @@ if (typeof gtag !== 'undefined') {
   gtag('event', 'purchase', { transaction_id: sessionId || bid, value: 0, currency: 'SEK' });
 }
 </script>
+<script>
+// Lägg till betygsätt-länk efter 2 sekunder
+setTimeout(() => {
+  const bid = new URLSearchParams(location.search).get('bid') || 
+              new URLSearchParams(location.search).get('session_id');
+  if (bid) {
+    const link = document.createElement('div');
+    link.style.cssText = 'text-align:center;margin:2rem 0;';
+    link.innerHTML = `<a href="betygsatt.html?bid=${bid}" 
+      style="display:inline-block;background:#F59E0B;color:#fff;padding:.875rem 2rem;border-radius:100px;font-weight:700;text-decoration:none;font-family:DM Sans,sans-serif">
+      ⭐ Betygsätt din städare →</a>`;
+    document.body.appendChild(link);
+  }
+}, 3000);
+</script>
 </body>
 </html>

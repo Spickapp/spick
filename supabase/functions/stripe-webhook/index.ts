@@ -97,7 +97,7 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
   const { data: cleaners } = await sb
     .from("cleaners")
     .select("id, full_name, email, avg_rating, services, city")
-    .eq("is_approved", true)
+    .eq("status", "godkänd")
     .order("avg_rating", { ascending: false });
 
   if (!cleaners?.length) return null;
@@ -117,7 +117,7 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
       .from("bookings")
       .select("id")
       .eq("cleaner_id", cleaner.id)
-      .eq("scheduled_date", date)
+      .eq("date", date)
       .eq("payment_status", "paid");
     
     if (!conflicts?.length) return cleaner;
@@ -254,13 +254,13 @@ async function handlePaymentFailed(paymentIntent: Record<string, unknown>) {
 
   await sb.from("bookings").update({ payment_status: "failed" }).eq("id", bookingId);
 
-  const { data: bookings } = await sb.from("bookings").select("customer_name,customer_email,service,scheduled_date").eq("id", bookingId);
+  const { data: bookings } = await sb.from("bookings").select("customer_name,customer_email,email,service,date,time").eq("id", bookingId);
   const booking = bookings?.[0];
   if (!booking) return;
 
   const fname = booking.customer_name?.split(" ")[0] || "där";
   await sendEmail(
-    booking.customer_email,
+    booking.customer_email || booking.email,
     "Betalning misslyckades – försök igen ❌",
     wrap(`
 <h2>Betalningen gick inte igenom 😔</h2>
@@ -291,7 +291,7 @@ async function handleRefund(charge: Record<string, unknown>) {
   const fname = booking.customer_name?.split(" ")[0] || "där";
 
   await sendEmail(
-    booking.customer_email,
+    booking.customer_email || booking.email,
     `Återbetalning bekräftad – ${Math.round(refundAmount)} kr ✅`,
     wrap(`
 <h2>Din återbetalning är genomförd ✅</h2>

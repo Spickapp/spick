@@ -220,6 +220,23 @@ serve(async (req) => {
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
     }
+    else if (type === "garanti_reklamation") {
+      const r = payload.record || {};
+      subject = `🔴 Garantireklamation – ${r.name || "Kund"}`;
+      html = wrap(`
+<h2>Ny garantireklamation!</h2>
+<div class="card">
+  <div class="row"><span class="lbl">Namn</span><span class="val">${r.name || "–"}</span></div>
+  <div class="row"><span class="lbl">Email</span><span class="val">${r.email || "–"}</span></div>
+  <div class="row"><span class="lbl">Bokning</span><span class="val">${r.booking || "–"}</span></div>
+  <div class="row"><span class="lbl">Kontaktsätt</span><span class="val">${r.contact || "–"}</span></div>
+</div>
+<h3>Beskrivning:</h3>
+<p>${r.desc || "–"}</p>
+<a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
+`);
+      to = ADMIN;
+    }
     else if (type === "contact") {
       await sendEmail(ADMIN, `📬 Kontakt: ${r.subject || "Meddelande"} – ${r.name || ""}`, wrap(`
         <h2>Nytt kontaktmeddelande</h2>

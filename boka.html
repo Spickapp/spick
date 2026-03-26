@@ -491,7 +491,7 @@ async function doBook(){
   if(useRut&&pnr) pnrHash=await hashPnr(pnr);
 
   const booking={
-    name:fn+' '+ln,email:em,phone:ph,address:addr,date,time,service:svc,hours:h,
+    name:fn+' '+ln,customer_name:fn+' '+ln,customer_email:em,email:em,phone:ph,address:addr,city:addr.split(',').pop()?.trim()||'Sverige',date,time,service:svc,hours:h,sqm:+document.getElementById('sqm')?.value||null,
     rut:useRut,total_price:tot,status:'ny',
     message:(p.get('name')?'Städare: '+p.get('name'):'')+(pnrHash?' | PNR-hash: '+pnrHash.slice(0,12)+'...':'')
   };
