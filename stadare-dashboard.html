@@ -443,6 +443,8 @@ async function loadJobs() {
   const monthEarn = monthJobs.reduce((s, j) => s + Math.round((j.total_price || 0) * 0.83), 0);
   const totalEarn = confirmed.reduce((s, j) => s + Math.round((j.total_price || 0) * 0.83), 0);
   document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
+  // Kolla Stripe Connect-status
+  checkStripeStatus();
   document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr';
 
   renderJobs();
@@ -663,6 +665,12 @@ async function checkInGPS(bookingId) {
   }, { timeout: 10000, maximumAge: 60000 });
 }
 </script>
+
+<!-- STRIPE CONNECT BANNER -->
+<div id="stripe-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:.875rem 1.5rem;z-index:150;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+  <div style="font-size:.875rem;color:#92400E;font-weight:600">💳 Anslut ditt bankkonto för att kunna ta emot utbetalningar</div>
+  <a href="#" style="background:#F59E0B;color:#fff;padding:.5rem 1.25rem;border-radius:100px;font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap">Anslut nu →</a>
+</div>
 
 <!-- SOS NÖDKNAPP -->
 <div id="sos-btn" onclick="sosAlert()" style="

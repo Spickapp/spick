@@ -568,6 +568,28 @@ async function submitRegistration() {
       document.getElementById('confirmedAlias').textContent = alias + ' ' + selectedEmoji;
       document.getElementById('confirmedEmail').textContent = email;
       document.getElementById('confirmedCity').textContent = city;
+
+      // Starta Stripe Connect onboarding för utbetalningar
+      try {
+        const connectRes = await fetch(SUPA_URL + '/functions/v1/stripe-connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY },
+          body: JSON.stringify({
+            action: 'onboard_cleaner',
+            email: email,
+            full_name: alias,
+            cleaner_id: 'pending' // uppdateras av webhook
+          })
+        });
+        const connectData = await connectRes.json();
+        if (connectData.onboarding_url) {
+          window._stripeOnboardingUrl = connectData.onboarding_url;
+          // Visa Stripe-knapp i steg 4
+          const stripeBtn = document.getElementById('stripe-onboard-btn');
+          if (stripeBtn) { stripeBtn.style.display = 'block'; stripeBtn.href = connectData.onboarding_url; }
+        }
+      } catch(e) { console.log('Stripe Connect ej tillgänglig:', e.message); }
+
       goToStep(4);
     } else {
       throw new Error('Serverfel');
