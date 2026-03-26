@@ -469,36 +469,43 @@ const MONTHLY_GOAL = 10000; // kr – kan sättas per städare framöver
 
 // ── INIT ────────────────────────────────────────────────────
 // Kör direkt – load-eventet kan ha hänt redan (readyState='complete')
-async function init() {
+function init() {
+  // Visa login omedelbart – ingen väntan
+  showScreen('login');
+  const errEl = document.getElementById('login-err');
+  if (errEl) errEl.style.display = 'none';
+
+  // Kolla om magic link i URL
   const hash = window.location.hash;
-  // Magic link i URL – onAuthStateChange tar hand om det
-  if (hash && (hash.includes('access_token') || hash.includes('type=signup'))) {
-    showScreen('login');
+  if (hash && hash.includes('access_token')) {
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
-    return;
+    return; // onAuthStateChange hanterar resten
   }
-  // Kolla befintlig session
-  try {
-    const { data: { session } } = await SB.auth.getSession();
+
+  // Kolla befintlig session med timeout (getSession kan hänga)
+  const sessionTimeout = setTimeout(() => {
+    // Om getSession inte svarat inom 3s – visa login och ge upp
+    console.warn('getSession timeout – visar login');
+  }, 3000);
+
+  SB.auth.getSession().then(({ data: { session } }) => {
+    clearTimeout(sessionTimeout);
     if (session?.user?.email) {
-      await loadCleanerByEmail(session.user.email);
-    } else {
-      showScreen('login');
-      const errEl = document.getElementById('login-err');
-      if (errEl) errEl.style.display = 'none';
+      loadCleanerByEmail(session.user.email);
     }
-  } catch(e) {
-    console.error('Init-fel:', e);
-    showScreen('login');
-  }
+    // Om ingen session – login-sidan visas redan
+  }).catch(e => {
+    clearTimeout(sessionTimeout);
+    console.error('getSession-fel:', e);
+  });
 }
 
 // Kör init oavsett readyState
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
-  init(); // Kör direkt om DOM redan är klar
+  init();
 }
 
 SB.auth.onAuthStateChange(async (event, session) => {
