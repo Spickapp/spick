@@ -405,6 +405,19 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <input type="text" id="key-info" placeholder="T.ex. kod: 1234, ring på Svensson..." style="display:none;width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.88rem;outline:none;margin-top:.375rem">
           </div>
 
+          <!-- Besiktningsdatum - visas bara för Flyttstädning -->
+          <div id="besiktning-wrap" style="display:none;margin-top:1rem;background:#FEF3C7;border:1.5px solid #FDE68A;border-radius:12px;padding:1rem">
+            <label class="field-label" style="color:#92400E">📋 Besiktningsdatum (viktigt!)</label>
+            <input type="date" id="besiktning-date" style="width:100%;margin-top:.375rem;padding:.7rem 1rem;border:1.5px solid #FDE68A;border-radius:10px;font-family:inherit;font-size:.88rem;outline:none">
+            <div style="font-size:.75rem;color:#92400E;margin-top:.375rem">Vi planerar städningen så att du är redo för besiktning. Besiktningsgaranti ingår.</div>
+          </div>
+
+          <!-- Tilläggstjänster -->
+          <div id="addons-wrap" style="display:none;margin-top:1rem">
+            <label class="field-label">➕ Tilläggstjänster</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.375rem" id="addons-grid"></div>
+          </div>
+
           <!-- Kundnoteringar -->
           <div style="margin-top:1rem">
             <label class="field-label">📝 Speciella önskemål (valfritt)</label>
@@ -583,6 +596,44 @@ function goBack(fromStep) {
 // ── STEG 1: SERVICE ───────────────────────────────────────────────────────────
 function selectService(name, icon, desc, time) {
   state.service = name;
+  
+  // Uppdatera sqm-label beroende på tjänst
+  const sqmLabel = document.getElementById('sqm-label');
+  const sqmEl = document.getElementById('sqm');
+  if (sqmLabel) {
+    if (name === 'Fönsterputs') {
+      sqmLabel.innerHTML = 'Antal fönster (inkl. bågar) <span class="req">*</span>';
+      if (sqmEl) { sqmEl.placeholder = 't.ex. 8'; sqmEl.min = 1; sqmEl.max = 50; }
+    } else {
+      sqmLabel.innerHTML = 'Bostadsyta (kvm) <span class="req">*</span>';
+      if (sqmEl) { sqmEl.placeholder = 't.ex. 65'; sqmEl.min = 20; sqmEl.max = 400; }
+    }
+  }
+  
+  // Visa/dölj besiktningsdatum för Flyttstädning
+  const bWrap = document.getElementById('besiktning-wrap');
+  if (bWrap) bWrap.style.display = name === 'Flyttstädning' ? 'block' : 'none';
+  
+  // Visa tilläggstjänster för Hem/Storstäd
+  const aWrap = document.getElementById('addons-wrap');
+  const aGrid = document.getElementById('addons-grid');
+  if (aWrap && aGrid) {
+    const addons = {
+      'Hemstädning':  [['Ugnsrengöring', '+295 kr'], ['Kylskåp invändigt', '+195 kr'], ['Balkong', '+195 kr'], ['Fönster invändigt', '+195 kr']],
+      'Storstädning': [['Ugnsrengöring', 'Ingår'], ['Kylskåp invändigt', 'Ingår'], ['Fönster invändigt', '+195 kr'], ['Balkong', '+195 kr']],
+      'Flyttstädning':[['Fönster utvändigt', '+395 kr'], ['Balkong', '+195 kr']],
+    }[name] || [];
+    if (addons.length) {
+      aGrid.innerHTML = addons.map(([a, p]) => `
+        <label style="display:flex;align-items:center;gap:.5rem;border:1.5px solid var(--border);border-radius:10px;padding:.625rem .875rem;cursor:pointer;font-size:.82rem;transition:all .15s">
+          <input type="checkbox" class="addon-cb" data-addon="${a}" data-price="${p}" style="accent-color:var(--g)" onchange="updateAddons()">
+          <span style="flex:1">${a}</span><span style="color:var(--g);font-weight:600;font-size:.75rem">${p}</span>
+        </label>`).join('');
+      aWrap.style.display = 'block';
+    } else {
+      aWrap.style.display = 'none';
+    }
+  }
   document.querySelectorAll('.svc-btn').forEach(b => {
     b.classList.toggle('selected', b.dataset.svc === name);
   });
@@ -796,7 +847,14 @@ async function loadAvailableCleaners() {
     cleaners = cleaners.filter(c => {
       const svcsRaw = Array.isArray(c.services) ? c.services.join(',') : (c.services||'');
       const svcs = svcsRaw.toLowerCase();
-      return svcs.includes(state.service.toLowerCase()) || svcs.includes('hem') || svcs.length === 0;
+      // Korrekt kompetenscheck per tjänst
+      const svcLow = state.service.toLowerCase();
+      if (svcs.length === 0) return true; // Inga krav satta = kan alla
+      if (svcLow === 'hemstädning') return svcs.some(s => s.includes('hem') || s.includes('städning'));
+      if (svcLow === 'storstädning') return svcs.some(s => s.includes('stor') || s.includes('grundlig') || s.includes('hem'));
+      if (svcLow === 'flyttstädning') return svcs.some(s => s.includes('flytt') || s.includes('storstäd'));
+      if (svcLow === 'fönsterputs') return svcs.some(s => s.includes('fönster') || s.includes('puts'));
+      return svcs.some(s => s.includes(svcLow));
     });
     // Filtrera: har tillgänglighet denna dag (baserat på availability-tabell)
     const dayAvail = Array.isArray(state.availability)
@@ -935,6 +993,13 @@ document.addEventListener('DOMContentLoaded', () => {
     state.recurringFreq = sel.value;
   });
 });
+
+function updateAddons() {
+  const addons = Array.from(document.querySelectorAll('.addon-cb:checked')).map(cb => cb.dataset.addon);
+  state.customerNotes = addons.length ? 'Tillägg: ' + addons.join(', ') : '';
+  // Uppdatera prissammanfattning
+  updateSum();
+}
 
 function autofillBankID() {
   // BankID-autofyll kräver GrandID-licens (grandid.com)

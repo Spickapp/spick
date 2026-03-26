@@ -111,14 +111,30 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
   // Filtrera på stad och tjänst med prioritering
   const eligible = cleaners.filter(c => {
     const cleanerCity = (c.city as string)?.toLowerCase() || "";
-    // Exakt stad-match
-    if (cleanerCity === city) return true;
-    // Partiell match
-    if (cleanerCity.includes(city) || city.includes(cleanerCity)) return true;
-    // Stor-Stockholm fallback
+    const cleanerServices = ((c.services as string) || "").toLowerCase();
+    
+    // Stadscheck
+    let cityMatch = cleanerCity === city || cleanerCity.includes(city) || city.includes(cleanerCity) || city === "";
     const storsthlm = ["stockholm","solna","sundbyberg","nacka","bromma","lidingö","huddinge","hägersten"];
-    if (storsthlm.includes(city) && storsthlm.some(s => cleanerCity.includes(s))) return true;
-    return false;
+    if (!cityMatch && storsthlm.includes(city)) {
+      cityMatch = storsthlm.some(s => cleanerCity.includes(s));
+    }
+    if (!cityMatch) return false;
+    
+    // Tjänstcheck - matcha kompetens mot bokad tjänst
+    const serviceNormalized = service.toLowerCase();
+    if (!cleanerServices || cleanerServices.length === 0) return true; // Inga krav = kan allt
+    if (serviceNormalized.includes("fönster") || serviceNormalized.includes("puts")) {
+      return cleanerServices.includes("fönster") || cleanerServices.includes("puts");
+    }
+    if (serviceNormalized.includes("flytt")) {
+      return cleanerServices.includes("flytt") || cleanerServices.includes("storstäd");
+    }
+    if (serviceNormalized.includes("storstäd")) {
+      return cleanerServices.includes("stor") || cleanerServices.includes("hem");
+    }
+    // Hemstädning - de flesta kan
+    return cleanerServices.includes("hem") || cleanerServices.includes("städ");
   });
 
   // Fallback om ingen i rätt stad
