@@ -183,18 +183,39 @@ input, select, textarea {
           <input type="text" id="address" placeholder="Börja skriv din adress..." autocomplete="off" oninput="addrSearch(this.value)" onfocus="if(this.value.length required>2)addrSearch(this.value)" style="width:100%">
           <div id="addr-suggestions" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #0F6E56;border-radius:0 0 12px 12px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)"></div>
         </div>
-      <div class="f2">
-        <div class="f"><label>Datum *</label><input type="date" id="date" min="" required style="min-height:44px" oninput="updateCalendarLink()">
-    <a id="cal-hint" href="#" target="_blank" style="display:none;font-size:.73rem;color:#0F6E56;font-weight:600;align-items:center;gap:.3rem;margin-top:.3rem" onclick="event.stopPropagation()">📅 Förhandslägg i Google Calendar</a></div>
-        <div class="f"><label>Tid *</label>
-          <select id="time" required style="min-height:44px" onchange="updateCalendarLink()">
-            <option value="">Välj tid...</option>
-            <option>07:00</option><option>08:00</option><option>09:00</option>
-            <option>10:00</option><option>11:00</option><option>12:00</option>
-            <option>13:00</option><option>14:00</option><option>15:00</option>
-            <option>16:00</option><option>17:00</option>
-          </select>
+      <!-- KALENDERVY -->
+      <div style="margin-bottom:1.25rem">
+        <label style="font-size:.8rem;font-weight:600;color:#6B6960;display:block;margin-bottom:.5rem">Välj datum & tid *</label>
+        <div id="cal-wrap" style="background:#fff;border:1.5px solid #E8E8E4;border-radius:14px;overflow:hidden">
+          <!-- Kalender-navigation -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.125rem;border-bottom:1px solid #E8E8E4;background:#F7F7F5">
+            <button type="button" onclick="calNav(-1)" style="width:32px;height:32px;border:1.5px solid #E8E8E4;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">‹</button>
+            <span id="cal-month" style="font-weight:700;font-size:.9rem"></span>
+            <button type="button" onclick="calNav(1)" style="width:32px;height:32px;border:1.5px solid #E8E8E4;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">›</button>
+          </div>
+          <!-- Veckodagar-header -->
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:.5rem .625rem 0;gap:2px">
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#6B6960;padding:.25rem">Mån</div>
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#6B6960;padding:.25rem">Tis</div>
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#6B6960;padding:.25rem">Ons</div>
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#6B6960;padding:.25rem">Tor</div>
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#6B6960;padding:.25rem">Fre</div>
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#9CA3AF;padding:.25rem">Lör</div>
+            <div style="text-align:center;font-size:.68rem;font-weight:600;color:#9CA3AF;padding:.25rem">Sön</div>
+          </div>
+          <!-- Kalender-dagar -->
+          <div id="cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);padding:.375rem .625rem .625rem;gap:3px"></div>
+          <!-- Tidsluckor -->
+          <div id="cal-times" style="display:none;padding:.875rem 1.125rem;border-top:1px solid #E8E8E4">
+            <div style="font-size:.8rem;font-weight:600;margin-bottom:.625rem;color:#1C1C1A" id="cal-date-label"></div>
+            <div id="cal-slots" style="display:flex;flex-wrap:wrap;gap:.375rem"></div>
+            <div id="cal-loading" style="font-size:.78rem;color:#6B6960">Hämtar tillgängliga tider...</div>
+          </div>
         </div>
+        <!-- Hidden inputs -->
+        <input type="hidden" id="date" required>
+        <input type="hidden" id="time" required>
+        <div id="cal-selected-info" style="display:none;margin-top:.625rem;background:#E1F5EE;border:1.5px solid #6ee7b7;border-radius:9px;padding:.625rem .875rem;font-size:.82rem;color:#0F6E56;font-weight:500"></div>
       </div>
       <div class="f2">
         <div class="f"><label>Tjänst *</label>
