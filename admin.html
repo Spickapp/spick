@@ -9,6 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;--grd:#C5E8D9;
@@ -231,10 +232,23 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="card" style="padding:14px 20px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:1.1rem">🔍</span>
-          <input id="global-search" class="search-input" style="border:none;padding:6px 0;font-size:.95rem;flex:1" placeholder="Sök kunder, städare, bokningar..." oninput="globalSearch(this.value)">
+          <input id="global-search" class="search-input" style="border:none;padding:6px 0;font-size:.95rem;flex:1" placeholder="Sök... (Ctrl+K)" oninput="globalSearch(this.value)">
           <span id="global-results-count" style="font-size:.78rem;color:var(--m)"></span>
         </div>
         <div id="global-results" style="margin-top:10px;display:none"></div>
+      </div>
+
+      <!-- INTÄKTSGRAF -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="font-weight:600">Intäkter senaste 30 dagarna</h3>
+          <select id="chart-period" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem;outline:none" onchange="renderRevenueChart()">
+            <option value="30">30 dagar</option>
+            <option value="14">14 dagar</option>
+            <option value="7">7 dagar</option>
+          </select>
+        </div>
+        <canvas id="revenue-chart" height="80"></canvas>
       </div>
 
       <div class="two-col">
@@ -415,6 +429,19 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="page-title">Inställningar ⚙️</div>
         <div class="page-sub">Systeminformation och konfiguration</div>
       </div>
+      <!-- INTÄKTSGRAF -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="font-weight:600">Intäkter senaste 30 dagarna</h3>
+          <select id="chart-period" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem;outline:none" onchange="renderRevenueChart()">
+            <option value="30">30 dagar</option>
+            <option value="14">14 dagar</option>
+            <option value="7">7 dagar</option>
+          </select>
+        </div>
+        <canvas id="revenue-chart" height="80"></canvas>
+      </div>
+
       <div class="two-col">
         <div class="card">
           <h3 style="font-weight:600;margin-bottom:16px">Systemstatus</h3>
@@ -552,6 +579,7 @@ function showPage(id) {
   if (id === 'cleaners') renderCleaners();
   if (id === 'applications') renderApplications();
   if (id === 'subscriptions') renderSubscriptions();
+  if (id === 'dashboard') setTimeout(renderRevenueChart, 200);
   if (id === 'customers') renderCustomers();
   if (id === 'payouts') renderPayouts();
   if (id === 'reviews') renderReviews();
@@ -664,6 +692,24 @@ function globalSearch(q) {
 }
 
 // Stäng global sökning vid klick utanför
+// Keyboard shortcut: Ctrl+K för global sökning
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    showPage('dashboard');
+    setTimeout(() => {
+      const s = document.getElementById('global-search');
+      if (s) { s.focus(); s.select(); }
+    }, 100);
+  }
+  // Escape stänger modaler
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+    const r = document.getElementById('global-results');
+    if (r) r.style.display = 'none';
+  }
+});
+
 document.addEventListener('click', e => {
   if (!e.target.closest('#global-search') && !e.target.closest('#global-results')) {
     const r = document.getElementById('global-results');
@@ -732,6 +778,7 @@ function updateBadges() {
 // ── DASHBOARD ─────────────────────────────────────────
 function renderDashboard() {
   renderActivityFeed(); // Uppdatera aktivitetsflödet
+  setTimeout(renderRevenueChart, 100); // Render graf
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   document.getElementById('dash-date').textContent = now.toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -958,7 +1005,10 @@ function renderPayouts() {
       <td class="text-r">–${prov.toLocaleString('sv')} kr</td>
       <td class="text-g">${net.toLocaleString('sv')} kr</td>
       <td><span class="badge yellow">⏳ Väntande</span></td>
-      <td><button class="btn btn-primary btn-sm" onclick="markPaid('${cid}')">✓ Markera betald</button></td>
+      <td style="white-space:nowrap">
+      <button class="btn btn-primary btn-sm" onclick="markPaid('${cid}')">✓ Markera betald</button>
+      ${cleaner?.phone ? `<button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="swishPay('${cleaner.phone}','${net}','${cleaner?.full_name||''}')">📱 Swish</button>` : ''}
+    </td>
     </tr>`;
   });
 
@@ -1254,6 +1304,16 @@ function exportCSV() {
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'spick-bokningar-' + new Date().toISOString().split('T')[0] + '.csv';
   a.click();
+}
+
+function swishPay(phone, amount, name) {
+  // Öppna Swish-appen direkt med förifyllt belopp
+  const swishUrl = `swish://payment?phone=${phone}&amount=${amount}&message=${encodeURIComponent('Spick utbetalning ' + name)}&currency=SEK`;
+  window.open(swishUrl, '_blank');
+  // Fallback: kopiera info
+  navigator.clipboard?.writeText(`Swish: ${phone}
+Belopp: ${amount} kr
+Meddelande: Spick utbetalning ${name}`).catch(()=>{});
 }
 
 function markPaid(cleanerId) {

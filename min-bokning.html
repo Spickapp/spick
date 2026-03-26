@@ -140,6 +140,15 @@ async function load() {
 
   renderBooking(b, cleaner);
   window._booking = b;
+  // Visa åtgärdsknappar
+  const actBtns = document.getElementById('action-btns');
+  const cancelBtn = document.getElementById('cancel-action-btn');
+  if (actBtns) {
+    const isPaid = b.payment_status === 'paid';
+    const isPast = new Date(b.scheduled_date||b.date) < new Date();
+    actBtns.style.display = isPaid ? 'block' : 'none';
+    if (cancelBtn) cancelBtn.style.display = isPaid && !isPast ? 'inline-block' : 'none';
+  }
   
   // Real-time polling var 30s om städning pågår idag
   const dateTime = new Date((b.scheduled_date||b.date)+'T'+(b.time||'09:00')+':00');

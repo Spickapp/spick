@@ -1185,5 +1185,27 @@ function cookieChoice(accept){
   if(c)c.style.transform='translateY(100%)';
 }
 </script>
+
+<!-- EXIT-INTENT POPUP -->
+<div id="exit-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;padding:36px;max-width:420px;width:90%;text-align:center;position:relative">
+    <button onclick="document.getElementById('exit-popup').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#6B6960">×</button>
+    <div style="font-size:3rem;margin-bottom:12px">🧹</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:8px">Vänta – spara 5% idag!</h2>
+    <p style="color:#6B6960;font-size:.9rem;line-height:1.6;margin-bottom:20px">Boka din första städning nu och få <strong>5% rabatt</strong>. Erbjudandet gäller i 15 minuter.</p>
+    <a href="#" onclick="document.getElementById('exit-popup').style.display='none'" style="display:block;background:#0F6E56;color:#fff;padding:13px;border-radius:12px;font-weight:600;text-decoration:none;margin-bottom:10px">Ja, jag vill ha rabatt!</a>
+    <button onclick="document.getElementById('exit-popup').style.display='none'" style="background:none;border:none;color:#6B6960;font-size:.82rem;cursor:pointer">Nej tack, jag betalar fullt pris</button>
+  </div>
+</div>
+<script>
+let exitShown = false;
+document.addEventListener('mouseleave', e => {
+  if (e.clientY < 10 && !exitShown && !sessionStorage.getItem('exit_shown')) {
+    exitShown = true;
+    sessionStorage.setItem('exit_shown','1');
+    document.getElementById('exit-popup').style.display = 'flex';
+  }
+});
+</script>
 </body>
 </html>

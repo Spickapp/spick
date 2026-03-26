@@ -603,7 +603,7 @@ const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 function ini(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2);}
 function st(r){return'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
 async function loadCleaners(){
-  const {data,error}=await SB.from('cleaners').select('*').eq('status','godkänd').order('rating',{ascending:false}).limit(3);
+  const {data,error}=await SB.from('cleaners').select('*').eq('is_approved',true).order('avg_rating',{ascending:false}).limit(6);
   const g=document.getElementById('grid');
   if(!data?.length){g.innerHTML='<div class="loading-card">Inga städare hittades – <a href="stadare.html" style="color:var(--g)">se alla</a></div>';return;}
   g.innerHTML=data.map((c,i)=>{
@@ -822,6 +822,25 @@ function cookieChoice(accept) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
+</script>
+<!-- STICKY PRIS-BAR -->
+<div class="sticky-bar" id="sticky-bar">
+  <div>
+    <div class="sb-left">Hemstädning 3h med RUT-avdrag</div>
+    <div class="sb-price">Från 525 kr</div>
+  </div>
+  <a href="boka.html" class="sb-btn">Boka nu →</a>
+</div>
+
+<script>
+// Visa sticky bar efter 40% scroll
+window.addEventListener('scroll', () => {
+  const bar = document.getElementById('sticky-bar');
+  if (!bar) return;
+  const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+  if (pct > 0.2) bar.classList.add('show');
+  else bar.classList.remove('show');
+}, {passive: true});
 </script>
 </body>
 </html>

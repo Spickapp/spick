@@ -395,8 +395,37 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
   </div>
 </div><!-- /screen-app -->
 
+<!-- ONBOARDING för nya städare -->
+<div id="onboard-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:24px;padding:36px;max-width:440px;width:100%;text-align:center">
+    <div style="font-size:3rem;margin-bottom:12px">🎉</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:8px">Välkommen till Spick!</h2>
+    <p style="color:#6B6960;font-size:.88rem;line-height:1.7;margin-bottom:20px">Här är allt du behöver veta för att komma igång:</p>
+    <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">1</div>
+        <div><div style="font-weight:600;font-size:.88rem">Acceptera uppdrag</div><div style="font-size:.8rem;color:#6B6960">Nya bokningar visas direkt – acceptera eller avböj</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">2</div>
+        <div><div style="font-weight:600;font-size:.88rem">Checka in på plats</div><div style="font-size:.8rem;color:#6B6960">GPS-incheckning startar städningen och frigör betalningen</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">3</div>
+        <div><div style="font-weight:600;font-size:.88rem">Markera klar + ta foton</div><div style="font-size:.8rem;color:#6B6960">Foton skyddar dig vid eventuella klagomål</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:#F59E0B;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">💰</div>
+        <div><div style="font-weight:600;font-size:.88rem">Utbetalning</div><div style="font-size:.8rem;color:#6B6960">83% av bokningsbeloppet – utbetalt inom 10 bankdagar</div></div>
+      </div>
+    </div>
+    <button onclick="closeOnboarding()" style="width:100%;padding:14px;background:#0F6E56;color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">Kom igång! →</button>
+    <button onclick="closeOnboarding()" style="background:none;border:none;color:#6B6960;font-size:.78rem;cursor:pointer;margin-top:8px">Visa inte igen</button>
+  </div>
+</div>
+
 <!-- SOS -->
-<div id="sos-btn" title="SOS Nödknapp" onclick="document.getElementById('sos-modal').classList.add('show')">🆘</div>
+<div id="sos-btn" title="SOS Nödknapp" style="display:none" onclick="document.getElementById('sos-modal').classList.add('show')">🆘</div>
 <div id="sos-modal" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="sos-sheet">
     <h3 style="font-size:1.1rem;margin-bottom:8px;color:var(--r)">🚨 Nödläge?</h3>
@@ -523,6 +552,12 @@ async function loadCleanerByEmail(email) {
   showScreen('app');
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
   setupRealtime();
+  // Visa onboarding för nya städare
+  if ((cleaner.total_jobs || 0) === 0 && !localStorage.getItem('spick_onboarded')) {
+    setTimeout(() => {
+      document.getElementById('onboard-modal').style.display = 'flex';
+    }, 800);
+  }
 }
 
 // ── JOBS ─────────────────────────────────────────────────────
@@ -957,6 +992,7 @@ function sosSend(type) {
 function showScreen(name) {
   ['login','magic','app'].forEach(s => document.getElementById('screen-'+s).classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('sos-btn').style.display = name === 'app' ? 'flex' : 'none';
 }
 
 function switchTab(tab) {
