@@ -1248,10 +1248,18 @@ async function approveApplication(id, name, email, city, services, rate) {
   if (existing) {
     await SB.from('cleaners').update({ status: 'godkänd', is_approved: true }).eq('email', email);
   } else {
+    // services kan vara komma-separerad sträng eller array
+    const svcsArr = Array.isArray(services)
+      ? services
+      : (services || 'Hemstädning').split(',').map(s => s.trim()).filter(Boolean);
     await SB.from('cleaners').insert([{
-      full_name: name, email, city, services,
-      hourly_rate: rate, status: 'godkänd', is_approved: true, avg_rating: 5.0,
-      review_count: 0, payout_status: 'pending', created_at: new Date().toISOString()
+      full_name: name, email, city,
+      services: svcsArr,
+      hourly_rate: parseInt(rate) || 350,
+      status: 'godkänd', is_approved: true,
+      avg_rating: null, review_count: 0,
+      payout_status: 'pending',
+      created_at: new Date().toISOString()
     }]);
   }
   await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);

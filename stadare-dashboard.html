@@ -469,16 +469,23 @@ const MONTHLY_GOAL = 10000; // kr – kan sättas per städare framöver
 
 // ── INIT ────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
+  // Kolla om det finns en magic-link hash i URL
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    // Magic link – låt onAuthStateChange hantera det (triggas automatiskt av Supabase)
+    showScreen('login'); // Visa login-skärmen medan vi väntar
+    document.getElementById('login-btn').disabled = true;
+    document.getElementById('login-btn').querySelector('span').textContent = 'Verifierar länk...';
+    return;
+  }
+
+  // Kolla befintlig session
   const { data: { session } } = await SB.auth.getSession();
-  if (!session) {
-    const { data, error } = await SB.auth.getSessionFromUrl();
-    if (data?.session) {
-      await loadCleanerByEmail(data.session.user.email);
-    } else {
-      showScreen('login');
-    }
-  } else {
+  if (session?.user?.email) {
     await loadCleanerByEmail(session.user.email);
+  } else {
+    showScreen('login');
+    document.getElementById('login-err').style.display = 'none';
   }
 });
 
