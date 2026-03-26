@@ -608,14 +608,14 @@ async function loadCleaners(){
   if(!data?.length){g.innerHTML='<div class="loading-card">Inga städare hittades – <a href="stadare.html" style="color:var(--g)">se alla</a></div>';return;}
   g.innerHTML=data.map((c,i)=>{
     const tags=Array.isArray(c.services)?c.services:(c.services||'Hemstädning').split(',').map(s=>s.trim());
-    return `<a class="cc ${i===0?'top':''}" href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${c.hourly_rate}&rating=${c.rating}&id=${c.id}">
+    return `<a class="cc ${i===0?'top':''}" href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${c.hourly_rate}&rating=${c.avg_rating}&id=${c.id}">
       <div class="cc-head">
         <div class="cav" style="background:${COLORS[i%COLORS.length]}">${ini(c.full_name)}</div>
         <div>
           ${i===0?'<span class="cc-badge">Toppvald</span><br>':''}
           <div class="cc-name">${c.full_name}</div>
           <div class="cc-loc">${c.city||'Stockholm'}</div>
-          <div class="cc-stars">${st(c.rating||0)} <strong>${c.rating||0}</strong></div>
+          <div class="cc-stars">${st(c.avg_rating||0)} <strong>${c.avg_rating?parseFloat(c.avg_rating).toFixed(1):'Ny'}</strong></div>
         </div>
       </div>
       <div class="cc-body">
@@ -633,7 +633,7 @@ loadStats();
 async function loadStats(){
   try {
     const [{data:cleaners},{data:bookings}] = await Promise.all([
-      SB.from('cleaners').select('id,avg_rating,review_count').eq('status','godkänd'),
+      SB.from('cleaners').select('id,avg_rating,review_count').eq('is_approved',true),
       SB.from('bookings').select('id',{count:'exact',head:true})
     ]);
     const data = cleaners || [];
@@ -645,6 +645,12 @@ async function loadStats(){
     const eb = document.getElementById('stat-bookings');
     if(el) el.textContent = count;
     if(er) er.textContent = avgRating + ' ★';
+    // Uppdatera sticky bar med lägsta pris × 3h med RUT
+    const rates2 = data.map(d => d.hourly_rate || 350);
+    const minRate2 = Math.min(...rates2);
+    const minTotal = Math.round(minRate2 * 3 * 0.5); // 3h med RUT
+    const stickyEl = document.getElementById('sticky-price');
+    if (stickyEl) stickyEl.textContent = minTotal.toLocaleString('sv');
     if(eb && bookings !== null) eb.textContent = (bookings||0)+'+';
     // Uppdatera schema.org
     const schema = document.querySelector('script[type="application/ld+json"]');
@@ -827,7 +833,7 @@ if ('serviceWorker' in navigator) {
 <div class="sticky-bar" id="sticky-bar">
   <div>
     <div class="sb-left">Hemstädning 3h med RUT-avdrag</div>
-    <div class="sb-price">Från 525 kr</div>
+    <div class="sb-price">Från <span id="sticky-price">525</span> kr</div>
   </div>
   <a href="boka.html" class="sb-btn">Boka nu →</a>
 </div>

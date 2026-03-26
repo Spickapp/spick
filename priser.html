@@ -272,6 +272,31 @@ function calcFromSqm() {
   calc();
 }
 
+// Ladda faktiskt lägsta pris från DB vid sidladdning
+(async function loadMinRate() {
+  try {
+    const res = await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/cleaners?is_approved=eq.true&select=hourly_rate&order=hourly_rate.asc&limit=10', {
+      headers: {
+        apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
+      }
+    });
+    const data = await res.json();
+    if (data?.length) {
+      const rates = data.map(d => d.hourly_rate || 350).filter(Boolean);
+      const minRate = Math.min(...rates);
+      const maxRate = Math.max(...rates);
+      const rateInput = document.getElementById('rate');
+      if (rateInput && rateInput.value == '350') rateInput.value = minRate; // Sätt lägsta pris som default
+      // Uppdatera "från X kr"-texter
+      document.querySelectorAll('.min-rate').forEach(el => el.textContent = minRate);
+      document.querySelectorAll('.max-rate').forEach(el => el.textContent = maxRate);
+      document.querySelectorAll('.min-rate-rut').forEach(el => el.textContent = Math.round(minRate * 0.5));
+      calc();
+    }
+  } catch(e) {}
+})();
+
 function calc(){
   const rate=+document.getElementById('rate').value||350;
   const hours=+document.getElementById('hours').value||3;
@@ -280,6 +305,9 @@ function calc(){
   const rut=useRut?Math.round(sub*.5):0;
   const tot=sub-rut;
   document.getElementById('r-rate').textContent=rate+' kr/h';
+  // Uppdatera note om priser varierar
+  const note = document.getElementById('price-varies-note');
+  if (note) note.textContent = 'Priset varierar per städare. Se tillgängliga priser när du väljer städare i nästa steg.';
   document.getElementById('r-hours').textContent=hours+' h';
   document.getElementById('r-sub').textContent=sub.toLocaleString('sv')+' kr';
   document.getElementById('r-rut').textContent=useRut?'−'+rut.toLocaleString('sv')+' kr':'–';

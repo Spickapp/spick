@@ -252,7 +252,7 @@ function closeMobMenu(){document.getElementById('mobOverlay').style.display='non
 const SB_h=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
 async function loadLocalCleaners(){
   const city='Halmstad';
-  const {data}=await SB_h.from('cleaners').select('id,full_name,hourly_rate,avg_rating,review_count,city,bio,services,identity_verified,bonus_level').eq('status','godkänd').ilike('city',city).order('avg_rating',{ascending:false}).limit(3);
+  const {data}=await SB_h.from('cleaners').select('id,full_name,hourly_rate,avg_rating,review_count,city,bio,services,identity_verified,bonus_level').eq('is_approved',true).ilike('city',city).order('avg_rating',{ascending:false}).limit(3);
   const grid=document.getElementById('cleaners-grid');
   if(!grid)return;
   if(!data?.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#888">Inga städare i Halmstad ännu – <a href="stadare.html" style="color:var(--g)">se alla städare →</a></div>';return;}

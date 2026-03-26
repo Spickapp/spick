@@ -318,8 +318,9 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
     <div class="step-panel" id="step2">
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Lediga städare</div>
-          <div class="card-sub" id="step2-sub">Tillgängliga för ditt valda datum och tid</div>
+          <div class="card-title" style="font-size:1.05rem">👤 Välj din städare</div>
+          <div class="card-sub" id="step2-sub" style="font-size:.82rem">Alla är BankID-verifierade med äkta betyg</div>
+          <div id="cleaner-price-range" style="font-size:.78rem;color:var(--g);font-weight:600;margin-top:4px"></div>
         </div>
         <div class="card-body">
           <div id="cleaners-wrap">
@@ -840,7 +841,7 @@ async function loadAvailableCleaners() {
   try {
     const dow = new Date(state.date + 'T00:00:00').getDay();
     // Hämta städare som: är godkända, har tillgänglighet denna dag, inte är blockerade, inte fullbokade
-    let url = `${SUPA}/rest/v1/cleaners?status=eq.godkänd&select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified`;
+    let url = `${SUPA}/rest/v1/cleaners?is_approved=eq.true&select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified`;
     const res = await fetch(url, {headers:H});
     let cleaners = await res.json();
     // Filtrera: har tjänsten
@@ -871,6 +872,25 @@ async function loadAvailableCleaners() {
     cleaners = cleaners.filter(c => !takenNow.includes(c.id));
     // Sortera: betyg → antal uppdrag → pris
     cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
+  
+  // Visa prisintervall
+  if (cleaners.length) {
+    const rates = cleaners.map(cl => cl.hourly_rate || 350);
+    const minR = Math.min(...rates), maxR = Math.max(...rates);
+    const minRut = Math.round(minR*0.5), maxRut = Math.round(maxR*0.5);
+    const rangeEl = document.getElementById('cleaner-price-range');
+    if (rangeEl) rangeEl.textContent = minR === maxR
+      ? `${minR} kr/h · med RUT: ${minRut} kr/h`
+      : `${minR}–${maxR} kr/h · med RUT: ${minRut}–${maxRut} kr/h`;
+    // Hint under kvm-fältet på steg 1
+    const hintEl = document.getElementById('step1-price-hint');
+    if (hintEl) hintEl.textContent = `Städare från ${minR} kr/h (${minRut} kr/h med RUT)`;
+    // Prisintervall i sammanfattningspanelen (innan val)
+    const prt = document.getElementById('price-range-text');
+    const prh = document.getElementById('price-range-hint');
+    if (prt) prt.textContent = `${minR}–${maxR} kr/h · med RUT: ${minRut}–${maxRut} kr/h`;
+    if (prh) prh.style.display = 'block';
+  }
     state.availableCleaners = cleaners;
     renderCleaners(cleaners);
   } catch(e) {
@@ -931,6 +951,9 @@ function selectCleaner(cl, cardEl) {
   state.cleanerId   = cl.id;
   state.cleanerName = cl.full_name;
   state.cleanerRate = cl.hourly_rate || 350;
+  // Dölj range-hint, visa städarens faktiska pris
+  const prh = document.getElementById('price-range-hint');
+  if (prh) prh.style.display = 'none';
   state.cleanerCity = cl.city || '';
   document.querySelectorAll('.cleaner-card').forEach(c => c.classList.remove('selected'));
   cardEl.classList.add('selected');

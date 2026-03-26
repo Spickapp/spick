@@ -189,7 +189,7 @@ async function submit() {
   if (cleanerId && !error) {
     const { data: reviews } = await SB.from('reviews').select('rating').eq('cleaner_id', cleanerId);
     if (reviews?.length) {
-      const avg = reviews.reduce((s,r) => s + r.rating, 0) / reviews.length;
+      const avg = reviews.reduce((s,r) => s + r.cleaner_rating, 0) / reviews.length;
       await SB.from('cleaners').update({ avg_rating: Math.round(avg * 10) / 10 }).eq('id', cleanerId);
     }
   }

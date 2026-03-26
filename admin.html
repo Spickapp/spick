@@ -776,7 +776,7 @@ function renderDashboard() {
   const revenue = paid.reduce((s, b) => s + (b.total_price || 0), 0);
   const pending = data.bookings.filter(b => b.payment_status === 'pending');
   const approvedCleaners = data.cleaners.filter(c => c.is_approved);
-  const avgRating = data.reviews.length ? (data.reviews.reduce((s,r) => s + (r.rating||5), 0) / data.reviews.length).toFixed(1) : '–';
+  const avgRating = data.reviews.length ? (data.reviews.reduce((s,r) => s + (r.cleaner_rating||5), 0) / data.reviews.length).toFixed(1) : '–';
   const pendingApps = data.applications.filter(a => a.status === 'pending');
 
   document.getElementById('kpi-revenue').textContent = Math.round(revenue).toLocaleString('sv') + ' kr';
@@ -818,7 +818,7 @@ function renderDashboard() {
   const rr = data.reviews.slice(0, 6);
   document.getElementById('dash-recent-reviews').innerHTML = rr.length ? rr.map(r => `
     <div class="stat-row">
-      <span class="lbl">${'⭐'.repeat(r.rating || 5)} ${r.comment ? r.comment.substring(0,40)+'...' : 'Ingen kommentar'}</span>
+      <span class="lbl">${'⭐'.repeat(r.cleaner_rating || 5)} ${r.comment ? r.comment.substring(0,40)+'...' : 'Ingen kommentar'}</span>
       <span style="font-size:.78rem;color:var(--m)">${new Date(r.created_at).toLocaleDateString('sv')}</span>
     </div>`).join('') : '<div class="empty">Inga recensioner än</div>';
 }
@@ -1162,7 +1162,7 @@ function renderReviews() {
     <tr>
       <td>${r.customer_name || r.customer_email || '–'}</td>
       <td>${r.cleaner_name || r.cleaner_id?.substring(0,8) || '–'}</td>
-      <td>${'⭐'.repeat(r.rating || 5)} <strong>${r.rating || 5}/5</strong></td>
+      <td>${'⭐'.repeat(r.cleaner_rating || 5)} <strong>${r.cleaner_rating || 5}/5</strong></td>
       <td style="max-width:200px;font-size:.83rem">${r.comment || '–'}</td>
       <td style="font-size:.78rem;color:var(--m)">${r.aspects || '–'}</td>
       <td>${new Date(r.created_at).toLocaleDateString('sv')}</td>
@@ -1317,7 +1317,7 @@ async function openAssignModal(bookingId) {
   // Hämta godkända städare
   const { data: cleaners } = await SB.from('cleaners')
     .select('id,full_name,city,avg_rating')
-    .eq('status','godkänd')
+    .eq('is_approved',true)
     .order('avg_rating', { ascending: false });
   
   let opts = cleaners?.map(c => 

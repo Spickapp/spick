@@ -265,14 +265,14 @@ async function init(){
       <div class="skeleton skel-btn"></div>
     </div>`).join('');
 
-  const {data,error}=await SB.from('cleaners').select('*').eq('status','godkänd').order('avg_rating',{ascending:false});
+  const {data,error}=await SB.from('cleaners').select('*').eq('is_approved',true).order('avg_rating',{ascending:false});
   if(error||!data?.length){document.getElementById('grid').innerHTML=`<div id="error-state" style="grid-column:1/-1;text-align:center;padding:3rem 1rem">
   <div style="font-size:2rem;margin-bottom:1rem">😕</div>
   <div style="font-weight:600;margin-bottom:.5rem">Något gick fel</div>
   <div style="color:var(--m);font-size:.875rem;margin-bottom:1.5rem">Kunde inte ladda städare. Kontrollera din anslutning.</div>
   <button onclick="init()" style="background:var(--g,#0F6E56);color:#fff;border:none;padding:.625rem 1.5rem;border-radius:99px;cursor:pointer;font-family:inherit;font-size:.875rem">Försök igen</button>
 </div>`;return;}
-  ALL=data.map((r,i)=>({id:r.id,name:r.full_name||'Okänd',city:r.city||'Stockholm',price:r.hourly_rate||350,rating:parseFloat(r.avg_rating||r.rating||0).toFixed(1),bio:r.bio||'Professionell städare.',tags:Array.isArray(r.services)?r.services:(r.services||'Hemstädning').split(',').map(s=>s.trim()),color:COLORS[i%COLORS.length],top:i===0,jobs:r.review_count||r.jobs_completed||0,verified:r.identity_verified||r.bankid_verified||false,bonus:r.bonus_level||'Brons'}));
+  ALL=data.map((r,i)=>({id:r.id,name:r.full_name||'Okänd',city:r.city||'Stockholm',price:r.hourly_rate||350,rating:parseFloat(r.avg_rating||r.cleaner_rating||0).toFixed(1),bio:r.bio||'Professionell städare.',tags:Array.isArray(r.services)?r.services:(r.services||'Hemstädning').split(',').map(s=>s.trim()),color:COLORS[i%COLORS.length],top:i===0,jobs:r.review_count||r.jobs_completed||0,verified:r.identity_verified||r.bankid_verified||false,bonus:r.bonus_level||'Brons'}));
   render();
 }
 
@@ -336,7 +336,7 @@ function render(){
         <div class="cname">${c.name}</div>
         <div class="cloc">📍 ${c.city}</div>
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-          <span><span class="stars">${st(parseFloat(c.rating))}</span><span class="rating"> ${c.rating}</span></span>
+          <span><span class="stars">${st(parseFloat(c.avg_rating||0))}</span><span class="rating"> ${c.avg_rating ? parseFloat(c.avg_rating).toFixed(1) : "–"}</span></span>
           ${c.jobs>0?'<span class="jobs">('+c.jobs+' recensioner)</span>':'<span style="font-size:.72rem;color:var(--m)">Ny städare</span>'}
         </div>
       </div>
@@ -350,7 +350,7 @@ function render(){
       </div>
     </div>
     <div class="card-foot">
-      <a class="book-btn" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.rating}&id=${c.id}">Boka ${c.name.split(' ')[0]} →</a>
+      <a class="book-btn" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.avg_rating||0}&id=${c.id}">Boka ${c.name.split(' ')[0]} →</a>
       <a class="prof-btn" href="profil.html?id=${c.id}">Profil</a>
     </div>
   </div>`).join('');
