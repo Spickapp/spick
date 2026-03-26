@@ -106,7 +106,7 @@ for b in bookings_tomorrow:
     price_display = f"{int(b.get('total_price',0))} kr" + (" (efter RUT)" if b.get('rut') else "")
     html = wrap(f"""
 <h2>Påminnelse om din städning imorgon 🌿</h2>
-<p>Hej {b.get('customer_name','')?.split()[0] if b.get('customer_name') else 'där'}! En städare kommer imorgon – här är detaljerna.</p>
+<p>Hej {(b.get('customer_name') or '').split()[0] or 'där'}! En städare kommer imorgon – här är detaljerna.</p>
 <div class="card">
   <div class="row"><span class="lbl">Datum</span><span class="val">{b.get('date','')}</span></div>
   <div class="row"><span class="lbl">Tid</span><span class="val">{b.get('time','09:00')}</span></div>
@@ -131,7 +131,7 @@ bookings_yesterday = supa_get(
 )
 for b in bookings_yesterday:
     name = b.get('customer_name','')
-    fname = name.split()[0] if name else 'där'
+    fname = (name.split()[0] if name and name.strip() else 'där')
     html = wrap(f"""
 <h2>Hur gick städningen? ⭐</h2>
 <p>Hej {fname}! Vi hoppas att du är nöjd med din {b.get('service','städning').lower()} igår.</p>
@@ -235,7 +235,7 @@ todays_bookings = supa_get(f"bookings?date=eq.{TODAY}&select=id,service,total_pr
 paid_today = [b for b in todays_bookings if b.get('payment_status') == 'paid']
 revenue_today = sum(b.get('total_price', 0) for b in paid_today)
 
-new_applications = supa_get(f"cleaner_applications?created_at=gte.{TODAY}T00:00:00&select=id,full_name,city")
+new_applications = supa_get(f"cleaner_applications?created_at=gte.{TODAY}T00:00:00&select=id,name,city")
 
 if paid_today or new_applications:
     jobs_html = "".join([
@@ -243,7 +243,7 @@ if paid_today or new_applications:
         for b in paid_today
     ])
     apps_html = "".join([
-        f"<li>{a.get('full_name','')} – {a.get('city','')}</li>"
+        f"<li>{a.get('name','')} – {a.get('city','')}</li>"
         for a in new_applications
     ])
     html = wrap(f"""
