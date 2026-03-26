@@ -656,6 +656,29 @@ function calcHours() {
   else h = Math.ceil(sqm / 35);
   if (state.service === 'Storstädning' || state.service === 'Flyttstädning') h = Math.ceil(h * 1.5);
   state.hours = h;
+  // Om datum redan valts: uppdatera slots med ny timåtgång
+  if (state.date) {
+    const slots = getAvailableSlots(state.date, h);
+    const slotsEl = document.getElementById('cal-slots');
+    if (slotsEl && slotsEl.children.length) {
+      Array.from(slotsEl.children).forEach(btn => {
+        const isNowTaken = slots.find(s => s.time === btn.textContent)?.taken;
+        if (isNowTaken) {
+          btn.className = 'slot taken';
+          btn.onclick = null;
+        } else {
+          btn.className = 'slot' + (btn.textContent === state.time ? ' selected' : '');
+          btn.onclick = () => selectTime(btn.textContent, btn);
+        }
+      });
+      // Om vald tid nu inte längre passar → rensa
+      if (state.time && slots.find(s => s.time === state.time)?.taken) {
+        state.time = '';
+        document.getElementById('time').value = '';
+        document.getElementById('cal-sel-info').style.display = 'none';
+      }
+    }
+  }
   document.getElementById('hours-display').textContent = h + ' timmar';
   updateSidebar();
 }
@@ -690,7 +713,7 @@ async function loadGlobalAvailability() {
     const [availRes, blockedRes, bookingsRes] = await Promise.all([
       fetch(`${SUPA}/rest/v1/cleaner_availability?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H}),
       fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H}),
-      fetch(`${SUPA}/rest/v1/bookings?status=neq.avbokad&select=cleaner_id,date,time&order=date.asc`, {headers:H})
+      fetch(`${SUPA}/rest/v1/bookings?payment_status=eq.paid&status=neq.avbokad&select=cleaner_id,date,time,time_end,hours&order=date.asc`, {headers:H})
     ]);
     const avail   = await availRes.json();
     const blocked = await blockedRes.json();
@@ -716,29 +739,84 @@ function isDayAvailable(dateStr) {
   return true;
 }
 
-function getAvailableSlots(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const dow = d.getDay();
-  // Hitta tidsspann från tillgängliga städare
-  const dayAvails = state.availability.filter(a => a.day_of_week === dow);
+// Konvertera "09:00" → minuter sedan midnatt
+function timeToMin(t) {
+  if (!t) return 0;
+  const [h,m] = t.split(':').map(Number);
+  return h*60 + (m||0);
+}
+function minToTime(m) {
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+
+// Kontrollera om ett nytt uppdrag [startMin, startMin+neededMins) krockar med ett existerande
+function overlaps(startMin, neededMins, existStart, existEnd) {
+  const newEnd = startMin + neededMins;
+  return startMin < existEnd && newEnd > existStart;
+}
+
+function getAvailableSlots(dateStr, neededHours) {
+  neededHours = neededHours || state.hours || 3;
+  const neededMins = neededHours * 60;
+  const dow = new Date(dateStr + 'T00:00:00').getDay();
+
+  // Hämta alla tillgängliga städare med sina fönster denna dag
+  const dayAvails = state.availability.filter(a => a.day_of_week === dow && a.is_active !== false);
   if (!dayAvails.length) {
-    // Fallback om inga regler: visa 08-17
-    return ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+    // Fallback: mån–fre 08–17
+    dayAvails.push({cleaner_id: null, day_of_week: dow, start_time: '08:00', end_time: '17:00'});
   }
-  // Använd den bredaste tillgängliga timmen
-  let minH = 17, maxH = 8;
+
+  // Bokade fönster denna dag (per städare): [{cleanerId, startMin, endMin}]
+  const bookedWindows = state.bookings
+    .filter(b => b.date === dateStr)
+    .map(b => ({
+      cleanerId: b.cleaner_id,
+      startMin:  timeToMin(b.time),
+      endMin:    timeToMin(b.time_end) || timeToMin(b.time) + (b.hours||3)*60
+    }));
+
+  // För varje möjlig starttid (var 30:e minut inom det bredaste fönstret):
+  // Är det MINST EN städare som kan ta uppdraget utan konflikt?
+  let earliestStart = 480, latestStart = 1020; // 08:00 – 17:00 default
   dayAvails.forEach(a => {
-    const sh = parseInt(a.start_time?.split(':')[0] || '8');
-    const eh = parseInt(a.end_time?.split(':')[0] || '17');
-    minH = Math.min(minH, sh);
-    maxH = Math.max(maxH, eh);
+    earliestStart = Math.min(earliestStart, timeToMin(a.start_time));
+    latestStart   = Math.max(latestStart,   timeToMin(a.end_time) - neededMins);
   });
-  // Bokade tider (alla städare)
-  const taken = state.bookings.filter(b => b.date === dateStr).map(b => b.time?.slice(0,5));
-  // Generera slots
+  latestStart = Math.max(latestStart, earliestStart);
+
   const slots = [];
-  for (let h = minH; h < maxH; h++) {
-    slots.push({time: String(h).padStart(2,'0')+':00', taken: taken.includes(String(h).padStart(2,'0')+':00')});
+  for (let startMin = earliestStart; startMin <= latestStart; startMin += 60) {
+    // Kolla om minst 1 städare kan ta detta fönster
+    const available = dayAvails.some(a => {
+      const aStart = timeToMin(a.start_time);
+      const aEnd   = timeToMin(a.end_time);
+      // Passar uppdraget inom städarens fönster?
+      if (startMin < aStart || startMin + neededMins > aEnd) return false;
+      // Finns det en bokning som krockar för DENNA städare?
+      const cid = a.cleaner_id;
+      const myBookings = cid
+        ? bookedWindows.filter(bw => bw.cleanerId === cid)
+        : bookedWindows; // null cleaner_id = fallback, kolla alla
+      return !myBookings.some(bw => overlaps(startMin, neededMins, bw.startMin, bw.endMin));
+    });
+
+    // Kolla om ALLA städare är bokade (= rödmarkera)
+    const allTaken = dayAvails.every(a => {
+      const aStart = timeToMin(a.start_time);
+      const aEnd   = timeToMin(a.end_time);
+      if (startMin < aStart || startMin + neededMins > aEnd) return true; // utanför fönster = kan ej ta
+      const cid = a.cleaner_id;
+      const myBookings = cid
+        ? bookedWindows.filter(bw => bw.cleanerId === cid)
+        : bookedWindows;
+      return myBookings.some(bw => overlaps(startMin, neededMins, bw.startMin, bw.endMin));
+    });
+
+    slots.push({
+      time:  minToTime(startMin),
+      taken: !available || allTaken
+    });
   }
   return slots;
 }
@@ -802,7 +880,7 @@ function selectDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   document.getElementById('cal-date-lbl').textContent =
     DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
-  const slots = getAvailableSlots(dateStr);
+  const slots = getAvailableSlots(dateStr, state.hours || 3);
   slotsEl.innerHTML = '';
   document.getElementById('cal-sel-info').style.display = 'none';
   if (!slots.length) {
@@ -811,8 +889,16 @@ function selectDate(dateStr) {
     noSlots.style.display = 'none'; slotsEl.style.display='flex';
     slots.forEach(s => {
       const btn = document.createElement('button');
+      const endTime = (() => {
+        const [h,m] = s.time.split(':').map(Number);
+        const endMin = h*60 + (m||0) + (state.hours||3)*60;
+        return String(Math.floor(endMin/60)).padStart(2,'0') + ':' + String(endMin%60).padStart(2,'0');
+      })();
       btn.className = 'slot' + (s.taken ? ' taken' : '');
       btn.textContent = s.time;
+      btn.title = s.taken
+        ? 'Ej tillgänglig denna tid'
+        : `${s.time}–${endTime} (${state.hours||3}h)`;
       btn.type = 'button';
       if (!s.taken) btn.onclick = () => selectTime(s.time, btn);
       slotsEl.appendChild(btn);

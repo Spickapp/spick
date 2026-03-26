@@ -348,10 +348,28 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
       <!-- Veckoschema -->
       <div class="card">
         <div class="card-title">🗓 Mitt veckoschema</div>
-        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px">Välj vilka dagar och tider du är tillgänglig.</p>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px;line-height:1.6">Välj vilka dagar och tider du är tillgänglig. Kunder kan <strong>bara boka</strong> under dessa tider. Befintliga bokningar påverkas ej.</p>
         <div id="schedule-grid"></div>
-        <button onclick="saveSchedule()" style="margin-top:12px;width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">Spara schema</button>
+        <div style="font-size:.7rem;color:var(--m);margin-top:8px;background:#F9F9F7;border-radius:8px;padding:8px 10px;line-height:1.6">
+          💡 En 3h-bokning kl 09:00 blockerar automatiskt 09:00–12:00. En 5h-bokning kl 09:00 blockerar 09:00–14:00. Inga överlappande bokningar möjliga.
+        </div>
+        <button onclick="saveSchedule()" style="margin-top:12px;width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">💾 Spara schema</button>
         <div id="schedule-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
+      </div>
+
+      <!-- Spärra enskilda datum (semester, sjukdom) -->
+      <div class="card">
+        <div class="card-title">🚫 Spärra datum <span>semester, sjukdom</span></div>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px;line-height:1.6">Inga kunder kan boka dessa datum. Befintliga bokningar påverkas ej.</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input type="date" id="block-date-input"
+            min="${new Date().toISOString().split('T')[0]}"
+            style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.82rem;outline:none">
+          <button onclick="addBlockedDate()" style="padding:8px 14px;background:var(--r);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem;white-space:nowrap">+ Spärra</button>
+        </div>
+        <div id="blocked-dates-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
+          <span style="color:var(--m);font-size:.8rem">Laddar...</span>
+        </div>
       </div>
 
       <!-- Tjänster -->
@@ -549,6 +567,7 @@ async function loadCleanerByEmail(email) {
   }
 
   buildSchedule();
+  loadBlockedDates();
   showScreen('app');
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
   setupRealtime();
@@ -919,44 +938,175 @@ async function saveProfile() {
 }
 
 // ── SCHEDULE ─────────────────────────────────────────────────
-function buildSchedule() {
-  const saved = cleaner.availability_schedule || {};
-  document.getElementById('schedule-grid').innerHTML = DAYS.map((day, i) => {
-    const key = day.toLowerCase();
-    const s = saved[key] || {};
-    const active = s.active !== false;
-    return `<div class="sched-day">
+// DOW-mapping: DAYS[0]=Måndag=1, DAYS[6]=Söndag=0 (JS getDay)
+const DOW_MAP = [1,2,3,4,5,6,0]; // DAYS-index → JS day_of_week
+
+async function buildSchedule() {
+  // Hämta befintlig availability från tabellen
+  const {data: avRows} = await SB.from('cleaner_availability')
+    .select('*').eq('cleaner_id', cleaner.id);
+  const rowByDow = {};
+  (avRows||[]).forEach(r => { rowByDow[r.day_of_week] = r; });
+
+  const grid = document.getElementById('schedule-grid');
+  // Etikettraden
+  grid.innerHTML = `<div class="sched-day" style="font-size:.72rem;color:var(--m);font-weight:600">
+    <span>Dag</span><span style="text-align:center">Börjar</span><span style="text-align:center">Slutar</span>
+  </div>`;
+
+  DAYS.forEach((day, i) => {
+    const dow = DOW_MAP[i];
+    const row = rowByDow[dow] || {};
+    const active = row.is_active !== false && !!row.id; // Aktiv om den finns i tabellen
+    const start = row.start_time?.slice(0,5) || '08:00';
+    const end   = row.end_time?.slice(0,5)   || '17:00';
+
+    // Generera timval 05:00–22:00
+    const timeOpts = (sel) => Array.from({length:18},(_,h)=>h+5).map(h =>
+      `<option value="${String(h).padStart(2,'0')}:00" ${sel===String(h).padStart(2,'0')+':00'?'selected':''}>${String(h).padStart(2,'0')}:00</option>`
+    ).join('');
+
+    const el = document.createElement('div');
+    el.className = 'sched-day';
+    el.dataset.dow = dow;
+    el.innerHTML = `
       <div class="toggle-wrap">
         <div class="toggle ${active?'on':''}" id="tog-${i}" onclick="toggleDay(${i})"></div>
-        <label>${day.slice(0,3)}</label>
+        <label style="${active?'':'color:var(--m)'}" id="tog-lbl-${i}">${day.slice(0,3)}</label>
       </div>
-      <input class="sched-time" type="time" id="start-${i}" value="${s.start||'08:00'}">
-      <input class="sched-time" type="time" id="end-${i}" value="${s.end||'17:00'}">
-    </div>`;
-  }).join('');
+      <select class="sched-time" id="start-${i}" ${!active?'disabled':''}>
+        ${timeOpts(start)}
+      </select>
+      <select class="sched-time" id="end-${i}" ${!active?'disabled':''}>
+        ${timeOpts(end)}
+      </select>`;
+    grid.appendChild(el);
+  });
 }
 
 function toggleDay(i) {
   const tog = document.getElementById('tog-'+i);
-  tog.classList.toggle('on');
+  const lbl = document.getElementById('tog-lbl-'+i);
+  const s = document.getElementById('start-'+i);
+  const e = document.getElementById('end-'+i);
+  const on = tog.classList.toggle('on');
+  if (lbl) lbl.style.color = on ? '' : 'var(--m)';
+  if (s) s.disabled = !on;
+  if (e) e.disabled = !on;
 }
 
 async function saveSchedule() {
-  const sched = {};
-  DAYS.forEach((day,i) => {
-    const key = day.toLowerCase();
-    const tog = document.getElementById('tog-'+i);
-    sched[key] = {active:tog.classList.contains('on'),start:document.getElementById('start-'+i).value,end:document.getElementById('end-'+i).value};
-  });
-  const {error} = await SB.from('cleaners').update({availability_schedule:sched}).eq('id',cleaner.id);
   const msg = document.getElementById('schedule-msg');
-  if (error) { msg.textContent = '❌ Fel'; msg.style.color='var(--r)'; }
-  else { msg.textContent = '✅ Schema sparat!'; msg.style.color='var(--g)'; cleaner.availability_schedule = sched; }
-  msg.style.display = 'block';
-  setTimeout(() => msg.style.display = 'none', 2500);
+  msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
+
+  const upserts = [];
+  const deletes = [];
+
+  DAYS.forEach((day, i) => {
+    const dow = DOW_MAP[i];
+    const active = document.getElementById('tog-'+i)?.classList.contains('on');
+    const start  = document.getElementById('start-'+i)?.value || '08:00';
+    const end    = document.getElementById('end-'+i)?.value   || '17:00';
+
+    if (active) {
+      upserts.push({
+        cleaner_id: cleaner.id,
+        day_of_week: dow,
+        start_time: start,
+        end_time: end,
+        is_active: true
+      });
+    } else {
+      deletes.push(dow);
+    }
+  });
+
+  let error = null;
+
+  // Upsert aktiva dagar
+  if (upserts.length) {
+    const {error:e1} = await SB.from('cleaner_availability')
+      .upsert(upserts, {onConflict: 'cleaner_id,day_of_week'});
+    if (e1) error = e1;
+  }
+
+  // Ta bort inaktiva dagar
+  if (deletes.length) {
+    const {error:e2} = await SB.from('cleaner_availability')
+      .delete()
+      .eq('cleaner_id', cleaner.id)
+      .in('day_of_week', deletes);
+    if (e2 && !error) error = e2;
+  }
+
+  // Spara även JSONB-fallback (bakåtkompatibilitet)
+  const schedJson = {};
+  DAYS.forEach((day,i) => {
+    schedJson[day.toLowerCase()] = {
+      active: document.getElementById('tog-'+i)?.classList.contains('on') || false,
+      start:  document.getElementById('start-'+i)?.value || '08:00',
+      end:    document.getElementById('end-'+i)?.value   || '17:00',
+    };
+  });
+  await SB.from('cleaners').update({availability_schedule: schedJson}).eq('id', cleaner.id).catch(()=>{});
+
+  if (error) {
+    msg.textContent = '❌ Fel vid sparning: ' + (error.message||'Okänt fel');
+    msg.style.color = 'var(--r)';
+  } else {
+    msg.textContent = '✅ Schema sparat – bokningar uppdateras direkt!';
+    msg.style.color = 'var(--g)';
+  }
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
 }
 
 // ── STRIPE CONNECT ───────────────────────────────────────────
+// ── SPÄRRADE DATUM ──────────────────────────────────────────────────────────
+async function loadBlockedDates() {
+  const el = document.getElementById('blocked-dates-list');
+  if (!el) return;
+  const {data} = await SB.from('cleaner_blocked_dates')
+    .select('id,blocked_date,reason')
+    .eq('cleaner_id', cleaner.id)
+    .gte('blocked_date', new Date().toISOString().split('T')[0])
+    .order('blocked_date');
+
+  if (!data?.length) {
+    el.innerHTML = '<span style="color:var(--m);font-size:.78rem">Inga spärrade datum</span>';
+    return;
+  }
+  el.innerHTML = data.map(d => {
+    const dt = new Date(d.blocked_date + 'T00:00:00');
+    const label = dt.toLocaleDateString('sv-SE', {weekday:'short',month:'short',day:'numeric'});
+    return `<div style="display:flex;align-items:center;gap:5px;background:#FEE2E2;border:1px solid #FECACA;border-radius:20px;padding:3px 10px;font-size:.75rem;color:#DC2626">
+      <span>${label}</span>
+      <button onclick="removeBlockedDate('${d.id}')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:.9rem;padding:0;line-height:1">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function addBlockedDate() {
+  const inp = document.getElementById('block-date-input');
+  const dateVal = inp?.value;
+  if (!dateVal) { showToast('Välj ett datum'); return; }
+  const {error} = await SB.from('cleaner_blocked_dates').insert([{
+    cleaner_id: cleaner.id,
+    blocked_date: dateVal
+  }]);
+  if (error && error.code !== '23505') { // Ignorera duplikat
+    showToast('❌ ' + error.message); return;
+  }
+  showToast('🚫 ' + dateVal + ' spärrat!');
+  if (inp) inp.value = '';
+  loadBlockedDates();
+}
+
+async function removeBlockedDate(id) {
+  await SB.from('cleaner_blocked_dates').delete().eq('id', id);
+  showToast('✅ Datum borttaget');
+  loadBlockedDates();
+}
+
 async function startStripeConnect() {
   showToast('Öppnar Stripe...');
   const {data:{session}} = await SB.auth.getSession();
@@ -1001,6 +1151,7 @@ function switchTab(tab) {
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('nav-'+tab)?.classList.add('active');
   if (tab === 'earn') renderEarnings();
+  if (tab === 'profile') { buildSchedule(); loadBlockedDates(); }
 }
 
 function showToast(msg) {
