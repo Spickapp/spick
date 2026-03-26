@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -299,15 +299,15 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 </div>
 
 <script>
-const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
-const p=new URLSearchParams(location.search);
-const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
+var SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
+var p=new URLSearchParams(location.search);
+var COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 var rate=+(p.get('rate')||350),useRut=true,cleanerId=p.get('id');
 window._getUseRut = () => useRut; // exponera för testning
-const ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+var ini=n=>(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 
 // Sätt min-datum till imorgon
-const tmr=new Date();tmr.setDate(tmr.getDate()+1);
+var tmr=new Date();tmr.setDate(tmr.getDate()+1);
 document.getElementById('date').min=tmr.toISOString().split('T')[0];
 document.getElementById('date').value=tmr.toISOString().split('T')[0];
 
@@ -393,7 +393,7 @@ function calcHoursFromSqm() {
   }
 
   // Timberäkning per tjänst och kvm
-  let hours;
+  var hours;
   if (svc === 'Storstädning') {
     // Storstädning tar längre tid – ca 1h per 25 kvm
     if (sqm <= 40)       hours = 2;
@@ -681,7 +681,7 @@ function updateServiceInfo() {
 }
 
 // ── ADRESS AUTOCOMPLETE (OpenStreetMap Nominatim) ────────
-let _addrTimer = null;
+var _addrTimer = null;
 async function addrSearch(q) {
   clearTimeout(_addrTimer);
   const box = document.getElementById('addr-suggestions');
