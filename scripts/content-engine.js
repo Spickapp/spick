@@ -112,9 +112,26 @@ Returnera BARA valid JSON, ingen annan text.`;
   const data = await response.json();
   const text = data.content?.[0]?.text || '';
   
-  // Parse JSON from response (handle potential markdown wrapping)
+  // Robust JSON extraction — handle markdown wrapping, extra text, errors
   const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(jsonStr);
+  
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e1) {
+    // Fallback: try to find JSON object in the response
+    const match = jsonStr.match(/\{[\s\S]*"posts"[\s\S]*\}/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]);
+      } catch (e2) {
+        console.error('❌ Failed to parse AI response (both attempts):');
+        console.error('  Raw text (first 500 chars):', text.slice(0, 500));
+        throw new Error('AI returned invalid JSON. Manual content generation needed this week.');
+      }
+    }
+    console.error('❌ No JSON found in AI response:', text.slice(0, 500));
+    throw new Error('AI response contained no valid JSON.');
+  }
 }
 
 // ── PUSH TO BUFFER ─────────────────────────────────────────
