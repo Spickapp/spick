@@ -8,7 +8,7 @@ const SPICK = Object.freeze({
   SUPA_KEY:  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
   SITE_URL:  'https://spick.se',
   ADMIN_EMAIL: 'hello@spick.se',
-  VERSION:   '2.1.0',
+  VERSION:   '3.0.0',
 });
 
 // Gemensamma headers för Supabase REST API
@@ -55,5 +55,56 @@ async function spickNotify(type, record) {
   } catch(e) {
     console.error('spickNotify:', e.message);
     return { ok: false };
+  }
+}
+
+// ── PRODUCTION RESILIENCE ────────────────────────────────────
+
+// Global error handler — fångar uncaught errors utan att visa rå stacktraces
+window.addEventListener('error', function(e) {
+  console.error('[SPICK]', e.message, e.filename, e.lineno);
+  // Skicka till analytics (fire-and-forget)
+  try {
+    navigator.sendBeacon && navigator.sendBeacon(
+      SPICK.SUPA_URL + '/rest/v1/analytics_events',
+      new Blob([JSON.stringify({
+        event_type: 'js_error',
+        page: location.pathname,
+        data: JSON.stringify({ msg: e.message, file: e.filename, line: e.lineno }),
+      })], { type: 'application/json' })
+    );
+  } catch(_) {}
+});
+
+// Unhandled promise rejection
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[SPICK] Unhandled:', e.reason?.message || e.reason);
+});
+
+// Fetch med timeout + retry (för frontend-anrop)
+async function spickFetchSafe(url, opts = {}, retries = 2, timeoutMs = 10000) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), timeoutMs);
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      clearTimeout(tid);
+      if (res.ok || res.status < 500) return res;
+      // 5xx → retry
+      if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    } catch(e) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+}
+
+// Graceful degradation: visa användarvänligt felmeddelande
+function spickShowError(containerSelector, message) {
+  const el = document.querySelector(containerSelector);
+  if (el) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:#92400E;background:#FEF3C7;border-radius:12px;margin:1rem 0">' +
+      '<p style="font-weight:600;margin:0 0 .5rem">Något gick fel</p>' +
+      '<p style="margin:0;font-size:.9rem">' + (message || 'Försök igen om en stund eller kontakta hello@spick.se') + '</p></div>';
   }
 }

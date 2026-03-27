@@ -1,106 +1,86 @@
-// SPICK SERVICE WORKER v2.0
-const CACHE = 'spick-v4';
-const STATIC = [
-  '/', '/index.html', '/stadare.html', '/boka.html',
-  '/bli-stadare.html', '/hur-det-funkar.html', '/priser.html',
-  '/faq.html', '/404.html', '/profil.html', '/tack.html', '/manifest.json'
+// SPICK SERVICE WORKER v3.0 — Production-grade
+// Stale-While-Revalidate for pages, Cache-First for assets
+const VERSION = '2026-03-27-v3';
+const CACHE = `spick-${VERSION}`;
+
+const PRECACHE = [
+  '/', '/index.html', '/boka.html', '/stadare.html',
+  '/priser.html', '/hur-det-funkar.html', '/faq.html',
+  '/404.html', '/manifest.json',
+  '/js/config.js', '/js/components.js',
 ];
 
-// Installera och precacha
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(STATIC).catch(() => {}))
+      .then(c => c.addAll(PRECACHE).catch(err => console.warn('Precache partial:', err)))
       .then(() => self.skipWaiting())
   );
 });
 
-// Rensa gamla cacher
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith('spick-') && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-// Fetch: Network-first för API, Cache-first för statiska filer
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Skippa Supabase API och analytics
-  if (url.hostname.includes('supabase.co') ||
-      url.hostname.includes('google-analytics') ||
-      url.hostname.includes('clarity.ms') ||
-      url.pathname.startsWith('/rest/') ||
+  // Never cache: APIs, analytics, third-party
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('google') ||
+      url.hostname.includes('facebook') || url.hostname.includes('clarity') ||
+      url.hostname.includes('stripe') || url.pathname.startsWith('/rest/') ||
       url.pathname.startsWith('/functions/')) return;
 
-  // Network-first med cache fallback
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        if (res.ok && res.type === 'basic') {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
+  // HTML: Stale-While-Revalidate
+  if (e.request.headers.get('accept')?.includes('text/html') || url.pathname.endsWith('.html') || url.pathname === '/') {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const net = fetch(e.request).then(r => {
+          if (r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
+          return r;
+        }).catch(() => cached || caches.match('/404.html'));
+        return cached || net;
       })
-      .catch(() => caches.match(e.request).then(cached => cached || caches.match('/404.html')))
-  );
-});
-
-// Push-notiser
-self.addEventListener('push', e => {
-  let data = { title: 'Spick', body: 'Nytt meddelande', url: '/' };
-  if (e.data) {
-    try { data = { ...data, ...e.data.json() }; }
-    catch { data.body = e.data.text(); }
+    );
+    return;
   }
-  e.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/assets/icon-192.png',
-      badge: '/assets/icon-192.png',
-      tag: 'spick',
-      data: { url: data.url },
-      vibrate: [100, 50, 100]
-    })
+
+  // Static assets: Cache-first
+  if (url.pathname.match(/\.(js|css|woff2?|png|jpg|jpeg|svg|ico|webp)$/)) {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || 
+        fetch(e.request).then(r => {
+          if (r.ok && r.type === 'basic') { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
+          return r;
+        }).catch(() => new Response('', { status: 503 }))
+      )
+    );
+    return;
+  }
+
+  // Everything else: Network-first
+  e.respondWith(
+    fetch(e.request).then(r => {
+      if (r.ok && r.type === 'basic') { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
+      return r;
+    }).catch(() => caches.match(e.request))
   );
 });
 
-// Klick på notis
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(
-    clients.matchAll({ type: 'window' }).then(cl => {
-      for (const c of cl) {
-        if (c.url.includes('spick.se') && 'focus' in c) {
-          c.navigate(e.notification.data?.url || '/');
-          return c.focus();
-        }
-      }
-      if (clients.openWindow) return clients.openWindow(e.notification.data?.url || '/');
-    })
-  );
-});
-
-// ── PUSH NOTIFICATION HANDLER ────────────────────────
+// Push notifications
 self.addEventListener('push', e => {
   if (!e.data) return;
   let data;
   try { data = e.data.json(); } catch { data = { title: 'Spick', body: e.data.text() }; }
-
-  e.waitUntil(
-    self.registration.showNotification(data.title || 'Spick', {
-      body: data.body || '',
-      icon: '/assets/icon-192.png',
-      badge: '/assets/icon-192.png',
-      data: { url: data.url || '/' },
-      actions: data.actions || [],
-      vibrate: [200, 100, 200]
-    })
-  );
+  e.waitUntil(self.registration.showNotification(data.title || 'Spick', {
+    body: data.body || '', icon: '/assets/icon-192.png', badge: '/assets/icon-192.png',
+    tag: 'spick-' + (data.tag || 'default'), data: { url: data.url || '/' }, vibrate: [200, 100, 200],
+  }));
 });
 
 self.addEventListener('notificationclick', e => {

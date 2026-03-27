@@ -1,11 +1,48 @@
 // ═══════════════════════════════════════════════════════════════
-// SPICK – Delad e-postmall + Resend-helper
-// Importeras av: notify, stripe-webhook, auto-remind
+// SPICK – Delad Edge Function-infrastruktur
+// Importeras av: notify, stripe-webhook, auto-remind, health
 // ═══════════════════════════════════════════════════════════════
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM  = "Spick <hello@spick.se>";
 const ADMIN = "hello@spick.se";
+
+/**
+ * CORS headers med preflight-cache (24h)
+ */
+export function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const allowed = ["https://spick.se", "https://www.spick.se"];
+  return {
+    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : "https://spick.se",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+    "Access-Control-Max-Age": "86400", // 24h preflight cache
+  };
+}
+
+/**
+ * Fetch med timeout (default 10s)
+ */
+export async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+/**
+ * Structured log entry
+ */
+export function log(level: "info" | "warn" | "error", fn: string, msg: string, data?: Record<string, unknown>) {
+  const entry = { ts: new Date().toISOString(), level, fn, msg, ...data };
+  if (level === "error") console.error(JSON.stringify(entry));
+  else if (level === "warn") console.warn(JSON.stringify(entry));
+  else console.log(JSON.stringify(entry));
+}
 
 /**
  * HTML-escape user input mot XSS i e-post

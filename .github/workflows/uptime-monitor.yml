@@ -9,37 +9,44 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - name: Check spick.se
+      - name: Check spick.se + health endpoint
         id: check
         run: |
-          # Följ redirects och acceptera 2xx/3xx
+          # 1. Frontend
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location https://spick.se 2>/dev/null || echo "000")
-          echo "HTTP Status: $STATUS"
+          echo "Frontend: HTTP $STATUS"
           echo "status=$STATUS" >> $GITHUB_OUTPUT
-          if [[ "$STATUS" =~ ^[23] ]]; then
-            echo "OK"
+
+          # 2. Health endpoint (Edge Functions + DB + Resend)
+          HEALTH=$(curl -s --max-time 15 https://urjeijcncsyuletprydy.supabase.co/functions/v1/health 2>/dev/null || echo '{"status":"error"}')
+          HEALTH_STATUS=$(echo "$HEALTH" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+          echo "Health: $HEALTH_STATUS"
+          echo "health=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+
+          if [[ "$STATUS" =~ ^[23] ]] && [[ "$HEALTH_STATUS" == "healthy" ]]; then
+            echo "All systems OK"
             exit 0
           fi
           echo "is_down=true" >> $GITHUB_OUTPUT
 
-      - name: Debounce check (max 1 larm/timme)
+      - name: Debounce + alert
         if: steps.check.outputs.is_down == 'true'
-        id: debounce
         env:
           SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           STATUS: ${{ steps.check.outputs.status }}
+          HEALTH: ${{ steps.check.outputs.health }}
         run: |
-          # Dubbelkolla med en andra request
+          # Dubbelkolla
           STATUS2=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location https://spick.se 2>/dev/null || echo "000")
           if [[ "$STATUS2" =~ ^[23] ]]; then
             echo "Falsk alarm — andra request OK (HTTP $STATUS2)"
             exit 0
           fi
-          echo "Bekräftat nere: HTTP $STATUS + $STATUS2"
+          echo "Bekräftat nere: HTTP $STATUS + $STATUS2, Health: $HEALTH"
           if [ -n "$SUPA_KEY" ]; then
             curl -s -X POST https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify \
               -H "Content-Type: application/json" \
               -H "apikey: $SUPA_KEY" \
               -H "Authorization: Bearer $SUPA_KEY" \
-              -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"spick.se HTTP $STATUS (bekräftat: $STATUS2)\"}}" || true
+              -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"spick.se HTTP $STATUS (bekräftat: $STATUS2). Health: $HEALTH\"}}" || true
           fi
