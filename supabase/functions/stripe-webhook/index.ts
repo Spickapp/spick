@@ -35,25 +35,49 @@ const ADMIN                 = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// ── Stripe-signaturverifiering ─────────────────────────────────────────────
+// ── Stripe-signaturverifiering (timing-safe + replay protection) ───────────
+const STRIPE_TOLERANCE_SEC = 300; // 5 min replay window
+
 async function verifyStripeSignature(body: string, sigHeader: string, secret: string): Promise<boolean> {
   try {
     const parts = sigHeader.split(",");
     const t = parts.find(p => p.startsWith("t="))?.split("=")[1];
     const v1 = parts.find(p => p.startsWith("v1="))?.split("=")[1];
     if (!t || !v1) return false;
+
+    // Replay protection: reject old signatures
+    const timestamp = parseInt(t, 10);
+    const now = Math.floor(Date.now() / 1000);
+    if (isNaN(timestamp) || Math.abs(now - timestamp) > STRIPE_TOLERANCE_SEC) {
+      console.warn(`Stripe sig rejected: timestamp ${timestamp} vs now ${now} (diff ${Math.abs(now - timestamp)}s)`);
+      return false;
+    }
+
     const payload = `${t}.${body}`;
     const key = await crypto.subtle.importKey(
       "raw", new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]
     );
     const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-    const computed = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-    return computed === v1;
+
+    // Timing-safe comparison
+    const computedBytes = new Uint8Array(sig);
+    const expectedBytes = new Uint8Array(v1.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+    if (computedBytes.length !== expectedBytes.length) return false;
+    let diff = 0;
+    for (let i = 0; i < computedBytes.length; i++) {
+      diff |= computedBytes[i] ^ expectedBytes[i];
+    }
+    return diff === 0;
   } catch { return false; }
 }
 
 // ── Email wrapper ──────────────────────────────────────────────────────────
+// XSS-skydd
+function esc(s: unknown): string {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 function wrap(content: string): string {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 body{margin:0;padding:0;background:#F7F7F5;font-family:'DM Sans',Arial,sans-serif}
@@ -301,7 +325,7 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   const adminHtml = wrap(`
 <h2>💰 Ny betalning mottagen!</h2>
 <div class="card">
-  <div class="row"><span class="lbl">Kund</span><span class="val">${name}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${esc(name)}</span></div>
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
   <div class="row"><span class="lbl">Datum</span><span class="val">${date} ${time}</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
@@ -312,7 +336,7 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 ${!cleaner ? `<div style="background:#FFF5E5;border-left:4px solid #F59E0B;padding:12px;border-radius:0 8px 8px 0;margin:8px 0"><strong>⚠️ Ingen städare tilldelad!</strong> Tilldela manuellt i admin-panelen.</div>` : ""}
 <a href="https://spick.se/admin.html" class="btn">Admin-panel →</a>
 `);
-  await sendEmail(ADMIN, `💰 Ny bokning: ${name} – ${price} – ${date}`, adminHtml);
+  await sendEmail(ADMIN, `💰 Ny bokning: ${esc(name)} – ${price} – ${date}`, adminHtml);
 
   // ── 4. Trigga RUT-ansökan ────────────────────────────────────
   if (isRut && booking.customer_pnr_hash) {

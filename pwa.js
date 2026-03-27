@@ -13,6 +13,8 @@ window.addEventListener('offline',()=>{if(!document.getElementById('offline-bar'
 })();
 // ── PUSH NOTIFICATIONS ────────────────────────────────
 // Använder SPICK.SUPA_URL och SPICK.SUPA_KEY från js/config.js
+if (typeof SPICK === 'undefined') { console.warn('pwa.js: config.js ej laddad, push-notiser inaktiverade'); }
+else {
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -72,3 +74,4 @@ window.offerPushAfterBooking = async function(email) {
     if (ok) await window.spickRequestPush(email, 'customer');
   }, 2000);
 };
+} // end SPICK guard

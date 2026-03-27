@@ -8,6 +8,18 @@ const FROM  = "Spick <hello@spick.se>";
 const ADMIN = "hello@spick.se";
 
 /**
+ * HTML-escape user input mot XSS i e-post
+ */
+export function esc(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Branded HTML e-post wrapper
  */
 export function wrap(content: string): string {

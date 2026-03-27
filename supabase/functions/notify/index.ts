@@ -10,6 +10,11 @@ const FROM  = "Spick <hello@spick.se>";
 const ADMIN = "hello@spick.se";
 const SUPA  = "https://urjeijcncsyuletprydy.supabase.co";
 
+// XSS-skydd: escapa all user input innan den interpoleras i HTML
+function esc(s: unknown): string {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
 // CORS: begränsat till spick.se (inte wildcard *)
 function getCORS(req: Request) {
   const origin = req.headers.get("origin") || "";
@@ -74,13 +79,13 @@ serve(async (req) => {
       const price = r.total_price || r.price || 0;
       const rut = r.rut ? `<div class="badge">✓ RUT-avdrag aktivt – du betalar ${price.toLocaleString("sv")} kr</div>` : "";
 
-      if (email) await sendEmail(email, `✅ Bokningsbekräftelse – ${r.service || "Städning"} ${r.date || ""}`, wrap(`
+      if (email) await sendEmail(email, `✅ Bokningsbekräftelse – ${esc(r.service || "Städning")} ${r.date || ""}`, wrap(`
         <h2>Din bokning är bekräftad! 🎉</h2>
         <p>Hej ${name.split(" ")[0]}! Vi återkommer med bekräftelse och en tilldelad städare inom 2 timmar.</p>
         <div class="card">
-          <div class="row"><span class="lbl">Tjänst</span><span class="val">${r.service || "Hemstädning"}</span></div>
+          <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(r.service || "Hemstädning")}</span></div>
           <div class="row"><span class="lbl">Datum</span><span class="val">${r.date || "–"} ${r.time ? "kl " + r.time : ""}</span></div>
-          <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}</span></div>
+          <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.address || "–")}</span></div>
           <div class="row"><span class="lbl">Timmar</span><span class="val">${r.hours || 3} h</span></div>
           <div class="row"><span class="lbl">Du betalar</span><span class="val" style="color:#0F6E56;font-size:18px">${price.toLocaleString("sv")} kr</span></div>
         </div>
@@ -89,15 +94,15 @@ serve(async (req) => {
         <a class="btn" href="https://spick.se/min-bokning.html?email=${encodeURIComponent(email || "")}">Följ din bokning →</a>
       `));
 
-      await sendEmail(ADMIN, `🔔 NY BOKNING: ${name} – ${r.service || ""} ${r.date || ""}`, wrap(`
+      await sendEmail(ADMIN, `🔔 NY BOKNING: ${esc(name)} – ${esc(r.service || "")} ${r.date || ""}`, wrap(`
         <h2>Ny bokning inkommen!</h2>
         <div class="card">
-          <div class="row"><span class="lbl">Kund</span><span class="val">${name}</span></div>
-          <div class="row"><span class="lbl">Email</span><span class="val">${email}</span></div>
+          <div class="row"><span class="lbl">Kund</span><span class="val">${esc(name)}</span></div>
+          <div class="row"><span class="lbl">Email</span><span class="val">${esc(email)}</span></div>
           <div class="row"><span class="lbl">Telefon</span><span class="val">${r.phone || r.customer_phone || "–"}</span></div>
-          <div class="row"><span class="lbl">Tjänst</span><span class="val">${r.service || "–"}</span></div>
+          <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(r.service || "–")}</span></div>
           <div class="row"><span class="lbl">Datum/tid</span><span class="val">${r.date || "–"} ${r.time ? "kl " + r.time : ""}</span></div>
-          <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}, ${r.city || ""}</span></div>
+          <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.address || "–")}, ${esc(r.city || "")}</span></div>
           <div class="row"><span class="lbl">Timmar</span><span class="val">${r.hours || 3} h</span></div>
           <div class="row"><span class="lbl">Pris</span><span class="val">${price.toLocaleString("sv")} kr</span></div>
           <div class="row"><span class="lbl">RUT</span><span class="val">${r.rut ? "✅ Ja" : "❌ Nej"}</span></div>
@@ -111,14 +116,14 @@ serve(async (req) => {
       const cleanerEmail = r.cleaner_email;
       const cname = r.cleaner_name || "Städare";
       if (cleanerEmail) {
-        await sendEmail(cleanerEmail, `🔔 Ny bokningsbekräftelse – ${r.service || "Städning"} ${r.date || ""}`, wrap(`
+        await sendEmail(cleanerEmail, `🔔 Ny bokningsbekräftelse – ${esc(r.service || "Städning")} ${r.date || ""}`, wrap(`
           <h2>Du har fått en ny bekräftad bokning! 🎉</h2>
           <p>Hej ${cname.split(" ")[0]}! En kund har bekräftat en bokning hos dig.</p>
           <div class="card">
-            <div class="row"><span class="lbl">Kund</span><span class="val">${r.name || "–"}</span></div>
-            <div class="row"><span class="lbl">Tjänst</span><span class="val">${r.service || "Hemstädning"}</span></div>
+            <div class="row"><span class="lbl">Kund</span><span class="val">${esc(r.name || "–")}</span></div>
+            <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(r.service || "Hemstädning")}</span></div>
             <div class="row"><span class="lbl">Datum/tid</span><span class="val">${r.date || "–"} ${r.time ? "kl " + r.time : ""}</span></div>
-            <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}, ${r.city || ""}</span></div>
+            <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.address || "–")}, ${esc(r.city || "")}</span></div>
             <div class="row"><span class="lbl">Timmar</span><span class="val">${r.hours || 3} h</span></div>
             <div class="row"><span class="lbl">Din ersättning</span><span class="val" style="color:#0F6E56;font-weight:700">${Math.round((r.total_price || 0) * 0.83).toLocaleString("sv")} kr</span></div>
           </div>
@@ -135,8 +140,8 @@ serve(async (req) => {
           <h2>Välkommen ${r.full_name?.split(" ")[0] || ""}! 🎉</h2>
           <p>Vi har tagit emot din ansökan och granskar den inom <strong>24 timmar</strong>.</p>
           <div class="card">
-            <div class="row"><span class="lbl">Namn</span><span class="val">${r.full_name || "–"}</span></div>
-            <div class="row"><span class="lbl">Stad</span><span class="val">${r.city || "–"}</span></div>
+            <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.full_name || "–")}</span></div>
+            <div class="row"><span class="lbl">Stad</span><span class="val">${esc(r.city || "–")}</span></div>
           </div>
           <p><strong>Vad händer nu?</strong></p>
           <p>Vi verifierar dina uppgifter och återkommer med besked via e-post. Under tiden kan du förbereda dig genom att läsa vår <a href="https://spick.se/utbildning-stadare.html" style="color:#0F6E56;font-weight:600">utbildningsguide</a>.</p>
@@ -145,13 +150,13 @@ serve(async (req) => {
       }
 
       // 2. Admin-notis
-      await sendEmail(ADMIN, `👷 Ny städaransökan: ${r.full_name || "okänd"} – ${r.city || ""}`, wrap(`
+      await sendEmail(ADMIN, `👷 Ny städaransökan: ${esc(r.full_name || "okänd")} – ${esc(r.city || "")}`, wrap(`
         <h2>Ny ansökan inkommen!</h2>
         <div class="card">
-          <div class="row"><span class="lbl">Namn</span><span class="val">${r.full_name || "–"}</span></div>
-          <div class="row"><span class="lbl">Email</span><span class="val">${r.email || "–"}</span></div>
-          <div class="row"><span class="lbl">Telefon</span><span class="val">${r.phone || "–"}</span></div>
-          <div class="row"><span class="lbl">Stad</span><span class="val">${r.city || "–"}</span></div>
+          <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.full_name || "–")}</span></div>
+          <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.email || "–")}</span></div>
+          <div class="row"><span class="lbl">Telefon</span><span class="val">${esc(r.phone || "–")}</span></div>
+          <div class="row"><span class="lbl">Stad</span><span class="val">${esc(r.city || "–")}</span></div>
           <div class="row"><span class="lbl">Tjänster</span><span class="val">${r.services || "–"}</span></div>
           <div class="row"><span class="lbl">F-skatt</span><span class="val">${r.has_fskatt ? "✅ Ja" : "❌ Nej"}</span></div>
         </div>
@@ -183,8 +188,8 @@ serve(async (req) => {
         <p>Hej ${(r.name || r.customer_name || "").split(" ")[0]}! Din städning är imorgon.</p>
         <div class="card">
           <div class="row"><span class="lbl">Datum</span><span class="val">${r.date || "Imorgon"} kl ${r.time || "–"}</span></div>
-          <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}</span></div>
-          <div class="row"><span class="lbl">Tjänst</span><span class="val">${r.service || "Hemstädning"}</span></div>
+          <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.address || "–")}</span></div>
+          <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(r.service || "Hemstädning")}</span></div>
         </div>
         <p style="font-size:13px;color:#9B9B95">Behöver du avboka? Det är gratis upp till 24h före.</p>
         <a class="btn" href="https://spick.se/min-bokning.html">Hantera bokning →</a>
@@ -205,11 +210,11 @@ serve(async (req) => {
 
     // ── VÄNTELISTA ────────────────────────────────────────────
     else if (type === "waitlist") {
-      await sendEmail(ADMIN, `🗺️ Väntelista ${r.city}: ${r.email}`, wrap(`
+      await sendEmail(ADMIN, `🗺️ Väntelista ${esc(r.city)}: ${esc(r.email)}`, wrap(`
         <h2>Ny väntelisteanmälan</h2>
         <div class="card">
-          <div class="row"><span class="lbl">Stad</span><span class="val">${r.city || "–"}</span></div>
-          <div class="row"><span class="lbl">Email</span><span class="val">${r.email || "–"}</span></div>
+          <div class="row"><span class="lbl">Stad</span><span class="val">${esc(r.city || "–")}</span></div>
+          <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.email || "–")}</span></div>
         </div>
       `));
     }
@@ -231,7 +236,7 @@ serve(async (req) => {
     else if (type === "uptime_alert") {
       await sendEmail(ADMIN, "🚨 LARM: spick.se är nere!", wrap(`
         <h2>⚠️ Spick.se svarar inte!</h2>
-        <p>${r.message || "Hemsidan verkar vara nere."}</p>
+        <p>${esc(r.message || "Hemsidan verkar vara nere.")}</p>
         <p>Tid: ${new Date().toLocaleString("sv-SE")}</p>
         <a class="btn" href="https://spick.se">Kontrollera →</a>
       `));
@@ -249,11 +254,11 @@ serve(async (req) => {
     }
     else if (type === "customer_report") {
       const r = payload.record || {};
-      subject = `⚠️ Kundrapport från ${r.cleaner_name || "städare"}`;
+      subject = `⚠️ Kundrapport från ${esc(r.cleaner_name || "städare")}`;
       html = wrap(`
 <h2>⚠️ Kund rapporterad</h2>
 <div class="card">
-  <div class="row"><span class="lbl">Städare</span><span class="val">${r.cleaner_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Städare</span><span class="val">${esc(r.cleaner_name || "–")}</span></div>
   <div class="row"><span class="lbl">Kund</span><span class="val">${r.customer_email || "–"}</span></div>
   <div class="row"><span class="lbl">Boknings-ID</span><span class="val">${r.booking_id || "–"}</span></div>
   <div class="row"><span class="lbl">Orsak</span><span class="val">${r.reason || "–"}</span></div>
@@ -265,10 +270,10 @@ serve(async (req) => {
     }
     else if (type === "cleaner_arrived") {
       const r = payload.record || {};
-      subject = `✅ ${r.cleaner_name || "Din städare"} har anlänt – städningen startar!`;
+      subject = `✅ ${esc(r.cleaner_name || "Din städare")} har anlänt – städningen startar!`;
       html = wrap(`
 <h2>Din städare är på plats! 🌿</h2>
-<p><strong>${r.cleaner_name || "Din städare"}</strong> checkade in kl. ${r.time || "nu"}.</p>
+<p><strong>${esc(r.cleaner_name || "Din städare")}</strong> checkade in kl. ${r.time || "nu"}.</p>
 <div class="card">
   <p style="margin:0;font-size:14px;color:#6B6960">Städningen är igång. Du får ett mail när den är klar och redo att godkännas.</p>
 </div>
@@ -279,17 +284,17 @@ serve(async (req) => {
     }
         else if (type === "sos_alert") {
       const r = payload.record || {};
-      subject = `🆘 SOS NÖDLARM – ${r.cleaner_name || "Städare"} behöver hjälp!`;
+      subject = `🆘 SOS NÖDLARM – ${esc(r.cleaner_name || "Städare")} behöver hjälp!`;
       html = wrap(`
 <div style="background:#FEE2E2;border-radius:12px;padding:20px;margin-bottom:20px;border:2px solid #DC2626">
   <h2 style="color:#DC2626;margin:0">🆘 NÖDLARM AKTIVERAT</h2>
 </div>
 <div class="card">
-  <div class="row"><span class="lbl">Städare</span><span class="val">${r.cleaner_name || "–"}</span></div>
-  <div class="row"><span class="lbl">Telefon</span><span class="val">${r.cleaner_phone || "–"}</span></div>
-  <div class="row"><span class="lbl">Email</span><span class="val">${r.cleaner_email || "–"}</span></div>
+  <div class="row"><span class="lbl">Städare</span><span class="val">${esc(r.cleaner_name || "–")}</span></div>
+  <div class="row"><span class="lbl">Telefon</span><span class="val">${esc(r.cleaner_phone || "–")}</span></div>
+  <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.cleaner_email || "–")}</span></div>
   <div class="row"><span class="lbl">Kontakttyp</span><span class="val">${r.contact_type === 'ring' ? '📞 Ber om samtal' : '💬 SMS-kontakt'}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${r.address || "–"}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.address || "–")}</span></div>
   <div class="row"><span class="lbl">Tid</span><span class="val">${new Date(r.timestamp || Date.now()).toLocaleString('sv-SE')}</span></div>
 </div>
 <p style="color:#DC2626;font-weight:700;font-size:16px">Kontakta städaren OMEDELBART!</p>
@@ -301,7 +306,7 @@ serve(async (req) => {
       subject = `✅ Städningen är klar – betygsätt din städare!`;
       html = wrap(`
 <h2>Städningen är klar! 🌿</h2>
-<p><strong>${r.cleaner_name || "Din städare"}</strong> har markerat städningen som klar.</p>
+<p><strong>${esc(r.cleaner_name || "Din städare")}</strong> har markerat städningen som klar.</p>
 <div class="card">
   <p style="margin:0;font-size:14px;color:#6B6960">Betalningen frigörs automatiskt. Är du inte nöjd? Kontakta oss inom 24h så aktiverar vi garantin.</p>
 </div>
@@ -313,10 +318,10 @@ serve(async (req) => {
     }
     else if (type === "cleaner_accepted") {
       const r = payload.record || {};
-      subject = `✅ Städare bekräftad – ${r.cleaner_name || "din städare"} är på väg!`;
+      subject = `✅ Städare bekräftad – ${esc(r.cleaner_name || "din städare")} är på väg!`;
       html = wrap(`
 <h2>Din städare är bekräftad! 🌿</h2>
-<p>Goda nyheter – <strong>${r.cleaner_name || "din städare"}</strong> (⭐ ${r.cleaner_rating || "5.0"}) har accepterat ditt uppdrag.</p>
+<p>Goda nyheter – <strong>${esc(r.cleaner_name || "din städare")}</strong> (⭐ ${r.cleaner_rating || "5.0"}) har accepterat ditt uppdrag.</p>
 <div class="card">
   <p style="margin:0;font-size:14px;color:#6B6960">Du får en påminnelse 24h innan städningen. Städaren anländer på bokad tid.</p>
 </div>
@@ -333,7 +338,7 @@ serve(async (req) => {
 <h2>Bokning avbokad av kund</h2>
 <div class="card">
   <div class="row"><span class="lbl">Boknings-ID</span><span class="val">${r.booking_id || "–"}</span></div>
-  <div class="row"><span class="lbl">Kund</span><span class="val">${r.email || "–"}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${esc(r.email || "–")}</span></div>
   <div class="row"><span class="lbl">Tidpunkt</span><span class="val">${new Date().toLocaleString("sv-SE")}</span></div>
 </div>
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
@@ -342,29 +347,29 @@ serve(async (req) => {
     }
     else if (type === "garanti_reklamation") {
       const r = payload.record || {};
-      subject = `🔴 Garantireklamation – ${r.name || "Kund"}`;
+      subject = `🔴 Garantireklamation – ${esc(r.name || "Kund")}`;
       html = wrap(`
 <h2>Ny garantireklamation!</h2>
 <div class="card">
-  <div class="row"><span class="lbl">Namn</span><span class="val">${r.name || "–"}</span></div>
-  <div class="row"><span class="lbl">Email</span><span class="val">${r.email || "–"}</span></div>
-  <div class="row"><span class="lbl">Bokning</span><span class="val">${r.booking || "–"}</span></div>
-  <div class="row"><span class="lbl">Kontaktsätt</span><span class="val">${r.contact || "–"}</span></div>
+  <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.name || "–")}</span></div>
+  <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.email || "–")}</span></div>
+  <div class="row"><span class="lbl">Bokning</span><span class="val">${esc(r.booking || "–")}</span></div>
+  <div class="row"><span class="lbl">Kontaktsätt</span><span class="val">${esc(r.contact || "–")}</span></div>
 </div>
 <h3>Beskrivning:</h3>
-<p>${r.desc || "–"}</p>
+<p>${esc(r.desc || "–")}</p>
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
 `);
       to = ADMIN;
     }
     else if (type === "referral_invite") {
       const r = payload.record || {};
-      subject = `🧹 ${r.friend_name || "Din vän"} bjuder dig på Spick-rabatt!`;
+      subject = `🧹 ${esc(r.friend_name || "Din vän")} bjuder dig på Spick-rabatt!`;
       to = r.friend_email || ADMIN;
       html = wrap(`
 <h2>Du har blivit rekommenderad! 🎉</h2>
 <p>En vän tror att du skulle gilla Spick – Sveriges smidigaste städtjänst med RUT-avdrag.</p>
-${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${r.message}"</p></div>` : ''}
+${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.message)}"</p></div>` : ''}
 <div class="card">
   <p style="margin:0;font-size:14px;color:#6B6960">Boka din första städning med din väns länk och få 10% rabatt på din första bokning!</p>
 </div>
@@ -373,13 +378,13 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${r.mess
 `);
     }
     else if (type === "contact") {
-      await sendEmail(ADMIN, `📬 Kontakt: ${r.subject || "Meddelande"} – ${r.name || ""}`, wrap(`
+      await sendEmail(ADMIN, `📬 Kontakt: ${esc(r.subject || "Meddelande")} – ${esc(r.name || "")}`, wrap(`
         <h2>Nytt kontaktmeddelande</h2>
         <div class="card">
-          <div class="row"><span class="lbl">Namn</span><span class="val">${r.name || "–"}</span></div>
-          <div class="row"><span class="lbl">Email</span><span class="val">${r.email || "–"}</span></div>
-          <div class="row"><span class="lbl">Ämne</span><span class="val">${r.subject || "–"}</span></div>
-          <div class="row"><span class="lbl">Meddelande</span><span class="val">${r.message || "–"}</span></div>
+          <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.name || "–")}</span></div>
+          <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.email || "–")}</span></div>
+          <div class="row"><span class="lbl">Ämne</span><span class="val">${esc(r.subject || "–")}</span></div>
+          <div class="row"><span class="lbl">Meddelande</span><span class="val">${esc(r.message || "–")}</span></div>
         </div>
       `));
     }

@@ -33,13 +33,33 @@ serve(async (req) => {
       frequency, key_info, customer_notes
     } = await req.json();
 
-    if (!booking_id || !amount || !email) {
-      return new Response(JSON.stringify({ error: "Saknade fält: booking_id, amount, email krävs" }), {
+    if (!booking_id || !email || !service) {
+      return new Response(JSON.stringify({ error: "Saknade fält: booking_id, email, service krävs" }), {
         status: 400, headers: { "Content-Type": "application/json", ...CORS }
       });
     }
 
-    const amountOre = Math.round(amount * 100);
+    // ── SERVER-SIDE PRISBERÄKNING (klient-amount ignoreras) ──────
+    const PRICE_PER_HOUR: Record<string, number> = {
+      "Hemstädning": 349,
+      "Storstädning": 449,
+      "Flyttstädning": 499,
+      "Fönsterputs": 399,
+      "Kontorsstädning": 399,
+    };
+    const basePrice = PRICE_PER_HOUR[service] || 349;
+    const validHours = Math.max(2, Math.min(12, Number(hours) || 3));
+    const grossAmount = basePrice * validHours;
+    const finalAmount = rut ? Math.round(grossAmount * 0.5) : grossAmount;
+    
+    // Sanity check: vägra orimliga belopp
+    if (finalAmount < 300 || finalAmount > 30000) {
+      return new Response(JSON.stringify({ error: "Ogiltigt belopp" }), {
+        status: 400, headers: { "Content-Type": "application/json", ...CORS }
+      });
+    }
+    
+    const amountOre = finalAmount * 100;
 
     const params = new URLSearchParams();
     params.append("mode", "payment");
