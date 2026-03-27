@@ -69,6 +69,7 @@ const FOOTER_HTML = `
     <h4>Städare</h4>
     <ul>
       <li><a href="${P}bli-stadare-guide.html">Bli städare</a></li>
+      <li><a href="${P}utbildning-stadare.html">Spick Akademin</a></li>
       <li><a href="${P}rekrytera.html">Varför Spick?</a></li>
       <li><a href="${P}avtal.html">Partnersavtal</a></li>
     </ul>
