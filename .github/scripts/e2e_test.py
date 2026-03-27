@@ -27,7 +27,11 @@ def req(method, path, body=None, key=None):
     if method in ("POST","PATCH") and body:
         headers["Prefer"] = "return=representation"
     data = json.dumps(body).encode() if body else None
-    r    = urllib.request.Request(url, data, headers, method=method)
+    import urllib.parse
+    # URL-encode path för svenska tecken
+    parsed = urllib.parse.urlparse(url)
+    safe_url = parsed._replace(path=urllib.parse.quote(parsed.path), query=parsed.query).geturl()
+    r    = urllib.request.Request(safe_url, data, headers, method=method)
     try:
         res  = urllib.request.urlopen(r, timeout=15)
         return json.loads(res.read())
@@ -53,7 +57,7 @@ print("="*50 + "\n")
 
 # ─── 1. DATABASE CONNECTIVITY ────────────────────────
 print("1. Databas-anslutning")
-res = req("GET", "/rest/v1/cleaners?limit=1&status=eq.godkänd")
+res = req("GET", "/rest/v1/cleaners?limit=1&status=eq.godk%C3%A4nd")
 if isinstance(res, list):
     ok("Supabase REST API", f"{len(res)} städare hittad")
 else:
@@ -61,7 +65,7 @@ else:
 
 # ─── 2. CLEANERS TABLE ───────────────────────────────
 print("\n2. Städare-tabell")
-cleaners = req("GET", "/rest/v1/cleaners?status=eq.godkänd&select=id,full_name,city,avg_rating,review_count,identity_verified,bonus_level")
+cleaners = req("GET", "/rest/v1/cleaners?status=eq.godk%C3%A4nd&select=id,full_name,city,avg_rating,review_count,identity_verified,bonus_level")
 if isinstance(cleaners, list):
     ok("Läsa städare (RLS)", f"{len(cleaners)} godkända städare")
     if cleaners:
