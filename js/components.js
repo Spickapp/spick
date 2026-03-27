@@ -108,19 +108,20 @@ const FOOTER_HTML = `
 
 // ── INJICERA VID SIDLADDNING ────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
-  // Uppdatera <nav> om den finns
+  // Uppdatera <nav> om den finns OCH inte har data-nav-keep
   const nav = document.querySelector('nav');
-  if (nav) {
+  if (nav && !nav.hasAttribute('data-nav-keep')) {
     nav.innerHTML = NAV_HTML;
   }
 
-  // Injicera mobilmeny om den inte redan finns
-  if (!document.getElementById('mobMenu')) {
-    const nav = document.querySelector('nav');
-    if (nav) {
-      nav.insertAdjacentHTML('afterend', MOB_HTML);
+  // Injicera mobilmeny om den inte redan finns OCH nav inte har data-nav-keep
+  const navForMob = document.querySelector('nav');
+  const skipMob = navForMob && navForMob.hasAttribute('data-nav-keep');
+  if (!skipMob && !document.getElementById('mobMenu')) {
+    if (navForMob) {
+      navForMob.insertAdjacentHTML('afterend', MOB_HTML);
     }
-  } else {
+  } else if (!skipMob && document.getElementById('mobMenu')) {
     // Uppdatera befintlig mobilmeny
     document.getElementById('mobMenu').outerHTML = MOB_HTML;
   }
