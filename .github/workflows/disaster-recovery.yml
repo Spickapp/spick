@@ -100,12 +100,4 @@ jobs:
           echo "  eller kör: psql [ANSLUTNINGSSTRÄNG] < restore_script.sql"
           echo ""
           echo "  Kontrollera manuellt om datan ser rimlig ut:"
-          python3 -c "
-import json
-d = json.load(open('$BACKUP'))
-if isinstance(d, list) and d:
-    print(f'  Exempel på första posten:')
-    first = d[0]
-    for k,v in list(first.items())[:5]:
-        print(f'    {k}: {str(v)[:50]}')
-" 2>/dev/null || true
+          BACKUP_FILE="$BACKUP" python3 .github/scripts/check_backup.py 2>/dev/null || true
