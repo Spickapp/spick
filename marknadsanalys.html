@@ -2,19 +2,23 @@
 <html lang="sv">
 <head>
 <script>
+// AUTH GUARD – dölj sidan tills session är verifierad
+document.documentElement.style.display='none';
 (function(){
-  const SUPA_URL='https://urjeijcncsyuletprydy.supabase.co';
-  const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
-  // Kontrollera session direkt via Supabase REST
-  fetch(SUPA_URL+'/auth/v1/user',{
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+(localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token')
-      ? JSON.parse(localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token'))?.access_token || ''
-      : '')}
-  }).then(r=>{
-    if(r.status!==200){
-      window.location.replace('admin.html');
-    }
-  }).catch(()=>window.location.replace('admin.html'));
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var token = raw ? JSON.parse(raw)?.access_token : null;
+    if (!token) { window.location.replace('admin.html'); return; }
+    fetch('https://urjeijcncsyuletprydy.supabase.co/auth/v1/user',{
+      headers:{
+        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+        'Authorization':'Bearer '+token
+      }
+    }).then(function(r){
+      if(r.status===200){ document.documentElement.style.display=''; }
+      else { window.location.replace('admin.html'); }
+    }).catch(function(){ window.location.replace('admin.html'); });
+  } catch(e) { window.location.replace('admin.html'); }
 })();
 </script>
 <meta charset="UTF-8">
