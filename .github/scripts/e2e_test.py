@@ -92,7 +92,6 @@ booking_data = {
     "hours": 3,
     "rut": True,
     "total_price": 525.0,
-    "gross_price": 1050.0,
     "payment_status": "pending",
     "status": "ny"
 }
