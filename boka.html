@@ -200,6 +200,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
     (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");
   </script>
 <script src="js/config.js"></script>
+<script src="js/cro.js" defer></script>
 <script src="js/components.js" defer></script>
 </head>
 <body>
@@ -242,15 +243,16 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
     <div class="step-panel active" id="step1">
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Vad vill du ha städat?</div>
-          <div class="card-sub">Välj tjänst – vi visar lediga städare direkt</div>
+          <div class="card-title">Välj tjänst och se pris direkt</div>
+          <div class="card-sub">50% billigare med RUT-avdrag — vi hanterar allt automatiskt</div>
         </div>
         <div class="card-body">
 
           <!-- Tjänst-val -->
           <label style="margin-bottom:.625rem">Tjänst *</label>
           <div class="service-grid" id="svc-grid">
-            <button class="svc-btn" onclick="selectService('Hemstädning','🏠','Löpande städning','2-4h')" data-svc="Hemstädning">
+            <button class="svc-btn" onclick="selectService('Hemstädning','🏠','Löpande städning','2-4h')" data-svc="Hemstädning" style="position:relative">
+              <span style="position:absolute;top:-8px;right:-8px;background:#F59E0B;color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em">POPULÄRAST</span>
               <span class="svc-icon">🏠</span>
               <span class="svc-name">Hemstädning</span>
               <span class="svc-desc">Löpande städning, 2–4h</span>
@@ -272,6 +274,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </button>
           </div>
           <div id="svc-error" class="field-error" style="display:none;margin-bottom:.75rem">⚠ Välj en tjänst för att fortsätta</div>
+          <div style="font-size:.78rem;color:#6B6960;margin-bottom:.5rem">💡 <strong>87%</strong> av våra kunder väljer Hemstädning</div>
 
           <!-- Storlek -->
           <div class="f-grid" style="margin-top:1rem">
@@ -438,13 +441,12 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <!-- PNR för RUT -->
           <div class="pnr-wrap" id="pnr-wrap">
             <div class="f">
-              <label>Personnummer för RUT *</label>
+              <label>Personnummer <span style="color:var(--g);font-weight:700">— du sparar upp till 50% med RUT ✓</span></label>
               <div style="display:flex;gap:.625rem">
                 <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="flex:1" oninput="validatePNR(this.value)">
                 <button type="button" onclick="autofillBankID()" style="background:var(--g);color:#fff;border:none;padding:.625rem 1rem;border-radius:9px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">🔐 BankID</button>
               </div>
-              <div id="pnr-hint" class="field-hint">Format: YYYYMMDD-XXXX (t.ex. 19900101-1234)</div>
-              <div class="field-hint" style="margin-top:.2rem">🔒 Krypteras – visas aldrig för städaren</div>
+              <div id="pnr-hint" class="field-hint">🔒 Behövs för RUT-avdrag hos Skatteverket. Krypterat — lagras aldrig i klartext.</div>
             </div>
           </div>
 

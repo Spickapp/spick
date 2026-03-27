@@ -346,6 +346,7 @@ footer a:hover{color:var(--gm);}
 }
 </script>
 <script src="js/config.js"></script>
+<script src="js/cro.js" defer></script>
 <script src="js/components.js" defer></script>
 </head>
 <body>
@@ -382,13 +383,19 @@ footer a:hover{color:var(--gm);}
 <div class="hero">
   <div>
     <div class="hero-badge"><span></span> 🇸🇪 Nu i hela Sverige</div>
-    <div id="urgency-badge" style="display:none;background:#FEF3C7;color:#92400E;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:600;margin:6px 0">⚡ <span id="urgency-text">3 bokningar gjorda idag</span></div>
-    <h1>Boka en städare du<br><span class="green">verkligen litar på</span></h1>
-    <p class="hero-sub">Välj bland betygsatta städare i Stockholm, Göteborg, Malmö och fler städer. Boka med RUT-avdrag 50%.</p>
+    <div id="urgency-badge" style="background:#FEF3C7;color:#92400E;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:600;margin:6px 0;display:inline-block">⚡ <span id="urgency-text">Laddas…</span></div>
+    <h1>Hemstädning från <span class="green">175 kr/h</span><br>med RUT-avdrag</h1>
+    <p class="hero-sub">BankID-verifierade städare med nöjdhetsgaranti. Boka på 2 minuter — vi hanterar RUT-avdraget automatiskt.</p>
     <div class="hero-btns">
-      <a href="boka.html" class="btn-main">Boka städning nu →</a>
-    <div style="display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:.35rem 1rem;border-radius:100px;font-size:.75rem;font-weight:600;margin-left:.75rem">🎟️ VALKOMMEN10 – 10% rabatt</div>
-      <a href="stadare.html" class="btn-sec">Se alla städare</a>
+      <a href="stadare.html" class="btn-main">Se lediga städare →</a>
+      <a href="priser.html" class="btn-sec">Räkna ut ditt pris</a>
+    </div>
+    <!-- Trust bar -->
+    <div style="display:flex;gap:1.5rem;margin-top:1.25rem;flex-wrap:wrap;font-size:.82rem;color:#6B6960">
+      <span>✓ <strong>4.9/5</strong> snittbetyg</span>
+      <span>✓ <strong id="tb-bookings">100+</strong> genomförda städningar</span>
+      <span>✓ Gratis avbokning 24h</span>
+      <span>✓ Nöjdhetsgaranti</span>
     </div>
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
@@ -856,6 +863,7 @@ function cookieChoice(accept) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
+// CRO toast + urgency hanteras av js/cro.js
 </script>
 <!-- STICKY PRIS-BAR -->
 <div class="sticky-bar" id="sticky-bar">
