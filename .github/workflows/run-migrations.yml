@@ -1,6 +1,6 @@
 name: Run SQL Migrations
 
-on:
+'on':
   workflow_dispatch:
   push:
     branches: [main]
@@ -24,9 +24,7 @@ jobs:
       - name: Link projekt
         run: supabase link --project-ref $PROJECT_ID
 
-      # Markera alla tidigare manuellt körda migrationer som applied
-      # (förhindrar att de körs om igen)
-      - name: Markera gamla migrationer som applied
+      - name: Markera alla befintliga migrationer som applied
         run: |
           for id in \
             001 002 003 004 005 006 007 008 009 010 \
@@ -41,7 +39,11 @@ jobs:
             20260326600001 \
             20260326700001 \
             20260326800001 \
-            20260327000001; do
+            20260327 \
+            20260327000001 20260327100001 \
+            20260327200001 20260327300001 \
+            20260327400001 20260327500001 \
+            20260327600001 20260327700001; do
             supabase migration repair --status applied "$id" 2>/dev/null || true
           done
 

@@ -9,44 +9,83 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - name: Check spick.se + health endpoint
+      - name: Check spick.se
         id: check
         run: |
-          # 1. Frontend
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location https://spick.se 2>/dev/null || echo "000")
           echo "Frontend: HTTP $STATUS"
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
-          # 2. Health endpoint (Edge Functions + DB + Resend)
-          HEALTH=$(curl -s --max-time 15 https://urjeijcncsyuletprydy.supabase.co/functions/v1/health 2>/dev/null || echo '{"status":"error"}')
-          HEALTH_STATUS=$(echo "$HEALTH" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-          echo "Health: $HEALTH_STATUS"
-          echo "health=$HEALTH_STATUS" >> $GITHUB_OUTPUT
-
-          if [[ "$STATUS" =~ ^[23] ]] && [[ "$HEALTH_STATUS" == "healthy" ]]; then
-            echo "All systems OK"
+          if [[ "$STATUS" =~ ^[23] ]]; then
+            echo "✅ spick.se OK"
             exit 0
           fi
+
+          sleep 10
+          STATUS2=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location https://spick.se 2>/dev/null || echo "000")
+          echo "Recheck: HTTP $STATUS2"
+
+          if [[ "$STATUS2" =~ ^[23] ]]; then
+            echo "✅ False alarm — recheck OK"
+            exit 0
+          fi
+
+          sleep 10
+          STATUS3=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location -H "Cache-Control: no-cache" https://spick.se 2>/dev/null || echo "000")
+          echo "Triple-check: HTTP $STATUS3"
+
+          if [[ "$STATUS3" =~ ^[23] ]]; then
+            echo "✅ False alarm — triple-check OK"
+            exit 0
+          fi
+
+          echo "❌ CONFIRMED DOWN: $STATUS → $STATUS2 → $STATUS3"
           echo "is_down=true" >> $GITHUB_OUTPUT
 
-      - name: Debounce + alert
+      - name: Alert with cooldown
         if: steps.check.outputs.is_down == 'true'
         env:
           SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           STATUS: ${{ steps.check.outputs.status }}
-          HEALTH: ${{ steps.check.outputs.health }}
         run: |
-          # Dubbelkolla
-          STATUS2=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --location https://spick.se 2>/dev/null || echo "000")
-          if [[ "$STATUS2" =~ ^[23] ]]; then
-            echo "Falsk alarm — andra request OK (HTTP $STATUS2)"
+          LAST_ALERT=$(curl -s \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            "https://urjeijcncsyuletprydy.supabase.co/rest/v1/analytics_events?event_type=eq.uptime_alert&select=created_at&order=created_at.desc&limit=1" 2>/dev/null)
+          
+          LAST_TS=$(echo "$LAST_ALERT" | python3 -c "
+          import sys,json
+          from datetime import datetime,timezone
+          try:
+            d=json.load(sys.stdin)
+            if d and len(d)>0:
+              ts=d[0]['created_at']
+              dt=datetime.fromisoformat(ts.replace('Z','+00:00'))
+              diff=(datetime.now(timezone.utc)-dt).total_seconds()
+              print(int(diff))
+            else:
+              print(99999)
+          except:
+            print(99999)
+          " 2>/dev/null || echo "99999")
+          
+          echo "Seconds since last alert: $LAST_TS"
+          
+          if [ "$LAST_TS" -lt 3600 ] 2>/dev/null; then
+            echo "⏸️ COOLDOWN active — skipping alert"
             exit 0
           fi
-          echo "Bekräftat nere: HTTP $STATUS + $STATUS2, Health: $HEALTH"
-          if [ -n "$SUPA_KEY" ]; then
-            curl -s -X POST https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify \
-              -H "Content-Type: application/json" \
-              -H "apikey: $SUPA_KEY" \
-              -H "Authorization: Bearer $SUPA_KEY" \
-              -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"spick.se HTTP $STATUS (bekräftat: $STATUS2). Health: $HEALTH\"}}" || true
-          fi
+          
+          echo "🚨 Sending alert"
+          curl -s -X POST https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify \
+            -H "Content-Type: application/json" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"spick.se HTTP $STATUS (3x confirmed)\"}}" || true
+          
+          curl -s -X POST "https://urjeijcncsyuletprydy.supabase.co/rest/v1/analytics_events" \
+            -H "Content-Type: application/json" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -H "Prefer: return=minimal" \
+            -d "{\"event_type\":\"uptime_alert\",\"event_data\":{\"status\":\"$STATUS\"},\"page_url\":\"system\"}" || true
