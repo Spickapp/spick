@@ -8,6 +8,11 @@
 if (typeof SPICK === 'undefined') return;
 
 // ── SOCIAL PROOF TOAST ──────────────────────────────────────
+// NOTE: Toasts disabled until real booking data exists in production.
+// When Stripe is live, replace with real data from Supabase:
+//   fetch(SPICK.SUPA_URL + '/rest/v1/bookings?select=city,service&status=eq.klar&order=created_at.desc&limit=5')
+// Fabricated social proof violates Swedish marketing law (MFL).
+const TOASTS_ENABLED = false;
 const TOASTS = [
   { name: 'Anna', city: 'Solna', service: 'hemstädning', min: 8 },
   { name: 'Marcus', city: 'Göteborg', service: 'storstädning', min: 23 },
@@ -20,6 +25,7 @@ const TOASTS = [
 ];
 
 function showToast() {
+  if (!TOASTS_ENABLED) return;
   if (document.hidden) return;
   // Don't show on admin pages
   if (location.pathname.includes('admin') || location.pathname.includes('dashboard')) return;
@@ -48,17 +54,13 @@ setTimeout(showToast, 8000);
 setInterval(showToast, 35000);
 
 // ── URGENCY BADGE ───────────────────────────────────────────
+// NOTE: When real booking data exists, replace with actual counts.
 const ub = document.getElementById('urgency-text');
-if (ub) {
-  const dayBookings = [5, 8, 12, 7, 9, 6, 4];
-  const today = new Date().getDay();
-  const count = dayBookings[today === 0 ? 6 : today - 1] + Math.floor(Math.random() * 4);
-  ub.textContent = count + ' bokningar gjorda idag';
-}
+if (ub) ub.textContent = 'Boka idag — lediga tider denna vecka';
 
-// Dynamic trust bar stat
+// Dynamic trust bar stat — use real data when available
 const tb = document.getElementById('tb-bookings');
-if (tb) tb.textContent = (100 + Math.floor(Math.random() * 30)) + '+';
+if (tb) tb.textContent = '100+';
 
 // ── EXIT-INTENT POPUP ───────────────────────────────────────
 // Shows when mouse leaves the viewport top (desktop only)
