@@ -307,6 +307,29 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <input type="hidden" id="date">
           <input type="hidden" id="time">
 
+          <!-- Frekvens – engång eller återkommande -->
+          <div style="background:#F0FDF4;border-radius:14px;padding:16px;margin:16px 0;border:1.5px solid #86EFAC">
+            <div style="font-size:.82rem;font-weight:600;color:#065F46;margin-bottom:10px">🔄 Hur ofta vill du städa?</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="freq-grid">
+              <button type="button" class="freq-btn selected" data-freq="once" onclick="selectFreq('once',this)"
+                style="padding:10px 6px;border-radius:10px;border:2px solid #0F6E56;background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;color:#0F6E56;transition:all .15s">
+                <div style="font-size:1.1rem">1️⃣</div>Engång
+              </button>
+              <button type="button" class="freq-btn" data-freq="biweekly" onclick="selectFreq('biweekly',this)"
+                style="padding:10px 6px;border-radius:10px;border:2px solid #E5E7EB;background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;color:#6B7280;transition:all .15s">
+                <div style="font-size:1.1rem">📅</div>Varannan vecka
+              </button>
+              <button type="button" class="freq-btn" data-freq="weekly" onclick="selectFreq('weekly',this)"
+                style="padding:10px 6px;border-radius:10px;border:2px solid #E5E7EB;background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;color:#6B7280;transition:all .15s">
+                <div style="font-size:1.1rem">⭐</div>Varje vecka<div style="font-size:.65rem;color:#059669;margin-top:2px">–10% rabatt</div>
+              </button>
+            </div>
+            <div id="freq-note" style="font-size:.72rem;color:#065F46;margin-top:8px;display:none">
+              ✅ Prenumerationen startar efter första städningen. Avsluta när som helst.
+            </div>
+          </div>
+          <input type="hidden" id="booking-freq" value="once">
+
           <button class="btn-primary" onclick="goStep2()" id="step1-next" style="margin-top:1.25rem">
             Visa lediga städare →
           </button>
@@ -540,6 +563,7 @@ let state = {
   service: '', hours: 3, sqm: 0,
   date: '', time: '',
   cleanerId: null, cleanerName: '', cleanerRate: 350, cleanerCity: '',
+  frequency: 'once', frequencyDiscount: 0,
   useRut: true, pnr: '',
   keyType: '', keyInfo: '',
   customerNotes: '',
@@ -640,6 +664,28 @@ function selectService(name, icon, desc, time) {
   });
   document.getElementById('svc-error').style.display = 'none';
   updateSidebar();
+}
+
+function selectFreq(freq, btn) {
+  document.querySelectorAll('.freq-btn').forEach(b => {
+    b.style.border = '2px solid #E5E7EB';
+    b.style.color = '#6B7280';
+    b.style.background = '#fff';
+  });
+  btn.style.border = '2px solid #0F6E56';
+  btn.style.color = '#0F6E56';
+  btn.style.background = '#F0FDF4';
+  document.getElementById('booking-freq').value = freq;
+  state.frequency = freq;
+  const note = document.getElementById('freq-note');
+  if (note) note.style.display = freq !== 'once' ? 'block' : 'none';
+  // Uppdatera pris med rabatt
+  if (freq === 'weekly') {
+    state.frequencyDiscount = 0.10; // 10%
+  } else {
+    state.frequencyDiscount = 0;
+  }
+  updateSum();
 }
 
 function calcHours() {
@@ -1187,7 +1233,8 @@ function goStep4() {
 }
 
 function buildConfirmSummary() {
-  const gross = Math.round(state.cleanerRate * state.hours);
+  const discountFactor = 1 - (state.frequencyDiscount || 0);
+  const gross = Math.round(state.cleanerRate * state.hours * discountFactor);
   const rut   = useRut ? Math.round(gross * 0.5) : 0;
   const total = gross - rut;
   document.getElementById('confirm-summary').innerHTML = `

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Presentkort städning – Ge bort en städning | Spick</title>
+  <meta name="description" content="Ge bort en städning som present! Spick presentkort - perfekt till födelsedag, flytt eller jul. Välj valfritt belopp med RUT-avdrag.">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F7F7F5;color:#1C1C1A}
+    nav{background:#fff;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8E8E4;position:sticky;top:0;z-index:100}
+    .logo{font-family:Georgia,serif;font-size:1.4rem;font-weight:700;color:#0F6E56;text-decoration:none}
+    .hero{background:linear-gradient(135deg,#0F6E56,#1D9E75);color:#fff;padding:5rem 2rem;text-align:center}
+    .hero h1{font-family:Georgia,serif;font-size:2.5rem;margin-bottom:1rem}
+    .hero p{font-size:1.1rem;opacity:.85;max-width:500px;margin:0 auto}
+    .container{max-width:900px;margin:0 auto;padding:3rem 1.5rem}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;margin:2rem 0}
+    .card{background:#fff;border-radius:20px;padding:2rem;text-align:center;border:2px solid #E8E8E4;cursor:pointer;transition:all .2s}
+    .card.popular{border-color:#0F6E56;background:#F0FDF4}
+    .card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+    .card-emoji{font-size:2.5rem;margin-bottom:1rem}
+    .card-amount{font-size:2rem;font-weight:700;color:#0F6E56;margin:.5rem 0}
+    .card-label{color:#6B6960;font-size:.9rem}
+    .badge{background:#0F6E56;color:#fff;font-size:.7rem;padding:2px 10px;border-radius:20px;margin-bottom:.5rem;display:inline-block}
+    .form-section{background:#fff;border-radius:20px;padding:2rem;margin:2rem 0}
+    .form-section h2{font-family:Georgia,serif;font-size:1.4rem;margin-bottom:1.5rem;color:#1C1C1A}
+    label{display:block;font-size:.82rem;font-weight:600;color:#6B6960;margin-bottom:.375rem;margin-top:1rem}
+    input,textarea{width:100%;padding:.75rem 1rem;border:1.5px solid #E8E8E4;border-radius:10px;font-family:inherit;font-size:.9rem;outline:none}
+    input:focus,textarea:focus{border-color:#0F6E56}
+    .btn{display:block;width:100%;padding:1rem;background:#0F6E56;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:1.5rem;font-family:inherit}
+    .btn:hover{background:#0A5240}
+    .trust{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin:2rem 0}
+    .trust-item{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#6B6960}
+    @media(max-width:600px){.hero h1{font-size:1.8rem}.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Spick</a>
+  <a href="boka.html" style="background:#0F6E56;color:#fff;padding:.6rem 1.25rem;border-radius:100px;text-decoration:none;font-weight:600;font-size:.9rem">Boka städning</a>
+</nav>
+
+<div class="hero">
+  <div style="font-size:3rem;margin-bottom:1rem">🎁</div>
+  <h1>Ge bort en städning</h1>
+  <p>Perfekt present till födelsedag, inflyttning, nyfödd eller bara för att. Gäller alla städtjänster med RUT-avdrag.</p>
+</div>
+
+<div class="container">
+
+  <div class="cards" id="amount-cards">
+    <div class="card" onclick="selectAmount(500,this)">
+      <div class="card-emoji">☕</div>
+      <div class="card-amount">500 kr</div>
+      <div class="card-label">Hemstädning, 1–2h</div>
+      <div class="card-label" style="color:#059669;margin-top:.25rem;font-size:.8rem">250 kr med RUT</div>
+    </div>
+    <div class="card popular" onclick="selectAmount(1000,this)">
+      <div class="badge">Populärast</div>
+      <div class="card-emoji">🏠</div>
+      <div class="card-amount">1 000 kr</div>
+      <div class="card-label">Hemstädning, 3h</div>
+      <div class="card-label" style="color:#059669;margin-top:.25rem;font-size:.8rem">500 kr med RUT</div>
+    </div>
+    <div class="card" onclick="selectAmount(2000,this)">
+      <div class="card-emoji">✨</div>
+      <div class="card-amount">2 000 kr</div>
+      <div class="card-label">Storstädning</div>
+      <div class="card-label" style="color:#059669;margin-top:.25rem;font-size:.8rem">1 000 kr med RUT</div>
+    </div>
+    <div class="card" onclick="selectAmount('custom',this)">
+      <div class="card-emoji">🎯</div>
+      <div class="card-amount">Valfritt</div>
+      <div class="card-label">Ange eget belopp</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2>Kortuppgifter</h2>
+    <label>Till (mottagarens namn) *</label>
+    <input type="text" id="to-name" placeholder="Anna Svensson">
+    <label>Mottagarens e-post (skickas till dem) *</label>
+    <input type="email" id="to-email" placeholder="anna@exempel.se">
+    <label>Ditt namn (avsändare)</label>
+    <input type="text" id="from-name" placeholder="Erik Johansson">
+    <label>Personligt meddelande</label>
+    <textarea id="message" rows="3" placeholder="Hälsningar! Hoppas du unnar dig ett städat hem 🌿"></textarea>
+    <div id="custom-amount-wrap" style="display:none">
+      <label>Belopp (kr) *</label>
+      <input type="number" id="custom-amount" placeholder="1500" min="200" max="10000">
+    </div>
+    <div style="background:#F0FDF4;border-radius:10px;padding:12px 16px;margin-top:1rem;font-size:.82rem;color:#065F46">
+      💳 Betalning sker via säker kortbetalning (Stripe). Presentkortet skickas omedelbart till mottagarens mejl.
+    </div>
+    <button class="btn" onclick="buyGiftCard()">
+      Köp presentkort – <span id="selected-amount">1 000</span> kr →
+    </button>
+  </div>
+
+  <div class="trust">
+    <div class="trust-item">✅ Skickas direkt via e-post</div>
+    <div class="trust-item">🔒 Säker kortbetalning</div>
+    <div class="trust-item">📅 Gäller 1 år</div>
+    <div class="trust-item">🔄 Gäller alla tjänster</div>
+  </div>
+
+</div>
+
+<script>
+let selectedAmount = 1000;
+
+function selectAmount(amount, el) {
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.remove('popular');
+    c.style.borderColor = '#E8E8E4';
+    c.style.background = '#fff';
+  });
+  el.style.borderColor = '#0F6E56';
+  el.style.background = '#F0FDF4';
+  
+  const customWrap = document.getElementById('custom-amount-wrap');
+  if (amount === 'custom') {
+    customWrap.style.display = 'block';
+    selectedAmount = null;
+    document.getElementById('selected-amount').textContent = '...';
+  } else {
+    customWrap.style.display = 'none';
+    selectedAmount = amount;
+    document.getElementById('selected-amount').textContent = amount.toLocaleString('sv');
+  }
+}
+
+document.getElementById('custom-amount')?.addEventListener('input', function() {
+  const val = parseInt(this.value);
+  if (val > 0) {
+    selectedAmount = val;
+    document.getElementById('selected-amount').textContent = val.toLocaleString('sv');
+  }
+});
+
+async function buyGiftCard() {
+  const to = document.getElementById('to-name').value.trim();
+  const email = document.getElementById('to-email').value.trim();
+  const from = document.getElementById('from-name').value.trim();
+  const msg = document.getElementById('message').value.trim();
+  
+  if (!to || !email) { alert('Fyll i mottagarens namn och e-post'); return; }
+  if (!selectedAmount) {
+    selectedAmount = parseInt(document.getElementById('custom-amount')?.value);
+    if (!selectedAmount || selectedAmount < 200) { alert('Ange ett giltigt belopp (min 200 kr)'); return; }
+  }
+  
+  // Skicka till Stripe Checkout via vår edge function
+  const btn = document.querySelector('.btn');
+  btn.textContent = 'Bearbetar...';
+  btn.disabled = true;
+  
+  try {
+    const res = await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/stripe-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' },
+      body: JSON.stringify({
+        amount: selectedAmount,
+        service: 'Presentkort',
+        name: from || 'Avsändare',
+        email: email,
+        gift_to_name: to,
+        gift_to_email: email,
+        gift_message: msg,
+        is_gift_card: true,
+        success_url: window.location.origin + '/presentkort-tack.html',
+        cancel_url: window.location.href
+      })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Okänt fel');
+    }
+  } catch(e) {
+    alert('Något gick fel: ' + e.message + '\n\nMaila hello@spick.se så hjälper vi dig!');
+    btn.textContent = 'Köp presentkort – ' + selectedAmount?.toLocaleString('sv') + ' kr →';
+    btn.disabled = false;
+  }
+}
+</script>
+
+</body>
+</html>
