@@ -33,26 +33,36 @@ serve(async (req) => {
   try {
     const { action, sessionId, personalNumber, bookingId } = await req.json();
 
-    // ─── DEMO-LÄGE (ingen API-nyckel konfigurerad) ──────────────────
+    // ─── DEMO-LÄGE ────────────────────────────────────────────────
+    // DEMO tillåts BARA om DEV_MODE är explicit satt till "true"
+    // I produktion utan GRANDID_API_KEY → 503
     if (GRANDID_KEY === "DEMO") {
+      const isDev = Deno.env.get("DEV_MODE") === "true";
+      if (!isDev) {
+        return json({
+          error: "BankID ej konfigurerat",
+          message: "Kontakta hello@spick.se – vi jobbar på att aktivera BankID-verifiering."
+        }, 503);
+      }
+      // Explicit dev-läge: simulera BankID (ALDRIG i produktion)
       if (action === "start") {
         const demoSession = "demo-" + crypto.randomUUID();
         return json({ 
           sessionId: demoSession, 
           demo: true,
           autoStartToken: "demo-token",
-          message: "DEMO: Integrera med GrandID (grandid.com) för riktig BankID"
+          message: "DEV: Simulerat BankID – sätt GRANDID_API_KEY för produktion"
         });
       }
       if (action === "poll" && sessionId?.startsWith("demo-")) {
-        // Simulera 2s fördröjning sedan success
         return json({
           status: "complete",
           demo: true,
-          personalNumber: personalNumber || "19900101-1234",
-          givenName: "Anna",
-          surname: "Andersson",
-          name: "Anna Andersson",
+          // Returnera ALDRIG riktiga personnummer-format i demo
+          personalNumber: "DEMO-MASKED",
+          givenName: "Test",
+          surname: "Testsson",
+          name: "Test Testsson",
         });
       }
     }
@@ -107,13 +117,19 @@ serve(async (req) => {
           address = await sparLookup(pnr);
         }
         
+        // Maskera personnummer — skicka ALDRIG i klartext till frontend
+        const pnrClean = pnr.replace(/[^0-9]/g, "");
+        const maskedPnr = "XXXXXXXX-" + pnrClean.slice(-4);
+        
         return json({
           status: "complete",
-          personalNumber: pnr,
+          personalNumber: maskedPnr, // Maskerat: bara sista 4
+          personalNumberHash: await hashPnr(pnr), // Hash för verifiering
+          verified: true,
           givenName: user.givenName,
           surname: user.surname,
           name: user.name,
-          address, // null i demo-läge
+          address, // null om SPAR ej konfigurerat
         });
       }
       

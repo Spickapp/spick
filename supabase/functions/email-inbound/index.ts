@@ -145,7 +145,7 @@ async function sendReply(to: string, toName: string, subject: string, html: stri
 // ─── Huvudfunktion ────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*" } });
+    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "https://spick.se" } });
   }
 
   try {

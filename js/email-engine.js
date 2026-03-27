@@ -1,17 +1,18 @@
-// Spick Email Engine v2 – anropar Supabase Edge Function (notify)
-// Aldrig anropa Resend direkt från frontend - API-nyckeln ska vara server-side
+// ═══════════════════════════════════════════════════════════════
+// Spick Email Engine v3 – använder centraliserad config
+// Anropar Supabase Edge Function (notify) – aldrig Resend direkt
+// ═══════════════════════════════════════════════════════════════
 
-const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+// Kräver att js/config.js laddas först (SPICK.SUPA_URL, SPICK.SUPA_KEY)
 
 async function callNotify(type, record) {
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/notify`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/notify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPA_KEY,
-        'Authorization': `Bearer ${SUPA_KEY}`
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': `Bearer ${SPICK.SUPA_KEY}`
       },
       body: JSON.stringify({ type, record })
     });
@@ -23,36 +24,36 @@ async function callNotify(type, record) {
 }
 
 // 1. Bokningsbekräftelse till kund
-export async function sendBookingConfirmation(booking) {
+function sendBookingConfirmation(booking) {
   return callNotify('booking', booking);
 }
 
 // 2. Admin-notis om ny bokning
-export async function sendAdminNotification(booking) {
+function sendAdminNotification(booking) {
   return callNotify('booking', booking);
 }
 
 // 3. Välkomstmail till godkänd städare
-export async function sendCleanerWelcome(cleaner) {
+function sendCleanerWelcome(cleaner) {
   return callNotify('cleaner_approved', cleaner);
 }
 
-// 4. Betygsförfrågan
-export async function sendReviewRequest(booking) {
+// 4. Ny ansökan bekräftelse + admin-notis
+function sendApplicationNotification(application) {
+  return callNotify('application', application);
+}
+
+// 5. Betygsförfrågan
+function sendReviewRequest(booking) {
   return callNotify('review_request', booking);
 }
 
-// 5. Påminnelse 24h före
-export async function sendReminder(booking) {
+// 6. Påminnelse 24h före
+function sendReminder(booking) {
   return callNotify('reminder', booking);
 }
 
-// 6. Garantiärende
-export async function sendGuaranteeClaim(data) {
+// 7. Garantiärende
+function sendGuaranteeClaim(data) {
   return callNotify('guarantee', data);
-}
-
-// Bakåtkompatibilitet
-export async function sendEmail(to, subject, html) {
-  return callNotify('custom', { to, subject, html });
 }

@@ -179,6 +179,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");
   </script>
+<script src="js/config.js"></script>
 </head>
 <body>
 
@@ -607,9 +608,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
 <script>
 const SB = supabase.createClient(
-  'https://urjeijcncsyuletprydy.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
-);
+  SPICK.SUPA_URL, SPICK.SUPA_KEY);
 // ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
 const ADMIN_EMAIL = 'hello@spick.se';
 let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
@@ -1785,7 +1784,7 @@ async function approveApplication(id, name, email, city, services, rate) {
   // Skicka välkomstmail via Resend
   await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' },
+    headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer '+SPICK.SUPA_KEY },
     body: JSON.stringify({ type: 'cleaner_approved', record: { full_name: name, name, email, city, hourly_rate: rate } })
   }).catch(() => {});
   

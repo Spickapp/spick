@@ -10,11 +10,16 @@ const FROM  = "Spick <hello@spick.se>";
 const ADMIN = "hello@spick.se";
 const SUPA  = "https://urjeijcncsyuletprydy.supabase.co";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
+// CORS: begränsat till spick.se (inte wildcard *)
+function getCORS(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  const allowed = ["https://spick.se", "https://www.spick.se"];
+  return {
+    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : "https://spick.se",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+  };
+}
 
 // Spick branded email wrapper
 function wrap(content: string): string {
@@ -54,6 +59,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 }
 
 serve(async (req) => {
+  const CORS = getCORS(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   const payload = await req.json().catch(() => ({}));

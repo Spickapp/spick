@@ -123,6 +123,7 @@ footer p{font-size:.8rem;color:#4A4A45;}
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");
   </script>
+<script src="js/config.js"></script>
 </head>
 <body>
 <nav><a href="index.html" class="logo">Spick</a><a href="index.html" class="back">← Tillbaka</a><button class="hamburger" onclick="openMobMenu()" aria-label="Meny"><span></span><span></span><span></span></button>
@@ -239,7 +240,7 @@ footer p{font-size:.8rem;color:#4A4A45;}
 <footer><span>Spick</span><p>hello@spick.se</p><p>© 2026 Spick AB · 559402-4522</p></footer>
 
 <script>
-const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
+const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
 
 function openChat(){
   document.getElementById('chatWidget').style.display='flex';
@@ -312,8 +313,8 @@ async function send(){
     await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
       method:'POST',
       headers:{'Content-Type':'application/json',
-               'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
-               'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'},
+               'apikey':SPICK.SUPA_KEY,
+               'Authorization':'Bearer '+SPICK.SUPA_KEY},
       body:JSON.stringify({type:'contact',record:{name:fn+' '+ln,email:em,subject:sub,message:msg}})
     }).catch(()=>{});
     document.getElementById('ok').classList.add('show');

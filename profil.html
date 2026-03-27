@@ -90,6 +90,7 @@ nav{background:var(--w);padding:1.25rem 2rem;display:flex;align-items:center;jus
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");
   </script>
+<script src="js/config.js"></script>
 </head>
 <body>
 <nav>
@@ -108,7 +109,7 @@ nav{background:var(--w);padding:1.25rem 2rem;display:flex;align-items:center;jus
       </div>
     </div>
 <script>
-const SB=supabase.createClient('https://urjeijcncsyuletprydy.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0');
+const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 const id=new URLSearchParams(location.search).get('id');
 
@@ -241,7 +242,7 @@ async function loadReviews(cleanerId) {
   if(!cleanerId) return;
   try {
     const r = await fetch(`https://urjeijcncsyuletprydy.supabase.co/rest/v1/reviews?cleaner_id=eq.${cleanerId}&select=rating,comment,created_at&order=created_at.desc&limit=10`, {
-      headers:{apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'}
+      headers:{apikey:SPICK.SUPA_KEY}
     });
     const data = await r.json();
     const el = document.getElementById('reviews-list');

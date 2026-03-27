@@ -44,7 +44,7 @@ async function mail(to: string, subject: string, html: string) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, {headers:{"Access-Control-Allow-Origin":"*"}});
+  if (req.method === "OPTIONS") return new Response(null, {headers:{"Access-Control-Allow-Origin":"https://spick.se"}});
 
   const now  = new Date();
   const sent: string[] = [];

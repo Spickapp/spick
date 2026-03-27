@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 const SUPA_URL="https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"POST,GET,OPTIONS","Access-Control-Allow-Headers":"Content-Type,Authorization,apikey"};
+const CORS={"Access-Control-Allow-Origin":"https://spick.se","Access-Control-Allow-Methods":"POST,GET,OPTIONS","Access-Control-Allow-Headers":"Content-Type,Authorization,apikey"};
 const SH={apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
 async function geocode(a:string,c:string){try{const r=await fetch("https://nominatim.openstreetmap.org/search?q="+encodeURIComponent(a+", "+c+", Sweden")+"&format=json&limit=1&countrycodes=se",{headers:{"User-Agent":"Spick/1.0 hello@spick.se"}}).then(r=>r.json());if(r.length)return{lat:parseFloat(r[0].lat),lng:parseFloat(r[0].lon)};}catch(e){}return null;}
 function haversine(lat1:number,lng1:number,lat2:number,lng2:number){const R=6371;

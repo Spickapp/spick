@@ -1,0 +1,92 @@
+// ═══════════════════════════════════════════════════════════════
+// SPICK – Delad e-postmall + Resend-helper
+// Importeras av: notify, stripe-webhook, auto-remind
+// ═══════════════════════════════════════════════════════════════
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const FROM  = "Spick <hello@spick.se>";
+const ADMIN = "hello@spick.se";
+
+/**
+ * Branded HTML e-post wrapper
+ */
+export function wrap(content: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>body{margin:0;padding:0;background:#F7F7F5;font-family:'DM Sans',Arial,sans-serif}
+.wrap{max-width:580px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.07)}
+.header{background:#0F6E56;padding:24px 32px}
+.logo{font-family:Georgia,serif;font-size:22px;font-weight:700;color:#fff}
+.body{padding:32px}
+.footer{padding:16px 32px;background:#F7F7F5;font-size:12px;color:#9E9E9A;text-align:center}
+h2{font-family:Georgia,serif;font-size:20px;color:#1C1C1A;margin:0 0 12px}
+p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
+.card{background:#F7F7F5;border-radius:12px;padding:20px;margin:16px 0}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4;font-size:14px}
+.row:last-child{border:none;padding-top:12px}
+.row .lbl{color:#9B9B95}.row .val{font-weight:600;color:#1C1C1A}
+.btn{display:inline-block;background:#0F6E56;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;font-weight:600;font-size:15px;margin-top:8px}
+.badge{display:inline-block;background:#E1F5EE;color:#0F6E56;padding:6px 14px;border-radius:100px;font-size:13px;font-weight:600}
+</style></head><body>
+<div class="wrap">
+  <div class="header"><div class="logo">Spick</div></div>
+  <div class="body">${content}</div>
+  <div class="footer">Spick AB · 559402-4522 · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a></div>
+</div></body></html>`;
+}
+
+/**
+ * Helper: info-kort med rader
+ */
+export function card(rows: Array<[string, string]>): string {
+  return `<div class="card">${rows.map(([lbl, val]) =>
+    `<div class="row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`
+  ).join("")}</div>`;
+}
+
+/**
+ * Skicka e-post via Resend
+ * Returnerar { ok, id?, error? }
+ */
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: FROM, to, subject, html }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, id: data.id };
+    }
+    const err = await res.text();
+    console.error(`Resend ${res.status}: ${err}`);
+    return { ok: false, error: `HTTP ${res.status}` };
+  } catch (e) {
+    console.error("sendEmail error:", (e as Error).message);
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/**
+ * CORS-headers (begränsat till spick.se)
+ */
+export function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const allowed = ["https://spick.se", "https://www.spick.se", "http://localhost:3000"];
+  const allow = allowed.includes(origin) ? origin : "https://spick.se";
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+  };
+}
+
+export { FROM, ADMIN };

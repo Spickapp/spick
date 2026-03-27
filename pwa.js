@@ -12,8 +12,7 @@ window.addEventListener('online',()=>document.getElementById('offline-bar')?.rem
 window.addEventListener('offline',()=>{if(!document.getElementById('offline-bar')){const b=document.createElement('div');b.id='offline-bar';b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#f57c00;color:white;padding:10px;text-align:center;font-size:13px;font-weight:600;z-index:9997';b.textContent='📵 Ingen anslutning – du är offline';document.body.appendChild(b);}});
 })();
 // ── PUSH NOTIFICATIONS ────────────────────────────────
-const SUPA_URL='https://urjeijcncsyuletprydy.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+// Använder SPICK.SUPA_URL och SPICK.SUPA_KEY från js/config.js
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -37,12 +36,12 @@ window.spickRequestPush = async function(userEmail, userType='customer') {
     const key = sub.getKey('p256dh');
     const auth = sub.getKey('auth');
 
-    await fetch(SUPA_URL + '/rest/v1/push_subscriptions', {
+    await fetch(SPICK.SUPA_URL + '/rest/v1/push_subscriptions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: SUPA_KEY,
-        Authorization: 'Bearer ' + SUPA_KEY,
+        apikey: SPICK.SUPA_KEY,
+        Authorization: 'Bearer ' + SPICK.SUPA_KEY,
         Prefer: 'return=minimal'
       },
       body: JSON.stringify({
