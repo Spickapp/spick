@@ -245,6 +245,29 @@ nav{background:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify
 </div>
 
 <!-- AVBOKA MODAL -->
+<!-- Inline betygsättning -->
+<div class="modal-bg" id="reviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;padding:28px;max-width:380px;width:90vw">
+    <h3 style="font-family:Georgia,serif;font-size:1.2rem;margin-bottom:4px">Betygsätt städningen</h3>
+    <p style="font-size:.82rem;color:var(--m);margin-bottom:16px" id="review-cleaner-name">Din städare</p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px" id="star-row">
+      ${[1,2,3,4,5].map(n => `<span class="star-btn" data-v="${n}" onclick="setStars(${n})" style="font-size:2.2rem;cursor:pointer;opacity:.3;transition:opacity .15s">⭐</span>`).join('')}
+    </div>
+    <textarea id="review-text" placeholder="Frivillig kommentar..." rows="3"
+      style="width:100%;padding:10px;border:1.5px solid #E8E8E4;border-radius:10px;font-family:inherit;font-size:.85rem;resize:none;box-sizing:border-box;margin-bottom:12px"></textarea>
+    <div style="display:flex;gap:8px">
+      <button onclick="submitInlineReview()" id="review-submit-btn"
+        style="flex:1;padding:10px;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit">
+        Skicka betyg ⭐
+      </button>
+      <button onclick="document.getElementById('reviewModal').style.display='none'"
+        style="padding:10px 16px;background:#F3F4F6;border:none;border-radius:10px;cursor:pointer;font-family:inherit">
+        Avbryt
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="cancelModal">
   <div class="modal">
     <div class="modal-title">Avboka städning?</div>
@@ -394,12 +417,13 @@ function bookingCard(b) {
 
   const cleanerHtml = b.cleaner_id ? `
     <div class="cleaner-info">
-      <div class="cleaner-avatar">${(b.cleaner_name || 'S').charAt(0)}</div>
-      <div>
-        <div class="cleaner-name">${b.cleaner_name || 'Städare tilldelad'}</div>
-        <div class="cleaner-rating">⭐ ${b.cleaner_rating || '5.0'} betyg</div>
+      <div class="cleaner-avatar" style="width:40px;height:40px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0">${(b.cleaner_name || 'S').charAt(0)}</div>
+      <div style="flex:1">
+        <div class="cleaner-name" style="font-weight:600">${b.cleaner_name || 'Städare tilldelad'}</div>
+        <div class="cleaner-rating">⭐ ${b.cleaner_rating || '5.0'} betyg · BankID-verifierad ✓</div>
       </div>
-    </div>` : '';
+      ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang bokning ${b.date || ''}" style="font-size:.75rem;color:var(--g);text-decoration:none;padding:4px 10px;border:1px solid var(--g);border-radius:8px;white-space:nowrap">✉️ Kontakta</a>` : ''}
+    </div>` : '<div style="font-size:.82rem;color:var(--m);padding:8px 0">⏳ Städare tilldelas inom 2 timmar</div>';
 
   return `
     <div class="booking-card">
@@ -421,8 +445,9 @@ function bookingCard(b) {
         </div>
         <div class="bc-actions">
           <a href="min-bokning.html?bid=${b.id}" class="btn-sm btn-outline">Detaljer</a>
-          ${canReview ? `<a href="betygsatt.html?bid=${b.id}" class="btn-sm btn-link">Betygsätt</a>` : ''}
+          ${canReview ? `<button class="btn-sm btn-link" onclick="openInlineReview('${b.id}','${(b.cleaner_name||'').replace(/'/g,'')}')" style="background:var(--gp);color:var(--g);border:none;cursor:pointer">⭐ Betygsätt</button>` : ''}
           ${canCancel ? `<button class="btn-sm btn-danger" onclick="openCancelModal('${b.id}', '${b.service || 'städning'}')">Avboka</button>` : ''}
+          ${['cancelled','avbokad','klar','completed'].includes(status) ? `<a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" class="btn-sm btn-outline">🔄 Boka igen</a>` : ''}
         </div>
       </div>
     </div>`;
@@ -502,7 +527,75 @@ function copyReferral() {
   }
 }
 
+// ── INLINE BETYGSÄTTNING ─────────────────────────
+let _reviewBid = null, _reviewStars = 0;
+
+function openInlineReview(bid, cleanerName) {
+  _reviewBid = bid;
+  _reviewStars = 0;
+  document.getElementById('review-cleaner-name').textContent = 'Betygsätt ' + (cleanerName || 'din städare');
+  document.getElementById('review-text').value = '';
+  document.querySelectorAll('.star-btn').forEach(s => s.style.opacity = '0.3');
+  document.getElementById('reviewModal').style.display = 'flex';
+}
+
+function setStars(n) {
+  _reviewStars = n;
+  document.querySelectorAll('.star-btn').forEach(s => {
+    s.style.opacity = parseInt(s.dataset.v) <= n ? '1' : '0.25';
+  });
+}
+
+async function submitInlineReview() {
+  if (!_reviewStars) { alert('Välj minst 1 stjärna'); return; }
+  const btn = document.getElementById('review-submit-btn');
+  btn.textContent = '⏳ Sparar...'; btn.disabled = true;
+  const comment = document.getElementById('review-text').value.trim();
+
+  const { data: bk } = await SB.from('bookings')
+    .select('cleaner_id, cleaner_email, cleaner_name, customer_email, customer_name, service, date')
+    .eq('id', _reviewBid).single();
+
+  if (!bk) { alert('Kunde inte hämta bokningsinfo'); btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false; return; }
+
+  // Spara recension
+  const { error } = await SB.from('reviews').insert({
+    booking_id: _reviewBid,
+    customer_email: currentEmail,
+    customer_name: bk.customer_name || currentEmail,
+    cleaner_email: bk.cleaner_email,
+    cleaner_name: bk.cleaner_name,
+    cleaner_rating: _reviewStars,
+    cleaner_comment: comment || null,
+  });
+
+  if (!error) {
+    // Uppdatera review_requested_at på bokningen
+    await SB.from('bookings').update({ review_requested_at: new Date().toISOString() }).eq('id', _reviewBid);
+    // Uppdatera städarens snittbetyg
+    if (bk.cleaner_id) {
+      const { data: allRevs } = await SB.from('reviews').select('cleaner_rating').eq('cleaner_email', bk.cleaner_email);
+      if (allRevs?.length) {
+        const avg = allRevs.reduce((s,r) => s + (parseFloat(r.cleaner_rating)||0), 0) / allRevs.length;
+        await SB.from('cleaners').update({ avg_rating: parseFloat(avg.toFixed(1)), review_count: allRevs.length }).eq('id', bk.cleaner_id);
+      }
+    }
+    document.getElementById('reviewModal').style.display = 'none';
+    showToast('✅ Tack för ditt betyg! Det hjälper andra kunder.');
+    setTimeout(loadBookings, 1000);
+  } else {
+    alert('Fel: ' + error.message);
+    btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false;
+  }
+}
+
 // ── LOGOUT ───────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('saveToast');
+  if (t) { t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+  else { const n = document.createElement('div'); n.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#0F6E56;color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;z-index:9999;font-size:.9rem'; n.textContent=msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3000); }
+}
+
 function logout() {
   localStorage.removeItem('spick_customer_email');
   currentEmail = '';

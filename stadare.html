@@ -221,7 +221,15 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       <option value="pris-ner">💰 Högsta pris</option>
       <option value="jobb">🏆 Flest jobb</option>
     </select>
-    <button onclick="toggleMapView()" id="map-btn" style="padding:.5rem 1rem;border:1.5px solid var(--grd);border-radius:100px;background:#fff;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap">
+    <div style="display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--m)">
+        <span>Max:</span>
+        <input type="range" id="price-slider" min="200" max="600" step="50" value="600"
+          style="width:80px;accent-color:var(--g)"
+          oninput="document.getElementById('price-val').textContent=this.value;render()">
+        <span id="price-val" style="font-weight:600;color:var(--g);min-width:40px">600</span>
+        <span>kr/h</span>
+      </div>
+      <button onclick="toggleMapView()" id="map-btn" style="padding:.5rem 1rem;border:1.5px solid var(--grd);border-radius:100px;background:#fff;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap">
       🗺️ Kartvy
     </button>
   </div>
@@ -299,6 +307,8 @@ function render(){
   else if(fv==='stor') d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('stor')));
   else if(fv==='flytt') d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('flytt')));
   else if(fv==='fonster') d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('fönster')));
+  const maxPrice = parseInt(document.getElementById('price-slider')?.value || 600);
+  d = d.filter(cl => (cl.price || 350) <= maxPrice);
   if(fv==='idag') {
     const days=['sön','mån','tis','ons','tor','fre','lör'];
     const todayStr=days[new Date().getDay()];
