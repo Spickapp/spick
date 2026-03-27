@@ -94,3 +94,9 @@ END $$;
 CREATE POLICY "bookings_insert_open" ON bookings
   AS PERMISSIVE FOR INSERT TO PUBLIC
   WITH CHECK (true);
+
+-- FIX 4: Legacy NOT NULL-kolumner blockerade INSERT från app-koden
+-- customer_email och customer_name är de faktiska kolumnerna
+-- email och name är legacy-duplikat som sätts automatiskt av boka.html men inte av E2E
+ALTER TABLE bookings ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE bookings ALTER COLUMN "name" DROP NOT NULL;
