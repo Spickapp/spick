@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Säkerhet & Riskhantering | Spick Intern</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--bg:#F7F7F5;--b:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--r:#DC2626;--y:#D97706;--rp:#FEE2E2;--yp:#FEF3C7}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);line-height:1.6}
+.topnav{background:#1C1C1A;color:#fff;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+.topnav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:.82rem}
+.hero{background:linear-gradient(135deg,#1C1C1A,#374151);color:#fff;padding:3rem 2rem;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:1.9rem;margin-bottom:.5rem}
+.hero p{opacity:.75;max-width:580px;margin:.5rem auto 0;font-size:.92rem}
+.container{max-width:980px;margin:0 auto;padding:2.5rem 1.5rem}
+.sec{margin-bottom:3rem}
+.sec-title{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:.75rem;border-bottom:2px solid var(--gm);padding-bottom:.5rem}
+.status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.875rem;margin:1rem 0}
+.status-card{border-radius:12px;padding:1rem;text-align:center}
+.status-card.ok{background:#D1FAE5;border:1px solid #6EE7B7}
+.status-card.warn{background:var(--yp);border:1px solid #FCD34D}
+.status-card.crit{background:var(--rp);border:1px solid #FECACA}
+.status-card.info{background:var(--gp);border:1px solid var(--gm)}
+.status-icon{font-size:1.8rem;margin-bottom:.375rem}
+.status-label{font-weight:700;font-size:.85rem}
+.status-sub{font-size:.72rem;color:var(--m);margin-top:3px}
+.risk-table{width:100%;border-collapse:collapse;font-size:.83rem;margin:1rem 0}
+.risk-table th{background:#374151;color:#fff;padding:.7rem 1rem;text-align:left}
+.risk-table td{padding:.6rem 1rem;border-bottom:1px solid var(--border);vertical-align:top}
+.risk-table tr:nth-child(even) td{background:#f9f9f7}
+.tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:.68rem;font-weight:700}
+.tag-crit{background:#FEE2E2;color:#991B1B}
+.tag-high{background:#FEF3C7;color:#92400E}
+.tag-med{background:#DBEAFE;color:#1E40AF}
+.tag-low{background:#D1FAE5;color:#065F46}
+.tag-done{background:#D1FAE5;color:#065F46}
+.tag-todo{background:#FEE2E2;color:#991B1B}
+.tag-progress{background:#FEF3C7;color:#92400E}
+.alert{border-radius:12px;padding:1rem 1.25rem;margin:.875rem 0}
+.alert-green{background:var(--gp);border-left:4px solid var(--g)}
+.alert-yellow{background:var(--yp);border-left:4px solid var(--y)}
+.alert-red{background:var(--rp);border-left:4px solid var(--r)}
+.alert h4{font-weight:700;margin-bottom:.375rem;font-size:.9rem}
+.alert p,.alert li{font-size:.83rem;color:#374151;line-height:1.6}
+.alert ul{padding-left:1.25rem;margin-top:.375rem}
+.checklist{list-style:none;padding:0;margin:.75rem 0}
+.checklist li{padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.85rem;display:flex;gap:.75rem}
+.checklist li:last-child{border:none}
+.checklist .ch-icon{width:20px;flex-shrink:0;text-align:center}
+.runbook{background:#1C1C1A;color:#e5e7eb;border-radius:12px;padding:1.25rem;font-family:monospace;font-size:.78rem;margin:1rem 0;line-height:1.8;overflow-x:auto}
+.runbook .comment{color:#6EE7B7}
+.runbook .cmd{color:#93C5FD}
+footer{background:#1C1C1A;color:rgba(255,255,255,.5);padding:2rem;text-align:center;font-size:.8rem;margin-top:3rem}
+footer a{color:rgba(255,255,255,.5);text-decoration:none}
+@media(max-width:600px){.hero h1{font-size:1.4rem}.container{padding:1.5rem 1rem}}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div><strong>Spick</strong> · Säkerhet & Riskhantering</div>
+  <div style="display:flex;gap:1.5rem">
+    <a href="#status">Status</a>
+    <a href="#risker">Risker</a>
+    <a href="#backup">Backup</a>
+    <a href="#runbooks">Runbooks</a>
+    <a href="admin.html">← Admin</a>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>🛡️ Säkerhet & Riskhantering</h1>
+  <p>Fullständig dokumentation av Spicks säkerhetsstatus, backup-rutiner och åtgärdsplaner för driftstörningar.</p>
+</div>
+
+<div class="container">
+
+<!-- STATUS -->
+<div class="sec" id="status">
+  <div class="sec-title">Aktuell Säkerhetsstatus</div>
+  
+  <div class="status-grid">
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">HTTPS / SSL</div>
+      <div class="status-sub">GitHub Pages – automatisk, gratis</div>
+    </div>
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">Admin-auth</div>
+      <div class="status-sub">Supabase Magic Link → hello@spick.se</div>
+    </div>
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">Stripe PCI-DSS</div>
+      <div class="status-sub">Kortdata hanteras aldrig av Spick</div>
+    </div>
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">Nightly Backup</div>
+      <div class="status-sub">13 tabeller, kl 02:00 varje natt</div>
+    </div>
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">Uptime Monitor</div>
+      <div class="status-sub">Kontroll var 15:e minut + e-postalert</div>
+    </div>
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">GitHub Actions CI</div>
+      <div class="status-sub">Secrets i GitHub Secrets, ej i kod</div>
+    </div>
+    <div class="status-card ok">
+      <div class="status-icon">✅</div>
+      <div class="status-label">Supabase RLS</div>
+      <div class="status-sub">Row Level Security aktiverat</div>
+    </div>
+    <div class="status-card warn">
+      <div class="status-icon">⚠️</div>
+      <div class="status-label">Anon-nyckel i HTML</div>
+      <div class="status-sub">Publik men begränsad av RLS</div>
+    </div>
+    <div class="status-card warn">
+      <div class="status-icon">⚠️</div>
+      <div class="status-label">Kund-auth (email)</div>
+      <div class="status-sub">Bör uppgraderas till Supabase Auth</div>
+    </div>
+    <div class="status-card info">
+      <div class="status-icon">ℹ️</div>
+      <div class="status-label">Supabase PITR</div>
+      <div class="status-sub">Ej aktiverat (kräver Pro-plan)</div>
+    </div>
+  </div>
+</div>
+
+<!-- RISKREGISTER -->
+<div class="sec" id="risker">
+  <div class="sec-title">Riskregister</div>
+  
+  <table class="risk-table">
+    <thead>
+      <tr>
+        <th>Risk</th>
+        <th>Sannolikhet</th>
+        <th>Konsekvens</th>
+        <th>Risknivå</th>
+        <th>Nuvarande skydd</th>
+        <th>Åtgärd</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>spick.se nere (GitHub Pages)</strong><br><small>GitHub har driftstörning</small></td>
+        <td>Låg (99.95% uptime)</td>
+        <td>Hög – inga nya bokningar</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>Uptime monitor var 15 min + e-postalert</td>
+        <td>Statuspage på status.spick.se. Backup-URL.</td>
+        <td><span class="tag tag-progress">Pågår</span></td>
+      </tr>
+      <tr>
+        <td><strong>Supabase nere</strong><br><small>DB eller Edge Functions ej tillgängliga</small></td>
+        <td>Mycket låg (SLA 99.9%)</td>
+        <td>Kritisk – inga betalningar, inget flöde</td>
+        <td><span class="tag tag-high">HÖG</span></td>
+        <td>Incident-response workflow + e-postalert inom 15 min</td>
+        <td>Aktivera Supabase PITR (Pro). Offline-meddelande på boka.html.</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><strong>Stripe nere / betalning misslyckas</strong></td>
+        <td>Låg</td>
+        <td>Hög – intäktstapp</td>
+        <td><span class="tag tag-high">HÖG</span></td>
+        <td>Stripe har eget statuspage. Klarna som backup.</td>
+        <td>Swish-integration (pågår). Stripe-webhook retry.</td>
+        <td><span class="tag tag-progress">Pågår</span></td>
+      </tr>
+      <tr>
+        <td><strong>Resend nere / e-post levereras ej</strong></td>
+        <td>Låg</td>
+        <td>Medel – kunder missar bekräftelse</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>Resend retry-logik. Bokningar sparas i DB oberoende.</td>
+        <td>Fallback-avsändare via Mailgun (konfigurera i Resend).</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><strong>Dataläcka – obehörig DB-access</strong></td>
+        <td>Låg</td>
+        <td>Kritisk – GDPR, förtroende</td>
+        <td><span class="tag tag-high">HÖG</span></td>
+        <td>RLS aktiverat. Anon-key begränsad. Service role i Secrets.</td>
+        <td>Skärp RLS på bookings. Implementera Supabase Auth för kunder.</td>
+        <td><span class="tag tag-progress">Pågår</span></td>
+      </tr>
+      <tr>
+        <td><strong>GitHub komprometteras (tokens läcks)</strong></td>
+        <td>Mycket låg</td>
+        <td>Kritisk – deploy-pipeline</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>GitHub 2FA. Secrets rotation rutiner.</td>
+        <td>Rotera GH_PAT varje 90 dagar. Minimal scope på tokens.</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><strong>DNS-kapning / Loopia-intrång</strong></td>
+        <td>Mycket låg</td>
+        <td>Kritisk – hela domänen äventyras</td>
+        <td><span class="tag tag-high">HÖG</span></td>
+        <td>Loopia 2FA. DNS-TTL 3600s.</td>
+        <td>Aktivera DNSSEC i Loopia. Övervaka DNS-ändringar.</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><strong>Städares konto komprometteras</strong></td>
+        <td>Medel</td>
+        <td>Medel – obehörig tillgång till kunddata</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>Magic Link (tokenbaserat). Ingen lösenord att läcka.</td>
+        <td>Magic Link upphör automatiskt. Städare ser bara egna bokningar.</td>
+        <td><span class="tag tag-done">OK</span></td>
+      </tr>
+      <tr>
+        <td><strong>Dataskada (oavsiktlig delete/update)</strong></td>
+        <td>Låg</td>
+        <td>Hög – bokningsdata försvinner</td>
+        <td><span class="tag tag-high">HÖG</span></td>
+        <td>Nightly backup 13 tabeller. 30 dagars retention.</td>
+        <td>Supabase PITR (Pro). Disaster Recovery workflow.</td>
+        <td><span class="tag tag-progress">Pågår</span></td>
+      </tr>
+      <tr>
+        <td><strong>GDPR-brott – PII hanteras felaktigt</strong></td>
+        <td>Låg</td>
+        <td>Kritisk – böter upp till 4% av omsättning</td>
+        <td><span class="tag tag-crit">KRITISK</span></td>
+        <td>Integritetspolicy publicerad. PNR hashas. Stripe PCI-DSS.</td>
+        <td>Data Processing Agreement med Supabase, Stripe, Resend. Cookie consent.</td>
+        <td><span class="tag tag-progress">Pågår</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- BACKUP -->
+<div class="sec" id="backup">
+  <div class="sec-title">Backup-strategi</div>
+
+  <div class="alert alert-green">
+    <h4>✅ Vad som backas upp automatiskt varje natt (kl 02:00)</h4>
+    <ul>
+      <li>bookings – alla bokningar</li>
+      <li>cleaners – alla städarprofiler</li>
+      <li>cleaner_applications – ansökningar</li>
+      <li>reviews – recensioner</li>
+      <li>referrals – referral-data</li>
+      <li>subscriptions – prenumerationer</li>
+      <li>emails – e-postinkorg</li>
+      <li>invoices – fakturor</li>
+      <li>gift_cards – presentkort</li>
+      <li>cleaner_availability – scheman</li>
+      <li>analytics_events – analytics</li>
+      <li>customer_profiles – kundprofiler</li>
+      <li>guarantee_requests – garantiärenden</li>
+    </ul>
+  </div>
+
+  <div class="alert alert-yellow">
+    <h4>⚠️ Backup-begränsningar</h4>
+    <ul>
+      <li><strong>Lagring:</strong> GitHub-repo (publik klon kan se backup-data – bör vara privat repo ✅)</li>
+      <li><strong>Retention:</strong> 30 dagar (filer äldre rensas automatiskt)</li>
+      <li><strong>Format:</strong> JSON via REST API (fullständig men ej transaktionellt konsistent)</li>
+      <li><strong>Gräns:</strong> Max 10 000 rader per tabell (tillräckligt nu, bör skalas)</li>
+      <li><strong>Point-in-time recovery:</strong> Ej tillgängligt utan Supabase Pro</li>
+    </ul>
+  </div>
+
+  <div class="alert alert-green">
+    <h4>💡 Supabase inbyggd backup</h4>
+    <p>Supabase Free-tier inkluderar dagliga backups som hålls i 7 dagar. Pro-tier ger Point-in-Time Recovery (PITR) med 7 dagars retention. Vår GitHub-backup kompletterar detta med 30 dagars retention och JSON-format som är läsbart utan Supabase-access.</p>
+  </div>
+</div>
+
+<!-- RUNBOOKS -->
+<div class="sec" id="runbooks">
+  <div class="sec-title">Incident Runbooks – Vad gör du när något går fel?</div>
+
+  <h3 style="font-size:1rem;font-weight:700;margin:1.5rem 0 .625rem">🔴 Scenario 1: spick.se svarar inte</h3>
+  <div class="checklist">
+    <li><span class="ch-icon">1️⃣</span> Kontrollera <a href="https://githubstatus.com" style="color:var(--g)">githubstatus.com</a> – är GitHub Pages nere?</li>
+    <li><span class="ch-icon">2️⃣</span> Kontrollera senaste GitHub Actions-körning – har deploy misslyckats?</li>
+    <li><span class="ch-icon">3️⃣</span> Gå till GitHub → spickapp/spick → Actions → Deploy to GitHub Pages</li>
+    <li><span class="ch-icon">4️⃣</span> Om deploy OK men sidan nere: vänta 5 min, GitHub Pages kan vara fördröjd</li>
+    <li><span class="ch-icon">5️⃣</span> Om git-commit korrupt: <code>git revert HEAD</code> och pusha om</li>
+    <li><span class="ch-icon">6️⃣</span> Publicera ett statusmeddelande på sociala medier om driftstörning > 30 min</li>
+    <li><span class="ch-icon">7️⃣</span> Meddela väntande kunder via broadcast-mail från admin-panelen</li>
+  </div>
+
+  <div class="runbook">
+    <span class="comment"># Kolla deploy-status:</span><br>
+    <span class="cmd">gh run list --workflow=deploy.yml --limit=5</span><br>
+    <br>
+    <span class="comment"># Tvinga om-deploy:</span><br>
+    <span class="cmd">git commit --allow-empty -m "Force redeploy" && git push</span><br>
+    <br>
+    <span class="comment"># Återställ till senaste fungerande version:</span><br>
+    <span class="cmd">git log --oneline -10  # Hitta commit-hash</span><br>
+    <span class="cmd">git revert [commit-hash] && git push</span>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;margin:1.5rem 0 .625rem">🔴 Scenario 2: Supabase / DB nere</h3>
+  <div class="checklist">
+    <li><span class="ch-icon">1️⃣</span> Kontrollera <a href="https://status.supabase.com" style="color:var(--g)">status.supabase.com</a></li>
+    <li><span class="ch-icon">2️⃣</span> Kontrollera Supabase Dashboard – är projektet pausat? (Gratisnivå pausas efter 7 dagars inaktivitet)</li>
+    <li><span class="ch-icon">3️⃣</span> Om projektet är pausat: klicka "Restore project" i Supabase Dashboard</li>
+    <li><span class="ch-icon">4️⃣</span> Lägg till ett maintenance-meddelande på boka.html (commit direkt)</li>
+    <li><span class="ch-icon">5️⃣</span> Acceptera inga nya bokningar manuellt tills DB är tillbaka</li>
+    <li><span class="ch-icon">6️⃣</span> Om data gick förlorad: kör Disaster Recovery workflow i GitHub Actions</li>
+  </div>
+
+  <div class="runbook">
+    <span class="comment"># Vakna Supabase-projektet (om pausat):</span><br>
+    <span class="cmd">curl -X POST https://api.supabase.com/v1/projects/urjeijcncsyuletprydy/restore</span><br>
+    <span class="comment"># (eller manuellt via Dashboard)</span><br>
+    <br>
+    <span class="comment"># Kör disaster recovery via GitHub Actions:</span><br>
+    <span class="comment"># GitHub → Actions → Disaster Recovery → Run workflow</span><br>
+    <span class="comment"># Välj: action=verify_backup</span>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;margin:1.5rem 0 .625rem">🟡 Scenario 3: Betalning misslyckas (Stripe)</h3>
+  <div class="checklist">
+    <li><span class="ch-icon">1️⃣</span> Kontrollera <a href="https://status.stripe.com" style="color:var(--g)">status.stripe.com</a></li>
+    <li><span class="ch-icon">2️⃣</span> Kolla Stripe Dashboard → Payments för felmeddelanden</li>
+    <li><span class="ch-icon">3️⃣</span> Kontrollera att Stripe webhook-URL är korrekt registrerad</li>
+    <li><span class="ch-icon">4️⃣</span> Webhook-secret: whsec_al4z5aWMSGg5Q5Qpf9WERYl7FUeREFHl</li>
+    <li><span class="ch-icon">5️⃣</span> Kunder med misslyckad betalning: erbjud alternativ via hello@spick.se</li>
+    <li><span class="ch-icon">6️⃣</span> Manuell bokning möjlig via admin-panelen som backup</li>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;margin:1.5rem 0 .625rem">🟡 Scenario 4: E-post levereras inte (Resend)</h3>
+  <div class="checklist">
+    <li><span class="ch-icon">1️⃣</span> Kontrollera <a href="https://resend.com" style="color:var(--g)">Resend Dashboard</a> → Logs</li>
+    <li><span class="ch-icon">2️⃣</span> Kontrollera SPF och DKIM-poster för spick.se i Loopia</li>
+    <li><span class="ch-icon">3️⃣</span> Bokningsdata finns i Supabase oavsett – e-post är bara bekräftelse</li>
+    <li><span class="ch-icon">4️⃣</span> Manuellt skicka bekräftelser via hello@spick.se om nödvändigt</li>
+    <li><span class="ch-icon">5️⃣</span> Kontrollera free-tier-limit: Resend free = 3 000 mail/mån</li>
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;margin:1.5rem 0 .625rem">🔴 Scenario 5: Misstänkt säkerhetsbrott</h3>
+  <div class="checklist">
+    <li><span class="ch-icon">1️⃣</span> Rotera OMEDELBART: Supabase anon-key, service role key i Supabase Dashboard</li>
+    <li><span class="ch-icon">2️⃣</span> Rotera Stripe API-keys i Stripe Dashboard</li>
+    <li><span class="ch-icon">3️⃣</span> Uppdatera alla GitHub Secrets med nya nycklar</li>
+    <li><span class="ch-icon">4️⃣</span> Granska Supabase Auth Logs för obehöriga inloggningar</li>
+    <li><span class="ch-icon">5️⃣</span> Granska Stripe Dashboard för obehöriga transaktioner</li>
+    <li><span class="ch-icon">6️⃣</span> Om kunddata exponerades: GDPR-anmälan till IMY inom 72 timmar</li>
+    <li><span class="ch-icon">7️⃣</span> Kontakta berörda kunder via e-post</li>
+  </div>
+
+  <div class="runbook">
+    <span class="comment"># Rotera Supabase-nycklar:</span><br>
+    <span class="comment"># Supabase Dashboard → Settings → API → Generate new key</span><br>
+    <br>
+    <span class="comment"># Uppdatera GitHub Secrets efter rotation:</span><br>
+    <span class="comment"># GitHub → Settings → Secrets → Actions</span><br>
+    <span class="comment"># Uppdatera: SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY, SUPABASE_SERVICE_ROLE_KEY</span><br>
+    <br>
+    <span class="comment"># IMY (Datainspektionen) anmälan:</span><br>
+    <span class="cmd">https://www.imy.se/anmalan-incidentrapportering/</span>
+  </div>
+</div>
+
+<!-- NYCKLAR & HEMLIGHETER -->
+<div class="sec">
+  <div class="sec-title">Nycklar & Hemligheter – Var finns vad?</div>
+
+  <table class="risk-table">
+    <thead>
+      <tr><th>Nyckel</th><th>Var lagras den</th><th>Vem kan se den</th><th>Rotationsintervall</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Supabase Anon Key</td>
+        <td>GitHub Secrets + HTML-filer (publik)</td>
+        <td>Alla med repo-access + användare</td>
+        <td>Vid säkerhetsbrott</td>
+      </tr>
+      <tr>
+        <td>Supabase Service Role Key</td>
+        <td>GitHub Secrets (ej i kod)</td>
+        <td>Bara GitHub Actions</td>
+        <td>Varje 6 månader</td>
+      </tr>
+      <tr>
+        <td>Stripe Secret Key</td>
+        <td>GitHub Secrets + Supabase env</td>
+        <td>Bara GitHub Actions / Edge Functions</td>
+        <td>Varje 6 månader</td>
+      </tr>
+      <tr>
+        <td>Stripe Webhook Secret</td>
+        <td>GitHub Secrets + Supabase env</td>
+        <td>Bara GitHub Actions / Edge Functions</td>
+        <td>Vid ny webhook</td>
+      </tr>
+      <tr>
+        <td>Resend API Key</td>
+        <td>GitHub Secrets + Supabase env</td>
+        <td>Bara GitHub Actions / Edge Functions</td>
+        <td>Varje 6 månader</td>
+      </tr>
+      <tr>
+        <td>GH_PAT (GitHub token)</td>
+        <td>GitHub Secrets</td>
+        <td>Bara GitHub Actions</td>
+        <td>Varje 90 dagar</td>
+      </tr>
+      <tr>
+        <td>Anthropic API Key</td>
+        <td>GitHub Secrets</td>
+        <td>Bara GitHub Actions / Edge Functions</td>
+        <td>Varje 6 månader</td>
+      </tr>
+      <tr>
+        <td>Loopia API credentials</td>
+        <td>GitHub Secrets</td>
+        <td>Bara GitHub Actions</td>
+        <td>Varje år</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- GDPR -->
+<div class="sec">
+  <div class="sec-title">GDPR & Dataskydd</div>
+
+  <div class="alert alert-green">
+    <h4>✅ Vad vi gör rätt</h4>
+    <ul>
+      <li>Personnummer (PNR) hashas och lagras aldrig i klartext</li>
+      <li>Betalningskortdata hanteras enbart av Stripe (PCI DSS Level 1)</li>
+      <li>Integritetspolicy publicerad och länkad från footer</li>
+      <li>Cookie-banner implementerad</li>
+      <li>Kunder kan begära radering (kontakta hello@spick.se)</li>
+      <li>Data lagras i EU (Supabase eu-central-1 / AWS Frankfurt)</li>
+    </ul>
+  </div>
+
+  <div class="alert alert-yellow">
+    <h4>⚠️ Vad vi bör förbättra</h4>
+    <ul>
+      <li>Data Processing Agreement (DPA) saknas formellt med Supabase/Stripe/Resend</li>
+      <li>Automatisk dataradering efter inaktivitet är ej implementerad</li>
+      <li>Rätt till dataexport (GDPR Art. 20) är ej automatiserad</li>
+      <li>Cookies som Google Analytics sätts utan explicit samtycke (bör fixas)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ÅTGÄRDSPLAN -->
+<div class="sec">
+  <div class="sec-title">Åtgärdsplan – Prioriterat</div>
+
+  <table class="risk-table">
+    <thead>
+      <tr><th>Prioritet</th><th>Åtgärd</th><th>Tid</th><th>Ansvarig</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-crit">P1</span></td>
+        <td>Aktivera Supabase Pro för PITR-backup</td>
+        <td>1 dag</td>
+        <td>Farhad</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-crit">P1</span></td>
+        <td>Rotera GH_PAT (sista rotationsdatum okänt)</td>
+        <td>30 min</td>
+        <td>Farhad</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-high">P2</span></td>
+        <td>Aktivera DNSSEC i Loopia</td>
+        <td>30 min</td>
+        <td>Farhad</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-high">P2</span></td>
+        <td>Skärp RLS: bookings ska kräva auth för SELECT</td>
+        <td>2 timmar</td>
+        <td>Claude</td>
+        <td><span class="tag tag-progress">Pågår</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-high">P2</span></td>
+        <td>Implementera Supabase Auth för kunder (ej bara email)</td>
+        <td>1 vecka</td>
+        <td>Claude</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-med">P3</span></td>
+        <td>Sätt upp statuspage (status.spick.se)</td>
+        <td>2 timmar</td>
+        <td>Claude</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-med">P3</span></td>
+        <td>DPA med Supabase, Stripe, Resend (formella avtal)</td>
+        <td>1 dag</td>
+        <td>Farhad</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-med">P3</span></td>
+        <td>Cookie-samtycke för Google Analytics</td>
+        <td>2 timmar</td>
+        <td>Claude</td>
+        <td><span class="tag tag-done">Delvis</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-low">P4</span></td>
+        <td>Varning om Supabase-projektet pausas</td>
+        <td>1 timme</td>
+        <td>Claude</td>
+        <td><span class="tag tag-done">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-low">P4</span></td>
+        <td>Backup-lagring till extern (S3/B2) istället för GitHub</td>
+        <td>1 dag</td>
+        <td>Claude</td>
+        <td><span class="tag tag-todo">Todo</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<footer>
+  Spick intern säkerhetsdokumentation · Uppdaterad mars 2026 · <a href="admin.html">← Admin</a>
+</footer>
+</body>
+</html>

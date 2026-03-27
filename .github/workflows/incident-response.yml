@@ -1,0 +1,162 @@
+name: Incident Response & Alert System
+'on':
+  schedule:
+    # Var 15:e minut – tätare än den gamla uptime-monitorn
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Vilken typ av kontroll'
+        required: false
+        default: 'all'
+        type: choice
+        options: [all, web, db, stripe, ssl]
+
+jobs:
+  full-health-check:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+      SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      RESEND_KEY: ${{ secrets.RESEND_API_KEY }}
+      ADMIN_EMAIL: hello@spick.se
+
+    steps:
+      - name: "🌐 Kontroll 1: spick.se svarar"
+        id: web
+        run: |
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 https://spick.se || echo "000")
+          LATENCY=$(curl -o /dev/null -s -w "%{time_total}" --max-time 15 https://spick.se || echo "999")
+          echo "HTTP=$STATUS LATENCY=${LATENCY}s"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "latency=$LATENCY" >> $GITHUB_OUTPUT
+          
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "301" ]; then
+            echo "❌ KRITISKT: spick.se svarar med $STATUS"
+            echo "web_down=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Web: $STATUS (${LATENCY}s)"
+            echo "web_down=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "🗄️ Kontroll 2: Supabase DB svarar"
+        id: db
+        run: |
+          DB_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            "$SUPA_URL/rest/v1/cleaners?select=id&limit=1" || echo "000")
+          echo "DB HTTP=$DB_STATUS"
+          echo "db_status=$DB_STATUS" >> $GITHUB_OUTPUT
+          
+          if [ "$DB_STATUS" = "200" ] || [ "$DB_STATUS" = "206" ]; then
+            echo "✅ Supabase DB: OK"
+            echo "db_down=false" >> $GITHUB_OUTPUT
+          else
+            echo "❌ KRITISKT: Supabase DB svarar med $DB_STATUS"
+            echo "db_down=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "⚡ Kontroll 3: Edge Functions svarar"
+        id: functions
+        run: |
+          FN_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 \
+            -X OPTIONS \
+            -H "apikey: $SUPA_KEY" \
+            "$SUPA_URL/functions/v1/notify" || echo "000")
+          echo "Edge Functions HTTP=$FN_STATUS"
+          # OPTIONS ska ge 200 eller 204
+          if [ "$FN_STATUS" = "200" ] || [ "$FN_STATUS" = "204" ] || [ "$FN_STATUS" = "405" ]; then
+            echo "✅ Edge Functions: OK"
+            echo "fn_down=false" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Edge Functions: $FN_STATUS"
+            echo "fn_down=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "🔑 Kontroll 4: SSL-certifikat"
+        id: ssl
+        run: |
+          EXPIRY=$(echo | timeout 10 openssl s_client -servername spick.se -connect spick.se:443 2>/dev/null \
+            | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2 || echo "")
+          if [ -z "$EXPIRY" ]; then
+            echo "⚠️ Kunde inte hämta SSL-info"
+            echo "ssl_days=999" >> $GITHUB_OUTPUT
+          else
+            DAYS=$(( ($(date -d "$EXPIRY" +%s 2>/dev/null || echo 0) - $(date +%s)) / 86400 ))
+            echo "SSL går ut om $DAYS dagar ($EXPIRY)"
+            echo "ssl_days=$DAYS" >> $GITHUB_OUTPUT
+            if [ "$DAYS" -lt 14 ]; then
+              echo "❌ KRITISKT: SSL går ut om $DAYS dagar!"
+              echo "ssl_critical=true" >> $GITHUB_OUTPUT
+            elif [ "$DAYS" -lt 30 ]; then
+              echo "⚠️ SSL VARNING: Går ut om $DAYS dagar"
+              echo "ssl_warning=true" >> $GITHUB_OUTPUT
+            else
+              echo "✅ SSL OK: $DAYS dagar kvar"
+            fi
+          fi
+
+      - name: "📊 Kontroll 5: Inga väntande bokningar fastnade"
+        id: pending
+        run: |
+          # Bokningar äldre än 48h med status=pending är troligen fastnade
+          CUTOFF=$(date -d "48 hours ago" --iso-8601=seconds)
+          STUCK=$(curl -s \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            "$SUPA_URL/rest/v1/bookings?payment_status=eq.pending&created_at=lt.$CUTOFF&select=id" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "?")
+          echo "Fastnade väntande bokningar: $STUCK"
+          echo "stuck_bookings=$STUCK" >> $GITHUB_OUTPUT
+          
+          if [ "$STUCK" != "?" ] && [ "$STUCK" -gt 0 ] 2>/dev/null; then
+            echo "⚠️ VARNING: $STUCK bokningar fastnade i 'pending' > 48h"
+          else
+            echo "✅ Inga fastnade bokningar"
+          fi
+
+      - name: "📱 Skicka varning om fel hittades"
+        if: >
+          steps.web.outputs.web_down == 'true' ||
+          steps.db.outputs.db_down == 'true' ||
+          steps.ssl.outputs.ssl_critical == 'true'
+        run: |
+          ISSUES=""
+          [ "${{ steps.web.outputs.web_down }}" = "true" ] && ISSUES="$ISSUES\n- ❌ spick.se nere (HTTP ${{ steps.web.outputs.status }})"
+          [ "${{ steps.db.outputs.db_down }}" = "true" ] && ISSUES="$ISSUES\n- ❌ Supabase DB nere (HTTP ${{ steps.db.outputs.db_status }})"
+          [ "${{ steps.ssl.outputs.ssl_critical }}" = "true" ] && ISSUES="$ISSUES\n- ❌ SSL upphör om ${{ steps.ssl.outputs.ssl_days }} dagar!"
+          [ "${{ steps.pending.outputs.stuck_bookings }}" -gt 0 ] 2>/dev/null && ISSUES="$ISSUES\n- ⚠️ ${{ steps.pending.outputs.stuck_bookings }} fastnade bokningar"
+          
+          echo "Skickar incidentnotis: $ISSUES"
+          
+          # Skicka via Resend
+          curl -s -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"alerts@spick.se\",
+              \"to\": [\"$ADMIN_EMAIL\"],
+              \"subject\": \"🚨 INCIDENT: Spick.se problem $(date '+%Y-%m-%d %H:%M')\",
+              \"html\": \"<h2>🚨 Spick Incidentvarning</h2><p>Följande problem hittades:</p><pre>$ISSUES</pre><p>Kontrollera <a href='https://spick.se/admin.html'>admin-panelen</a> och <a href='https://supabase.com/dashboard/project/urjeijcncsyuletprydy'>Supabase Dashboard</a>.</p><p>Tid: $(date)</p>\"
+            }" || echo "Kunde inte skicka mail (Resend)"
+          
+          # Fallback: notifiera via Supabase
+          curl -s -X POST "$SUPA_URL/functions/v1/notify" \
+            -H "Content-Type: application/json" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -d "{\"type\":\"uptime_alert\",\"record\":{\"message\":\"INCIDENT: Se GitHub Actions för detaljer\"}}" || true
+          
+          echo "::error::Spick-incident detekterad – se stegen ovan"
+          exit 1
+
+      - name: "✅ Allt OK – logga status"
+        if: success()
+        run: |
+          echo "✅ Alla kontroller OK vid $(date)"
+          echo "  Web: ${{ steps.web.outputs.status }} (${{{ steps.web.outputs.latency }}}s)"
+          echo "  DB: ${{ steps.db.outputs.db_status }}"
+          echo "  SSL: ${{ steps.ssl.outputs.ssl_days }} dagar kvar"
+          echo "  Fastnade bokningar: ${{ steps.pending.outputs.stuck_bookings }}"

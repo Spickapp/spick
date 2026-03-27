@@ -23,7 +23,7 @@ jobs:
           mkdir -p backups
           DATE=$(date +%Y%m%d)
 
-          for TABLE in bookings cleaners cleaner_applications reviews referrals; do
+          for TABLE in bookings cleaners cleaner_applications reviews referrals subscriptions emails invoices gift_cards cleaner_availability analytics_events customer_profiles guarantee_requests; do
             curl -sf "$SUPA_URL/rest/v1/${TABLE}?select=*&limit=10000" \
               -H "apikey: $SUPA_KEY" \
               -H "Authorization: Bearer $SUPA_KEY" \
@@ -34,6 +34,24 @@ jobs:
           # Rensa backups äldre än 30 dagar
           find backups/ -name "*.json" -mtime +30 -delete
           echo "✅ Backup klar: $(date)"
+
+      - name: Verifiera och komprimera backups
+        run: |
+          echo "=== Backup-verifiering ==="
+          for f in backups/*_$(date +%Y%m%d).json; do
+            SIZE=$(wc -c < "$f")
+            ROWS=$(python3 -c "import json,sys; d=json.load(open('$f')); print(len(d) if isinstance(d,list) else 'N/A')" 2>/dev/null || echo "?")
+            echo "  $f – $SIZE bytes – $ROWS rader"
+            # Varna om fil är tom (kan tyda på RLS-problem)
+            if [ "$SIZE" -lt 10 ]; then
+              echo "  ⚠️ VARNING: $f är misstänkt liten – kontrollera RLS-policies"
+            fi
+          done
+          
+          # Statistik
+          TOTAL=$(du -sh backups/ | cut -f1)
+          COUNT=$(ls backups/*.json 2>/dev/null | wc -l)
+          echo "Totalt: $COUNT filer, $TOTAL"
 
       - name: Commit backup
         run: |

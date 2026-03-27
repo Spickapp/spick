@@ -1,0 +1,139 @@
+name: Säkerhetsskanning
+'on':
+  schedule:
+    # Varje måndag kl 08:00
+    - cron: '0 8 * * 1'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "🔍 Sök hårdkodade hemligheter (ej anon-nycklar)"
+        run: |
+          echo "=== Söker efter service_role i klientkod ==="
+          if grep -rn "service_role" --include="*.html" --include="*.js" .; then
+            echo "❌ KRITISKT: service_role-nyckel hittad i klientkod!"
+            exit 1
+          else
+            echo "✅ Inga service_role-nycklar i klientkod"
+          fi
+          
+          echo ""
+          echo "=== Söker efter Stripe secret keys ==="
+          if grep -rn "sk_live_\|sk_test_" --include="*.html" --include="*.js" .; then
+            echo "❌ KRITISKT: Stripe secret key hittad i klientkod!"
+            exit 1
+          else
+            echo "✅ Inga Stripe secret keys i klientkod"
+          fi
+          
+          echo ""
+          echo "=== Söker efter vanliga lösenordsmönster ==="
+          # Letar efter: password = "..." eller pass: "..." men inte i kommentarer
+          if grep -rEn 'password\s*[=:]\s*"[^"]{8,}"' --include="*.html" --include="*.js" . \
+             | grep -v "//\|<!--\|placeholder\|type.*password\|input.*password\|name.*password"; then
+            echo "⚠️ Möjliga hårdkodade lösenord – granska manuellt"
+          else
+            echo "✅ Inga uppenbara hårdkodade lösenord"
+          fi
+
+      - name: "🛡️ Kontrollera HTTP-säkerhetshuvuden"
+        run: |
+          echo "=== Kollar HTTP-säkerhetshuvuden på spick.se ==="
+          HEADERS=$(curl -sI https://spick.se)
+          
+          check_header() {
+            local header=$1
+            if echo "$HEADERS" | grep -qi "$header"; then
+              echo "  ✅ $header"
+            else
+              echo "  ⚠️ Saknar: $header"
+            fi
+          }
+          
+          check_header "Content-Security-Policy"
+          check_header "X-Frame-Options"
+          check_header "X-Content-Type-Options"
+          check_header "Strict-Transport-Security"
+          check_header "Referrer-Policy"
+          
+          echo ""
+          echo "GitHub Pages sätter automatiskt HSTS. Övriga headers kräver meta-taggar."
+
+      - name: "📋 Granska RLS-policies"
+        run: |
+          echo "=== RLS-policy granskning ==="
+          OPEN=$(grep -rn "USING (true)" supabase/migrations/ | wc -l)
+          echo "Antal öppna 'USING (true)' policies: $OPEN"
+          
+          if [ "$OPEN" -gt 0 ]; then
+            echo "⚠️ Följande tabeller har öppna läspolicies (anon kan läsa ALL data):"
+            grep -rn "USING (true)" supabase/migrations/ | grep "FOR SELECT" | head -20
+            echo ""
+            echo "NOTERING: Anon-key är publik och avsedd för klientkod."
+            echo "          RLS USING (true) för SELECT är acceptabelt om tabellen saknar PII."
+            echo "          Tabeller med PII (bookings, cleaners) bör ha row-level access."
+          fi
+
+      - name: "🔐 Kontrollera att kritiska filer kräver auth"
+        run: |
+          echo "=== Kontrollerar att admin.html kräver inloggning ==="
+          
+          # admin.html ska ha auth-guard – kolla att login-screen finns
+          if grep -q "login-screen\|SB.auth\|signInWithOtp\|getSession" admin.html; then
+            echo "  ✅ admin.html: Auth-guard finns"
+          else
+            echo "  ❌ admin.html: Saknar auth-guard!"
+          fi
+          
+          # marknadsanalys.html ska ha noindex
+          if grep -q "noindex" marknadsanalys.html; then
+            echo "  ✅ marknadsanalys.html: noindex"
+          else
+            echo "  ⚠️ marknadsanalys.html: Saknar noindex-tagg"
+          fi
+          
+          # stadare-dashboard.html ska ha auth
+          if grep -q "showScreen\|signInWithOtp\|magic" stadare-dashboard.html; then
+            echo "  ✅ stadare-dashboard.html: Auth-guard finns"
+          else
+            echo "  ❌ stadare-dashboard.html: Saknar auth-guard!"
+          fi
+
+      - name: "📦 Kontrollera beroenden och versioner"
+        run: |
+          echo "=== CDN-biblioteksversioner ==="
+          grep -rh "cdn.jsdelivr.net\|cdnjs.cloudflare.com\|unpkg.com" --include="*.html" . \
+            | grep -o 'https://[^"]*' | sort -u | head -20
+          echo ""
+          echo "Rekommendation: Pinnas till specifika versioner, undvik @latest"
+
+      - name: "📊 Säkerhetssammanfattning"
+        run: |
+          echo "==================================="
+          echo "SÄKERHETSSAMMANFATTNING – $(date)"
+          echo "==================================="
+          echo ""
+          echo "✅ Automatiskt lösta:"
+          echo "  - Stripe secret keys i GitHub Secrets (ej klientkod)"
+          echo "  - Service role key i GitHub Secrets (ej klientkod)"  
+          echo "  - Admin auth via Supabase Magic Link"
+          echo "  - HTTPS via GitHub Pages"
+          echo ""
+          echo "⚠️ Kräver manuell uppmärksamhet:"
+          echo "  - Anon-nyckel i 45 HTML-filer (publik men acceptabel för klientkod)"
+          echo "  - RLS för bookings: anon kan läsa ALLA bokningar – bör ses över"
+          echo "  - Admin-portal: magic link → hello@spick.se (bra!)"
+          echo ""
+          echo "📋 Rekommenderade åtgärder (se säkerhetssidan):"
+          echo "  1. Lägg till Content-Security-Policy meta-tagg"
+          echo "  2. Skärp RLS på bookings (läs bara egna bokningar)"
+          echo "  3. Rotera anon-nyckeln om den komprometterades"

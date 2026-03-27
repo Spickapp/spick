@@ -1,0 +1,111 @@
+name: Disaster Recovery & Data Restore
+'on':
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Åtgärd'
+        required: true
+        type: choice
+        options:
+          - verify_backup
+          - list_backups
+          - restore_dry_run
+      table:
+        description: 'Tabell att återställa (tom = alla)'
+        required: false
+        default: ''
+      date:
+        description: 'Backup-datum (YYYYMMDD, tom = senaste)'
+        required: false
+        default: ''
+
+jobs:
+  disaster-recovery:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+      SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: "📋 Lista tillgängliga backups"
+        if: inputs.action == 'list_backups'
+        run: |
+          echo "=== Tillgängliga backups ==="
+          ls -lh backups/*.json 2>/dev/null | sort -r | head -30 || echo "Inga backups hittades"
+          echo ""
+          echo "=== Backup-statistik ==="
+          for TABLE in bookings cleaners cleaner_applications reviews referrals subscriptions; do
+            COUNT=$(ls backups/${TABLE}_*.json 2>/dev/null | wc -l)
+            LATEST=$(ls backups/${TABLE}_*.json 2>/dev/null | sort -r | head -1)
+            SIZE=$(wc -c < "$LATEST" 2>/dev/null || echo "N/A")
+            echo "  $TABLE: $COUNT backups, senaste=$LATEST ($SIZE bytes)"
+          done
+
+      - name: "✅ Verifiera backup-integritet"
+        if: inputs.action == 'verify_backup'
+        run: |
+          echo "=== Verifierar backup-filer ==="
+          ERRORS=0
+          for f in backups/*.json; do
+            if python3 -c "import json,sys; d=json.load(open('$f')); print(f'✅ $f: {len(d) if isinstance(d,list) else \"dict\"} poster')" 2>/dev/null; then
+              :
+            else
+              echo "❌ $f: Ogiltig JSON!"
+              ERRORS=$((ERRORS+1))
+            fi
+          done
+          echo ""
+          echo "Verifiering klar. Fel: $ERRORS"
+          [ $ERRORS -eq 0 ] || exit 1
+
+      - name: "🔄 Simulera återställning (dry-run)"
+        if: inputs.action == 'restore_dry_run'
+        run: |
+          TABLE="${{ inputs.table }}"
+          DATE="${{ inputs.date }}"
+          
+          if [ -z "$DATE" ]; then
+            # Använd senaste backup
+            if [ -n "$TABLE" ]; then
+              BACKUP=$(ls backups/${TABLE}_*.json 2>/dev/null | sort -r | head -1)
+            else
+              BACKUP=$(ls backups/bookings_*.json 2>/dev/null | sort -r | head -1)
+            fi
+          else
+            BACKUP="backups/${TABLE}_${DATE}.json"
+          fi
+          
+          echo "=== DRY-RUN: Återställning från $BACKUP ==="
+          
+          if [ ! -f "$BACKUP" ]; then
+            echo "❌ Backup-fil hittades inte: $BACKUP"
+            exit 1
+          fi
+          
+          ROWS=$(python3 -c "import json; d=json.load(open('$BACKUP')); print(len(d))" 2>/dev/null || echo "?")
+          SIZE=$(wc -c < "$BACKUP")
+          
+          echo "  Fil: $BACKUP"
+          echo "  Storlek: $SIZE bytes"
+          echo "  Antal poster: $ROWS"
+          echo ""
+          echo "  NOTERING: DRY-RUN – ingen data skrivs till DB"
+          echo "  För faktisk återställning: kontakta Supabase support"
+          echo "  eller kör: psql [ANSLUTNINGSSTRÄNG] < restore_script.sql"
+          echo ""
+          echo "  Kontrollera manuellt om datan ser rimlig ut:"
+          python3 -c "
+import json
+d = json.load(open('$BACKUP'))
+if isinstance(d, list) and d:
+    print(f'  Exempel på första posten:')
+    first = d[0]
+    for k,v in list(first.items())[:5]:
+        print(f'    {k}: {str(v)[:50]}')
+" 2>/dev/null || true
