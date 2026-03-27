@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Inject tracking i alla HTML-filer
         run: |
@@ -58,6 +58,7 @@ jobs:
         run: |
           git config user.email "hello@spick.se"
           git config user.name "Spick Bot"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Spickapp/spick.git
           git add -A
           git diff --cached --quiet || git commit -m "Inject GA4 + Meta Pixel i alla sidor"
           git push

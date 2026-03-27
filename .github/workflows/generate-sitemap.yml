@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generera sitemap.xml
         run: |
@@ -51,6 +51,7 @@ jobs:
         run: |
           git config user.email "hello@spick.se"
           git config user.name "Spick Bot"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Spickapp/spick.git
           git add sitemap.xml
           git diff --cached --quiet || git commit -m "Auto-update sitemap.xml [skip ci]"
           git push
