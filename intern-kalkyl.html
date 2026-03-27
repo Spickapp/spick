@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
+<script>
+(function(){
+  const SUPA_URL='https://urjeijcncsyuletprydy.supabase.co';
+  const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+  // Kontrollera session direkt via Supabase REST
+  fetch(SUPA_URL+'/auth/v1/user',{
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+(localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token')
+      ? JSON.parse(localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token'))?.access_token || ''
+      : '')}
+  }).then(r=>{
+    if(r.status!==200){
+      window.location.replace('admin.html');
+    }
+  }).catch(()=>window.location.replace('admin.html'));
+})();
+</script>
 <meta name="robots" content="noindex,nofollow">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
