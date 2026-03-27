@@ -27,7 +27,7 @@ const NAV_HTML = `
 
 // ── MOBILMENY ───────────────────────────────────────────────
 const MOB_HTML = `
-<div class="mob-menu" id="mobMenu" onclick="this.style.display='none'">
+<div class="mob-menu" id="mobMenu" style="display:none" onclick="this.style.display='none'">
   <div class="mob-panel" onclick="event.stopPropagation()">
     <a href="${P}stadare.html">Hitta städare</a>
     <a href="${P}boka.html">Boka städning</a>
