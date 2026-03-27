@@ -101,7 +101,6 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 .cal-day.past,.cal-day.unavail{color:#D1D5DB;background:#F9FAFB}
 .cal-day.blocked{background:var(--red);color:#9CA3AF;text-decoration:line-through}
 .cal-day.today.avail{outline:2px solid var(--g);outline-offset:1px}
-.cal-slots-wrap{padding:.875rem 1rem;border-top:1px solid var(--border)}
 .cal-date-lbl{font-size:.8rem;font-weight:600;margin-bottom:.625rem}
 .cal-slots{display:flex;flex-wrap:wrap;gap:.375rem}
 .slot{padding:.4rem .75rem;border-radius:8px;font-size:.76rem;font-weight:600;cursor:pointer;border:1.5px solid #6EE7B7;background:var(--gl);color:#065F46;transition:all .14s;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:72px}
@@ -113,7 +112,6 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 .slot.taken{background:#FEF2F2;color:#EF4444;border-color:#FCA5A5;cursor:not-allowed}
 .slot.taken .slot-start{text-decoration:line-through;opacity:.6}
 .slot.taken .slot-end{opacity:.45}
-.cal-sel-info{margin-top:.75rem;background:var(--gl);border:1.5px solid #6EE7B7;border-radius:9px;padding:.625rem .875rem;font-size:.82rem;color:var(--g);font-weight:500;display:none}
 
 /* ── STÄDAR-KORTEN ───────────────────────── */
 .cleaner-list{display:flex;flex-direction:column;gap:.875rem}
@@ -304,11 +302,34 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
                 <div class="cal-head we">Lör</div><div class="cal-head we">Sön</div>
                 <div id="cal-days" style="display:contents"></div>
               </div>
-              <div class="cal-slots-wrap" id="cal-slots-wrap" style="display:none">
-                <div class="cal-date-lbl" id="cal-date-lbl"></div>
-                <div id="cal-no-slots" style="display:none;font-size:.78rem;color:var(--m)">Inga lediga tider – välj ett annat datum</div>
-                <div class="cal-slots" id="cal-slots"></div>
-                <div class="cal-sel-info" id="cal-sel-info"></div>
+              <div class="tl-wrap" id="tl-wrap" style="display:none">
+                <div class="tl-date-lbl" id="tl-date-lbl">📅</div>
+
+                <!-- Visuellt block-sammanfattning visas när tid är vald -->
+                <div class="tl-selected-block" id="tl-selected-block">
+                  <div class="tl-sel-label">Valt tidsblock</div>
+                  <div class="tl-sel-main">
+                    <div class="tl-sel-time" id="tl-sel-time">–</div>
+                    <div class="tl-sel-meta" id="tl-sel-meta"></div>
+                  </div>
+                  <div class="tl-gantt" id="tl-gantt">
+                    <div class="tl-gantt-bar">
+                      <div class="tl-gantt-pre" id="tl-gantt-pre"></div>
+                      <div class="tl-gantt-active" id="tl-gantt-active"></div>
+                      <div class="tl-gantt-post" id="tl-gantt-post"></div>
+                    </div>
+                    <div class="tl-gantt-labels">
+                      <span>08:00</span>
+                      <span id="tl-gantt-clbl" class="tl-gantt-center"></span>
+                      <span>18:00</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="tl-no-slots" class="tl-no-slots" style="display:none">
+                  Inga lediga tider denna dag – välj ett annat datum 📅
+                </div>
+                <div class="tl-list" id="tl-list"></div>
               </div>
             </div>
           </div>
@@ -700,6 +721,11 @@ function selectFreq(freq, btn) {
 function calcHours() {
   const sqm = +document.getElementById('sqm').value || 0;
   state.sqm = sqm;
+  if (!sqm) {
+    // Rensa kalender-tidslistan om kvm rensas
+    document.getElementById('tl-wrap').style.display = 'none';
+    document.getElementById('tl-selected-block').style.display = 'none';
+  }
   let h = 2;
   if      (sqm > 0  && sqm <= 40)  h = 2;
   else if (sqm <= 60)  h = 2.5;
@@ -711,26 +737,22 @@ function calcHours() {
   else h = Math.ceil(sqm / 35);
   if (state.service === 'Storstädning' || state.service === 'Flyttstädning') h = Math.ceil(h * 1.5);
   state.hours = h;
-  // Om datum redan valts: uppdatera slots med ny timåtgång
+  // Om datum redan valts: re-rendera tidsblocket med ny timåtgång
   if (state.date) {
-    const slots = getAvailableSlots(state.date, h);
-    const slotsEl = document.getElementById('cal-slots');
-    if (slotsEl && slotsEl.children.length) {
-      Array.from(slotsEl.children).forEach(btn => {
-        const isNowTaken = slots.find(s => s.time === btn.textContent)?.taken;
-        if (isNowTaken) {
-          btn.className = 'slot taken';
-          btn.onclick = null;
-        } else {
-          btn.className = 'slot' + (btn.textContent === state.time ? ' selected' : '');
-          btn.onclick = () => selectTime(btn.textContent, btn);
-        }
-      });
-      // Om vald tid nu inte längre passar → rensa
-      if (state.time && slots.find(s => s.time === state.time)?.taken) {
-        state.time = '';
-        document.getElementById('time').value = '';
-        document.getElementById('cal-sel-info').style.display = 'none';
+    const prevTime = state.time;
+    state.time = ''; // Rensa tid tillfälligt
+    document.getElementById('tl-selected-block').style.display = 'none';
+    selectDate(state.date); // Re-rendera hela tidsblockslistan
+    // Försök återvälja samma tid om den fortfarande är ledig
+    if (prevTime) {
+      const newSlots = getAvailableSlots(state.date, h);
+      const stillOk  = newSlots.find(s => s.time === prevTime && !s.taken);
+      if (stillOk) {
+        // Klicka på rätt kort automatiskt
+        const cards = document.querySelectorAll('.tl-card.available');
+        cards.forEach(card => {
+          if (card.dataset.start === prevTime) card.click();
+        });
       }
     }
   }
@@ -934,60 +956,123 @@ function calNav(dir) {
 
 function selectDate(dateStr) {
   state.date = dateStr;
-  state.time = ''; // Återställ tid
+  state.time = '';
   document.getElementById('date').value = dateStr;
   document.getElementById('time').value = '';
-  renderCalendar(); // Uppdatera markering
-  // Visa tidsluckor
-  const wrap = document.getElementById('cal-slots-wrap');
-  const slotsEl = document.getElementById('cal-slots');
-  const noSlots = document.getElementById('cal-no-slots');
-  wrap.style.display = 'block';
+  renderCalendar();
+
   const d = new Date(dateStr + 'T00:00:00');
-  document.getElementById('cal-date-lbl').textContent =
-    DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+  const dayLabel = DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+  document.getElementById('tl-date-lbl').innerHTML =
+    '📅 <strong>' + dayLabel + '</strong>';
+
+  // Dölj valt block när nytt datum väljs
+  document.getElementById('tl-selected-block').style.display = 'none';
+
+  const wrap    = document.getElementById('tl-wrap');
+  const list    = document.getElementById('tl-list');
+  const noSlots = document.getElementById('tl-no-slots');
+  wrap.style.display = 'block';
+
   const slots = getAvailableSlots(dateStr, state.hours || 3);
-  slotsEl.innerHTML = '';
-  document.getElementById('cal-sel-info').style.display = 'none';
-  if (!slots.length) {
-    noSlots.style.display = 'block'; slotsEl.style.display='none';
+  list.innerHTML = '';
+
+  if (!slots.filter(s => !s.taken).length && slots.length === 0) {
+    noSlots.style.display = 'block';
+    list.style.display = 'none';
   } else {
-    noSlots.style.display = 'none'; slotsEl.style.display='flex';
+    noSlots.style.display = 'none';
+    list.style.display = 'flex';
+
     slots.forEach(s => {
-      const btn = document.createElement('button');
-      const endTime = (() => {
-        const [h,m] = s.time.split(':').map(Number);
-        const endMin = h*60 + (m||0) + (state.hours||3)*60;
-        return String(Math.floor(endMin/60)).padStart(2,'0') + ':' + String(endMin%60).padStart(2,'0');
-      })();
-      btn.className = 'slot' + (s.taken ? ' taken' : '');
-      btn.innerHTML = `<span class="slot-start">${s.time}</span><span class="slot-end">–${endTime}</span>`;
-      btn.title = s.taken
-        ? `Bokad ${s.time}–${endTime}`
-        : `Välj ${s.time}–${endTime} (${state.hours||3}h)`;
-      btn.setAttribute('data-time', s.time);
-      btn.setAttribute('data-endtime', endTime);
-      btn.type = 'button';
-      if (!s.taken) btn.onclick = () => selectTime(s.time, btn);
-      slotsEl.appendChild(btn);
+      const hours    = state.hours || 3;
+      const startMin = timeToMin(s.time);
+      const endMin   = startMin + hours * 60;
+      const endTime  = minToTime(endMin);
+
+      const card = document.createElement('div');
+      card.className   = 'tl-card ' + (s.taken ? 'taken' : 'available');
+      card.dataset.start = s.time;
+      card.dataset.end   = endTime;
+
+      const arrow = s.taken ? '✕' : '›';
+      const durTxt = hours + (hours === 1 ? ' timme' : ' timmar');
+      const takenTxt = s.taken ? 'Ej tillgänglig' : durTxt;
+
+      card.innerHTML = `
+        <div class="tl-card-starttime">${s.time}</div>
+        <div>
+          <div class="tl-card-range">${s.time} – ${endTime}</div>
+          <div class="tl-card-dur">${takenTxt}</div>
+        </div>
+        <div class="tl-card-arrow">${arrow}</div>`;
+
+      if (!s.taken) {
+        card.onclick = () => selectBlockTime(s.time, card, endTime);
+      } else {
+        card.title = 'Bokad ' + s.time + '–' + endTime;
+      }
+      list.appendChild(card);
     });
   }
   updateSidebar();
 }
 
-function selectTime(t, btn) {
+// Ny funktion: välj tidsblock och visa visuell block-sammanfattning
+function selectBlockTime(t, card, endTime) {
   state.time = t;
   document.getElementById('time').value = t;
-  document.querySelectorAll('.slot').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  const d = new Date(state.date + 'T00:00:00');
-  const infoEl = document.getElementById('cal-sel-info');
-  infoEl.style.display = 'block';
-  const selEndMin = t.split(':').map(Number).reduce((h,m)=>h*60+m,0) + (state.hours||3)*60;
-  const selEndTime = String(Math.floor(selEndMin/60)).padStart(2,'0')+':'+String(selEndMin%60).padStart(2,'0');
-  infoEl.innerHTML = '✅ <strong>' + DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '</strong> kl. ' + t + '–' + selEndTime + ' <span style="color:var(--m);font-weight:400">(' + (state.hours||3) + ' timmar)</span>';
+
+  // Rensa alla selected-states
+  document.querySelectorAll('.tl-card').forEach(c => {
+    c.classList.remove('selected');
+    if (c.classList.contains('available')) {
+      c.querySelector('.tl-card-arrow').textContent = '›';
+    }
+  });
+
+  // Markera valt kort
+  card.classList.add('selected');
+  card.querySelector('.tl-card-arrow').textContent = '✓';
+
+  // Bygg visuell block-sammanfattning
+  const d     = new Date(state.date + 'T00:00:00');
+  const hours = state.hours || 3;
+  const dayLabel = DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+  const durTxt   = hours + (hours === 1 ? ' timme' : ' timmar');
+
+  document.getElementById('tl-sel-time').textContent  = t + ' – ' + endTime;
+  document.getElementById('tl-sel-meta').textContent  = dayLabel + ' · ' + durTxt;
+
+  // Mini-gantt: dag 08:00–18:00 = 600 minuter
+  const DAY_S   = 8 * 60;   // 480
+  const DAY_E   = 18 * 60;  // 1080
+  const RANGE   = DAY_E - DAY_S;
+  const startM  = timeToMin(t);
+  const endM    = timeToMin(endTime);
+  const preFlex = Math.max(0, startM - DAY_S);
+  const actFlex = endM - startM;
+  const postFlex= Math.max(0, DAY_E - endM);
+
+  document.getElementById('tl-gantt-pre').style.flex    = preFlex;
+  document.getElementById('tl-gantt-active').style.flex = actFlex;
+  document.getElementById('tl-gantt-post').style.flex   = postFlex;
+  document.getElementById('tl-gantt-clbl').textContent  = t + '–' + endTime;
+
+  // Visa blocket med animation
+  const blockEl = document.getElementById('tl-selected-block');
+  blockEl.style.display = 'none'; // Reset animation
+  void blockEl.offsetWidth;       // Reflow
+  blockEl.style.display = 'block';
+
+  // Scrolla till blocket
+  blockEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+
   updateSidebar();
 }
+
+// Bakåtkompatibilitet (anropas ev från andra ställen)
+function selectTime(t, btn) { selectBlockTime(t, btn, ''); }
 
 // ── STEG 2: LADDA TILLGÄNGLIGA STÄDARE ───────────────────────────────────────
 async function loadAvailableCleaners() {
