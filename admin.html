@@ -199,6 +199,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-item" onclick="showPage('subscriptions')"><span class="icon">🔄</span> Prenumerationer <span class="badge-count" id="badge-subs">0</span></div>
       <div class="nav-item" onclick="showPage('reviews')"><span class="icon">⭐</span> Recensioner</div>
       
+      <div class="nav-section">Kommunikation</div>
+      <div class="nav-item" onclick="showPage('inbox')"><span class="icon">📬</span> E-postinkorg <span class="badge-count" id="badge-inbox">0</span></div>
+
       <div class="nav-section">System</div>
       <div class="nav-item" onclick="showPage('settings')"><span class="icon">⚙️</span> Inställningar</div>
     </nav>
@@ -546,7 +549,187 @@ async function doLogin() {
   }
 }
 
-async function doLogout() {
+async 
+// ══════════════════════════════════════════════════════
+// INBOX – E-posthantering
+// ══════════════════════════════════════════════════════
+
+const CAT_LABELS = {
+  klago:     { emoji:'🔴', label:'Klagomål',     color:'#DC2626' },
+  bokning:   { emoji:'📅', label:'Bokning',      color:'#2563EB' },
+  avboka:    { emoji:'❌', label:'Avbokning',    color:'#D97706' },
+  fråga:     { emoji:'❓', label:'Fråga',        color:'#7C3AED' },
+  ansökan:   { emoji:'🧹', label:'Ansökan',      color:'#059669' },
+  partner:   { emoji:'🤝', label:'Partner',      color:'#6B7280' },
+  spam:      { emoji:'🗑', label:'Spam',         color:'#9CA3AF' },
+  system:    { emoji:'⚙️', label:'System',      color:'#9CA3AF' },
+  okategoriserat: { emoji:'📧', label:'Okategoriserat', color:'#6B7280' },
+};
+
+const PRIO_COLORS = { hög:'#DC2626', normal:'#6B7280', låg:'#9CA3AF' };
+
+async function loadInbox() {
+  const catFilter    = document.getElementById('inbox-filter-cat')?.value    || '';
+  const statusFilter = document.getElementById('inbox-filter-status')?.value || '';
+  const listEl       = document.getElementById('inbox-list');
+  const statsEl      = document.getElementById('inbox-stats');
+  if (!listEl) return;
+
+  listEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--m)">Laddar...</div>';
+
+  let query = SB.from('emails').select('*').order('received_at', { ascending: false }).limit(100);
+  if (catFilter)    query = query.eq('category', catFilter);
+  if (statusFilter) query = query.eq('status', statusFilter);
+
+  const { data: emails, error } = await query;
+  if (error || !emails) {
+    listEl.innerHTML = '<div style="color:red;padding:1rem">Fel: ' + (error?.message||'okänd') + '</div>';
+    return;
+  }
+
+  // Statistikrad
+  const { data: allStats } = await SB.from('emails').select('category,status,priority');
+  if (allStats && statsEl) {
+    const nya     = allStats.filter(e => e.status === 'ny').length;
+    const hög     = allStats.filter(e => e.priority === 'hög').length;
+    const auto    = allStats.filter(e => e.auto_replied).length;
+    const totalt  = allStats.length;
+    statsEl.innerHTML = [
+      { label:'Totalt',        val: totalt, icon:'📬', color:'var(--g)' },
+      { label:'Ej hanterade',  val: nya,    icon:'🔵', color:'#2563EB' },
+      { label:'Hög prioritet', val: hög,    icon:'🔴', color:'#DC2626' },
+      { label:'Auto-besvarade',val: auto,   icon:'🤖', color:'#7C3AED' },
+    ].map(s => `<div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid var(--border)">
+      <div style="font-size:1.5rem">${s.icon}</div>
+      <div style="font-size:1.5rem;font-weight:700;color:${s.color}">${s.val}</div>
+      <div style="font-size:.72rem;color:var(--m)">${s.label}</div>
+    </div>`).join('');
+
+    // Uppdatera badge
+    const badge = document.getElementById('badge-inbox');
+    if (badge) badge.textContent = nya > 0 ? nya : '';
+  }
+
+  if (!emails.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--m)">📭 Inga mail matchar filtret</div>';
+    return;
+  }
+
+  listEl.innerHTML = emails.map(e => {
+    const cat = CAT_LABELS[e.category] || CAT_LABELS.okategoriserat;
+    const date = new Date(e.received_at).toLocaleString('sv-SE', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const isNew = e.status === 'ny';
+    return `<div onclick="openEmail('${e.id}')" style="background:#fff;border-radius:12px;padding:14px 18px;border:1.5px solid ${isNew ? '#BFDBFE' : 'var(--border)'};cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:box-shadow .15s;${isNew ? 'background:#EFF6FF' : ''}" onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+      <div style="font-size:1.5rem;flex-shrink:0">${cat.emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
+          <span style="font-weight:${isNew?700:500};font-size:.9rem;color:#1C1C1A">${e.from_name||e.from_email}</span>
+          <span style="font-size:.7rem;background:${cat.color}22;color:${cat.color};padding:2px 8px;border-radius:20px;font-weight:600">${cat.label}</span>
+          ${e.priority==='hög'?'<span style="font-size:.7rem;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;font-weight:700">⚡ Hög</span>':''}
+          ${e.auto_replied?'<span style="font-size:.7rem;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:20px">🤖 Auto-svar</span>':''}
+        </div>
+        <div style="font-size:.85rem;color:#374151;font-weight:${isNew?600:400}">${e.subject||'(inget ämne)'}</div>
+        <div style="font-size:.78rem;color:var(--m);margin-top:2px">${e.ai_summary||e.from_email}</div>
+      </div>
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-size:.75rem;color:var(--m)">${date}</div>
+        <div style="font-size:.72rem;color:${e.status==='hanterad'?'#059669':'var(--m)'};margin-top:4px">${e.status}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openEmail(id) {
+  const { data: e } = await SB.from('emails').select('*').eq('id', id).single();
+  if (!e) return;
+
+  const cat = CAT_LABELS[e.category] || CAT_LABELS.okategoriserat;
+  const modal = document.getElementById('email-modal');
+  const content = document.getElementById('email-modal-content');
+  const date = new Date(e.received_at).toLocaleString('sv-SE', {dateStyle:'full',timeStyle:'short'});
+
+  content.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="background:${cat.color}22;color:${cat.color};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">${cat.emoji} ${cat.label}</span>
+        <span style="background:${PRIO_COLORS[e.priority]||'#6B7280'}22;color:${PRIO_COLORS[e.priority]||'#6B7280'};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">Prioritet: ${e.priority}</span>
+        <span style="background:#F3F4F6;color:#6B7280;padding:4px 12px;border-radius:20px;font-size:.8rem">${e.status}</span>
+      </div>
+      <h3 style="font-family:Georgia,serif;font-size:1.2rem;margin:0 0 8px">${e.subject||'(inget ämne)'}</h3>
+      <div style="font-size:.82rem;color:var(--m)">
+        <strong>Från:</strong> ${e.from_name ? e.from_name + ' <' + e.from_email + '>' : e.from_email}<br>
+        <strong>Mottaget:</strong> ${date}
+        ${e.auto_replied ? '<br><strong>Auto-svar:</strong> ✅ Skickat' : ''}
+      </div>
+    </div>
+
+    ${e.ai_summary ? `<div style="background:#F0FDF4;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.83rem"><strong>🤖 AI-sammanfattning:</strong> ${e.ai_summary}</div>` : ''}
+
+    <div style="background:#F9FAFB;border-radius:10px;padding:16px;font-size:.85rem;line-height:1.7;margin-bottom:20px;max-height:300px;overflow:auto;white-space:pre-wrap">${e.body_text || '(inget innehåll)'}</div>
+
+    <!-- Svarsformulär -->
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <label style="font-size:.8rem;font-weight:600;color:var(--m);display:block;margin-bottom:6px">SVARA</label>
+      <textarea id="reply-body-${e.id}" placeholder="Skriv ditt svar här..." style="width:100%;min-height:100px;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;resize:vertical;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button onclick="sendManualReply('${e.id}','${e.reply_to||e.from_email}')" style="flex:1;padding:10px;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">📨 Skicka svar</button>
+        <button onclick="markHandled('${e.id}')" style="padding:10px 16px;background:#F3F4F6;border:none;border-radius:10px;font-weight:600;cursor:pointer;color:#374151">✅ Markera hanterad</button>
+        <button onclick="archiveEmail('${e.id}')" style="padding:10px 16px;background:#F3F4F6;border:none;border-radius:10px;cursor:pointer;color:#9CA3AF">🗑 Arkivera</button>
+      </div>
+    </div>`;
+
+  modal.style.display = 'flex';
+
+  // Markera som läst
+  if (e.status === 'ny') {
+    await SB.from('emails').update({ status: 'läst' }).eq('id', id);
+  }
+}
+
+function closeEmailModal() {
+  document.getElementById('email-modal').style.display = 'none';
+  loadInbox();
+}
+
+async function sendManualReply(emailId, toAddr) {
+  const body = document.getElementById(`reply-body-${emailId}`)?.value?.trim();
+  if (!body) { alert('Skriv ett svar först'); return; }
+
+  const html = `<div style="font-family:sans-serif;max-width:580px"><p style="white-space:pre-wrap">${body}</p><p style="color:#6B6960;font-size:13px;margin-top:24px">Med vänliga hälsningar<br><strong>Spick-teamet</strong><br>hello@spick.se · spick.se</p></div>`;
+
+  const { data: email } = await SB.from('emails').select('subject').eq('id', emailId).single();
+  const subject = email?.subject ? 'Re: ' + email.subject : 'Svar från Spick';
+
+  const res = await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
+    body: JSON.stringify({ type: 'manual_reply', record: { to: toAddr, subject, html } })
+  });
+
+  await SB.from('emails').update({
+    status: 'hanterad',
+    replied_at: new Date().toISOString(),
+    handled_at: new Date().toISOString()
+  }).eq('id', emailId);
+
+  showToast('✅ Svar skickat!');
+  closeEmailModal();
+}
+
+async function markHandled(emailId) {
+  await SB.from('emails').update({ status: 'hanterad', handled_at: new Date().toISOString() }).eq('id', emailId);
+  showToast('✅ Markerad som hanterad');
+  closeEmailModal();
+}
+
+async function archiveEmail(emailId) {
+  await SB.from('emails').update({ status: 'arkiverad' }).eq('id', emailId);
+  showToast('🗑 Arkiverad');
+  closeEmailModal();
+}
+
+
+function doLogout() {
   await SB.auth.signOut();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -556,6 +739,7 @@ document.getElementById('pw').addEventListener('keydown', e => { if (e.key === '
 
 // ── NAVIGATION ────────────────────────────────────────
 function showPage(id) {
+  if (page === 'inbox') { setTimeout(loadInbox, 100); }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id)?.classList.add('active');

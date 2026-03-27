@@ -362,6 +362,12 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${r.mess
       `));
     }
 
+    else if (type === "manual_reply") {
+      // Manuellt svar från admin-inkorgen
+      const r = payload.record || {};
+      await sendEmail(r.to, r.subject || "Svar från Spick", r.html || r.body || "");
+    }
+
     else if (type === "ssl_warning") {
       await sendEmail(ADMIN, "🔒 SSL-certifikat snart utgånget!", wrap(`
         <h2>SSL-varning</h2>
