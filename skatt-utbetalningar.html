@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skatt, Utbetalningar & Betalningsflöde | Spick Intern</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script>
+// AUTH GUARD
+document.documentElement.style.display='none';
+(function(){
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var token = raw ? JSON.parse(raw)?.access_token : null;
+    if (!token) { window.location.replace('admin.html'); return; }
+    fetch('https://urjeijcncsyuletprydy.supabase.co/auth/v1/user',{
+      headers:{
+        'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0',
+        'Authorization':'Bearer '+token
+      }
+    }).then(function(r){
+      if(r.status===200){ document.documentElement.style.display=''; }
+      else { window.location.replace('admin.html'); }
+    }).catch(function(){ window.location.replace('admin.html'); });
+  } catch(e) { window.location.replace('admin.html'); }
+})();
+</script>
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--bg:#F7F7F5;--b:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--r:#DC2626;--y:#D97706;--rp:#FEE2E2;--yp:#FEF3C7;--bp:#DBEAFE;--bl:#2563EB}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);line-height:1.65}
+.topnav{background:#1C1C1A;color:#fff;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+.topnav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:.82rem}
+.topnav a:hover{color:#fff}
+.topnav .links{display:flex;gap:1.5rem}
+.hero{background:linear-gradient(135deg,#0A3D2E,#0F6E56);color:#fff;padding:3.5rem 2rem;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:.5rem}
+.hero p{opacity:.8;max-width:620px;margin:.5rem auto 0;font-size:.92rem}
+.container{max-width:1020px;margin:0 auto;padding:2.5rem 1.5rem}
+.sec{margin-bottom:3rem}
+.sec-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--b);margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:2px solid var(--gm)}
+.sec-sub{font-size:.85rem;color:var(--m);margin-bottom:1.25rem}
+
+/* FLOW DIAGRAM */
+.flow{display:flex;flex-direction:column;gap:0;margin:1.5rem 0}
+.flow-step{display:flex;gap:1.25rem;align-items:flex-start;position:relative}
+.flow-step:not(:last-child)::after{content:'';position:absolute;left:19px;top:44px;width:2px;height:calc(100% + 8px);background:linear-gradient(var(--gm),var(--border));z-index:0}
+.flow-num{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;flex-shrink:0;position:relative;z-index:1}
+.flow-num.green{background:var(--g);color:#fff}
+.flow-num.blue{background:var(--bl);color:#fff}
+.flow-num.yellow{background:var(--y);color:#fff}
+.flow-num.red{background:var(--r);color:#fff}
+.flow-num.gray{background:#6B7280;color:#fff}
+.flow-content{background:#fff;border-radius:14px;border:1px solid var(--border);padding:1rem 1.25rem;margin-bottom:12px;flex:1}
+.flow-content h4{font-weight:700;font-size:.92rem;margin-bottom:.375rem}
+.flow-content p{font-size:.83rem;color:var(--m);line-height:1.6}
+.flow-content .tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:.68rem;font-weight:700;margin-left:.5rem}
+.tag-stripe{background:#635BFF;color:#fff}
+.tag-skv{background:#005B99;color:#fff}
+.tag-spick{background:var(--g);color:#fff}
+.tag-stadare{background:#D97706;color:#fff}
+.tag-auto{background:#D1FAE5;color:#065F46}
+.tag-manuell{background:#FEF3C7;color:#92400E}
+
+/* BERÄKNINGSEXEMPEL */
+.calc-box{background:#fff;border-radius:16px;border:1px solid var(--border);overflow:hidden;margin:1rem 0}
+.calc-header{background:var(--g);color:#fff;padding:1rem 1.5rem;font-weight:700;font-size:.95rem}
+.calc-body{padding:1.25rem 1.5rem}
+.calc-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem}
+.calc-row:last-child{border:none;font-weight:700;font-size:1rem;color:var(--g)}
+.calc-row .lbl{color:var(--m)}
+.calc-row.total{background:#f9f9f7;margin:0 -1.5rem;padding:8px 1.5rem;font-weight:700}
+.calc-row.highlight{color:var(--g);font-weight:600}
+.calc-row.debit{color:var(--r)}
+
+/* TODO LIST */
+.todo-section{margin-bottom:2rem}
+.todo-section h3{font-weight:700;font-size:1rem;margin-bottom:.875rem;padding:.5rem .875rem;border-radius:8px}
+.todo-section.p1 h3{background:#FEE2E2;color:#991B1B}
+.todo-section.p2 h3{background:#FEF3C7;color:#92400E}
+.todo-section.p3 h3{background:#D1FAE5;color:#065F46}
+.todo-section.recurring h3{background:var(--bp);color:#1E40AF}
+.todo-item{display:flex;gap:.875rem;padding:.75rem 0;border-bottom:1px solid var(--border);align-items:flex-start;font-size:.85rem}
+.todo-item:last-child{border:none}
+.todo-check{width:22px;height:22px;border-radius:5px;border:2px solid var(--border);background:#fff;flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center}
+.todo-check:hover{border-color:var(--g)}
+.todo-check.done{background:var(--g);border-color:var(--g);color:#fff}
+.todo-content .title{font-weight:600;margin-bottom:3px}
+.todo-content .desc{color:var(--m);font-size:.78rem;line-height:1.5}
+.todo-content .link{color:var(--g);font-size:.75rem;text-decoration:none;display:block;margin-top:3px}
+.todo-content .link:hover{text-decoration:underline}
+
+/* MOMSBERÄKNING */
+.moms-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.moms-card{background:#fff;border-radius:14px;border:1px solid var(--border);padding:1.25rem}
+.moms-card h4{font-weight:700;font-size:.88rem;margin-bottom:.75rem}
+
+/* ALERT */
+.alert{border-radius:12px;padding:1rem 1.25rem;margin:.875rem 0}
+.alert-green{background:var(--gp);border-left:4px solid var(--g)}
+.alert-yellow{background:var(--yp);border-left:4px solid var(--y)}
+.alert-red{background:var(--rp);border-left:4px solid var(--r)}
+.alert-blue{background:var(--bp);border-left:4px solid var(--bl)}
+.alert h4{font-weight:700;margin-bottom:.375rem;font-size:.9rem}
+.alert p,.alert li{font-size:.83rem;color:#374151;line-height:1.65}
+.alert ul{padding-left:1.25rem;margin-top:.375rem}
+
+/* TABELL */
+table{width:100%;border-collapse:collapse;font-size:.83rem;margin:1rem 0}
+thead th{background:var(--g);color:#fff;padding:.7rem 1rem;text-align:left}
+tbody td{padding:.6rem 1rem;border-bottom:1px solid var(--border);vertical-align:top}
+tbody tr:nth-child(even){background:#fafaf8}
+
+/* ROLLER */
+.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1rem 0}
+.role-card{background:#fff;border-radius:14px;border:1px solid var(--border);padding:1.25rem;text-align:center}
+.role-icon{font-size:2rem;margin-bottom:.5rem}
+.role-name{font-weight:700;font-size:.92rem;margin-bottom:.25rem}
+.role-desc{font-size:.75rem;color:var(--m);line-height:1.5}
+
+footer{background:#1C1C1A;color:rgba(255,255,255,.5);padding:2rem;text-align:center;font-size:.8rem;margin-top:3rem}
+footer a{color:rgba(255,255,255,.5);text-decoration:none}
+@media(max-width:700px){.role-grid,.moms-grid{grid-template-columns:1fr}.topnav .links{display:none}.hero h1{font-size:1.5rem}}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div><strong>Spick</strong> · Skatt & Utbetalningar</div>
+  <div class="links">
+    <a href="#roller">Roller</a>
+    <a href="#betalningsflode">Betalningsflöde</a>
+    <a href="#rut">RUT-processen</a>
+    <a href="#moms">Moms & Bokföring</a>
+    <a href="#todolist">Todo-lista</a>
+    <a href="admin.html">← Admin</a>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>💰 Skatt, Utbetalningar & Betalningsflöde</h1>
+  <p>Fullständig guide för hur pengarna flödar, hur RUT-avdraget fungerar i praktiken, vad du behöver göra mot Skatteverket och din todo-lista för att komma igång korrekt.</p>
+</div>
+
+<div class="container">
+
+<!-- ══════════ ROLLER ══════════ -->
+<div class="sec" id="roller">
+  <div class="sec-title">De tre rollerna i Spick-ekosystemet</div>
+  <div class="sec-sub">Alla tre parter har specifika skyldigheter – det är viktigt att förstå vem som ansvarar för vad.</div>
+
+  <div class="role-grid">
+    <div class="role-card">
+      <div class="role-icon">🏢</div>
+      <div class="role-name">Spick (Du)</div>
+      <div style="font-size:.7rem;color:var(--g);font-weight:600;margin-bottom:.5rem">Haghighi Consulting AB<br>Org.nr 559402-4522</div>
+      <div class="role-desc">
+        • Fakturerar kunden<br>
+        • Ansöker om RUT-avdrag hos Skatteverket<br>
+        • Tar emot betalning via Stripe<br>
+        • Betalar städaren (83%)<br>
+        • Redovisar och betalar moms<br>
+        • Verifierar F-skattsedlar<br>
+        • Deklarerar bolagsvinst
+      </div>
+    </div>
+    <div class="role-card">
+      <div class="role-icon">🧹</div>
+      <div class="role-name">Städaren</div>
+      <div style="font-size:.7rem;color:var(--y);font-weight:600;margin-bottom:.5rem">Egenföretagare<br>med F-skatt</div>
+      <div class="role-desc">
+        • Har eget org-/personnummer med F-skatt<br>
+        • Fakturerar Spick för utfört arbete<br>
+        • Hanterar sin egen moms (om omsättning &gt;80 000 kr)<br>
+        • Betalar sin egen inkomstskatt (F-skatt)<br>
+        • Ansvarar för sin egen pension/försäkring<br>
+        • Deklarerar sin inkomst årsvis
+      </div>
+    </div>
+    <div class="role-card">
+      <div class="role-icon">👤</div>
+      <div class="role-name">Kunden</div>
+      <div style="font-size:.7rem;color:var(--bl);font-weight:600;margin-bottom:.5rem">Privatperson<br>med RUT-rätt</div>
+      <div class="role-desc">
+        • Betalar 50% av arbetskostnad + moms via Stripe<br>
+        • Uppger personnummer för RUT<br>
+        • Måste ha betalat tillräcklig skatt<br>
+        • RUT max 75 000 kr/år (RUT+ROT)<br>
+        • Betalning måste ske elektroniskt<br>
+        • Avdraget syns i årets deklaration
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-yellow">
+    <h4>⚠️ Kritiskt: Spick måste ha F-skatt</h4>
+    <p>För att kunna ansöka om RUT-avdrag åt kunder <strong>måste Haghighi Consulting AB vara godkänt för F-skatt</strong>. Kontrollera att detta stämmer på Skatteverkets hemsida. Utan F-skatt kan du inte hantera RUT och hela affärsmodellen faller.</p>
+  </div>
+</div>
+
+<!-- ══════════ BETALNINGSFLÖDE ══════════ -->
+<div class="sec" id="betalningsflode">
+  <div class="sec-title">Betalningsflödet – steg för steg</div>
+  <div class="sec-sub">Exakt vad som händer med pengarna från bokningstillfället till utbetalning till städaren.</div>
+
+  <div class="flow">
+
+    <div class="flow-step">
+      <div class="flow-num green">1</div>
+      <div class="flow-content">
+        <h4>Kund bokar och betalar via Stripe <span class="tag tag-auto">Automatiskt</span> <span class="tag tag-stripe">Stripe</span></h4>
+        <p>Kunden betalar <strong>50% av arbetskostnaden inkl moms</strong> via Stripe (kort eller Klarna). Spick fakturerar kunden för hela beloppet men kunden betalar bara sin halva direkt. Pengarna hamnar i Spicks Stripe-konto och hålls tills städningen är bekräftad.</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num green">2</div>
+      <div class="flow-content">
+        <h4>Städningen utförs <span class="tag tag-auto">Automatiskt</span></h4>
+        <p>Städaren checkar in (GPS), utför städningen, tar avslutningsfoton och markerar jobbet som klart i städarportalen. Kunden bekräftar och betygsätter. Stripe-betalningen frigörs automatiskt efter bekräftelse.</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num blue">3</div>
+      <div class="flow-content">
+        <h4>Ansöka om RUT-avdrag hos Skatteverket <span class="tag tag-manuell">Manuellt (du)</span> <span class="tag tag-skv">Skatteverket</span></h4>
+        <p>Du loggar in på <strong>skatteverket.se → ROT och RUT-tjänsten</strong> och ansöker om utbetalning av RUT-avdraget. Du anger: kundernas personnummer, vilket arbete som utfördes, arbetskostnaden och antal timmar. <strong>Deadline: senast 31 januari året efter.</strong></p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num blue">4</div>
+      <div class="flow-content">
+        <h4>Skatteverket betalar ut 50% till Spick <span class="tag tag-auto">Automatiskt</span> <span class="tag tag-skv">Skatteverket</span></h4>
+        <p>Skatteverket betalar normalt ut RUT-ersättningen inom <strong>3–10 bankdagar</strong> till Spicks bankgiro. Nu har Spick fått in 100% av arbetskostnaden inkl moms (50% från kunden + 50% från Skatteverket).</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num yellow">5</div>
+      <div class="flow-content">
+        <h4>Städaren fakturerar Spick <span class="tag tag-manuell">Manuellt (städaren)</span> <span class="tag tag-stadare">Städaren</span></h4>
+        <p>Städaren skickar en faktura till Spick på <strong>83% av nettopriset</strong> (exkl moms) + sin egen moms om de är momsregistrerade. Fakturan ska vara korrekt utformad med org-nr, F-skattsedel och specifikation av utfört arbete.</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num yellow">6</div>
+      <div class="flow-content">
+        <h4>Spick betalar städaren <span class="tag tag-manuell">Manuellt (du)</span> <span class="tag tag-spick">Spick</span></h4>
+        <p>Du betalar städarens faktura via bank inom <strong>10 bankdagar</strong> efter fakturadatum. Kontrollera alltid att F-skattsedeln är giltig innan betalning. Spara alla fakturor för bokföringen.</p>
+      </div>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-num gray">7</div>
+      <div class="flow-content">
+        <h4>Spick redovisar moms och vinst <span class="tag tag-manuell">Kvartalsvis/Årsvis</span> <span class="tag tag-skv">Skatteverket</span></h4>
+        <p>Spick betalar in moms på sin 17% provision kvartalsvis. Årsvis deklareras bolagets vinst (intäkter minus kostnader). Städarens fakturor är avdragsgilla kostnader för Spick.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ BERÄKNINGSEXEMPEL ══════════ -->
+<div class="sec">
+  <div class="sec-title">Beräkningsexempel – 4 timmars städning</div>
+  <div class="sec-sub">Konkret genomgång med siffror. Antaget bruttopris: 400 kr/h exkl moms (Göteborg-nivå).</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1rem 0">
+
+    <div class="calc-box">
+      <div class="calc-header">💳 Vad kunden betalar (Stripe)</div>
+      <div class="calc-body">
+        <div class="calc-row"><span class="lbl">Arbetstimmar</span><span>4h × 400 kr</span></div>
+        <div class="calc-row"><span class="lbl">Brutto arbetskostnad</span><span>1 600 kr</span></div>
+        <div class="calc-row"><span class="lbl">Moms 25%</span><span>400 kr</span></div>
+        <div class="calc-row"><span class="lbl">Totalt inkl moms</span><span>2 000 kr</span></div>
+        <div class="calc-row"><span class="lbl">RUT-avdrag (50% av 1 600)</span><span style="color:var(--r)">− 800 kr</span></div>
+        <div class="calc-row"><b>Kunden betalar</b><span style="color:var(--g);font-weight:700">1 200 kr</span></div>
+      </div>
+    </div>
+
+    <div class="calc-box">
+      <div class="calc-header">🏦 Vad Spick får in totalt</div>
+      <div class="calc-body">
+        <div class="calc-row"><span class="lbl">Från Stripe (kunden)</span><span>1 200 kr</span></div>
+        <div class="calc-row"><span class="lbl">Från Skatteverket (RUT)</span><span>800 kr</span></div>
+        <div class="calc-row"><span class="lbl">Totalt in till Spick</span><span>2 000 kr</span></div>
+        <div class="calc-row"><span class="lbl">Varav moms (25% på 1 600)</span><span style="color:var(--m)">400 kr (betalas till SKV)</span></div>
+        <div class="calc-row"><span class="lbl">Netto exkl moms</span><span>1 600 kr</span></div>
+        <div class="calc-row"><span class="lbl">Städarens faktura (83%)</span><span style="color:var(--r)">− 1 328 kr</span></div>
+        <div class="calc-row"><b>Spicks provision (17%)</b><span style="color:var(--g);font-weight:700">272 kr</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="calc-box">
+    <div class="calc-header">📊 Fullständig penningflödesöversikt (4h städning, 400 kr/h brutto)</div>
+    <div class="calc-body">
+      <div class="calc-row"><span class="lbl">Kunden betalar Stripe</span><span>1 200 kr</span></div>
+      <div class="calc-row"><span class="lbl">Skatteverket betalar Spick (RUT)</span><span>800 kr</span></div>
+      <div class="calc-row"><b>Totalt inflöde Spick</b><span style="font-weight:700">2 000 kr</span></div>
+      <div style="border-top:2px solid var(--border);margin:8px 0"></div>
+      <div class="calc-row debit"><span class="lbl">Moms till Skatteverket (kvartalsvis)</span><span>− 400 kr</span></div>
+      <div class="calc-row debit"><span class="lbl">Betalning till städare (83% av 1 600)</span><span>− 1 328 kr</span></div>
+      <div class="calc-row debit"><span class="lbl">Stripe-avgift (ca 1.5%+2kr av 1 200)</span><span>≈ − 20 kr</span></div>
+      <div style="border-top:2px solid var(--g);margin:8px 0"></div>
+      <div class="calc-row"><b>Spicks kvar (provision netto)</b><span style="color:var(--g);font-weight:800;font-size:1.1rem">≈ 252 kr</span></div>
+      <div class="calc-row"><span class="lbl">Städarens nettolön (exkl sin moms/skatt)</span><span style="color:var(--y);font-weight:700">1 328 kr</span></div>
+    </div>
+  </div>
+
+  <div class="alert alert-blue">
+    <h4>💡 Moms på städarens faktura</h4>
+    <p>Om städaren är momsregistrerad (omsättning &gt;80 000 kr/år) lägger de på 25% moms på sin faktura. Spick betalar då 1 328 × 1.25 = <strong>1 660 kr</strong> inkl moms – men Spick drar av denna moms som ingående moms, så Spicks nettokostnad är ändå 1 328 kr. Städare under 80 000 kr/år är ofta inte momsregistrerade och fakturerar utan moms.</p>
+  </div>
+</div>
+
+<!-- ══════════ RUT-PROCESSEN ══════════ -->
+<div class="sec" id="rut">
+  <div class="sec-title">RUT-processen – steg för steg i Skatteverkets e-tjänst</div>
+
+  <div class="alert alert-green">
+    <h4>✅ RUT-avdraget 2026 – reglerna</h4>
+    <ul>
+      <li>Avdraget är <strong>50% av arbetskostnaden</strong> (ej material, ej resor)</li>
+      <li>Tak: <strong>75 000 kr/person/år</strong> (kombinerat RUT + ROT, varav max 50 000 kr ROT)</li>
+      <li>Kunden måste ha betalat <strong>elektroniskt</strong> (Stripe uppfyller detta)</li>
+      <li>Ansökan måste lämnas senast <strong>31 januari</strong> året efter betalning</li>
+      <li>Kunden måste ha betalat tillräckligt med skatt det aktuella året</li>
+      <li>Arbetet måste vara <strong>slutfört</strong> när ansökan skickas in</li>
+    </ul>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Steg</th><th>Vad du gör</th><th>Var</th><th>När</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td>Logga in med BankID</td>
+        <td>skatteverket.se → Mina sidor → ROT och RUT</td>
+        <td>Efter varje avslutat jobb (eller samlat)</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td>Välj "Begär utbetalning av RUT-avdrag"</td>
+        <td>I e-tjänsten</td>
+        <td>–</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td>Ange kunduppgifter: personnummer (räcker för RUT)</td>
+        <td>I formuläret</td>
+        <td>–</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td>Ange: typ av arbete (städning), arbetskostnad exkl moms, antal timmar, datum utfört</td>
+        <td>I formuläret</td>
+        <td>–</td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td>Skicka in ansökan. Skatteverket kontrollerar att kunden har tillräcklig skattekredit</td>
+        <td>I e-tjänsten</td>
+        <td>–</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td>Utbetalning från Skatteverket till Spicks bankgiro</td>
+        <td>Automatiskt</td>
+        <td>3–10 bankdagar</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-yellow">
+    <h4>⚠️ Viktiga kontroller innan du ansöker</h4>
+    <ul>
+      <li>Verifierat kundens personnummer (via bokningstjänsten)</li>
+      <li>Betalning skett via Stripe (elektroniskt ✅)</li>
+      <li>Städningen är slutförd och bekräftad</li>
+      <li>Städaren har giltig F-skattsedel</li>
+      <li>Du fakturerat separat för arbetskostnad vs eventuellt material</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════ MOMS & BOKFÖRING ══════════ -->
+<div class="sec" id="moms">
+  <div class="sec-title">Moms & Bokföring – Spicks ansvar</div>
+
+  <div class="moms-grid">
+    <div class="moms-card">
+      <h4>📤 Utgående moms (Spick fakturerar)</h4>
+      <p style="font-size:.82rem;color:var(--m);line-height:1.6">
+        Spick fakturerar kunden och tar ut 25% moms på <strong>hela arbets­kostnaden</strong> (inkl RUT-delen).<br><br>
+        Exempel: 1 600 kr arbete → 400 kr moms (utgående moms).<br><br>
+        Denna moms redovisas och betalas in till Skatteverket kvartalsvis.
+      </p>
+    </div>
+    <div class="moms-card">
+      <h4>📥 Ingående moms (Spick betalar)</h4>
+      <p style="font-size:.82rem;color:var(--m);line-height:1.6">
+        När momsregistrerade städare fakturerar Spick med moms, är det <strong>ingående moms</strong> som Spick drar av mot den utgående momsen.<br><br>
+        Nettomoms = Utgående − Ingående.<br><br>
+        Om städaren ej är momsregistrerad finns ingen ingående moms att dra av.
+      </p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Skyldighet</th><th>Vad</th><th>Hur ofta</th><th>Deadline</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Momsdeklaration</strong></td>
+        <td>Redovisa och betala nettomoms (utgående − ingående) via Skatteverket</td>
+        <td>Kvartalsvis</td>
+        <td>12:e i andra månaden efter kvartalets slut</td>
+      </tr>
+      <tr>
+        <td><strong>RUT-ansökan</strong></td>
+        <td>Begär utbetalning av RUT-avdraget för utförda städningar</td>
+        <td>Löpande/månadsvis</td>
+        <td>Senast 31 januari nästa år</td>
+      </tr>
+      <tr>
+        <td><strong>Inkomstdeklaration (INK2)</strong></td>
+        <td>Bolagets årsresultat, skattepliktiga intäkter och avdragsgilla kostnader</td>
+        <td>Årsvis</td>
+        <td>1 juli (eller via revisor/skatteombud)</td>
+      </tr>
+      <tr>
+        <td><strong>Kontrolluppgifter (KU)</strong></td>
+        <td>EJ skyldigt för F-skattsedelhavare – städarna deklarerar själva</td>
+        <td>–</td>
+        <td>–</td>
+      </tr>
+      <tr>
+        <td><strong>Bokslut</strong></td>
+        <td>Årsredovisning för AB (om &lt;3 anst. och &lt;3 Mkr = förenklat)</td>
+        <td>Årsvis</td>
+        <td>6 månader efter räkenskapsårets slut</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-green">
+    <h4>✅ Spicks bokföringsposter per bokning</h4>
+    <ul>
+      <li><strong>Intäkt:</strong> 17% provision (exkl moms) – bokförs som omsättning</li>
+      <li><strong>Kostnad:</strong> Städarens faktura (83%) – bokförs som underlevarantörskostnad</li>
+      <li><strong>Moms att betala:</strong> 25% på provision (17% × 25% = 4.25% av netto)</li>
+      <li><strong>RUT-utbetalning från SKV:</strong> Bokförs som kundfordran → likvid när utbetalt</li>
+    </ul>
+  </div>
+
+  <div class="alert alert-yellow">
+    <h4>⚠️ Kom igång – du behöver ett bokföringsprogram</h4>
+    <p>Rekommendation: <strong>Bokio</strong> (gratis upp till 30 fakturor/år) eller <strong>Fortnox</strong> (249 kr/mån). Dessa hanterar automatiskt momsdeklarationer, fakturering med korrekt moms och RUT-specificering. Undvik att sköta detta i Excel – det leder till fel.</p>
+  </div>
+</div>
+
+<!-- ══════════ TODO-LISTA ══════════ -->
+<div class="sec" id="todolist">
+  <div class="sec-title">Todo-lista – Fullständig checklista</div>
+  <div class="sec-sub">Klicka i checkboxarna för att bocka av. Sparas i webbläsaren.</div>
+
+  <!-- P1: AKUTA -->
+  <div class="todo-section p1">
+    <h3>🔴 P1 – Gör DIREKT innan du tar emot din första betalning</h3>
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Kontrollera att Haghighi Consulting AB har F-skatt</div><div class="desc">Utan F-skatt kan du inte ansöka om RUT-avdrag. Kontrollera på Skatteverkets e-tjänst "Kontrollera F-skatt".</div><a href="https://www.skatteverket.se/foretag/anlitaunderleverantorer/kontrollerafskattsedel.4.18e1b10334ebe8bc80004218.html" target="_blank" class="link">→ skatteverket.se – Kontrollera F-skatt</a></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Registrera dig för RUT-tjänsten på Skatteverket</div><div class="desc">Logga in på Skatteverkets Mina Sidor med BankID. Gå till "ROT och RUT" och se till att du kan begära utbetalningar för Haghighi Consulting AB.</div><a href="https://www.skatteverket.se/foretag/skatterochavdrag/rotochrut/gorutbetalning.4.58d555751259e4d661680001740.html" target="_blank" class="link">→ Skatteverket – Begär RUT-utbetalning</a></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Öppna ett separat företagskonto (bankgiro)</div><div class="desc">Skatteverket betalar RUT-avdraget till ett bankgironummer. Du behöver ett korrekt företagskonto kopplat till Haghighi Consulting AB. Rekommenderas: Nordea, SEB, Handelsbanken eller Qred.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Koppla Stripe till ditt svenska bankkonto</div><div class="desc">I Stripe Dashboard → Settings → Bank accounts: se till att utbetalningar (payouts) går till korrekt företagskonto för Haghighi Consulting AB.</div><a href="https://dashboard.stripe.com/settings/payouts" target="_blank" class="link">→ Stripe – Payout settings</a></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Välj bokföringsprogram och starta bokföring</div><div class="desc">Bokio (gratis) eller Fortnox (249 kr/mån). Lägg in Haghighi Consulting AB, momsregistreringsnummer, räkenskapsår. Bokföring är lagkrav från dag 1 för aktiebolag.</div><a href="https://www.bokio.se" target="_blank" class="link">→ Bokio – Starta gratis</a></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Skapa fakturamallar med korrekt RUT-specificering</div><div class="desc">Dina fakturor till kunder måste visa: 1) Arbetskostnad (exkl moms), 2) Moms 25%, 3) RUT-avdrag (50% av arbetskostnad), 4) Kundens betalningsbelopp. Spick-plattformen bör generera dessa automatiskt.</div></div></div>
+  </div>
+
+  <!-- P2: VIKTIGT -->
+  <div class="todo-section p2">
+    <h3>🟠 P2 – Gör innan du skalar upp (första månaden)</h3>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Ta in en redovisningskonsult / revisor</div><div class="desc">Som AB måste du ha en auktoriserad redovisningskonsult eller revisor (om omsättning &gt;3 Mkr krävs revisor). Rekommenderas: Mazars, BDO eller en lokal redovisningsbyrå. Kostar ca 500–1500 kr/mån.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Implementera RUT-ansökningsrutin (månadsvis)</div><div class="desc">Gör en rutin: En gång per månad (t.ex. den 1:a), gå igenom alla slutförda bokningar och skicka in RUT-ansökan till Skatteverket för föregående månads jobb. Sätt kalender-påminnelse.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Säkerställ att alla städare har giltig F-skattsedel</div><div class="desc">Kontrollera varje städares F-skatt via Skatteverkets e-tjänst INNAN du betalar dem. Om en städare saknar F-skatt måste du hålla inne preliminärskatt (30%) – det är ditt ansvar som utbetalare.</div><a href="https://www.skatteverket.se/foretag/anlitaunderleverantorer/kontrollerafskattsedel.4.18e1b10334ebe8bc80004218.html" target="_blank" class="link">→ Kontrollera F-skatt</a></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Automatisera fakturagenerering i plattformen</div><div class="desc">Spick-plattformen bör automatiskt generera PDF-fakturor till kunder med korrekt RUT-specificering. Dessa skickas via Resend och sparas i Supabase. Detta är en kritisk funktion att bygga.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Insamla personnummer från kunder vid bokning</div><div class="desc">För att kunna ansöka om RUT behöver du kundens personnummer. Detta ska samlas in vid bokningstillfället. OBS: Personnummer är känslig data – kryptera och lagra säkert (hashat i DB).</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Sätt upp momsdeklarations-påminnelser</div><div class="desc">Momsdeklaration kvartalsvis: Q1 (jan-mar) → 12 maj, Q2 (apr-jun) → 12 aug, Q3 (jul-sep) → 12 nov, Q4 (okt-dec) → 12 feb. Lägg in i kalendern NU.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Data Processing Agreement (DPA) med Stripe, Supabase, Resend</div><div class="desc">Dessa behandlar personuppgifter för din räkning. GDPR kräver formella DPA-avtal. Alla tre erbjuder dessa digitalt på sina hemsidor.</div></div></div>
+  </div>
+
+  <!-- P3: LÖPANDE -->
+  <div class="todo-section p3">
+    <h3>🟢 P3 – Löpande administrativa rutiner</h3>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Varje vecka: Granska slutförda städningar och utbetala till städare</div><div class="desc">Kontrollera admin-panelen varje fredag. Granska slutförda jobb. Godkänn städarens faktura. Gör bankbetalning. Bokför transaktionen.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Varje månad: Skicka in RUT-ansökan till Skatteverket</div><div class="desc">1:a varje månad: samla alla föregående månads slutförda bokningar. Logga in på Skatteverket → ROT och RUT → Begär utbetalning. Gör en rad per bokning eller samla per kund.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Kvartalsvis: Lämna momsdeklaration</div><div class="desc">Beräkna och betala nettomoms (utgående − ingående). Görs via Skatteverkets e-tjänst eller via ditt bokföringsprogram (Bokio/Fortnox automatiserar detta).</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Årsvis: Inkomstdeklaration + Årsredovisning</div><div class="desc">Lämna INK2 (bolagsdeklaration) senast 1 juli. Upprätta årsredovisning. Om revisor krävs: anlita en senast 3 månader efter räkenskapsårets slut.</div></div></div>
+  </div>
+
+  <!-- ÅTERKOMMANDE -->
+  <div class="todo-section recurring">
+    <h3>🔁 Löpande: Kontroller och säkerhet</h3>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Verifiera städares F-skatt innan varje utbetalning</div><div class="desc">Gör detta VARJE gång du betalar en ny städare (eller efter uppehåll). F-skattsedel kan återkallas utan förvarning.</div><a href="https://www.skatteverket.se/foretag/anlitaunderleverantorer/kontrollerafskattsedel.4.18e1b10334ebe8bc80004218.html" target="_blank" class="link">→ Kontrollera F-skatt</a></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Spara alla fakturor och kvitton (7 år)</div><div class="desc">Bokföringslagen kräver att du sparar räkenskapsmaterial i 7 år. Digitalt är OK. Stripe-kvitton, städarfakturor, bankutdrag – allt ska sparas.</div></div></div>
+
+    <div class="todo-item"><div class="todo-check" onclick="toggleCheck(this)"></div><div class="todo-content"><div class="title">Bevaka RUT-tak per kund (75 000 kr/år)</div><div class="desc">Spick-plattformen bör hålla koll på hur mycket RUT-avdrag varje kund nyttjat under kalenderåret. Om taket nås kan kunden inte få mer avdrag – Skatteverket nekar ansökan.</div></div></div>
+  </div>
+</div>
+
+<!-- ══════════ VANLIGA MISSTAG ══════════ -->
+<div class="sec">
+  <div class="sec-title">Vanliga misstag att undvika</div>
+
+  <div class="alert alert-red">
+    <h4>❌ De 5 vanligaste felen hos förmedlingsföretag</h4>
+    <ul>
+      <li><strong>Betala städare utan F-skatt:</strong> Om du betalar någon utan F-skatt är du skyldig att hålla inne 30% preliminärskatt. Gör du inte det har du gjort fel.</li>
+      <li><strong>Glömma RUT-deadline (31 jan):</strong> Om du missar 31 januari för föregående år tappar du rätten att hämta hem de pengarna från Skatteverket.</li>
+      <li><strong>Inkludera resekostnader i RUT:</strong> Resor till kunden ingår INTE i RUT-underlaget. Specificera alltid separat.</li>
+      <li><strong>Blanda ihop RUT-pengarna med övrig kassa:</strong> Öppna ett separat konto för RUT-utbetalningar från Skatteverket så du inte förväxlar dem.</li>
+      <li><strong>Sakna personnummer från kunder:</strong> Du kan inte ansöka om RUT i efterhand utan kundens personnummer. Samla in det vid bokningstillfället.</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<footer>
+  Spick intern ekonomiguide · Mars 2026 · OBS: Inte juridisk eller skattemässig rådgivning – konsultera din revisor.
+  <a href="admin.html" style="display:block;margin-top:.5rem">← Tillbaka till Admin</a>
+</footer>
+
+<script>
+// Spara checkbox-status i localStorage
+function toggleCheck(el) {
+  el.classList.toggle('done');
+  if (el.classList.contains('done')) el.innerHTML = '✓';
+  else el.innerHTML = '';
+  saveChecks();
+}
+function saveChecks() {
+  const checks = [...document.querySelectorAll('.todo-check')];
+  const state = checks.map(c => c.classList.contains('done'));
+  localStorage.setItem('spick_todo_checks', JSON.stringify(state));
+}
+function loadChecks() {
+  const saved = localStorage.getItem('spick_todo_checks');
+  if (!saved) return;
+  const state = JSON.parse(saved);
+  const checks = [...document.querySelectorAll('.todo-check')];
+  checks.forEach((c, i) => {
+    if (state[i]) { c.classList.add('done'); c.innerHTML = '✓'; }
+  });
+}
+loadChecks();
+</script>
+
+</body>
+</html>
