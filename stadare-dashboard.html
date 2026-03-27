@@ -306,6 +306,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna månad.</div>
       </div>
 
+      <!-- Mina recensioner -->
+      <div class="card" id="my-reviews-card" style="display:none">
+        <div class="card-title">⭐ Mina senaste recensioner</div>
+        <div id="my-reviews-list" style="font-size:.82rem;color:var(--m)">Laddar...</div>
+      </div>
+
       <!-- Inkomstprognos -->
       <div class="card" id="prognos-card" style="display:none">
         <div class="card-title">📈 Inkomstprognos <span id="prognos-period"></span></div>
@@ -345,6 +351,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="2" style="max-width:220px;resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea></div>
         <div class="prof-row"><span class="lbl">Status</span><span style="color:var(--g);font-size:.85rem">✅ Aktiv</span></div>
         <button class="btn-save" onclick="saveProfile()">💾 Spara ändringar</button>
+        <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">✅ Profil sparad!</div>
+        <div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <button onclick="shareProfile()" style="background:var(--gp);color:var(--g);border:none;padding:8px 20px;border-radius:20px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem">
+            🔗 Dela min profil
+          </button>
+        </div>
       </div>
 
       <!-- Veckoschema -->
@@ -550,6 +562,52 @@ function showErr(msg) {
 
 function backToLogin() { showScreen('login'); }
 
+// ── DELA PROFIL ──────────────────────────────────────
+function shareProfile() {
+  if (!cleaner?.id) return;
+  const url = `${location.origin}/stadare.html?focus=${cleaner.id}`;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ Länk kopierad!';
+    setTimeout(() => btn.textContent = '🔗 Dela min profil', 2500);
+  }).catch(() => {
+    prompt('Kopiera din profil-länk:', url);
+  });
+}
+
+// ── MINA RECENSIONER ─────────────────────────────────
+async function loadMyReviews() {
+  if (!cleaner?.email) return;
+  const { data: revs } = await SB.from('reviews')
+    .select('*')
+    .eq('cleaner_email', cleaner.email)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  const card = document.getElementById('my-reviews-card');
+  const list = document.getElementById('my-reviews-list');
+  if (!card || !list) return;
+
+  if (!revs?.length) {
+    list.textContent = 'Inga recensioner ännu. De visas här efter din första städning.';
+    card.style.display = 'block';
+    return;
+  }
+
+  card.style.display = 'block';
+  list.innerHTML = revs.map(r => {
+    const stars = '⭐'.repeat(Math.round(r.cleaner_rating || 5));
+    const date  = new Date(r.created_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:10px">
+      <div style="font-size:1rem;flex-shrink:0">${stars}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:.8rem">${r.customer_name || 'Kund'} · ${date}</div>
+        ${r.cleaner_comment ? `<div style="color:var(--m);font-size:.78rem;margin-top:2px;font-style:italic">"${r.cleaner_comment}"</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function doLogout() {
   if (realtimeCh) SB.removeChannel(realtimeCh);
   await SB.auth.signOut().catch(() => {});
@@ -718,10 +776,14 @@ function jobCard(j) {
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(j.address || j.city || '')}`;
   const addrHtml = isMine ? `<div style="font-size:.75rem;margin-top:5px;">
     ${showAddr ? 
-      `<a href="${mapsUrl}" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none">📍 ${j.address || j.city || '–'} <span style="font-size:.65rem;opacity:.7">→ Navigera</span></a>` : 
+      `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <a href="${mapsUrl}" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none">📍 ${j.address || j.city || '–'} →</a>
+        ${j.phone || j.customer_phone ? `<a href="tel:${j.phone||j.customer_phone}" style="background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px;text-decoration:none;font-weight:600">📞 Ring kund</a>` : ''}
+      </div>` : 
       `<span style="color:var(--m)">📍 Område: ${j.city || '–'} ${hoursUntil > 24 ? '<span style=\"color:#F59E0B\">🔒 Adress synlig 24h innan</span>' : ''}</span>`}
     ${j.key_info && showAddr ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">🔑 ${j.key_info}</div>` : ''}
-    ${j.customer_notes ? `<div style="background:#DBEAFE;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#1E40AF">📝 ${j.customer_notes}</div>` : ''}
+    ${j.customer_notes ? `<div style="background:#DBEAFE;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#1E40AF">📝 Kundnotering: ${j.customer_notes}</div>` : ''}
+    ${j.allergies ? `<div style="background:#FEE2E2;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#991B1B">⚠️ Allergi: ${j.allergies}</div>` : ''}
   </div>` : '';
 
   return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}">
@@ -1176,6 +1238,7 @@ function showScreen(name) {
 }
 
 function switchTab(tab) {
+  if (tab === 'earn') { setTimeout(loadMyReviews, 200); }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');

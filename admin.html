@@ -231,6 +231,26 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <!-- Alerts -->
       <div id="admin-alert-row" style="margin-bottom:16px"></div>
 
+      <!-- Snabbåtgärder -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button onclick="showPage('bookings');document.getElementById('booking-filter').value='paid';renderBookings()" 
+          style="padding:8px 14px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600">
+          📋 Ej tilldelade bokningar
+        </button>
+        <button onclick="showPage('applications')"
+          style="padding:8px 14px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600">
+          🧹 Granska ansökningar <span id="dash-apps-count" style="background:#DC2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:.7rem;margin-left:4px;display:none">0</span>
+        </button>
+        <button onclick="showPage('inbox')"
+          style="padding:8px 14px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600">
+          📬 E-postinkorg
+        </button>
+        <button onclick="sendBroadcastEmail()"
+          style="padding:8px 14px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600">
+          📢 Broadcast
+        </button>
+      </div>
+
       <!-- Global snabbsök -->
       <div class="card" style="padding:14px 20px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -1034,6 +1054,8 @@ function renderDashboard() {
   renderAlerts();
   document.getElementById('kpi-rating').textContent = avgRating + ' ⭐';
   document.getElementById('kpi-apps').textContent = pendingApps.length;
+  const appsCountEl = document.getElementById('dash-apps-count');
+  if (appsCountEl) { appsCountEl.textContent = pendingApps.length; appsCountEl.style.display = pendingApps.length ? '' : 'none'; }
 
   // Recent bookings
   const rb = data.bookings.slice(0, 6);
@@ -1073,7 +1095,14 @@ function renderBookings() {
       <td class="text-g">${Math.round(b.total_price || 0).toLocaleString('sv')} kr${b.rut ? '<br><span style="font-size:.72rem;color:var(--m)">RUT</span>' : ''}</td>
       <td>${statusBadge(b.payment_status)}</td>
       <td style="font-size:.82rem">${b.cleaner_id ? ('✅ ' + (b.cleaner_name || 'Tilldelad')) : `<span style="color:var(--r)">⚠️ Ej tilldelad</span> <button onclick="openAssignModal('${b.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0F6E56;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:.25rem">Tilldela</button>`}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button></td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button>
+          <a href="mailto:${b.customer_email||b.email||''}?subject=Ang din städning ${b.date||''}" 
+             class="btn btn-outline btn-sm" title="Maila kund" style="text-decoration:none">✉️</a>
+          ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang städning ${b.date||''}" class="btn btn-outline btn-sm" title="Maila städare" style="text-decoration:none">🧹</a>` : ''}
+        </div>
+      </td>
     </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga bokningar hittades</td></tr>';
 }
 
@@ -1428,11 +1457,52 @@ function showBookingDetail(id) {
     <div class="stat-row"><span class="lbl">Status</span><span class="val">${statusBadge(b.payment_status)}</span></div>
     <div class="stat-row"><span class="lbl">Städare</span><span class="val">${cleaner ? cleaner.full_name + ' ⭐' + cleaner.avg_rating : '⚠️ Ej tilldelad'}</span></div>
     <div class="stat-row"><span class="lbl">Stripe PI</span><span class="val" style="font-size:.75rem">${b.stripe_payment_intent || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(b.created_at).toLocaleString('sv')}</span></div>`;
+    <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(b.created_at).toLocaleString('sv')}</span></div>
+    <div class="stat-row"><span class="lbl">Kundanteckningar</span><span class="val">${b.customer_notes || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Nyckelinfo</span><span class="val">${b.key_info || '–'}</span></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="mailto:${b.customer_email||b.email||''}?subject=Din städning ${b.date||''}&body=Hej ${(b.customer_name||'').split(' ')[0]}," 
+         style="flex:1;padding:8px;background:var(--gp);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        ✉️ Maila kund
+      </a>
+      ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang bokning ${b.date||''}"
+         style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        🧹 Maila städare
+      </a>` : ''}
+    </div>`;
   
   document.getElementById('modal-refund-btn').style.display = b.payment_status === 'paid' ? '' : 'none';
   document.getElementById('booking-modal').classList.add('open');
 }
+// ── BROADCAST ────────────────────────────────────────
+async function sendBroadcastEmail() {
+  const subject = prompt('Ämne för broadcast-mail:');
+  if (!subject) return;
+  const body = prompt('Meddelande (HTML stöds):');
+  if (!body) return;
+  const target = confirm('Skicka till ALLA kunder? OK = Ja, Avbryt = Bara aktiva städare');
+  
+  const recipients = target 
+    ? [...new Set(data.bookings.map(b => b.customer_email || b.email).filter(Boolean))]
+    : data.cleaners.filter(c => c.is_approved).map(c => c.email).filter(Boolean);
+  
+  if (!recipients.length) { alert('Inga mottagare hittades'); return; }
+  if (!confirm(`Skicka till ${recipients.length} mottagare?`)) return;
+  
+  let sent = 0;
+  for (const email of recipients.slice(0, 50)) { // Max 50 per broadcast
+    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
+      body: JSON.stringify({ type: 'manual_reply', record: { to: email, subject, html: `<div style="font-family:sans-serif;max-width:580px">${body}<p style="color:#6B6960;font-size:12px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p></div>` } })
+    }).catch(() => {});
+    sent++;
+    await new Promise(r => setTimeout(r, 100)); // Rate limiting
+  }
+  alert(`✅ Broadcast skickad till ${sent} mottagare!`);
+}
+
 function closeModal() { document.getElementById('booking-modal').classList.remove('open'); }
 
 async function refundBooking() {
@@ -1458,7 +1528,18 @@ function showCleanerDetail(id) {
     <div class="stat-row"><span class="lbl">Betyg</span><span class="val">⭐ ${c.avg_rating || '–'}</span></div>
     <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Ja' : '❌ Nej'}</span></div>
     <div class="stat-row"><span class="lbl">Avklarade uppdrag</span><span class="val text-g">${jobs.length} st</span></div>
-    <div class="stat-row"><span class="lbl">Totalt intjänat</span><span class="val text-g">${jobs.reduce((s,b)=>s+Math.round((b.total_price||0)*.83),0).toLocaleString('sv')} kr</span></div>`;
+    <div class="stat-row"><span class="lbl">Totalt intjänat</span><span class="val text-g">${jobs.reduce((s,b)=>s+Math.round((b.total_price||0)*.83),0).toLocaleString('sv')} kr</span></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="mailto:${c.email||''}?subject=Ang dina uppdrag på Spick"
+         style="flex:1;padding:8px;background:var(--gp);color:var(--g);border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        ✉️ Kontakta städare
+      </a>
+      <a href="/stadare.html?focus=${c.id}" target="_blank"
+         style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        👁 Se profil
+      </a>
+    </div>`;
   document.getElementById('cleaner-modal').classList.add('open');
 }
 function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
