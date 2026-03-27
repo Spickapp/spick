@@ -59,8 +59,35 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: FROM, to, subject, html })
     });
-    return res.ok;
-  } catch { return false; }
+    if (res.ok) return true;
+    
+    // Resend misslyckades — köa för retry
+    const errText = await res.text().catch(() => `HTTP ${res.status}`);
+    console.error(`Resend ${res.status} for ${to}: ${errText}`);
+    await queueEmail(to, subject, html, errText);
+    return false;
+  } catch (e) {
+    // Nätverksfel — köa för retry
+    const errMsg = (e as Error).message || "Unknown error";
+    console.error(`sendEmail error for ${to}: ${errMsg}`);
+    await queueEmail(to, subject, html, errMsg);
+    return false;
+  }
+}
+
+async function queueEmail(to: string, subject: string, html: string, error: string): Promise<void> {
+  try {
+    await sb.from("email_queue").insert({
+      to_email: to,
+      subject,
+      html,
+      status: "pending",
+      last_error: error,
+      next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // retry om 5 min
+    });
+  } catch (e) {
+    console.error("Failed to queue email:", (e as Error).message);
+  }
 }
 
 serve(async (req) => {
@@ -70,6 +97,27 @@ serve(async (req) => {
   const payload = await req.json().catch(() => ({}));
   const type = payload.type || (payload.table === "bookings" ? "booking" : payload.table === "cleaner_applications" ? "application" : "unknown");
   const r = payload.record || payload;
+
+  // ── AUTH CHECK ────────────────────────────────────────────
+  // Känsliga typer kräver service_role (server-anrop)
+  const SENSITIVE_TYPES = ["cleaner_approved", "manual_reply", "sos_alert", "custom"];
+  if (SENSITIVE_TYPES.includes(type)) {
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.replace("Bearer ", "");
+    // Enkel check: service_role tokens har "service_role" i JWT payload
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.role !== "service_role") {
+        return new Response(JSON.stringify({ error: "Unauthorized: service_role required" }), {
+          status: 403, headers: { "Content-Type": "application/json", ...CORS }
+        });
+      }
+    } catch {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 403, headers: { "Content-Type": "application/json", ...CORS }
+      });
+    }
+  }
 
   // ── INPUT VALIDATION ──────────────────────────────────────
   const ALLOWED_TYPES = ["booking","new_booking_cleaner","application","cleaner_approved",

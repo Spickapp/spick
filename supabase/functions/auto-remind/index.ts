@@ -175,6 +175,47 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
       sent.push(`review:${b.id}`);
     }
 
+    // ── EMAIL RETRY QUEUE ─────────────────────────────────────
+    // Processa misslyckade mejl (max 10 per körning)
+    const { data: queued } = await sb.from("email_queue")
+      .select("*")
+      .eq("status", "pending")
+      .lte("next_retry_at", now.toISOString())
+      .lt("attempts", 3)
+      .order("created_at", { ascending: true })
+      .limit(10);
+
+    for (const q of queued || []) {
+      try {
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: FROM, to: q.to_email, subject: q.subject, html: q.html })
+        });
+        if (emailRes.ok) {
+          await sb.from("email_queue").update({ status: "sent", sent_at: now.toISOString() }).eq("id", q.id);
+          sent.push(`retry:${q.to_email}`);
+        } else {
+          const nextRetry = new Date(now.getTime() + (q.attempts + 1) * 10 * 60 * 1000); // exponential: 10min, 20min, 30min
+          await sb.from("email_queue").update({
+            attempts: q.attempts + 1,
+            last_error: `HTTP ${emailRes.status}`,
+            next_retry_at: nextRetry.toISOString(),
+            status: q.attempts + 1 >= 3 ? "failed" : "pending",
+          }).eq("id", q.id);
+        }
+      } catch (e) {
+        await sb.from("email_queue").update({
+          attempts: q.attempts + 1,
+          last_error: (e as Error).message,
+          status: q.attempts + 1 >= 3 ? "failed" : "pending",
+        }).eq("id", q.id);
+      }
+    }
+
+    // ── RATE LIMIT CLEANUP ────────────────────────────────────
+    await sb.rpc("cleanup_rate_limits").catch(() => {});
+
   } catch(e) {
     console.error("auto-remind fel:", e);
     return new Response(JSON.stringify({error:(e as Error).message}), {status:500,headers:{"Content-Type":"application/json"}});
