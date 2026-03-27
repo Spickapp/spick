@@ -152,6 +152,37 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
       }
     }
 
+    // ── SENTIMENT CHECK (T+2h) ───────────────────────────────
+    // Skicka 3-knappars känslocheck INNAN review-förfrågan
+    const { data: sentimentCandidates } = await sb.from("bookings")
+      .select("*").eq("status","klar").not("reminders_sent","cs","{sentiment_2h}");
+
+    for (const b of sentimentCandidates || []) {
+      const comp = b.completed_at ? new Date(b.completed_at) : null;
+      if (!comp) continue;
+      const hoursAgo = (now.getTime() - comp.getTime()) / 3_600_000;
+      if (hoursAgo < 2 || hoursAgo > 3) continue;
+
+      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const cname = b.cleaner_name || "din städare";
+      const prevSent = (b.reminders_sent || []) as string[];
+      const base = `https://spick.se/betyg.html?bid=${b.id}&cname=${encodeURIComponent(cname)}`;
+
+      await mail(b.customer_email || b.email,
+        `Hur gick din städning? (1 klick) 😊`,
+        wrap(`<h2>Hur gick det, ${fname}? 🧹</h2>
+<p>Din ${b.service || "städning"} med ${cname} är klar. Hur upplevde du det?</p>
+<div style="text-align:center;margin:24px 0">
+  <a href="${base}&rating=5&sentiment=positive" style="display:inline-block;background:#ECFDF5;color:#065F46;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:1.4rem;font-weight:700;margin:0 8px;border:2px solid #6EE7B7">😊 Fantastiskt!</a>
+  <a href="${base}&rating=3&sentiment=neutral" style="display:inline-block;background:#FEF3C7;color:#92400E;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:1.4rem;font-weight:700;margin:0 8px;border:2px solid #FCD34D">😐 Okej</a>
+  <a href="mailto:hello@spick.se?subject=Feedback%20bokning%20${b.id}&body=Hej,%20jag%20var%20inte%20helt%20nöjd%20med%20min%20städning..." style="display:inline-block;background:#FEE2E2;color:#991B1B;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:1.4rem;font-weight:700;margin:0 8px;border:2px solid #FCA5A5">😞 Inte nöjd</a>
+</div>
+<p style="font-size:12px;color:#9B9B95;text-align:center">Klicka den som passar bäst — tar 1 sekund</p>`));
+
+      await sb.from("bookings").update({ reminders_sent: [...prevSent, "sentiment_2h"] }).eq("id", b.id);
+      sent.push(`sentiment_2h:${b.id}`);
+    }
+
     // Review-request 3h efter klar
     const { data: done } = await sb.from("bookings")
       .select("*").eq("status","klar").is("review_requested_at",null);
@@ -167,12 +198,70 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
         `⭐ Hur gick städningen? Ditt betyg hjälper!`,
         wrap(`<h2>Hoppas du är nöjd, ${fname}! ⭐</h2>
 <p>Din ${b.service||"städning"} är klar. Hur gick det? Ditt betyg tar 30 sekunder och hjälper ${b.cleaner_name||"städaren"} enormt.</p>
-<a href="https://spick.se/betyg.html?bid=${b.id}&cname=${encodeURIComponent(b.cleaner_name||"")}" class="btn">Lämna betyg →</a>
+<p style="font-size:13px;color:#6B6960">87% av våra kunder lämnar betyg — det gör stor skillnad! 💚</p>
+<a href="https://spick.se/betyg.html?bid=${b.id}&cname=${encodeURIComponent(b.cleaner_name||"")}&rating=5" class="btn">⭐ Lämna betyg →</a>
 <hr style="border:none;border-top:1px solid #E8E8E4;margin:16px 0">
 <p style="font-size:12px">Inte nöjd? Vi städar om gratis. Skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> inom 24h.</p>`));
 
       await sb.from("bookings").update({review_requested_at:now.toISOString()}).eq("id",b.id);
       sent.push(`review:${b.id}`);
+    }
+
+    // ── REVIEW REMINDER (T+72h) ──────────────────────────────
+    // Påminn kunder som inte lämnat betyg efter 3 dagar
+    const { data: reminderCandidates } = await sb.from("bookings")
+      .select("*").eq("status","klar").not("review_requested_at", "is", null).not("reminders_sent","cs","{review_72h}");
+
+    for (const b of reminderCandidates || []) {
+      const reqAt = b.review_requested_at ? new Date(b.review_requested_at) : null;
+      if (!reqAt) continue;
+      const hoursSinceReq = (now.getTime() - reqAt.getTime()) / 3_600_000;
+      if (hoursSinceReq < 72 || hoursSinceReq > 120) continue;
+
+      // Kolla om kund redan lämnat betyg
+      const { data: existingReview } = await sb.from("reviews")
+        .select("id").eq("booking_id", b.id).limit(1);
+      if (existingReview && existingReview.length > 0) continue;
+
+      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const prevSent = (b.reminders_sent || []) as string[];
+
+      await mail(b.customer_email || b.email,
+        `Vi vill gärna höra från dig 🙏`,
+        wrap(`<h2>${fname}, din åsikt spelar roll 🙏</h2>
+<p>Vi frågade för några dagar sedan hur din städning gick. Ditt betyg hjälper ${b.cleaner_name || "städaren"} att bli ännu bättre.</p>
+<a href="https://spick.se/betyg.html?bid=${b.id}&cname=${encodeURIComponent(b.cleaner_name || "")}" class="btn">Lämna betyg → 30 sekunder</a>
+<p style="font-size:12px;color:#9B9B95;margin-top:16px">Vi frågar aldrig mer — detta är sista påminnelsen.</p>`));
+
+      await sb.from("bookings").update({ reminders_sent: [...prevSent, "review_72h"] }).eq("id", b.id);
+      sent.push(`review_72h:${b.id}`);
+    }
+
+    // ── GOOGLE REVIEW ROUTING (T+48h after 4-5★) ────────────
+    // Be kunder som gett högt betyg att lämna Google-omdöme
+    const { data: googleCandidates } = await sb.from("reviews")
+      .select("*, bookings(id, customer_email, email, customer_name, name, reminders_sent)")
+      .gte("rating", 4).not("google_review_requested", "is", true);
+
+    for (const r of googleCandidates || []) {
+      const reviewAge = (now.getTime() - new Date(r.created_at).getTime()) / 3_600_000;
+      if (reviewAge < 48 || reviewAge > 96) continue;
+
+      const booking = (r as any).bookings;
+      if (!booking) continue;
+      const email = booking.customer_email || booking.email;
+      if (!email) continue;
+      const fname = (booking.customer_name || booking.name || "").split(" ")[0] || "Hej";
+
+      await mail(email,
+        `En sista sak — hjälp oss på Google? 🙏`,
+        wrap(`<h2>Tack för ditt fantastiska betyg, ${fname}! 🌟</h2>
+<p>Om du har 30 sekunder till — ditt omdöme på Google hjälper andra hitta oss och ger oss kraft att fortsätta.</p>
+<a href="https://search.google.com/local/writereview?placeid=ChIJYTN9T-53X0YREIXJlI2CvTM" class="btn">⭐ Lämna Google-omdöme →</a>
+<p style="font-size:12px;color:#9B9B95;margin-top:16px">Bara om du vill — vi uppskattar det oavsett! 💚</p>`));
+
+      await sb.from("reviews").update({ google_review_requested: true }).eq("id", r.id);
+      sent.push(`google_review:${r.id}`);
     }
 
     // ── REBOOK CAMPAIGN (T+7d) ───────────────────────────────
