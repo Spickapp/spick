@@ -266,6 +266,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           style="padding:8px 14px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600">
           📢 Broadcast
         </button>
+        <a href="marknadsanalys.html" target="_blank"
+          style="padding:8px 14px;background:var(--gp);border:1.5px solid var(--g);border-radius:10px;font-size:.8rem;font-weight:600;color:var(--g);text-decoration:none">
+          📊 Marknadsanalys
+        </a>
       </div>
 
       <!-- Global snabbsök -->
@@ -1306,8 +1310,8 @@ function renderCustomers() {
       <td style="font-size:.82rem">${c.last_visit ? new Date(c.last_visit).toLocaleDateString('sv') : '–'}</td>
       <td>
         <div style="display:flex;gap:4px">
+          <button onclick="showCustomerBookings('${c.email}')" class="btn btn-outline btn-sm" title="Bokningshistorik">📋</button>
           <a href="mailto:${c.email||''}?subject=Hej ${(c.name||'').split(' ')[0]}!" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
-          <a href="mitt-konto.html?email=${encodeURIComponent(c.email)}" target="_blank" class="btn btn-outline btn-sm" title="Kundvy" style="text-decoration:none">👤</a>
         </div>
       </td>
     </tr>`}).join('') : '<tr><td colspan="6" class="empty">Inga kunder hittades</td></tr>';
@@ -1583,6 +1587,53 @@ function showBookingDetail(id) {
   document.getElementById('modal-refund-btn').style.display = b.payment_status === 'paid' ? '' : 'none';
   document.getElementById('booking-modal').classList.add('open');
 }
+// ── KUNDHISTORIK ─────────────────────────────────────
+function showCustomerBookings(email) {
+  const customerBookings = data.bookings
+    .filter(b => (b.customer_email || b.email) === email)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  
+  const customer = data.customers.find(c => c.email === email);
+  const name = customer?.name || email;
+  
+  const total = customerBookings.filter(b => b.payment_status === 'paid')
+    .reduce((s,b) => s + (b.total_price || 0), 0);
+  
+  document.getElementById('modal-title').textContent = `📋 ${name} – bokningshistorik`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="background:var(--gp);border-radius:10px;padding:10px 16px;text-align:center">
+        <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${customerBookings.length}</div>
+        <div style="font-size:.72rem;color:var(--m)">bokningar totalt</div>
+      </div>
+      <div style="background:var(--gp);border-radius:10px;padding:10px 16px;text-align:center">
+        <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${Math.round(total).toLocaleString('sv')} kr</div>
+        <div style="font-size:.72rem;color:var(--m)">totalt spenderat</div>
+      </div>
+      ${customer?.phone ? `<div style="background:#DBEAFE;border-radius:10px;padding:10px 16px;text-align:center"><div style="font-weight:700;font-size:.9rem;color:#1E40AF">${customer.phone}</div><div style="font-size:.72rem;color:var(--m)">telefon</div></div>` : ''}
+    </div>
+    ${customerBookings.length ? customerBookings.map(b => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem">
+        <div>
+          <strong>${b.service || 'Hemstädning'}</strong> · ${b.date || '–'}
+          <div style="font-size:.75rem;color:var(--m)">${b.cleaner_name || 'Ej tilldelad'} · ${b.city || '–'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="color:var(--g);font-weight:600">${Math.round(b.total_price||0).toLocaleString('sv')} kr</div>
+          ${statusBadge(b.payment_status)}
+        </div>
+      </div>`).join('') : '<div style="color:var(--m);text-align:center;padding:20px">Inga bokningar</div>'}
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <a href="mailto:${email}?subject=Ang dina städningar på Spick" 
+         style="display:block;text-align:center;background:var(--gp);color:var(--g);padding:10px;border-radius:10px;font-weight:600;text-decoration:none">
+        ✉️ Maila ${name.split(' ')[0]}
+      </a>
+    </div>`;
+  
+  document.getElementById('modal-refund-btn').style.display = 'none';
+  document.getElementById('booking-modal').classList.add('open');
+}
+
 // ── EXPORTERA CSV ────────────────────────────────────
 function exportBookingsCSV() {
   const q = document.getElementById('booking-search').value.toLowerCase();
