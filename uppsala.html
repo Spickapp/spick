@@ -12,15 +12,16 @@
 <link rel="canonical" href="https://spick.se/uppsala.html">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="js/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script>
 async function joinWaitlist(city, email){
   // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles',{
+  await fetch(SPICK.SUPA_URL+'/rest/v1/customer_profiles',{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY,'Prefer':'return=minimal'},
     body:JSON.stringify({email,city,utm_source:'waitlist'})
   }).catch(()=>{});
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify',{
+  await fetch(SPICK.SUPA_URL+'/functions/v1/notify',{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY},
     body:JSON.stringify({type:'waitlist',record:{city,email}})

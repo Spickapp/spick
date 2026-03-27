@@ -814,7 +814,7 @@ async function sendManualReply(emailId, toAddr) {
   const { data: email } = await SB.from('emails').select('subject').eq('id', emailId).single();
   const subject = email?.subject ? 'Re: ' + email.subject : 'Svar från Spick';
 
-  const res = await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+  const res = await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
     body: JSON.stringify({ type: 'manual_reply', record: { to: toAddr, subject, html } })
@@ -1699,7 +1699,7 @@ async function sendBroadcastEmail() {
   
   let sent = 0;
   for (const email of recipients.slice(0, 50)) { // Max 50 per broadcast
-    await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+    await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
       body: JSON.stringify({ type: 'manual_reply', record: { to: email, subject, html: `<div style="font-family:sans-serif;max-width:580px">${body}<p style="color:#6B6960;font-size:12px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p></div>` } })
@@ -1782,7 +1782,7 @@ async function approveApplication(id, name, email, city, services, rate) {
   await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
   
   // Skicka välkomstmail via Resend
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+  await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer '+SPICK.SUPA_KEY },
     body: JSON.stringify({ type: 'cleaner_approved', record: { full_name: name, name, email, city, hourly_rate: rate } })

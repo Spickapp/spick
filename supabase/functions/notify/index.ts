@@ -71,6 +71,32 @@ serve(async (req) => {
   const type = payload.type || (payload.table === "bookings" ? "booking" : payload.table === "cleaner_applications" ? "application" : "unknown");
   const r = payload.record || payload;
 
+  // ── INPUT VALIDATION ──────────────────────────────────────
+  const ALLOWED_TYPES = ["booking","new_booking_cleaner","application","cleaner_approved",
+    "reminder","review_request","uptime_alert","checkin","sos_alert","job_completed",
+    "cleaner_accepted","booking_cancelled","garanti_reklamation","referral_invite",
+    "contact","manual_reply","ssl_warning","custom","waitlist"];
+  
+  if (!ALLOWED_TYPES.includes(type)) {
+    return new Response(JSON.stringify({ error: "Invalid type" }), {
+      status: 400, headers: { "Content-Type": "application/json", ...CORS }
+    });
+  }
+
+  // Basic email validation (prevent sending to arbitrary addresses via open types)
+  if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) {
+    return new Response(JSON.stringify({ error: "Invalid email format" }), {
+      status: 400, headers: { "Content-Type": "application/json", ...CORS }
+    });
+  }
+
+  // Limit field lengths to prevent abuse
+  for (const key of Object.keys(r)) {
+    if (typeof r[key] === "string" && r[key].length > 2000) {
+      r[key] = r[key].slice(0, 2000);
+    }
+  }
+
   try {
     // ── BOKNING ───────────────────────────────────────────────
     if (type === "booking") {

@@ -124,7 +124,7 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
   const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
   
   const data = await fetch(
-    `https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?stripe_session_id=eq.${sessionId}&select=id,service,date,time,address,total_price,payment_status`,
+    `${SPICK.SUPA_URL}/rest/v1/bookings?stripe_session_id=eq.${sessionId}&select=id,service,date,time,address,total_price,payment_status`,
     { headers: { 'apikey': SPICK.SUPA_KEY } }
   ).then(r => r.json()).catch(() => []);
 
@@ -263,7 +263,7 @@ async function enablePush(banner) {
         // Spara subscription i Supabase
         const bid = new URLSearchParams(location.search).get('bid');
         if (bid) {
-          await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/push', {
+          await fetch(SPICK.SUPA_URL+'/functions/v1/push', {
             method: 'POST',
             headers: {'Content-Type':'application/json','apikey':SPICK.SUPA_KEY},
             body: JSON.stringify({ action: 'subscribe', subscription: sub, booking_id: bid })

@@ -185,12 +185,12 @@ async function joinWL(){
 </script>
 <script>
 async function joinWaitlist(city, email) {
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/customer_profiles', {
+  await fetch(SPICK.SUPA_URL+'/rest/v1/customer_profiles', {
     method: 'POST',
     headers: {'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY,'Prefer':'return=minimal'},
     body: JSON.stringify({email, city, utm_source:'waitlist'})
   }).catch(()=>{});
-  await fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/notify', {
+  await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
     method: 'POST',
     headers: {'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY},
     body: JSON.stringify({type:'waitlist', record:{city, email}})

@@ -273,6 +273,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 // Config loaded from js/config.js
+const SUPA_URL = SPICK.SUPA_URL;
+const SUPA_KEY = SPICK.SUPA_KEY;
 const params = new URLSearchParams(location.search);
 const BOOKING_ID = params.get('id');
 const MY_EMAIL = sessionStorage.getItem('spick_cleaner')
@@ -641,7 +643,7 @@ function doCheckin() {
       const bid = new URLSearchParams(location.search).get('bid') || new URLSearchParams(location.search).get('id');
       const KEY = SPICK.SUPA_KEY;
 if(bid) {
-        fetch('https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?id=eq.'+bid, {
+        fetch(SPICK.SUPA_URL+'/rest/v1/bookings?id=eq.'+bid, {
           method:'PATCH',
           headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},
           body: JSON.stringify({
