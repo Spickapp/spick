@@ -104,10 +104,15 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 .cal-slots-wrap{padding:.875rem 1rem;border-top:1px solid var(--border)}
 .cal-date-lbl{font-size:.8rem;font-weight:600;margin-bottom:.625rem}
 .cal-slots{display:flex;flex-wrap:wrap;gap:.375rem}
-.slot{padding:.4rem .875rem;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;border:1.5px solid #6EE7B7;background:var(--gl);color:#065F46;transition:all .12s}
-.slot:hover{background:#c8eed8}
+.slot{padding:.4rem .75rem;border-radius:8px;font-size:.76rem;font-weight:600;cursor:pointer;border:1.5px solid #6EE7B7;background:var(--gl);color:#065F46;transition:all .14s;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:72px}
+.slot-start{font-size:.82rem;font-weight:700;line-height:1.2}
+.slot-end{font-size:.68rem;font-weight:500;opacity:.75;line-height:1}
+.slot:hover{background:#c8eed8;transform:translateY(-1px)}
 .slot.selected{background:var(--g);color:#fff;border-color:var(--g)}
-.slot.taken{background:var(--red);color:#9CA3AF;border-color:#FCA5A5;cursor:not-allowed;font-weight:400}
+.slot.selected .slot-end{opacity:.85}
+.slot.taken{background:#FEF2F2;color:#EF4444;border-color:#FCA5A5;cursor:not-allowed}
+.slot.taken .slot-start{text-decoration:line-through;opacity:.6}
+.slot.taken .slot-end{opacity:.45}
 .cal-sel-info{margin-top:.75rem;background:var(--gl);border:1.5px solid #6EE7B7;border-radius:9px;padding:.625rem .875rem;font-size:.82rem;color:var(--g);font-weight:500;display:none}
 
 /* ── STÄDAR-KORTEN ───────────────────────── */
@@ -899,9 +904,20 @@ function renderCalendar() {
     else if (isPast) { el.className = 'cal-day past'; }
     else if (isBlocked) { el.className = 'cal-day blocked'; el.title='Ej tillgänglig'; }
     else if (avail) {
-      el.className = 'cal-day avail' + (isToday ? ' today' : '');
-      el.title = 'Välj ' + dateStr;
-      el.onclick = () => selectDate(dateStr);
+      // Kolla hur många tider som finns kvar denna dag
+      const daySlots = getAvailableSlots(dateStr, state.hours || 3);
+      const freeCount = daySlots.filter(s => !s.taken).length;
+      const totalCount = daySlots.length;
+      el.className = 'cal-day avail' + (isToday ? ' today' : '') + (freeCount === 0 ? ' full' : '');
+      el.title = freeCount > 0 ? `${freeCount} av ${totalCount} tider lediga` : 'Fullbokad';
+      el.onclick = freeCount > 0 ? () => selectDate(dateStr) : null;
+      if (freeCount > 0 && freeCount <= 2) {
+        // Få tider kvar – visa varning
+        const badge = document.createElement('span');
+        badge.className = 'cal-badge';
+        badge.textContent = freeCount;
+        el.appendChild(badge);
+      }
     } else {
       el.className = 'cal-day unavail'; el.title='Ej tillgänglig';
     }
@@ -945,10 +961,12 @@ function selectDate(dateStr) {
         return String(Math.floor(endMin/60)).padStart(2,'0') + ':' + String(endMin%60).padStart(2,'0');
       })();
       btn.className = 'slot' + (s.taken ? ' taken' : '');
-      btn.textContent = s.time;
+      btn.innerHTML = `<span class="slot-start">${s.time}</span><span class="slot-end">–${endTime}</span>`;
       btn.title = s.taken
-        ? 'Ej tillgänglig denna tid'
-        : `${s.time}–${endTime} (${state.hours||3}h)`;
+        ? `Bokad ${s.time}–${endTime}`
+        : `Välj ${s.time}–${endTime} (${state.hours||3}h)`;
+      btn.setAttribute('data-time', s.time);
+      btn.setAttribute('data-endtime', endTime);
       btn.type = 'button';
       if (!s.taken) btn.onclick = () => selectTime(s.time, btn);
       slotsEl.appendChild(btn);
@@ -965,7 +983,9 @@ function selectTime(t, btn) {
   const d = new Date(state.date + 'T00:00:00');
   const infoEl = document.getElementById('cal-sel-info');
   infoEl.style.display = 'block';
-  infoEl.textContent = '✅ Valt: ' + DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' kl. ' + t;
+  const selEndMin = t.split(':').map(Number).reduce((h,m)=>h*60+m,0) + (state.hours||3)*60;
+  const selEndTime = String(Math.floor(selEndMin/60)).padStart(2,'0')+':'+String(selEndMin%60).padStart(2,'0');
+  infoEl.innerHTML = '✅ <strong>' + DAYS_SV[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + '</strong> kl. ' + t + '–' + selEndTime + ' <span style="color:var(--m);font-weight:400">(' + (state.hours||3) + ' timmar)</span>';
   updateSidebar();
 }
 

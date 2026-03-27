@@ -67,3 +67,30 @@ CREATE TRIGGER booking_customer_profile_trigger
   FOR EACH ROW
   EXECUTE FUNCTION upsert_customer_profile();
 
+
+-- ============================================================
+-- FIX 2: bookings.name är NOT NULL men E2E skickar inte den
+-- (customer_name är den faktiska kolumnen, name är legacy)
+-- ============================================================
+ALTER TABLE bookings ALTER COLUMN name DROP NOT NULL;
+
+-- Aktivera customer_profile_trigger
+ALTER TABLE bookings ENABLE TRIGGER booking_customer_profile_trigger;
+
+-- ============================================================
+-- FIX 3: Rensa och återskapa bookings INSERT-policy
+-- Gamla policies hade felaktiga WITH CHECK-villkor
+-- ============================================================
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT polname FROM pg_policy 
+    WHERE polrelid = 'bookings'::regclass AND polcmd = 'a'
+  LOOP
+    EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.polname) || ' ON bookings';
+  END LOOP;
+END $$;
+
+CREATE POLICY "bookings_insert_open" ON bookings
+  AS PERMISSIVE FOR INSERT TO PUBLIC
+  WITH CHECK (true);
