@@ -86,6 +86,20 @@ h1{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--b);margin-b
         📅 Lägg till i kalender
       </button>
   <a href="index.html" class="btn-outline">Tillbaka till startsidan</a>
+      <!-- DELA / REFERRAL -->
+      <div style="background:#F0FDF4;border-radius:12px;padding:1.125rem;margin-top:1rem;text-align:center">
+        <div style="font-size:.85rem;font-weight:600;color:#065F46;margin-bottom:.625rem">🎁 Dela med en vän – ni får båda 100 kr</div>
+        <a id="whatsapp-share" href="#" target="_blank" rel="noopener" 
+           style="display:inline-block;background:#25D366;color:#fff;padding:8px 18px;border-radius:100px;font-size:.82rem;font-weight:600;text-decoration:none;margin:4px">
+          💬 Dela via WhatsApp
+        </a>
+        <button onclick="copyShareLink()" 
+           style="background:#fff;border:1.5px solid #0F6E56;color:#0F6E56;padding:8px 18px;border-radius:100px;font-size:.82rem;font-weight:600;cursor:pointer;margin:4px;font-family:inherit"
+           id="copy-share-btn">
+          📋 Kopiera länk
+        </button>
+      </div>
+
       <!-- UPSELL -->
       <div style="background:#F7F7F5;border-radius:12px;padding:1.125rem;margin-top:1.25rem;text-align:center">
         <div style="font-size:.8rem;font-weight:600;color:#6B6960;margin-bottom:.875rem;text-transform:uppercase;letter-spacing:.05em">Vill du ha det rent varje vecka?</div>
@@ -179,6 +193,24 @@ setTimeout(() => {
 </script>
 
 <script>
+// Dela-länk
+(function() {
+  const email = new URLSearchParams(window.location.search).get('email') || '';
+  const code  = email ? btoa(email).slice(0,8).toUpperCase() : 'SPICK10';
+  const link  = `${window.location.origin}/boka.html?ref=${code}`;
+  const msg   = `Boka städning hos Spick – jag har precis bokat och rekommenderar! Använd min länk och vi får båda 100 kr: ${link}`;
+  const wpEl  = document.getElementById('whatsapp-share');
+  if (wpEl) wpEl.href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window._shareLink = link;
+})();
+
+function copyShareLink() {
+  navigator.clipboard.writeText(window._shareLink || window.location.origin).then(() => {
+    const btn = document.getElementById('copy-share-btn');
+    if (btn) { btn.textContent = '✅ Kopierat!'; setTimeout(() => btn.textContent = '📋 Kopiera länk', 2500); }
+  });
+}
+
 // Push-notiser uppmaning (bug #33)
 async function askPushPermission() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) return;

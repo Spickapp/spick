@@ -299,6 +299,11 @@ function render(){
   else if(fv==='stor') d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('stor')));
   else if(fv==='flytt') d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('flytt')));
   else if(fv==='fonster') d=d.filter(c=>c.tags.some(t=>t.toLowerCase().includes('fönster')));
+  if(fv==='idag') {
+    const days=['sön','mån','tis','ons','tor','fre','lör'];
+    const todayStr=days[new Date().getDay()];
+    d=d.filter(c=>(c.available_days||'').toLowerCase().includes(todayStr)||!(c.available_days));
+  }
   if(sv==='betyg') d.sort((a,b)=>b.rating-a.rating);
   else if(sv==='pris-upp') d.sort((a,b)=>a.price-b.price);
   else if(sv==='pris-ner') d.sort((a,b)=>b.price-a.price);

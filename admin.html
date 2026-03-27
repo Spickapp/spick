@@ -427,6 +427,51 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     </div>
 
     <!-- SETTINGS -->
+    <!-- INBOX -->
+    <div class="page hidden" id="page-inbox">
+      <div class="page-header">
+        <div class="page-title">E-postinkorg 📬</div>
+        <div class="page-sub">Alla inkommande mail från kunder, städare och partners</div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="inbox-filter-cat" onchange="loadInbox()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.82rem;outline:none">
+            <option value="">Alla kategorier</option>
+            <option value="klago">🔴 Klagomål</option>
+            <option value="bokning">📅 Bokning</option>
+            <option value="avboka">❌ Avbokning</option>
+            <option value="fråga">❓ Frågor</option>
+            <option value="ansökan">🧹 Ansökningar</option>
+            <option value="partner">🤝 Partner</option>
+            <option value="spam">🗑 Spam</option>
+            <option value="system">⚙️ System</option>
+          </select>
+          <select id="inbox-filter-status" onchange="loadInbox()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.82rem;outline:none">
+            <option value="ny">Nya</option>
+            <option value="auto-besvarad">Auto-besvarade</option>
+            <option value="">Alla</option>
+            <option value="hanterad">Hanterade</option>
+            <option value="arkiverad">Arkiverade</option>
+          </select>
+        </div>
+        <button onclick="loadInbox()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:.82rem;font-family:inherit">↻ Uppdatera</button>
+      </div>
+
+      <div id="inbox-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+      <div id="inbox-list" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;padding:3rem;color:var(--m)">Välj E-postinkorg i menyn för att ladda mail...</div>
+      </div>
+
+      <!-- Mail-detalj modal -->
+      <div id="email-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:20px;max-width:680px;width:90vw;max-height:85vh;overflow:auto;padding:28px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+          <button onclick="closeEmailModal()" style="position:absolute;top:16px;right:16px;background:#F3F4F6;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center">×</button>
+          <div id="email-modal-content"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="page-header">
         <div class="page-title">Inställningar ⚙️</div>
