@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
+<script>
+// FLASH GUARD – dölj sidan tills JS har bestämt vilken skärm som ska visas
+document.documentElement.style.visibility='hidden';
+</script>
 <meta charset="UTF-8">
   <!-- Säkerhetshuvuden -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -513,6 +517,7 @@ function init() {
   const sessionTimeout = setTimeout(() => {
     // Om getSession inte svarat inom 3s – visa login och ge upp
     console.warn('getSession timeout – visar login');
+    document.documentElement.style.visibility='visible';
   }, 3000);
 
   SB.auth.getSession().then(({ data: { session } }) => {
@@ -668,6 +673,7 @@ async function loadCleanerByEmail(email) {
 
   buildSchedule();
   loadBlockedDates();
+  window._cleanerLoaded=true;
   showScreen('app');
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
   setupRealtime();
@@ -1246,9 +1252,16 @@ function sosSend(type) {
 
 // ── UI HELPERS ───────────────────────────────────────────────
 function showScreen(name) {
+  // Skydda app-skärmen – kräver att städardata är laddad
+  if (name === 'app' && !window._cleanerLoaded) {
+    console.warn('Blockerat: försök att visa app-skärm utan laddad städardata');
+    return;
+  }
   ['login','magic','app'].forEach(s => document.getElementById('screen-'+s).classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.getElementById('sos-btn').style.display = name === 'app' ? 'flex' : 'none';
+  // Visa sidan nu när rätt skärm är vald
+  document.documentElement.style.visibility='visible';
 }
 
 function switchTab(tab) {
