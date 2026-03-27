@@ -12,6 +12,15 @@ const RESEND_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
 
 serve(async (req) => {
+  // CORS
+  const CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+    "Access-Control-Max-Age": "86400",
+  };
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+
   const start = Date.now();
   const checks: Record<string, { ok: boolean; ms: number; error?: string }> = {};
 
@@ -70,7 +79,7 @@ serve(async (req) => {
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
-      "Access-Control-Allow-Origin": "https://spick.se",
+      ...CORS,
     },
   });
 });
