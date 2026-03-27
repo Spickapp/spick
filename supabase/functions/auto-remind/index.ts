@@ -175,6 +175,72 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
       sent.push(`review:${b.id}`);
     }
 
+    // ── REBOOK CAMPAIGN (T+7d) ───────────────────────────────
+    // Påminn kunder att boka igen 7 dagar efter slutförd städning
+    const { data: rebookCandidates } = await sb.from("bookings")
+      .select("*").eq("status","klar").not("reminders_sent","cs","{rebook_7d}");
+
+    for (const b of rebookCandidates || []) {
+      const comp = b.completed_at ? new Date(b.completed_at) : null;
+      if (!comp) continue;
+      const daysAgo = (now.getTime() - comp.getTime()) / 86_400_000;
+      if (daysAgo < 7 || daysAgo > 10) continue;
+
+      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const cleanerName = b.cleaner_name || "din städare";
+      const prevSent = (b.reminders_sent || []) as string[];
+
+      await mail(b.customer_email || b.email,
+        `🗓 Dags att boka igen? ${cleanerName} har lediga tider`,
+        wrap(`<h2>Boka ${cleanerName} igen! 🧹</h2>
+<p>Hej ${fname}! Det har gått en vecka sedan din senaste ${b.service || "städning"}. Vill du boka samma städare igen?</p>
+<div class="card">
+  <div class="row"><span class="lbl">Senaste tjänst</span><span class="val">${b.service || "Hemstädning"} · ${b.hours || 3}h</span></div>
+  <div class="row"><span class="lbl">Städare</span><span class="val">${cleanerName}</span></div>
+  <div class="row"><span class="lbl">Ditt betyg</span><span class="val">Tack! ⭐</span></div>
+</div>
+<p>Regelbunden städning = alltid rent hemma. Boka samma tid varje vecka eller varannan vecka!</p>
+<a href="https://spick.se/stadare.html" class="btn">Boka igen →</a>`));
+
+      await sb.from("bookings").update({ reminders_sent: [...prevSent, "rebook_7d"] }).eq("id", b.id);
+      sent.push(`rebook_7d:${b.id}`);
+    }
+
+    // ── WIN-BACK (T+14d) ─────────────────────────────────────
+    // Erbjud rabatt till kunder som inte bokat igen
+    const { data: winbackCandidates } = await sb.from("bookings")
+      .select("*").eq("status","klar").not("reminders_sent","cs","{winback_14d}");
+
+    for (const b of winbackCandidates || []) {
+      const comp = b.completed_at ? new Date(b.completed_at) : null;
+      if (!comp) continue;
+      const daysAgo = (now.getTime() - comp.getTime()) / 86_400_000;
+      if (daysAgo < 14 || daysAgo > 17) continue;
+
+      // Kolla om kund redan bokat nytt
+      const { data: newBookings } = await sb.from("bookings")
+        .select("id").eq("email", b.customer_email || b.email)
+        .gt("created_at", comp.toISOString()).limit(1);
+      if (newBookings && newBookings.length > 0) continue; // Redan rebookat
+
+      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const prevSent = (b.reminders_sent || []) as string[];
+
+      await mail(b.customer_email || b.email,
+        `💚 10% rabatt — vi saknar dig!`,
+        wrap(`<h2>Vi saknar dig, ${fname}! 💚</h2>
+<p>Det har gått 2 veckor sedan din senaste städning. Vi vill gärna se dig igen!</p>
+<div class="card" style="background:#ECFDF5;border:1px solid #6EE7B7">
+  <h3 style="margin:0;color:#065F46;font-size:16px">🎟️ 10% rabatt på nästa bokning</h3>
+  <p style="margin:6px 0 0;font-size:22px;font-weight:800;color:#0F6E56">Kod: KOMTILLBAKA</p>
+</div>
+<p style="font-size:13px;color:#9B9B95">Gäller 7 dagar. Kan inte kombineras med andra erbjudanden.</p>
+<a href="https://spick.se/stadare.html" class="btn">Boka med rabatt →</a>`));
+
+      await sb.from("bookings").update({ reminders_sent: [...prevSent, "winback_14d"] }).eq("id", b.id);
+      sent.push(`winback_14d:${b.id}`);
+    }
+
     // ── EMAIL RETRY QUEUE ─────────────────────────────────────
     // Processa misslyckade mejl (max 10 per körning)
     const { data: queued } = await sb.from("email_queue")
