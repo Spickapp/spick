@@ -60,4 +60,75 @@ if (ub) {
 const tb = document.getElementById('tb-bookings');
 if (tb) tb.textContent = (100 + Math.floor(Math.random() * 30)) + '+';
 
+// ── EXIT-INTENT POPUP ───────────────────────────────────────
+// Shows when mouse leaves the viewport top (desktop only)
+// One-time per session — stored in sessionStorage
+
+const EXIT_KEY = 'spick_exit_shown';
+if (!sessionStorage.getItem(EXIT_KEY) && window.innerWidth > 768) {
+  let exitTimer = null;
+  
+  document.addEventListener('mouseout', function(e) {
+    if (e.clientY > 10 || exitTimer) return;
+    if (sessionStorage.getItem(EXIT_KEY)) return;
+    
+    exitTimer = setTimeout(function() {
+      sessionStorage.setItem(EXIT_KEY, '1');
+      
+      const overlay = document.createElement('div');
+      overlay.id = 'spick-exit';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;animation:fadeIn .3s ease';
+      overlay.innerHTML = '<div style="background:#fff;border-radius:20px;padding:2.5rem;max-width:440px;width:90%;text-align:center;position:relative;box-shadow:0 25px 60px rgba(0,0,0,.25);animation:slideUp .4s ease">' +
+        '<button onclick="document.getElementById(\'spick-exit\').remove()" style="position:absolute;top:12px;right:16px;border:none;background:none;font-size:1.5rem;cursor:pointer;color:#999;line-height:1">×</button>' +
+        '<div style="font-size:2.5rem;margin-bottom:.75rem">🧹</div>' +
+        '<h3 style="font-size:1.25rem;font-weight:800;color:#1C1C1A;margin:0 0 .5rem;font-family:Syne,DM Sans,sans-serif">Vänta! Få 10% rabatt</h3>' +
+        '<p style="color:#6B6960;font-size:.88rem;margin:0 0 1.25rem;line-height:1.5">Ange din e-post så skickar vi en rabattkod för din första städning. Ingen spam — bara din kod.</p>' +
+        '<form id="exit-form" style="display:flex;gap:.5rem" onsubmit="return spickExitSubmit(event)">' +
+          '<input id="exit-email" type="email" required placeholder="din@email.se" style="flex:1;padding:.75rem 1rem;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit;outline:none">' +
+          '<button type="submit" style="background:#0F6E56;color:#fff;border:none;padding:.75rem 1.25rem;border-radius:10px;font-weight:700;font-size:.88rem;cursor:pointer;white-space:nowrap;font-family:inherit">Skicka →</button>' +
+        '</form>' +
+        '<div id="exit-msg" style="display:none;color:#065F46;font-weight:600;font-size:.9rem;margin-top:.75rem">✓ Kolla din inkorg!</div>' +
+        '<p style="font-size:.7rem;color:#aaa;margin:.75rem 0 0">Genom att ange din e-post godkänner du att vi skickar erbjudanden. Avsluta när som helst.</p>' +
+      '</div>';
+      
+      // Add keyframe animations
+      if (!document.getElementById('exit-animations')) {
+        const style = document.createElement('style');
+        style.id = 'exit-animations';
+        style.textContent = '@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}';
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    }, 300);
+  });
+}
+
+// Exit-intent form handler
+window.spickExitSubmit = function(e) {
+  e.preventDefault();
+  const email = document.getElementById('exit-email').value;
+  if (!email) return false;
+  
+  // Save to Supabase subscriptions table
+  if (typeof SPICK !== 'undefined') {
+    fetch(SPICK.SUPA_URL + '/rest/v1/subscriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ email: email, source: 'exit_intent', discount_code: 'VALKOMMEN10' })
+    }).catch(function() {});
+  }
+  
+  document.getElementById('exit-form').style.display = 'none';
+  document.getElementById('exit-msg').style.display = 'block';
+  
+  setTimeout(function() {
+    var el = document.getElementById('spick-exit');
+    if (el) el.remove();
+  }, 3000);
+  
+  return false;
+};
+
 })();
