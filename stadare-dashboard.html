@@ -71,6 +71,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 /* CONTENT */
 .content{padding:16px 16px 90px;max-width:640px;margin:0 auto}
 .tab-content{display:none}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk{background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:10px;margin-bottom:10px}
 .tab-content.active{display:block}
 
 /* CARDS */
@@ -272,7 +274,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div style="font-size:.75rem;color:var(--m);margin-top:6px" id="goal-msg"></div>
       </div>
 
-      <div id="jobs-list"><div style="text-align:center;padding:40px;color:var(--m)"><div style="font-size:2rem;margin-bottom:10px">⏳</div>Laddar uppdrag...</div></div>
+      <div id="jobs-list">
+        <div id="jobs-skeleton">
+          <div class="sk" style="height:90px"></div>
+          <div class="sk" style="height:90px"></div>
+          <div class="sk" style="height:90px;opacity:.6"></div>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: INKOMST -->
@@ -280,7 +288,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
       <div class="earn-hero">
         <div style="font-size:.8rem;opacity:.8">Intjänat denna månad</div>
         <div class="earn-amount" id="earn-month">0 kr</div>
-        <div class="earn-sub">Utbetalas inom 10 bankdagar från månadsslut</div>
+        <div class="earn-sub" id="earn-next-pay">Utbetalas inom 10 bankdagar från månadsslut</div>
       </div>
 
       <!-- Veckograf -->
@@ -703,6 +711,8 @@ function updateStats() {
 }
 
 function renderJobs() {
+  const skel = document.getElementById('jobs-skeleton');
+  if (skel) skel.remove();
   if (!jobs.length) {
     document.getElementById('jobs-list').innerHTML = `<div class="empty"><div class="empty-icon">📭</div><strong>Inga uppdrag just nu</strong><p style="margin-top:8px;font-size:.85rem">Nya uppdrag i ${cleaner.city||'din stad'} visas här – automatiskt i realtid.</p></div>`;
     return;

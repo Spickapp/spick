@@ -206,7 +206,14 @@ nav{background:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify
   </div>
 
   <div id="tabBookings">
-    <div id="bookingsList"></div>
+    <div id="bookingsList">
+      <!-- Skeleton loading -->
+      <div class="skeleton-wrap" id="bookings-skeleton">
+        <div style="height:120px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px;margin-bottom:10px"></div>
+        <div style="height:120px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px;margin-bottom:10px"></div>
+        <div style="height:120px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px"></div>
+      </div>
+    </div>
   </div>
 
   <div id="tabUpcoming" style="display:none">
@@ -353,7 +360,9 @@ function showPortal(bookings, email) {
 
   // Header
   const name = bookings[0]?.customer_name || bookings[0]?.name || email.split('@')[0];
-  document.getElementById('portalName').textContent = 'Hej, ' + name.split(' ')[0] + '!';
+  const _hour = new Date().getHours();
+  const _greet = _hour < 10 ? 'God morgon' : _hour < 12 ? 'Hej' : _hour < 17 ? 'Hej' : _hour < 21 ? 'God kväll' : 'God natt';
+  document.getElementById('portalName').textContent = _greet + ', ' + (name.split(' ')[0] || 'där') + '! 👋';
   document.getElementById('portalEmail').textContent = email;
 
   // Stats
@@ -373,6 +382,9 @@ function showPortal(bookings, email) {
 
 // ── RENDER BOOKINGS ──────────────────────────
 function renderBookings(filter) {
+  // Dölj skeleton
+  const skel = document.getElementById('bookings-skeleton');
+  if (skel) skel.style.display = 'none';
   const now = new Date();
   let filtered = allBookings;
 
@@ -389,11 +401,28 @@ function renderBookings(filter) {
 
   if (!filtered.length) {
     container.innerHTML = `
-      <div class="empty">
-        <div class="empty-icon">${filter === 'upcoming' ? '📅' : '🧹'}</div>
-        <div class="empty-title">${filter === 'upcoming' ? 'Inga kommande bokningar' : 'Inga bokningar ännu'}</div>
-        <div class="empty-sub">${filter === 'upcoming' ? 'Du har inga planerade städningar.' : 'Boka din första städning idag!'}</div>
-        <a href="boka.html" class="btn-cta">Boka städning →</a>
+      <div class="empty" style="text-align:center;padding:2.5rem 1rem">
+        <div style="font-size:3rem;margin-bottom:12px">${filter === 'upcoming' ? '📅' : '🌿'}</div>
+        <div style="font-weight:700;font-size:1rem;margin-bottom:6px">${filter === 'upcoming' ? 'Inga kommande städningar' : 'Ditt hem väntar på en städare'}</div>
+        <div style="color:var(--m);font-size:.85rem;margin-bottom:20px;line-height:1.6">
+          ${filter === 'upcoming' 
+            ? 'Du har inga bokade städningar just nu.' 
+            : 'Boka din första städning på under 2 minuter.<br>Med RUT-avdrag betalar du bara hälften.'}
+        </div>
+        ${filter !== 'upcoming' ? `
+          <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px;flex-wrap:wrap">
+            <div style="background:var(--gr);border-radius:12px;padding:12px 16px;font-size:.82rem">
+              <div style="font-weight:700;color:var(--g)">Från 175 kr/h</div>
+              <div style="color:var(--m)">med RUT-avdrag</div>
+            </div>
+            <div style="background:var(--gr);border-radius:12px;padding:12px 16px;font-size:.82rem">
+              <div style="font-weight:700;color:var(--g)">Bekräftelse på 2h</div>
+              <div style="color:var(--m)">BankID-verifierade städare</div>
+            </div>
+          </div>` : ''}
+        <a href="boka.html" style="display:inline-block;background:var(--g);color:#fff;padding:12px 28px;border-radius:100px;font-weight:700;text-decoration:none;font-size:.9rem">
+          Boka städning nu →
+        </a>
       </div>`;
     return;
   }

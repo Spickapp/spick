@@ -125,6 +125,8 @@ select.filter{padding:9px 12px;border:1.5px solid var(--border);border-radius:10
 /* ── MISC ── */
 .empty{text-align:center;padding:48px;color:var(--m)}
 .empty-icon{font-size:2.5rem;margin-bottom:12px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.kpi-skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px;height:80px}
 .spin{width:20px;height:20px;border:2px solid var(--gr);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .text-right{text-align:right}
@@ -976,6 +978,10 @@ if (Notification && Notification.permission === 'default') {
 }
 
 async function loadAll() {
+  // Dölj skeleton när data börjar ladda
+  ['kpi-skel-1','kpi-skel-2','kpi-skel-3','kpi-skel-4'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.remove();
+  });
   const today = new Date().toISOString().split('T')[0];
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
@@ -1757,6 +1763,39 @@ async function bulkApprove() {
   updateBulkBar();
   if(typeof renderCleaners==='function') renderCleaners();
 }
+
+// ── TANGENTBORDSGENVÄGAR ─────────────────────────────
+document.addEventListener('keydown', e => {
+  // Ctrl+K = fokusera global sökning
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const search = document.getElementById('global-search');
+    if (search) { search.focus(); search.select(); }
+  }
+  // Escape = stäng öppen modal
+  if (e.key === 'Escape') {
+    const modals = document.querySelectorAll('.modal.open, [class*="modal"].open');
+    modals.forEach(m => m.classList.remove('open'));
+    closeModal?.();
+    closeCleanerModal?.();
+    closeEmailModal?.();
+  }
+  // Alt+1-7 = navigera mellan sidor (om inte i input)
+  if (e.altKey && !e.target.closest('input, textarea, select')) {
+    const pages = ['dashboard','bookings','cleaners','customers','subscriptions','reviews','inbox'];
+    const n = parseInt(e.key);
+    if (n >= 1 && n <= pages.length) {
+      e.preventDefault();
+      showPage(pages[n-1]);
+    }
+  }
+});
+
+// Keyboard shortcut-tooltip i sidebar
+document.querySelector('.sidebar-footer')?.insertAdjacentHTML('beforebegin',
+  '<div style="padding:8px 16px;font-size:.7rem;color:rgba(255,255,255,.35);border-top:1px solid rgba(255,255,255,.1)">⌨️ Ctrl+K sök · Alt+1-7 nav · Esc stäng</div>'
+);
+
 </script>
 </body>
 </html>
