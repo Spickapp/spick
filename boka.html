@@ -650,6 +650,24 @@ function setStep(n) {
     if (pl) pl.classList.toggle('done', i > n-1);
   });
   window.scrollTo({top:0, behavior:'smooth'});
+  
+  // ── CONVERSION TRACKING ──────────────────────────────────
+  try {
+    var price = state.totalPrice || 0;
+    var svc = state.service || '';
+    // Google Analytics 4
+    if (window.gtag) {
+      if (n === 2) gtag('event', 'begin_checkout', { value: price, currency: 'SEK', items: [{ item_name: svc }] });
+      if (n === 3) gtag('event', 'add_shipping_info', { value: price, currency: 'SEK' });
+      if (n === 4) gtag('event', 'add_payment_info', { value: price, currency: 'SEK' });
+    }
+    // Facebook Pixel
+    if (window.fbq) {
+      if (n === 2) fbq('track', 'InitiateCheckout', { value: price, currency: 'SEK', content_name: svc });
+      if (n === 3) fbq('track', 'AddToCart', { value: price, currency: 'SEK', content_name: svc });
+      if (n === 4) fbq('track', 'AddPaymentInfo', { value: price, currency: 'SEK' });
+    }
+  } catch(e) {}
 }
 
 function goBack(fromStep) {
