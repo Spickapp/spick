@@ -117,7 +117,7 @@ if bid:
 
 # Uppdatera bokningsstatus
 if bid:
-    updated = req("PATCH", f"/rest/v1/bookings?id=eq.{bid}", {"status": "bekräftad"})
+    updated = req("PATCH", f"/rest/v1/bookings?id=eq.{bid}", {"status": "bekräftad"}, key=SKEY)
     check = req("GET", f"/rest/v1/bookings?id=eq.{bid}&select=status")
     if isinstance(check, list) and check and check[0].get("status") == "bekräftad":
         ok("Uppdatera bokningsstatus", "ny → bekräftad")
@@ -144,9 +144,12 @@ if bid and cleaners:
         "booking_id": bid,
         "cleaner_id": cleaners[0].get("id") if cleaners else None,
         "rating": 5,
+        "cleaner_rating": 5,
         "aspects": "Punktlighet, Noggrannhet",
-        "comment": "Utmärkt städning! E2E test."
-    })
+        "comment": "Utmärkt städning! E2E test.",
+        "customer_comment": "Utmärkt städning! E2E test.",
+        "customer_email": TEST_EMAIL
+    }, key=SKEY)
     if isinstance(review, list) and review:
         ok("Skapa betyg", f"⭐ {review[0].get('rating')}/5")
     else:
