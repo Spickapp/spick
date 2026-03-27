@@ -289,10 +289,19 @@ nav{background:#fff;padding:1.25rem 2rem;display:flex;align-items:center;justify
 <div class="modal-bg" id="cancelModal">
   <div class="modal">
     <div class="modal-title">Avboka städning?</div>
-    <p class="modal-sub" id="cancelModalText">Är du säker på att du vill avboka? Kontakta oss om du behöver boka om.</p>
+    <p class="modal-sub" id="cancelModalText">Är du säker på att du vill avboka?</p>
+    <div id="cancel-fee-notice" style="background:#FEF3C7;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#92400E;margin:10px 0;display:none">
+      ⚠️ Avbokning inom 24h kan medföra en avgift. Kontakta oss för att diskutera.
+    </div>
+    <div style="background:#F0FDF4;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#065F46;margin:10px 0">
+      ✅ Avbokning är gratis upp till 24h innan städning
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel-modal" onclick="closeCancelModal()">Behåll bokning</button>
-      <button class="btn-confirm" onclick="confirmCancel()">Ja, avboka</button>
+      <button class="btn-confirm" onclick="confirmCancel()">Avboka</button>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <a id="rebook-link" href="boka.html" style="font-size:.82rem;color:var(--g);text-decoration:none">🔄 Boka om till ett annat datum →</a>
     </div>
   </div>
 </div>
@@ -506,8 +515,22 @@ function showTab(tab) {
 // ── AVBOKA ───────────────────────────────────
 function openCancelModal(id, service) {
   cancelBookingId = id;
+  const booking = allBookings.find(b => b.id === id);
+  const bookingDate = booking ? new Date(booking.date + 'T' + (booking.time || '09:00')) : null;
+  const hoursUntil = bookingDate ? (bookingDate - new Date()) / 3600000 : 999;
+  
   document.getElementById('cancelModalText').textContent =
-    `Är du säker på att du vill avboka din ${service}? Kontakta oss om du vill boka om istället.`;
+    `Är du säker på att du vill avboka din ${service}?`;
+  
+  const feeNotice = document.getElementById('cancel-fee-notice');
+  if (feeNotice) feeNotice.style.display = hoursUntil < 24 ? 'block' : 'none';
+  
+  // Uppdatera boka-om-länken
+  const rebookLink = document.getElementById('rebook-link');
+  if (rebookLink && service) {
+    rebookLink.href = 'boka.html?service=' + encodeURIComponent(service);
+  }
+  
   document.getElementById('cancelModal').classList.add('show');
 }
 function closeCancelModal() {
@@ -533,6 +556,7 @@ async function confirmCancel() {
     b.id === cancelBookingId ? {...b, status: 'avbokad', cancelled_at: new Date().toISOString()} : b
   );
   closeCancelModal();
+  showToast('✅ Städningen är avbokad. Du är välkommen att boka igen!');
   renderBookings('all');
 }
 

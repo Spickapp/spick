@@ -313,7 +313,16 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="mini-stats"><span class="mini-stat">Visar <strong id="booking-count">0</strong> bokningar</span><span class="mini-stat">Total: <strong id="booking-revenue">0 kr</strong></span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Kund</th><th>Tjänst</th><th>Datum</th><th>Stad</th><th>Belopp</th><th>Status</th><th>Städare</th><th></th></tr></thead>
+            <thead><tr>
+  <th onclick="sortBookings('customer')" style="cursor:pointer;user-select:none">Kund <span id="sort-kund">↕</span></th>
+  <th>Tjänst</th>
+  <th onclick="sortBookings('date')" style="cursor:pointer;user-select:none">Datum <span id="sort-datum">↓</span></th>
+  <th>Stad</th>
+  <th onclick="sortBookings('amount')" style="cursor:pointer;user-select:none">Belopp <span id="sort-belopp">↕</span></th>
+  <th>Status</th>
+  <th>Städare</th>
+  <th></th>
+</tr></thead>
             <tbody id="bookings-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
@@ -1081,12 +1090,48 @@ function renderDashboard() {
 }
 
 // ── BOOKINGS ──────────────────────────────────────────
+// Sorterings-state för bokningar
+let _bookingSort = { col: 'date', dir: 'desc' };
+
+function sortBookings(col) {
+  if (_bookingSort.col === col) {
+    _bookingSort.dir = _bookingSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _bookingSort.col = col;
+    _bookingSort.dir = col === 'date' ? 'desc' : 'asc';
+  }
+  // Uppdatera pil-indikatorer
+  ['kund','datum','belopp'].forEach(k => {
+    const el = document.getElementById('sort-' + k);
+    if (el) el.textContent = '↕';
+  });
+  const colMap = { customer:'kund', date:'datum', amount:'belopp' };
+  const arrowEl = document.getElementById('sort-' + colMap[col]);
+  if (arrowEl) arrowEl.textContent = _bookingSort.dir === 'asc' ? '↑' : '↓';
+  renderBookings();
+}
+
 function renderBookings() {
   const q = document.getElementById('booking-search').value.toLowerCase();
   const f = document.getElementById('booking-filter').value;
   let filtered = data.bookings;
   if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.name||''} ${b.address||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q));
   if (f) filtered = filtered.filter(b => b.payment_status === f);
+
+  // Sortera
+  filtered.sort((a, b) => {
+    let av, bv;
+    if (_bookingSort.col === 'date') {
+      av = a.date || ''; bv = b.date || '';
+    } else if (_bookingSort.col === 'amount') {
+      av = a.total_price || 0; bv = b.total_price || 0;
+    } else {
+      av = (a.customer_name || a.name || '').toLowerCase();
+      bv = (b.customer_name || b.name || '').toLowerCase();
+    }
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return _bookingSort.dir === 'asc' ? cmp : -cmp;
+  });
   
   const revenue = filtered.filter(b => b.payment_status==='paid').reduce((s,b) => s+(b.total_price||0), 0);
   document.getElementById('booking-count').textContent = filtered.length;
