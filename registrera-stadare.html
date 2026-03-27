@@ -613,6 +613,15 @@ async function submitRegistration() {
     });
 
     if (res.ok || res.status === 201) {
+      // Skicka bekräftelsemejl till städaren + admin-notis
+      try {
+        await fetch(SUPA_URL + '/functions/v1/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+          body: JSON.stringify({ type: 'application', record: { full_name: alias, email, phone, city, bio, service_radius_km: parseInt(radius) } })
+        });
+      } catch(e) { console.log('Notify ej tillgängligt:', e.message); }
+
       // Visa bekräftelse
       document.getElementById('confirmedAlias').textContent = alias + ' ' + selectedEmoji;
       document.getElementById('confirmedEmail').textContent = email;

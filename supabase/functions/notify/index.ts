@@ -123,6 +123,22 @@ serve(async (req) => {
 
     // ── ANSÖKAN ───────────────────────────────────────────────
     else if (type === "application") {
+      // 1. Bekräftelsemejl till städaren
+      if (r.email) {
+        await sendEmail(r.email, `✅ Tack för din ansökan till Spick!`, wrap(`
+          <h2>Välkommen ${r.full_name?.split(" ")[0] || ""}! 🎉</h2>
+          <p>Vi har tagit emot din ansökan och granskar den inom <strong>24 timmar</strong>.</p>
+          <div class="card">
+            <div class="row"><span class="lbl">Namn</span><span class="val">${r.full_name || "–"}</span></div>
+            <div class="row"><span class="lbl">Stad</span><span class="val">${r.city || "–"}</span></div>
+          </div>
+          <p><strong>Vad händer nu?</strong></p>
+          <p>Vi verifierar dina uppgifter och återkommer med besked via e-post. Under tiden kan du förbereda dig genom att läsa vår <a href="https://spick.se/utbildning-stadare.html" style="color:#0F6E56;font-weight:600">utbildningsguide</a>.</p>
+          <p style="font-size:13px;color:#9B9B95;margin-top:16px">Frågor? Svara på detta mejl eller kontakta hello@spick.se</p>
+        `));
+      }
+
+      // 2. Admin-notis
       await sendEmail(ADMIN, `👷 Ny städaransökan: ${r.full_name || "okänd"} – ${r.city || ""}`, wrap(`
         <h2>Ny ansökan inkommen!</h2>
         <div class="card">
