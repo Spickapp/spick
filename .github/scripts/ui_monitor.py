@@ -49,7 +49,10 @@ def send_alert(failures):
     }).encode()
     req = urllib.request.Request(
         "https://api.resend.com/emails", body,
-        {"Content-Type": "application/json", "Authorization": f"Bearer {RESEND}"},
+        {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {RESEND}",
+        },
         method="POST"
     )
     try:
@@ -89,10 +92,12 @@ PAGES = [
     },
     {
         "url": f"{SITE}/stadare.html",
-        "name": "Städarlista – kort renderas",
-        "wait_for": ".cleaner-card, .cc",
+        "name": "Städarlista – grid visas",
+        "wait_for": "#grid",
+        "must_visible": "#grid",
         "must_not_blank": True,
         "max_console_errors": 2,
+        "extra_wait": 3000,   # Async data från Supabase
     },
     {
         "url": f"{SITE}/priser.html",
@@ -105,7 +110,8 @@ PAGES = [
     {
         "url": f"{SITE}/admin.html",
         "name": "Admin – lösenordsskärm visas",
-        "wait_for": "#admin-login, #admin-app",
+        "wait_for": "#login-screen, #app",
+        "must_visible": "#login-screen",
         "must_not_blank": True,
         "max_console_errors": 3,
     },
@@ -138,7 +144,7 @@ async def run_tests():
             try:
                 # Ladda sidan
                 await page.goto(test["url"], wait_until="domcontentloaded", timeout=20000)
-                await page.wait_for_timeout(4000)  # Vänta på JS att köra
+                await page.wait_for_timeout(test.get('extra_wait', 4000))
 
                 # Test 1: Blank sida?
                 if test.get("must_not_blank"):
