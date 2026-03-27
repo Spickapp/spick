@@ -96,7 +96,7 @@ booking_data = {
     "status": "ny"
 }
 
-booking = req("POST", "/rest/v1/bookings", booking_data)
+booking = req("POST", "/rest/v1/bookings", booking_data, key=SKEY)  # Service key bypasser RLS – korrekt för E2E
 if isinstance(booking, list) and booking:
     bid = booking[0]["id"]
     ok("Skapa bokning", f"ID: {bid[:8]}...")
@@ -235,7 +235,7 @@ else:
 # ─── 8. CLEANUP ──────────────────────────────────────
 print("\n8. Städning av testdata")
 if bid:
-    req("PATCH", f"/rest/v1/bookings?id=eq.{bid}", {"status": "avbokad", "name": "[DELETED TEST]"})
+    req("PATCH", f"/rest/v1/bookings?id=eq.{bid}", {"status": "avbokad", "name": "[DELETED TEST]"}, key=SKEY)
     ok("Teststädt bokning markerad avbokad")
 
 # ─── SAMMANFATTNING ───────────────────────────────────
