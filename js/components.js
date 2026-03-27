@@ -72,14 +72,25 @@ const FOOTER_HTML = `
       <li><a href="${P}rekrytera.html">Varför Spick?</a></li>
       <li><a href="${P}avtal.html">Partnersavtal</a></li>
     </ul>
+    <h4 style="margin-top:1rem">Guider</h4>
+    <ul>
+      <li><a href="${P}blogg/rut-avdrag-guide.html">RUT-avdrag 2026</a></li>
+      <li><a href="${P}blogg/flyttstadning-tips.html">Flyttstädning checklista</a></li>
+      <li><a href="${P}blogg/storstadning-checklista.html">Storstädning guide</a></li>
+      <li><a href="${P}blogg/valjt-ratt-stadare.html">Välj rätt städare</a></li>
+    </ul>
   </div>
   <div>
-    <h4>Om oss</h4>
+    <h4>Populära städer</h4>
     <ul>
-      <li><a href="${P}om-oss.html">Om Spick</a></li>
-      <li><a href="${P}integritetspolicy.html">Integritetspolicy</a></li>
-      <li><a href="${P}villkor-stadare.html">Villkor</a></li>
-      <li><a href="${P}kontakt.html">Kontakt</a></li>
+      <li><a href="${P}stockholm.html">Stockholm</a></li>
+      <li><a href="${P}goteborg.html">Göteborg</a></li>
+      <li><a href="${P}malmo.html">Malmö</a></li>
+      <li><a href="${P}uppsala.html">Uppsala</a></li>
+      <li><a href="${P}helsingborg.html">Helsingborg</a></li>
+      <li><a href="${P}linkoping.html">Linköping</a></li>
+      <li><a href="${P}orebro.html">Örebro</a></li>
+      <li><a href="${P}lund.html">Lund</a></li>
     </ul>
   </div>
 </div>
