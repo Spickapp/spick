@@ -205,7 +205,28 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
     ...(metadata.sqm ? { sqm: parseInt(metadata.sqm) } : {}),
     ...(metadata.key_info ? { key_info: metadata.key_info } : {}),
     ...(metadata.customer_notes ? { customer_notes: metadata.customer_notes } : {}),
+    ...(metadata.frequency && metadata.frequency !== "once" ? { is_recurring: true } : {}),
   }).eq("id", bookingId);
+
+  // Om prenumeration: skapa subscription-rad
+  if (metadata.frequency && metadata.frequency !== "once") {
+    const freqMap: Record<string, string> = { weekly: "vecka", biweekly: "varannan_vecka" };
+    await sb.from("subscriptions").insert({
+      customer_name: booking.customer_name,
+      customer_email: booking.customer_email,
+      customer_phone: booking.phone,
+      address: booking.address,
+      city: booking.city,
+      service: booking.service,
+      frequency: freqMap[metadata.frequency] || metadata.frequency,
+      hours: booking.hours,
+      price: amountPaid,
+      rut: booking.rut,
+      status: "aktiv",
+      next_booking_date: booking.date,
+      discount_percent: metadata.frequency === "weekly" ? 10 : 0,
+    }).then(() => console.log("✅ Prenumeration skapad")).catch(e => console.error("Prenumeration-fel:", e));
+  }
 
   const name = booking.customer_name || "Kunden";
   const fname = name.split(" ")[0];

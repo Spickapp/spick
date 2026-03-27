@@ -106,10 +106,10 @@ footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2re
   <div style="max-width:680px;margin:0 auto;" class="calc">
     <h2>Vad kan du tjäna?</h2>
     <div class="csub">Baserat på 350 kr/h, 15 timmar/vecka</div>
-    <div class="cr"><span class="cl">Timspris (du sätter)</span><span class="cv">350 kr/h</span></div>
-    <div class="cr"><span class="cl">Timmar per vecka</span><span class="cv">15 h</span></div>
-    <div class="cr"><span class="cl">Bruttointäkt/vecka</span><span class="cv">5 250 kr</span></div>
-    <div class="cr"><span class="cl">Spicks provision (17%)</span><span class="cv">−892 kr</span></div>
+    <div class="cr"><span class="cl">Timspris (du sätter)</span><span class="cv"><input type="number" id="calc-rate" value="350" min="250" max="600" style="width:70px;padding:2px 6px;border:1.5px solid #E8E8E4;border-radius:6px;font-size:.95rem;font-weight:600;color:#0F6E56;text-align:right"> kr/h</span></div>
+    <div class="cr"><span class="cl">Timmar per vecka</span><span class="cv"><input type="range" id="calc-hours" min="5" max="40" value="15" style="width:80px;vertical-align:middle"> <span id="calc-hours-lbl">15</span> h</span></div>
+    <div class="cr"><span class="cl">Bruttointäkt/vecka</span><span class="cv" id="calc-gross">5 250 kr</span></div>
+    <div class="cr"><span class="cl">Spicks provision (17%)</span><span class="cv" id="calc-fee">−892 kr</span></div>
     <div class="cr tot"><span class="cl">Du tjänar per vecka</span><span class="cv">4 358 kr</span></div>
     <p style="color:rgba(255,255,255,.4);font-size:.75rem;text-align:center;margin-top:1.5rem">≈ 17 400 kr/månad</p>
   </div>
@@ -220,5 +220,24 @@ function calcIncome(){
   if(rows[3]) rows[3].textContent=mo.toLocaleString('sv')+' kr/månad';
 }
 calcIncome();
+
+// Interaktiv kalkylator
+function updateCalc() {
+  const rate  = parseInt(document.getElementById('calc-rate')?.value)  || 350;
+  const hours = parseInt(document.getElementById('calc-hours')?.value) || 15;
+  const gross = rate * hours;
+  const fee   = Math.round(gross * 0.17);
+  const net   = gross - fee;
+  const hoursLbl = document.getElementById('calc-hours-lbl');
+  const grossEl  = document.getElementById('calc-gross');
+  const feeEl    = document.getElementById('calc-fee');
+  const netEl    = document.querySelector('.cr.tot .cv');
+  if (hoursLbl) hoursLbl.textContent = hours;
+  if (grossEl)  grossEl.textContent  = gross.toLocaleString('sv') + ' kr';
+  if (feeEl)    feeEl.textContent    = '−' + fee.toLocaleString('sv') + ' kr';
+  if (netEl)    netEl.textContent    = net.toLocaleString('sv') + ' kr/vecka';
+}
+document.getElementById('calc-rate')?.addEventListener('input', updateCalc);
+document.getElementById('calc-hours')?.addEventListener('input', updateCalc);
 </script>
 </body></html>

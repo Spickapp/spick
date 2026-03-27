@@ -29,7 +29,8 @@ serve(async (req) => {
 
     const {
       booking_id, amount, name, email, service, date, hours,
-      rut, sqm, address, phone, cleaner_id, cleaner_name
+      rut, sqm, address, phone, cleaner_id, cleaner_name,
+      frequency, key_info, customer_notes
     } = await req.json();
 
     if (!booking_id || !amount || !email) {
@@ -59,12 +60,14 @@ serve(async (req) => {
     if (address)      params.append("metadata[address]",      address.slice(0, 200));
     if (phone)        params.append("metadata[phone]",        phone);
     params.append("metadata[rut]", rut ? "true" : "false");
+    if (frequency)       params.append("metadata[frequency]",       frequency);
     if (key_info)        params.append("metadata[key_info]",        key_info.slice(0, 200));
     if (customer_notes)  params.append("metadata[customer_notes]",  customer_notes.slice(0, 300));
 
     // Betalmetoder: kort + Klarna (inget separat avtal krävs i Sverige)
     params.append("payment_method_types[]", "card");
     params.append("payment_method_types[]", "klarna");
+    // params.append("payment_method_types[]", "swish"); // Aktivera när certifikat är klart
 
     // Produktrad
     params.append("line_items[0][quantity]", "1");

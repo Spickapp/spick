@@ -35,7 +35,7 @@ const AUTO_REPLIES: Record<string, { subject: string; body: string }> = {
 <h2 style="color:#0F6E56">Tack för din fråga!</h2>
 <p>Vi har tagit emot ditt meddelande och svarar normalt inom <strong>2 timmar</strong> på vardagar.</p>
 <p>Hittar du svaret på din fråga i vår FAQ?</p>
-<a href="https://spick.se/hjalp.html" style="background:#0F6E56;color:white;padding:12px 24px;border-radius:24px;text-decoration:none;display:inline-block;margin:8px 0">Se vanliga frågor →</a>
+<a href="https://spick.se/faq.html" style="background:#0F6E56;color:white;padding:12px 24px;border-radius:24px;text-decoration:none;display:inline-block;margin:8px 0">Se vanliga frågor →</a>
 <p style="color:#6B6960;font-size:13px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p>
 </div>`,
   },
