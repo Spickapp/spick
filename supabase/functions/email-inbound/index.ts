@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
             message: `Från: ${fromEmail}\n${ai.summary}`,
           },
         }),
-      }).catch(() => {});
+      }).catch((e) => { console.warn("email-inbound: suppressed error", e); });
     }
 
     return new Response(

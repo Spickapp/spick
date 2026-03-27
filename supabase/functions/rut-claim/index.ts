@@ -205,7 +205,7 @@ serve(async (req) => {
       amount:     Math.round(Number(booking.total_price)),
       xml_sent:   xml,
       response:   result.raw || result.error,
-    }).catch(() => {}); // Ignorera om tabellen inte finns än
+    }).catch((e) => { console.warn("rut-claim: suppressed error", e); }); // Ignorera om tabellen inte finns än
 
     if (result.success) {
       // Skicka bekräftelsemail till kund

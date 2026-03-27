@@ -1,6 +1,6 @@
 // SPICK SERVICE WORKER v3.0 — Production-grade
 // Stale-While-Revalidate for pages, Cache-First for assets
-const VERSION = '2026-03-27-v3';
+const VERSION = '2026-03-27-v4';
 const CACHE = `spick-${VERSION}`;
 
 const PRECACHE = [
@@ -36,7 +36,7 @@ self.addEventListener('fetch', e => {
       url.hostname.includes('stripe') || url.pathname.startsWith('/rest/') ||
       url.pathname.startsWith('/functions/')) return;
 
-  // HTML: Stale-While-Revalidate
+  // HTML: Stale-While-Revalidate (max 24h cache age)
   if (e.request.headers.get('accept')?.includes('text/html') || url.pathname.endsWith('.html') || url.pathname === '/') {
     e.respondWith(
       caches.match(e.request).then(cached => {
@@ -44,7 +44,14 @@ self.addEventListener('fetch', e => {
           if (r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
           return r;
         }).catch(() => cached || caches.match('/404.html'));
-        return cached || net;
+        // If cached version exists and is less than 24h old, serve it while revalidating
+        // If older than 24h or no cache, wait for network
+        if (cached) {
+          const cachedDate = cached.headers.get('date');
+          const age = cachedDate ? (Date.now() - new Date(cachedDate).getTime()) : Infinity;
+          if (age < 86400000) return cached; // < 24h: serve stale, revalidate in background
+        }
+        return net; // No cache or stale > 24h: wait for network
       })
     );
     return;

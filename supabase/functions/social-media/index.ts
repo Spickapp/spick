@@ -273,7 +273,7 @@ serve(async (req) => {
         platform: result.platform,
         stats_snapshot: stats,
         posted_at: new Date().toISOString(),
-      }).catch(() => {});
+      }).catch((e) => { console.warn("social-media: suppressed error", e); });
     }
 
     // Admin notification
@@ -293,7 +293,7 @@ serve(async (req) => {
             <p style="color:#888;font-size:12px">Buffer Post ID: ${result.postId} | Bokningar: ${stats.bookingsCount} | Städare: ${stats.cleanersCount}</p>
           </div>`,
         }),
-      }).catch(() => {});
+      }).catch((e) => { console.warn("social-media: suppressed error", e); });
     }
 
     return new Response(JSON.stringify({

@@ -369,7 +369,7 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
     }
 
     // ── RATE LIMIT CLEANUP ────────────────────────────────────
-    await sb.rpc("cleanup_rate_limits").catch(() => {});
+    await sb.rpc("cleanup_rate_limits").catch((e) => { console.warn("auto-remind: suppressed error", e); });
 
   } catch(e) {
     console.error("auto-remind fel:", e);
