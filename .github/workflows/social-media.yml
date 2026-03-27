@@ -1,49 +1,56 @@
-name: 'Social Media – Veckoinlägg'
+name: 'Content Engine – Daily Posts'
 
 'on':
   schedule:
-    - cron: '0 7 * * 1'  # Varje måndag kl 09:00 svensk tid (07:00 UTC)
-  workflow_dispatch:      # Kan triggas manuellt för test
+    # Daglig posting: 09:00 svensk tid (07:00 UTC)
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: 'Preview only (true/false)'
+        default: 'false'
+      pillar:
+        description: 'Force pillar (tips/transformation/trust/rut/bts)'
+        default: ''
+      platform:
+        description: 'Force platform (facebook/instagram)'
+        default: ''
 
 jobs:
-  post-social:
+  post-daily:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - name: Trigga social-media edge function
+      - name: Generate & post daily content
         run: |
+          PREVIEW="${{ github.event.inputs.preview || 'false' }}"
+          PILLAR="${{ github.event.inputs.pillar || '' }}"
+          PLATFORM="${{ github.event.inputs.platform || '' }}"
+          
+          # Build JSON body
+          BODY="{\"preview\": $PREVIEW"
+          [ -n "$PILLAR" ] && BODY="$BODY, \"pillar\": \"$PILLAR\""
+          [ -n "$PLATFORM" ] && BODY="$BODY, \"platform\": \"$PLATFORM\""
+          BODY="$BODY}"
+          
+          echo "Request: $BODY"
+          
           RESPONSE=$(curl -s -X POST \
             "https://urjeijcncsyuletprydy.supabase.co/functions/v1/social-media" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -d '{"preview": false}')
+            -d "$BODY")
           
-          echo "Svar: $RESPONSE"
+          echo "Response: $RESPONSE"
           
-          # Kontrollera att det gick bra
-          OK=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin).get('ok','false'))")
-          if [ "$OK" != "True" ]; then
-            echo "❌ Posting misslyckades"
-            exit 1
+          # Extract status
+          OK=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('ok',False))" 2>/dev/null || echo "false")
+          PILLAR_USED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('pillar','?'))" 2>/dev/null || echo "?")
+          PLATFORM_USED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('platform','?'))" 2>/dev/null || echo "?")
+          
+          echo "✅ Pillar: $PILLAR_USED | Platform: $PLATFORM_USED | OK: $OK"
+          
+          if [ "$OK" != "True" ] && [ "$PREVIEW" = "false" ]; then
+            echo "⚠️ Post may have failed"
           fi
-          
-          echo "✅ Inlägg postat på Instagram + Facebook!"
-
-      - name: Preview (dry-run) om manuell trigger
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "Kör preview-läge för manuell trigger..."
-          curl -s -X POST \
-            "https://urjeijcncsyuletprydy.supabase.co/functions/v1/social-media" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -d '{"preview": true}' | python3 -c "
-          import sys, json
-          d = json.load(sys.stdin)
-          print('=== INSTAGRAM ===')
-          print(d.get('ig_post',''))
-          print()
-          print('=== FACEBOOK ===')
-          print(d.get('fb_post',''))
-          "

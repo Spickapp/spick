@@ -1,13 +1,21 @@
 /**
- * social-media – AI-genererade inlägg till Facebook via Buffer MCP
- * Kör varje måndag kl 09:00 via GitHub Actions cron.
+ * social-media v2 — Autonomous Content Engine
+ * 
+ * Features:
+ * - 5 content pillars with rotation
+ * - Multi-platform: Facebook + Instagram via Buffer
+ * - Daily posting (not just weekly)
+ * - Dynamic hooks based on performance data
+ * - Seasonal/contextual awareness
+ * - Feedback loop integration
+ * 
+ * Triggers: GitHub Actions cron (daily 07:00 UTC = 09:00 Swedish)
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const BUFFER_ACCESS_TOKEN  = Deno.env.get("BUFFER_ACCESS_TOKEN")!;
-// Känd Buffer kanal-ID för Spick.se (hämtad 2026-03-26)
 const BUFFER_CHANNEL_ID    = Deno.env.get("BUFFER_CHANNEL_ID") || "69c417e0af47dacb69542274";
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -21,62 +29,176 @@ const CORS = {
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// ── Hämta veckans statistik ───────────────────────────────────────────────
-async function getWeeklyStats() {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: bookings } = await sb.from("bookings").select("id,service,city,total_price,rut").gte("created_at", weekAgo);
-  const { data: cleaners } = await sb.from("cleaners").select("id,avg_rating").eq("is_approved", true);
-  const { data: reviews }  = await sb.from("reviews").select("rating,comment").gte("created_at", weekAgo).gte("rating", 4).limit(2);
+// ── CONTENT PILLARS ──────────────────────────────────────────
+const PILLARS = [
+  { id: "tips", name: "Städtips & Lifehacks", emoji: "🏠", weight: 30 },
+  { id: "transformation", name: "Transformationer & Resultat", emoji: "✨", weight: 25 },
+  { id: "trust", name: "Trust & Transparens", emoji: "🤝", weight: 20 },
+  { id: "rut", name: "RUT & Ekonomi", emoji: "💰", weight: 15 },
+  { id: "bts", name: "Bakom Kulisserna", emoji: "👋", weight: 10 },
+];
+
+// Day-of-week → pillar mapping
+const DAILY_PILLAR: Record<number, string> = {
+  0: "bts",           // Söndag
+  1: "tips",          // Måndag
+  2: "transformation",// Tisdag
+  3: "trust",         // Onsdag
+  4: "rut",           // Torsdag
+  5: "tips",          // Fredag
+  6: "transformation",// Lördag
+};
+
+// ── HOOK LIBRARY ─────────────────────────────────────────────
+const HOOKS: Record<string, string[]> = {
+  tips: [
+    "Visste du att du kan spara 20 minuter med det här tricket?",
+    "3 saker din städare vill att du vet 🧹",
+    "Sluta göra det här misstaget i badrummet 🚿",
+    "Det enklaste sättet att hålla köket rent mellan städningarna",
+    "5-minutersregeln som förändrade mitt hem",
+  ],
+  transformation: [
+    "Samma lägenhet. 3 timmars skillnad ✨",
+    "Svep för att se skillnaden →",
+    "Före: kaos. Efter: lugn. Priset: 525 kr.",
+    "Den här transformationen tog 3 timmar",
+    "Från stökigt till skinande — timelapse 🎥",
+  ],
+  trust: [
+    "Varför 92% av våra kunder bokar igen",
+    "Så verifierar vi varje städare med BankID 🔒",
+    "Äkta kundrecension, ingen betalade ord",
+    "100+ bokningar. 4.9/5 i betyg. Så här gör vi det.",
+    "Din trygghet är viktigare än allt annat",
+  ],
+  rut: [
+    "Du betalar 175 kr/h istället för 350 kr/h — så funkar RUT",
+    "Visste du att du kan dra av 50% på städkostnaden?",
+    "Räkna ut ditt RUT-avdrag på 10 sekunder 🧮",
+    "3h städning kostar bara 525 kr med RUT ✅",
+    "RUT-avdrag 2026: Allt du behöver veta",
+  ],
+  bts: [
+    "En dag som Spick-städare 🧹",
+    "Möt Sara — vår toppstädare i Solna",
+    "Varför vi startade Spick",
+    "Så ser en vanlig vecka ut för våra städare",
+    "83% behåller du. 0 kr att börja. Välj dina tider.",
+  ],
+};
+
+// ── SEASONAL CONTEXT ─────────────────────────────────────────
+function getSeasonalContext(): string {
+  const month = new Date().getMonth();
+  const contexts: Record<number, string> = {
+    0: "Nytt år, rent hem! Nyårslöften om en renare vardag.",
+    1: "Valentines — ge bort en städning. Presentkort på spick.se.",
+    2: "Vårstädning! Dags att öppna fönstren och fräscha upp.",
+    3: "Påskstädning — checklista för ett påskrent hem.",
+    4: "Studenttider! Flyttstädning för alla som byter bostad.",
+    5: "Sommar! Fixa semesterstädningen innan du åker.",
+    6: "Semester — boka så du kommer hem till ett rent hus.",
+    7: "Skolstart! Ny rutin, ny städvanor. Boka löpande.",
+    8: "Höststädning — 5 saker att göra innan vintern.",
+    9: "Höstmys! Rent hem = bättre mysfaktor.",
+    10: "50% med RUT — bättre deal än Black Friday!",
+    11: "Julstädning! Boka storstädning före julhelgen.",
+  };
+  return contexts[month] || "";
+}
+
+// ── DATA COLLECTION ──────────────────────────────────────────
+async function getStats() {
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  
+  const [bookingsRes, cleanersRes, reviewsRes, topPostRes] = await Promise.all([
+    sb.from("bookings").select("id,service,city,total_price,rut").gte("created_at", weekAgo),
+    sb.from("cleaners").select("id,avg_rating,full_name,city").eq("is_approved", true),
+    sb.from("reviews").select("rating,customer_comment").gte("created_at", weekAgo).gte("rating", 4).limit(3),
+    sb.from("social_posts").select("fb_content,pillar,engagement_rate").order("engagement_rate", { ascending: false }).limit(1),
+  ]);
+
+  const bookings = bookingsRes.data || [];
+  const cleaners = cleanersRes.data || [];
+  const reviews = reviewsRes.data || [];
+  const topPost = topPostRes.data?.[0];
 
   return {
-    bookingsCount: bookings?.length || 0,
-    cities:        [...new Set(bookings?.map((b: Record<string, unknown>) => b.city).filter(Boolean))].slice(0, 3),
-    cleanersCount: cleaners?.length || 0,
-    avgRating:     cleaners?.length ? (cleaners.reduce((s: number, c: Record<string, unknown>) => s + ((c.avg_rating as number)||5), 0) / cleaners.length).toFixed(1) : "5.0",
-    topReview:     (reviews?.[0] as Record<string, unknown>)?.comment || "",
-    rutPercent:    bookings?.length ? Math.round((bookings.filter((b: Record<string, unknown>) => b.rut).length / bookings.length)*100) : 70,
+    bookingsCount: bookings.length,
+    cities: [...new Set(bookings.map((b: any) => b.city).filter(Boolean))].slice(0, 3),
+    cleanersCount: cleaners.length,
+    avgRating: cleaners.length
+      ? (cleaners.reduce((s: number, c: any) => s + (c.avg_rating || 5), 0) / cleaners.length).toFixed(1)
+      : "4.9",
+    topReview: reviews[0]?.customer_comment || "",
+    topCleanerName: cleaners[0]?.full_name?.split(" ")[0] || "Sara",
+    topCleanerCity: cleaners[0]?.city || "Stockholm",
+    rutPercent: bookings.length
+      ? Math.round((bookings.filter((b: any) => b.rut).length / bookings.length) * 100)
+      : 70,
+    topPerformingHook: topPost?.fb_content?.split("\n")[0] || "",
+    season: getSeasonalContext(),
   };
 }
 
-// ── Claude + Buffer MCP: generera inlägg OCH posta ───────────────────────
-async function generateAndPost(stats: Awaited<ReturnType<typeof getWeeklyStats>>, preview: boolean): Promise<{
-  post: string;
-  postId: string | null;
-  channelId: string | null;
-}> {
-  const month  = new Date().toLocaleString("sv-SE", { month: "long" });
-  const season = ["vinter","vinter","vår","vår","vår","sommar","sommar","sommar","höst","höst","höst","vinter"][new Date().getMonth()];
+// ── AI CONTENT GENERATION ────────────────────────────────────
+async function generateContent(
+  stats: Awaited<ReturnType<typeof getStats>>,
+  pillar: typeof PILLARS[0],
+  platform: "facebook" | "instagram",
+  preview: boolean
+) {
+  const month = new Date().toLocaleString("sv-SE", { month: "long" });
+  const dayName = new Date().toLocaleString("sv-SE", { weekday: "long" });
+  const hooks = HOOKS[pillar.id] || HOOKS.tips;
+  const randomHook = hooks[Math.floor(Math.random() * hooks.length)];
 
-  const systemPrompt = preview
-    ? "Du är social media-ansvarig för Spick. Generera ett Facebook-inlägg men posta det INTE. Returnera bara texten."
-    : "Du är social media-ansvarig för Spick. Generera ett Facebook-inlägg och posta det direkt via Buffer-verktyget. Välj Facebook-kanalen.";
+  const platformGuide = platform === "instagram"
+    ? `FORMAT: Instagram caption (80-120 ord). 
+       Inkludera line breaks för läsbarhet.
+       5-8 hashtags i slutet (på egen rad).
+       Emojis: 3-5, naturligt integrerade.`
+    : `FORMAT: Facebook-inlägg (100-180 ord).
+       Längre, mer berättande ton.
+       Direktlänk till spick.se i texten.
+       2-3 hashtags (inte fler på Facebook).`;
 
-  const userPrompt = `Skriv ett Facebook-inlägg på svenska för Spick (städföretag).
+  const prompt = `Skriv ett ${platform}-inlägg på svenska för Spick (städmarknadsplats).
 
-VECKANS STATISTIK:
-- ${stats.bookingsCount} bokningar
+CONTENT PILLAR: ${pillar.emoji} ${pillar.name}
+HOOK-INSPIRATION: "${randomHook}"
+SÄSONG: ${stats.season || month}
+DAG: ${dayName}
+
+STATISTIK:
+- ${stats.bookingsCount} bokningar denna vecka
 - ${stats.cleanersCount} BankID-verifierade städare, snittbetyg ${stats.avgRating}/5
-- Städer: ${stats.cities.join(", ") || "Stockholm, Göteborg"}
+- Aktiva städer: ${stats.cities.join(", ") || "Stockholm, Göteborg, Malmö"}
 - ${stats.rutPercent}% använder RUT-avdrag (175 kr/h)
-${stats.topReview ? `- Kundrecension: "${stats.topReview}"` : ""}
-- Säsong: ${season}, ${month}
+${stats.topReview ? `- Senaste kundrecension: "${stats.topReview}"` : ""}
+- Topstädare: ${stats.topCleanerName} i ${stats.topCleanerCity}
+
+${platformGuide}
 
 KRAV:
-- 80-150 ord, varm & professionell ton
+- Starta med en scroll-stoppande HOOK (första raden)
 - Nämn RUT-avdrag och priset (från 175 kr/h)
-- Nämn BankID-verifiering
-- Avsluta med: Boka på spick.se 🌿
-- 3-5 hashtags
-${preview ? "- Returnera bara inlägget som text" : "- Posta inlägget direkt via Buffer till Facebook-sidan"}`;
+- Avsluta med CTA: Boka på spick.se 🌿
+- Var aldrig säljig eller desperat — var hjälpsam och varm
+- Skriv som en människa, inte en marknadsföringsbot
+${stats.topPerformingHook ? `- Förra veckans bästa hook var: "${stats.topPerformingHook}" — lär av den` : ""}
+
+Returnera BARA inlägget som text, inga förklaringar.`;
 
   const requestBody: Record<string, unknown> = {
-    model: "claude-opus-4-5",
-    max_tokens: 1000,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 800,
+    system: "Du är social media-copywriter för Spick.se, en svensk städmarknadsplats. Du skriver engagerande, varma inlägg som aldrig känns AI-genererade. Ton: som en vän som verkligen brinner för rent hem.",
+    messages: [{ role: "user", content: prompt }],
   };
 
-  // Lägg till Buffer MCP om vi faktiskt ska posta
+  // Buffer MCP for actual posting
   if (!preview) {
     requestBody.mcp_servers = [{
       type: "url",
@@ -84,6 +206,8 @@ ${preview ? "- Returnera bara inlägget som text" : "- Posta inlägget direkt vi
       name: "buffer",
       authorization_token: BUFFER_ACCESS_TOKEN,
     }];
+    // Add instruction to post via Buffer
+    (requestBody.messages as any[])[0].content += `\n\nEFTER att du skrivit inlägget, posta det via Buffer till ${platform === "facebook" ? "Facebook" : "Instagram"}-kanalen.`;
   }
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -98,66 +222,75 @@ ${preview ? "- Returnera bara inlägget som text" : "- Posta inlägget direkt vi
   });
 
   const data = await res.json();
-
-  // Extrahera text från svaret
-  const textBlock = data.content?.find((b: Record<string, unknown>) => b.type === "text");
+  const textBlock = data.content?.find((b: any) => b.type === "text");
   const postText = textBlock?.text?.trim() || "";
 
-  // Hitta tool-result med post ID om vi postade
   let postId: string | null = null;
-  let channelId: string | null = null;
-
   if (!preview && data.content) {
     for (const block of data.content) {
       if (block.type === "mcp_tool_result") {
         try {
-          const resultText = block.content?.[0]?.text || "";
-          const parsed = JSON.parse(resultText);
+          const parsed = JSON.parse(block.content?.[0]?.text || "");
           postId = parsed?.id || parsed?.data?.id || null;
-          channelId = parsed?.channel_id || parsed?.data?.channel_id || null;
-        } catch {
-          // fortsätt
-        }
+        } catch { /* continue */ }
       }
     }
   }
 
-  return { post: postText, postId, channelId };
+  return { post: postText, postId, platform, pillar: pillar.id };
 }
 
-// ── Huvud-handler ─────────────────────────────────────────────────────────
+// ── MAIN HANDLER ─────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    const body    = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
     const preview = body.preview === true;
+    const forcePillar = body.pillar as string | undefined;
+    const forcePlatform = body.platform as "facebook" | "instagram" | undefined;
 
-    const stats = await getWeeklyStats();
-    const { post, postId, channelId } = await generateAndPost(stats, preview);
+    // Select today's pillar
+    const dayOfWeek = new Date().getDay();
+    const pillarId = forcePillar || DAILY_PILLAR[dayOfWeek] || "tips";
+    const pillar = PILLARS.find(p => p.id === pillarId) || PILLARS[0];
 
-    if (!preview && postId) {
-      // Logga i Supabase
+    // Select platform (alternate: odd days = FB, even days = IG)
+    const platform = forcePlatform || (dayOfWeek % 2 === 0 ? "instagram" : "facebook");
+
+    // Get stats
+    const stats = await getStats();
+
+    // Generate + post
+    const result = await generateContent(stats, pillar, platform, preview);
+
+    // Log to database
+    if (!preview && result.post) {
       await sb.from("social_posts").insert({
-        fb_post_id:     postId,
-        fb_content:     post,
+        fb_post_id: result.postId,
+        fb_content: result.post,
+        pillar: result.pillar,
+        platform: result.platform,
         stats_snapshot: stats,
-        posted_at:      new Date().toISOString(),
+        posted_at: new Date().toISOString(),
       }).catch(() => {});
+    }
 
-      // Mail till admin
+    // Admin notification
+    if (!preview && result.postId) {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: "Spick <hello@spick.se>",
-          to:   "hello@spick.se",
-          subject: "📱 Veckans Facebook-inlägg postat via Buffer!",
-          html: `<div style="font-family:Arial;padding:24px">
-            <h2>Veckoinlägg postat automatiskt ✅</h2>
-            <pre style="background:#f5f5f5;padding:16px;border-radius:8px;white-space:pre-wrap">${post}</pre>
-            <p>Buffer Post ID: ${postId} | Kanal: ${channelId}</p>
-            <p>Bokningar: ${stats.bookingsCount} | Städare: ${stats.cleanersCount} | Betyg: ${stats.avgRating}</p>
+          to: "hello@spick.se",
+          subject: `📱 ${pillar.emoji} ${platform} — Nytt inlägg postat!`,
+          html: `<div style="font-family:Arial;padding:24px;max-width:600px">
+            <h2>Dagens inlägg postat ✅</h2>
+            <p><strong>Pillar:</strong> ${pillar.emoji} ${pillar.name}</p>
+            <p><strong>Plattform:</strong> ${platform}</p>
+            <pre style="background:#f5f5f5;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px">${result.post}</pre>
+            <p style="color:#888;font-size:12px">Buffer Post ID: ${result.postId} | Bokningar: ${stats.bookingsCount} | Städare: ${stats.cleanersCount}</p>
           </div>`,
         }),
       }).catch(() => {});
@@ -166,9 +299,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       preview,
-      post,
-      post_id: postId,
-      channel_id: channelId,
+      pillar: pillar.id,
+      platform,
+      post: result.post,
+      post_id: result.postId,
       stats,
     }), { headers: { "Content-Type": "application/json", ...CORS } });
 
