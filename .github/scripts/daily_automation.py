@@ -232,6 +232,12 @@ except:
 # ═══════════════════════════════════════════════════════════════
 print("\n=== 6. Admin daglig rapport ===")
 todays_bookings = supa_get(f"bookings?date=eq.{TODAY}&select=id,service,total_price,payment_status,customer_name,address")
+# Veckans bokningar för trendvisning
+week_ago = (date.today() - timedelta(days=7)).isoformat()
+week_bookings = supa_get(f"bookings?date=gte.{week_ago}&payment_status=eq.paid&select=id,total_price")
+week_revenue = sum(b.get('total_price', 0) for b in week_bookings)
+# Aktiva prenumerationer
+active_subs = supa_get(f"subscriptions?status=eq.aktiv&select=id,customer_name,frequency")
 paid_today = [b for b in todays_bookings if b.get('payment_status') == 'paid']
 revenue_today = sum(b.get('total_price', 0) for b in paid_today)
 
@@ -253,6 +259,8 @@ if paid_today or new_applications:
   <div class="row"><span class="lbl">Omsättning</span><span class="val">{int(revenue_today)} kr</span></div>
   <div class="row"><span class="lbl">Nya ansökningar</span><span class="val">{len(new_applications)} st</span></div>
   <div class="row"><span class="lbl">Påminnelser skickade</span><span class="val">{stats['reminders']}</span></div>
+  <div class="row"><span class="lbl">Veckomsättning</span><span class="val">{int(week_revenue)} kr</span></div>
+  <div class="row"><span class="lbl">Aktiva prenumerationer</span><span class="val">{len(active_subs)} st</span></div>
   <div class="row"><span class="lbl">Recensionsbegäran</span><span class="val">{stats['reviews']}</span></div>
   <div class="row"><span class="lbl">Win-back mail</span><span class="val">{stats['winback']}</span></div>
 </div>

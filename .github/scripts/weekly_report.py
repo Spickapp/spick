@@ -165,5 +165,20 @@ content = f"""
 <br><a href="https://spick.se/admin.html" class="btn">Öppna admin-panelen →</a>
 """
 
+# Prenumerationer
+active_subs = supa_get("subscriptions?status=eq.aktiv&select=id,customer_name,frequency,price")
+sub_count = len(active_subs)
+mrr_weekly = sum(b.get('price',0) for b in active_subs if b.get('frequency') in ['vecka','weekly'])
+mrr_bi = sum(b.get('price',0)/2 for b in active_subs if b.get('frequency') in ['varannan_vecka','biweekly'])
+mrr = mrr_weekly + mrr_bi
+
+# Lägg till prenumerationsrad i rapporten
+if sub_count:
+    sub_row = f"""<div style="background:#F0FDF4;border-radius:12px;padding:14px;margin:12px 0;border:1.5px solid #86EFAC">
+  <strong>🔄 Aktiva prenumerationer:</strong> {sub_count} st &nbsp;·&nbsp; 
+  Beräknad vecko-MRR: <strong>{int(mrr):,} kr</strong>
+</div>"""
+    content = content.replace('<br><a href=', sub_row + '<br><a href=')
+
 send_email(ADMIN, f"Spick veckorapport 📊 {len(paid)} bokningar · {int(revenue):,} kr", wrap(content))
-print(f"✅ Veckorapport klar: {len(paid)} bokningar, {int(revenue)} kr")
+print(f"✅ Veckorapport klar: {len(paid)} bokningar, {int(revenue)} kr, {sub_count} prenumerationer")
