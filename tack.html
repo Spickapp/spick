@@ -117,24 +117,34 @@ const date = params.get('date');
 const address = params.get('address');
 
 // Visa details om vi har dem
-// Om bid saknas men session_id finns – hämta från Supabase
+// Om bid saknas men session_id finns – hämta från Supabase med retry (race condition mot webhook)
+async function fetchBookingBySession(sessionId, attempts = 0) {
+  const maxAttempts = 5;
+  const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
+  
+  const data = await fetch(
+    `https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?stripe_session_id=eq.${sessionId}&select=id,service,date,time,address,total_price,payment_status`,
+    { headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0' } }
+  ).then(r => r.json()).catch(() => []);
+
+  const b = data?.[0];
+  if (b?.id) {
+    history.replaceState(null,'',location.pathname+'?bid='+b.id+'&service='+encodeURIComponent(b.service||'')+'&date='+encodeURIComponent(b.date||'')+'&address='+encodeURIComponent(b.address||''));
+    document.getElementById('d-service').textContent = b.service || '–';
+    document.getElementById('d-date').textContent = b.date || '–';
+    document.getElementById('d-address').textContent = b.address || '–';
+    document.getElementById('d-id').textContent = b.id.substring(0,8).toUpperCase();
+    const bookingBtn = document.getElementById('booking-btn');
+    if (bookingBtn) bookingBtn.href = `min-bokning.html?bid=${b.id}`;
+    document.getElementById('details').style.display = 'block';
+  } else if (attempts < maxAttempts) {
+    // Webhook har inte hunnit köra än – försök igen
+    setTimeout(() => fetchBookingBySession(sessionId, attempts + 1), delay);
+  }
+}
+
 if (!bid && sessionId) {
-  fetch(`https://urjeijcncsyuletprydy.supabase.co/rest/v1/bookings?stripe_session_id=eq.${sessionId}&select=id,service,date,time,address,total_price`, {
-    headers: {
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0'
-    }
-  }).then(r=>r.json()).then(data=>{
-    if (data?.[0]) {
-      const b = data[0];
-      history.replaceState(null,'',location.pathname+'?bid='+b.id+'&service='+encodeURIComponent(b.service||'')+'&date='+encodeURIComponent(b.date||'')+'&address='+encodeURIComponent(b.address||''));
-      document.getElementById('d-service').textContent = b.service || '–';
-      document.getElementById('d-date').textContent = b.date || '–';
-      document.getElementById('d-address').textContent = b.address || '–';
-      document.getElementById('d-id').textContent = b.id.substring(0,8).toUpperCase();
-      document.getElementById('booking-btn').href = `min-bokning.html?bid=${b.id}`;
-      document.getElementById('details').style.display = 'block';
-    }
-  }).catch(()=>{});
+  fetchBookingBySession(sessionId);
 }
 
 if (service || date) {

@@ -10,7 +10,7 @@
  * 2. poll  → returnerar status: pending | complete | failed
  * 3. complete → returnerar namn, personnummer, givenName, surname
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const GRANDID_KEY   = Deno.env.get("GRANDID_API_KEY") || "DEMO";

@@ -6,7 +6,7 @@
  * 2. Efter betald bokning: Spick håller 17% provision, betalar ut 83% till städaren
  * 3. Utbetalning sker automatiskt 1-2 bankdagar efter städning
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRIPE_SECRET_KEY    = Deno.env.get("STRIPE_SECRET_KEY")!;

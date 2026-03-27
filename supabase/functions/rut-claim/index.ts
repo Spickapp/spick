@@ -5,7 +5,7 @@
  * Skatteverkets API: ROT och RUT digitala tjänster (XML/REST)
  * Dokumentation: https://www.skatteverket.se/foretagochorganisationer/arbetsgivare/rotochrut
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
@@ -38,7 +38,7 @@ function buildRutXml(booking: Record<string, unknown>): string {
     <Foretagsnamn>Spick AB</Foretagsnamn>
   </Utforare>
   <Kop>
-    <KundPersonNummer>${booking.pnr_hash || ""}</KundPersonNummer>
+    <KundPersonNummer>${booking.customer_pnr_hash || booking.pnr_hash || ""}</KundPersonNummer>
     <Fastighetsbeteckning></Fastighetsbeteckning>
     <TjansteTyp>RUT</TjansteTyp>
     <Undertyp>Städning</Undertyp>

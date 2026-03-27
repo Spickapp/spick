@@ -16,7 +16,7 @@
  *   1. Uppdatera bokning
  *   2. Skicka bekräftelse
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS = {
@@ -144,14 +144,25 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
 
   // Kolla att städaren inte redan är bokad samma dag
   for (const cleaner of eligible) {
+    // Kolla tidskonflikter – hämta tid och time_end för städarens bokningar den dagen
+    const startTime = booking.time || "09:00";
+    const endTime   = booking.time_end || "12:00";
     const { data: conflicts } = await sb
       .from("bookings")
-      .select("id")
+      .select("id, time, time_end")
       .eq("cleaner_id", cleaner.id)
       .eq("date", date)
       .eq("payment_status", "paid");
-    
-    if (!conflicts?.length) return cleaner;
+
+    // Kontrollera om någon befintlig bokning överlappar med den nya
+    const hasConflict = (conflicts || []).some(b => {
+      const bStart = b.time     || "00:00";
+      const bEnd   = b.time_end || "23:59";
+      // Overlap: ny start < befintlig slut OCH ny slut > befintlig start
+      return startTime < bEnd && endTime > bStart;
+    });
+
+    if (!hasConflict) return cleaner;
   }
 
   return eligible[0]; // Alla är bokade – ta bästa ändå
