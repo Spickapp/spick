@@ -12,40 +12,10 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_REF: urjeijcncsyuletprydy
+      PROJECT_ID: urjeijcncsyuletprydy
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Supabase CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/supabase/cli/main/install.sh | sh
-
-      - name: Detect changed functions
-        id: changes
-        run: |
-          # Hitta vilka funktioner som ändrats
-          CHANGED=$(git diff --name-only HEAD~1 HEAD -- supabase/functions/ 2>/dev/null | grep -oP 'supabase/functions/\K[^/]+' | sort -u || echo "")
-          if [ -z "$CHANGED" ]; then
-            # Om vi inte kan jämföra (t.ex. första pushen), deploya alla
-            CHANGED=$(ls -d supabase/functions/*/index.ts 2>/dev/null | xargs -I{} dirname {} | xargs -I{} basename {} | sort -u)
-          fi
-          echo "functions=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Funktioner att deploya: $CHANGED"
-
-      - name: Deploy changed functions
-        if: steps.changes.outputs.functions != ''
-        run: |
-          for fn in ${{ steps.changes.outputs.functions }}; do
-            if [ -d "supabase/functions/$fn" ]; then
-              echo "🚀 Deploying $fn..."
-              supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt || echo "⚠️ $fn failed"
-            fi
-          done
-
-      - name: Verify deployment
-        run: |
-          for fn in ${{ steps.changes.outputs.functions }}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS \
-              "https://urjeijcncsyuletprydy.supabase.co/functions/v1/$fn" 2>/dev/null || echo "000")
-            echo "$fn: HTTP $STATUS"
-          done
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase functions deploy --project-ref $PROJECT_ID
