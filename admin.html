@@ -136,7 +136,22 @@ select.filter{padding:9px 12px;border:1.5px solid var(--border);border-radius:10
 .loading{text-align:center;padding:40px;color:var(--m)}
 hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-@media(max-width:900px){.two-col{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}}
+@media(max-width:900px){
+  .two-col{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .main{margin-left:0}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  table{font-size:.78rem}
+  th,td{padding:.5rem .6rem}
+}
+@media(max-width:600px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .page-header{flex-direction:column;align-items:flex-start;gap:8px}
+  .toolbar{flex-wrap:wrap}
+  .search-input{width:100%}
+  th:nth-child(4),td:nth-child(4),
+  th:nth-child(7),td:nth-child(7){display:none}
+}
 .stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0F0EC;font-size:.88rem}
 .stat-row:last-child{border-bottom:none}
 .stat-row .lbl{color:var(--m)}
@@ -310,7 +325,16 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <button class="btn btn-primary btn-sm" onclick="autoAssignAll()">🤖 Auto-tilldela alla</button>
           <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportera CSV</button>
         </div>
-        <div class="mini-stats"><span class="mini-stat">Visar <strong id="booking-count">0</strong> bokningar</span><span class="mini-stat">Total: <strong id="booking-revenue">0 kr</strong></span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div class="mini-stats">
+            <span class="mini-stat">Visar <strong id="booking-count">0</strong> bokningar</span>
+            <span class="mini-stat">Total: <strong id="booking-revenue">0 kr</strong></span>
+          </div>
+          <button onclick="exportBookingsCSV()" 
+            style="padding:6px 14px;background:#fff;border:1.5px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">
+            📊 Exportera CSV
+          </button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead><tr>
@@ -1189,8 +1213,10 @@ function renderCleaners() {
     cities.forEach(city => { const o = document.createElement('option'); o.value = o.textContent = city; citySelect.appendChild(o); });
   }
 
-  document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => `
-    <tr>
+  document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => {
+    const cleaner_jobs = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').length;
+    const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*0.83),0);
+    return `<tr>
       <td>
         <div style="display:flex;align-items:center;gap:10px">
           <div class="avatar" style="width:36px;height:36px;font-size:.85rem">${(c.full_name||'?').charAt(0)}</div>
@@ -1198,13 +1224,24 @@ function renderCleaners() {
         </div>
       </td>
       <td>${c.city || '–'}</td>
-      <td>${c.avg_rating ? '⭐ ' + c.avg_rating : '–'}</td>
-      <td style="font-size:.82rem">${(c.services || 'Hemstädning').substring(0,30)}</td>
+      <td>
+        <span style="font-size:.9rem">⭐ ${c.avg_rating || '–'}</span>
+        <div style="font-size:.72rem;color:var(--m)">${c.review_count || 0} betyg</div>
+      </td>
+      <td>
+        <div style="font-weight:600;color:var(--g)">${cleaner_jobs} uppdrag</div>
+        <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr intjänat</div>
+      </td>
       <td>${c.hourly_rate || '350'} kr/h</td>
-      <td><span class="badge ${c.is_approved ? 'green' : 'yellow'}">${c.is_approved ? '✓ Aktiv' : 'Ej godkänd'}</span></td>
-      <td>–</td>
-      <td><button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Detaljer</button></td>
-    </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga städare hittades</td></tr>';
+      <td><span class="badge ${c.is_approved ? 'green' : 'yellow'}">${c.is_approved ? '✓ Aktiv' : 'Ej aktiv'}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Detaljer</button>
+          <a href="mailto:${c.email||''}?subject=Spick – uppdatering" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
+          ${c.phone ? `<a href="tel:${c.phone}" class="btn btn-outline btn-sm" title="Ring" style="text-decoration:none">📞</a>` : ''}
+        </div>
+      </td>
+    </tr>`;}).join('') : '<tr><td colspan="8" class="empty">Inga städare hittades</td></tr>';
 }
 
 // ── APPLICATIONS ──────────────────────────────────────
@@ -1245,15 +1282,35 @@ function renderCustomers() {
   let filtered = data.customers;
   if (q) filtered = filtered.filter(c => `${c.email||''} ${c.name||''}`.toLowerCase().includes(q));
   
-  document.getElementById('customers-tbody').innerHTML = filtered.length ? filtered.map(c => `
-    <tr>
-      <td><strong>${c.name || '–'}</strong></td>
-      <td>${c.email || '–'}</td>
+  // Räkna total_spent per kund från bookings
+  const custSpend = {};
+  data.bookings.filter(b => b.payment_status === 'paid').forEach(b => {
+    const em = b.customer_email || b.email;
+    if (em) { custSpend[em] = (custSpend[em] || 0) + (b.total_price || 0); }
+  });
+  
+  document.getElementById('customers-tbody').innerHTML = filtered.length ? filtered.map(c => {
+    const spent = Math.round(custSpend[c.email] || c.total_spent || 0);
+    const isVip = spent > 5000 || (c.total_bookings || 0) >= 5;
+    return `<tr>
+      <td>
+        <strong>${c.name || '–'}</strong>
+        ${isVip ? '<span style="background:#FEF3C7;color:#92400E;font-size:.65rem;padding:1px 6px;border-radius:10px;margin-left:6px">VIP</span>' : ''}
+      </td>
+      <td style="font-size:.82rem">${c.email || '–'}</td>
       <td>${c.city || '–'}</td>
-      <td><strong>${c.total_bookings || 0}</strong> bokningar</td>
-      <td>${c.last_visit ? new Date(c.last_visit).toLocaleDateString('sv') : '–'}</td>
-      <td><a href="min-bokning.html?email=${encodeURIComponent(c.email)}" target="_blank" class="btn btn-outline btn-sm">Visa →</a></td>
-    </tr>`).join('') : '<tr><td colspan="6" class="empty">Inga kunder hittades</td></tr>';
+      <td>
+        <strong>${c.total_bookings || 0}</strong> bokningar
+        <div style="font-size:.72rem;color:var(--g);font-weight:600">${spent.toLocaleString('sv')} kr totalt</div>
+      </td>
+      <td style="font-size:.82rem">${c.last_visit ? new Date(c.last_visit).toLocaleDateString('sv') : '–'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <a href="mailto:${c.email||''}?subject=Hej ${(c.name||'').split(' ')[0]}!" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
+          <a href="mitt-konto.html?email=${encodeURIComponent(c.email)}" target="_blank" class="btn btn-outline btn-sm" title="Kundvy" style="text-decoration:none">👤</a>
+        </div>
+      </td>
+    </tr>`}).join('') : '<tr><td colspan="6" class="empty">Inga kunder hittades</td></tr>';
 }
 
 // ── PAYOUTS ───────────────────────────────────────────
@@ -1526,6 +1583,42 @@ function showBookingDetail(id) {
   document.getElementById('modal-refund-btn').style.display = b.payment_status === 'paid' ? '' : 'none';
   document.getElementById('booking-modal').classList.add('open');
 }
+// ── EXPORTERA CSV ────────────────────────────────────
+function exportBookingsCSV() {
+  const q = document.getElementById('booking-search').value.toLowerCase();
+  const f = document.getElementById('booking-filter').value;
+  let filtered = data.bookings;
+  if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.email||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q));
+  if (f) filtered = filtered.filter(b => b.payment_status === f);
+  
+  const headers = ['Kund', 'E-post', 'Telefon', 'Tjänst', 'Timmar', 'Datum', 'Tid', 'Stad', 'Adress', 'Belopp', 'RUT', 'Status', 'Städare', 'Betalsätt'];
+  const rows = filtered.map(b => [
+    b.customer_name || b.name || '',
+    b.customer_email || b.email || '',
+    b.phone || '',
+    b.service || 'Hemstädning',
+    b.hours || 3,
+    b.date || '',
+    b.time || '',
+    b.city || '',
+    (b.address || '').replace(/,/g, ' '),
+    Math.round(b.total_price || 0),
+    b.rut ? 'Ja' : 'Nej',
+    b.payment_status || '',
+    b.cleaner_name || '',
+    b.payment_method || ''
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `spick-bokningar-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── BROADCAST ────────────────────────────────────────
 async function sendBroadcastEmail() {
   const subject = prompt('Ämne för broadcast-mail:');
