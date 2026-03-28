@@ -1201,7 +1201,7 @@ async function loadAvailableCleaners() {
       '<button onclick="goBack(1)" style="background:var(--border);color:var(--t);border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Ändra tid</button>' +
       '</div>';
     // Report error
-    if (typeof spickShowError === 'function') spickShowError(e);
+    if (typeof spickShowError === 'function') spickShowError('#cleaners-wrap', e.message);
   }
 }
 
@@ -1219,12 +1219,13 @@ function renderCleaners(cleaners) {
   const list = document.createElement('div');
   list.className = 'cleaner-list';
   cleaners.forEach(cl => {
+    try {
     const ini = (cl.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const col = COLORS[(cl.full_name||'').charCodeAt(0) % COLORS.length];
     const rate = cl.hourly_rate || 350;
     const rutRate = Math.round(rate * 0.5);
     const stars = '⭐'.repeat(Math.round(cl.avg_rating||5));
-    const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : (cl.services||'').split(',').slice(0,3).map(s=>s.trim()).filter(Boolean);
+    const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : typeof cl.services === 'string' ? cl.services.split(',').slice(0,3).map(s=>s.trim()).filter(Boolean) : [];
     const card = document.createElement('div');
     card.className = 'cleaner-card';
     card.innerHTML = `
@@ -1249,6 +1250,7 @@ function renderCleaners(cleaners) {
       </div>`;
     card.onclick = () => selectCleaner(cl, card);
     list.appendChild(card);
+    } catch(cardErr) { console.warn('Render cleaner card failed:', cl.id, cardErr.message); }
   });
   wrap.innerHTML = '';
   wrap.appendChild(list);
