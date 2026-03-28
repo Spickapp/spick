@@ -1,0 +1,137 @@
+name: 'Auto-Post Daily Content'
+
+# Kör varje dag 07:00 UTC = 09:00 svensk tid
+'on':
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Force specific day number (1-30)'
+        default: ''
+      preview:
+        description: 'Preview only - do not post (true/false)'
+        default: 'false'
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post to Buffer
+        env:
+          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+          BUFFER_FB_PROFILE_ID: ${{ secrets.BUFFER_FB_PROFILE_ID }}
+          BUFFER_IG_PROFILE_ID: ${{ secrets.BUFFER_IG_PROFILE_ID }}
+        run: |
+          set -e
+
+          # ── CONFIG ──────────────────────────────────────────
+          CALENDAR="growth/content-calendar-april-2026.json"
+          FORCE_DAY="${{ github.event.inputs.day }}"
+          PREVIEW="${{ github.event.inputs.preview || 'false' }}"
+
+          if [ -z "$BUFFER_ACCESS_TOKEN" ]; then
+            echo "❌ BUFFER_ACCESS_TOKEN not set. Add it in GitHub Secrets."
+            echo "   Get your token: https://buffer.com/developers/apps"
+            exit 1
+          fi
+
+          # ── DETERMINE WHICH DAY TO POST ─────────────────────
+          if [ -n "$FORCE_DAY" ]; then
+            DAY_NUM="$FORCE_DAY"
+          else
+            # Calculate day number based on current date vs start date
+            START_DATE="2026-04-01"
+            TODAY=$(date -u +%Y-%m-%d)
+            DAYS_SINCE=$(( ($(date -d "$TODAY" +%s) - $(date -d "$START_DATE" +%s)) / 86400 + 1 ))
+            # Cycle through 30 days
+            DAY_NUM=$(( ((DAYS_SINCE - 1) % 30) + 1 ))
+          fi
+
+          echo "📅 Posting day $DAY_NUM content"
+
+          # ── EXTRACT POST FROM CALENDAR ──────────────────────
+          POST=$(python3 -c "
+          import json, sys
+          with open('$CALENDAR') as f:
+              data = json.load(f)
+          posts = [p for p in data['posts'] if p['day'] == $DAY_NUM]
+          if not posts:
+              print('ERROR: No post for day $DAY_NUM', file=sys.stderr)
+              sys.exit(1)
+          p = posts[0]
+          # Combine caption + hashtags
+          text = p['caption'] + '\n\n' + p.get('hashtags', '')
+          print(json.dumps({
+              'text': text,
+              'pillar': p['pillar'],
+              'platform': p.get('platform', ['instagram']),
+              'hook': p['hook'],
+              'cta': p.get('cta', ''),
+          }))
+          ")
+
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to extract post"
+            exit 1
+          fi
+
+          TEXT=$(echo "$POST" | python3 -c "import sys,json; print(json.load(sys.stdin)['text'])")
+          PILLAR=$(echo "$POST" | python3 -c "import sys,json; print(json.load(sys.stdin)['pillar'])")
+          HOOK=$(echo "$POST" | python3 -c "import sys,json; print(json.load(sys.stdin)['hook'])")
+          PLATFORMS=$(echo "$POST" | python3 -c "import sys,json; print(','.join(json.load(sys.stdin)['platform']))")
+
+          echo "📝 Pillar: $PILLAR"
+          echo "🎣 Hook: $HOOK"
+          echo "📱 Platforms: $PLATFORMS"
+          echo "---"
+          echo "$TEXT"
+          echo "---"
+
+          if [ "$PREVIEW" = "true" ]; then
+            echo "👀 Preview mode — not posting"
+            exit 0
+          fi
+
+          # ── POST TO BUFFER API ──────────────────────────────
+          # Buffer API: https://buffer.com/developers/api/updates
+          
+          post_to_buffer() {
+            PROFILE_ID=$1
+            PLATFORM_NAME=$2
+            
+            if [ -z "$PROFILE_ID" ]; then
+              echo "⚠️ No profile ID for $PLATFORM_NAME — skipping"
+              return
+            fi
+
+            RESPONSE=$(curl -s -X POST "https://api.bufferapp.com/1/updates/create.json" \
+              -d "access_token=$BUFFER_ACCESS_TOKEN" \
+              --data-urlencode "text=$TEXT" \
+              -d "profile_ids[]=$PROFILE_ID" \
+              -d "now=false")
+            
+            SUCCESS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('success', False))" 2>/dev/null || echo "false")
+            
+            if [ "$SUCCESS" = "True" ]; then
+              echo "✅ Scheduled to $PLATFORM_NAME"
+            else
+              echo "❌ Failed to post to $PLATFORM_NAME: $RESPONSE"
+            fi
+          }
+
+          # Post to each platform
+          if echo "$PLATFORMS" | grep -q "facebook"; then
+            post_to_buffer "$BUFFER_FB_PROFILE_ID" "Facebook"
+          fi
+          
+          if echo "$PLATFORMS" | grep -q "instagram"; then
+            post_to_buffer "$BUFFER_IG_PROFILE_ID" "Instagram"
+          fi
+
+          echo ""
+          echo "🎯 Day $DAY_NUM posted successfully"

@@ -1,0 +1,109 @@
+name: 'Bulk Schedule Week'
+
+# Kör manuellt — schemalägg 7 dagar framåt
+'on':
+  workflow_dispatch:
+    inputs:
+      start_day:
+        description: 'Start from day number (1-30)'
+        required: true
+        default: '1'
+      days:
+        description: 'Number of days to schedule (1-7)'
+        default: '7'
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Schedule posts to Buffer
+        env:
+          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+          BUFFER_FB_PROFILE_ID: ${{ secrets.BUFFER_FB_PROFILE_ID }}
+          BUFFER_IG_PROFILE_ID: ${{ secrets.BUFFER_IG_PROFILE_ID }}
+        run: |
+          set -e
+
+          CALENDAR="growth/content-calendar-april-2026.json"
+          START=${{ github.event.inputs.start_day }}
+          DAYS=${{ github.event.inputs.days }}
+          END=$((START + DAYS - 1))
+
+          echo "📅 Scheduling days $START to $END"
+          echo ""
+
+          SUCCESS=0
+          FAIL=0
+
+          for DAY in $(seq $START $END); do
+            # Cycle if > 30
+            ACTUAL_DAY=$(( ((DAY - 1) % 30) + 1 ))
+            
+            echo "── Day $ACTUAL_DAY ──────────────────"
+
+            POST=$(python3 -c "
+          import json
+          with open('$CALENDAR') as f:
+              data = json.load(f)
+          posts = [p for p in data['posts'] if p['day'] == $ACTUAL_DAY]
+          if not posts:
+              exit(1)
+          p = posts[0]
+          text = p['caption'] + '\n\n' + p.get('hashtags', '')
+          print(text)
+          " 2>/dev/null)
+
+            if [ $? -ne 0 ] || [ -z "$POST" ]; then
+              echo "⚠️ No content for day $ACTUAL_DAY — skipping"
+              FAIL=$((FAIL + 1))
+              continue
+            fi
+
+            # Post to Instagram via Buffer
+            if [ -n "$BUFFER_IG_PROFILE_ID" ]; then
+              RESPONSE=$(curl -s -X POST "https://api.bufferapp.com/1/updates/create.json" \
+                -d "access_token=$BUFFER_ACCESS_TOKEN" \
+                --data-urlencode "text=$POST" \
+                -d "profile_ids[]=$BUFFER_IG_PROFILE_ID" \
+                -d "now=false" 2>/dev/null)
+              
+              OK=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('success', False))" 2>/dev/null || echo "false")
+              if [ "$OK" = "True" ]; then
+                echo "  ✅ Instagram queued"
+                SUCCESS=$((SUCCESS + 1))
+              else
+                echo "  ❌ Instagram failed"
+                FAIL=$((FAIL + 1))
+              fi
+            fi
+
+            # Post to Facebook via Buffer
+            if [ -n "$BUFFER_FB_PROFILE_ID" ]; then
+              RESPONSE=$(curl -s -X POST "https://api.bufferapp.com/1/updates/create.json" \
+                -d "access_token=$BUFFER_ACCESS_TOKEN" \
+                --data-urlencode "text=$POST" \
+                -d "profile_ids[]=$BUFFER_FB_PROFILE_ID" \
+                -d "now=false" 2>/dev/null)
+              
+              OK=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('success', False))" 2>/dev/null || echo "false")
+              if [ "$OK" = "True" ]; then
+                echo "  ✅ Facebook queued"
+                SUCCESS=$((SUCCESS + 1))
+              else
+                echo "  ❌ Facebook failed"
+                FAIL=$((FAIL + 1))
+              fi
+            fi
+
+            echo ""
+            # Rate limit: 1 second between posts
+            sleep 1
+          done
+
+          echo "═══════════════════════════════════"
+          echo "  ✅ $SUCCESS scheduled · ❌ $FAIL failed"
+          echo "═══════════════════════════════════"
