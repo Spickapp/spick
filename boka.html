@@ -1716,9 +1716,13 @@ async function doBook() {
       hashedPnr = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
     // 2. Skapa bokning i DB
+    // NOTE: Using 'name'+'email' columns (not customer_name/customer_email)
+    // because a DB trigger on customer_email tries to upsert into customer_profiles
+    // which has restrictive RLS that blocks anon inserts.
+    // Edge Functions use fallbacks: b.customer_email || b.email — so both work.
     const bookingData = {
-      customer_name: state.fname+' '+state.lname,
-      customer_email: state.email,
+      name: state.fname+' '+state.lname,
+      email: state.email,
       phone: state.phone,
       address: state.address,
       city: state.cleanerCity,
@@ -1739,7 +1743,11 @@ async function doBook() {
       headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
       body: JSON.stringify(bookingData)
     });
-    if (!dbRes.ok) throw new Error('DB ' + dbRes.status);
+    if (!dbRes.ok) {
+      const dbBody = await dbRes.text().catch(() => '');
+      console.error('Booking INSERT failed:', dbRes.status, dbBody);
+      throw new Error('DB ' + dbRes.status);
+    }
     const [booking] = await dbRes.json();
     const bookingId = booking.id;
     // 3. Stripe checkout
@@ -1763,7 +1771,10 @@ async function doBook() {
         cleaner_name: state.cleanerName
       })
     });
-    if (!stripeRes.ok) throw new Error('Stripe ' + stripeRes.status);
+    if (!stripeRes.ok) {
+      const stripeBody = await stripeRes.text().catch(() => '');
+      throw new Error('Stripe ' + stripeRes.status + (stripeBody.includes('message') ? ': ' + JSON.parse(stripeBody).message : ''));
+    }
     const { url } = await stripeRes.json();
     if (url) {
       window.location.href = url;
@@ -1773,7 +1784,24 @@ async function doBook() {
   } catch(e) {
     btn.disabled = false; _bookingInProgress = false;
     btn.innerHTML = 'Bekräfta och betala →';
-    alert('Betalningen kunde inte startas. Försök igen eller kontakta hello@spick.se\n\n' + e.message);
+    // Show user-friendly error in the UI (not alert)
+    const errDiv = document.getElementById('payment-error') || document.createElement('div');
+    errDiv.id = 'payment-error';
+    errDiv.style.cssText = 'background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:1rem;font-size:.88rem';
+    const msg = e.message || '';
+    let userMsg = 'Något gick fel. Försök igen om en stund.';
+    if (msg.includes('DB')) userMsg = 'Bokningen kunde inte skapas. Kontrollera att alla uppgifter är korrekta och försök igen.';
+    if (msg.includes('Stripe')) userMsg = 'Betalningssystemet svarar inte just nu. Försök igen om en minut.';
+    if (msg.includes('Tiden har')) userMsg = msg;
+    errDiv.innerHTML = '<div style="font-weight:700;color:#991B1B;margin-bottom:.5rem">⚠️ Kunde inte starta betalning</div>' +
+      '<div style="color:#991B1B">' + userMsg + '</div>' +
+      '<div style="margin-top:1rem;display:flex;gap:.5rem">' +
+      '<button onclick="document.getElementById(\'payment-error\').remove();doBook()" style="background:var(--g);color:#fff;border:none;padding:.625rem 1.25rem;border-radius:99px;font-weight:600;cursor:pointer;font-family:inherit">Försök igen →</button>' +
+      '<a href="mailto:hello@spick.se" style="display:inline-flex;align-items:center;padding:.625rem 1.25rem;border-radius:99px;font-size:.85rem;color:var(--m);text-decoration:none;border:1.5px solid var(--border)">Kontakta support</a>' +
+      '</div>';
+    btn.insertAdjacentElement('beforebegin', errDiv);
+    errDiv.scrollIntoView({behavior:'smooth', block:'center'});
+    console.error('doBook error:', msg);
   }
 }
 
