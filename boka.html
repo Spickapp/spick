@@ -652,7 +652,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   state.calYear  = now.getFullYear();
   state.calMonth = now.getMonth();
-  loadGlobalAvailability().then(() => renderCalendar());
+  loadGlobalAvailability().then(() => {
+    renderCalendar();
+    // Om städare pre-vald: visa banner + ändra knapptext
+    if (state.cleanerName) {
+      const btn = document.getElementById('step1-next');
+      if (btn) btn.textContent = 'Fortsätt med ' + state.cleanerName.split(' ')[0] + ' →';
+      const calWrap = document.getElementById('calendar');
+      if (calWrap) {
+        const banner = document.createElement('div');
+        banner.id = 'pre-cleaner-banner';
+        banner.style.cssText = 'background:#ECFDF5;border:1.5px solid #6EE7B7;border-radius:12px;padding:12px 16px;margin-bottom:1rem;display:flex;align-items:center;gap:10px;font-size:.88rem';
+        const ini = state.cleanerName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        banner.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;background:#0F6E5620;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0">' + ini + '</div>' +
+          '<div><strong style="color:#065F46">Visar ' + state.cleanerName.split(' ')[0] + 's lediga tider</strong>' +
+          '<div style="font-size:.78rem;color:#047857">Kalendern visar bara dagar och tider då ' + state.cleanerName.split(' ')[0] + ' kan ta uppdraget</div></div>' +
+          '<a href="boka.html" style="margin-left:auto;font-size:.78rem;color:#6B6960;text-decoration:underline">Visa alla städare</a>';
+        calWrap.parentNode.insertBefore(banner, calWrap);
+      }
+    }
+  });
 });
 
 // ── STEG-NAVIGERING ───────────────────────────────────────────────────────────
@@ -824,11 +843,34 @@ async function goStep2() {
     setTimeout(() => document.getElementById('calendar').style.outline = '', 2000);
     return;
   }
-  setStep(2);
-  // Säkerställ att availability-data finns (kan saknas vid race condition)
+  // Säkerställ att availability-data finns
   if (!Array.isArray(state.availability) || state.availability.length === 0) {
     await loadGlobalAvailability();
   }
+  // Om städare pre-vald via URL: verifiera tillgänglighet och hoppa direkt till steg 3
+  if (state.cleanerId && state.cleanerName) {
+    const dow = new Date(state.date + 'T00:00:00').getDay();
+    const cleanerAvailToday = state.availability.some(a => 
+      a.cleaner_id === state.cleanerId && a.day_of_week === dow
+    );
+    const cleanerBlockedToday = Array.isArray(state.blocked) && state.blocked.some(b => 
+      b.cleaner_id === state.cleanerId && b.blocked_date === state.date
+    );
+    const cleanerBookedNow = Array.isArray(state.bookings) && state.bookings.some(b => 
+      b.cleaner_id === state.cleanerId && b.date === state.date && b.time?.slice(0,5) === state.time
+    );
+    if (cleanerAvailToday && !cleanerBlockedToday && !cleanerBookedNow) {
+      // Städare tillgänglig — hoppa direkt till steg 3
+      updateSidebar();
+      setStep(3);
+      return;
+    }
+    // Inte tillgänglig — rensa pre-val och visa steg 2 med alternativ
+    state.cleanerId = null;
+    state.cleanerName = '';
+    state.cleanerRate = 350;
+  }
+  setStep(2);
   await loadAvailableCleaners();
 }
 
@@ -860,10 +902,16 @@ async function loadGlobalAvailability() {
 function isDayAvailable(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   const dow = d.getDay(); // 0=sön,1=mån,...
-  // Kolla om någon städare är tillgänglig denna dag
+  // Om städare pre-vald: visa BARA hens dagar (och kolla blockerade)
+  if (state.cleanerId) {
+    const hasDay = state.availability.some(a => a.day_of_week === dow && a.cleaner_id === state.cleanerId);
+    if (!hasDay) return false;
+    const isBlocked = Array.isArray(state.blocked) && state.blocked.some(b => b.cleaner_id === state.cleanerId && b.blocked_date === dateStr);
+    return !isBlocked;
+  }
+  // Annars: visa dag om MINST EN städare är tillgänglig
   const hasAvailCleaner = state.availability.some(a => a.day_of_week === dow);
   if (!hasAvailCleaner && state.availability.length > 0) return false;
-  // Kolla om alla städare är blockerade/fullbokade denna dag (förenklat: visa dag om minst 1 tillgänglig)
   return true;
 }
 
@@ -888,8 +936,12 @@ function getAvailableSlots(dateStr, neededHours) {
   const neededMins = neededHours * 60;
   const dow = new Date(dateStr + 'T00:00:00').getDay();
 
-  // Hämta alla tillgängliga städare med sina fönster denna dag
-  const dayAvails = state.availability.filter(a => a.day_of_week === dow && a.is_active !== false);
+  // Hämta tillgängliga städare med sina fönster denna dag
+  let dayAvails = state.availability.filter(a => a.day_of_week === dow && a.is_active !== false);
+  // Om städare pre-vald: visa BARA hens tidsfönster
+  if (state.cleanerId) {
+    dayAvails = dayAvails.filter(a => a.cleaner_id === state.cleanerId);
+  }
   if (!dayAvails.length) {
     // Fallback: mån–fre 08–17
     dayAvails.push({cleaner_id: null, day_of_week: dow, start_time: '08:00', end_time: '17:00'});
