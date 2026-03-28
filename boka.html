@@ -1254,6 +1254,31 @@ function renderCleaners(cleaners) {
   });
   wrap.innerHTML = '';
   wrap.appendChild(list);
+  
+  // ── AUTO-SELECT: Om städare redan vald via URL-param, markera kortet ──
+  if (state.cleanerId) {
+    const preSelected = cleaners.find(c => c.id === state.cleanerId);
+    if (preSelected) {
+      // Hitta och markera kortet visuellt
+      const cards = list.querySelectorAll('.cleaner-card');
+      cards.forEach((card, idx) => {
+        if (cleaners[idx] && cleaners[idx].id === state.cleanerId) {
+          card.classList.add('selected');
+        }
+      });
+      // Uppdatera state med fullständig data (URL har bara namn+rate, inte city/bio)
+      state.cleanerName = preSelected.full_name;
+      state.cleanerRate = preSelected.hourly_rate || 350;
+      state.cleanerCity = preSelected.city || '';
+      updateSidebar();
+      // Visa "Fortsätt"-knapp så kunden slipper klicka igen
+      const contBtn = document.createElement('div');
+      contBtn.style.cssText = 'text-align:center;margin-top:1rem';
+      contBtn.innerHTML = '<button onclick="setStep(3)" style="background:var(--g);color:#fff;border:none;padding:.875rem 2rem;border-radius:99px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(15,110,86,.3)">Fortsätt med ' + (preSelected.full_name||'vald städare').split(' ')[0] + ' →</button>' +
+        '<div style="font-size:.78rem;color:var(--m);margin-top:.5rem">eller välj en annan städare ovan</div>';
+      wrap.appendChild(contBtn);
+    }
+  }
 }
 
 function selectCleaner(cl, cardEl) {
