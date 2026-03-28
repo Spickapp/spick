@@ -1397,6 +1397,11 @@ function selectCleaner(cl, cardEl) {
 
 // ── STEG 3: UPPGIFTER ─────────────────────────────────────────────────────────
 let useRut = true;
+// Visa personnummer-fältet direkt om RUT är aktivt (default)
+document.addEventListener('DOMContentLoaded', () => {
+  const pw = document.getElementById('pnr-wrap');
+  if (pw && useRut) pw.style.display = 'block';
+});
 function toggleRut() {
   useRut = !useRut;
   state.useRut = useRut;
@@ -1515,13 +1520,33 @@ function goStep4() {
   const ad = document.getElementById('address').value.trim();
   const pn = document.getElementById('pnr').value.trim();
   const required = [{id:'fname',val:fn},{id:'lname',val:ln},{id:'email',val:em},{id:'phone',val:ph},{id:'address',val:ad}];
-  if (useRut) required.push({id:'pnr',val:pn});
+  if (useRut) {
+    // Säkerställ att personnummer-fältet är synligt
+    document.getElementById('pnr-wrap').style.display = 'block';
+    required.push({id:'pnr',val:pn});
+  }
   let ok = true;
+  let firstInvalid = null;
   required.forEach(f => {
     const el = document.getElementById(f.id);
-    if (!f.val) { el.classList.add('invalid'); el.scrollIntoView({behavior:'smooth',block:'center'}); ok=false; }
-    else el.classList.remove('invalid');
+    if (!f.val) { 
+      el.classList.add('invalid'); 
+      if (!firstInvalid) firstInvalid = el;
+      ok = false; 
+    } else {
+      el.classList.remove('invalid');
+    }
   });
+  // Scrolla till FÖRSTA tomma fältet
+  if (firstInvalid) {
+    firstInvalid.scrollIntoView({behavior:'smooth', block:'center'});
+    firstInvalid.focus();
+    // Visa felmeddelande vid personnummer specifikt
+    if (firstInvalid.id === 'pnr') {
+      const hint = document.getElementById('pnr-hint');
+      if (hint) { hint.textContent = '⚠️ Personnummer krävs för RUT-avdrag'; hint.style.color = '#dc2626'; }
+    }
+  }
   // E-post-validering
   if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
     document.getElementById('email').classList.add('invalid');
