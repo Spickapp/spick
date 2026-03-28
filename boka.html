@@ -1524,6 +1524,32 @@ function buildConfirmSummary() {
 async function doBook() {
   const btn = document.getElementById('pay-btn');
   btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Verifierar tillgänglighet...';
+  
+  // ── PRE-PAYMENT AVAILABILITY CHECK ────────────────────────
+  // Verify the cleaner is STILL available at this slot (race condition protection)
+  try {
+    const conflictRes = await fetch(
+      `${SUPA}/rest/v1/bookings?cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&time=eq.${state.time}&payment_status=eq.paid&status=neq.avbokad&select=id&limit=1`,
+      { headers: H }
+    );
+    const conflicts = await conflictRes.json();
+    if (Array.isArray(conflicts) && conflicts.length > 0) {
+      btn.disabled = false;
+      btn.innerHTML = 'Betala säkert →';
+      const wrap = document.getElementById('confirm-summary');
+      wrap.innerHTML = '<div style="background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:1rem">' +
+        '<div style="font-weight:700;color:#991B1B;margin-bottom:.5rem">⚠️ Tiden har precis blivit bokad</div>' +
+        '<div style="font-size:.88rem;color:#991B1B">' + state.cleanerName + ' är tyvärr inte längre tillgänglig ' + formatDate(state.date) + ' kl ' + state.time + '.</div>' +
+        '<button onclick="goBack(1)" style="margin-top:1rem;background:var(--g);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:99px;font-weight:600;cursor:pointer;font-family:inherit">Välj annan tid →</button>' +
+        '</div>';
+      return;
+    }
+  } catch(e) {
+    // If check fails, proceed anyway — Stripe webhook will handle final verification
+    console.warn('Availability pre-check failed:', e.message);
+  }
+  
   btn.innerHTML = '<div class="spinner"></div> Skapar bokning...';
   const gross = Math.round(state.cleanerRate * state.hours);
   const rut   = useRut ? Math.round(gross * 0.5) : 0;
