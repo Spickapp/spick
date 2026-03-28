@@ -27,7 +27,7 @@ jobs:
           BUFFER_FB_PROFILE_ID: ${{ secrets.BUFFER_FB_PROFILE_ID }}
           BUFFER_IG_PROFILE_ID: ${{ secrets.BUFFER_IG_PROFILE_ID }}
         run: |
-          set -e
+          # No set -e — we handle errors explicitly
 
           # ── CONFIG ──────────────────────────────────────────
           CALENDAR="growth/content-calendar-april-2026.json"
@@ -35,20 +35,19 @@ jobs:
           PREVIEW="${{ github.event.inputs.preview || 'false' }}"
 
           if [ -z "$BUFFER_ACCESS_TOKEN" ]; then
-            echo "❌ BUFFER_ACCESS_TOKEN not set. Add it in GitHub Secrets."
-            echo "   Get your token: https://buffer.com/developers/apps"
+            echo "❌ BUFFER_ACCESS_TOKEN not set."
             exit 1
           fi
+
+          echo "🔑 Secrets loaded: FB=${BUFFER_FB_PROFILE_ID:+SET} IG=${BUFFER_IG_PROFILE_ID:+SET}"
 
           # ── DETERMINE WHICH DAY TO POST ─────────────────────
           if [ -n "$FORCE_DAY" ]; then
             DAY_NUM="$FORCE_DAY"
           else
-            # Calculate day number based on current date vs start date
-            START_DATE="2026-04-01"
+            START_DATE="2026-03-28"
             TODAY=$(date -u +%Y-%m-%d)
             DAYS_SINCE=$(( ($(date -d "$TODAY" +%s) - $(date -d "$START_DATE" +%s)) / 86400 + 1 ))
-            # Cycle through 30 days
             DAY_NUM=$(( ((DAYS_SINCE - 1) % 30) + 1 ))
           fi
 
@@ -109,18 +108,26 @@ jobs:
               return
             fi
 
-            RESPONSE=$(curl -s -X POST "https://api.bufferapp.com/1/updates/create.json" \
+            echo "📤 Posting to $PLATFORM_NAME (profile: ${PROFILE_ID:0:8}...)"
+
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.bufferapp.com/1/updates/create.json" \
               -d "access_token=$BUFFER_ACCESS_TOKEN" \
               --data-urlencode "text=$TEXT" \
               -d "profile_ids[]=$PROFILE_ID" \
-              -d "now=false")
+              -d "now=true")
             
-            SUCCESS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('success', False))" 2>/dev/null || echo "false")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            echo "  HTTP: $HTTP_CODE"
+            echo "  Response: $BODY"
+            
+            SUCCESS=$(echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('success', False))" 2>/dev/null || echo "parse_error")
             
             if [ "$SUCCESS" = "True" ]; then
-              echo "✅ Scheduled to $PLATFORM_NAME"
+              echo "  ✅ Published to $PLATFORM_NAME"
             else
-              echo "❌ Failed to post to $PLATFORM_NAME: $RESPONSE"
+              echo "  ❌ Failed: $BODY"
             fi
           }
 
