@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>Spick Agent</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a26;--surface:#1e1e2e;
+  --border:#2a2a3a;--text:#e4e4ef;--text2:#8888a0;
+  --accent:#4ade80;--accent2:#22c55e;--danger:#f87171;
+  --warning:#fbbf24;--blue:#60a5fa;--purple:#a78bfa;
+  --radius:14px;--font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{font-size:16px}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--text);
+  min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+.header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;font-size:1.25rem;font-weight:700;letter-spacing:-0.02em}
+.logo-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:grid;place-items:center;font-size:18px;
+}
+.status-pill{
+  display:flex;align-items:center;gap:6px;padding:6px 14px;
+  border-radius:100px;font-size:0.8rem;font-weight:500;
+  background:var(--bg3);border:1px solid var(--border);
+}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 8px var(--accent);
+  animation:pulse 2s ease-in-out infinite;
+}
+.status-dot.offline{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+.status-dot.busy{background:var(--warning);box-shadow:0 0 8px var(--warning)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{padding:24px 20px 120px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+.stat-val{font-size:1.5rem;font-weight:700;font-family:var(--mono)}
+.stat-label{font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.section-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:12px}
+.task-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:32px}
+.task-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;
+  transition:all .15s ease;-webkit-tap-highlight-color:transparent;
+  position:relative;overflow:hidden;
+}
+.task-card:active{transform:scale(.97);background:var(--bg3)}
+.task-card.running{border-color:var(--warning);pointer-events:none}
+.task-card.running::after{
+  content:'';position:absolute;bottom:0;left:0;height:3px;
+  background:var(--warning);animation:progress 10s linear forwards;
+}
+@keyframes progress{from{width:0}to{width:100%}}
+.task-icon{
+  width:42px;height:42px;border-radius:12px;
+  display:grid;place-items:center;font-size:20px;flex-shrink:0;
+}
+.task-icon.green{background:rgba(74,222,128,.12);color:var(--accent)}
+.task-icon.blue{background:rgba(96,165,250,.12);color:var(--blue)}
+.task-icon.orange{background:rgba(251,191,36,.12);color:var(--warning)}
+.task-icon.red{background:rgba(248,113,113,.12);color:var(--danger)}
+.task-icon.purple{background:rgba(167,139,250,.12);color:var(--purple)}
+.task-info{flex:1;min-width:0}
+.task-name{font-weight:600;font-size:.95rem;margin-bottom:2px}
+.task-desc{font-size:.78rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-arrow{color:var(--text2);font-size:1.2rem;flex-shrink:0}
+.log-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.log-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.log-header h3{font-size:.85rem;font-weight:600}
+.log-clear{font-size:.72rem;color:var(--text2);background:none;border:none;cursor:pointer;font-family:var(--font)}
+.log-body{
+  padding:12px 16px;max-height:260px;overflow-y:auto;
+  font-family:var(--mono);font-size:.75rem;line-height:1.8;color:var(--text2);
+}
+.log-body::-webkit-scrollbar{width:4px}
+.log-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.log-entry{display:flex;gap:8px}
+.log-entry .time{color:var(--text2);flex-shrink:0}
+.log-entry .msg{color:var(--text)}
+.log-entry.ok .msg{color:var(--accent)}
+.log-entry.err .msg{color:var(--danger)}
+.log-entry.warn .msg{color:var(--warning)}
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+  display:none;place-items:center;z-index:100;padding:20px;
+}
+.modal-overlay.active{display:grid}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:420px;max-height:80vh;overflow-y:auto}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.modal-head .icon{font-size:1.4rem}
+.modal-head h3{font-weight:600;font-size:1rem}
+.modal-body{padding:16px 20px;font-size:.85rem;line-height:1.6}
+.modal-body pre{
+  background:var(--bg);border-radius:8px;padding:12px;overflow-x:auto;
+  font-family:var(--mono);font-size:.72rem;margin-top:10px;
+  white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;
+}
+.modal-close{
+  display:block;width:100%;padding:14px;background:var(--bg3);border:none;
+  color:var(--text);font-family:var(--font);font-size:.9rem;font-weight:600;
+  cursor:pointer;border-radius:0 0 var(--radius) var(--radius);
+}
+.modal-close:active{background:var(--border)}
+.auth-screen{min-height:100dvh;display:grid;place-items:center;padding:20px}
+.auth-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:32px 24px;width:100%;max-width:360px;text-align:center;
+}
+.auth-box h2{font-size:1.3rem;margin-bottom:6px}
+.auth-box p{font-size:.85rem;color:var(--text2);margin-bottom:20px}
+.auth-input{
+  width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:var(--mono);font-size:.9rem;
+  outline:none;margin-bottom:14px;
+}
+.auth-input:focus{border-color:var(--accent)}
+.auth-btn{
+  width:100%;padding:13px;background:var(--accent);color:#0a0a0f;border:none;
+  border-radius:10px;font-family:var(--font);font-size:.95rem;font-weight:700;cursor:pointer;
+}
+.auth-btn:active{opacity:.85}
+.auth-err{color:var(--danger);font-size:.8rem;margin-top:10px;display:none}
+.quick-btn{
+  padding:12px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text);font-family:var(--font);
+  font-size:.85rem;font-weight:600;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .15s;
+}
+.quick-btn:active{transform:scale(.96);background:var(--bg3)}
+.hist-entry{display:flex;align-items:center;gap:8px;padding:3px 0}
+.hist-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.hist-dot.ok{background:var(--accent)}
+.hist-dot.fail{background:var(--danger)}
+.hist-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.hist-time{color:var(--text2);font-size:.7rem;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-box">
+    <div style="font-size:2.4rem;margin-bottom:12px">🧹</div>
+    <h2>Spick Agent</h2>
+    <p>Ange din API-nyckel för att fortsätta</p>
+    <input id="tokenInput" class="auth-input" type="password" placeholder="API Secret" autocomplete="off">
+    <button class="auth-btn" onclick="doAuth()">Logga in</button>
+    <div id="authErr" class="auth-err">Felaktig nyckel</div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="header">
+    <div class="logo"><div class="logo-icon">🧹</div><span>Spick Agent</span></div>
+    <div class="status-pill">
+      <div id="statusDot" class="status-dot"></div>
+      <span id="statusText">Online</span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="statUptime">-</div><div class="stat-label">Uptime (m)</div></div>
+      <div class="stat"><div class="stat-val" id="statTasks">-</div><div class="stat-label">Tasks</div></div>
+      <div class="stat"><div class="stat-val" id="statRun">0</div><div class="stat-label">Körda</div></div>
+    </div>
+
+    <!-- Workflows -->
+    <div class="section-title">Workflows</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px">
+      <button class="quick-btn" onclick="runWorkflow('quick-health')">⚡ Snabbkoll</button>
+      <button class="quick-btn" onclick="runWorkflow('morning-check')">☀️ Morgonkoll</button>
+      <button class="quick-btn" onclick="runWorkflow('full-qa')">🧪 Full QA</button>
+      <button class="quick-btn" onclick="runWorkflow('deploy-verify')">🚀 Deploy-check</button>
+    </div>
+
+    <div class="section-title">Tillgängliga tasks</div>
+    <div id="taskGrid" class="task-grid"></div>
+
+    <!-- History -->
+    <div class="section-title">Historik</div>
+    <div id="historyPanel" class="log-panel" style="margin-bottom:24px">
+      <div class="log-header"><h3>Senaste körningar</h3><button class="log-clear" onclick="loadHistory()">Uppdatera</button></div>
+      <div id="historyBody" class="log-body"><div class="log-entry"><span class="msg">Laddar...</span></div></div>
+    </div>
+
+    <div class="section-title">Logg</div>
+    <div class="log-panel">
+      <div class="log-header"><h3>Senaste händelser</h3><button class="log-clear" onclick="clearLog()">Rensa</button></div>
+      <div id="logBody" class="log-body">
+        <div class="log-entry"><span class="time">--:--</span><span class="msg">Väntar på aktivitet…</span></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="section-title" style="margin-top:24px">Kontroller</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <button class="quick-btn" id="schedBtn" onclick="toggleScheduler()">⏸ Scheduler</button>
+      <button class="quick-btn" onclick="showConfig()">⚙️ Config</button>
+      <button class="quick-btn" onclick="showServerLogs()">📜 Server-logg</button>
+      <button class="quick-btn" onclick="showScreenshots()">🖼 Screenshots</button>
+    </div>
+
+    <!-- Logout -->
+    <button class="quick-btn" style="width:100%;margin-top:8px;color:var(--text2)" onclick="localStorage.removeItem('spick_token');location.reload()">🔓 Logga ut</button>
+  </div>
+</div>
+
+<div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head"><span class="icon" id="modalIcon">✅</span><h3 id="modalTitle">Resultat</h3></div>
+    <div class="modal-body" id="modalBody"></div>
+    <button class="modal-close" onclick="closeModal()">Stäng</button>
+  </div>
+</div>
+
+<script>
+const TASK_META = {
+  'test-flow':            { icon:'🧪', color:'green',  desc:'Snabbtest – öppnar Edge, laddar spick.se' },
+  'open-spick':           { icon:'🌐', color:'blue',   desc:'Navigerar till spick.se och verifierar' },
+  'start-booking-flow':   { icon:'📋', color:'orange', desc:'Kör hela bokningsflödet (verkliga selektorer)' },
+  'check-site-status':    { icon:'📊', color:'red',    desc:'Kontrollerar alla nyckelsidor' },
+  'screenshot-page':      { icon:'📸', color:'blue',   desc:'Tar screenshot av valfri sida' },
+  'admin-login':          { icon:'🔐', color:'orange', desc:'Admin-panel (magic link)' },
+  'monitor-stack':        { icon:'🔍', color:'purple', desc:'Kontrollerar hela tech-stacken' },
+  'check-bookings':       { icon:'📅', color:'green',  desc:'Hämtar senaste bokningar från Supabase' },
+  'check-supabase':       { icon:'🗄️', color:'blue',   desc:'Supabase databas-stats' },
+  'test-booking-e2e':     { icon:'✅', color:'green',  desc:'QA-test av hela bokningsflödet' },
+  'seo-audit':            { icon:'🔎', color:'purple', desc:'SEO-analys av alla nyckelsidor' },
+  'perf-audit':           { icon:'⚡', color:'orange', desc:'Core Web Vitals & laddtider' },
+  'test-cleaner-signup':  { icon:'👤', color:'green',  desc:'Testar städar-registreringsflödet' },
+  'test-stripe-checkout': { icon:'💳', color:'orange', desc:'Verifierar Stripe checkout-integration' },
+  'run-all-checks':       { icon:'🏥', color:'red',    desc:'Kör ALLA checks i ett svep' },
+  'watch-bookings':       { icon:'🔔', color:'green',  desc:'Kollar efter nya bokningar, notifierar' },
+  'self-test':            { icon:'🩺', color:'blue',   desc:'Full systemdiagnostik av agenten' },
+};
+const DEFAULT_META = { icon:'⚡', color:'green', desc:'Automation task' };
+
+let TOKEN = localStorage.getItem('spick_token') || '';
+let runCount = parseInt(localStorage.getItem('spick_runs') || '0');
+const BASE = location.origin;
+
+function doAuth() {
+  const input = document.getElementById('tokenInput').value.trim();
+  if (!input) return;
+  TOKEN = input;
+  verifyToken(input);
+}
+
+async function verifyToken(t) {
+  try {
+    const r = await fetch(BASE + '/status', { headers: { Authorization: 'Bearer ' + t } });
+    if (r.status === 403 || r.status === 401) {
+      document.getElementById('authErr').style.display = 'block';
+      return;
+    }
+    localStorage.setItem('spick_token', t);
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    init();
+  } catch {
+    document.getElementById('authErr').textContent = 'Kan inte nå agenten';
+    document.getElementById('authErr').style.display = 'block';
+  }
+}
+
+async function init() {
+  document.getElementById('statRun').textContent = runCount;
+  await loadHealth();
+  await loadTasks();
+  await loadHistory();
+  setInterval(loadHealth, 10000);
+  connectLiveFeed();
+}
+
+// ── WebSocket Live Feed ──
+let ws = null;
+function connectLiveFeed() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onopen = () => addLog('Live feed ansluten', 'ok');
+  ws.onclose = () => { addLog('Live feed frånkopplad', 'warn'); setTimeout(connectLiveFeed, 5000); };
+  ws.onerror = () => {};
+  ws.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'task:started') {
+        addLog('▶ ' + msg.taskName + ' startad', 'warn');
+        const card = document.getElementById('card-' + msg.taskName);
+        if (card) card.classList.add('running');
+        document.getElementById('statusDot').className = 'status-dot busy';
+        document.getElementById('statusText').textContent = 'Kör task…';
+      } else if (msg.type === 'task:completed') {
+        addLog('✅ ' + msg.taskName + ' klar', 'ok');
+        const card = document.getElementById('card-' + msg.taskName);
+        if (card) card.classList.remove('running');
+        loadHealth();
+      } else if (msg.type === 'task:failed') {
+        addLog('❌ ' + msg.taskName + ': ' + (msg.error || 'fel'), 'err');
+        const card = document.getElementById('card-' + msg.taskName);
+        if (card) card.classList.remove('running');
+        loadHealth();
+      }
+    } catch {}
+  };
+}
+
+async function apiFetch(path, opts = {}) {
+  return fetch(BASE + path, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json', ...opts.headers },
+  });
+}
+
+async function loadHealth() {
+  try {
+    const res = await fetch(BASE + '/health');
+    const data = await res.json();
+    document.getElementById('statUptime').textContent = Math.floor(data.uptime / 60);
+    document.getElementById('statusDot').className = 'status-dot' + (data.busy ? ' busy' : '');
+    document.getElementById('statusText').textContent = data.busy ? 'Kör task…' : 'Online';
+  } catch {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Offline';
+  }
+}
+
+async function loadTasks() {
+  try {
+    const res = await apiFetch('/tasks');
+    const data = await res.json();
+    const tasks = data.available;
+    document.getElementById('statTasks').textContent = tasks.length;
+    const grid = document.getElementById('taskGrid');
+    grid.innerHTML = '';
+    for (const name of tasks) {
+      const meta = TASK_META[name] || DEFAULT_META;
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.id = 'card-' + name;
+      card.innerHTML =
+        '<div class="task-icon ' + meta.color + '">' + meta.icon + '</div>' +
+        '<div class="task-info"><div class="task-name">' + name + '</div>' +
+        '<div class="task-desc">' + meta.desc + '</div></div>' +
+        '<div class="task-arrow">›</div>';
+      card.onclick = () => runTask(name);
+      grid.appendChild(card);
+    }
+  } catch { addLog('Kunde inte ladda tasks', 'err'); }
+}
+
+async function loadHistory() {
+  try {
+    const res = await apiFetch('/status');
+    const data = await res.json();
+    const body = document.getElementById('historyBody');
+    body.innerHTML = '';
+    const hist = data.recentHistory || [];
+    if (hist.length === 0) {
+      body.innerHTML = '<div class="log-entry"><span class="msg">Inga körningar ännu</span></div>';
+      return;
+    }
+    for (const h of hist.slice(0, 8)) {
+      const ok = h.status === 'completed';
+      const time = h.completedAt ? new Date(h.completedAt).toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' }) : '--:--';
+      const e = document.createElement('div');
+      e.className = 'hist-entry';
+      e.innerHTML = '<div class="hist-dot ' + (ok ? 'ok' : 'fail') + '"></div>' +
+        '<span class="hist-name">' + (ok ? '✓' : '✗') + ' ' + h.taskName + '</span>' +
+        '<span class="hist-time">' + time + '</span>';
+      e.style.cursor = 'pointer';
+      e.onclick = () => showModal(ok ? '✅' : '❌', h.taskName, h.result || { error: h.error });
+      body.appendChild(e);
+    }
+  } catch {}
+}
+
+// ── Task Parameter Definitions ──
+const TASK_PARAMS = {
+  'screenshot-page':     [{ id:'url', label:'URL', placeholder:'https://spick.se', default:'https://spick.se' }, { id:'device', label:'Enhet', type:'select', options:['desktop','mobile'], default:'desktop' }],
+  'start-booking-flow':  [{ id:'service', label:'Tjänst', type:'select', options:['Hemstädning','Storstädning','Flyttstädning','Fönsterputs'], default:'Hemstädning' }, { id:'sqm', label:'Kvm', placeholder:'65', default:'65' }],
+  'admin-login':         [{ id:'triggerMagicLink', label:'Skicka magic link?', type:'select', options:['false','true'], default:'false' }],
+  'seo-audit':           [{ id:'urls', label:'Extra URL (valfri)', placeholder:'https://spick.se/priser.html' }],
+};
+
+function runTask(name, params) {
+  // If params provided (from dialog), execute directly
+  if (params) return executeTask(name, params);
+
+  // Check if task needs params
+  const fields = TASK_PARAMS[name];
+  if (fields && fields.length > 0) {
+    showParamDialog(name, fields);
+    return;
+  }
+
+  // No params needed – run directly
+  executeTask(name, {});
+}
+
+function showParamDialog(taskName, fields) {
+  const meta = TASK_META[taskName] || DEFAULT_META;
+  let html = '<div style="margin-bottom:16px"><strong>' + meta.icon + ' ' + taskName + '</strong></div>';
+
+  for (const f of fields) {
+    html += '<div style="margin-bottom:12px"><label style="display:block;font-size:.78rem;color:var(--text2);margin-bottom:4px">' + f.label + '</label>';
+    if (f.type === 'select') {
+      html += '<select id="param-' + f.id + '" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:.88rem">';
+      for (const opt of f.options) {
+        html += '<option value="' + opt + '"' + (opt === f.default ? ' selected' : '') + '>' + opt + '</option>';
+      }
+      html += '</select>';
+    } else {
+      html += '<input id="param-' + f.id + '" type="text" value="' + (f.default || '') + '" placeholder="' + (f.placeholder || '') + '" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:.85rem;outline:none">';
+    }
+    html += '</div>';
+  }
+
+  document.getElementById('modalIcon').textContent = '⚙️';
+  document.getElementById('modalTitle').textContent = 'Parametrar';
+  document.getElementById('modalBody').innerHTML = html +
+    '<button onclick="submitParams(\'' + taskName + '\')" style="width:100%;padding:12px;background:var(--accent);color:#0a0a0f;border:none;border-radius:10px;font-family:var(--font);font-size:.9rem;font-weight:700;cursor:pointer;margin-top:8px">Kör ' + taskName + ' →</button>';
+  document.getElementById('modal').classList.add('active');
+}
+
+function submitParams(taskName) {
+  const fields = TASK_PARAMS[taskName] || [];
+  const params = {};
+  for (const f of fields) {
+    const el = document.getElementById('param-' + f.id);
+    if (el && el.value) {
+      let val = el.value;
+      if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      params[f.id] = val;
+    }
+  }
+  closeModal();
+  executeTask(taskName, params);
+}
+
+async function executeTask(name, params) {
+  const card = document.getElementById('card-' + name);
+  if (card && card.classList.contains('running')) return;
+  if (card) card.classList.add('running');
+  addLog('Startar ' + name + '…', 'warn');
+  try {
+    const res = await apiFetch('/run-task', { method: 'POST', body: JSON.stringify({ task: name, params: params || {} }) });
+    const data = await res.json();
+    if (card) card.classList.remove('running');
+    if (data.status === 'completed') {
+      addLog(name + ' ✅ klar', 'ok');
+      showModal('✅', name + ' – Klar', data.result);
+      runCount++;
+    } else if (data.status === 'rejected') {
+      addLog(name + ' ⏳ avvisad', 'warn');
+      showModal('⏳', name + ' – Avvisad', { reason: data.error });
+    } else {
+      addLog(name + ' ❌ ' + (data.error || 'fel'), 'err');
+      showModal('❌', name + ' – Misslyckades', { error: data.error });
+    }
+    document.getElementById('statRun').textContent = runCount;
+    localStorage.setItem('spick_runs', String(runCount));
+    loadHealth();
+    loadHistory();
+  } catch (err) {
+    if (card) card.classList.remove('running');
+    addLog(name + ' ❌ ' + err.message, 'err');
+  }
+}
+
+async function runWorkflow(id) {
+  addLog('🔄 Startar workflow: ' + id + '…', 'warn');
+  try {
+    const res = await apiFetch('/run-workflow', { method: 'POST', body: JSON.stringify({ workflow: id }) });
+    const data = await res.json();
+    if (data.status === 'all_pass') {
+      addLog('✅ ' + (data.name || id) + ': ' + data.passed + '/' + data.total + ' OK (' + Math.round(data.totalMs/1000) + 's)', 'ok');
+    } else {
+      addLog('⚠️ ' + (data.name || id) + ': ' + data.passed + '/' + data.total + ' OK, ' + data.failed + ' failed', 'err');
+    }
+    showModal(data.status === 'all_pass' ? '✅' : '⚠️', (data.name || id), {
+      status: data.status,
+      passed: data.passed + '/' + data.total,
+      time: Math.round(data.totalMs/1000) + 's',
+      steps: data.steps.map(s => (s.status === 'completed' ? '✓' : '✗') + ' ' + s.label)
+    });
+    loadHistory();
+  } catch (err) {
+    addLog('❌ Workflow fel: ' + err.message, 'err');
+  }
+}
+
+// ── Control Panel Functions ──
+
+async function toggleScheduler() {
+  try {
+    const res = await apiFetch('/scheduler/toggle', { method: 'POST' });
+    const data = await res.json();
+    const on = data.scheduler === 'started';
+    document.getElementById('schedBtn').textContent = (on ? '⏸' : '▶') + ' Scheduler ' + (on ? 'PÅ' : 'AV');
+    addLog('Scheduler ' + (on ? 'startad' : 'stoppad'), on ? 'ok' : 'warn');
+  } catch (err) { addLog('Scheduler-fel: ' + err.message, 'err'); }
+}
+
+async function showConfig() {
+  try {
+    const res = await apiFetch('/config');
+    const data = await res.json();
+    showModal('⚙️', 'Konfiguration', data);
+  } catch (err) { addLog('Config-fel: ' + err.message, 'err'); }
+}
+
+async function showServerLogs() {
+  try {
+    const res = await apiFetch('/logs/view?lines=30');
+    const data = await res.json();
+    const formatted = data.lines.map(l => {
+      const ts = l.timestamp ? l.timestamp.split(' ')[1] || '' : '';
+      const lvl = l.level || '';
+      return ts + ' [' + lvl + '] ' + (l.message || JSON.stringify(l));
+    }).join('\n');
+    document.getElementById('modalIcon').textContent = '📜';
+    document.getElementById('modalTitle').textContent = 'Server-logg (' + data.showing + '/' + data.total + ')';
+    document.getElementById('modalBody').innerHTML = '<pre style="font-size:.68rem;line-height:1.6;max-height:60vh;overflow:auto;white-space:pre-wrap">' + formatted + '</pre>';
+    document.getElementById('modal').classList.add('active');
+  } catch (err) { addLog('Log-fel: ' + err.message, 'err'); }
+}
+
+async function showScreenshots() {
+  try {
+    const res = await apiFetch('/logs/screenshots');
+    const data = await res.json();
+    if (!data.screenshots || data.screenshots.length === 0) {
+      showModal('🖼', 'Screenshots', { message: 'Inga screenshots sparade' });
+      return;
+    }
+    const html = data.screenshots.map(s =>
+      '<div style="margin-bottom:12px;padding:10px;background:var(--bg);border-radius:8px">' +
+      '<div style="font-size:.78rem;color:var(--text2);margin-bottom:4px">' + (s.timestamp || s.filename) + '</div>' +
+      '<div style="font-size:.82rem">' + s.filename + ' (' + Math.round(s.size/1024) + ' KB)</div>' +
+      '</div>'
+    ).join('');
+    document.getElementById('modalIcon').textContent = '🖼';
+    document.getElementById('modalTitle').textContent = 'Screenshots (' + data.screenshots.length + ')';
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('modal').classList.add('active');
+  } catch (err) { addLog('Screenshot-fel: ' + err.message, 'err'); }
+}
+
+function addLog(msg, type) {
+  const body = document.getElementById('logBody');
+  const now = new Date().toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const e = document.createElement('div');
+  e.className = 'log-entry ' + (type || '');
+  e.innerHTML = '<span class="time">' + now + '</span><span class="msg">' + msg + '</span>';
+  body.prepend(e);
+  while (body.children.length > 50) body.removeChild(body.lastChild);
+}
+function clearLog() { document.getElementById('logBody').innerHTML = ''; }
+
+function showModal(icon, title, data) {
+  document.getElementById('modalIcon').textContent = icon;
+  document.getElementById('modalTitle').textContent = title;
+  let content = '';
+  try { content = JSON.stringify(data, null, 2); } catch { content = String(data); }
+  document.getElementById('modalBody').innerHTML = '<pre>' + content + '</pre>';
+  document.getElementById('modal').classList.add('active');
+}
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+if (TOKEN) verifyToken(TOKEN);
+else document.getElementById('tokenInput').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
