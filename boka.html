@@ -644,10 +644,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const preCleanerId   = p.get('id');
   const preCleanerName = p.get('name') ? decodeURIComponent(p.get('name')) : '';
   const preRate        = +(p.get('rate') || 350);
-  if (preCleanerId) {
+  // Validera UUID-format (skydda mot SQL-injection via Supabase REST)
+  const isUUID = preCleanerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(preCleanerId);
+  if (isUUID) {
     state.cleanerId   = preCleanerId;
     state.cleanerName = preCleanerName;
-    state.cleanerRate = preRate;
+    state.cleanerRate = Math.min(Math.max(preRate, 100), 1000); // Clamp rate 100-1000
   }
   const now = new Date();
   state.calYear  = now.getFullYear();
@@ -843,12 +845,37 @@ async function goStep2() {
     setTimeout(() => document.getElementById('calendar').style.outline = '', 2000);
     return;
   }
-  // Säkerställ att availability-data finns
-  if (!Array.isArray(state.availability) || state.availability.length === 0) {
-    await loadGlobalAvailability();
-  }
-  // Om städare pre-vald via URL: verifiera tillgänglighet och hoppa direkt till steg 3
+  // Alltid ladda om availability-data (kan ha ändrats sedan sidladdning)
+  await loadGlobalAvailability();
+  // Om städare pre-vald via URL: verifiera ALLT innan skip
   if (state.cleanerId && state.cleanerName) {
+    // 1. Verifiera att städaren finns i DB och är godkänd
+    try {
+      const verifyRes = await fetch(`${SUPA}/rest/v1/cleaners?id=eq.${state.cleanerId}&is_approved=eq.true&select=id,services,full_name,hourly_rate,city`, {headers:H});
+      const verified = await verifyRes.json();
+      if (!Array.isArray(verified) || verified.length === 0) {
+        // Städare finns inte / ej godkänd — rensa
+        state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = 350;
+        setStep(2); await loadAvailableCleaners(); return;
+      }
+      const cl = verified[0];
+      // 2. Verifiera tjänstematch
+      const svcMatch = Array.isArray(cl.services) 
+        ? cl.services.some(s => s.toLowerCase().includes(state.service.toLowerCase().slice(0,3)))
+        : true; // Om inga tjänster listade, acceptera
+      if (!svcMatch) {
+        state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = 350;
+        setStep(2); await loadAvailableCleaners(); return;
+      }
+      // 3. Uppdatera state med DB-data (inte URL som kan manipuleras)
+      state.cleanerName = cl.full_name;
+      state.cleanerRate = cl.hourly_rate || 350;
+      state.cleanerCity = cl.city || '';
+    } catch(e) {
+      // DB-koll misslyckades — fortsätt till steg 2 som fallback
+      setStep(2); await loadAvailableCleaners(); return;
+    }
+    // 4. Verifiera dag-tillgänglighet + ej blockerad + ej bokad (med overlap)
     const dow = new Date(state.date + 'T00:00:00').getDay();
     const cleanerAvailToday = state.availability.some(a => 
       a.cleaner_id === state.cleanerId && a.day_of_week === dow
@@ -856,11 +883,16 @@ async function goStep2() {
     const cleanerBlockedToday = Array.isArray(state.blocked) && state.blocked.some(b => 
       b.cleaner_id === state.cleanerId && b.blocked_date === state.date
     );
-    const cleanerBookedNow = Array.isArray(state.bookings) && state.bookings.some(b => 
-      b.cleaner_id === state.cleanerId && b.date === state.date && b.time?.slice(0,5) === state.time
-    );
-    if (cleanerAvailToday && !cleanerBlockedToday && !cleanerBookedNow) {
-      // Städare tillgänglig — hoppa direkt till steg 3
+    // Overlap-check (inte bara exakt tid)
+    const myStart = timeToMin(state.time);
+    const myEnd = myStart + (state.hours || 3) * 60;
+    const cleanerOverlap = Array.isArray(state.bookings) && state.bookings.some(b => {
+      if (b.cleaner_id !== state.cleanerId || b.date !== state.date) return false;
+      const bStart = timeToMin(b.time);
+      const bEnd = bStart + (b.hours || 3) * 60;
+      return myStart < bEnd && myEnd > bStart;
+    });
+    if (cleanerAvailToday && !cleanerBlockedToday && !cleanerOverlap) {
       updateSidebar();
       setStep(3);
       return;
@@ -1527,23 +1559,32 @@ async function doBook() {
   btn.innerHTML = '<div class="spinner"></div> Verifierar tillgänglighet...';
   
   // ── PRE-PAYMENT AVAILABILITY CHECK ────────────────────────
-  // Verify the cleaner is STILL available at this slot (race condition protection)
+  // Verify the cleaner is STILL available (overlap check, not just exact time)
   try {
     const conflictRes = await fetch(
-      `${SUPA}/rest/v1/bookings?cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&time=eq.${state.time}&payment_status=eq.paid&status=neq.avbokad&select=id&limit=1`,
+      `${SUPA}/rest/v1/bookings?cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&payment_status=eq.paid&status=neq.avbokad&select=id,time,hours`,
       { headers: H }
     );
-    const conflicts = await conflictRes.json();
-    if (Array.isArray(conflicts) && conflicts.length > 0) {
-      btn.disabled = false;
-      btn.innerHTML = 'Betala säkert →';
-      const wrap = document.getElementById('confirm-summary');
-      wrap.innerHTML = '<div style="background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:1rem">' +
-        '<div style="font-weight:700;color:#991B1B;margin-bottom:.5rem">⚠️ Tiden har precis blivit bokad</div>' +
-        '<div style="font-size:.88rem;color:#991B1B">' + state.cleanerName + ' är tyvärr inte längre tillgänglig ' + formatDate(state.date) + ' kl ' + state.time + '.</div>' +
-        '<button onclick="goBack(1)" style="margin-top:1rem;background:var(--g);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:99px;font-weight:600;cursor:pointer;font-family:inherit">Välj annan tid →</button>' +
-        '</div>';
-      return;
+    const sameDayBookings = await conflictRes.json();
+    if (Array.isArray(sameDayBookings)) {
+      const myStart = timeToMin(state.time);
+      const myEnd = myStart + (state.hours || 3) * 60;
+      const conflict = sameDayBookings.some(b => {
+        const bStart = timeToMin(b.time);
+        const bEnd = bStart + (b.hours || 3) * 60;
+        return myStart < bEnd && myEnd > bStart; // overlap check
+      });
+      if (conflict) {
+        btn.disabled = false;
+        btn.innerHTML = 'Betala säkert →';
+        const wrap = document.getElementById('confirm-summary');
+        wrap.innerHTML = '<div style="background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:1rem">' +
+          '<div style="font-weight:700;color:#991B1B;margin-bottom:.5rem">⚠️ Tiden har precis blivit bokad</div>' +
+          '<div style="font-size:.88rem;color:#991B1B">' + state.cleanerName + ' är tyvärr inte längre tillgänglig ' + formatDate(state.date) + ' kl ' + state.time + '.</div>' +
+          '<button onclick="goBack(1)" style="margin-top:1rem;background:var(--g);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:99px;font-weight:600;cursor:pointer;font-family:inherit">Välj annan tid →</button>' +
+          '</div>';
+        return;
+      }
     }
   } catch(e) {
     // If check fails, proceed anyway — Stripe webhook will handle final verification
