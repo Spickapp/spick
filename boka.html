@@ -1134,9 +1134,15 @@ async function loadAvailableCleaners() {
     let cleaners = await res.json();
     // Filtrera: har tjänsten
     cleaners = cleaners.filter(c => {
-      const svcsRaw = Array.isArray(c.services) ? c.services.join(',') : (c.services||'');
-      const svcs = svcsRaw.toLowerCase();
-      // Korrekt kompetenscheck per tjänst
+      // Säkerställ att services alltid är en array
+      let svcs;
+      if (Array.isArray(c.services)) {
+        svcs = c.services.map(s => (s||'').toLowerCase());
+      } else if (typeof c.services === 'string' && c.services.length > 0) {
+        svcs = c.services.toLowerCase().split(',').map(s => s.trim());
+      } else {
+        svcs = [];
+      }
       const svcLow = state.service.toLowerCase();
       if (svcs.length === 0) return true; // Inga krav satta = kan alla
       if (svcLow === 'hemstädning') return svcs.some(s => s.includes('hem') || s.includes('städning'));
@@ -1182,7 +1188,16 @@ async function loadAvailableCleaners() {
     state.availableCleaners = cleaners;
     renderCleaners(cleaners);
   } catch(e) {
-    wrap.innerHTML = '<div class="no-cleaners"><div style="font-size:1.5rem;margin-bottom:.5rem">😕</div>Kunde inte ladda städare. <button onclick="loadAvailableCleaners()" style="color:var(--g);background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600">Försök igen →</button></div>';
+    console.error('loadAvailableCleaners error:', e.message, e);
+    wrap.innerHTML = '<div class="no-cleaners">' +
+      '<div style="font-size:1.5rem;margin-bottom:.5rem">😕</div>' +
+      '<div style="font-weight:600;margin-bottom:.375rem">Kunde inte ladda städare just nu</div>' +
+      '<div style="font-size:.82rem;color:var(--m);margin-bottom:1rem">Det kan bero på en tillfällig anslutningsstörning.</div>' +
+      '<button onclick="loadAvailableCleaners()" style="background:var(--g);color:#fff;border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;margin-right:.5rem">Försök igen →</button>' +
+      '<button onclick="goBack(1)" style="background:var(--border);color:var(--t);border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Ändra tid</button>' +
+      '</div>';
+    // Report error
+    if (typeof spickShowError === 'function') spickShowError(e);
   }
 }
 
