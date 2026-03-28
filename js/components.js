@@ -1,10 +1,79 @@
 // ═══════════════════════════════════════════════════════════════
 // SPICK – Delade komponenter (nav, footer, mobilmeny)
 // Ladda efter config.js: <script src="js/components.js" defer></script>
+// Self-contained: injicerar sin egen CSS – inga externa beroenden
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
 'use strict';
+
+// ── INJECT CSS (körs direkt, innan DOM-beroende logik) ───────
+// Injicera en gång per sida även om scriptet laddas flera gånger
+if (!document.getElementById('spick-nav-css')) {
+  const style = document.createElement('style');
+  style.id = 'spick-nav-css';
+  style.textContent = `
+/* === SPICK GLOBAL NAV & FOOTER – injicerat av components.js === */
+:root{
+  --g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;
+  --b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff;
+}
+/* NAV */
+nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid #E8E8E4;
+  position:sticky;top:0;z-index:100;backdrop-filter:blur(8px);}
+.logo{font-family:'Playfair Display',Georgia,serif;font-size:1.7rem;font-weight:700;
+  color:#0F6E56;text-decoration:none;}
+.nav-links{display:flex;align-items:center;gap:2rem;}
+.nl{font-size:.9rem;color:#6B6960;text-decoration:none;transition:color .2s;}
+.nl:hover{color:#0F6E56;}
+.nl-btn{padding:.55rem 1.4rem;border-radius:100px;font-size:.875rem;font-weight:600;
+  color:#fff;background:#0F6E56;text-decoration:none;transition:all .2s;}
+.nl-btn:hover{background:#1D9E75;}
+.nl-out{padding:.55rem 1.2rem;border-radius:100px;font-size:.875rem;font-weight:500;
+  color:#0F6E56;border:1.5px solid #0F6E56;text-decoration:none;transition:all .2s;}
+.nl-out:hover{background:#E1F5EE;}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;
+  padding:4px;border:none;background:none;}
+.hamburger span{display:block;width:22px;height:2px;background:#1C1C1A;
+  border-radius:2px;transition:all .3s;}
+/* MOBILE MENU */
+.mob-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.5);z-index:200;}
+.mob-panel{background:#fff;width:280px;height:100%;margin-left:auto;
+  padding:2rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem;}
+.mob-panel a{font-size:1.1rem;color:#1C1C1A;text-decoration:none;
+  font-weight:500;padding:.75rem 0;border-bottom:1px solid #E8E8E4;}
+.mob-panel a:last-child{border:none;}
+@media(max-width:1024px){nav{padding:1rem 2rem;}}
+@media(max-width:768px){.nav-links{display:none;}.hamburger{display:flex;}}
+/* FOOTER */
+footer{background:#080808;padding:4rem 5rem 2rem;}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem;}
+.footer-logo{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700;
+  color:#1D9E75;margin-bottom:.75rem;}
+.footer-desc{font-size:.875rem;color:#5A5A55;line-height:1.7;max-width:260px;}
+.footer-contact{margin-top:1.25rem;display:flex;flex-direction:column;gap:.5rem;}
+.footer-contact a{font-size:.875rem;color:#1D9E75;text-decoration:none;}
+footer h4{font-size:.7rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.1em;color:#3A3A35;margin-bottom:1rem;}
+footer ul{list-style:none;display:flex;flex-direction:column;gap:.625rem;}
+footer a{font-size:.875rem;color:#6B6B65;text-decoration:none;transition:color .2s;}
+footer a:hover{color:#1D9E75;}
+.footer-bottom{border-top:1px solid #1A1A1A;padding-top:2rem;display:flex;
+  justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-bottom p{font-size:.8rem;color:#3A3A35;}
+.footer-bottom-links{display:flex;gap:1.5rem;}
+.footer-bottom-links a{font-size:.8rem;color:#3A3A35;text-decoration:none;}
+.footer-bottom-links a:hover{color:#1D9E75;}
+@media(max-width:1024px){.footer-top{grid-template-columns:1fr 1fr;}
+  .footer-top>:first-child{grid-column:1/-1;}}
+@media(max-width:640px){footer{padding:3rem 1.5rem 2rem;}}
+/* === END SPICK GLOBAL NAV & FOOTER === */
+  `;
+  // Försök sätta in CSS i <head>, annars direkt i <html>
+  (document.head || document.documentElement).prepend(style);
+}
 
 // Beräkna sökvägsprefix baserat på sidans djup
 const depth = (location.pathname.match(/\//g) || []).length - 1;
@@ -108,7 +177,9 @@ const FOOTER_HTML = `
 </div>`;
 
 // ── INJICERA VID SIDLADDNING ────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
+// Kör direkt om DOMContentLoaded redan har inträffat (t.ex. om defer
+// innebar att scriptet laddades sent och eventet redan passerat)
+function injectComponents() {
   // Uppdatera <nav> om den finns OCH inte har data-nav-keep
   const nav = document.querySelector('nav');
   if (nav && !nav.hasAttribute('data-nav-keep')) {
@@ -142,7 +213,16 @@ document.addEventListener('DOMContentLoaded', function() {
       link.style.fontWeight = '600';
     }
   });
-});
+}
+
+// Race-condition-säker initiering:
+// Om DOM redan är redo (kan hända med defer + snabb laddning), kör direkt.
+// Annars vänta på DOMContentLoaded.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', injectComponents);
+} else {
+  injectComponents();
+}
 
 // Exponera för manuell användning
 window.SPICK_COMPONENTS = { NAV_HTML, MOB_HTML, FOOTER_HTML };
