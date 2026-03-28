@@ -522,10 +522,24 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </select>
           </div>
 
-          <button class="btn-primary" onclick="goStep4()" style="margin-top:1.25rem">Gå vidare till betalning →</button>
+          <button class="btn-primary" onclick="goStep4()" id="step3-submit" style="margin-top:1.25rem">Gå vidare till betalning →</button>
           <button class="btn-secondary" onclick="goBack(2)">← Välj annan städare</button>
         </div>
       </div>
+      <!-- Real-time validation: clear errors on input -->
+      <script>
+      ['fname','lname','email','phone','address','pnr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+          el.classList.remove('invalid');
+          const ie = el.parentElement?.querySelector('.f-inline-error');
+          if (ie) ie.remove();
+          const sum = document.getElementById('step3-error-summary');
+          if (sum) sum.remove();
+        });
+      });
+      </script>
     </div>
 
     <!-- ── STEG 4: BEKRÄFTA & BETALA ──────── -->
@@ -1513,47 +1527,116 @@ document.addEventListener('click', e => {
 });
 
 function goStep4() {
-  const fn = document.getElementById('fname').value.trim();
-  const ln = document.getElementById('lname').value.trim();
-  const em = document.getElementById('email').value.trim();
-  const ph = document.getElementById('phone').value.trim();
-  const ad = document.getElementById('address').value.trim();
-  const pn = document.getElementById('pnr').value.trim();
-  const required = [{id:'fname',val:fn},{id:'lname',val:ln},{id:'email',val:em},{id:'phone',val:ph},{id:'address',val:ad}];
+  const fields = {
+    fname:   { el: document.getElementById('fname'),   val: document.getElementById('fname').value.trim(),   label: 'Förnamn' },
+    lname:   { el: document.getElementById('lname'),   val: document.getElementById('lname').value.trim(),   label: 'Efternamn' },
+    email:   { el: document.getElementById('email'),   val: document.getElementById('email').value.trim(),   label: 'E-post' },
+    phone:   { el: document.getElementById('phone'),   val: document.getElementById('phone').value.trim(),   label: 'Mobilnummer' },
+    address: { el: document.getElementById('address'), val: document.getElementById('address').value.trim(), label: 'Adress' },
+  };
+  
+  // PNR only required if RUT enabled
   if (useRut) {
-    // Säkerställ att personnummer-fältet är synligt
     document.getElementById('pnr-wrap').style.display = 'block';
-    required.push({id:'pnr',val:pn});
+    fields.pnr = { el: document.getElementById('pnr'), val: document.getElementById('pnr').value.trim(), label: 'Personnummer' };
   }
-  let ok = true;
-  let firstInvalid = null;
-  required.forEach(f => {
-    const el = document.getElementById(f.id);
-    if (!f.val) { 
-      el.classList.add('invalid'); 
-      if (!firstInvalid) firstInvalid = el;
-      ok = false; 
+  
+  // ── VALIDATE EACH FIELD ──────────────────────────────────
+  const errors = [];
+  
+  // Clear all previous errors
+  document.querySelectorAll('.f-inline-error').forEach(e => e.remove());
+  Object.values(fields).forEach(f => f.el.classList.remove('invalid'));
+  document.getElementById('err-email').style.display = 'none';
+  
+  // Helper: show inline error under a field
+  function showFieldError(el, msg) {
+    el.classList.add('invalid');
+    const existing = el.parentElement.querySelector('.f-inline-error');
+    if (existing) existing.remove();
+    const err = document.createElement('div');
+    err.className = 'f-inline-error';
+    err.style.cssText = 'font-size:.75rem;color:#dc2626;margin-top:.25rem;font-weight:500';
+    err.textContent = '⚠ ' + msg;
+    el.insertAdjacentElement('afterend', err);
+  }
+  
+  // Required fields — empty check
+  for (const [key, f] of Object.entries(fields)) {
+    if (!f.val) {
+      showFieldError(f.el, f.label + ' kan inte vara tomt');
+      errors.push(key);
+    }
+  }
+  
+  // Email format
+  if (fields.email.val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.val)) {
+    showFieldError(fields.email.el, 'Ogiltig e-postadress — t.ex. namn@email.se');
+    if (!errors.includes('email')) errors.push('email');
+  }
+  
+  // Phone format — auto-fix common patterns
+  if (fields.phone.val) {
+    let ph = fields.phone.val.replace(/[\s\-()]/g, '');
+    if (ph.startsWith('0') && ph.length >= 10) ph = '+46' + ph.slice(1);
+    if (!/^\+?\d{10,15}$/.test(ph)) {
+      showFieldError(fields.phone.el, 'Ogiltigt nummer — t.ex. 070 123 45 67');
+      if (!errors.includes('phone')) errors.push('phone');
     } else {
-      el.classList.remove('invalid');
-    }
-  });
-  // Scrolla till FÖRSTA tomma fältet
-  if (firstInvalid) {
-    firstInvalid.scrollIntoView({behavior:'smooth', block:'center'});
-    firstInvalid.focus();
-    // Visa felmeddelande vid personnummer specifikt
-    if (firstInvalid.id === 'pnr') {
-      const hint = document.getElementById('pnr-hint');
-      if (hint) { hint.textContent = '⚠️ Personnummer krävs för RUT-avdrag'; hint.style.color = '#dc2626'; }
+      fields.phone.el.value = ph; // Auto-format
+      fields.phone.val = ph;
     }
   }
-  // E-post-validering
-  if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-    document.getElementById('email').classList.add('invalid');
-    document.getElementById('err-email').style.display='block'; ok=false;
-  } else document.getElementById('err-email').style.display='none';
-  if (!ok) return;
-  state.fname=fn; state.lname=ln; state.email=em; state.phone=ph; state.address=ad; state.pnr=pn;
+  
+  // PNR format (if RUT)
+  if (useRut && fields.pnr && fields.pnr.val) {
+    const digits = fields.pnr.val.replace(/[^0-9]/g, '');
+    if (digits.length !== 10 && digits.length !== 12) {
+      showFieldError(fields.pnr.el, 'Ange 10 eller 12 siffror — YYYYMMDD-XXXX');
+      if (!errors.includes('pnr')) errors.push('pnr');
+    }
+  }
+  
+  // Address minimum length
+  if (fields.address.val && fields.address.val.length < 5) {
+    showFieldError(fields.address.el, 'Ange en fullständig adress med gatunummer');
+    if (!errors.includes('address')) errors.push('address');
+  }
+  
+  // ── HANDLE ERRORS ────────────────────────────────────────
+  if (errors.length > 0) {
+    // Scroll to and focus first error
+    const firstErr = fields[errors[0]].el;
+    firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => firstErr.focus(), 300);
+    
+    // Show summary at top of form
+    const existingSummary = document.getElementById('step3-error-summary');
+    if (existingSummary) existingSummary.remove();
+    const summary = document.createElement('div');
+    summary.id = 'step3-error-summary';
+    summary.style.cssText = 'background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:12px 16px;margin-bottom:1rem;font-size:.85rem;color:#991B1B';
+    summary.innerHTML = '<strong>⚠️ ' + errors.length + ' fält behöver åtgärdas:</strong> ' + 
+      errors.map(k => fields[k].label).join(', ');
+    const cardBody = document.querySelector('#step3 .card-body');
+    cardBody.insertBefore(summary, cardBody.firstChild);
+    return;
+  }
+  
+  // ── ALL VALID — remove any error summary and proceed ─────
+  const existingSummary = document.getElementById('step3-error-summary');
+  if (existingSummary) existingSummary.remove();
+  
+  state.fname = fields.fname.val;
+  state.lname = fields.lname.val;
+  state.email = fields.email.val;
+  state.phone = fields.phone.val;
+  state.address = fields.address.val;
+  state.pnr = useRut ? fields.pnr.val : '';
+  state.customerNotes = document.getElementById('customer-notes')?.value?.trim() || '';
+  state.keyType = state.keyType || 'open';
+  state.keyInfo = state.keyInfo || '';
+  
   buildConfirmSummary();
   setStep(4);
 }
