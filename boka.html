@@ -825,6 +825,10 @@ async function goStep2() {
     return;
   }
   setStep(2);
+  // Säkerställ att availability-data finns (kan saknas vid race condition)
+  if (!Array.isArray(state.availability) || state.availability.length === 0) {
+    await loadGlobalAvailability();
+  }
   await loadAvailableCleaners();
 }
 
@@ -1159,10 +1163,10 @@ async function loadAvailableCleaners() {
       cleaners = cleaners.filter(c => dayAvail.includes(c.id));
     }
     // Filtrera: inte blockerade denna dag
-    const blockedToday = state.blocked.filter(b => b.blocked_date === state.date).map(b => b.cleaner_id);
+    const blockedToday = Array.isArray(state.blocked) ? state.blocked.filter(b => b.blocked_date === state.date).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !blockedToday.includes(c.id));
     // Filtrera: inte fullbokade denna tid
-    const takenNow = state.bookings.filter(b => b.date === state.date && b.time?.slice(0,5) === state.time).map(b => b.cleaner_id);
+    const takenNow = Array.isArray(state.bookings) ? state.bookings.filter(b => b.date === state.date && b.time?.slice(0,5) === state.time).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !takenNow.includes(c.id));
     // Sortera: betyg → antal uppdrag → pris
     cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
@@ -1220,7 +1224,7 @@ function renderCleaners(cleaners) {
     const rate = cl.hourly_rate || 350;
     const rutRate = Math.round(rate * 0.5);
     const stars = '⭐'.repeat(Math.round(cl.avg_rating||5));
-    const services = (cl.services||'').split(',').slice(0,3).map(s=>s.trim()).filter(Boolean);
+    const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : (cl.services||'').split(',').slice(0,3).map(s=>s.trim()).filter(Boolean);
     const card = document.createElement('div');
     card.className = 'cleaner-card';
     card.innerHTML = `
