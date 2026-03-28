@@ -227,6 +227,40 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
     cleaner = await assignBestCleaner(booking);
   }
 
+  // ── DOUBLE-BOOKING GUARD (server-side, final check) ──────────
+  // Before marking as paid, verify no other paid booking exists for same slot
+  const { data: conflicts } = await sb.from("bookings")
+    .select("id")
+    .eq("cleaner_id", cleaner?.id || booking.cleaner_id)
+    .eq("date", booking.date)
+    .eq("time", booking.time)
+    .eq("payment_status", "paid")
+    .neq("status", "avbokad")
+    .neq("id", bookingId)
+    .limit(1);
+  
+  if (conflicts && conflicts.length > 0) {
+    // Double-booking detected — refund automatically
+    console.error(`DOUBLE-BOOKING BLOCKED: booking ${bookingId} conflicts with ${conflicts[0].id}`);
+    await sb.from("bookings").update({ 
+      payment_status: "refunded", 
+      status: "avbokad",
+      customer_notes: (booking.customer_notes || '') + ' [Auto-refund: dubbelbokningskonflikt]'
+    }).eq("id", bookingId);
+    // Trigger Stripe refund
+    if (session.payment_intent) {
+      try {
+        const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+          body: `payment_intent=${session.payment_intent}`,
+        });
+        console.log("Auto-refund result:", refundRes.status);
+      } catch (re) { console.error("Refund failed:", re); }
+    }
+    return new Response(JSON.stringify({ ok: false, reason: "double-booking" }), { status: 200 });
+  }
+
   // Uppdatera bokning
   const metadata = session.metadata as Record<string, string> || {};
   await sb.from("bookings").update({

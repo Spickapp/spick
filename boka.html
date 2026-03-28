@@ -980,12 +980,14 @@ function getAvailableSlots(dateStr, neededHours) {
   }
 
   // Bokade fönster denna dag (per städare): [{cleanerId, startMin, endMin}]
+  // +30 min resttid/restid efter varje bokning
+  const TRAVEL_BUFFER = 30;
   const bookedWindows = state.bookings
     .filter(b => b.date === dateStr)
     .map(b => ({
       cleanerId: b.cleaner_id,
       startMin:  timeToMin(b.time),
-      endMin:    timeToMin(b.time_end) || timeToMin(b.time) + (b.hours||3)*60
+      endMin:    (timeToMin(b.time_end) || timeToMin(b.time) + (b.hours||3)*60) + TRAVEL_BUFFER
     }));
 
   // För varje möjlig starttid (var 30:e minut inom det bredaste fönstret):
@@ -1553,7 +1555,10 @@ function buildConfirmSummary() {
 }
 
 // ── STEG 4: BETALA ────────────────────────────────────────────────────────────
+let _bookingInProgress = false;
 async function doBook() {
+  if (_bookingInProgress) return; // Prevent double-submit
+  _bookingInProgress = true;
   const btn = document.getElementById('pay-btn');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Verifierar tillgänglighet...';
@@ -1575,7 +1580,7 @@ async function doBook() {
         return myStart < bEnd && myEnd > bStart; // overlap check
       });
       if (conflict) {
-        btn.disabled = false;
+        btn.disabled = false; _bookingInProgress = false;
         btn.innerHTML = 'Betala säkert →';
         const wrap = document.getElementById('confirm-summary');
         wrap.innerHTML = '<div style="background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:1rem">' +
@@ -1660,7 +1665,7 @@ async function doBook() {
       throw new Error('Ingen checkout-URL');
     }
   } catch(e) {
-    btn.disabled = false;
+    btn.disabled = false; _bookingInProgress = false;
     btn.innerHTML = 'Bekräfta och betala →';
     alert('Betalningen kunde inte startas. Försök igen eller kontakta hello@spick.se\n\n' + e.message);
   }
