@@ -1738,9 +1738,12 @@ async function doBook() {
       cleaner_name: state.cleanerName,
       ...(hashedPnr ? {customer_pnr_hash: hashedPnr} : {})
     };
+    // Generate booking ID client-side (avoids needing return=representation which requires SELECT RLS)
+    const bookingId = crypto.randomUUID();
+    bookingData.id = bookingId;
     const dbRes = await fetch(`${SUPA}/rest/v1/bookings`, {
       method:'POST',
-      headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
+      headers:{...H,'Content-Type':'application/json','Prefer':'return=minimal'},
       body: JSON.stringify(bookingData)
     });
     if (!dbRes.ok) {
@@ -1748,8 +1751,6 @@ async function doBook() {
       console.error('Booking INSERT failed:', dbRes.status, dbBody);
       throw new Error('DB ' + dbRes.status);
     }
-    const [booking] = await dbRes.json();
-    const bookingId = booking.id;
     // 3. Stripe checkout
     const stripeRes = await fetch(`${SUPA}/functions/v1/stripe-checkout`, {
       method:'POST',
