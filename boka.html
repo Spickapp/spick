@@ -1259,24 +1259,37 @@ function renderCleaners(cleaners) {
   if (state.cleanerId) {
     const preSelected = cleaners.find(c => c.id === state.cleanerId);
     if (preSelected) {
-      // Hitta och markera kortet visuellt
+      // Städaren finns bland tillgängliga — markera kortet
       const cards = list.querySelectorAll('.cleaner-card');
       cards.forEach((card, idx) => {
         if (cleaners[idx] && cleaners[idx].id === state.cleanerId) {
           card.classList.add('selected');
         }
       });
-      // Uppdatera state med fullständig data (URL har bara namn+rate, inte city/bio)
       state.cleanerName = preSelected.full_name;
       state.cleanerRate = preSelected.hourly_rate || 350;
       state.cleanerCity = preSelected.city || '';
       updateSidebar();
-      // Visa "Fortsätt"-knapp så kunden slipper klicka igen
+      // Visa "Fortsätt"-knapp
       const contBtn = document.createElement('div');
       contBtn.style.cssText = 'text-align:center;margin-top:1rem';
       contBtn.innerHTML = '<button onclick="setStep(3)" style="background:var(--g);color:#fff;border:none;padding:.875rem 2rem;border-radius:99px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(15,110,86,.3)">Fortsätt med ' + (preSelected.full_name||'vald städare').split(' ')[0] + ' →</button>' +
         '<div style="font-size:.78rem;color:var(--m);margin-top:.5rem">eller välj en annan städare ovan</div>';
       wrap.appendChild(contBtn);
+    } else {
+      // Städaren är INTE tillgänglig denna tid — rensa och visa meddelande
+      const oldName = state.cleanerName || 'Din valda städare';
+      state.cleanerId = null;
+      state.cleanerName = '';
+      state.cleanerRate = 350;
+      state.cleanerCity = '';
+      updateSidebar();
+      // Visa info-banner ovanför listan
+      const notice = document.createElement('div');
+      notice.style.cssText = 'background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:14px 18px;margin-bottom:1rem;font-size:.88rem;color:#92400E';
+      notice.innerHTML = '<strong>' + oldName + '</strong> är tyvärr inte tillgänglig ' + formatDate(state.date) + ' kl ' + state.time + '.' +
+        '<br><span style="font-size:.82rem">Välj en av städarna nedan, eller <a href="#" onclick="goBack(1);return false" style="color:#0F6E56;font-weight:600">ändra datum/tid</a> för att se om ' + oldName.split(' ')[0] + ' har andra lediga tider.</span>';
+      wrap.insertBefore(notice, list);
     }
   }
 }
