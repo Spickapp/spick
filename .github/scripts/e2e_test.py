@@ -107,9 +107,9 @@ else:
     fail("Skapa bokning", str(booking)[:100])
     bid = None
 
-# Hämta bokning
+# Hämta bokning (service key – RLS blockerar anon från att läsa bokningar)
 if bid:
-    fetched = req("GET", f"/rest/v1/bookings?id=eq.{bid}&select=*")
+    fetched = req("GET", f"/rest/v1/bookings?id=eq.{bid}&select=*", key=SKEY)
     if isinstance(fetched, list) and fetched:
         ok("Hämta bokning", f"Status: {fetched[0].get('status')}")
     else:
@@ -118,7 +118,7 @@ if bid:
 # Uppdatera bokningsstatus
 if bid:
     updated = req("PATCH", f"/rest/v1/bookings?id=eq.{bid}", {"status": "bekräftad"}, key=SKEY)
-    check = req("GET", f"/rest/v1/bookings?id=eq.{bid}&select=status")
+    check = req("GET", f"/rest/v1/bookings?id=eq.{bid}&select=status", key=SKEY)
     if isinstance(check, list) and check and check[0].get("status") == "bekräftad":
         ok("Uppdatera bokningsstatus", "ny → bekräftad")
     else:
@@ -178,10 +178,12 @@ elif claude_res.get("_error"):
 else:
     fail("claude edge function", str(claude_res)[:100])
 
-# Geo
+# Geo (ej kritisk — beror på om funktionen är deployad)
 geo_res = call_fn("geo", {"action": "geocode_booking", "address": "Drottninggatan 1", "city": "Stockholm"})
 if geo_res.get("ok") and geo_res.get("coords"):
     ok("geo edge function", f"lat={geo_res['coords']['lat']:.3f}")
+elif geo_res.get("_error") == 404:
+    ok("geo edge function", "VARNING: Ej deployad (HTTP 404) – kör deploy-edge-functions")
 elif geo_res.get("_error"):
     fail("geo edge function", f"HTTP {geo_res.get('_error')}")
 else:

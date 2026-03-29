@@ -10,12 +10,16 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Kör auto-remind
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -H "apikey: $SUPA_KEY" \
             -H "Content-Type: application/json" \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/auto-remind" \
+            "$SUPA_URL/functions/v1/auto-remind" \
             -d '{}')
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)

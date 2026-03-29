@@ -68,11 +68,11 @@ def send_alert(failures):
 PAGES = [
     {
         "url": f"{SITE}/",
-        "name": "Startsida – städarlista laddas",
-        "wait_for": "#grid",                     # Elementet måste finnas
-        "must_visible": "#grid",                  # Och vara synligt
+        "name": "Startsida – hero laddas",
+        "wait_for": ".hero",                      # Hero-sektionen måste finnas
+        "must_visible": ".hero",                   # Och vara synlig
         "must_not_blank": True,
-        "max_console_errors": 1,                  # pwa.js-felet är känt – tillåt max 1
+        "max_console_errors": 1,                   # pwa.js-felet är känt – tillåt max 1
     },
     {
         "url": f"{SITE}/stadare-dashboard.html",
@@ -92,12 +92,12 @@ PAGES = [
     },
     {
         "url": f"{SITE}/stadare.html",
-        "name": "Städarlista – grid visas",
-        "wait_for": "#grid",
-        "must_visible": "#grid",
+        "name": "Städarlista – redirect till boka.html",
         "must_not_blank": True,
+        "wait_for": "#step1",                     # Redirectar till boka.html som har #step1
+        "must_visible": "#step1",
         "max_console_errors": 2,
-        "extra_wait": 3000,   # Async data från Supabase
+        "extra_wait": 3000,   # Vänta på redirect
     },
     {
         "url": f"{SITE}/priser.html",

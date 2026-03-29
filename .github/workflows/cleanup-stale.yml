@@ -10,12 +10,16 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Call cleanup Edge Function
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -H "apikey: $SUPA_KEY" \
             -H "Content-Type: application/json" \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/cleanup-stale")
+            "$SUPA_URL/functions/v1/cleanup-stale")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -n -1)
