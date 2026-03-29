@@ -1411,6 +1411,45 @@ function renderCleaners(cleaners) {
   }
 }
 
+
+async function findFirstAvailable() {
+  const btn = document.getElementById('find-first-btn');
+  const result = document.getElementById('first-avail-result');
+  btn.textContent = '⏳ Söker...';
+  btn.disabled = true;
+  result.style.display = 'none';
+  const days = [];
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  const times = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
+  for (const day of days) {
+    for (const time of times) {
+      try {
+        const {data} = await SB.from('cleaners')
+          .select('id,full_name')
+          .eq('is_approved', true)
+          .limit(1);
+        if (data && data.length > 0) {
+          const nice = new Date(day+'T12:00').toLocaleDateString('sv-SE',{weekday:'long',day:'numeric',month:'long'});
+          result.innerHTML = '<div style="background:var(--gp);border-radius:16px;padding:1rem 1.5rem"><div style="font-weight:700;color:var(--g);margin-bottom:.25rem">✅ Tillgänglig tid hittad!</div><div style="font-size:.95rem;font-weight:600">' + nice + ' kl. ' + time + '</div><button onclick="state.date=\'' + day + '\';state.time=\'' + time + '\';goStep2()" style="background:var(--g);color:#fff;border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:.75rem">Boka denna tid →</button></div>';
+          result.style.display = 'block';
+          btn.textContent = '🔍 Visa första tillgängliga tid →';
+          btn.disabled = false;
+          return;
+        }
+      } catch(e) { /* continue */ }
+    }
+  }
+  result.innerHTML = '<div style="color:var(--m);font-size:.85rem">Tyvärr hittade vi ingen ledig tid de närmaste 14 dagarna. <a href="mailto:hello@spick.se" style="color:var(--g)">Kontakta oss</a> så hjälper vi dig.</div>';
+  result.style.display = 'block';
+  btn.textContent = '🔍 Visa första tillgängliga tid →';
+  btn.disabled = false;
+}
 function selectCleaner(cl, cardEl) {
   state.cleanerId   = cl.id;
   state.cleanerName = cl.full_name;
@@ -1929,6 +1968,8 @@ document.addEventListener('mouseleave', e => {
 </script>
 </body>
 </html>
+
+
 
 
 
