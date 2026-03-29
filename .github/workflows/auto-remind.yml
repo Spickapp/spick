@@ -1,20 +1,29 @@
 name: Auto-remind (var 30:e minut)
-on:
+'on':
   schedule:
     - cron: '*/30 * * * *'
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   remind:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    timeout-minutes: 2
     steps:
       - name: Kör auto-remind
         run: |
-          curl -s -X POST \
-            "https://urjeijcncsyuletprydy.supabase.co/functions/v1/auto-remind" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
-            -d '{}' | jq .
+            "${{ secrets.SUPABASE_URL }}/functions/v1/auto-remind" \
+            -d '{}')
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::Auto-remind failed with HTTP $HTTP_CODE"
+          fi

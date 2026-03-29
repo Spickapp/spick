@@ -43,8 +43,19 @@ async function mail(to: string, subject: string, html: string) {
   return res.ok;
 }
 
+const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, {headers:{"Access-Control-Allow-Origin":"https://spick.se"}});
+
+  // Auth: kräv CRON_SECRET (samma som cleanup-stale)
+  const authHeader = req.headers.get("authorization") || "";
+  const token = authHeader.replace("Bearer ", "");
+  if (!CRON_SECRET || token !== CRON_SECRET) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { "Content-Type": "application/json" }
+    });
+  }
 
   const now  = new Date();
   const sent: string[] = [];

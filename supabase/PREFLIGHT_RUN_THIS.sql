@@ -99,6 +99,31 @@ GRANT SELECT ON public_stats TO anon, authenticated;
 
 
 -- ╔══════════════════════════════════════════════════╗
+-- ║  BLOCK 3b: SAKNADE TABELLER                      ║
+-- ║  Tabeller som refereras av andra block            ║
+-- ╚══════════════════════════════════════════════════╝
+
+CREATE TABLE IF NOT EXISTS booking_status_log (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+  old_status TEXT,
+  new_status TEXT,
+  changed_by TEXT DEFAULT 'system',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_log_booking 
+  ON booking_status_log(booking_id);
+
+ALTER TABLE booking_status_log ENABLE ROW LEVEL SECURITY;
+
+-- Bara service_role kan läsa/skriva
+CREATE POLICY IF NOT EXISTS "Service role only status log"
+  ON booking_status_log FOR ALL
+  USING (auth.role() = 'service_role');
+
+
+-- ╔══════════════════════════════════════════════════╗
 -- ║  BLOCK 4: SKÄRPT CLEANER CLAIM RLS               ║
 -- ╚══════════════════════════════════════════════════╝
 

@@ -84,6 +84,26 @@ CREATE POLICY "Approved cleaner claims open bookings" ON bookings
 
 
 -- ╔══════════════════════════════════════════════════╗
+-- ║  FIX 2b: Saknad tabell booking_status_log        ║
+-- ║  Refereras av cleanup_stale_bookings             ║
+-- ╚══════════════════════════════════════════════════╝
+
+CREATE TABLE IF NOT EXISTS booking_status_log (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+  old_status TEXT,
+  new_status TEXT,
+  changed_by TEXT DEFAULT 'system',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_log_booking 
+  ON booking_status_log(booking_id);
+
+ALTER TABLE booking_status_log ENABLE ROW LEVEL SECURITY;
+
+
+-- ╔══════════════════════════════════════════════════╗
 -- ║  FIX 3: Stale booking cleanup                   ║
 -- ║  Rensa pending-bokningar äldre än 30 min         ║
 -- ║  (kund avbröt Stripe checkout)                   ║
