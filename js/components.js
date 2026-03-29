@@ -88,7 +88,7 @@ const NAV_HTML = `
   <a href="${P}priser.html" class="nl">Priser</a>
   <a href="${P}stadare.html" class="nl">Städare</a>
   <a href="${P}bli-stadare.html" class="nl-out">Bli städare</a>
-  <a href="${P}stadare.html" class="nl-btn">Boka städning</a>
+  <a href="${P}boka.html" class="nl-btn">Boka städning</a>
 </div>
 <button class="hamburger" onclick="document.getElementById('mobMenu').style.display='flex'" aria-label="Öppna meny">
   <span></span><span></span><span></span>
