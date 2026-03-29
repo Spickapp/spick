@@ -503,16 +503,27 @@ function googleTranslateElementInit() {
     <div class="fstep" id="step4">
       <div class="bankid-box">
         <div style="font-size:2rem">🔒</div>
-        <h3>BankID-verifiering</h3>
-        <p>Vi verifierar din identitet via BankID. Tar 30 sekunder. Ditt personnummer sparas krypterat och visas aldrig för kunder.</p>
-        <input id="pnr" type="text" placeholder="YYYYMMDD-XXXX" maxlength="13" autocomplete="off" inputmode="numeric" aria-label="Personnummer">
-        <div class="hint" style="text-align:center">Format: 19901231-1234</div>
-      </div>
-      <ul class="bankid-checks">
-        <li>Vi skickar aldrig ditt personnummer till tredje part</li>
-        <li>Kunder ser bara ditt namn och betyg</li>
-        <li>BankID-badge på din profil ökar kundernas förtroende</li>
-      </ul>
+      <h3>BankID-verifiering</h3>
+<p class="step-desc">Vi verifierar din identitet via BankID. Tar 30 sekunder. Ditt personnummer sparas krypterat och visas aldrig.</p>
+
+<div id="bankid-not-verified">
+  <a id="bankid-btn" class="btn-bankid" style="display:inline-flex;align-items:center;gap:10px;background:#235834;color:#fff;padding:16px 32px;border-radius:10px;font-size:18px;font-weight:600;text-decoration:none;cursor:pointer;margin:20px 0;transition:background 0.2s">
+    <img src="https://id.tic.io/assets/bankid-icon.svg" alt="BankID" style="height:28px" onerror="this.style.display='none'">
+    Verifiera med BankID
+  </a>
+  <p style="color:#888;font-size:14px;margin-top:8px">Öppnar BankID i en ny sida — du kommer tillbaka hit efteråt.</p>
+</div>
+
+<div id="bankid-verified" style="display:none;background:#e8f5e9;border-radius:12px;padding:20px;margin:20px 0">
+  <p style="font-size:18px;font-weight:600;color:#2e7d32">✓ Verifierad: <span id="bankid-verified-name"></span></p>
+  <p style="color:#666;font-size:14px;margin-top:4px">Din identitet har bekräftats via BankID.</p>
+</div>
+
+<ul class="privacy-list">
+  <li>Vi skickar aldrig ditt personnummer till tredje part</li>
+  <li>Kunder ser bara ditt namn och betyg</li>
+  <li>BankID-badge på din profil ökar kundernas förtroende</li>
+</ul>
       <div class="btns-row">
         <button class="btn-back" onclick="goStep(3)">← Tillbaka</button>
         <button class="btn-next" id="submit-btn" onclick="submitForm()">Skicka ansökan →</button>
@@ -818,5 +829,28 @@ document.querySelectorAll('.field input, .field select').forEach(el => {
   });
 });
 </script>
-</body>
+<script>
+// BankID TIC Integration
+(function() {
+  const bankidBtn = document.getElementById('bankid-btn');
+  const notVerified = document.getElementById('bankid-not-verified');
+  const verified = document.getElementById('bankid-verified');
+  const verifiedName = document.getElementById('bankid-verified-name');
+
+  // Check if returning from BankID
+  if (sessionStorage.getItem('bankid_verified') === 'true') {
+    if (notVerified) notVerified.style.display = 'none';
+    if (verified) verified.style.display = 'block';
+    if (verifiedName) verifiedName.textContent = sessionStorage.getItem('bankid_name') || 'Verifierad';
+  }
+
+  if (bankidBtn) {
+    bankidBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var cb = encodeURIComponent('https://spick.se/bankid-klar.html');
+      window.location.href = 'https://id.tic.io/spick/login?callback=' + cb + '&state=new_cleaner';
+    });
+  }
+})();
+</script></body>
   </html>
