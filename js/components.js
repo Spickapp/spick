@@ -204,9 +204,9 @@ function injectComponents() {
     footer.innerHTML = FOOTER_HTML;
   }
 
-  // Markera aktiv nav-länk
+  // Markera aktiv nav-länk (skippa .nl-btn — den har vit text på grön bg)
   const current = location.pathname.split('/').pop() || 'index.html';
-  document.querySelectorAll('nav .nl, nav .nl-out, nav .nl-btn').forEach(link => {
+  document.querySelectorAll('nav .nl, nav .nl-out').forEach(link => {
     const href = link.getAttribute('href')?.split('/').pop();
     if (href === current) {
       link.style.color = 'var(--g, #0F6E56)';
