@@ -399,8 +399,6 @@ footer a:hover{color:var(--gm);}
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
       
-      <div class="hs"><div class="hs-val" id="stat-rating">4.9 ★</div><div class="hs-lbl">snittbetyg</div></div>
-      <div class="hs"><div class="hs-val" id="stat-bookings">100+</div><div class="hs-lbl">bokningar totalt</div></div>
     </div>
   </div>
   <div class="phone-wrap">
@@ -613,36 +611,6 @@ loadStats();
 async function loadStats(){
   try {
     // Hämta aggregerad stats via säker VIEW (inga PII)
-    const [statsRes, {data:cleaners}] = await Promise.all([
-      fetch(SPICK.SUPA_URL + '/rest/v1/public_stats?select=*&limit=1', { headers: SPICK_HEADERS }),
-      SB.from('cleaners').select('id,avg_rating,review_count,hourly_rate').eq('is_approved',true)
-    ]);
-    const stats = statsRes.ok ? (await statsRes.json())?.[0] : null;
-    const data = cleaners || [];
-    if(!data.length) return;
-    const count = data.length;
-    const avgRating = stats?.avg_rating || (data.reduce((s,c)=>s+(parseFloat(c.avg_rating)||0),0)/count).toFixed(1);
-    const el = document.getElementById('stat-cleaners');
-    const er = document.getElementById('stat-rating');
-    const eb = document.getElementById('stat-bookings');
-    if(el) el.textContent = count;
-    if(er) er.textContent = avgRating + ' ★';
-    // Urgency: visa antal bokningar senaste 24h
-    const todayCount = stats?.bookings_today || 0;
-    if (todayCount > 0) {
-      const urgEl = document.getElementById('urgency-badge');
-      const urgTxt = document.getElementById('urgency-text');
-      if (urgEl && urgTxt) {
-        urgTxt.textContent = todayCount + (todayCount === 1 ? ' bokning' : ' bokningar') + ' gjorda idag';
-        urgEl.style.display = 'inline-block';
-      }
-    }
-    // Uppdatera sticky bar med lägsta pris × 3h med RUT
-    const rates2 = data.map(d => d.hourly_rate || 350);
-    const minRate2 = Math.min(...rates2);
-    const minTotal = Math.round(minRate2 * 3 * 0.5);
-    const stickyEl = document.getElementById('sticky-price');
-    if (stickyEl) stickyEl.textContent = minTotal.toLocaleString('sv');
     if(eb && stats) eb.textContent = (stats.total_bookings||0)+'+';
     // Uppdatera schema.org
     const schema = document.querySelector('script[type="application/ld+json"]');
@@ -810,6 +778,7 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
 
 
 
