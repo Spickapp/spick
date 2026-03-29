@@ -7,37 +7,49 @@
 'use strict';
 if (typeof SPICK === 'undefined') return;
 
-// ── SOCIAL PROOF TOAST ──────────────────────────────────────
-// NOTE: Toasts disabled until real booking data exists in production.
-// When Stripe is live, replace with real data from Supabase:
-//   fetch(SPICK.SUPA_URL + '/rest/v1/bookings?select=city,service&status=eq.klar&order=created_at.desc&limit=5')
-// Fabricated social proof violates Swedish marketing law (MFL).
-const TOASTS_ENABLED = false;
-const TOASTS = [
-  { name: 'Anna', city: 'Solna', service: 'hemstädning', min: 8 },
-  { name: 'Marcus', city: 'Göteborg', service: 'storstädning', min: 23 },
-  { name: 'Sara', city: 'Malmö', service: 'hemstädning', min: 45 },
-  { name: 'Erik', city: 'Uppsala', service: 'flyttstädning', min: 12 },
-  { name: 'Lisa', city: 'Stockholm', service: 'hemstädning', min: 3 },
-  { name: 'Johan', city: 'Nacka', service: 'fönsterputs', min: 31 },
-  { name: 'Maria', city: 'Bromma', service: 'hemstädning', min: 18 },
-  { name: 'Ahmed', city: 'Hägersten', service: 'storstädning', min: 52 },
-];
+// ── SOCIAL PROOF TOAST (riktig data) ────────────────────────
+// Hämtar riktiga recensioner från Supabase (reviews-tabellen är public).
+// Visar bara om det finns minst 3 recensioner (MFL-kompatibelt).
+let _toastData = [];
+let _toastIdx = 0;
+
+async function loadToastData() {
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/rest/v1/reviews?select=cleaner_rating,created_at,cleaner_id,cleaners(city,full_name)&cleaner_rating=gte.4&order=created_at.desc&limit=10', {
+      headers: { 'apikey': SPICK.SUPA_KEY }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    _toastData = data.filter(r => r.cleaners?.city).map(r => {
+      const mins = Math.max(5, Math.floor((Date.now() - new Date(r.created_at).getTime()) / 60000));
+      const timeLabel = mins < 60 ? mins + ' min sedan' : 
+                        mins < 1440 ? Math.floor(mins/60) + 'h sedan' : 
+                        Math.floor(mins/1440) + 'd sedan';
+      return {
+        name: (r.cleaners.full_name || '').split(' ')[0] || 'Kund',
+        city: r.cleaners.city,
+        rating: r.cleaner_rating,
+        time: timeLabel
+      };
+    });
+  } catch(e) { /* fail silently */ }
+}
 
 function showToast() {
-  if (!TOASTS_ENABLED) return;
+  if (_toastData.length < 3) return; // Kräv minst 3 riktiga recensioner
   if (document.hidden) return;
-  // Don't show on admin pages
   if (location.pathname.includes('admin') || location.pathname.includes('dashboard')) return;
   
-  const t = TOASTS[Math.floor(Math.random() * TOASTS.length)];
+  const t = _toastData[_toastIdx % _toastData.length];
+  _toastIdx++;
+  const stars = '⭐'.repeat(Math.min(5, t.rating || 5));
   const el = document.createElement('div');
   el.className = 'spick-toast';
   el.style.cssText = 'position:fixed;bottom:24px;left:24px;background:#fff;border:1px solid #E8E8E4;border-radius:14px;padding:14px 20px;box-shadow:0 8px 30px rgba(0,0,0,.12);font-size:.85rem;z-index:9999;max-width:320px;transform:translateY(120%);transition:transform .4s cubic-bezier(.16,1,.3,1);font-family:DM Sans,system-ui,sans-serif';
   el.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' +
-    '<div style="width:36px;height:36px;border-radius:50%;background:#E8F5E9;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">✅</div>' +
-    '<div><strong style="color:#1C1C1A">' + t.name + ' i ' + t.city + '</strong><br>' +
-    '<span style="color:#6B6960;font-size:.78rem">bokade ' + t.service + ' för ' + t.min + ' min sedan</span></div>' +
+    '<div style="width:36px;height:36px;border-radius:50%;background:#E8F5E9;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">' + stars.charAt(0) + stars.charAt(1) + '</div>' +
+    '<div><strong style="color:#1C1C1A">' + escHtml(t.name) + ' i ' + escHtml(t.city) + '</strong><br>' +
+    '<span style="color:#6B6960;font-size:.78rem">' + stars + ' · ' + escHtml(t.time) + '</span></div>' +
     '<button onclick="this.closest(\'.spick-toast\').style.transform=\'translateY(120%)\';" style="border:none;background:none;color:#aaa;cursor:pointer;font-size:1.1rem;padding:0 0 0 8px;line-height:1">×</button></div>';
   document.body.appendChild(el);
   requestAnimationFrame(() => { el.style.transform = 'translateY(0)'; });
@@ -49,9 +61,16 @@ function showToast() {
   }, 5000);
 }
 
-// First toast after 8s, then every 35s
-setTimeout(showToast, 8000);
-setInterval(showToast, 35000);
+// escHtml fallback om config.js inte laddats ännu
+function escHtml(s) { return typeof window.escHtml==='function' ? window.escHtml(s) : String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Ladda data, sedan visa toasts
+loadToastData().then(() => {
+  if (_toastData.length >= 3) {
+    setTimeout(showToast, 12000);
+    setInterval(showToast, 40000);
+  }
+});
 
 // ── URGENCY BADGE ───────────────────────────────────────────
 // NOTE: When real booking data exists, replace with actual counts.

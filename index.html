@@ -652,25 +652,23 @@ loadStats();
 
 async function loadStats(){
   try {
-    const [{data:cleaners},{data:bookings}] = await Promise.all([
-      SB.from('cleaners').select('id,avg_rating,review_count').eq('is_approved',true),
-      SB.from('bookings').select('id',{count:'exact',head:true})
+    // Hämta aggregerad stats via säker VIEW (inga PII)
+    const [statsRes, {data:cleaners}] = await Promise.all([
+      fetch(SPICK.SUPA_URL + '/rest/v1/public_stats?select=*&limit=1', { headers: SPICK_HEADERS }),
+      SB.from('cleaners').select('id,avg_rating,review_count,hourly_rate').eq('is_approved',true)
     ]);
+    const stats = statsRes.ok ? (await statsRes.json())?.[0] : null;
     const data = cleaners || [];
     if(!data.length) return;
     const count = data.length;
-    const avgRating = (data.reduce((s,c)=>s+(parseFloat(c.avg_rating)||0),0)/count).toFixed(1);
+    const avgRating = stats?.avg_rating || (data.reduce((s,c)=>s+(parseFloat(c.avg_rating)||0),0)/count).toFixed(1);
     const el = document.getElementById('stat-cleaners');
     const er = document.getElementById('stat-rating');
     const eb = document.getElementById('stat-bookings');
     if(el) el.textContent = count;
     if(er) er.textContent = avgRating + ' ★';
     // Urgency: visa antal bokningar senaste 24h
-    const { data: recentB } = await SB.from('bookings')
-      .select('id', { count: 'exact' })
-      .eq('payment_status', 'paid')
-      .gte('created_at', new Date(Date.now() - 86400000).toISOString());
-    const todayCount = recentB?.length || 0;
+    const todayCount = stats?.bookings_today || 0;
     if (todayCount > 0) {
       const urgEl = document.getElementById('urgency-badge');
       const urgTxt = document.getElementById('urgency-text');
@@ -682,16 +680,16 @@ async function loadStats(){
     // Uppdatera sticky bar med lägsta pris × 3h med RUT
     const rates2 = data.map(d => d.hourly_rate || 350);
     const minRate2 = Math.min(...rates2);
-    const minTotal = Math.round(minRate2 * 3 * 0.5); // 3h med RUT
+    const minTotal = Math.round(minRate2 * 3 * 0.5);
     const stickyEl = document.getElementById('sticky-price');
     if (stickyEl) stickyEl.textContent = minTotal.toLocaleString('sv');
-    if(eb && bookings !== null) eb.textContent = (bookings||0)+'+';
+    if(eb && stats) eb.textContent = (stats.total_bookings||0)+'+';
     // Uppdatera schema.org
     const schema = document.querySelector('script[type="application/ld+json"]');
     if(schema){
       const d = JSON.parse(schema.textContent);
-      d.aggregateRating.ratingValue = avgRating;
-      d.aggregateRating.reviewCount = String(data.reduce((s,c)=>s+(c.review_count||0),0));
+      d.aggregateRating.ratingValue = String(avgRating);
+      d.aggregateRating.reviewCount = String(stats?.total_reviews || data.reduce((s,c)=>s+(c.review_count||0),0));
       schema.textContent = JSON.stringify(d);
     }
   } catch(e){}

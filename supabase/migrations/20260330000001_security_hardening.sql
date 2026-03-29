@@ -18,15 +18,38 @@
 
 DROP VIEW IF EXISTS booking_confirmation;
 
+-- Inkluderar kundnamn/email för review-flödet (betyg.html)
+-- Booking UUID fungerar som autentiserings-token
+-- Adress och telefon exkluderade (PII)
 CREATE VIEW booking_confirmation AS
 SELECT
   id, stripe_session_id, service, date, time, hours,
   city, total_price, payment_status, rut,
-  cleaner_id, cleaner_name, created_at
+  cleaner_id, cleaner_name, cleaner_email,
+  COALESCE(customer_name, name) as customer_name,
+  COALESCE(customer_email, email) as customer_email,
+  created_at
 FROM bookings;
 
 -- Behåll grants
 GRANT SELECT ON booking_confirmation TO anon, authenticated;
+
+
+-- ╔══════════════════════════════════════════════════╗
+-- ║  FIX 1b: Public stats VIEW (inga PII, bara       ║
+-- ║  aggregate counts för homepage/trust bar)         ║
+-- ╚══════════════════════════════════════════════════╝
+
+CREATE OR REPLACE VIEW public_stats AS
+SELECT
+  (SELECT count(*) FROM bookings WHERE payment_status = 'paid') AS total_bookings,
+  (SELECT count(*) FROM bookings WHERE payment_status = 'paid' 
+    AND created_at > now() - interval '24 hours') AS bookings_today,
+  (SELECT count(*) FROM cleaners WHERE is_approved = true AND status = 'godkänd') AS active_cleaners,
+  (SELECT COALESCE(round(avg(cleaner_rating)::numeric, 1), 4.9) FROM reviews) AS avg_rating,
+  (SELECT count(*) FROM reviews) AS total_reviews;
+
+GRANT SELECT ON public_stats TO anon, authenticated;
 
 
 -- ╔══════════════════════════════════════════════════╗

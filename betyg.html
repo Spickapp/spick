@@ -144,20 +144,20 @@ async function submit(){
   btn.innerHTML='<div class="spin"></div> Sparar...';
   try{
     // 1. Spara betyg
-    const {data:booking}=await SB.from('bookings').select('*').eq('id',bid).single();
+    const {data:booking}=await SB.from('booking_confirmation').select('*').eq('id',bid).single();
     const {data:rating,error}=await SB.from('reviews').insert([{
       booking_id:bid,
       cleaner_email:booking?.cleaner_email||booking?.cleaner_id,
       cleaner_name:cname,
-      customer_name:booking?.name,
-      customer_email:booking?.email,
+      customer_name:booking?.customer_name,
+      customer_email:booking?.customer_email,
       cleaner_rating:chosen,
       cleaner_comment:document.getElementById('cmt').value
     }]).select().single();
     if(error)throw error;
 
     // 2. Om betyg ≤ 2 → trigga nöjdhetsgaranti
-    if(chosen<=2 && booking?.email){
+    if(chosen<=2 && booking?.customer_email){
       // Notifiera admin om garantiärende
       await fetch(SPICK.SUPA_URL+'/functions/v1/notify',{
         method:'POST',
@@ -165,7 +165,7 @@ async function submit(){
           'apikey':SPICK.SUPA_KEY,
           'Authorization':'Bearer '+SPICK.SUPA_KEY},
         body:JSON.stringify({type:'guarantee',record:{
-          customer_email:booking?.email,customer_name:booking?.name,
+          customer_email:booking?.customer_email,customer_name:booking?.customer_name,
           cleaner_name:cname,rating:chosen,
           comment:document.getElementById('cmt').value
         }})
