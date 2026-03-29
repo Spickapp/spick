@@ -19,8 +19,19 @@ jobs:
         with:
           version: latest
       - run: |
+          # Deploya alla functions (med JWT-verifiering som standard)
           supabase functions deploy --project-ref $PROJECT_ID
-          supabase functions deploy health --project-ref $PROJECT_ID --no-verify-jwt
-          supabase functions deploy stripe-checkout --project-ref $PROJECT_ID --no-verify-jwt
-          supabase functions deploy stripe-webhook --project-ref $PROJECT_ID --no-verify-jwt
-          supabase functions deploy notify --project-ref $PROJECT_ID --no-verify-jwt
+          
+          # Omdeployera functions som behöver --no-verify-jwt
+          # (anropas från frontend, cron, eller webhooks utan Supabase JWT)
+          for fn in health stripe-checkout stripe-webhook notify \
+                    booking-create cleanup-stale auto-remind \
+                    social-media geo email-inbound swish \
+                    bankid bankid-verify bankid-webhook \
+                    rut-claim push; do
+            if [ -d "supabase/functions/$fn" ]; then
+              echo "🔓 Deploy $fn (no-verify-jwt)"
+              supabase functions deploy "$fn" --project-ref $PROJECT_ID --no-verify-jwt
+            fi
+          done
+          echo "✅ Alla Edge Functions deployade"

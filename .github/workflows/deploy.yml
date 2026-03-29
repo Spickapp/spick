@@ -25,12 +25,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Förbered deploy-katalog (exkludera känsliga filer)
+        run: |
+          mkdir -p _site
+          # Kopiera allt utom känsliga kataloger
+          rsync -a --exclude='_site' \
+            --exclude='supabase' \
+            --exclude='backups' \
+            --exclude='.github' \
+            --exclude='growth' \
+            --exclude='scripts' \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='docs' \
+            --exclude='archive' \
+            --exclude='*.patch' \
+            --exclude='verify-deploy.sh' \
+            . _site/
+          echo "✅ Deploy-katalog: $(find _site -name '*.html' | wc -l) HTML-filer"
+          echo "⛔ Exkluderat: supabase, backups, .github, growth, scripts"
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
