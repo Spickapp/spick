@@ -24,12 +24,27 @@ serve(async (req) => {
   const start = Date.now();
   const checks: Record<string, { ok: boolean; ms: number; error?: string }> = {};
 
-  // 1. Database connectivity
+  // 1. Database connectivity + business metrics
   try {
     const t0 = Date.now();
     const sb = createClient(SUPA_URL, SUPA_KEY);
-    const { data, error } = await sb.from("cleaners").select("count").limit(1);
-    checks.database = { ok: !error, ms: Date.now() - t0, ...(error && { error: error.message }) };
+    const [cleanerRes, bookingRes, staleRes, reviewRes] = await Promise.all([
+      sb.from("cleaners").select("id", { count: "exact", head: true }).eq("is_approved", true),
+      sb.from("bookings").select("id", { count: "exact", head: true }).eq("payment_status", "paid"),
+      sb.from("bookings").select("id", { count: "exact", head: true }).eq("payment_status", "pending").lt("created_at", new Date(Date.now() - 30*60*1000).toISOString()),
+      sb.from("reviews").select("id", { count: "exact", head: true }),
+    ]);
+    const dbOk = !cleanerRes.error && !bookingRes.error;
+    checks.database = { 
+      ok: dbOk, ms: Date.now() - t0, 
+      ...(cleanerRes.error && { error: cleanerRes.error.message }),
+      metrics: {
+        active_cleaners: cleanerRes.count || 0,
+        paid_bookings: bookingRes.count || 0,
+        stale_pending: staleRes.count || 0,
+        total_reviews: reviewRes.count || 0,
+      }
+    };
   } catch (e) {
     checks.database = { ok: false, ms: 0, error: (e as Error).message };
   }
@@ -73,7 +88,7 @@ serve(async (req) => {
     timestamp: new Date().toISOString(),
     total_ms: totalMs,
     checks,
-    version: "2.1.0",
+    version: "3.0.0-security-sprint",
   }), {
     status: allOk ? 200 : 503,
     headers: {
