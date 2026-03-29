@@ -57,7 +57,12 @@ async function spickNotify(type, record) {
     return { ok: false };
   }
 }
-
+// XSS Prevention
+function escHtml(s) {
+  if (typeof s !== 'string') return String(s || '');
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+window.escHtml = escHtml;
 // ── PRODUCTION RESILIENCE ────────────────────────────────────
 
 // Global error handler — fångar uncaught errors utan att visa rå stacktraces
