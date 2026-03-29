@@ -118,7 +118,8 @@ CREATE INDEX IF NOT EXISTS idx_status_log_booking
 ALTER TABLE booking_status_log ENABLE ROW LEVEL SECURITY;
 
 -- Bara service_role kan läsa/skriva
-CREATE POLICY IF NOT EXISTS "Service role only status log"
+DROP POLICY IF EXISTS "Service role only status log" ON booking_status_log;
+CREATE POLICY "Service role only status log"
   ON booking_status_log FOR ALL
   USING (auth.role() = 'service_role');
 
@@ -262,7 +263,7 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.check_constraints 
     WHERE constraint_name = 'bookings_price_range') THEN
     ALTER TABLE bookings ADD CONSTRAINT bookings_price_range 
-      CHECK (total_price IS NULL OR (total_price >= 100 AND total_price <= 50000));
+      CHECK (total_price IS NULL OR (total_price >= 0 AND total_price <= 50000));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.check_constraints 
     WHERE constraint_name = 'bookings_hours_range') THEN
