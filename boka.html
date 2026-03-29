@@ -578,7 +578,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
   </div><!-- /vänster -->
 
   <!-- HÖGER: Sammanfattning -->
-  <div id="sidebar">
+  <div id="sidebar" style="display:none">
     <div class="summary-block">
       <div class="sum-title">Din bokning</div>
 
@@ -1827,6 +1827,8 @@ async function doBook() {
 
 // ── SIDEBAR-UPPDATERING ───────────────────────────────────────────────────────
 function updateSidebar() {
+  const sidebarEl = document.getElementById('sidebar');
+  if (sidebarEl) sidebarEl.style.display = state.cleanerName ? 'block' : 'none';
   const placeholder = document.getElementById('sum-placeholder');
   const details     = document.getElementById('sum-details');
   const cleanerBlk  = document.getElementById('sum-cleaner-block');
@@ -1927,6 +1929,8 @@ document.addEventListener('mouseleave', e => {
 </script>
 </body>
 </html>
+
+
 
 
 
