@@ -341,6 +341,18 @@ function setS(v){sv=v;render();}
 function doSearch(){sq=document.getElementById('sq').value.toLowerCase();render();}
 document.getElementById('sq').addEventListener('input',e=>{sq=e.target.value.toLowerCase();render();});
 
+function resetFilters(){
+  fv='alla'; sv='betyg'; sq=''; cityFilter='';
+  document.getElementById('sq').value='';
+  document.getElementById('citySelect').value='';
+  const slider=document.getElementById('price-slider');
+  if(slider){slider.value=600;slider.nextElementSibling&&(slider.nextElementSibling.textContent='600');}
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  document.querySelector('.fbtn')?.classList.add('on');
+  document.getElementById('reset-btn').style.display='none';
+  render();
+}
+
 function render(){
   let d=[...ALL];
   if(cityFilter) d=d.filter(c=>c.city===cityFilter||c.city?.toLowerCase()===cityFilter.toLowerCase());

@@ -175,6 +175,23 @@ input, select, textarea {
     <a href="bli-stadare-guide.html" style="display:block;text-align:center;margin-top:1rem;font-size:.8rem;color:#0F6E56;font-weight:600">Behöver du hjälp? Gå till vår guide →</a>
   </div>
 </div>
+<script>
+function setUILang(lang) {
+  document.documentElement.lang = lang;
+  document.getElementById('langPicker').style.display = 'none';
+  // Highlight valda knappen
+  document.querySelectorAll('#langPicker button').forEach(b => {
+    b.style.border = '1.5px solid #E8E8E4'; b.style.background = '#fff';
+  });
+  if (lang !== 'sv') {
+    // Visa meddelande att formuläret är på svenska men guiden finns på andra språk
+    const info = document.createElement('div');
+    info.style.cssText = 'background:#DBEAFE;border-radius:10px;padding:12px 16px;margin:1rem;font-size:.82rem;color:#1E40AF;text-align:center';
+    info.innerHTML = 'Formuläret är på svenska. <a href="bli-stadare-guide.html" style="color:#0F6E56;font-weight:600">Se guiden på ditt språk →</a>';
+    document.querySelector('header')?.insertAdjacentElement('afterend', info);
+  }
+}
+</script>
 
 <header>
   <a href="bli-stadare.html">← Tillbaka</a>

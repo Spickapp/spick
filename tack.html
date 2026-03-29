@@ -118,6 +118,33 @@ const service = params.get('service');
 const date = params.get('date');
 const address = params.get('address');
 
+// Kalenderexport (.ics)
+function addToCalendar() {
+  const svc = service ? decodeURIComponent(service) : 'Hemstädning';
+  const dt = date ? decodeURIComponent(date) : '';
+  const addr = address ? decodeURIComponent(address) : '';
+  if (!dt) { alert('Datum saknas – se din bokningsbekräftelse via e-post.'); return; }
+  const start = dt.replace(/-/g, '') + 'T090000';
+  const end   = dt.replace(/-/g, '') + 'T120000';
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Spick//Bokning//SV',
+    'BEGIN:VEVENT',
+    'DTSTART:' + start, 'DTEND:' + end,
+    'SUMMARY:' + svc + ' – Spick',
+    'DESCRIPTION:Din städning via Spick. Bekräftelse: https://spick.se/min-bokning.html?bid=' + (bid||''),
+    'LOCATION:' + addr,
+    'STATUS:CONFIRMED',
+    'END:VEVENT', 'END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'spick-stadning-' + dt + '.ics';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  const btn = document.getElementById('ical-btn');
+  if (btn) { btn.textContent = '✅ Tillagd i kalender!'; btn.disabled = true; }
+}
+
 // Visa details om vi har dem
 // Om bid saknas men session_id finns – hämta från Supabase med retry (race condition mot webhook)
 async function fetchBookingBySession(sessionId, attempts = 0) {
