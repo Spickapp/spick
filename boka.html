@@ -1584,7 +1584,7 @@ function autofillBankID() {
 let addrTimer;
 async function addrSearch(q) {
   clearTimeout(addrTimer);
-  const list = document.getElementById('addr-list') || document.getElementById('addr-dd');
+  const list = (state.step === 1) ? document.getElementById('addr-dd') : document.getElementById('addr-list');
   if (q.length < 3) { list.style.display='none'; return; }
   addrTimer = setTimeout(async () => {
     try {
@@ -1997,6 +1997,7 @@ document.addEventListener('mouseleave', e => {
 </script>
 </body>
 </html>
+
 
 
 
