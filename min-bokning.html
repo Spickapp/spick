@@ -215,24 +215,24 @@ const dateLabel = isToday ? 'Idag' : isTomorrow ? 'Imorgon' : d2;
   document.getElementById('content').innerHTML = `
 <div class="card">
   <div class="status ${statusClass}">${statusText}</div>
-  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service || 'Hemstädning'} · ${b.hours || 3}h</span></div>
-  <div class="row"><span class="lbl">Datum</span><span class="val">${dateLabel} ${b.date !== dateLabel ? b.date : ''}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">${b.time || '09:00'}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${b.address || '–'}</span></div>
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${escHtml(b.service || 'Hemstädning')} · ${parseInt(b.hours) || 3}h</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${escHtml(dateLabel)} ${b.date !== dateLabel ? escHtml(b.date) : ''}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${escHtml(b.time || '09:00')}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${escHtml(b.address || '–')}</span></div>
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}</span></div>
   ${cleaner ? `
   <div style="background:#E1F5EE;border-radius:10px;padding:.875rem 1rem;display:flex;align-items:center;gap:.875rem;margin:.75rem 0">
     <div style="width:44px;height:44px;border-radius:50%;background:#0F6E56;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">
-      ${(cleaner.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2)}
+      ${escHtml((cleaner.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2))}
     </div>
     <div>
-      <div style="font-size:.875rem;font-weight:700;color:#0F6E56">${cleaner.full_name || 'Din städare'}</div>
-      <div style="font-size:.78rem;color:#1D9E75">⭐ ${cleaner.avg_rating || '5.0'} · ${cleaner.city || ''}</div>
+      <div style="font-size:.875rem;font-weight:700;color:#0F6E56">${escHtml(cleaner.full_name || 'Din städare')}</div>
+      <div style="font-size:.78rem;color:#1D9E75">⭐ ${parseFloat(cleaner.avg_rating || '5.0').toFixed(1)} · ${escHtml(cleaner.city || '')}</div>
     </div>
   </div>` : ''}
   ${b.rut ? '<div class="row"><span class="lbl">RUT-avdrag</span><span class="val" style="color:var(--g)">✅ Ansökt automatiskt</span></div>' : ''}
-  ${b.key_info ? `<div class="row"><span class="lbl">🔑 Nyckelinfo</span><span class="val">${b.key_info}</span></div>` : ''}
-  ${b.customer_notes ? `<div class="row"><span class="lbl">📝 Dina noteringar</span><span class="val">${b.customer_notes}</span></div>` : ''}
+  ${b.key_info ? `<div class="row"><span class="lbl">🔑 Nyckelinfo</span><span class="val">${escHtml(b.key_info)}</span></div>` : ''}
+  ${b.customer_notes ? `<div class="row"><span class="lbl">📝 Dina noteringar</span><span class="val">${escHtml(b.customer_notes)}</span></div>` : ''}
 </div>
 
 <!-- Live-status om städning pågår idag -->
@@ -241,7 +241,7 @@ ${isToday && b.status === 'pågår' ? `
   <div class="live-dot"></div>
   <div>
     <div style="font-weight:700;font-size:.95rem">Städning pågår just nu!</div>
-    <div style="font-size:.78rem;opacity:.85">${cleaner ? cleaner.full_name : 'Din städare'} är på plats</div>
+    <div style="font-size:.78rem;opacity:.85">${cleaner ? escHtml(cleaner.full_name) : 'Din städare'} är på plats</div>
   </div>
 </div>` : ''}
 

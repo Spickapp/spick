@@ -522,36 +522,36 @@ function bookingCard(b) {
 
   const cleanerHtml = b.cleaner_id ? `
     <div class="cleaner-info">
-      <div class="cleaner-avatar" style="width:40px;height:40px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0">${(b.cleaner_name || 'S').charAt(0)}</div>
+      <div class="cleaner-avatar" style="width:40px;height:40px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0">${escHtml((b.cleaner_name || 'S').charAt(0))}</div>
       <div style="flex:1">
-        <div class="cleaner-name" style="font-weight:600">${b.cleaner_name || 'Städare tilldelad'}</div>
-        <div class="cleaner-rating">⭐ ${b.cleaner_rating || '5.0'} betyg · BankID-verifierad ✓</div>
+        <div class="cleaner-name" style="font-weight:600">${escHtml(b.cleaner_name || 'Städare tilldelad')}</div>
+        <div class="cleaner-rating">⭐ ${parseFloat(b.cleaner_rating || '5.0').toFixed(1)} betyg · BankID-verifierad ✓</div>
       </div>
-      ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang bokning ${b.date || ''}" style="font-size:.75rem;color:var(--g);text-decoration:none;padding:4px 10px;border:1px solid var(--g);border-radius:8px;white-space:nowrap">✉️ Kontakta</a>` : ''}
+      ${b.cleaner_email ? `<a href="mailto:${encodeURIComponent(b.cleaner_email)}?subject=Ang bokning ${encodeURIComponent(b.date || '')}" style="font-size:.75rem;color:var(--g);text-decoration:none;padding:4px 10px;border:1px solid var(--g);border-radius:8px;white-space:nowrap">✉️ Kontakta</a>` : ''}
     </div>` : '<div style="font-size:.82rem;color:var(--m);padding:8px 0">⏳ Städare tilldelas inom 2 timmar</div>';
 
   return `
     <div class="booking-card">
       <div class="bc-top">
-        <div class="bc-service">${b.service || 'Hemstädning'}</div>
-        <div class="bc-status ${statusClass}">${statusLabel}</div>
+        <div class="bc-service">${escHtml(b.service || 'Hemstädning')}</div>
+        <div class="bc-status ${statusClass}">${escHtml(statusLabel)}</div>
       </div>
       ${cleanerHtml}
       <div class="bc-meta">
         <div class="bc-item"><span>📅</span> ${dateStr}</div>
-        <div class="bc-item"><span>🕐</span> ${time || '–'}</div>
-        <div class="bc-item"><span>📍</span> ${b.address || b.city || '–'}</div>
-        <div class="bc-item"><span>⏱</span> ${b.hours || '–'} timmar</div>
+        <div class="bc-item"><span>🕐</span> ${escHtml(time || '–')}</div>
+        <div class="bc-item"><span>📍</span> ${escHtml(b.address || b.city || '–')}</div>
+        <div class="bc-item"><span>⏱</span> ${parseInt(b.hours) || '–'} timmar</div>
       </div>
       <div class="bc-bottom">
         <div>
-          <span class="bc-price">${rutPrice} kr</span>
+          <span class="bc-price">${parseInt(rutPrice)} kr</span>
           ${b.rut ? `<span class="bc-rut">efter RUT-avdrag</span>` : ''}
         </div>
         <div class="bc-actions">
-          <a href="min-bokning.html?bid=${b.id}" class="btn-sm btn-outline">Detaljer</a>
-          ${canReview ? `<button class="btn-sm btn-link" onclick="openInlineReview('${b.id}','${(b.cleaner_name||'').replace(/'/g,'')}')" style="background:var(--gp);color:var(--g);border:none;cursor:pointer">⭐ Betygsätt</button>` : ''}
-          ${canCancel ? `<button class="btn-sm btn-danger" onclick="openCancelModal('${b.id}', '${b.service || 'städning'}')">Avboka</button>` : ''}
+          <a href="min-bokning.html?bid=${encodeURIComponent(b.id)}" class="btn-sm btn-outline">Detaljer</a>
+          ${canReview ? `<button class="btn-sm btn-link" onclick="openInlineReview('${escHtml(b.id)}','${escHtml((b.cleaner_name||'').replace(/'/g,''))}')" style="background:var(--gp);color:var(--g);border:none;cursor:pointer">⭐ Betygsätt</button>` : ''}
+          ${canCancel ? `<button class="btn-sm btn-danger" onclick="openCancelModal('${escHtml(b.id)}', '${escHtml(b.service || 'städning')}')">Avboka</button>` : ''}
           ${['cancelled','avbokad','klar','completed'].includes(status) ? `<a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" class="btn-sm btn-outline">🔄 Boka igen</a>` : ''}
         </div>
       </div>

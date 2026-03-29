@@ -1,7 +1,12 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const BASE_URL = "https://spick.se";
+const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // CORS: begränsa till spick.se
 const ALLOWED_ORIGINS = [BASE_URL, "https://www.spick.se", "http://localhost:3000"];
@@ -20,6 +25,19 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
+    // ── RATE LIMITING: max 5 checkout attempts per IP per minute ──────
+    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { data: allowed } = await sb.rpc("check_rate_limit", {
+      p_key: `checkout:${clientIP}`,
+      p_max_requests: 5,
+      p_window_seconds: 60,
+    });
+    if (allowed === false) {
+      return new Response(JSON.stringify({ error: "För många förfrågningar. Vänta en minut." }), {
+        status: 429, headers: { "Content-Type": "application/json", ...CORS }
+      });
+    }
+
     if (!STRIPE_SECRET_KEY) {
       console.error("STRIPE_SECRET_KEY saknas – sätt den i Supabase Secrets");
       return new Response(JSON.stringify({ error: "Betalning ej konfigurerad – kontakta hello@spick.se" }), {
@@ -36,6 +54,26 @@ serve(async (req) => {
     if (!booking_id || !email || !service) {
       return new Response(JSON.stringify({ error: "Saknade fält: booking_id, email, service krävs" }), {
         status: 400, headers: { "Content-Type": "application/json", ...CORS }
+      });
+    }
+
+    // ── VERIFY BOOKING EXISTS AND IS PENDING ──────
+    // Förhindra att random UUIDs skapar Stripe sessions
+    const { data: existingBooking, error: bookingErr } = await sb
+      .from("bookings")
+      .select("id, payment_status, email, status")
+      .eq("id", booking_id)
+      .single();
+
+    if (bookingErr || !existingBooking) {
+      return new Response(JSON.stringify({ error: "Bokning hittades inte" }), {
+        status: 404, headers: { "Content-Type": "application/json", ...CORS }
+      });
+    }
+
+    if (existingBooking.payment_status !== "pending") {
+      return new Response(JSON.stringify({ error: "Bokning redan behandlad" }), {
+        status: 409, headers: { "Content-Type": "application/json", ...CORS }
       });
     }
 
@@ -115,6 +153,7 @@ serve(async (req) => {
         "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
         "Content-Type": "application/x-www-form-urlencoded",
         "Stripe-Version": "2023-10-16",
+        "Idempotency-Key": `checkout-${booking_id}`,
       },
       body: params.toString(),
     });

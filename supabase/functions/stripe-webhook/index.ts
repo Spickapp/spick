@@ -495,6 +495,21 @@ serve(async (req) => {
   let event: Record<string, unknown>;
   try { event = JSON.parse(body); } catch { return new Response("Bad JSON", { status: 400 }); }
 
+  // ── IDEMPOTENCY: Skip already-processed events ──────────────────────────
+  const eventId = event.id as string;
+  if (eventId) {
+    const { data: existing } = await sb
+      .from("processed_webhook_events")
+      .select("event_id")
+      .eq("event_id", eventId)
+      .maybeSingle();
+    
+    if (existing) {
+      console.log(`Skipping duplicate event: ${eventId} (${event.type})`);
+      return new Response("Already processed", { status: 200 });
+    }
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed":
@@ -508,6 +523,14 @@ serve(async (req) => {
         break;
       default:
         console.log("Unhandled event:", event.type);
+    }
+
+    // ── Mark event as processed ───────────────────────────────────────────
+    if (eventId) {
+      await sb.from("processed_webhook_events").insert({
+        event_id: eventId,
+        event_type: event.type as string,
+      }).catch(() => {}); // Don't fail if logging fails
     }
   } catch (e) {
     console.error("Webhook-fel:", e);

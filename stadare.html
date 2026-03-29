@@ -384,15 +384,15 @@ function render(){
 
   g.innerHTML=d.map(c=>`<div class="card ${c.top&&!cityFilter?'top':''}">
     <div class="card-head">
-      <div class="av" style="background:${c.color}">${ini(c.name)}<div class="dot"></div></div>
+      <div class="av" style="background:${escHtml(c.color)}">${ini(c.name)}<div class="dot"></div></div>
       <div style="flex:1">
         <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:4px">
           ${c.top&&!cityFilter?'<span class="top-badge">⭐ Toppvald</span>':''}
           ${c.verified?'<span class="verified-badge">✓ BankID</span>':''}
-          ${c.bonus&&c.bonus!=='Brons'?'<span class="bonus-badge bonus-'+c.bonus.toLowerCase()+'">'+c.bonus+'</span>':''}
+          ${c.bonus&&c.bonus!=='Brons'?'<span class="bonus-badge bonus-'+escHtml(c.bonus).toLowerCase()+'">'+escHtml(c.bonus)+'</span>':''}
         </div>
-        <div class="cname">${c.name}</div>
-        <div class="cloc">📍 ${c.city}</div>
+        <div class="cname">${escHtml(c.name)}</div>
+        <div class="cloc">📍 ${escHtml(c.city)}</div>
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
           <span><span class="stars">${st(parseFloat(c.avg_rating||0))}</span><span class="rating"> ${c.avg_rating ? parseFloat(c.avg_rating).toFixed(1) : "–"}</span></span>
           ${c.jobs>0?'<span class="jobs">('+c.jobs+' recensioner)</span>':'<span style="font-size:.72rem;color:var(--m)">Ny städare</span>'}
@@ -400,16 +400,16 @@ function render(){
       </div>
     </div>
     <div class="card-body">
-      <div class="tags">${c.tags.slice(0,4).map(t=>'<span class="tag">'+t+'</span>').join('')}</div>
-      <div class="bio">${c.bio.slice(0,110)}...</div>
+      <div class="tags">${c.tags.slice(0,4).map(t=>'<span class="tag">'+escHtml(t)+'</span>').join('')}</div>
+      <div class="bio">${escHtml(c.bio.slice(0,110))}...</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem">
-        <div><span class="price">${c.price} kr</span><span class="punit">/h</span></div>
+        <div><span class="price">${parseInt(c.price)} kr</span><span class="punit">/h</span></div>
         <span class="rut">RUT: ${Math.round(c.price*.5)} kr/h</span>
       </div>
     </div>
     <div class="card-foot">
-      <a class="book-btn" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${c.price}&rating=${c.avg_rating||0}&id=${c.id}">Boka ${c.name.split(' ')[0]} →</a>
-      <a class="prof-btn" href="profil.html?id=${c.id}">Profil</a>
+      <a class="book-btn" href="boka.html?name=${encodeURIComponent(c.name)}&rate=${parseInt(c.price)}&rating=${parseFloat(c.avg_rating||0)}&id=${encodeURIComponent(c.id)}">Boka ${escHtml(c.name.split(' ')[0])} →</a>
+      <a class="prof-btn" href="profil.html?id=${encodeURIComponent(c.id)}">Profil</a>
     </div>
   </div>`).join('');
 }

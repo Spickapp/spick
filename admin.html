@@ -733,21 +733,21 @@ async function loadInbox() {
     const cat = CAT_LABELS[e.category] || CAT_LABELS.okategoriserat;
     const date = new Date(e.received_at).toLocaleString('sv-SE', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
     const isNew = e.status === 'ny';
-    return `<div onclick="openEmail('${e.id}')" style="background:#fff;border-radius:12px;padding:14px 18px;border:1.5px solid ${isNew ? '#BFDBFE' : 'var(--border)'};cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:box-shadow .15s;${isNew ? 'background:#EFF6FF' : ''}" onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+    return `<div onclick="openEmail('${escHtml(e.id)}')" style="background:#fff;border-radius:12px;padding:14px 18px;border:1.5px solid ${isNew ? '#BFDBFE' : 'var(--border)'};cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:box-shadow .15s;${isNew ? 'background:#EFF6FF' : ''}" onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
       <div style="font-size:1.5rem;flex-shrink:0">${cat.emoji}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
-          <span style="font-weight:${isNew?700:500};font-size:.9rem;color:#1C1C1A">${e.from_name||e.from_email}</span>
+          <span style="font-weight:${isNew?700:500};font-size:.9rem;color:#1C1C1A">${escHtml(e.from_name||e.from_email)}</span>
           <span style="font-size:.7rem;background:${cat.color}22;color:${cat.color};padding:2px 8px;border-radius:20px;font-weight:600">${cat.label}</span>
           ${e.priority==='hög'?'<span style="font-size:.7rem;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;font-weight:700">⚡ Hög</span>':''}
           ${e.auto_replied?'<span style="font-size:.7rem;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:20px">🤖 Auto-svar</span>':''}
         </div>
-        <div style="font-size:.85rem;color:#374151;font-weight:${isNew?600:400}">${e.subject||'(inget ämne)'}</div>
-        <div style="font-size:.78rem;color:var(--m);margin-top:2px">${e.ai_summary||e.from_email}</div>
+        <div style="font-size:.85rem;color:#374151;font-weight:${isNew?600:400}">${escHtml(e.subject||'(inget ämne)')}</div>
+        <div style="font-size:.78rem;color:var(--m);margin-top:2px">${escHtml(e.ai_summary||e.from_email)}</div>
       </div>
       <div style="flex-shrink:0;text-align:right">
         <div style="font-size:.75rem;color:var(--m)">${date}</div>
-        <div style="font-size:.72rem;color:${e.status==='hanterad'?'#059669':'var(--m)'};margin-top:4px">${e.status}</div>
+        <div style="font-size:.72rem;color:${e.status==='hanterad'?'#059669':'var(--m)'};margin-top:4px">${escHtml(e.status)}</div>
       </div>
     </div>`;
   }).join('');
@@ -769,15 +769,15 @@ async function openEmail(id) {
         <span style="background:${PRIO_COLORS[e.priority]||'#6B7280'}22;color:${PRIO_COLORS[e.priority]||'#6B7280'};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">Prioritet: ${e.priority}</span>
         <span style="background:#F3F4F6;color:#6B7280;padding:4px 12px;border-radius:20px;font-size:.8rem">${e.status}</span>
       </div>
-      <h3 style="font-family:Georgia,serif;font-size:1.2rem;margin:0 0 8px">${e.subject||'(inget ämne)'}</h3>
+      <h3 style="font-family:Georgia,serif;font-size:1.2rem;margin:0 0 8px">${escHtml(e.subject||'(inget ämne)')}</h3>
       <div style="font-size:.82rem;color:var(--m)">
-        <strong>Från:</strong> ${e.from_name ? e.from_name + ' <' + e.from_email + '>' : e.from_email}<br>
+        <strong>Från:</strong> ${e.from_name ? escHtml(e.from_name) + ' &lt;' + escHtml(e.from_email) + '&gt;' : escHtml(e.from_email)}<br>
         <strong>Mottaget:</strong> ${date}
         ${e.auto_replied ? '<br><strong>Auto-svar:</strong> ✅ Skickat' : ''}
       </div>
     </div>
 
-    ${e.ai_summary ? `<div style="background:#F0FDF4;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.83rem"><strong>🤖 AI-sammanfattning:</strong> ${e.ai_summary}</div>` : ''}
+    ${e.ai_summary ? `<div style="background:#F0FDF4;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.83rem"><strong>🤖 AI-sammanfattning:</strong> ${escHtml(e.ai_summary)}</div>` : ''}
 
     <div style="background:#F9FAFB;border-radius:10px;padding:16px;font-size:.85rem;line-height:1.7;margin-bottom:20px;max-height:300px;overflow:auto;white-space:pre-wrap">${e.body_text || '(inget innehåll)'}</div>
 
@@ -1116,7 +1116,7 @@ function renderDashboard() {
   const rb = data.bookings.slice(0, 6);
   document.getElementById('dash-recent-bookings').innerHTML = rb.length ? rb.map(b => `
     <div class="stat-row">
-      <span class="lbl">${b.customer_name || b.name || '–'} · ${b.service || 'Städning'}</span>
+      <span class="lbl">${escHtml(b.customer_name || b.name || '–')} · ${escHtml(b.service || 'Städning')}</span>
       <span>${statusBadge(b.payment_status)}</span>
     </div>`).join('') : '<div class="empty">Inga bokningar än</div>';
 
@@ -1124,7 +1124,7 @@ function renderDashboard() {
   const rr = data.reviews.slice(0, 6);
   document.getElementById('dash-recent-reviews').innerHTML = rr.length ? rr.map(r => `
     <div class="stat-row">
-      <span class="lbl">${'⭐'.repeat(r.cleaner_rating || 5)} ${r.comment ? r.comment.substring(0,40)+'...' : 'Ingen kommentar'}</span>
+      <span class="lbl">${'⭐'.repeat(Math.min(5, parseInt(r.cleaner_rating) || 5))} ${r.comment ? escHtml(r.comment.substring(0,40))+'...' : 'Ingen kommentar'}</span>
       <span style="font-size:.78rem;color:var(--m)">${new Date(r.created_at).toLocaleDateString('sv')}</span>
     </div>`).join('') : '<div class="empty">Inga recensioner än</div>';
 }
@@ -1179,13 +1179,13 @@ function renderBookings() {
 
   document.getElementById('bookings-tbody').innerHTML = filtered.length ? filtered.map(b => `
     <tr>
-      <td><strong>${b.customer_name || b.name || '–'}</strong><br><span style="font-size:.78rem;color:var(--m)">${b.customer_email || b.email || ''}</span></td>
-      <td>${b.service || 'Hemstädning'} · ${b.hours || 3}h</td>
-      <td>${b.date || '–'}<br><span style="font-size:.78rem;color:var(--m)">${b.time || ''}</span></td>
-      <td>${b.city || b.address?.split(',').pop()?.trim() || '–'}</td>
+      <td><strong>${escHtml(b.customer_name || b.name || '–')}</strong><br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.customer_email || b.email || '')}</span></td>
+      <td>${escHtml(b.service || 'Hemstädning')} · ${parseInt(b.hours) || 3}h</td>
+      <td>${escHtml(b.date || '–')}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.time || '')}</span></td>
+      <td>${escHtml(b.city || b.address?.split(',').pop()?.trim() || '–')}</td>
       <td class="text-g">${Math.round(b.total_price || 0).toLocaleString('sv')} kr${b.rut ? '<br><span style="font-size:.72rem;color:var(--m)">RUT</span>' : ''}</td>
       <td>${statusBadge(b.payment_status)}</td>
-      <td style="font-size:.82rem">${b.cleaner_id ? ('✅ ' + (b.cleaner_name || 'Tilldelad')) : `<span style="color:var(--r)">⚠️ Ej tilldelad</span> <button onclick="openAssignModal('${b.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0F6E56;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:.25rem">Tilldela</button>`}</td>
+      <td style="font-size:.82rem">${b.cleaner_id ? ('✅ ' + escHtml(b.cleaner_name || 'Tilldelad')) : `<span style="color:var(--r)">⚠️ Ej tilldelad</span> <button onclick="openAssignModal('${escHtml(b.id)}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0F6E56;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:.25rem">Tilldela</button>`}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button>
@@ -1203,8 +1203,8 @@ function renderPending() {
   document.getElementById('pending-list').innerHTML = pending.length ? pending.map(b => `
     <div class="cleaner-card" style="justify-content:space-between">
       <div>
-        <strong>${b.customer_name || b.name || '–'}</strong>
-        <p>${b.service || 'Hemstädning'} · ${b.date || '–'} · ${b.city || '–'}</p>
+        <strong>${escHtml(b.customer_name || b.name || '–')}</strong>
+        <p>${escHtml(b.service || 'Hemstädning')} · ${escHtml(b.date || '–')} · ${escHtml(b.city || '–')}</p>
         <p style="font-size:.78rem;color:var(--m)">Skapad: ${new Date(b.created_at).toLocaleString('sv')}</p>
       </div>
       <div style="text-align:right">
@@ -1236,10 +1236,10 @@ function renderCleaners() {
       <td>
         <div style="display:flex;align-items:center;gap:10px">
           <div class="avatar" style="width:36px;height:36px;font-size:.85rem">${(c.full_name||'?').charAt(0)}</div>
-          <div><strong>${c.full_name || '–'}</strong><br><span style="font-size:.78rem;color:var(--m)">${c.email || ''}</span></div>
+          <div><strong>${escHtml(c.full_name || '–')}</strong><br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
         </div>
       </td>
-      <td>${c.city || '–'}</td>
+      <td>${escHtml(c.city || '–')}</td>
       <td>
         <span style="font-size:.9rem">⭐ ${c.avg_rating || '–'}</span>
         <div style="font-size:.72rem;color:var(--m)">${c.review_count || 0} betyg</div>
@@ -1270,24 +1270,28 @@ function renderApplications() {
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
         <div>
-          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${a.name || a.full_name || '–'}</h4>
-          <p style="color:var(--m);font-size:.88rem">${a.email} · ${a.phone || '–'} · ${a.city || '–'}</p>
-          <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${a.services || '–'}</p>
-          <p style="font-size:.85rem"><strong>Timpris:</strong> ${a.hourly_rate || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt ? '✅ Ja' : '❌ Nej'}</p>
-          ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${a.bio.substring(0,120)}..."</p>` : ''}
-          ${a.available_days ? `<p style="font-size:.82rem;margin-top:4px"><strong>Tillgängliga dagar:</strong> ${a.available_days}</p>` : ''}
-          ${a.languages ? `<p style="font-size:.82rem"><strong>Språk:</strong> ${a.languages}</p>` : ''}
+          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${escHtml(a.name || a.full_name || '–')}</h4>
+          <p style="color:var(--m);font-size:.88rem">${escHtml(a.email)} · ${escHtml(a.phone || '–')} · ${escHtml(a.city || '–')}</p>
+          <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(a.services || '–')}</p>
+          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt ? '✅ Ja' : '❌ Nej'}</p>
+          ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${escHtml(a.bio.substring(0,120))}..."</p>` : ''}
+          ${a.available_days ? `<p style="font-size:.82rem;margin-top:4px"><strong>Tillgängliga dagar:</strong> ${escHtml(a.available_days)}</p>` : ''}
+          ${a.languages ? `<p style="font-size:.82rem"><strong>Språk:</strong> ${escHtml(a.languages)}</p>` : ''}
           <p style="font-size:.75rem;color:var(--m);margin-top:6px">Ansökt: ${new Date(a.created_at).toLocaleDateString('sv')}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="approveApplication('${a.id}', '${a.name || a.full_name}', '${a.email}', '${a.city||''}', '${a.services||''}', ${a.hourly_rate||350})">✅ Godkänn</button>
-          <button class="btn btn-danger btn-sm" onclick="rejectApplication('${a.id}')">❌ Avslå</button>
+          <button class="btn btn-primary btn-sm" style="white-space:nowrap" 
+            data-id="${escHtml(a.id)}" data-name="${escHtml(a.name || a.full_name)}" 
+            data-email="${escHtml(a.email)}" data-city="${escHtml(a.city||'')}" 
+            data-services="${escHtml(a.services||'')}" data-rate="${parseInt(a.hourly_rate)||350}"
+            onclick="approveApplication(this.dataset.id, this.dataset.name, this.dataset.email, this.dataset.city, this.dataset.services, this.dataset.rate)">✅ Godkänn</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectApplication('${escHtml(a.id)}')">❌ Avslå</button>
         </div>
       </div>
     </div>`).join('') : '<div class="empty"><div class="empty-icon">✅</div>Inga nya ansökningar</div>'}
     ${reviewed.length ? `<h3 style="font-weight:600;margin:24px 0 16px">Granskade (${reviewed.length})</h3>` + reviewed.map(a => `
     <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem">
-      <span>${a.name || a.full_name || '–'} · ${a.city || '–'}</span>
+      <span>${escHtml(a.name || a.full_name || '–')} · ${escHtml(a.city || '–')}</span>
       <span class="badge ${a.status==='approved'?'green':'red'}">${a.status==='approved'?'Godkänd':'Avslagen'}</span>
     </div>`).join('') : ''}`;
 }
@@ -1310,11 +1314,11 @@ function renderCustomers() {
     const isVip = spent > 5000 || (c.total_bookings || 0) >= 5;
     return `<tr>
       <td>
-        <strong>${c.name || '–'}</strong>
+        <strong>${escHtml(c.name || '–')}</strong>
         ${isVip ? '<span style="background:#FEF3C7;color:#92400E;font-size:.65rem;padding:1px 6px;border-radius:10px;margin-left:6px">VIP</span>' : ''}
       </td>
-      <td style="font-size:.82rem">${c.email || '–'}</td>
-      <td>${c.city || '–'}</td>
+      <td style="font-size:.82rem">${escHtml(c.email || '–')}</td>
+      <td>${escHtml(c.city || '–')}</td>
       <td>
         <strong>${c.total_bookings || 0}</strong> bokningar
         <div style="font-size:.72rem;color:var(--g);font-weight:600">${spent.toLocaleString('sv')} kr totalt</div>
@@ -1542,11 +1546,11 @@ function showToast(msg) {
 function renderReviews() {
   document.getElementById('reviews-tbody').innerHTML = data.reviews.length ? data.reviews.map(r => `
     <tr>
-      <td>${r.customer_name || r.customer_email || '–'}</td>
-      <td>${r.cleaner_name || r.cleaner_id?.substring(0,8) || '–'}</td>
-      <td>${'⭐'.repeat(r.cleaner_rating || 5)} <strong>${r.cleaner_rating || 5}/5</strong></td>
-      <td style="max-width:200px;font-size:.83rem">${r.comment || '–'}</td>
-      <td style="font-size:.78rem;color:var(--m)">${r.aspects || '–'}</td>
+      <td>${escHtml(r.customer_name || r.customer_email || '–')}</td>
+      <td>${escHtml(r.cleaner_name || r.cleaner_id?.substring(0,8) || '–')}</td>
+      <td>${'⭐'.repeat(Math.min(5,parseInt(r.cleaner_rating)||5))} <strong>${parseInt(r.cleaner_rating)||5}/5</strong></td>
+      <td style="max-width:200px;font-size:.83rem">${escHtml(r.comment || '–')}</td>
+      <td style="font-size:.78rem;color:var(--m)">${escHtml(r.aspects || '–')}</td>
       <td>${new Date(r.created_at).toLocaleDateString('sv')}</td>
     </tr>`).join('') : '<tr><td colspan="6" class="empty">Inga recensioner än</td></tr>';
 }
@@ -1571,26 +1575,26 @@ function showBookingDetail(id) {
   const cleaner = data.cleaners.find(c => c.id === b.cleaner_id);
   document.getElementById('modal-title').textContent = `Bokning – ${b.customer_name || b.name || 'Okänd'}`;
   document.getElementById('modal-body').innerHTML = `
-    <div class="stat-row"><span class="lbl">Kund</span><span class="val">${b.customer_name || b.name || '–'} · ${b.customer_email || b.email || ''}</span></div>
-    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${b.phone || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${b.service || 'Hemstädning'} · ${b.hours || 3}h</span></div>
-    <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${b.date || '–'} kl ${b.time || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Adress</span><span class="val">${b.address || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Kund</span><span class="val">${escHtml(b.customer_name || b.name || '–')} · ${escHtml(b.customer_email || b.email || '')}</span></div>
+    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${escHtml(b.phone || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${escHtml(b.service || 'Hemstädning')} · ${parseInt(b.hours) || 3}h</span></div>
+    <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.date || '–')} kl ${escHtml(b.time || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Adress</span><span class="val">${escHtml(b.address || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Belopp</span><span class="val text-g">${Math.round(b.total_price||0).toLocaleString('sv')} kr${b.rut ? ' (RUT)' : ''}</span></div>
-    <div class="stat-row"><span class="lbl">Betalsätt</span><span class="val">${b.payment_method || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Betalsätt</span><span class="val">${escHtml(b.payment_method || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Status</span><span class="val">${statusBadge(b.payment_status)}</span></div>
-    <div class="stat-row"><span class="lbl">Städare</span><span class="val">${cleaner ? cleaner.full_name + ' ⭐' + cleaner.avg_rating : '⚠️ Ej tilldelad'}</span></div>
-    <div class="stat-row"><span class="lbl">Stripe PI</span><span class="val" style="font-size:.75rem">${b.stripe_payment_intent || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Städare</span><span class="val">${cleaner ? escHtml(cleaner.full_name) + ' ⭐' + parseFloat(cleaner.avg_rating||0).toFixed(1) : '⚠️ Ej tilldelad'}</span></div>
+    <div class="stat-row"><span class="lbl">Stripe PI</span><span class="val" style="font-size:.75rem">${escHtml(b.stripe_payment_intent || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(b.created_at).toLocaleString('sv')}</span></div>
-    <div class="stat-row"><span class="lbl">Kundanteckningar</span><span class="val">${b.customer_notes || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Nyckelinfo</span><span class="val">${b.key_info || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Kundanteckningar</span><span class="val">${escHtml(b.customer_notes || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Nyckelinfo</span><span class="val">${escHtml(b.key_info || '–')}</span></div>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="mailto:${b.customer_email||b.email||''}?subject=Din städning ${b.date||''}&body=Hej ${(b.customer_name||'').split(' ')[0]}," 
+      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])}," 
          style="flex:1;padding:8px;background:var(--gp);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         ✉️ Maila kund
       </a>
-      ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang bokning ${b.date||''}"
+      ${b.cleaner_email ? `<a href="mailto:${encodeURIComponent(b.cleaner_email)}?subject=Ang bokning ${encodeURIComponent(b.date||'')}"
          style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         🧹 Maila städare
       </a>` : ''}
@@ -1622,13 +1626,13 @@ function showCustomerBookings(email) {
         <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${Math.round(total).toLocaleString('sv')} kr</div>
         <div style="font-size:.72rem;color:var(--m)">totalt spenderat</div>
       </div>
-      ${customer?.phone ? `<div style="background:#DBEAFE;border-radius:10px;padding:10px 16px;text-align:center"><div style="font-weight:700;font-size:.9rem;color:#1E40AF">${customer.phone}</div><div style="font-size:.72rem;color:var(--m)">telefon</div></div>` : ''}
+      ${customer?.phone ? `<div style="background:#DBEAFE;border-radius:10px;padding:10px 16px;text-align:center"><div style="font-weight:700;font-size:.9rem;color:#1E40AF">${escHtml(customer.phone)}</div><div style="font-size:.72rem;color:var(--m)">telefon</div></div>` : ''}
     </div>
     ${customerBookings.length ? customerBookings.map(b => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem">
         <div>
-          <strong>${b.service || 'Hemstädning'}</strong> · ${b.date || '–'}
-          <div style="font-size:.75rem;color:var(--m)">${b.cleaner_name || 'Ej tilldelad'} · ${b.city || '–'}</div>
+          <strong>${escHtml(b.service || 'Hemstädning')}</strong> · ${escHtml(b.date || '–')}
+          <div style="font-size:.75rem;color:var(--m)">${escHtml(b.cleaner_name || 'Ej tilldelad')} · ${escHtml(b.city || '–')}</div>
         </div>
         <div style="text-align:right">
           <div style="color:var(--g);font-weight:600">${Math.round(b.total_price||0).toLocaleString('sv')} kr</div>
@@ -1636,9 +1640,9 @@ function showCustomerBookings(email) {
         </div>
       </div>`).join('') : '<div style="color:var(--m);text-align:center;padding:20px">Inga bokningar</div>'}
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-      <a href="mailto:${email}?subject=Ang dina städningar på Spick" 
+      <a href="mailto:${encodeURIComponent(email)}?subject=Ang dina städningar på Spick" 
          style="display:block;text-align:center;background:var(--gp);color:var(--g);padding:10px;border-radius:10px;font-weight:600;text-decoration:none">
-        ✉️ Maila ${name.split(' ')[0]}
+        ✉️ Maila ${escHtml(name.split(' ')[0])}
       </a>
     </div>`;
   
@@ -1727,22 +1731,22 @@ function showCleanerDetail(id) {
   const jobs = data.bookings.filter(b => b.cleaner_id === id && b.payment_status === 'paid');
   document.getElementById('cleaner-modal-title').textContent = c.full_name || 'Städare';
   document.getElementById('cleaner-modal-body').innerHTML = `
-    <div class="stat-row"><span class="lbl">E-post</span><span class="val">${c.email || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${c.phone || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Stad</span><span class="val">${c.city || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Tjänster</span><span class="val">${c.services || '–'}</span></div>
-    <div class="stat-row"><span class="lbl">Timpris</span><span class="val">${c.hourly_rate || 350} kr/h</span></div>
-    <div class="stat-row"><span class="lbl">Betyg</span><span class="val">⭐ ${c.avg_rating || '–'}</span></div>
+    <div class="stat-row"><span class="lbl">E-post</span><span class="val">${escHtml(c.email || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${escHtml(c.phone || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Stad</span><span class="val">${escHtml(c.city || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Tjänster</span><span class="val">${escHtml(c.services || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Timpris</span><span class="val">${parseInt(c.hourly_rate) || 350} kr/h</span></div>
+    <div class="stat-row"><span class="lbl">Betyg</span><span class="val">⭐ ${parseFloat(c.avg_rating||0).toFixed(1) || '–'}</span></div>
     <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Ja' : '❌ Nej'}</span></div>
     <div class="stat-row"><span class="lbl">Avklarade uppdrag</span><span class="val text-g">${jobs.length} st</span></div>
     <div class="stat-row"><span class="lbl">Totalt intjänat</span><span class="val text-g">${jobs.reduce((s,b)=>s+Math.round((b.total_price||0)*.83),0).toLocaleString('sv')} kr</span></div>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="mailto:${c.email||''}?subject=Ang dina uppdrag på Spick"
+      <a href="mailto:${encodeURIComponent(c.email||'')}?subject=Ang dina uppdrag på Spick"
          style="flex:1;padding:8px;background:var(--gp);color:var(--g);border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         ✉️ Kontakta städare
       </a>
-      <a href="/stadare.html?focus=${c.id}" target="_blank"
+      <a href="/stadare.html?focus=${encodeURIComponent(c.id)}" target="_blank"
          style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         👁 Se profil
       </a>

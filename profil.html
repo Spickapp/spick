@@ -182,38 +182,38 @@ if (schemaEl) {
     } : undefined
   });
 }
-document.title=c.full_name+' – Städare i '+c.city+' | Spick';
+document.title=escHtml(c.full_name)+' – Städare i '+escHtml(c.city)+' | Spick';
 
   document.getElementById('content').innerHTML=`
     <div class="profile-card">
       <div class="profile-hero">
-        <div class="avatar" style="background:${color}">${ini}</div>
+        <div class="avatar" style="background:${escHtml(color)}">${ini}</div>
         <div>
-          <div class="profile-name">${c.full_name}</div>
-          <div class="profile-loc">📍 ${c.city||'Sverige'}</div>
+          <div class="profile-name">${escHtml(c.full_name)}</div>
+          <div class="profile-loc">📍 ${escHtml(c.city||'Sverige')}</div>
           <div class="badges">
             ${c.identity_verified||c.bankid_verified?'<span class="badge">✓ BankID</span>':''}
             ${c.has_fskatt||c.has_insurance?'<span class="badge">F-skatt</span>':''}
-            <span class="badge">${bonus}</span>
+            <span class="badge">${escHtml(bonus)}</span>
           </div>
         </div>
       </div>
       <div class="profile-body">
-        <div><span class="stars">${stars}</span><span class="rating-big">${rating}</span><span class="reviews-count">(${c.review_count||0} omdömen)</span></div>
+        <div><span class="stars">${stars}</span><span class="rating-big">${rating}</span><span class="reviews-count">(${parseInt(c.review_count)||0} omdömen)</span></div>
         <div class="stats-row">
-          <div class="stat"><div class="stat-val">${c.review_count||0}</div><div class="stat-lbl">Städningar</div></div>
+          <div class="stat"><div class="stat-val">${parseInt(c.review_count)||0}</div><div class="stat-lbl">Städningar</div></div>
           <div class="stat"><div class="stat-val">${rating}</div><div class="stat-lbl">Betyg</div></div>
-          <div class="stat"><div class="stat-val">${price} kr</div><div class="stat-lbl">Per timme</div></div>
+          <div class="stat"><div class="stat-val">${parseInt(price)} kr</div><div class="stat-lbl">Per timme</div></div>
         </div>
         <div class="section-title">Tjänster</div>
-        <div class="tags">${tags.map(t=>'<span class="tag">'+t+'</span>').join('')}</div>
-        <div class="section-title">Om ${c.full_name?.split(' ')[0]}</div>
-        <div class="bio">${c.bio||'Professionell och noggrann städare med hög servicegrad.'}</div>
+        <div class="tags">${tags.map(t=>'<span class="tag">'+escHtml(t)+'</span>').join('')}</div>
+        <div class="section-title">Om ${escHtml(c.full_name?.split(' ')[0])}</div>
+        <div class="bio">${escHtml(c.bio||'Professionell och noggrann städare med hög servicegrad.')}</div>
       </div>
     </div>
     <div class="book-section">
       <div class="price-row">
-        <span class="price">${price} kr</span>
+        <span class="price">${parseInt(price)} kr</span>
         <span class="price-unit">/timme</span>
         <span class="price-rut">${Math.round(price*.5)} kr med RUT</span>
       </div>
@@ -291,7 +291,7 @@ async function loadReviews(cleanerId) {
           <span style="color:#f59e0b">${'★'.repeat(rev.rating||5)}</span>
           <span style="font-size:.72rem;color:#6B6960">${new Date(rev.created_at).toLocaleDateString('sv-SE')}</span>
         </div>
-        <p style="font-size:.82rem;color:#1C1C1A;line-height:1.6">${rev.comment||'Rekommenderar starkt!'}</p>
+        <p style="font-size:.82rem;color:#1C1C1A;line-height:1.6">${escHtml(rev.comment||'Rekommenderar starkt!')}</p>
       </div>`).join('');
   } catch(e) {
     const el = document.getElementById('reviews-list');
