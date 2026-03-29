@@ -398,7 +398,7 @@ footer a:hover{color:var(--gm);}
     </div>
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
-      <div class="hs"><div class="hs-val" id="stat-cleaners">9</div><div class="hs-lbl">betygsatta städare</div></div>
+      
       <div class="hs"><div class="hs-val" id="stat-rating">4.9 ★</div><div class="hs-lbl">snittbetyg</div></div>
       <div class="hs"><div class="hs-val" id="stat-bookings">100+</div><div class="hs-lbl">bokningar totalt</div></div>
     </div>
@@ -421,12 +421,7 @@ footer a:hover{color:var(--gm);}
       </div>
       <div class="phone-rut"><span class="pr-lbl">✓ RUT-avdrag sparat</span><span class="pr-val">-525 kr</span></div>
       <div style="font-size:.65rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Tillgängliga städare</div>
-      <div class="phone-cleaners">
-        <div class="pcl"><div class="pcl-av" style="background:#0F6E56">SK</div><div><div class="pcl-name">Sara Karlsson</div><div class="pcl-loc">Stockholm · 47 städningar</div></div><div class="pcl-r">★ 4.97</div></div>
-        <div class="pcl"><div class="pcl-av" style="background:#534AB7">MA</div><div><div class="pcl-name">Maria Andersson</div><div class="pcl-loc">Solna · 31 städningar</div></div><div class="pcl-r">★ 4.94</div></div>
-        <div class="pcl"><div class="pcl-av" style="background:#D85A30">AH</div><div><div class="pcl-name">Ahmad Hassan</div><div class="pcl-loc">Bromma · 28 städningar</div></div><div class="pcl-r">★ 4.91</div></div>
-      </div>
-    </div>
+      </div></div></div>
     <div class="badge-float bf-left">🟢 RUT-avdrag aktivt<br><span style="font-size:.7rem;color:#6B6960">Du betalar bara 50%</span></div>
   </div>
 </div>
@@ -612,32 +607,7 @@ const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 function ini(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2);}
 function st(r){return'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
-async function loadCleaners(){
-  const {data,error}=await SB.from('cleaners').select('*').eq('is_approved',true).order('avg_rating',{ascending:false}).limit(6);
-  const g=document.getElementById('grid');
-  if(!data?.length){g.innerHTML='<div class="loading-card">Inga städare hittades – <a href="boka.html" style="color:var(--g)">se alla</a></div>';return;}
-  g.innerHTML=data.map((c,i)=>{
-    const tags=Array.isArray(c.services)?c.services:(c.services||'Hemstädning').split(',').map(s=>s.trim());
-    return `<a class="cc ${i===0?'top':''}" href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${parseInt(c.hourly_rate)||350}&rating=${parseFloat(c.avg_rating)||0}&id=${encodeURIComponent(c.id)}">
-      <div class="cc-head">
-        <div class="cav" style="background:${COLORS[i%COLORS.length]}">${ini(c.full_name)}</div>
-        <div>
-          ${i===0?'<span class="cc-badge">Toppvald</span><br>':''}
-          <div class="cc-name">${escHtml(c.full_name)}</div>
-          <div class="cc-loc">${escHtml(c.city||'Stockholm')}</div>
-          <div class="cc-stars">${st(c.avg_rating||0)} <strong>${c.avg_rating?parseFloat(c.avg_rating).toFixed(1):'Ny'}</strong></div>
-        </div>
-      </div>
-      <div class="cc-body">
-        <div class="cc-tags">${tags.slice(0,3).map(t=>`<span class="ctag">${escHtml(t)}</span>`).join('')}</div>
-        <div class="cc-bio">${escHtml((c.bio||'Professionell städare.').slice(0,90))}...</div>
-        <div><span class="cc-price">${parseInt(c.hourly_rate)||350} kr</span><span style="font-size:.8rem;color:var(--m)">/h</span><span class="cc-rut">${Math.round((c.hourly_rate||350)*.5)} kr m. RUT</span></div>
-      </div>
-      <div class="cc-foot"><span class="cc-btn">Boka ${escHtml(c.full_name.split(' ')[0])} →</span></div>
-    </a>`;
-  }).join('');
-}
-loadCleaners();
+
 loadStats();
 
 async function loadStats(){
@@ -840,6 +810,7 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
 
 
 
