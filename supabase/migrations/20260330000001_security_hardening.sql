@@ -280,7 +280,7 @@ BEGIN
   END IF;
   
   -- Validate hours range
-  IF NEW.hours IS NOT NULL AND (NEW.hours < 1 OR NEW.hours > 12) THEN
+  IF NEW.hours IS NOT NULL AND (NEW.hours < 1 OR NEW.hours > 16) THEN
     RAISE EXCEPTION 'Hours must be between 1 and 12';
   END IF;
   
