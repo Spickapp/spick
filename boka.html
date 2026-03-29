@@ -1412,6 +1412,34 @@ function renderCleaners(cleaners) {
 }
 
 
+
+async function checkCoverage(address) {
+  const msg = document.getElementById('coverage-msg');
+  const calSec = document.getElementById('cal-section');
+  msg.style.display = 'block';
+  msg.innerHTML = '<div style="color:var(--m);font-size:.85rem">⏳ Kollar tillgänglighet...</div>';
+  try {
+    const {data} = await SB.from('cleaners').select('id').eq('is_approved', true).limit(1);
+    if (data && data.length > 0) {
+      msg.innerHTML = '<div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:.75rem 1rem;font-size:.85rem;color:#065F46">✅ Vi har städare i ditt område! Välj datum och tid nedan.</div>';
+      calSec.style.display = 'block';
+      state.address = address;
+    } else {
+      msg.innerHTML = '<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:1.25rem;text-align:center"><div style="font-size:1.5rem;margin-bottom:.5rem">😔</div><div style="font-weight:700;margin-bottom:.375rem;color:#991B1B">Tyvärr, vi har inga städare i ditt område ännu</div><div style="font-size:.82rem;color:#6B7280;margin-bottom:1rem">Vi expanderar snabbt! Lämna din e-post så meddelar vi dig när vi finns hos dig.</div><div style="display:flex;gap:.5rem;justify-content:center"><input type="email" id="notify-email" placeholder="din@email.se" style="padding:.5rem .75rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.85rem"><button onclick="notifyMe()" style="background:var(--g);color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Meddela mig</button></div><div id="notify-result" style="margin-top:.5rem;font-size:.8rem"></div></div>';
+      calSec.style.display = 'none';
+    }
+  } catch(e) {
+    msg.innerHTML = '<div style="color:#991B1B;font-size:.85rem">⚠ Kunde inte kontrollera tillgänglighet. Välj datum och tid ändå.</div>';
+    calSec.style.display = 'block';
+  }
+}
+
+async function notifyMe() {
+  const email = document.getElementById('notify-email')?.value;
+  const result = document.getElementById('notify-result');
+  if (!email || !email.includes('@')) { result.textContent = 'Ange en giltig e-post'; return; }
+  result.textContent = '✅ Tack! Vi meddelar dig.';
+}
 async function findFirstAvailable() {
   const btn = document.getElementById('find-first-btn');
   const result = document.getElementById('first-avail-result');
@@ -1555,7 +1583,7 @@ function autofillBankID() {
 let addrTimer;
 async function addrSearch(q) {
   clearTimeout(addrTimer);
-  const list = document.getElementById('addr-list');
+  const list = document.getElementById('addr-list') || document.getElementById('addr-dd');
   if (q.length < 3) { list.style.display='none'; return; }
   addrTimer = setTimeout(async () => {
     try {
@@ -1575,7 +1603,7 @@ async function addrSearch(q) {
 function pickAddr(val) {
   document.getElementById('address').value = val;
   state.address = val;
-  document.getElementById('addr-list').style.display = 'none';
+  var _al=document.getElementById('addr-list');if(_al)_al.style.display='none';var _ad=document.getElementById('addr-dd');if(_ad)_ad.style.display='none';if(document.getElementById('step1-address'))checkCoverage(val);
 }
 
 document.addEventListener('click', e => {
@@ -1968,6 +1996,11 @@ document.addEventListener('mouseleave', e => {
 </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
