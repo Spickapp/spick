@@ -618,6 +618,8 @@ footer a:hover{color:var(--gm);}
 </footer>
 
 <script>
+// Alla defer-scripts (supabase, config.js) körs före DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
 const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
 const COLORS=['#0F6E56','#534AB7','#D85A30','#0C447C','#854F0B','#3B6D11'];
 function ini(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2);}
@@ -628,22 +630,22 @@ async function loadCleaners(){
   if(!data?.length){g.innerHTML='<div class="loading-card">Inga städare hittades – <a href="stadare.html" style="color:var(--g)">se alla</a></div>';return;}
   g.innerHTML=data.map((c,i)=>{
     const tags=Array.isArray(c.services)?c.services:(c.services||'Hemstädning').split(',').map(s=>s.trim());
-    return `<a class="cc ${i===0?'top':''}" href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${c.hourly_rate}&rating=${c.avg_rating}&id=${c.id}">
+    return `<a class="cc ${i===0?'top':''}" href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${parseInt(c.hourly_rate)||350}&rating=${parseFloat(c.avg_rating)||0}&id=${encodeURIComponent(c.id)}">
       <div class="cc-head">
         <div class="cav" style="background:${COLORS[i%COLORS.length]}">${ini(c.full_name)}</div>
         <div>
           ${i===0?'<span class="cc-badge">Toppvald</span><br>':''}
-          <div class="cc-name">${c.full_name}</div>
-          <div class="cc-loc">${c.city||'Stockholm'}</div>
+          <div class="cc-name">${escHtml(c.full_name)}</div>
+          <div class="cc-loc">${escHtml(c.city||'Stockholm')}</div>
           <div class="cc-stars">${st(c.avg_rating||0)} <strong>${c.avg_rating?parseFloat(c.avg_rating).toFixed(1):'Ny'}</strong></div>
         </div>
       </div>
       <div class="cc-body">
-        <div class="cc-tags">${tags.slice(0,3).map(t=>`<span class="ctag">${t}</span>`).join('')}</div>
-        <div class="cc-bio">${(c.bio||'Professionell städare.').slice(0,90)}...</div>
-        <div><span class="cc-price">${c.hourly_rate||350} kr</span><span style="font-size:.8rem;color:var(--m)">/h</span><span class="cc-rut">${Math.round((c.hourly_rate||350)*.5)} kr m. RUT</span></div>
+        <div class="cc-tags">${tags.slice(0,3).map(t=>`<span class="ctag">${escHtml(t)}</span>`).join('')}</div>
+        <div class="cc-bio">${escHtml((c.bio||'Professionell städare.').slice(0,90))}...</div>
+        <div><span class="cc-price">${parseInt(c.hourly_rate)||350} kr</span><span style="font-size:.8rem;color:var(--m)">/h</span><span class="cc-rut">${Math.round((c.hourly_rate||350)*.5)} kr m. RUT</span></div>
       </div>
-      <div class="cc-foot"><span class="cc-btn">Boka ${c.full_name.split(' ')[0]} →</span></div>
+      <div class="cc-foot"><span class="cc-btn">Boka ${escHtml(c.full_name.split(' ')[0])} →</span></div>
     </a>`;
   }).join('');
 }
@@ -694,6 +696,7 @@ async function loadStats(){
     }
   } catch(e){}
 }
+}); // end DOMContentLoaded
 </script>
 
 <!-- AI CHAT WIDGET -->
