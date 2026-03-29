@@ -40,11 +40,13 @@
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-height:1.6;overflow-x:hidden}
 
-/* ─── GOOGLE TRANSLATE BAR ─── */
-.gt-bar{background:var(--gd);padding:6px 1.5rem;display:flex;align-items:center;justify-content:center;gap:10px}
-.gt-bar>span{color:rgba(255,255,255,.65);font-size:.75rem;font-weight:500}
-.gt-bar .goog-te-combo{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:99px;padding:5px 28px 5px 12px;font-size:.75rem;cursor:pointer;font-family:inherit;-webkit-appearance:none;appearance:none;outline:none}
-.gt-bar .goog-te-combo option{background:#085041;color:#fff}
+/* ─── LANGUAGE SELECTOR ─── */
+.lang-bar{background:var(--gd);padding:5px 1.5rem;display:flex;align-items:center;justify-content:center;gap:6px}
+.lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
+.lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
+.lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.lang-sep{color:rgba(255,255,255,.2);font-size:.7rem;user-select:none}
+#google_translate_element{position:absolute;left:-9999px;opacity:0;pointer-events:none}
 .goog-te-banner-frame{display:none!important}
 body{top:0!important}
 #goog-gt-tt,.goog-te-balloon-frame{display:none!important}
@@ -234,11 +236,21 @@ function googleTranslateElementInit() {
 </head>
 <body>
 
-<!-- GOOGLE TRANSLATE BAR -->
-<div class="gt-bar">
-  <span>🌍 Översätt sidan</span>
-  <div id="google_translate_element"></div>
+<!-- LANGUAGE SELECTOR -->
+<div class="lang-bar">
+  <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska">🇸🇪</button>
+  <span class="lang-sep">·</span>
+  <button class="lang-btn" onclick="switchLang('en',this)" title="English">🇬🇧</button>
+  <button class="lang-btn" onclick="switchLang('ar',this)" title="العربية">🇸🇦</button>
+  <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali">🇸🇴</button>
+  <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski">🇵🇱</button>
+  <button class="lang-btn" onclick="switchLang('fa',this)" title="فارسی">🇮🇷</button>
+  <button class="lang-btn" onclick="switchLang('ti',this)" title="ትግርኛ">🇪🇷</button>
+  <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська">🇺🇦</button>
+  <button class="lang-btn" onclick="switchLang('es',this)" title="Español">🇪🇸</button>
+  <button class="lang-btn" onclick="switchLang('ro',this)" title="Română">🇷🇴</button>
 </div>
+<div id="google_translate_element"></div>
 
 <!-- NAV (injected by components.js) -->
 
@@ -561,6 +573,31 @@ function getSB() { if (!SB) SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUP
 let svcs = ['Hemstädning'], days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag'], step = 1;
 
 
+/* ── LANGUAGE SWITCHER ─────────────── */
+function switchLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  if (lang === 'sv') {
+    // Restore original page
+    const frame = document.querySelector('.goog-te-banner-frame');
+    if (frame) {
+      const innerDoc = frame.contentDocument || frame.contentWindow.document;
+      const restoreBtn = innerDoc.querySelector('.goog-close-link');
+      if (restoreBtn) restoreBtn.click();
+    }
+    // Fallback: remove Google Translate cookie
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
+    if (!document.querySelector('.goog-te-banner-frame')) location.reload();
+    return;
+  }
+  // Set cookie and trigger translate
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
+  const sel = document.querySelector('.goog-te-combo');
+  if (sel) { sel.value = lang; sel.dispatchEvent(new Event('change')); }
+  else { location.reload(); }
+}
 /* ── STEP NAVIGATION ─────────────────────── */
 function goStep(n) {
   if (n > step && !validate(step)) return;
