@@ -315,7 +315,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </div>
           </div>
 
-          <!-- Adress --><div style="margin-top:1.25rem"><label>Din adress *</label><input type="text" id="step1-address" placeholder="Kungsgatan 10, Stockholm" autocomplete="off" oninput="addrSearch(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem"><div id="addr-dd" class="addr-dd"></div><div id="coverage-msg" style="display:none;margin-top:.75rem"></div></div><!-- Kalender --><div id="cal-section" style="display:none;margin-top:1.25rem">
+          <!-- Adress --><div style="margin-top:1.25rem" class="f f-addr"><label>Din adress *</label><input type="text" id="step1-address" placeholder="Kungsgatan 10, Stockholm" autocomplete="off" oninput="addrSearch(this.value); syncAddr(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)" onblur="syncAddr(this.value)" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem"><div id="addr-dd" class="addr-suggestions" style="display:none"></div><div id="coverage-msg" style="display:none;margin-top:.75rem"></div></div><!-- Kalender --><div id="cal-section" style="margin-top:1.25rem">
             <label style="margin-bottom:.5rem">Välj datum & tid *</label>
             <div class="cal" id="calendar">
               <div class="cal-nav">
@@ -819,6 +819,7 @@ function selectFreq(freq, btn) {
 function calcHours() {
   const sqm = +document.getElementById('sqm').value || 0;
   state.sqm = sqm;
+  document.getElementById('sqm').classList.remove('invalid');
   if (!sqm) {
     // Rensa kalender-tidslistan om kvm rensas
     document.getElementById('tl-wrap').style.display = 'none';
@@ -1995,6 +1996,11 @@ document.addEventListener('mouseleave', e => {
 </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
