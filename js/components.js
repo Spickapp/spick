@@ -227,3 +227,6 @@ if (document.readyState === 'loading') {
 // Exponera för manuell användning
 window.SPICK_COMPONENTS = { NAV_HTML, MOB_HTML, FOOTER_HTML };
 })();
+
+
+
