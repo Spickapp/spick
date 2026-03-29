@@ -648,7 +648,9 @@ let state = {
   // Tillgänglighet
   availability: [], blocked: [], bookings: [],
   // Städare-lista
-  availableCleaners: []
+  availableCleaners: [],
+  // Referral
+  referralCode: ''
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -664,6 +666,20 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cleanerId   = preCleanerId;
     state.cleanerName = preCleanerName;
     state.cleanerRate = Math.min(Math.max(preRate, 100), 1000); // Clamp rate 100-1000
+  }
+  // Referral-kod från delningslänk
+  const refCode = p.get('ref');
+  if (refCode && /^[A-Za-z0-9]{4,16}$/.test(refCode)) {
+    state.referralCode = refCode;
+    sessionStorage.setItem('spick_ref', refCode);
+  } else if (sessionStorage.getItem('spick_ref')) {
+    state.referralCode = sessionStorage.getItem('spick_ref');
+  }
+  if (state.referralCode) {
+    const refBanner = document.createElement('div');
+    refBanner.style.cssText = 'background:#F0FDF4;border:1.5px solid #6EE7B7;border-radius:12px;padding:10px 16px;margin:0 auto 1rem;max-width:700px;text-align:center;font-size:.85rem;color:#065F46;font-weight:600';
+    refBanner.textContent = '🎁 Referral-kod aktiv — du och din vän får 100 kr var!';
+    document.querySelector('.booking-content, .step-panel, main')?.prepend(refBanner);
   }
   const now = new Date();
   state.calYear  = now.getFullYear();
@@ -1737,7 +1753,8 @@ async function doBook() {
       rut: useRut,
       cleaner_id: state.cleanerId,
       cleaner_name: state.cleanerName,
-      ...(hashedPnr ? {customer_pnr_hash: hashedPnr} : {})
+      ...(hashedPnr ? {customer_pnr_hash: hashedPnr} : {}),
+      ...(state.referralCode ? {referral_code: state.referralCode} : {})
     };
     // Generate booking ID client-side (avoids needing return=representation which requires SELECT RLS)
     const bookingId = crypto.randomUUID();
@@ -1770,7 +1787,8 @@ async function doBook() {
         address: state.address,
         phone: state.phone,
         cleaner_id: state.cleanerId,
-        cleaner_name: state.cleanerName
+        cleaner_name: state.cleanerName,
+        referral_code: state.referralCode || undefined
       })
     });
     if (!stripeRes.ok) {
