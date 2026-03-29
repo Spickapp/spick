@@ -1,10 +1,10 @@
-# SPICK Security Sprint — Deploy Guide
+# SPICK Security & Optimization Sprint — Deploy Guide
 **Datum:** 2026-03-30  
-**Sprint:** Fullständig säkerhetsaudit + XSS-härdning + backend-fixes
+**Sprint:** Fullständig säkerhetsaudit + XSS-härdning + backend-fixes + UX-optimering
 
 ---
 
-## Sammanfattning av ändringar
+## Sammanfattning av ändringar (22 filer, 866 insertions)
 
 ### 🔒 XSS-härdning (9 filer)
 Alla `innerHTML`-tilldelningar som renderar databasdata har nu `escHtml()` och/eller
@@ -18,6 +18,18 @@ Alla `innerHTML`-tilldelningar som renderar databasdata har nu `escHtml()` och/e
 - `mitt-konto.html` — bokningskort + städarkontakt
 - `tack.html` — betygsätt-länk
 - `admin.html` — ALLA modaler, tabeller, listor (bokningar, städare, ansökningar, kunder, recensioner, e-post)
+
+### 🚀 UX & Konvertering
+- `js/components.js` — Nav CTA pekar nu på boka.html (var stadare.html)
+- `js/cro.js` — Social proof toasts nu med riktig data från reviews-tabellen (MFL-kompatibelt)
+- `index.html` — Stats via säker `public_stats` VIEW, duplicate keywords borttagen
+- `sw.js` — Cache busted (ny VERSION) för att tvinga uppdatering
+
+### 🛡️ Backend-säkerhet & Dataflöde
+- `betyg.html` + `pages/betyg.html` — Använder nu `booking_confirmation` VIEW
+- `pages/kontakt.html` — Använder nu `notify` Edge Function istf bookings INSERT
+- `booking_confirmation` VIEW — Utökad med customer_name/email för review-flöde
+- `public_stats` VIEW — Ny, säker aggregerad data för homepage trust bar
 
 ### 🛡️ Backend-säkerhet
 

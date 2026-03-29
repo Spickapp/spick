@@ -125,16 +125,16 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
   const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
   
   const data = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/bookings?stripe_session_id=eq.${sessionId}&select=id,service,date,time,address,total_price,payment_status`,
+    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?stripe_session_id=eq.${sessionId}&select=id,service,date,time,city,total_price,payment_status`,
     { headers: { 'apikey': SPICK.SUPA_KEY } }
   ).then(r => r.json()).catch(() => []);
 
   const b = data?.[0];
   if (b?.id) {
-    history.replaceState(null,'',location.pathname+'?bid='+b.id+'&service='+encodeURIComponent(b.service||'')+'&date='+encodeURIComponent(b.date||'')+'&address='+encodeURIComponent(b.address||''));
+    history.replaceState(null,'',location.pathname+'?bid='+b.id+'&service='+encodeURIComponent(b.service||'')+'&date='+encodeURIComponent(b.date||'')+'&address='+encodeURIComponent(b.city||''));
     document.getElementById('d-service').textContent = b.service || '–';
     document.getElementById('d-date').textContent = b.date || '–';
-    document.getElementById('d-address').textContent = b.address || '–';
+    document.getElementById('d-address').textContent = b.city || '–';
     document.getElementById('d-id').textContent = b.id.substring(0,8).toUpperCase();
     const bookingBtn = document.getElementById('booking-btn');
     if (bookingBtn) bookingBtn.href = `min-bokning.html?bid=${b.id}`;

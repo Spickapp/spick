@@ -930,7 +930,7 @@ async function loadGlobalAvailability() {
     const [availRes, blockedRes, bookingsRes] = await Promise.all([
       fetch(`${SUPA}/rest/v1/cleaner_availability?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H}),
       fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H}),
-      fetch(`${SUPA}/rest/v1/bookings?payment_status=eq.paid&status=neq.avbokad&select=cleaner_id,date,time,time_end,hours&order=date.asc`, {headers:H})
+      fetch(`${SUPA}/rest/v1/booking_slots?select=cleaner_id,date,time,hours&order=date.asc`, {headers:H})
     ]);
     const avail   = await availRes.json();
     const blocked = await blockedRes.json();
@@ -1676,7 +1676,7 @@ async function doBook() {
   // Verify the cleaner is STILL available (overlap check, not just exact time)
   try {
     const conflictRes = await fetch(
-      `${SUPA}/rest/v1/bookings?cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&payment_status=eq.paid&status=neq.avbokad&select=id,time,hours`,
+      `${SUPA}/rest/v1/booking_slots?cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&select=time,hours`,
       { headers: H }
     );
     const sameDayBookings = await conflictRes.json();
