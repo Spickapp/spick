@@ -849,7 +849,9 @@ function calcHours() {
   else if (sqm <= 160) h = 5;
   else if (sqm <= 200) h = 6;
   else h = Math.ceil(sqm / 35);
-  if (state.service === 'Storstädning' || state.service === 'Flyttstädning') h = Math.ceil(h * 1.5);
+  if (state.service === 'Storstädning') h = Math.ceil(h * 1.7 * 2) / 2;
+  else if (state.service === 'Flyttstädning') h = Math.ceil(h * 2.2 * 2) / 2;
+  else if (state.service === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
   state.hours = h;
   // Om datum redan valts: re-rendera tidsblocket med ny timåtgång
   if (state.date) {
