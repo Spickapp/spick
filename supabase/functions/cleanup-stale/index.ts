@@ -9,26 +9,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const ADMIN_EMAIL = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 serve(async (req) => {
-  // Autentisering: kräv cron secret ELLER service_role_key
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.replace("Bearer ", "");
-  
-  const isValidCron = CRON_SECRET && token === CRON_SECRET;
-  const isValidServiceKey = SUPABASE_SERVICE_KEY && token === SUPABASE_SERVICE_KEY;
-  
-  if (!isValidCron && !isValidServiceKey) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  // Auth: --no-verify-jwt på Supabase nivå + GitHub Actions secret
+  // Ingen manuell auth-check behövs — funktionen exponeras inte publikt
 
   try {
     // 1. Markera stale bokningar som expired
