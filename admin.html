@@ -204,31 +204,37 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <span class="badge">Admin</span>
     </div>
     <nav>
-  <a href="index.html" class="logo">Spick</a>
-  <div class="nav-links">
-    <a href="hur-det-funkar.html" class="nl">Hur det funkar</a>
-    <a href="blogg/" class="nl">Blogg</a>
-    <a href="priser.html" class="nl">Priser</a>
-    <a href="boka.html" class="nl">Städare</a>
-    <a href="bli-stadare.html" class="nl-out">Bli städare</a>
-    <a href="boka.html" class="nl-btn">Boka städning</a>
-  </div>
-  <button class="hamburger" onclick="document.getElementById('mobMenu').style.display='flex'" aria-label="Öppna meny">
-    <span></span><span></span><span></span>
-  </button>
-</nav>
-<div class="mob-menu" id="mobMenu" style="display:none" onclick="this.style.display='none'">
-  <div class="mob-panel" onclick="event.stopPropagation()">
-    <a href="boka.html">Boka städning</a>
-    <a href="hur-det-funkar.html">Hur det funkar</a>
-    <a href="blogg/">Blogg</a>
-    <a href="priser.html">Priser</a>
-    <a href="boka.html">Städare</a>
-    <a href="bli-stadare.html">Bli städare</a>
-    <a href="faq.html">Vanliga frågor</a>
-    <a href="kontakt.html">Kontakt</a>
-  </div>
-</div>
+      <div class="nav-section">Översikt</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span>Dashboard</div>
+      
+      <div class="nav-section">Bokningar</div>
+      <div class="nav-item" onclick="showPage('bookings')"><span class="icon">📅</span>Alla bokningar <span class="badge-count" id="badge-bookings">0</span></div>
+      <div class="nav-item" onclick="showPage('pending')"><span class="icon">⏳</span>Väntande <span class="badge-count" id="badge-pending">0</span></div>
+      <div class="nav-item" onclick="showPage('subscriptions')"><span class="icon">🔄</span>Prenumerationer <span class="badge-count" id="badge-subs">0</span></div>
+      
+      <div class="nav-section">Personal</div>
+      <div class="nav-item" onclick="showPage('cleaners')"><span class="icon">🧹</span>Städare</div>
+      <div class="nav-item" onclick="showPage('applications')"><span class="icon">📋</span>Ansökningar <span class="badge-count" id="badge-apps">0</span></div>
+      
+      <div class="nav-section">Kunder</div>
+      <div class="nav-item" onclick="showPage('customers')"><span class="icon">👥</span>Kunder</div>
+      <div class="nav-item" onclick="showPage('reviews')"><span class="icon">⭐</span>Recensioner</div>
+      
+      <div class="nav-section">Ekonomi</div>
+      <div class="nav-item" onclick="showPage('payouts')"><span class="icon">💸</span>Utbetalningar</div>
+      
+      <div class="nav-section">System</div>
+      <div class="nav-item" onclick="showPage('inbox')"><span class="icon">📬</span>E-post <span class="badge-count" id="badge-inbox"></span></div>
+      <div class="nav-item" onclick="showPage('settings')"><span class="icon">⚙️</span>Inställningar</div>
+      
+      <!-- Real-time indikator -->
+      <div style="padding:10px 20px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:rgba(255,255,255,.5)">
+          <div id="rt-indicator" style="width:7px;height:7px;border-radius:50%;background:#6B7280"></div>
+          Real-time
+        </div>
+      </div>
+    </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">👤 Farhad Haghighi</div>
       <span class="logout-btn" onclick="doLogout()">Logga ut</span>
@@ -274,7 +280,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           📢 Broadcast
         </button>
         <a href="marknadsanalys.html" target="_blank"
-          style="padding:8px 14px;background:var(--gp);border:1.5px solid var(--g);border-radius:10px;font-size:.8rem;font-weight:600;color:var(--g);text-decoration:none">
+          style="padding:8px 14px;background:var(--gr);border:1.5px solid var(--g);border-radius:10px;font-size:.8rem;font-weight:600;color:var(--g);text-decoration:none">
           📊 Marknadsanalys
         </a>
         <a href="sakerhetsplan.html" target="_blank"
@@ -386,15 +392,24 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <!-- CLEANERS -->
     <div class="page" id="page-cleaners">
       <div class="page-header">
-        <div class="page-title">Aktiva städare 🧹</div>
-        <div class="page-sub">Hantera godkända städare</div>
+        <div class="page-title">Alla städare 🧹</div>
+        <div class="page-sub">Hantera, redigera och kontrollera alla städare</div>
       </div>
       <div class="card">
         <div class="toolbar">
-          <input class="search-input" id="cleaner-search" placeholder="Sök namn, stad..." oninput="renderCleaners()">
+          <input class="search-input" id="cleaner-search" placeholder="Sök namn, stad, e-post..." oninput="renderCleaners()">
           <select class="filter" id="cleaner-filter" onchange="renderCleaners()">
             <option value="">Alla städer</option>
           </select>
+          <button class="btn btn-outline btn-sm" onclick="loadAll().then(renderCleaners)">↻ Uppdatera</button>
+        </div>
+        <!-- Bulk action bar -->
+        <div id="bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:#DBEAFE;border-radius:10px;margin-bottom:12px">
+          <span class="bulk-count" style="font-weight:600;font-size:.85rem;color:#1E40AF">0 valda</span>
+          <button class="btn btn-primary btn-sm" onclick="bulkApprove()">✅ Godkänn</button>
+          <button class="btn btn-outline btn-sm" style="color:#92400E;border-color:#F59E0B" onclick="bulkPause()">⏸ Pausa</button>
+          <button class="btn btn-danger btn-sm" onclick="bulkSuspend()">⛔ Stäng av</button>
+          <button class="btn btn-outline btn-sm" onclick="selectedCleaners.clear();updateBulkBar();renderCleaners()">✕ Avmarkera</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -502,7 +517,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
     <!-- SETTINGS -->
     <!-- INBOX -->
-    <div class="page hidden" id="page-inbox">
+    <div class="page" id="page-inbox">
       <div class="page-header">
         <div class="page-title">E-postinkorg 📬</div>
         <div class="page-sub">Alla inkommande mail från kunder, städare och partners</div>
@@ -586,11 +601,13 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
 <!-- MODAL: Booking detail -->
 <div class="modal-bg" id="booking-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:560px">
     <h3 id="modal-title">Bokningsdetaljer</h3>
     <div id="modal-body"></div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap">
       <button class="btn btn-outline" onclick="closeModal()">Stäng</button>
+      <button class="btn btn-primary btn-sm" id="modal-reassign-btn" style="display:none" onclick="reassignBooking()">🔄 Omtilldela</button>
+      <button class="btn btn-outline btn-sm" id="modal-cancel-btn" style="display:none" onclick="cancelBooking()" style="color:#92400E;border-color:#F59E0B">❌ Avboka</button>
       <button class="btn btn-danger btn-sm" id="modal-refund-btn" style="display:none" onclick="refundBooking()">↩ Återbetala</button>
     </div>
   </div>
@@ -598,12 +615,11 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
 <!-- MODAL: Cleaner detail -->
 <div class="modal-bg" id="cleaner-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:560px">
     <h3 id="cleaner-modal-title">Städardetaljer</h3>
-    <div id="cleaner-modal-body"></div>
-    <div class="modal-actions">
+    <div id="cleaner-modal-body" style="max-height:65vh;overflow-y:auto"></div>
+    <div class="modal-actions" style="flex-wrap:wrap">
       <button class="btn btn-outline" onclick="closeCleanerModal()">Stäng</button>
-      <button class="btn btn-danger btn-sm" id="cleaner-suspend-btn" onclick="suspendCleaner()">⛔ Stäng av</button>
     </div>
   </div>
 </div>
@@ -611,6 +627,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 <script>
 const SB = supabase.createClient(
   SPICK.SUPA_URL, SPICK.SUPA_KEY);
+const ANON_KEY = SPICK.SUPA_KEY;
 // ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
 const ADMIN_EMAIL = 'hello@spick.se';
 let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
@@ -856,12 +873,14 @@ document.getElementById('pw').addEventListener('keydown', e => { if (e.key === '
 // ── NAVIGATION ────────────────────────────────────────
 let page = 'dashboard';
 function showPage(id) {
-  if (page === 'inbox') { setTimeout(loadInbox, 100); }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   page = id;
   document.getElementById('page-' + id)?.classList.add('active');
-  event?.currentTarget?.classList.add('active');
+  // Hitta och aktivera rätt nav-item
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes("'" + id + "'")) n.classList.add('active');
+  });
   
   // Load data on demand
   if (id === 'bookings') renderBookings();
@@ -874,6 +893,7 @@ function showPage(id) {
   if (id === 'payouts') renderPayouts();
   if (id === 'reviews') renderReviews();
   if (id === 'settings') renderSettings();
+  if (id === 'inbox') setTimeout(loadInbox, 100);
 }
 
 // ── LOAD ALL DATA ─────────────────────────────────────
@@ -1132,6 +1152,63 @@ function renderDashboard() {
 }
 
 // ── BOOKINGS ──────────────────────────────────────────
+// ── INTÄKTSGRAF ──────────────────────────────────────
+function renderRevenueChart() {
+  const canvas = document.getElementById('revenue-chart');
+  if (!canvas) return;
+  const days = parseInt(document.getElementById('chart-period')?.value) || 30;
+  
+  // Bygga dagliga intäktsdata
+  const dailyData = [];
+  const labels = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayRevenue = data.bookings
+      .filter(b => b.payment_status === 'paid' && (b.date || b.created_at?.split('T')[0]) === dateStr)
+      .reduce((s, b) => s + (b.total_price || 0), 0);
+    dailyData.push(dayRevenue);
+    labels.push(d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }));
+  }
+  
+  // Destroy previous chart
+  if (window._revenueChart) window._revenueChart.destroy();
+  
+  window._revenueChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Intäkt (kr)',
+        data: dailyData,
+        backgroundColor: 'rgba(15,110,86,0.3)',
+        borderColor: '#0F6E56',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { 
+          callbacks: { label: ctx => ctx.parsed.y.toLocaleString('sv') + ' kr' }
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true,
+          ticks: { callback: v => v.toLocaleString('sv') + ' kr' }
+        },
+        x: {
+          ticks: { maxTicksLimit: days <= 7 ? 7 : 10 }
+        }
+      }
+    }
+  });
+}
+
 // Sorterings-state för bokningar
 let _bookingSort = { col: 'date', dir: 'desc' };
 
@@ -1220,8 +1297,8 @@ function renderPending() {
 function renderCleaners() {
   const q = document.getElementById('cleaner-search').value.toLowerCase();
   const f = document.getElementById('cleaner-filter').value;
-  let filtered = data.cleaners.filter(c => c.is_approved);
-  if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''}`.toLowerCase().includes(q));
+  let filtered = data.cleaners; // Visa ALLA städare (ej bara godkända)
+  if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''} ${c.status||''}`.toLowerCase().includes(q));
   if (f) filtered = filtered.filter(c => c.city === f);
 
   // Populate city filter
@@ -1234,10 +1311,17 @@ function renderCleaners() {
   document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => {
     const cleaner_jobs = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').length;
     const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*0.83),0);
-    return `<tr>
+    const isPaused = c.status === 'pausad';
+    const isSuspended = c.status === 'avstängd' || !c.is_approved;
+    let statusBadge = '<span class="badge green"><span class="dot"></span> Aktiv</span>';
+    if (isSuspended) statusBadge = '<span class="badge red">⛔ Avstängd</span>';
+    else if (isPaused) statusBadge = '<span class="badge yellow">⏸ Pausad</span>';
+    
+    return `<tr style="${isSuspended ? 'opacity:.6' : ''}">
       <td>
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="avatar" style="width:36px;height:36px;font-size:.85rem">${(c.full_name||'?').charAt(0)}</div>
+          <input type="checkbox" onchange="toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer">
+          <div class="avatar" style="width:36px;height:36px;font-size:.85rem;${isPaused?'background:#F59E0B':''}${isSuspended?'background:#6B7280':''}">${(c.full_name||'?').charAt(0)}</div>
           <div><strong>${escHtml(c.full_name || '–')}</strong><br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
         </div>
       </td>
@@ -1251,10 +1335,10 @@ function renderCleaners() {
         <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr intjänat</div>
       </td>
       <td>${c.hourly_rate || '350'} kr/h</td>
-      <td><span class="badge ${c.is_approved ? 'green' : 'yellow'}">${c.is_approved ? '✓ Aktiv' : 'Ej aktiv'}</span></td>
+      <td>${statusBadge}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Detaljer</button>
+          <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Redigera</button>
           <a href="mailto:${c.email||''}?subject=Spick – uppdatering" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
           ${c.phone ? `<a href="tel:${c.phone}" class="btn btn-outline btn-sm" title="Ring" style="text-decoration:none">📞</a>` : ''}
         </div>
@@ -1562,7 +1646,7 @@ function renderSettings() {
   document.getElementById('system-status').innerHTML = `
     <div class="stat-row"><span class="lbl">Supabase</span><span class="badge green"><span class="dot"></span>Aktiv</span></div>
     <div class="stat-row"><span class="lbl">spick.se</span><span class="badge green"><span class="dot"></span>Live med HTTPS</span></div>
-    <div class="stat-row"><span class="lbl">Stripe</span><span class="badge yellow">Tesläge</span></div>
+    <div class="stat-row"><span class="lbl">Stripe</span><span class="badge green"><span class="dot"></span>Live-läge</span></div>
     <div class="stat-row"><span class="lbl">Resend (e-post)</span><span class="badge green"><span class="dot"></span>Aktiv</span></div>
     <div class="stat-row"><span class="lbl">Edge Functions</span><span class="badge green"><span class="dot"></span>10 deployade</span></div>
     <div class="stat-row"><span class="lbl">Microsoft Clarity</span><span class="badge green"><span class="dot"></span>w1ep5s1zm6</span></div>
@@ -1590,19 +1674,36 @@ function showBookingDetail(id) {
     <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(b.created_at).toLocaleString('sv')}</span></div>
     <div class="stat-row"><span class="lbl">Kundanteckningar</span><span class="val">${escHtml(b.customer_notes || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Nyckelinfo</span><span class="val">${escHtml(b.key_info || '–')}</span></div>
+    ${b.status ? `<div class="stat-row"><span class="lbl">Jobbstatus</span><span class="val">${
+      b.status === 'klar' ? '<span class="badge green">✅ Klar</span>' :
+      b.status === 'pågår' ? '<span class="badge blue">🧹 Pågår</span>' :
+      b.status === 'bekräftad' ? '<span class="badge green">📅 Bekräftad</span>' :
+      b.status === 'avbokad' ? '<span class="badge red">❌ Avbokad</span>' :
+      escHtml(b.status)
+    }</span></div>` : ''}
+    ${b.checked_in_at ? `<div class="stat-row"><span class="lbl">Incheckad</span><span class="val">${new Date(b.checked_in_at).toLocaleString('sv')}</span></div>` : ''}
+    ${b.completed_at ? `<div class="stat-row"><span class="lbl">Slutförd</span><span class="val">${new Date(b.completed_at).toLocaleString('sv')}</span></div>` : ''}
+    ${b.photo_before_url ? `<div class="stat-row"><span class="lbl">Foto innan</span><span class="val"><a href="${b.photo_before_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
+    ${b.photo_after_url ? `<div class="stat-row"><span class="lbl">Foto efter</span><span class="val"><a href="${b.photo_after_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])}," 
-         style="flex:1;padding:8px;background:var(--gp);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+         style="flex:1;padding:8px;background:var(--gr);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         ✉️ Maila kund
       </a>
-      ${b.cleaner_email ? `<a href="mailto:${encodeURIComponent(b.cleaner_email)}?subject=Ang bokning ${encodeURIComponent(b.date||'')}"
+      ${b.cleaner_email || cleaner?.email ? `<a href="mailto:${encodeURIComponent(b.cleaner_email||cleaner?.email||'')}?subject=Ang bokning ${encodeURIComponent(b.date||'')}"
          style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         🧹 Maila städare
       </a>` : ''}
+      ${b.status !== 'klar' && b.payment_status === 'paid' ? `<button onclick="markBookingDone('${b.id}')" 
+         style="flex:1;padding:8px;background:#D1FAE5;color:#065F46;border:none;border-radius:8px;text-align:center;font-weight:600;cursor:pointer;font-size:.82rem">
+        ✅ Markera klar
+      </button>` : ''}
     </div>`;
   
   document.getElementById('modal-refund-btn').style.display = b.payment_status === 'paid' ? '' : 'none';
+  document.getElementById('modal-reassign-btn').style.display = (b.payment_status === 'paid' && b.status !== 'klar') ? '' : 'none';
+  document.getElementById('modal-cancel-btn').style.display = (b.payment_status === 'paid' && b.status !== 'klar') ? '' : 'none';
   document.getElementById('booking-modal').classList.add('open');
 }
 // ── KUNDHISTORIK ─────────────────────────────────────
@@ -1620,11 +1721,11 @@ function showCustomerBookings(email) {
   document.getElementById('modal-title').textContent = `📋 ${name} – bokningshistorik`;
   document.getElementById('modal-body').innerHTML = `
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-      <div style="background:var(--gp);border-radius:10px;padding:10px 16px;text-align:center">
+      <div style="background:var(--gr);border-radius:10px;padding:10px 16px;text-align:center">
         <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${customerBookings.length}</div>
         <div style="font-size:.72rem;color:var(--m)">bokningar totalt</div>
       </div>
-      <div style="background:var(--gp);border-radius:10px;padding:10px 16px;text-align:center">
+      <div style="background:var(--gr);border-radius:10px;padding:10px 16px;text-align:center">
         <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${Math.round(total).toLocaleString('sv')} kr</div>
         <div style="font-size:.72rem;color:var(--m)">totalt spenderat</div>
       </div>
@@ -1643,7 +1744,7 @@ function showCustomerBookings(email) {
       </div>`).join('') : '<div style="color:var(--m);text-align:center;padding:20px">Inga bokningar</div>'}
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
       <a href="mailto:${encodeURIComponent(email)}?subject=Ang dina städningar på Spick" 
-         style="display:block;text-align:center;background:var(--gp);color:var(--g);padding:10px;border-radius:10px;font-weight:600;text-decoration:none">
+         style="display:block;text-align:center;background:var(--gr);color:var(--g);padding:10px;border-radius:10px;font-weight:600;text-decoration:none">
         ✉️ Maila ${escHtml(name.split(' ')[0])}
       </a>
     </div>`;
@@ -1722,6 +1823,46 @@ async function refundBooking() {
   if (!confirm('Återbetala denna bokning?')) return;
   await SB.from('bookings').update({ payment_status: 'refunded' }).eq('id', currentBookingId);
   closeModal();
+  showToast('↩ Bokning återbetald');
+  loadAll();
+}
+
+async function reassignBooking() {
+  closeModal();
+  openAssignModal(currentBookingId);
+}
+
+async function cancelBooking() {
+  if (!confirm('❌ Avboka denna bokning? Kunden kommer notifieras.')) return;
+  const b = data.bookings.find(x => x.id === currentBookingId);
+  await SB.from('bookings').update({ 
+    payment_status: 'cancelled', 
+    status: 'avbokad',
+    cleaner_id: null,
+    cleaner_name: null 
+  }).eq('id', currentBookingId);
+  // Notifiera kund
+  if (b?.customer_email || b?.email) {
+    await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
+      body: JSON.stringify({ type: 'booking_cancelled_admin', record: { 
+        customer_name: b.customer_name || b.name,
+        email: b.customer_email || b.email,
+        service: b.service,
+        date: b.date
+      }})
+    }).catch(()=>{});
+  }
+  closeModal();
+  showToast('❌ Bokning avbokad – kund notifierad');
+  loadAll();
+}
+
+async function markBookingDone(id) {
+  await SB.from('bookings').update({ status: 'klar', completed_at: new Date().toISOString() }).eq('id', id);
+  showToast('✅ Bokning markerad som klar');
+  closeModal();
   loadAll();
 }
 
@@ -1731,37 +1872,165 @@ function showCleanerDetail(id) {
   if (!c) return;
   currentCleanerId = id;
   const jobs = data.bookings.filter(b => b.cleaner_id === id && b.payment_status === 'paid');
+  const totalEarned = jobs.reduce((s,b)=>s+Math.round((b.total_price||0)*.83),0);
+  const isPaused = c.status === 'pausad';
+  const isActive = c.is_approved;
+  const isSuspended = c.status === 'avstängd';
+  
   document.getElementById('cleaner-modal-title').textContent = c.full_name || 'Städare';
   document.getElementById('cleaner-modal-body').innerHTML = `
-    <div class="stat-row"><span class="lbl">E-post</span><span class="val">${escHtml(c.email || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${escHtml(c.phone || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Stad</span><span class="val">${escHtml(c.city || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Tjänster</span><span class="val">${escHtml(c.services || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Timpris</span><span class="val">${parseInt(c.hourly_rate) || 350} kr/h</span></div>
-    <div class="stat-row"><span class="lbl">Betyg</span><span class="val">⭐ ${parseFloat(c.avg_rating||0).toFixed(1) || '–'}</span></div>
+    <!-- Status-banner -->
+    <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
+      ${isSuspended ? 'background:#FEE2E2;color:#991B1B' : isPaused ? 'background:#FEF3C7;color:#92400E' : 'background:#D1FAE5;color:#065F46'}">
+      ${isSuspended ? '⛔ Konto avstängt' : isPaused ? '⏸ Konto pausat – inga nya bokningar' : '✅ Konto aktivt'}
+    </div>
+    
+    <!-- Visa/Redigera fält -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">NAMN</label>
+      <input id="admin-edit-name" value="${escHtml(c.full_name||'')}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.88rem">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">E-POST</label>
+        <input id="admin-edit-email" value="${escHtml(c.email||'')}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem" readonly>
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">TELEFON</label>
+        <input id="admin-edit-phone" value="${escHtml(c.phone||'')}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">STAD</label>
+        <input id="admin-edit-city" value="${escHtml(c.city||'')}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">TIMPRIS (KR/H)</label>
+        <input id="admin-edit-rate" type="number" min="200" max="800" value="${parseInt(c.hourly_rate)||350}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">TJÄNSTER (kommaseparerade)</label>
+      <input id="admin-edit-services" value="${escHtml(Array.isArray(c.services)?c.services.join(', '):c.services||'')}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">BIO</label>
+      <textarea id="admin-edit-bio" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem;resize:vertical">${escHtml(c.bio||'')}</textarea>
+    </div>
+    
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+    
+    <!-- Statistik -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="text-align:center;background:var(--gr);border-radius:10px;padding:10px">
+        <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${jobs.length}</div>
+        <div style="font-size:.7rem;color:var(--m)">uppdrag</div>
+      </div>
+      <div style="text-align:center;background:var(--gr);border-radius:10px;padding:10px">
+        <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${totalEarned.toLocaleString('sv')} kr</div>
+        <div style="font-size:.7rem;color:var(--m)">intjänat</div>
+      </div>
+      <div style="text-align:center;background:#DBEAFE;border-radius:10px;padding:10px">
+        <div style="font-weight:700;font-size:1.1rem;color:#1E40AF">⭐ ${parseFloat(c.avg_rating||0).toFixed(1)}</div>
+        <div style="font-size:.7rem;color:var(--m)">${c.review_count||0} betyg</div>
+      </div>
+    </div>
+    
     <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Ja' : '❌ Nej'}</span></div>
-    <div class="stat-row"><span class="lbl">Avklarade uppdrag</span><span class="val text-g">${jobs.length} st</span></div>
-    <div class="stat-row"><span class="lbl">Totalt intjänat</span><span class="val text-g">${jobs.reduce((s,b)=>s+Math.round((b.total_price||0)*.83),0).toLocaleString('sv')} kr</span></div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet'}</span></div>
+    <div class="stat-row"><span class="lbl">Registrerad</span><span class="val">${c.created_at ? new Date(c.created_at).toLocaleDateString('sv') : '–'}</span></div>
+    
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+    
+    <!-- Kontaktknappar -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <a href="mailto:${encodeURIComponent(c.email||'')}?subject=Ang dina uppdrag på Spick"
-         style="flex:1;padding:8px;background:var(--gp);color:var(--g);border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
-        ✉️ Kontakta städare
+         style="flex:1;padding:8px;background:var(--gr);color:var(--g);border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        ✉️ Maila
       </a>
-      <a href="/stadare.html?focus=${encodeURIComponent(c.id)}" target="_blank"
-         style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
-        👁 Se profil
-      </a>
+      ${c.phone ? `<a href="tel:${c.phone}" style="flex:1;padding:8px;background:#DBEAFE;color:#1E40AF;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">📞 Ring</a>` : ''}
+    </div>
+    
+    <!-- Admin-notering -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">ADMIN-NOTERING (bara synlig för admin)</label>
+      <textarea id="admin-note" rows="2" placeholder="Intern notering..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem;resize:vertical">${escHtml(c.admin_notes||'')}</textarea>
     </div>`;
+
+  // Uppdatera modal-knappar
+  const actionsEl = document.getElementById('cleaner-modal').querySelector('.modal-actions');
+  actionsEl.innerHTML = `
+    <button class="btn btn-outline" onclick="closeCleanerModal()">Stäng</button>
+    <button class="btn btn-primary" onclick="saveCleanerFromAdmin()">💾 Spara</button>
+    ${isActive && !isPaused ? `<button class="btn btn-outline" style="color:#92400E;border-color:#F59E0B" onclick="pauseCleaner()">⏸ Pausa</button>` : ''}
+    ${isPaused ? `<button class="btn btn-primary" onclick="activateCleaner()">▶️ Aktivera</button>` : ''}
+    ${!isSuspended ? `<button class="btn btn-danger btn-sm" onclick="suspendCleaner()">⛔ Stäng av</button>` : `<button class="btn btn-primary btn-sm" onclick="reactivateCleaner()">✅ Återaktivera</button>`}
+  `;
+  
   document.getElementById('cleaner-modal').classList.add('open');
 }
 function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
 
 async function suspendCleaner() {
-  if (!confirm('Stänga av denna städare?')) return;
-  await SB.from('cleaners').update({ is_approved: false }).eq('id', currentCleanerId);
+  if (!confirm('⛔ Stänga av denna städare permanent? Hen kan inte längre ta emot uppdrag eller logga in.')) return;
+  await SB.from('cleaners').update({ is_approved: false, status: 'avstängd' }).eq('id', currentCleanerId);
+  // Omtilldela aktiva bokningar
+  const { data: activeBookings } = await SB.from('bookings')
+    .select('id').eq('cleaner_id', currentCleanerId)
+    .in('payment_status', ['paid','pending']).neq('status', 'klar');
+  if (activeBookings?.length) {
+    await SB.from('bookings').update({ cleaner_id: null, cleaner_name: null, status: 'pending' })
+      .eq('cleaner_id', currentCleanerId).in('payment_status', ['paid','pending']).neq('status', 'klar');
+    showToast(`⚠️ ${activeBookings.length} bokningar omtilldelades`);
+  }
   closeCleanerModal();
-  loadAll();
+  showToast('⛔ Städare avstängd');
+  await loadAll();
+}
+
+async function pauseCleaner() {
+  if (!confirm('⏸ Pausa denna städare? Hen behåller sitt konto men kan inte ta emot nya bokningar. Befintliga bokningar påverkas ej.')) return;
+  await SB.from('cleaners').update({ status: 'pausad' }).eq('id', currentCleanerId);
+  closeCleanerModal();
+  showToast('⏸ Städare pausad');
+  await loadAll();
+}
+
+async function activateCleaner() {
+  await SB.from('cleaners').update({ status: 'aktiv', is_approved: true }).eq('id', currentCleanerId);
+  closeCleanerModal();
+  showToast('▶️ Städare aktiverad');
+  await loadAll();
+}
+
+async function reactivateCleaner() {
+  if (!confirm('Återaktivera denna städare?')) return;
+  await SB.from('cleaners').update({ is_approved: true, status: 'aktiv' }).eq('id', currentCleanerId);
+  closeCleanerModal();
+  showToast('✅ Städare återaktiverad');
+  await loadAll();
+}
+
+async function saveCleanerFromAdmin() {
+  const updates = {
+    full_name: document.getElementById('admin-edit-name')?.value.trim(),
+    phone: document.getElementById('admin-edit-phone')?.value.trim(),
+    city: document.getElementById('admin-edit-city')?.value.trim(),
+    hourly_rate: parseInt(document.getElementById('admin-edit-rate')?.value) || 350,
+    services: (document.getElementById('admin-edit-services')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+    bio: document.getElementById('admin-edit-bio')?.value.trim(),
+    admin_notes: document.getElementById('admin-note')?.value.trim(),
+  };
+  
+  const { error } = await SB.from('cleaners').update(updates).eq('id', currentCleanerId);
+  if (error) {
+    showToast('❌ Fel vid sparning: ' + error.message);
+    return;
+  }
+  closeCleanerModal();
+  showToast('✅ Städarprofil sparad!');
+  await loadAll();
 }
 
 // ── APPLICATIONS ──────────────────────────────────────
@@ -1891,15 +2160,7 @@ async function confirmAssign() {
 }
 
 
-// Admin keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-  if(e.ctrlKey || e.metaKey) {
-    if(e.key==='1') { switchTab('bookings'); e.preventDefault(); }
-    if(e.key==='2') { switchTab('cleaners'); e.preventDefault(); }
-    if(e.key==='3') { switchTab('customers'); e.preventDefault(); }
-    if(e.key==='f') { document.querySelector('input[type=search],input[placeholder*="ök"]')?.focus(); e.preventDefault(); }
-  }
-});
+// Admin keyboard shortcuts – see unified handler at end of file
 
 // Pagination helper
 let currentPage = {bookings:1, cleaners:1, customers:1};
@@ -1964,11 +2225,38 @@ async function bulkApprove() {
   if(!confirm(`Godkänn ${selectedCleaners.size} städare?`)) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
-    await approveCleaner(id).catch(()=>{});
+    await SB.from('cleaners').update({is_approved:true, status:'aktiv'}).eq('id', id);
   }
   selectedCleaners.clear();
   updateBulkBar();
-  if(typeof renderCleaners==='function') renderCleaners();
+  showToast(`✅ ${ids.length} städare godkända`);
+  await loadAll();
+}
+
+async function bulkPause() {
+  if(!selectedCleaners.size) return;
+  if(!confirm(`Pausa ${selectedCleaners.size} städare?`)) return;
+  const ids = Array.from(selectedCleaners);
+  for(const id of ids) {
+    await SB.from('cleaners').update({status:'pausad'}).eq('id', id);
+  }
+  selectedCleaners.clear();
+  updateBulkBar();
+  showToast(`⏸ ${ids.length} städare pausade`);
+  await loadAll();
+}
+
+async function bulkSuspend() {
+  if(!selectedCleaners.size) return;
+  if(!confirm(`⛔ Stänga av ${selectedCleaners.size} städare permanent?`)) return;
+  const ids = Array.from(selectedCleaners);
+  for(const id of ids) {
+    await SB.from('cleaners').update({is_approved:false, status:'avstängd'}).eq('id', id);
+  }
+  selectedCleaners.clear();
+  updateBulkBar();
+  showToast(`⛔ ${ids.length} städare avstängda`);
+  await loadAll();
 }
 
 // ── TANGENTBORDSGENVÄGAR ─────────────────────────────

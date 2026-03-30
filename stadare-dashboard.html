@@ -12,9 +12,7 @@ document.documentElement.style.visibility='hidden';
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self)">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Städare-portal – Spick</title>
-<meta name="robots" content="noindex">
-<meta name="description" content="Städarportalen för Spick – logga in med magic link för att se dina uppdrag, intjäning och bokningar.">
-  <meta name="robots" content="noindex">
+<meta name="robots" content="noindex,nofollow">
   <link rel="canonical" href="https://spick.se/stadare-dashboard.html">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
@@ -323,6 +321,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna månad.</div>
       </div>
 
+      <!-- Historik alla tider -->
+      <div class="card">
+        <div class="card-title">📋 Uppdragshistorik <span id="history-count">alla tider</span></div>
+        <div id="history-toggle" style="margin-bottom:10px">
+          <button onclick="loadFullHistory()" class="action-btn" style="width:100%;background:#F3F4F6;color:#374151;padding:.5rem;font-size:.82rem">Ladda fullständig historik →</button>
+        </div>
+        <div id="full-history" style="display:none;max-height:400px;overflow-y:auto"></div>
+      </div>
+
       <!-- Mina recensioner -->
       <div class="card" id="my-reviews-card" style="display:none">
         <div class="card-title">⭐ Mina senaste recensioner</div>
@@ -366,11 +373,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
           </div>
         </div>
         <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="2" style="max-width:220px;resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea></div>
-        <div class="prof-row"><span class="lbl">Status</span><span style="color:var(--g);font-size:.85rem">✅ Aktiv</span></div>
+        <div class="prof-row"><span class="lbl">Status</span><span id="prof-status" style="color:var(--g);font-size:.85rem">✅ Aktiv</span></div>
         <button class="btn-save" onclick="saveProfile()">💾 Spara ändringar</button>
         <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">✅ Profil sparad!</div>
         <div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <button onclick="shareProfile()" style="background:var(--gp);color:var(--g);border:none;padding:8px 20px;border-radius:20px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem">
+          <button onclick="shareProfile()" style="background:var(--gr);color:var(--g);border:none;padding:8px 20px;border-radius:20px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem">
             🔗 Dela min profil
           </button>
         </div>
@@ -601,38 +608,7 @@ function shareProfile() {
   });
 }
 
-// ── MINA RECENSIONER ─────────────────────────────────
-async function loadMyReviews() {
-  if (!cleaner?.email) return;
-  const { data: revs } = await SB.from('reviews')
-    .select('*')
-    .eq('cleaner_email', cleaner.email)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  const card = document.getElementById('my-reviews-card');
-  const list = document.getElementById('my-reviews-list');
-  if (!card || !list) return;
-
-  if (!revs?.length) {
-    list.textContent = 'Inga recensioner ännu. De visas här efter din första städning.';
-    card.style.display = 'block';
-    return;
-  }
-
-  card.style.display = 'block';
-  list.innerHTML = revs.map(r => {
-    const stars = '⭐'.repeat(Math.round(r.cleaner_rating || 5));
-    const date  = new Date(r.created_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
-    return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:10px">
-      <div style="font-size:1rem;flex-shrink:0">${stars}</div>
-      <div style="flex:1">
-        <div style="font-weight:600;font-size:.8rem">${escHtml(r.customer_name || 'Kund')} · ${date}</div>
-        ${r.cleaner_comment ? `<div style="color:var(--m);font-size:.78rem;margin-top:2px;font-style:italic">"${escHtml(r.cleaner_comment)}"</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
+// ── MINA RECENSIONER (laddas via cleaner_id nedan) ──
 
 async function doLogout() {
   if (realtimeCh) SB.removeChannel(realtimeCh);
@@ -656,6 +632,14 @@ async function loadCleanerByEmail(email) {
   }
 
   cleaner = data;
+  
+  // Kolla konto-status
+  if (cleaner.status === 'avstängd') {
+    showErr('⛔ Ditt konto har stängts av. Kontakta hello@spick.se för mer information.');
+    showScreen('login');
+    return;
+  }
+  
   // Sätt header-info
   const initials = (cleaner.full_name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
   document.getElementById('hdr-avatar').textContent = initials;
@@ -682,8 +666,25 @@ async function loadCleanerByEmail(email) {
 
   buildSchedule();
   loadBlockedDates();
+  
+  // Uppdatera profilstatus
+  const statusEl = document.getElementById('prof-status');
+  if (statusEl) {
+    if (cleaner.status === 'pausad') { statusEl.innerHTML = '<span style="color:#92400E">⏸ Pausad</span>'; statusEl.style.color = '#92400E'; }
+    else { statusEl.innerHTML = '✅ Aktiv'; statusEl.style.color = 'var(--g)'; }
+  }
   window._cleanerLoaded=true;
   showScreen('app');
+  
+  // Visa pausad-banner om kontot är pausat
+  if (cleaner.status === 'pausad') {
+    const banner = document.createElement('div');
+    banner.id = 'paused-banner';
+    banner.style.cssText = 'background:#FEF3C7;color:#92400E;padding:12px 20px;font-size:.85rem;font-weight:600;text-align:center;border-bottom:1px solid #FDE68A';
+    banner.innerHTML = '⏸ Ditt konto är pausat – du kan inte ta emot nya bokningar. Kontakta <a href="mailto:hello@spick.se" style="color:#92400E;text-decoration:underline">hello@spick.se</a> för att aktivera.';
+    document.querySelector('.app-header')?.after(banner);
+  }
+  
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
   setupRealtime();
   // Visa onboarding för nya städare
@@ -782,7 +783,11 @@ function jobCard(j) {
       <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
     </div>`;
   } else if (isMine && !j.checked_in_at && !isDone) {
-    actionsHtml = `<button onclick="checkInGPS('${j.id}')" class="action-btn" style="width:100%;margin-top:8px;background:#DBEAFE;color:#1E40AF;padding:.5rem">📍 Checka in – jag är på plats</button>`;
+    actionsHtml = `
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="checkInGPS('${j.id}')" class="action-btn" style="flex:1;background:#DBEAFE;color:#1E40AF;padding:.5rem">📍 Checka in – jag är på plats</button>
+        <button onclick="cancelMyJob('${j.id}')" class="action-btn" style="background:#FEE2E2;color:#991B1B;padding:.5rem;font-size:.72rem">✕ Avboka</button>
+      </div>`;
   }
 
   if (isMine && j.checked_in_at && !isDone) {
@@ -937,6 +942,51 @@ function renderWeekChart(doneJobs) {
 }
 
 // ── REVIEWS ─────────────────────────────────────────────────
+async function loadFullHistory() {
+  const btn = document.getElementById('history-toggle');
+  if (btn) btn.innerHTML = '<div style="text-align:center;padding:.5rem;color:var(--m);font-size:.82rem">Laddar...</div>';
+  
+  const { data: allJobs } = await SB.from('bookings')
+    .select('id,service,date,scheduled_date,total_price,status,payment_status,customer_name,city,hours,completed_at')
+    .eq('cleaner_id', cleaner.id)
+    .order('date', { ascending: false })
+    .limit(200);
+  
+  const el = document.getElementById('full-history');
+  const countEl = document.getElementById('history-count');
+  if (btn) btn.style.display = 'none';
+  el.style.display = 'block';
+  
+  if (!allJobs?.length) {
+    el.innerHTML = '<div style="color:var(--m);text-align:center;padding:20px">Inga historiska uppdrag</div>';
+    return;
+  }
+  
+  countEl.textContent = allJobs.length + ' uppdrag totalt';
+  const totalAllTime = allJobs.filter(j => j.payment_status === 'paid').reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
+  
+  el.innerHTML = `
+    <div style="background:var(--gr);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem">
+      <strong style="color:var(--g)">Totalt intjänat alla tider: ${totalAllTime.toLocaleString('sv')} kr</strong>
+    </div>
+    ${allJobs.map(j => {
+      const d = new Date(j.scheduled_date||j.date);
+      const pay = Math.round((j.total_price||0)*0.83);
+      const statusMap = {klar:'✅',pågår:'🧹',bekräftad:'📅',pending:'⏳',cancelled:'❌'};
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem">
+        <div>
+          <div style="font-weight:500">${escHtml(j.service||'Städning')}</div>
+          <div style="font-size:.72rem;color:var(--m)">${d.toLocaleDateString('sv-SE',{year:'numeric',month:'short',day:'numeric'})} · ${escHtml(j.city||'')} · ${j.hours||3}h</div>
+        </div>
+        <div style="text-align:right">
+          <div style="color:var(--g);font-weight:600">${j.payment_status==='paid'?'+'+pay.toLocaleString('sv')+' kr':'–'}</div>
+          <div style="font-size:.68rem;color:var(--m)">${statusMap[j.status]||j.status||'–'}</div>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+// ── REVIEWS ─────────────────────────────────────────────────
 async function loadMyReviews() {
   const { data } = await SB.from('reviews').select('*').eq('cleaner_id', cleaner.id).order('created_at', {ascending:false}).limit(5);
   if (!data?.length) return;
@@ -992,6 +1042,23 @@ async function acceptJob(id) {
 async function declineJob(id) {
   await SB.from('bookings').update({cleaner_id:null}).eq('id', id);
   showToast('Uppdrag avböjt');
+  loadJobs();
+}
+
+async function cancelMyJob(id) {
+  if (!confirm('Vill du avboka detta uppdrag? Det blir tillgängligt för andra städare.')) return;
+  await SB.from('bookings').update({
+    cleaner_id: null, 
+    cleaner_name: null, 
+    status: 'pending'
+  }).eq('id', id);
+  // Notifiera admin
+  await fetch(`${SUPA_URL}/functions/v1/notify`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
+    body:JSON.stringify({type:'cleaner_cancelled',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_email:cleaner.email}})
+  }).catch(()=>{});
+  showToast('Uppdrag avbokat – admin notifierad');
   loadJobs();
 }
 
