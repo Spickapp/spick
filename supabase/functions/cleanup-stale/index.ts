@@ -62,7 +62,7 @@ serve(async (req) => {
       changed_by: "system:cleanup-stale",
     }));
 
-    await sb.from("booking_status_log").insert(logEntries).catch(() => {});
+    try { await sb.from("booking_status_log").insert(logEntries); } catch(_) {}
 
     // 4. Notifiera admin om det var många
     if (stale.length >= 3 && RESEND_API_KEY) {
