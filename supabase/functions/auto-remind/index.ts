@@ -48,10 +48,12 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, {headers:{"Access-Control-Allow-Origin":"https://spick.se"}});
 
-  // Auth: kräv CRON_SECRET (samma som cleanup-stale)
+  // Auth: kräv CRON_SECRET eller service_role_key
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.replace("Bearer ", "");
-  if (!CRON_SECRET || token !== CRON_SECRET) {
+  const isValidCron = CRON_SECRET && token === CRON_SECRET;
+  const isValidServiceKey = SUPA_KEY && token === SUPA_KEY;
+  if (!isValidCron && !isValidServiceKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { "Content-Type": "application/json" }
     });

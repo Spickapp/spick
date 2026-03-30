@@ -16,11 +16,14 @@ const ADMIN_EMAIL = "hello@spick.se";
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 serve(async (req) => {
-  // Autentisering: kräv cron secret
+  // Autentisering: kräv cron secret ELLER service_role_key
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.replace("Bearer ", "");
   
-  if (!CRON_SECRET || token !== CRON_SECRET) {
+  const isValidCron = CRON_SECRET && token === CRON_SECRET;
+  const isValidServiceKey = SUPABASE_SERVICE_KEY && token === SUPABASE_SERVICE_KEY;
+  
+  if (!isValidCron && !isValidServiceKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
