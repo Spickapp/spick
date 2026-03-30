@@ -23,7 +23,14 @@
 <script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");</script>
 <script src="js/config.js"></script>
 <script src="js/components.js" defer></script>
-<noscript><style>.calc-wrap,.sticky-cta{display:none!important}.fstep{display:block!important}</style></noscript>
+<noscript><style>.calc-wrap,.sticky-cta{display:none!important}.fstep{display:block!important}
+/* City autocomplete */
+#city-field{position:relative}
+.city-suggestions{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-top:none;border-radius:0 0 9px 9px;z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.1);display:none}
+.city-item{padding:.625rem .875rem;font-size:.875rem;cursor:pointer;transition:background .1s}
+.city-item:hover{background:var(--gl)}
+.city-item small{display:block;color:#888;font-size:.75rem}
+</style></noscript>
 
 <!-- Schema.org JobPosting -->
 <script type="application/ld+json">
@@ -406,15 +413,11 @@ function googleTranslateElementInit() {
       </div>
       <div class="field"><label>E-post *</label><input id="em" type="email" placeholder="sara@email.se" autocomplete="email"><div class="error" id="em-err">Ange en giltig e-postadress</div></div>
       <div class="field"><label>Telefon *</label><input id="ph" type="tel" placeholder="070 123 45 67" autocomplete="tel" inputmode="tel"><div class="error" id="ph-err">Ange ditt telefonnummer</div></div>
-      <div class="field">
+      <div class="field" id="city-field">
         <label>Stad / Kommun *</label>
-        <select id="city" autocomplete="address-level2">
-          <option value="">Välj din stad...</option>
-          <optgroup label="Storstäder"><option>Stockholm</option><option>Göteborg</option><option>Malmö</option></optgroup>
-          <optgroup label="Stockholmsområdet"><option>Solna</option><option>Sundbyberg</option><option>Nacka</option><option>Bromma</option><option>Lidingö</option><option>Huddinge</option><option>Järfälla</option><option>Täby</option><option>Tyresö</option></optgroup>
-          <optgroup label="Övriga städer"><option>Uppsala</option><option>Västerås</option><option>Örebro</option><option>Linköping</option><option>Helsingborg</option><option>Jönköping</option><option>Norrköping</option><option>Lund</option><option>Umeå</option><option>Gävle</option><option>Borås</option><option>Eskilstuna</option><option>Södertälje</option><option>Halmstad</option><option>Sundsvall</option><option>Karlstad</option><option>Växjö</option><option>Östersund</option><option>Annan</option></optgroup>
-        </select>
-        <div class="error" id="city-err">Välj en stad</div>
+        <input id="city" type="text" placeholder="Sök din stad eller kommun..." autocomplete="off" required>
+        <div id="city-list" class="city-suggestions"></div>
+        <div class="error" id="city-err">Ange din stad</div>
       </div>
       <div class="field">
         <label>Erfarenhet av städning</label>
@@ -851,6 +854,52 @@ document.querySelectorAll('.field input, .field select').forEach(el => {
       window.location.href = 'https://id.tic.io/spick/login?callback=' + cb + '&state=new_cleaner';
     });
   }
+})();
+
+
+/* ── City autocomplete (Nominatim) ── */
+(function(){
+  var cityTimer, cityInput = document.getElementById('city'),
+      cityList = document.getElementById('city-list');
+  if (!cityInput || !cityList) return;
+
+  cityInput.addEventListener('input', function(){
+    var q = this.value;
+    clearTimeout(cityTimer);
+    if (q.length < 2) { cityList.style.display='none'; return; }
+    cityTimer = setTimeout(function(){
+      fetch('https://nominatim.openstreetmap.org/search?format=json&countrycodes=se&limit=6&addressdetails=1&q=' + encodeURIComponent(q))
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if (!data.length) { cityList.style.display='none'; return; }
+          var seen = {}, out = [];
+          data.forEach(function(item){
+            var a = item.address;
+            var name = a.city || a.town || a.municipality || a.village || a.county || '';
+            if (!name || seen[name]) return;
+            seen[name] = true;
+            var region = a.county || a.state || '';
+            out.push('<div class="city-item" data-city="' + name.replace(/"/g,'&quot;') + '">'
+              + name + (region ? '<small>' + region + '</small>' : '') + '</div>');
+          });
+          if (!out.length) { cityList.style.display='none'; return; }
+          cityList.innerHTML = out.join('');
+          cityList.style.display = 'block';
+        })
+        .catch(function(){ cityList.style.display='none'; });
+    }, 300);
+  });
+
+  cityList.addEventListener('click', function(e){
+    var item = e.target.closest('.city-item');
+    if (!item) return;
+    cityInput.value = item.getAttribute('data-city');
+    cityList.style.display = 'none';
+  });
+
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('#city-field')) cityList.style.display = 'none';
+  });
 })();
 </script></body>
   </html>
