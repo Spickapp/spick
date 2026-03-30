@@ -19,14 +19,14 @@ serve(async (req) => {
   // Ingen manuell auth-check behövs — funktionen exponeras inte publikt
 
   try {
-    // 1. Markera stale bokningar som expired
+    // 1. Hitta stale bokningar (obetalda >30 min)
     const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     
     const { data: stale, error: fetchErr } = await sb
       .from("bookings")
       .select("id, email, name, service, date, created_at")
       .eq("payment_status", "pending")
-      .eq("status", "pending")
+      .eq("status", "ny")
       .lt("created_at", cutoff);
 
     if (fetchErr) throw fetchErr;
@@ -47,8 +47,8 @@ serve(async (req) => {
     const { error: updateErr } = await sb
       .from("bookings")
       .update({ 
-        status: "expired", 
-        payment_status: "expired"
+        status: "avbokad", 
+        payment_status: "cancelled"
       })
       .in("id", staleIds);
 
@@ -57,8 +57,8 @@ serve(async (req) => {
     // 3. Logga i booking_status_log
     const logEntries = staleIds.map(id => ({
       booking_id: id,
-      old_status: "pending",
-      new_status: "expired",
+      old_status: "ny",
+      new_status: "avbokad",
       changed_by: "system:cleanup-stale",
     }));
 
@@ -76,7 +76,7 @@ serve(async (req) => {
           from: "Spick System <hello@spick.se>",
           to: ADMIN_EMAIL,
           subject: `⚠️ ${stale.length} stale bokningar rensade`,
-          html: `<p>${stale.length} bokningar som aldrig betalats (>30 min) har markerats som expired.</p>
+          html: `<p>${stale.length} bokningar som aldrig betalats (>30 min) har markerats som avbokade.</p>
             <p>Detta kan indikera ett problem med Stripe checkout-flödet.</p>
             <ul>${stale.map(b => `<li>${b.service || "Städning"} ${b.date || "?"} — skapad ${b.created_at}</li>`).join("")}</ul>`,
         }),
