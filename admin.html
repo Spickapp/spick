@@ -188,10 +188,12 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   <div class="login-card">
     <div class="login-logo">Spick</div>
     <p class="login-sub">Adminpanel – endast för ägare</p>
-    <p style="font-size:.85rem;color:#6B6960;text-align:center;margin-bottom:1rem">En inloggningslänk skickas till <strong>hello@spick.se</strong></p>
-    <input type="hidden" id="pw" value="auth">
-    <button onclick="doLogin()">Skicka inloggningslänk →</button>
-    <div id="login-err">Fel lösenord. Försök igen.</div>
+    <input type="email" id="admin-email" value="hello@spick.se" placeholder="E-post" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
+    <input type="password" id="admin-pw" placeholder="Lösenord" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:4px">
+    <button onclick="doLogin()" id="login-btn">Logga in →</button>
+    <div id="login-err"></div>
+    <p id="reset-link" style="text-align:center;margin-top:8px;font-size:.8rem"><a href="#" onclick="resetPassword();return false" style="color:var(--g)">Glömt lösenord? Skicka återställningslänk</a></p>
+    <div id="reset-msg" style="display:none;text-align:center;margin-top:8px;font-size:.82rem;color:var(--g);font-weight:600"></div>
   </div>
 </div>
 
@@ -215,6 +217,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-section">Personal</div>
       <div class="nav-item" onclick="showPage('cleaners')"><span class="icon">🧹</span>Städare</div>
       <div class="nav-item" onclick="showPage('applications')"><span class="icon">📋</span>Ansökningar <span class="badge-count" id="badge-apps">0</span></div>
+      <div class="nav-item" onclick="showPage('onboarding')"><span class="icon">🚀</span>Onboarding <span class="badge-count" id="badge-onboard">0</span></div>
       
       <div class="nav-section">Kunder</div>
       <div class="nav-item" onclick="showPage('customers')"><span class="icon">👥</span>Kunder</div>
@@ -561,6 +564,45 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
     </div>
 
+    <!-- ONBOARDING PIPELINE -->
+    <div class="page" id="page-onboarding">
+      <div class="page-header">
+        <div class="page-title">Onboarding-pipeline 🚀</div>
+        <div class="page-sub">Spåra städare genom registreringsprocessen</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" id="onboard-cols">
+        <div class="card" style="border-top:3px solid var(--y)">
+          <div style="font-size:.72rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Ansökt</div>
+          <div id="ob-applied" style="font-size:1.4rem;font-weight:700">0</div>
+        </div>
+        <div class="card" style="border-top:3px solid #3B82F6">
+          <div style="font-size:.72rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Registrerar firma</div>
+          <div id="ob-registering" style="font-size:1.4rem;font-weight:700">0</div>
+        </div>
+        <div class="card" style="border-top:3px solid #8B5CF6">
+          <div style="font-size:.72rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Väntar F-skatt</div>
+          <div id="ob-waiting" style="font-size:1.4rem;font-weight:700">0</div>
+        </div>
+        <div class="card" style="border-top:3px solid var(--g)">
+          <div style="font-size:.72rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Redo att aktivera</div>
+          <div id="ob-ready" style="font-size:1.4rem;font-weight:700">0</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 style="font-weight:600;margin:0">Alla i pipeline</h3>
+          <select id="ob-filter" onchange="renderOnboarding()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem">
+            <option value="all">Alla faser</option>
+            <option value="applied">Ansökt</option>
+            <option value="registering">Registrerar firma</option>
+            <option value="waiting_fskatt">Väntar F-skatt</option>
+            <option value="ready">Redo att aktivera</option>
+          </select>
+        </div>
+        <div id="ob-list"></div>
+      </div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="page-header">
         <div class="page-title">Inställningar ⚙️</div>
@@ -645,6 +687,15 @@ SB.auth.getSession().then(({ data: { session } }) => {
 
 // Lyssna på auth-ändringar
 SB.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    const newPw = prompt('Ange ditt nya lösenord (minst 6 tecken):');
+    if (newPw && newPw.length >= 6) {
+      SB.auth.updateUser({ password: newPw }).then(({ error }) => {
+        alert(error ? 'Fel: ' + error.message : '✅ Lösenord uppdaterat! Logga in med ditt nya lösenord.');
+      });
+    }
+    return;
+  }
   if (session?.user?.email === ADMIN_EMAIL) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
@@ -657,30 +708,35 @@ SB.auth.onAuthStateChange((event, session) => {
 });
 
 async function doLogin() {
-  const pw = document.getElementById('pw').value.trim();
-  if (!pw) return;
-  const btn = document.querySelector('.login-btn') || document.querySelector('button');
-  if (btn) { btn.textContent = '⏳ Skickar...'; btn.disabled = true; }
+  const email = document.getElementById('admin-email').value.trim();
+  const pw = document.getElementById('admin-pw').value.trim();
+  if (!email || !pw) return;
+  const btn = document.getElementById('login-btn');
+  if (btn) { btn.textContent = '⏳ Loggar in...'; btn.disabled = true; }
   
-  // Skicka magic link till admin-email
-  const { error } = await SB.auth.signInWithOtp({ 
-    email: ADMIN_EMAIL,
-    options: { emailRedirectTo: 'https://spick.se/admin.html' }
-  });
+  const { error } = await SB.auth.signInWithPassword({ email, password: pw });
   
   if (error) {
     document.getElementById('login-err').textContent = 'Fel: ' + error.message;
     document.getElementById('login-err').style.display = 'block';
-    if (btn) { btn.textContent = 'Logga in'; btn.disabled = false; }
-  } else {
-    document.getElementById('login-err').style.display = 'none';
-    document.getElementById('pw').style.display = 'none';
-    const info = document.querySelector('.login-sub') || document.createElement('p');
-    info.style.cssText = 'color:#0F6E56;font-weight:600;text-align:center;margin-top:1rem';
-    info.textContent = '✅ Inloggningslänk skickad till hello@spick.se – kolla din e-post!';
-    document.querySelector('.login-card, form, .login-wrap')?.appendChild(info);
-    if (btn) { btn.textContent = 'Länk skickad ✅'; }
+    if (btn) { btn.textContent = 'Logga in →'; btn.disabled = false; }
   }
+}
+
+async function resetPassword() {
+  const email = document.getElementById('admin-email').value.trim() || ADMIN_EMAIL;
+  const { error } = await SB.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://spick.se/admin.html'
+  });
+  const msg = document.getElementById('reset-msg');
+  if (error) {
+    msg.textContent = '❌ ' + error.message;
+    msg.style.color = 'var(--r)';
+  } else {
+    msg.textContent = '✅ Återställningslänk skickad till ' + email;
+    msg.style.color = 'var(--g)';
+  }
+  msg.style.display = 'block';
 }
 
 // ══════════════════════════════════════════════════════
@@ -866,9 +922,72 @@ async function doLogout() {
   await SB.auth.signOut();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('pw').value = '';
+  document.getElementById('admin-pw').value = '';
 }
-document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('admin-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── ONBOARDING PIPELINE ──────────────────────────────
+function renderOnboarding() {
+  const apps = data.applications || [];
+  const filter = document.getElementById('ob-filter')?.value || 'all';
+  
+  // Count by phase
+  const phases = { applied: 0, registering: 0, waiting_fskatt: 0, ready: 0 };
+  apps.forEach(a => {
+    const phase = a.onboarding_phase || (a.status === 'pending' ? 'applied' : a.status === 'godkänd' ? 'ready' : 'applied');
+    if (phases[phase] !== undefined) phases[phase]++;
+  });
+  
+  document.getElementById('ob-applied').textContent = phases.applied;
+  document.getElementById('ob-registering').textContent = phases.registering;
+  document.getElementById('ob-waiting').textContent = phases.waiting_fskatt;
+  document.getElementById('ob-ready').textContent = phases.ready;
+  document.getElementById('badge-onboard').textContent = apps.filter(a => a.status === 'pending').length || '';
+  
+  // Render list
+  const filtered = filter === 'all' ? apps : apps.filter(a => {
+    const phase = a.onboarding_phase || (a.status === 'pending' ? 'applied' : a.status === 'godkänd' ? 'ready' : 'applied');
+    return phase === filter;
+  });
+  
+  const phaseLabel = { applied: '🟡 Ansökt', registering: '🔵 Registrerar firma', waiting_fskatt: '🟣 Väntar F-skatt', ready: '🟢 Redo att aktivera' };
+  const phaseColor = { applied: '#F59E0B', registering: '#3B82F6', waiting_fskatt: '#8B5CF6', ready: '#0F6E56' };
+  
+  const list = document.getElementById('ob-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--m);padding:32px;font-size:.9rem">Inga städare i denna fas</div>';
+    return;
+  }
+  
+  list.innerHTML = filtered.map(a => {
+    const phase = a.onboarding_phase || (a.status === 'pending' ? 'applied' : a.status === 'godkänd' ? 'ready' : 'applied');
+    const nextPhase = { applied: 'registering', registering: 'waiting_fskatt', waiting_fskatt: 'ready', ready: null };
+    const pColor = phaseColor[phase] || '#6B7280';
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:.9rem">${escHtml(a.name || a.full_name || '–')}</div>
+        <div style="font-size:.8rem;color:var(--m)">${escHtml(a.email||'')} · ${escHtml(a.city||a.phone||'')}</div>
+        <div style="margin-top:4px"><span style="display:inline-block;padding:2px 10px;border-radius:8px;font-size:.72rem;font-weight:600;background:${pColor}20;color:${pColor}">${phaseLabel[phase]||phase}</span></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${nextPhase[phase] ? `<button class="btn btn-outline btn-sm" onclick="moveOnboarding('${a.id}','${nextPhase[phase]}')" style="font-size:.78rem;padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">Flytta →</button>` : ''}
+        ${phase === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}','${escHtml(a.name||a.full_name||'')}','${escHtml(a.email||'')}','${escHtml(a.city||'')}','${escHtml(Array.isArray(a.services)?a.services.join(','):a.services||'Hemstädning')}',${parseInt(a.hourly_rate)||350})" style="font-size:.78rem;padding:6px 12px;background:var(--g);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">✅ Aktivera</button>` : ''}
+        ${a.email ? `<a href="mailto:${a.email}" style="font-size:.78rem;padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;text-decoration:none;color:var(--b);display:flex;align-items:center">✉️</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function moveOnboarding(id, newPhase) {
+  const { error } = await SB.from('cleaner_applications').update({ onboarding_phase: newPhase }).eq('id', id);
+  if (error) { showToast('❌ Fel: ' + error.message); return; }
+  // Update local data
+  const app = (data.applications||[]).find(a => a.id === id);
+  if (app) app.onboarding_phase = newPhase;
+  renderOnboarding();
+  showToast('✅ Städare flyttad till ' + newPhase);
+}
 
 // ── NAVIGATION ────────────────────────────────────────
 let page = 'dashboard';
@@ -1077,6 +1196,7 @@ async function loadAll() {
 
   updateBadges();
   renderDashboard();
+  renderOnboarding();
 }
 
 function loadBookings() { loadAll().then(() => renderBookings()); }
@@ -1922,7 +2042,7 @@ function showCleanerDetail(id) {
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
     
     <!-- Statistik -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
       <div style="text-align:center;background:var(--gr);border-radius:10px;padding:10px">
         <div style="font-weight:700;font-size:1.1rem;color:var(--g)">${jobs.length}</div>
         <div style="font-size:.7rem;color:var(--m)">uppdrag</div>
@@ -1934,6 +2054,10 @@ function showCleanerDetail(id) {
       <div style="text-align:center;background:#DBEAFE;border-radius:10px;padding:10px">
         <div style="font-weight:700;font-size:1.1rem;color:#1E40AF">⭐ ${parseFloat(c.avg_rating||0).toFixed(1)}</div>
         <div style="font-size:.7rem;color:var(--m)">${c.review_count||0} betyg</div>
+      </div>
+      <div style="text-align:center;background:#FDF4FF;border-radius:10px;padding:10px">
+        <div style="font-weight:700;font-size:1.1rem;color:#7C3AED">${(() => { const t = c.commission_tier || c.tier || 'new'; const m = {new:'17%',established:'15%',professional:'13%',elite:'12%'}; return m[t] || '17%'; })()}</div>
+        <div style="font-size:.7rem;color:var(--m)">${(() => { const t = c.commission_tier || c.tier || 'new'; const n = {new:'Ny',established:'Silver',professional:'Gold',elite:'Platinum'}; return n[t] || 'Ny'; })()} provision</div>
       </div>
     </div>
     
@@ -1956,7 +2080,38 @@ function showCleanerDetail(id) {
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">ADMIN-NOTERING (bara synlig för admin)</label>
       <textarea id="admin-note" rows="2" placeholder="Intern notering..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem;resize:vertical">${escHtml(c.admin_notes||'')}</textarea>
+    </div>
+    
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+    
+    <!-- Schema / Tillgänglighet -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">VECKOSCHEMA</label>
+      <div id="admin-cleaner-schedule" style="font-size:.85rem;color:var(--m)">Laddar schema...</div>
     </div>`;
+
+  // Hämta städarens schema asynkront
+  SB.from('cleaner_availability').select('*').eq('cleaner_id', id).order('day_of_week').then(({data: avail, error: avErr}) => {
+    const el = document.getElementById('admin-cleaner-schedule');
+    if (!el) return;
+    const days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
+    if (avErr || !avail || !avail.length) {
+      // Fallback: check availability_schedule JSON on cleaner
+      const sched = c.availability_schedule;
+      if (sched && typeof sched === 'object') {
+        el.innerHTML = Object.entries(sched).map(([d, v]) => 
+          `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${escHtml(d)}</span><span style="color:${v.active !== false ? 'var(--g)' : 'var(--r)'}; font-weight:600">${v.active !== false ? (v.start||'08:00') + '–' + (v.end||'17:00') : 'Ledig'}</span></div>`
+        ).join('');
+      } else {
+        el.innerHTML = '<span style="color:var(--m);font-style:italic">Inget schema inställt</span>';
+      }
+      return;
+    }
+    el.innerHTML = avail.map(a => {
+      const dayName = days[a.day_of_week] || 'Dag ' + a.day_of_week;
+      return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${dayName}</span><span style="color:${a.is_active ? 'var(--g)' : 'var(--r)'}; font-weight:600">${a.is_active ? (a.start_time||'08:00') + '–' + (a.end_time||'17:00') : 'Ledig'}</span></div>`;
+    }).join('');
+  });
 
   // Uppdatera modal-knappar
   const actionsEl = document.getElementById('cleaner-modal').querySelector('.modal-actions');

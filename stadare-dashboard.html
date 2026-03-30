@@ -382,7 +382,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
           </button>
         </div>
       </div>
+    </div>
 
+    <!-- SCHEDULE TAB (ny 4:e flik) -->
+    <div class="tab-content" id="tab-schedule">
       <!-- Veckoschema -->
       <div class="card">
         <div class="card-title">🗓 Mitt veckoschema</div>
@@ -409,6 +412,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
           <span style="color:var(--m);font-size:.8rem">Laddar...</span>
         </div>
       </div>
+    </div>
 
       <!-- Tjänster -->
       <div class="card">
@@ -444,6 +448,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
     </button>
     <button class="nav-btn" id="nav-earn" onclick="switchTab('earn')">
       <span class="ni">💰</span>Inkomst
+    </button>
+    <button class="nav-btn" id="nav-schedule" onclick="switchTab('schedule')">
+      <span class="ni">📅</span>Schema
     </button>
     <button class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
       <span class="ni">👤</span>Profil
@@ -1348,7 +1355,8 @@ function switchTab(tab) {
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('nav-'+tab)?.classList.add('active');
   if (tab === 'earn') renderEarnings();
-  if (tab === 'profile') { buildSchedule(); loadBlockedDates(); }
+  if (tab === 'schedule') { buildSchedule(); loadBlockedDates(); }
+  if (tab === 'profile') { /* profile fields already populated on load */ }
 }
 
 function showToast(msg) {
