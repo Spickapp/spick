@@ -1,146 +1,393 @@
 // supabase/functions/booking-create/index.ts
 // =============================================================
-// SPICK: Smart Instant Book â Unified booking + Stripe Checkout
-// Replaces: client-side DB insert + stripe-checkout Edge Function
-// Flow: Validate â Price â Proximity â Insert booking â Create
-//       Stripe Checkout Session â Return URL
-// After payment: stripe-webhook sets status to 'confirmed'
+// SPICK: Booking Create — med inbyggd prismotor + marginalcheck
+//
+// Flöde:
+//   1. Validera input
+//   2. Lös rabattkod (om angiven)
+//   3. Hämta kredit (om finns)
+//   4. Beräkna pris via pricing-engine (source of truth)
+//   5. MARGINALCHECK — blockera om under 8 %
+//   6. Hämta/matcha städare
+//   7. Kontrollera tillgänglighet
+//   8. Skapa bokning i DB (med alla prisfält)
+//   9. Skapa Stripe Checkout-session
+//   10. Logga event + returnera URL
+//
+// Klienten skickar:
+//   { name, email, phone, address, date, time, hours, service,
+//     cleaner_id?, discount_code?, rut?, frequency?, ... }
+//
+// Servern returnerar:
+//   { url, booking_id, customer_price, cleaner_name }
 // =============================================================
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import {
+  loadSettings,
+  resolveDiscount,
+  getAvailableCredit,
+  calculateBooking,
+} from "../_shared/pricing-engine.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const BASE_URL = "https://spick.se";
+const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const STRIPE_KEY      = Deno.env.get("STRIPE_SECRET_KEY")!;
+const BASE_URL        = Deno.env.get("BASE_URL") || "https://spick.se";
 
-const ALLOWED_ORIGINS = [BASE_URL, "https://www.spick.se", "http://localhost:3000"];
-function corsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || "";
-  return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : BASE_URL,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
-  };
-}
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function getOptOutMinutes(tier: string): number {
-  switch (tier) { case "elite": return 0; case "established": return 60; default: return 120; }
+function json(status: number, body: any) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS },
+  });
 }
 
 serve(async (req) => {
-  const CORS = corsHeaders(req);
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    if (!STRIPE_SECRET_KEY) return json(503, { error: "Betalning ej konfigurerad" }, CORS);
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
+    // ── 1. PARSE + VALIDATE INPUT ──────────────────
     const body = await req.json();
-    const { name, email, phone, address, service, date, time, hours, sqm,
-      cleaner_id, cleaner_name, rut = false, frequency, key_info, customer_notes,
-      customer_lat, customer_lng, customer_pnr_hash } = body;
+    const {
+      name,
+      email,
+      phone,
+      address,
+      date,
+      time,
+      hours,
+      service,
+      cleaner_id,
+      cleaner_name,
+      discount_code,
+      rut,
+      frequency,
+      sqm,
+      customer_notes,
+      key_info,
+      customer_lat,
+      customer_lng,
+      customer_pnr_hash,
+    } = body;
 
-    if (!email || !service || !cleaner_id || !date || !time)
-      return json(400, { error: "Saknade fÃ¤lt: email, service, cleaner_id, date, time krÃ¤vs" }, CORS);
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-    const { data: cleaner, error: clErr } = await supabase.from("cleaners")
-      .select("id,user_id,full_name,email,hourly_rate,city,latitude,longitude,lat,lng,service_radius_km,tier,active")
-      .eq("id", cleaner_id).single();
-
-    if (clErr || !cleaner) return json(404, { error: "StÃ¤daren hittades inte" }, CORS);
-
-    let distanceKm: number|null = null, travelSurcharge = 0;
-    if (customer_lat && customer_lng && (cleaner.latitude || cleaner.lat) && (cleaner.longitude || cleaner.lng)) {
-      const cLat = cleaner.latitude || cleaner.lat, cLng = cleaner.longitude || cleaner.lng;
-      distanceKm = Math.round(haversineKm(customer_lat, customer_lng, cLat, cLng) * 10) / 10;
-      const radius = cleaner.service_radius_km || 15;
-      if (distanceKm > radius) return json(400, { error: `FÃ¶r lÃ¥ngt bort (${distanceKm} km, max ${radius} km)` }, CORS);
-      if (distanceKm > 10) travelSurcharge = Math.round((distanceKm - 10) * 15);
+    // Required fields
+    if (!name || !email || !date || !time || !hours || !service) {
+      return json(400, { error: "Obligatoriska fält saknas: name, email, date, time, hours, service" });
     }
 
-    const rate = cleaner.hourly_rate || 349;
     const validHours = Math.max(2, Math.min(12, Number(hours) || 3));
-    const grossPrice = rate * validHours;
-    const rutAmount = rut ? Math.round(grossPrice * 0.5) : 0;
-    const netPrice = grossPrice - rutAmount + travelSurcharge;
-    const commissionRate = 0.17;
-    const cleanerPayout = Math.round(grossPrice * (1 - commissionRate)) + travelSurcharge;
-    if (netPrice < 300 || netPrice > 30000) return json(400, { error: "Ogiltigt belopp" }, CORS);
 
-    const bookingId = crypto.randomUUID();
-    const optOutMinutes = getOptOutMinutes(cleaner.tier || "new");
+    // ── 2. HÄMTA STÄDARE ───────────────────────────
+    let cleaner: any = null;
 
-    const { error: insErr } = await supabase.from("bookings").insert({
-      id: bookingId, cleaner_id, status: "pending", payment_status: "pending",
-      name, email, phone, address: address || "", city: cleaner.city || "",
-      service, date, time, hours: validHours, total_price: netPrice, rut: !!rut,
-      cleaner_name: cleaner.full_name || cleaner_name || "", sqm: sqm || null,
-      service_type: service, customer_notes, key_info, frequency: frequency || "once",
-      distance_km: distanceKm, travel_surcharge: travelSurcharge * 100,
-      gross_price: grossPrice * 100, rut_amount: rutAmount * 100,
-      net_price: netPrice * 100, commission_rate: commissionRate,
-      cleaner_payout: cleanerPayout * 100, opt_out_minutes: optOutMinutes,
+    if (cleaner_id) {
+      const { data, error } = await supabase
+        .from("cleaners")
+        .select("id, full_name, tier, avg_rating, total_jobs, service_radius_km, home_lat, home_lng, email, phone")
+        .eq("id", cleaner_id)
+        .eq("active", true)
+        .single();
+
+      if (error || !data) {
+        return json(400, { error: "Städaren finns inte eller är inaktiv" });
+      }
+      cleaner = data;
+    } else {
+      // Ingen specifik städare vald — matcha enklast möjliga:
+      // Alla aktiva städare, sorterade på rating
+      const { data } = await supabase
+        .from("cleaners")
+        .select("id, full_name, tier, avg_rating, total_jobs, service_radius_km, home_lat, home_lng, email, phone")
+        .eq("active", true)
+        .order("avg_rating", { ascending: false })
+        .limit(1);
+
+      if (!data || data.length === 0) {
+        return json(503, { error: "Inga städare tillgängliga just nu" });
+      }
+      cleaner = data[0];
+    }
+
+    const cleanerTier: "standard" | "top" =
+      cleaner.tier === "top" ? "top" : "standard";
+
+    // ── 3. LÖS RABATTKOD ──────────────────────────
+    const discount = await resolveDiscount(
+      supabase,
+      discount_code || null,
+      validHours,
+      false // isSubscription — inte implementerat i Fas 1
+    );
+
+    if (discount_code && !discount.valid) {
+      return json(400, { error: discount.error || "Ogiltig rabattkod" });
+    }
+
+    // ── 4. HÄMTA KREDIT ────────────────────────────
+    const availableCredit = await getAvailableCredit(supabase, email);
+
+    // ── 5. BERÄKNA PRIS — PRICING ENGINE ───────────
+    const settings = await loadSettings(supabase);
+
+    const pricing = calculateBooking(settings, {
+      hours: validHours,
+      cleanerTier,
+      discountPercent: discount.percentOff,
+      fixedDiscountSek: discount.fixedOffSek,
+      isSubscription: false,
+      creditSek: availableCredit,
     });
-    if (insErr) { console.error("Insert failed:", insErr); return json(500, { error: "Kunde inte skapa bokning" }, CORS); }
 
-    try { await supabase.rpc("log_booking_event", {p_booking_id:bookingId,p_event_type:"booking_created",p_actor_type:"customer",p_metadata:{distance_km:distanceKm,opt_out_minutes:optOutMinutes}}); } catch(_){}
+    // ── 6. MARGINALCHECK ───────────────────────────
+    if (!pricing.allowed) {
+      console.error("Margin check failed:", pricing);
+      return json(400, {
+        error: "Priset ger för låg marginal. Rabattkoden kan inte användas med denna bokning.",
+        detail: pricing.reason,
+      });
+    }
 
+    // ── 7. RUT-BERÄKNING ───────────────────────────
+    const useRut = !!rut;
+    const rutDeduction = useRut
+      ? Math.round(pricing.customerTotal * 0.5)
+      : 0;
+    const netPrice = pricing.customerTotal - rutDeduction;
+
+    // Stripe-belopp = det kunden faktiskt betalar (efter RUT + kredit)
+    const stripeAmount = Math.max(
+      Math.round(netPrice - pricing.creditApplied),
+      0
+    );
+
+    // ── 8. SKAPA BOKNING I DB ──────────────────────
+    const bookingId = crypto.randomUUID();
+    const timeEnd = addMinutes(time, validHours * 60);
+
+    const { error: insertErr } = await supabase.from("bookings").insert({
+      id: bookingId,
+      name,
+      email,
+      phone,
+      address,
+      city: null,
+      service,
+      date,
+      time,
+      time_end: timeEnd,
+      hours: validHours,
+      total_price: netPrice,
+      status: "pending",
+      payment_status: "pending",
+      rut: useRut,
+      frequency: frequency || "once",
+      cleaner_id: cleaner.id,
+      cleaner_name: cleaner.full_name || cleaner_name,
+      sqm: sqm || null,
+      customer_notes: customer_notes || null,
+      key_info: key_info || null,
+      customer_lat: customer_lat || null,
+      customer_lng: customer_lng || null,
+      ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
+
+      // ── PRISMOTOR-FÄLT (nya) ──
+      base_price_per_hour: pricing.basePricePerHour,
+      customer_price_per_hour: pricing.customerPricePerHour,
+      cleaner_price_per_hour: pricing.cleanerPricePerHour,
+      commission_pct: pricing.commissionPct,
+      discount_pct: pricing.discountPct,
+      discount_code: discount_code || null,
+      spick_gross_sek: pricing.spickGross,
+      spick_net_sek: pricing.spickNet,
+      net_margin_pct: pricing.netMarginPct,
+      stripe_fee_sek: pricing.stripeFee,
+      credit_applied_sek: pricing.creditApplied,
+    });
+
+    if (insertErr) {
+      console.error("Booking insert failed:", insertErr);
+      return json(500, { error: "Kunde inte skapa bokning" });
+    }
+
+    // ── 9. LOGGA RABATTANVÄNDNING ──────────────────
+    if (discount.discountId && discount.percentOff > 0) {
+      // Öka current_uses
+      await supabase
+        .from("discounts")
+        .update({ current_uses: supabase.sql`current_uses + 1` })
+        .eq("id", discount.discountId);
+
+      // Logga användning
+      await supabase.from("discount_usage").insert({
+        discount_id: discount.discountId,
+        booking_id: bookingId,
+        customer_email: email,
+        percent_applied: discount.percentOff,
+        amount_saved_sek: Math.round(
+          (pricing.basePricePerHour * validHours * discount.percentOff) / 100
+        ),
+      });
+    }
+
+    // ── 10. DRA KREDIT (om använd) ─────────────────
+    if (pricing.creditApplied > 0) {
+      let remaining = pricing.creditApplied;
+      const { data: credits } = await supabase
+        .from("customer_credits")
+        .select("id, remaining_sek")
+        .eq("customer_email", email)
+        .gt("remaining_sek", 0)
+        .gte("expires_at", new Date().toISOString())
+        .order("expires_at", { ascending: true }); // FIFO
+
+      for (const c of credits || []) {
+        if (remaining <= 0) break;
+        const deduct = Math.min(remaining, Number(c.remaining_sek));
+        await supabase
+          .from("customer_credits")
+          .update({ remaining_sek: Number(c.remaining_sek) - deduct })
+          .eq("id", c.id);
+        remaining -= deduct;
+      }
+    }
+
+    // ── 11. LOGGA EVENT ────────────────────────────
+    try {
+      await supabase.rpc("log_booking_event", {
+        p_booking_id: bookingId,
+        p_event_type: "booking_created",
+        p_actor_type: "customer",
+        p_metadata: {
+          cleaner_tier: cleanerTier,
+          commission_pct: pricing.commissionPct,
+          discount_pct: pricing.discountPct,
+          net_margin_pct: pricing.netMarginPct,
+          credit_applied: pricing.creditApplied,
+        },
+      });
+    } catch (_) {} // Non-critical
+
+    // ── 12. STRIPE CHECKOUT ────────────────────────
+    if (stripeAmount <= 0) {
+      // Helt kredit-betald bokning — bekräfta direkt
+      await supabase
+        .from("bookings")
+        .update({ status: "confirmed", payment_status: "paid" })
+        .eq("id", bookingId);
+
+      return json(201, {
+        booking_id: bookingId,
+        url: `${BASE_URL}/tack.html?bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}`,
+        customer_price: netPrice,
+        cleaner_name: cleaner.full_name || cleaner_name,
+        paid_with_credit: true,
+      });
+    }
+
+    const amountOre = stripeAmount * 100;
     const params = new URLSearchParams();
     params.append("mode", "payment");
     params.append("currency", "sek");
     params.append("customer_email", email);
-    params.append("success_url", `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}`);
+    params.append(
+      "success_url",
+      `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}&address=${encodeURIComponent(address || "")}`
+    );
     params.append("cancel_url", `${BASE_URL}/boka.html?cancelled=1`);
+
+    // Metadata
     params.append("metadata[booking_id]", bookingId);
     params.append("metadata[booking_type]", "instant");
-    params.append("metadata[cleaner_id]", cleaner_id);
-    params.append("metadata[cleaner_name]", (cleaner.full_name || "").slice(0, 100));
-    params.append("metadata[opt_out_minutes]", String(optOutMinutes));
-    if (address) params.append("metadata[address]", address.slice(0,200));
+    params.append("metadata[cleaner_id]", cleaner.id);
+    params.append("metadata[cleaner_name]", (cleaner.full_name || cleaner_name || "").slice(0, 100));
+    params.append("metadata[commission_pct]", String(pricing.commissionPct));
+    params.append("metadata[net_margin_pct]", String(pricing.netMarginPct));
+    if (address) params.append("metadata[address]", address.slice(0, 200));
     if (phone) params.append("metadata[phone]", phone);
     params.append("metadata[rut]", rut ? "true" : "false");
-    if (distanceKm) params.append("metadata[distance_km]", String(distanceKm));
+    if (frequency) params.append("metadata[frequency]", frequency);
+
+    // Payment methods
     params.append("payment_method_types[]", "card");
     params.append("payment_method_types[]", "klarna");
+
+    // Line item
     params.append("line_items[0][quantity]", "1");
     params.append("line_items[0][price_data][currency]", "sek");
-    params.append("line_items[0][price_data][unit_amount]", String(netPrice * 100));
-    params.append("line_items[0][price_data][product_data][name]", `${service} â ${validHours} timmar`);
-    params.append("line_items[0][price_data][product_data][description]", `StÃ¤ddatum: ${date}. StÃ¤dare: ${cleaner.full_name || "Tilldelas"}`);
-    params.append("allow_promotion_codes", "true");
+    params.append("line_items[0][price_data][unit_amount]", String(amountOre));
+
+    let productName = `${service} – ${validHours} timmar`;
+    let productDesc = `Städdatum: ${date}. Städare: ${cleaner.full_name || cleaner_name || "Tilldelas"}`;
+    if (useRut) productDesc = `Pris inkl. 50% RUT-avdrag. ${productDesc}`;
+    if (pricing.discountPct > 0) productDesc += `. Rabatt: ${pricing.discountPct}%`;
+
+    params.append("line_items[0][price_data][product_data][name]", productName);
+    params.append("line_items[0][price_data][product_data][description]", productDesc);
+    params.append("line_items[0][price_data][product_data][images][]", "https://spick.se/assets/og-image.jpg");
+
     params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
+    params.append("billing_address_collection", "auto");
 
     const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded", "Stripe-Version": "2023-10-16" },
+      headers: {
+        Authorization: `Bearer ${STRIPE_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Version": "2023-10-16",
+      },
       body: params.toString(),
     });
+
     const session = await stripeRes.json();
+
     if (!stripeRes.ok) {
+      console.error("Stripe error:", JSON.stringify(session));
       await supabase.from("bookings").delete().eq("id", bookingId);
-      return json(500, { error: session.error?.message || "Stripe-fel" }, CORS);
+      return json(500, {
+        error: session.error?.message || "Stripe-fel",
+      });
     }
 
-    await supabase.from("bookings").update({ stripe_session_id: session.id, stripe_payment_intent_id: session.payment_intent }).eq("id", bookingId);
+    // Uppdatera booking med Stripe-session
+    await supabase
+      .from("bookings")
+      .update({
+        stripe_session_id: session.id,
+        stripe_payment_intent_id: session.payment_intent,
+      })
+      .eq("id", bookingId);
 
-    return new Response(JSON.stringify({ url: session.url, session_id: session.id, booking_id: bookingId, net_price: netPrice, distance_km: distanceKm, travel_surcharge: travelSurcharge }), { headers: { "Content-Type": "application/json", ...CORS } });
-
+    // ── 13. RETURN ─────────────────────────────────
+    return json(200, {
+      url: session.url,
+      session_id: session.id,
+      booking_id: bookingId,
+      customer_price: netPrice,
+      cleaner_name: cleaner.full_name || cleaner_name,
+      discount_applied: pricing.discountPct > 0 ? `${pricing.discountPct}%` : null,
+      credit_applied: pricing.creditApplied > 0 ? pricing.creditApplied : null,
+    });
   } catch (e) {
-    console.error("booking-create error:", e);
-    return json(500, { error: (e as Error).message }, corsHeaders(req));
+    console.error("booking-create exception:", e);
+    return json(500, { error: (e as Error).message });
   }
 });
 
-function json(status: number, body: any, headers: Record<string, string>) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
+// ── HELPERS ──────────────────────────────────────
+
+function addMinutes(timeStr: string, minutes: number): string {
+  const [h, m] = timeStr.split(":").map(Number);
+  const total = h * 60 + m + minutes;
+  const newH = Math.floor(total / 60) % 24;
+  const newM = total % 60;
+  return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
 }
