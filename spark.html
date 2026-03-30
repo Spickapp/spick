@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Spick Spark — Lojalitetsprogram | Spick</title>
+<meta name="description" content="Tjäna Sparks vid varje städning och lås upp förmåner. Ny → Stjärna → Guld → VIP.">
+<meta property="og:title" content="Spick Spark — Lojalitetsprogram">
+<meta property="og:image" content="https://spick.se/assets/og-image.png">
+<link rel="canonical" href="https://spick.se/spark.html">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="js/config.js"></script>
+<style>
+:root{--g:#0F6E56;--gp:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--w:#fff;--border:#E8E8E4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b)}
+.hero{background:linear-gradient(160deg,#1a1a2e,#16213e);color:#fff;padding:60px 20px 48px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 50%,rgba(139,92,246,.15),transparent 60%),radial-gradient(circle at 70% 30%,rgba(245,158,11,.1),transparent 50%)}
+.hero h1{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;margin-bottom:8px;position:relative}
+.hero p{font-size:1rem;opacity:.85;max-width:440px;margin:0 auto;line-height:1.6;position:relative}
+.container{max-width:640px;margin:0 auto;padding:24px 16px 60px}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-32px 16px 24px;position:relative;z-index:1}
+@media(max-width:500px){.levels{grid-template-columns:repeat(2,1fr)}}
+.level{background:var(--w);border-radius:14px;border:2px solid var(--border);padding:16px 10px;text-align:center;transition:all .2s}
+.level.active{border-color:#8B5CF6;box-shadow:0 4px 16px rgba(139,92,246,.15)}
+.level-icon{font-size:1.8rem;margin-bottom:4px}
+.level-name{font-weight:700;font-size:.85rem;margin-bottom:2px}
+.level-req{font-size:.7rem;color:var(--m)}
+.level-perk{font-size:.72rem;color:#8B5CF6;font-weight:600;margin-top:4px}
+.card{background:var(--w);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:12px}
+.card-title{font-weight:700;font-size:.95rem;margin-bottom:12px}
+.spark-counter{text-align:center;padding:24px;background:linear-gradient(135deg,#F3E8FF,#EDE9FE);border-radius:16px;margin-bottom:16px}
+.spark-number{font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;color:#7C3AED}
+.spark-label{font-size:.85rem;color:#6D28D9;font-weight:600}
+.progress-section{margin-bottom:16px}
+.progress-header{display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px}
+.progress-bar{background:#F3F4F6;border-radius:8px;height:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:8px;transition:width .5s;background:linear-gradient(90deg,#8B5CF6,#A78BFA)}
+.earn-method{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.earn-method:last-child{border-bottom:none}
+.earn-icon{font-size:1.4rem;width:40px;text-align:center;flex-shrink:0}
+.earn-text{flex:1}
+.earn-title{font-weight:600;font-size:.88rem}
+.earn-sub{font-size:.78rem;color:var(--m)}
+.earn-amount{font-weight:700;color:#7C3AED;font-size:.9rem;white-space:nowrap}
+.reward{display:flex;align-items:center;gap:12px;padding:12px;background:#F7F7F5;border-radius:12px;margin-bottom:8px}
+.reward-cost{background:#8B5CF6;color:#fff;padding:4px 10px;border-radius:8px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.reward-name{font-weight:600;font-size:.88rem}
+.reward-desc{font-size:.78rem;color:var(--m)}
+.reward-btn{background:#EDE9FE;color:#7C3AED;border:none;padding:6px 14px;border-radius:8px;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.reward-btn:disabled{opacity:.4;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Spick Spark</h1>
+  <p>Tjäna Sparks vid varje städning. Stig i nivå och lås upp förmåner.</p>
+</div>
+
+<div class="container">
+  <div class="levels">
+    <div class="level active" id="lvl-ny">
+      <div class="level-icon">🌱</div>
+      <div class="level-name">Ny</div>
+      <div class="level-req">0 sparks</div>
+      <div class="level-perk">Välkomstbonus</div>
+    </div>
+    <div class="level" id="lvl-stjarna">
+      <div class="level-icon">⭐</div>
+      <div class="level-name">Stjärna</div>
+      <div class="level-req">10 sparks</div>
+      <div class="level-perk">5% rabatt</div>
+    </div>
+    <div class="level" id="lvl-guld">
+      <div class="level-icon">🏅</div>
+      <div class="level-name">Guld</div>
+      <div class="level-req">30 sparks</div>
+      <div class="level-perk">10% rabatt</div>
+    </div>
+    <div class="level" id="lvl-vip">
+      <div class="level-icon">👑</div>
+      <div class="level-name">VIP</div>
+      <div class="level-req">75 sparks</div>
+      <div class="level-perk">15% + prioritet</div>
+    </div>
+  </div>
+
+  <div class="spark-counter">
+    <div class="spark-number" id="my-sparks">0</div>
+    <div class="spark-label">Sparks intjänade</div>
+  </div>
+
+  <div class="progress-section" id="progress-section">
+    <div class="progress-header">
+      <span id="prog-current">Ny</span>
+      <span id="prog-next">10 sparks till Stjärna</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Så tjänar du Sparks</div>
+    <div class="earn-method">
+      <div class="earn-icon">🧹</div>
+      <div class="earn-text"><div class="earn-title">Genomförd städning</div><div class="earn-sub">Varje avslutad bokning</div></div>
+      <div class="earn-amount">+1 Spark</div>
+    </div>
+    <div class="earn-method">
+      <div class="earn-icon">⭐</div>
+      <div class="earn-text"><div class="earn-title">Lämna recension</div><div class="earn-sub">Betygsätt din städare efter bokning</div></div>
+      <div class="earn-amount">+1 Spark</div>
+    </div>
+    <div class="earn-method">
+      <div class="earn-icon">👥</div>
+      <div class="earn-text"><div class="earn-title">Bjud in en vän</div><div class="earn-sub">Din vän bokar sin första städning</div></div>
+      <div class="earn-amount">+3 Sparks</div>
+    </div>
+    <div class="earn-method">
+      <div class="earn-icon">🔄</div>
+      <div class="earn-text"><div class="earn-title">Månadsstad-prenumeration</div><div class="earn-sub">Bonus vid aktiv prenumeration</div></div>
+      <div class="earn-amount">+2 Sparks/mån</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Lös in dina Sparks</div>
+    <div class="reward">
+      <div class="reward-cost">5 Sparks</div>
+      <div style="flex:1"><div class="reward-name">50 kr rabatt</div><div class="reward-desc">På nästa bokning</div></div>
+      <button class="reward-btn" onclick="redeem(5, '50kr')" id="reward-5">Lös in</button>
+    </div>
+    <div class="reward">
+      <div class="reward-cost">15 Sparks</div>
+      <div style="flex:1"><div class="reward-name">200 kr rabatt</div><div class="reward-desc">På valfri bokning</div></div>
+      <button class="reward-btn" onclick="redeem(15, '200kr')" id="reward-15">Lös in</button>
+    </div>
+    <div class="reward">
+      <div class="reward-cost">30 Sparks</div>
+      <div style="flex:1"><div class="reward-name">Gratis storstädning (3h)</div><div class="reward-desc">Värde upp till 1 050 kr</div></div>
+      <button class="reward-btn" onclick="redeem(30, 'free3h')" id="reward-30">Lös in</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px">
+    <a href="boka.html" style="display:inline-block;background:var(--g);color:#fff;padding:14px 32px;border-radius:14px;text-decoration:none;font-weight:700;font-size:1rem">Boka och tjäna din första Spark →</a>
+  </div>
+</div>
+
+<script>
+const LEVELS = [
+  { id: 'ny', name: 'Ny', threshold: 0, discount: 0 },
+  { id: 'stjarna', name: 'Stjärna', threshold: 10, discount: 0.05 },
+  { id: 'guld', name: 'Guld', threshold: 30, discount: 0.10 },
+  { id: 'vip', name: 'VIP', threshold: 75, discount: 0.15 },
+];
+
+let userSparks = 0;
+
+function updateUI(sparks) {
+  userSparks = sparks;
+  document.getElementById('my-sparks').textContent = sparks;
+  
+  // Current level
+  let current = LEVELS[0];
+  let next = LEVELS[1];
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (sparks >= LEVELS[i].threshold) { current = LEVELS[i]; next = LEVELS[i + 1] || null; break; }
+  }
+  
+  // Highlight active level
+  LEVELS.forEach(l => document.getElementById('lvl-' + l.id).classList.remove('active'));
+  document.getElementById('lvl-' + current.id).classList.add('active');
+  
+  // Progress
+  if (next) {
+    const range = next.threshold - current.threshold;
+    const progress = sparks - current.threshold;
+    const pct = Math.min(100, Math.round((progress / range) * 100));
+    document.getElementById('prog-current').textContent = current.name;
+    document.getElementById('prog-next').textContent = (next.threshold - sparks) + ' sparks till ' + next.name;
+    document.getElementById('prog-fill').style.width = pct + '%';
+  } else {
+    document.getElementById('prog-current').textContent = 'VIP';
+    document.getElementById('prog-next').textContent = 'Högsta nivån!';
+    document.getElementById('prog-fill').style.width = '100%';
+  }
+  
+  // Enable/disable redeem buttons
+  [5, 15, 30].forEach(cost => {
+    const btn = document.getElementById('reward-' + cost);
+    if (btn) btn.disabled = sparks < cost;
+  });
+}
+
+async function loadSparks() {
+  const email = localStorage.getItem('spick_customer_email');
+  if (!email) { updateUI(0); return; }
+  
+  try {
+    const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+    const { data } = await SB.from('customers')
+      .select('sparks, spark_level')
+      .eq('email', email)
+      .single();
+    updateUI(data?.sparks || 0);
+  } catch(e) {
+    updateUI(0);
+  }
+}
+
+function redeem(cost, reward) {
+  if (userSparks < cost) return;
+  alert('Spark-inlösen är snart tillgänglig! Kontakta hello@spick.se för att lösa in ' + cost + ' Sparks.');
+}
+
+// Load sparks on page load
+if (typeof supabase !== 'undefined') {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  script.onload = loadSparks;
+  document.head.appendChild(script);
+} else {
+  updateUI(0);
+}
+</script>
+</body>
+</html>

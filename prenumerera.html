@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Spick Månadsstad — Återkommande hemstädning till fast pris | Spick</title>
+<meta name="description" content="Boka återkommande hemstädning med Spick Månadsstad. Samma städare varje gång, 330 kr/h med RUT-avdrag. Välj veckovis, varannan vecka eller månadsvis.">
+<meta property="og:title" content="Spick Månadsstad — Fast pris, samma städare">
+<meta property="og:description" content="Återkommande hemstädning från 330 kr/h. Med RUT betalar du bara 165 kr/h.">
+<meta property="og:image" content="https://spick.se/assets/og-image.png">
+<link rel="canonical" href="https://spick.se/prenumerera.html">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="js/config.js"></script>
+<style>
+:root{--g:#0F6E56;--gp:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--w:#fff;--border:#E8E8E4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b)}
+.hero{background:linear-gradient(160deg,#0F6E56,#0A5240);color:#fff;padding:60px 20px 48px;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:8px}
+.hero p{font-size:1rem;opacity:.9;max-width:480px;margin:0 auto;line-height:1.6}
+.container{max-width:680px;margin:0 auto;padding:24px 16px 80px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:-40px 16px 24px}
+@media(max-width:640px){.plans{grid-template-columns:1fr;max-width:400px;margin-left:auto;margin-right:auto}}
+.plan{background:var(--w);border-radius:16px;border:2px solid var(--border);padding:24px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.plan:hover{border-color:var(--g);transform:translateY(-2px)}
+.plan.selected{border-color:var(--g);background:var(--gp)}
+.plan.popular::before{content:'Populärast';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--g);color:#fff;padding:3px 14px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.03em}
+.plan-freq{font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.plan-price{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--b)}
+.plan-unit{font-size:.85rem;color:var(--m)}
+.plan-rut{font-size:.85rem;color:var(--g);font-weight:600;margin-top:6px}
+.plan-save{font-size:.75rem;color:#92400E;background:#FEF3C7;padding:2px 10px;border-radius:10px;display:inline-block;margin-top:6px}
+.card{background:var(--w);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:12px}
+.card-title{font-weight:700;font-size:.95rem;margin-bottom:12px}
+.feature{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem;line-height:1.5}
+.feature:last-child{border-bottom:none}
+.feature .icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.config{margin-bottom:16px}
+.config label{font-size:.78rem;font-weight:600;color:var(--m);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.config select,.config input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem}
+.summary{background:var(--gp);border-radius:14px;padding:16px;margin-bottom:16px}
+.sum-row{display:flex;justify-content:space-between;padding:6px 0;font-size:.88rem}
+.sum-row.total{font-weight:700;font-size:1rem;border-top:1.5px solid var(--g);padding-top:10px;margin-top:6px}
+.cta{width:100%;padding:16px;background:var(--g);color:#fff;border:none;border-radius:14px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer}
+.cta:hover{background:#0A5240}
+.trust{display:flex;justify-content:center;gap:20px;margin-top:12px;font-size:.78rem;color:var(--m)}
+.faq{padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.faq-q{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:.9rem}
+.faq-a{display:none;font-size:.85rem;color:var(--m);line-height:1.6;margin-top:8px}
+.faq.open .faq-a{display:block}
+.faq.open .faq-arrow{transform:rotate(180deg)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Spick Månadsstad</h1>
+  <p>Samma städare, samma dag, varje gång. Till fast pris med RUT-avdrag.</p>
+</div>
+
+<div class="container">
+  <div class="plans">
+    <div class="plan" onclick="selectPlan('weekly')" id="plan-weekly">
+      <div class="plan-freq">Varje vecka</div>
+      <div class="plan-price">310 <span class="plan-unit">kr/h</span></div>
+      <div class="plan-rut">155 kr/h med RUT</div>
+      <div class="plan-save">Spara 11%</div>
+    </div>
+    <div class="plan popular selected" onclick="selectPlan('biweekly')" id="plan-biweekly">
+      <div class="plan-freq">Varannan vecka</div>
+      <div class="plan-price">330 <span class="plan-unit">kr/h</span></div>
+      <div class="plan-rut">165 kr/h med RUT</div>
+      <div class="plan-save">Spara 6%</div>
+    </div>
+    <div class="plan" onclick="selectPlan('monthly')" id="plan-monthly">
+      <div class="plan-freq">En gång/månad</div>
+      <div class="plan-price">350 <span class="plan-unit">kr/h</span></div>
+      <div class="plan-rut">175 kr/h med RUT</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Konfigurera din städning</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="config">
+        <label>Antal timmar</label>
+        <select id="cfg-hours" onchange="updateSummary()">
+          <option value="2">2 timmar</option>
+          <option value="3" selected>3 timmar</option>
+          <option value="4">4 timmar</option>
+          <option value="5">5 timmar</option>
+          <option value="6">6 timmar</option>
+        </select>
+      </div>
+      <div class="config">
+        <label>Dag</label>
+        <select id="cfg-day">
+          <option>Måndag</option><option>Tisdag</option><option selected>Onsdag</option>
+          <option>Torsdag</option><option>Fredag</option>
+        </select>
+      </div>
+    </div>
+    <div class="config">
+      <label>Önskad tid</label>
+      <select id="cfg-time">
+        <option value="08:00">08:00</option><option value="09:00" selected>09:00</option>
+        <option value="10:00">10:00</option><option value="11:00">11:00</option>
+        <option value="12:00">12:00</option><option value="13:00">13:00</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="summary" id="summary">
+    <div class="sum-row"><span>Hemstädning 3h × varannan vecka</span><span id="sum-base">990 kr</span></div>
+    <div class="sum-row"><span>RUT-avdrag (50%)</span><span style="color:var(--g)" id="sum-rut">–495 kr</span></div>
+    <div class="sum-row total"><span>Du betalar per tillfälle</span><span id="sum-total">495 kr</span></div>
+  </div>
+
+  <button class="cta" onclick="startSubscription()">Starta min prenumeration →</button>
+  <div class="trust">
+    <span>✅ Avbryt när som helst</span>
+    <span>🔒 Säker betalning</span>
+    <span>⭐ Nöjdhetsgaranti</span>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title">Vad ingår?</div>
+    <div class="feature"><span class="icon">👤</span><div><strong>Samma städare varje gång</strong> — du bygger en relation med din städare som lär sig ditt hem.</div></div>
+    <div class="feature"><span class="icon">📅</span><div><strong>Fast schema</strong> — samma dag och tid, utan att boka om varje gång.</div></div>
+    <div class="feature"><span class="icon">💰</span><div><strong>Lägre timpris</strong> — upp till 11% billigare än engångsbokning.</div></div>
+    <div class="feature"><span class="icon">🔄</span><div><strong>Flexibelt</strong> — pausa eller avbryt när som helst, utan bindningstid.</div></div>
+    <div class="feature"><span class="icon">🛡</span><div><strong>Nöjdhetsgaranti</strong> — inte nöjd? Vi skickar en ny städare kostnadsfritt.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Vanliga frågor</div>
+    <div class="faq" onclick="this.classList.toggle('open')">
+      <div class="faq-q"><span>Kan jag byta städare?</span><span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Ja! Kontakta oss via hello@spick.se så byter vi städare till nästa tillfälle.</div>
+    </div>
+    <div class="faq" onclick="this.classList.toggle('open')">
+      <div class="faq-q"><span>Hur fungerar RUT-avdraget?</span><span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Vi ansöker om RUT-avdraget åt dig automatiskt. Du betalar bara halva priset direkt — Skatteverket betalar resten till oss.</div>
+    </div>
+    <div class="faq" onclick="this.classList.toggle('open')">
+      <div class="faq-q"><span>Kan jag pausa tillfälligt?</span><span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Absolut. Pausa via mitt-konto eller maila oss. Du kan återuppta när som helst utan extra kostnad.</div>
+    </div>
+    <div class="faq" onclick="this.classList.toggle('open')">
+      <div class="faq-q"><span>Vad händer om min städare är sjuk?</span><span class="faq-arrow">▾</span></div>
+      <div class="faq-a">Vi skickar en ersättare med liknande betyg och erfarenhet. Du meddelas i förväg.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedFreq = 'biweekly';
+const rates = { weekly: 310, biweekly: 330, monthly: 350 };
+
+function selectPlan(freq) {
+  selectedFreq = freq;
+  document.querySelectorAll('.plan').forEach(p => p.classList.remove('selected'));
+  document.getElementById('plan-' + freq).classList.add('selected');
+  updateSummary();
+}
+
+function updateSummary() {
+  const hours = parseInt(document.getElementById('cfg-hours').value) || 3;
+  const rate = rates[selectedFreq];
+  const total = rate * hours;
+  const rut = Math.round(total * 0.5);
+  const freqLabel = { weekly: 'varje vecka', biweekly: 'varannan vecka', monthly: 'en gång/månad' };
+  
+  document.getElementById('sum-base').textContent = total.toLocaleString('sv') + ' kr';
+  document.getElementById('sum-rut').textContent = '–' + rut.toLocaleString('sv') + ' kr';
+  document.getElementById('sum-total').textContent = (total - rut).toLocaleString('sv') + ' kr';
+  
+  document.querySelector('.sum-row span').textContent = 'Hemstädning ' + hours + 'h × ' + freqLabel[selectedFreq];
+}
+
+function startSubscription() {
+  const hours = document.getElementById('cfg-hours').value;
+  const day = document.getElementById('cfg-day').value;
+  const time = document.getElementById('cfg-time').value;
+  const params = new URLSearchParams({
+    service: 'Hemstädning',
+    hours, frequency: selectedFreq, day, time,
+    subscription: 'true'
+  });
+  location.href = 'boka.html?' + params.toString();
+}
+
+updateSummary();
+</script>
+</body>
+</html>
