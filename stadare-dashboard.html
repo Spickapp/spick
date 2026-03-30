@@ -482,6 +482,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
           </div>
         </div>
 
+        <div style="font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;margin-top:16px">Auto-accept</div>
+        <div style="background:#F7F7F5;border-radius:12px;padding:14px 16px;margin-bottom:16px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px">
+            <input type="checkbox" id="pref-auto-accept" style="width:18px;height:18px;accent-color:var(--g)">
+            <div>
+              <div style="font-weight:600;font-size:.85rem">Automatisk acceptering</div>
+              <div style="font-size:.75rem;color:var(--m)">Jobb med 95+ matchningspoäng accepteras automatiskt med 15 min ångertid</div>
+            </div>
+          </label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:.75rem;color:var(--m);white-space:nowrap">Min poäng:</label>
+            <input type="range" id="pref-auto-threshold" min="80" max="100" value="95" step="5" oninput="document.getElementById('threshold-val').textContent=this.value" style="flex:1">
+            <span id="threshold-val" style="font-size:.85rem;font-weight:600;min-width:28px">95</span>
+          </div>
+        </div>
+
         <button onclick="savePreferences()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">💾 Spara preferenser</button>
         <div id="pref-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
@@ -703,6 +719,8 @@ async function savePreferences() {
     customer_material: document.getElementById('pref-customer-material')?.checked || false,
     min_hours: parseInt(document.getElementById('pref-min-hours')?.value) || 2,
     max_jobs_per_day: parseInt(document.getElementById('pref-max-jobs')?.value) || 2,
+    auto_accept: document.getElementById('pref-auto-accept')?.checked || false,
+    auto_accept_threshold: parseInt(document.getElementById('pref-auto-threshold')?.value) || 95,
   };
   
   const {error} = await SB.from('cleaners').update({ work_preferences: prefs }).eq('id', cleaner.id);
@@ -753,6 +771,8 @@ function loadPreferences() {
   if (document.getElementById('pref-customer-material')) document.getElementById('pref-customer-material').checked = p.customer_material !== false;
   if (document.getElementById('pref-min-hours')) document.getElementById('pref-min-hours').value = p.min_hours || 2;
   if (document.getElementById('pref-max-jobs')) document.getElementById('pref-max-jobs').value = p.max_jobs_per_day || 2;
+  if (document.getElementById('pref-auto-accept')) document.getElementById('pref-auto-accept').checked = !!p.auto_accept;
+  if (document.getElementById('pref-auto-threshold')) { document.getElementById('pref-auto-threshold').value = p.auto_accept_threshold || 95; document.getElementById('threshold-val').textContent = p.auto_accept_threshold || 95; }
   
   const a = cleaner?.service_area || {};
   if (document.getElementById('pref-address')) document.getElementById('pref-address').value = a.home_address || '';
@@ -930,7 +950,12 @@ function jobCard(j) {
   const isOpen = !j.cleaner_id;
   const isDone = j.status === 'klar';
   const isActive = isMine && j.checked_in_at && !isDone;
-  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.hours||3)) * 0.83);
+  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.hours||3)) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
+  const hours = parseInt(j.hours) || 3;
+  const effectiveRate = Math.round(pay / hours);
+  const minRate = cleaner.hourly_rate ? Math.round(cleaner.hourly_rate * 0.7) : 200;
+  const rateColor = effectiveRate >= (cleaner.hourly_rate||350)*0.83 ? 'var(--g)' : effectiveRate >= minRate ? '#92400E' : 'var(--r)';
+  const rateWarning = effectiveRate < minRate ? ' ⚠️' : '';
   const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
   const [mon, day] = dateStr.split(' ');
   const hoursUntil = (d - new Date()) / 3600000;
@@ -1000,7 +1025,10 @@ function jobCard(j) {
       ${addrHtml}
       ${actionsHtml}
     </div>
-    <div class="job-pay">${pay.toLocaleString('sv')} kr</div>
+    <div class="job-pay">
+      <div>${pay.toLocaleString('sv')} kr</div>
+      <div style="font-size:.68rem;color:${rateColor};font-weight:600;margin-top:2px">${effectiveRate} kr/h${rateWarning}</div>
+    </div>
   </div>`;
 }
 
