@@ -80,6 +80,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .sk{background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:10px;margin-bottom:10px}
 .tab-content.active{display:block}
+.pref-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:.8rem;cursor:pointer;transition:all .15s;background:var(--w)}
+.pref-chip:has(input:checked){background:var(--gr);border-color:var(--g);color:var(--g);font-weight:600}
+.pref-chip input{display:none}
+.pref-toggle{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;transition:all .15s;background:var(--w)}
+.pref-toggle:has(input:checked){background:var(--gr);border-color:var(--g)}
+.pref-toggle input{width:16px;height:16px;accent-color:var(--g)}
 
 /* CARDS */
 .card{background:var(--w);border-radius:16px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:12px}
@@ -196,6 +202,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 @media(max-width:400px){.kpi-val{font-size:1.25rem}}
 </style>
 <script src="js/config.js"></script>
+<script src="js/commission.js"></script>
 </head>
 <body>
 
@@ -297,6 +304,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div class="earn-amount" id="earn-month">0 kr</div>
         <div class="earn-sub" id="earn-next-pay">Utbetalas inom 10 bankdagar från månadsslut</div>
       </div>
+
+      <!-- Provisionsnivå -->
+      <div id="commission-widget"></div>
 
       <!-- Veckograf -->
       <div class="card">
@@ -424,6 +434,82 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
       <div class="card">
         <div class="card-title">⭐ Senaste recensioner</div>
         <div id="my-reviews" style="color:var(--m);font-size:.85rem">Inga recensioner än.</div>
+      </div>
+
+      <!-- Arbetspreferenser -->
+      <div class="card">
+        <div class="card-title">⚙️ Arbetspreferenser</div>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:14px;line-height:1.6">Ställ in dina villkor. Matchningen använder dessa för att bara visa jobb som passar dig.</p>
+        
+        <div style="font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Tjänstetyper</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+          <label class="pref-chip"><input type="checkbox" id="pref-hem" checked> Hemstädning</label>
+          <label class="pref-chip"><input type="checkbox" id="pref-stor"> Storstädning</label>
+          <label class="pref-chip"><input type="checkbox" id="pref-flytt"> Flyttstädning</label>
+          <label class="pref-chip"><input type="checkbox" id="pref-fonster"> Fönsterputs</label>
+          <label class="pref-chip"><input type="checkbox" id="pref-kontor"> Kontorsstädning</label>
+        </div>
+
+        <div style="font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Villkor</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+          <label class="pref-toggle"><input type="checkbox" id="pref-pets"> Husdjur OK</label>
+          <label class="pref-toggle"><input type="checkbox" id="pref-elevator"> Hiss krävs</label>
+          <label class="pref-toggle"><input type="checkbox" id="pref-evening"> Kvällsjobb OK</label>
+          <label class="pref-toggle"><input type="checkbox" id="pref-weekend"> Helgjobb OK</label>
+          <label class="pref-toggle"><input type="checkbox" id="pref-own-material"> Eget material</label>
+          <label class="pref-toggle"><input type="checkbox" id="pref-customer-material" checked> Kundens material</label>
+        </div>
+
+        <div style="font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Arbetstider</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+          <div>
+            <label style="font-size:.75rem;color:var(--m)">Min uppdragslängd</label>
+            <select id="pref-min-hours" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+              <option value="1">1 timme</option>
+              <option value="2" selected>2 timmar</option>
+              <option value="3">3 timmar</option>
+              <option value="4">4 timmar</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.75rem;color:var(--m)">Max jobb per dag</label>
+            <select id="pref-max-jobs" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+              <option value="1">1 jobb</option>
+              <option value="2" selected>2 jobb</option>
+              <option value="3">3 jobb</option>
+              <option value="4">4 jobb</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="savePreferences()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">💾 Spara preferenser</button>
+        <div id="pref-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
+      </div>
+
+      <!-- Arbetsområde -->
+      <div class="card">
+        <div class="card-title">📍 Mitt arbetsområde</div>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:14px;line-height:1.6">Ange var du vill jobba. Du får bara jobb inom ditt område.</p>
+
+        <div style="margin-bottom:14px">
+          <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:4px">Hemadress (utgångspunkt)</label>
+          <input type="text" id="pref-address" placeholder="T.ex. Sveavägen 10, Stockholm" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:4px">Max resradie: <strong id="radius-val">10</strong> km</label>
+          <input type="range" id="pref-radius" min="2" max="50" value="10" oninput="document.getElementById('radius-val').textContent=this.value" style="width:100%">
+          <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--m)"><span>2 km</span><span>50 km</span></div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:6px">Stadsdelar / postnummer (valfritt)</label>
+          <input type="text" id="pref-zones" placeholder="T.ex. Södermalm, Vasastan, 11230" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+          <div style="font-size:.7rem;color:var(--m);margin-top:4px">Kommaseparerade. Lämna tomt = hela radien.</div>
+        </div>
+
+        <button onclick="saveArea()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem">💾 Spara arbetsområde</button>
+        <div id="area-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
 
       <!-- Länk till akademin -->
@@ -602,6 +688,78 @@ function showErr(msg) {
 
 function backToLogin() { showScreen('login'); }
 
+// ── PREFERENSER & ARBETSOMRÅDE ──────────────────────
+async function savePreferences() {
+  const msg = document.getElementById('pref-msg');
+  msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
+  
+  const prefs = {
+    service_types: ['hem','stor','flytt','fonster','kontor'].filter(t => document.getElementById('pref-'+t)?.checked),
+    pets_ok: document.getElementById('pref-pets')?.checked || false,
+    elevator_required: document.getElementById('pref-elevator')?.checked || false,
+    evening_ok: document.getElementById('pref-evening')?.checked || false,
+    weekend_ok: document.getElementById('pref-weekend')?.checked || false,
+    own_material: document.getElementById('pref-own-material')?.checked || false,
+    customer_material: document.getElementById('pref-customer-material')?.checked || false,
+    min_hours: parseInt(document.getElementById('pref-min-hours')?.value) || 2,
+    max_jobs_per_day: parseInt(document.getElementById('pref-max-jobs')?.value) || 2,
+  };
+  
+  const {error} = await SB.from('cleaners').update({ work_preferences: prefs }).eq('id', cleaner.id);
+  if (error) {
+    msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
+  } else {
+    cleaner.work_preferences = prefs;
+    msg.textContent = '✅ Preferenser sparade!'; msg.style.color = 'var(--g)';
+  }
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+async function saveArea() {
+  const msg = document.getElementById('area-msg');
+  msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
+  
+  const area = {
+    home_address: document.getElementById('pref-address')?.value.trim() || '',
+    max_radius_km: parseInt(document.getElementById('pref-radius')?.value) || 10,
+    zones: (document.getElementById('pref-zones')?.value || '').split(',').map(z => z.trim()).filter(Boolean),
+  };
+  
+  const {error} = await SB.from('cleaners').update({ 
+    service_area: area,
+    max_travel_km: area.max_radius_km 
+  }).eq('id', cleaner.id);
+  if (error) {
+    msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
+  } else {
+    cleaner.service_area = area;
+    cleaner.max_travel_km = area.max_radius_km;
+    msg.textContent = '✅ Arbetsområde sparat!'; msg.style.color = 'var(--g)';
+  }
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+function loadPreferences() {
+  const p = cleaner?.work_preferences || {};
+  ['hem','stor','flytt','fonster','kontor'].forEach(t => {
+    const el = document.getElementById('pref-'+t);
+    if (el) el.checked = p.service_types ? p.service_types.includes(t) : t === 'hem';
+  });
+  if (document.getElementById('pref-pets')) document.getElementById('pref-pets').checked = !!p.pets_ok;
+  if (document.getElementById('pref-elevator')) document.getElementById('pref-elevator').checked = !!p.elevator_required;
+  if (document.getElementById('pref-evening')) document.getElementById('pref-evening').checked = !!p.evening_ok;
+  if (document.getElementById('pref-weekend')) document.getElementById('pref-weekend').checked = !!p.weekend_ok;
+  if (document.getElementById('pref-own-material')) document.getElementById('pref-own-material').checked = !!p.own_material;
+  if (document.getElementById('pref-customer-material')) document.getElementById('pref-customer-material').checked = p.customer_material !== false;
+  if (document.getElementById('pref-min-hours')) document.getElementById('pref-min-hours').value = p.min_hours || 2;
+  if (document.getElementById('pref-max-jobs')) document.getElementById('pref-max-jobs').value = p.max_jobs_per_day || 2;
+  
+  const a = cleaner?.service_area || {};
+  if (document.getElementById('pref-address')) document.getElementById('pref-address').value = a.home_address || '';
+  if (document.getElementById('pref-radius')) { document.getElementById('pref-radius').value = a.max_radius_km || cleaner?.max_travel_km || 10; document.getElementById('radius-val').textContent = document.getElementById('pref-radius').value; }
+  if (document.getElementById('pref-zones')) document.getElementById('pref-zones').value = (a.zones || []).join(', ');
+}
+
 // ── DELA PROFIL ──────────────────────────────────────
 function shareProfile() {
   if (!cleaner?.id) return;
@@ -673,6 +831,7 @@ async function loadCleanerByEmail(email) {
 
   buildSchedule();
   loadBlockedDates();
+  loadPreferences();
   
   // Uppdatera profilstatus
   const statusEl = document.getElementById('prof-status');
@@ -924,6 +1083,11 @@ function renderEarnings() {
     </div>`;
   }).join('') : '<div style="color:var(--m);padding:8px 0">Inga klarade uppdrag denna månad.</div>';
   document.getElementById('earn-jobs-list').innerHTML = jobRows;
+
+  // Provisionsnivå-widget
+  if (typeof renderCommissionWidget === 'function') {
+    renderCommissionWidget('commission-widget', { ...cleaner, total_jobs: myDone.length });
+  }
 
   // Veckograf
   renderWeekChart(myDone);

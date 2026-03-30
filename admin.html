@@ -2088,6 +2088,12 @@ function showCleanerDetail(id) {
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">VECKOSCHEMA</label>
       <div id="admin-cleaner-schedule" style="font-size:.85rem;color:var(--m)">Laddar schema...</div>
+    </div>
+    
+    <!-- Preferenser & Arbetsområde -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">PREFERENSER & ARBETSOMRÅDE</label>
+      <div id="admin-cleaner-prefs" style="font-size:.85rem;color:var(--m)">Inga preferenser inställda</div>
     </div>`;
 
   // Hämta städarens schema asynkront
@@ -2112,6 +2118,33 @@ function showCleanerDetail(id) {
       return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${dayName}</span><span style="color:${a.is_active ? 'var(--g)' : 'var(--r)'}; font-weight:600">${a.is_active ? (a.start_time||'08:00') + '–' + (a.end_time||'17:00') : 'Ledig'}</span></div>`;
     }).join('');
   });
+
+  // Visa preferenser + arbetsområde
+  const prefBox = document.getElementById('admin-cleaner-prefs');
+  if (prefBox) {
+    const p = c.work_preferences || {};
+    const a = c.service_area || {};
+    const svcLabels = {hem:'Hemstädning',stor:'Storstädning',flytt:'Flyttstädning',fonster:'Fönsterputs',kontor:'Kontorsstädning'};
+    const svcs = (p.service_types || []).map(t => svcLabels[t] || t).join(', ') || 'Ej inställt';
+    const conditions = [
+      p.pets_ok ? '🐾 Husdjur OK' : null,
+      p.elevator_required ? '🛗 Hiss krävs' : null,
+      p.evening_ok ? '🌙 Kvällsjobb' : null,
+      p.weekend_ok ? '📅 Helgjobb' : null,
+      p.own_material ? '🧴 Eget material' : null,
+    ].filter(Boolean);
+    const radius = a.max_radius_km || c.max_travel_km || '–';
+    const zones = (a.zones || []).join(', ') || '–';
+    const addr = a.home_address || '–';
+    prefBox.innerHTML = `
+      <div style="margin-bottom:8px"><span style="font-weight:600;font-size:.8rem">Tjänster:</span> <span style="font-size:.82rem">${escHtml(svcs)}</span></div>
+      ${conditions.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${conditions.map(c => `<span style="font-size:.72rem;padding:2px 8px;background:#F3F4F6;border-radius:6px">${c}</span>`).join('')}</div>` : ''}
+      <div style="font-size:.82rem;color:var(--m)">
+        <div>📍 ${escHtml(addr)} · Radie: <strong>${radius} km</strong></div>
+        ${zones !== '–' ? `<div style="margin-top:2px">Zoner: ${escHtml(zones)}</div>` : ''}
+        ${p.min_hours ? `<div style="margin-top:2px">Min ${p.min_hours}h/uppdrag · Max ${p.max_jobs_per_day || '–'} jobb/dag</div>` : ''}
+      </div>`;
+  }
 
   // Uppdatera modal-knappar
   const actionsEl = document.getElementById('cleaner-modal').querySelector('.modal-actions');
