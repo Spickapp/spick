@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Boka igen | Spick</title>
+<meta name="description" content="Snabb ombokning av din städare via Spick.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://spick.se/boka-igen.html">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<style>
+:root{--g:#0F6E56;--gp:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--w:#fff;--border:#E8E8E4;--r:#DC2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-height:100vh}
+.top-bar{background:var(--g);color:#fff;text-align:center;padding:10px 16px;font-size:.82rem}
+.top-bar a{color:#9FE1CB;text-decoration:none}
+.container{max-width:520px;margin:0 auto;padding:24px 16px 40px}
+h1{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:6px}
+.subtitle{color:var(--m);font-size:.9rem;margin-bottom:24px}
+.prev-card{background:var(--w);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:16px}
+.prev-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.prev-avatar{width:44px;height:44px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;flex-shrink:0}
+.prev-info .p-name{font-weight:600;font-size:.95rem}
+.prev-info .p-sub{font-size:.8rem;color:var(--m)}
+.prev-details{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.prev-detail{background:#F7F7F5;border-radius:10px;padding:10px 12px}
+.prev-detail .lbl{font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.prev-detail .val{font-weight:600;font-size:.88rem}
+.date-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.date-opt{background:var(--w);border:1.5px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .15s}
+.date-opt:hover{border-color:var(--g);background:var(--gp)}
+.date-opt.selected{border-color:var(--g);background:var(--gp)}
+.date-opt .day{font-weight:700;font-size:.95rem}
+.date-opt .dow{font-size:.72rem;color:var(--m)}
+.time-select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:.9rem;margin-bottom:16px;appearance:none;background:var(--w) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%236B6960' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center}
+.btn-rebook{width:100%;padding:16px;background:var(--g);color:#fff;border:none;border-radius:14px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer}
+.btn-rebook:hover{background:#0A5240}
+.btn-rebook:disabled{opacity:.5;cursor:not-allowed}
+.price-row{display:flex;justify-content:space-between;padding:10px 0;font-size:.9rem;border-bottom:1px solid var(--border)}
+.price-row:last-child{border-bottom:none;font-weight:700;font-size:1rem}
+.price-row .discount{color:var(--g);font-weight:600}
+.loading{text-align:center;padding:60px;color:var(--m)}
+.empty{text-align:center;padding:40px;color:var(--m);font-size:.9rem;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="top-bar"><a href="mitt-konto.html">← Mitt konto</a> · Boka igen</div>
+
+<div class="container">
+  <div id="loading" class="loading">Laddar din senaste bokning...</div>
+  <div id="empty" class="empty" style="display:none">
+    <div style="font-size:2.5rem;margin-bottom:12px">🧹</div>
+    <div style="font-weight:600;font-size:1.1rem;margin-bottom:8px">Ingen tidigare bokning hittad</div>
+    <div>Du behöver ha gjort minst en bokning för att använda snabbombokning.</div>
+    <a href="boka.html" style="display:inline-block;margin-top:16px;background:var(--g);color:#fff;padding:12px 28px;border-radius:12px;text-decoration:none;font-weight:600">Boka din första städning →</a>
+  </div>
+
+  <div id="content" style="display:none">
+    <h1>Boka igen</h1>
+    <div class="subtitle">Samma städare, samma tjänst — välj bara nytt datum.</div>
+
+    <div class="prev-card" id="prev-card"></div>
+
+    <div style="font-weight:600;font-size:.9rem;margin-bottom:10px">Välj datum</div>
+    <div class="date-grid" id="date-grid"></div>
+
+    <div style="font-weight:600;font-size:.9rem;margin-bottom:8px">Tid</div>
+    <select class="time-select" id="time-select">
+      <option value="08:00">08:00</option>
+      <option value="09:00" selected>09:00</option>
+      <option value="10:00">10:00</option>
+      <option value="11:00">11:00</option>
+      <option value="12:00">12:00</option>
+      <option value="13:00">13:00</option>
+      <option value="14:00">14:00</option>
+      <option value="15:00">15:00</option>
+      <option value="16:00">16:00</option>
+    </select>
+
+    <div style="background:var(--w);border-radius:14px;border:1px solid var(--border);padding:16px;margin-bottom:16px">
+      <div class="price-row"><span>Städning</span><span id="price-full">0 kr</span></div>
+      <div class="price-row"><span>RUT-avdrag (50%)</span><span class="discount" id="price-rut">–0 kr</span></div>
+      <div class="price-row"><span>Du betalar</span><span id="price-final">0 kr</span></div>
+    </div>
+
+    <button class="btn-rebook" id="btn-rebook" disabled onclick="rebook()">Bekräfta ombokning</button>
+    <div id="rebook-msg" style="text-align:center;margin-top:8px;font-size:.85rem;display:none"></div>
+  </div>
+</div>
+
+<script>
+const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+let prevBooking = null;
+let selectedDate = null;
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const bid = params.get('bid') || params.get('booking');
+  const email = params.get('email');
+
+  let query;
+  if (bid) {
+    query = SB.from('bookings').select('*').eq('id', bid).single();
+  } else if (email) {
+    query = SB.from('bookings').select('*').eq('customer_email', email)
+      .in('payment_status', ['paid', 'completed'])
+      .order('created_at', { ascending: false }).limit(1).single();
+  } else {
+    showEmpty(); return;
+  }
+
+  const { data, error } = await query;
+  if (error || !data) { showEmpty(); return; }
+  prevBooking = data;
+
+  // Render previous booking
+  const initial = (data.cleaner_name || '?')[0].toUpperCase();
+  document.getElementById('prev-card').innerHTML = `
+    <div class="prev-head">
+      <div class="prev-avatar">${initial}</div>
+      <div class="prev-info">
+        <div class="p-name">${escHtml(data.cleaner_name || 'Din städare')}</div>
+        <div class="p-sub">${escHtml(data.service || 'Hemstädning')} · ${data.hours || 3}h</div>
+      </div>
+    </div>
+    <div class="prev-details">
+      <div class="prev-detail"><div class="lbl">Senast bokad</div><div class="val">${new Date(data.scheduled_date || data.date || data.created_at).toLocaleDateString('sv-SE')}</div></div>
+      <div class="prev-detail"><div class="lbl">Pris</div><div class="val">${Math.round(data.total_price || 0).toLocaleString('sv')} kr</div></div>
+    </div>`;
+
+  // Price
+  const full = Math.round(data.total_price || 0);
+  const rut = Math.round(full * 0.5);
+  document.getElementById('price-full').textContent = full.toLocaleString('sv') + ' kr';
+  document.getElementById('price-rut').textContent = '–' + rut.toLocaleString('sv') + ' kr';
+  document.getElementById('price-final').textContent = (full - rut).toLocaleString('sv') + ' kr';
+
+  // Date options — next 6 available dates
+  const grid = document.getElementById('date-grid');
+  const dates = [];
+  const dow = ['sön', 'mån', 'tis', 'ons', 'tor', 'fre', 'lör'];
+  for (let i = 1; i <= 14 && dates.length < 6; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    if (d.getDay() === 0) continue; // skip sundays
+    dates.push(d);
+  }
+  grid.innerHTML = dates.map(d => {
+    const iso = d.toISOString().split('T')[0];
+    return `<div class="date-opt" data-date="${iso}" onclick="pickDate(this,'${iso}')">
+      <div class="dow">${dow[d.getDay()]}</div>
+      <div class="day">${d.getDate()}/${d.getMonth() + 1}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+}
+
+function pickDate(el, date) {
+  selectedDate = date;
+  document.querySelectorAll('.date-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btn-rebook').disabled = false;
+}
+
+async function rebook() {
+  if (!selectedDate || !prevBooking) return;
+  const btn = document.getElementById('btn-rebook');
+  btn.disabled = true; btn.textContent = 'Bokar...';
+  const msg = document.getElementById('rebook-msg');
+
+  const time = document.getElementById('time-select').value;
+
+  // Redirect to boka.html with prefilled data
+  const params = new URLSearchParams({
+    service: prevBooking.service || 'Hemstädning',
+    date: selectedDate,
+    time: time,
+    hours: prevBooking.hours || 3,
+    cleaner: prevBooking.cleaner_id || '',
+    address: prevBooking.address || '',
+    sqm: prevBooking.sqm || '',
+    rebook: prevBooking.id,
+  });
+  location.href = 'boka.html?' + params.toString();
+}
+
+function showEmpty() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('empty').style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>

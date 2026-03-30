@@ -447,6 +447,33 @@ function showPortal(bookings, email) {
   document.getElementById('pfCity').value = bookings[0]?.city || '';
 
   renderBookings('all');
+  showNextBookingBanner(bookings);
+}
+
+function showNextBookingBanner(bookings) {
+  const banner = document.getElementById('next-booking-banner');
+  if (!banner) return;
+  const now = new Date();
+  const upcoming = bookings
+    .filter(b => {
+      const d = new Date(b.scheduled_date || b.date);
+      return d >= now && b.payment_status === 'paid' && b.status !== 'avbokad';
+    })
+    .sort((a, b) => new Date(a.scheduled_date || a.date) - new Date(b.scheduled_date || b.date));
+  
+  if (!upcoming.length) { banner.style.display = 'none'; return; }
+  
+  const next = upcoming[0];
+  const d = new Date(next.scheduled_date || next.date);
+  const dateStr = d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const time = next.time || d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  
+  document.getElementById('next-booking-date').textContent = dateStr + (time ? ' kl ' + time : '');
+  document.getElementById('next-booking-info').textContent = 
+    (next.service || 'Hemstädning') + ' · ' + (next.hours || 3) + 'h' + 
+    (next.cleaner_name ? ' · ' + next.cleaner_name : '');
+  document.getElementById('next-booking-link').href = 'min-bokning.html?bid=' + next.id;
+  banner.style.display = 'block';
 }
 
 // ── RENDER BOOKINGS ──────────────────────────
