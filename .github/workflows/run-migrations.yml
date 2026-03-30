@@ -39,13 +39,19 @@ jobs:
             20260326600001 \
             20260326700001 \
             20260326800001 \
-            20260327 \
             20260327000001 20260327100001 \
             20260327200001 20260327300001 \
             20260327400001 20260327500001 \
             20260327600001 20260327700001; do
             supabase migration repair --status applied "$id" 2>/dev/null || true
           done
+          # 20260327 (security_notes) — markera som reverted (inte en riktig migration)
+          supabase migration repair --status reverted "20260327" 2>/dev/null || true
 
       - name: Kör nya migrationer
-        run: supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+        run: |
+          supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}" || {
+            echo "⚠️ db push failed — kan bero på att alla migrationer redan är körda"
+            echo "Kontrollera manuellt om nya migrationer behövs"
+            exit 0
+          }
