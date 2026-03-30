@@ -1169,7 +1169,8 @@ async function saveSchedule() {
       end:    document.getElementById('end-'+i)?.value   || '17:00',
     };
   });
-  await SB.from('cleaners').update({availability_schedule: schedJson}).eq('id', cleaner.id).catch(()=>{});
+  await SB.from('cleaners').update({availability_schedule: schedJson}).eq('id', cleaner.id);
+    // catch-bugg fixad: Supabase query builder stödjer inte .catch();
 
   if (error) {
     msg.textContent = '❌ Fel vid sparning: ' + (error.message||'Okänt fel');
