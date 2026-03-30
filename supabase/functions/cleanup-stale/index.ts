@@ -48,8 +48,7 @@ serve(async (req) => {
       .from("bookings")
       .update({ 
         status: "expired", 
-        payment_status: "expired",
-        updated_at: new Date().toISOString()
+        payment_status: "expired"
       })
       .in("id", staleIds);
 
