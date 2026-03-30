@@ -2200,6 +2200,20 @@ async function reactivateCleaner() {
   await loadAll();
 }
 
+async function autoPauseCritical() {
+  const critical = data.cleaners.filter(c => c.is_approved && (c.review_count||0) >= 3 && parseFloat(c.avg_rating||5) < 3.0 && c.status !== 'pausad' && c.status !== 'avstangd');
+  if (!critical.length) { showToast('Inga kritiska stadare att pausa'); return; }
+  const names = critical.map(c => c.full_name || '-').join(', ');
+  if (!confirm('Pausa ' + critical.length + ' stadare med betyg under 3.0?\n\n' + names)) return;
+  let paused = 0;
+  for (const c of critical) {
+    const { error } = await SB.from('cleaners').update({ status: 'pausad' }).eq('id', c.id);
+    if (!error) paused++;
+  }
+  showToast('Pausat ' + paused + ' stadare pga lagt betyg');
+  await loadAll();
+}
+
 async function saveCleanerFromAdmin() {
   const updates = {
     full_name: document.getElementById('admin-edit-name')?.value.trim(),
