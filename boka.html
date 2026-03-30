@@ -237,6 +237,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 .svc-detail-also::before{content:none}
 .svc-detail-note{font-size:12px;color:#0F6E56;margin-top:10px;padding-top:8px;border-top:.5px solid rgba(0,0,0,.08)}
 @media(max-width:600px){.svc-detail-grid{grid-template-columns:1fr}}
+.svc-detail-upsell{font-size:12px;color:#555;margin-top:10px;padding-top:8px;border-top:.5px solid rgba(0,0,0,.08);font-style:italic}.svc-detail-upsell a{color:#0F6E56;font-weight:500;cursor:pointer;text-decoration:none;font-style:normal}.svc-detail-upsell a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -2013,11 +2014,13 @@ document.addEventListener('mouseleave', e => {
 var serviceDetails = {
   'Hemst\u00e4dning': {
     items: ['Dammsugning & moppning alla golv','Badrum \u2014 toalett, dusch, handfat, spegel','K\u00f6k \u2014 diskb\u00e4nk, spis, b\u00e4nkytor','Dammtorkning av fria ytor','T\u00f6mning av papperskorgar','B\u00e4ddning (om \u00f6nskat)'],
+    upsell: 'Beh\u00f6ver du ugn, kyl & f\u00f6nster?',upsellLink:'Storst\u00e4dning',
     note: 'Perfekt som l\u00f6pande st\u00e4d varje eller varannan vecka.'
   },
   'Storst\u00e4dning': {
     also: 'Allt i hemst\u00e4dning, plus:',
     items: ['Insida av ugn & kyl/frys','Insida av sk\u00e5p & garderober','Lister, d\u00f6rrar & kontakter','F\u00f6nsterbr\u00e4dor & element','Bakom & under m\u00f6bler','V\u00e4ggar \u2014 fl\u00e4ckar & avtorkning'],
+    upsell: 'Ska du flytta? F\u00e5 besiktningsgaranti.',upsellLink:'Flyttst\u00e4dning',
     note: 'Boka inf\u00f6r h\u00f6gtider, s\u00e4songsbyten eller som eng\u00e5ngsinsats.'
   },
   'Flyttst\u00e4dning': {
@@ -2043,6 +2046,9 @@ function showServiceDetail(name) {
     html += '<div class="svc-detail-item">' + info.items[i] + '</div>';
   }
   html += '</div>';
+  if (info.upsell) {
+    html += '<div class="svc-detail-upsell">' + info.upsell + ' <a onclick="document.querySelector(\'.svc-btn[data-svc=\x22' + info.upsellLink + '\x22]\').click()">V\u00e4lj ' + info.upsellLink + ' \u2192</a></div>';
+  }
   if (info.note) html += '<div class="svc-detail-note">' + info.note + '</div>';
   d.innerHTML = html;
   d.style.display = 'block';
