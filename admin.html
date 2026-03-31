@@ -208,24 +208,25 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <nav>
       <div class="nav-section">Översikt</div>
       <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span>Dashboard</div>
-
+      
       <div class="nav-section">Bokningar</div>
       <div class="nav-item" onclick="showPage('bookings')"><span class="icon">📅</span>Alla bokningar <span class="badge-count" id="badge-bookings">0</span></div>
       <div class="nav-item" onclick="showPage('pending')"><span class="icon">⏳</span>Väntande <span class="badge-count" id="badge-pending">0</span></div>
       <div class="nav-item" onclick="showPage('subscriptions')"><span class="icon">🔄</span>Prenumerationer <span class="badge-count" id="badge-subs">0</span></div>
-
+      
       <div class="nav-section">Personal</div>
       <div class="nav-item" onclick="showPage('cleaners')"><span class="icon">🧹</span>Städare</div>
       <div class="nav-item" onclick="showPage('applications')"><span class="icon">📋</span>Ansökningar <span class="badge-count" id="badge-apps">0</span></div>
       <div class="nav-item" onclick="showPage('onboarding')"><span class="icon">🚀</span>Onboarding <span class="badge-count" id="badge-onboard">0</span></div>
-
+      
       <div class="nav-section">Kunder</div>
       <div class="nav-item" onclick="showPage('customers')"><span class="icon">👥</span>Kunder</div>
       <div class="nav-item" onclick="showPage('reviews')"><span class="icon">⭐</span>Recensioner</div>
-
+      
       <div class="nav-section">Ekonomi</div>
       <div class="nav-item" onclick="showPage('payouts')"><span class="icon">💸</span>Utbetalningar</div>
-
+      
+      
       <div class="nav-section">Support & Kvalitet</div>
       <div class="nav-item" onclick="showPage('support')"><span class="icon">🎫</span>Supportärenden <span class="badge-count" id="badge-support">0</span></div>
       <div class="nav-item" onclick="showPage('quality')"><span class="icon">⚡</span>Kvalitet & Risk</div>
@@ -235,11 +236,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-item" onclick="showPage('platform-settings')"><span class="icon">🎛️</span>Plattformsinställningar</div>
       <div class="nav-item" onclick="showPage('audit')"><span class="icon">📋</span>Ändringslogg</div>
       <div class="nav-item" onclick="showPage('system-status')"><span class="icon">🖥️</span>Systemstatus</div>
-
-      <div class="nav-section">Övrigt</div>
+      <div class="nav-section">System</div>
       <div class="nav-item" onclick="showPage('inbox')"><span class="icon">📬</span>E-post <span class="badge-count" id="badge-inbox"></span></div>
       <div class="nav-item" onclick="showPage('settings')"><span class="icon">⚙️</span>Inställningar</div>
-
+      
       <!-- Real-time indikator -->
       <div style="padding:10px 20px;margin-top:8px">
         <div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:rgba(255,255,255,.5)">
@@ -277,7 +277,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
       <!-- Snabbåtgärder -->
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button onclick="showPage('bookings');document.getElementById('booking-filter').value='paid';renderBookings()"
+        <button onclick="showPage('bookings');document.getElementById('booking-filter').value='paid';renderBookings()" 
           style="padding:8px 14px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:.8rem;cursor:pointer;font-family:inherit;font-weight:600">
           📋 Ej tilldelade bokningar
         </button>
@@ -369,7 +369,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <span class="mini-stat">Visar <strong id="booking-count">0</strong> bokningar</span>
             <span class="mini-stat">Total: <strong id="booking-revenue">0 kr</strong></span>
           </div>
-          <button onclick="exportBookingsCSV()"
+          <button onclick="exportBookingsCSV()" 
             style="padding:6px 14px;background:#fff;border:1.5px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">
             📊 Exportera CSV
           </button>
@@ -637,82 +637,73 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
     </div>
 
-    <!-- ═══ SUPPORT ═══ -->
+
+    <!-- SUPPORT -->
     <div class="page" id="page-support">
       <div class="page-header">
-        <div class="page-title">Supportärenden 🎫</div>
-        <div class="page-sub">Hantera klagomål, tvister och kundärenden</div>
+        <div class="page-title">Support&auml;renden &#127915;</div>
+        <div class="page-sub">Hantera klagom&aring;l, tvister och kund&auml;renden</div>
       </div>
       <div class="kpi-grid" id="support-kpis">
-        <div class="kpi"><div class="kpi-val" id="kpi-tickets-open">–</div><div class="kpi-lbl">Öppna ärenden</div></div>
-        <div class="kpi red"><div class="kpi-val" id="kpi-tickets-critical">–</div><div class="kpi-lbl">Kritiska / Hög</div></div>
-        <div class="kpi yellow"><div class="kpi-val" id="kpi-tickets-sla">–</div><div class="kpi-lbl">SLA-brott</div></div>
-        <div class="kpi blue"><div class="kpi-val" id="kpi-tickets-resolved">–</div><div class="kpi-lbl">Lösta denna vecka</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-tickets-open">&ndash;</div><div class="kpi-lbl">&Ouml;ppna &auml;renden</div></div>
+        <div class="kpi red"><div class="kpi-val" id="kpi-tickets-critical">&ndash;</div><div class="kpi-lbl">Kritiska / H&ouml;g</div></div>
+        <div class="kpi yellow"><div class="kpi-val" id="kpi-tickets-sla">&ndash;</div><div class="kpi-lbl">SLA-brott</div></div>
+        <div class="kpi blue"><div class="kpi-val" id="kpi-tickets-resolved">&ndash;</div><div class="kpi-lbl">L&ouml;sta denna vecka</div></div>
       </div>
       <div class="toolbar">
-        <input class="search-input" id="ticket-search" placeholder="Sök ärende, kund, beskrivning..." oninput="renderTickets()">
+        <input class="search-input" id="ticket-search" placeholder="S&ouml;k &auml;rende, kund, beskrivning..." oninput="renderTickets()">
         <select class="filter" id="ticket-filter-status" onchange="renderTickets()">
-          <option value="">Alla status</option>
-          <option value="open">Öppna</option>
-          <option value="in_progress">Pågående</option>
-          <option value="waiting_customer">Väntar kund</option>
-          <option value="escalated">Eskalerat</option>
-          <option value="resolved">Löst</option>
-          <option value="closed">Stängt</option>
+          <option value="">Alla status</option><option value="open">&Ouml;ppna</option><option value="in_progress">P&aring;g&aring;ende</option><option value="escalated">Eskalerat</option><option value="resolved">L&ouml;st</option><option value="closed">St&auml;ngt</option>
         </select>
         <select class="filter" id="ticket-filter-priority" onchange="renderTickets()">
-          <option value="">Alla prioriteter</option>
-          <option value="critical">Kritisk</option>
-          <option value="high">Hög</option>
-          <option value="medium">Medium</option>
-          <option value="low">Låg</option>
+          <option value="">Alla prioriteter</option><option value="critical">Kritisk</option><option value="high">H&ouml;g</option><option value="medium">Medium</option><option value="low">L&aring;g</option>
         </select>
-        <button class="btn btn-primary btn-sm" onclick="showNewTicketModal()">+ Nytt ärende</button>
+        <button class="btn btn-primary btn-sm" onclick="showNewTicketModal()">+ Nytt &auml;rende</button>
       </div>
       <div class="card" style="padding:0"><div class="table-wrap"><table id="tickets-table">
-        <thead><tr><th>Nr</th><th>Prioritet</th><th>Ämne</th><th>Kund</th><th>Status</th><th>Tilldelad</th><th>Skapad</th><th></th></tr></thead>
+        <thead><tr><th>Nr</th><th>Prioritet</th><th>&Auml;mne</th><th>Kund</th><th>Status</th><th>Tilldelad</th><th>Skapad</th><th></th></tr></thead>
         <tbody id="tickets-tbody"></tbody>
       </table></div></div>
     </div>
 
-    <!-- ═══ QUALITY & RISK ═══ -->
+    <!-- QUALITY -->
     <div class="page" id="page-quality">
       <div class="page-header">
-        <div class="page-title">Kvalitet & Riskpanel ⚡</div>
-        <div class="page-sub">Övervaka kvalitetsindikatorer och risksignaler</div>
+        <div class="page-title">Kvalitet &amp; Riskpanel &#9889;</div>
+        <div class="page-sub">&Ouml;vervaka kvalitetsindikatorer och risksignaler</div>
       </div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi-val" id="kpi-avg-rating">–</div><div class="kpi-lbl">Genomsnittligt betyg (30d)</div></div>
-        <div class="kpi red"><div class="kpi-val" id="kpi-flagged-cleaners">–</div><div class="kpi-lbl">Flaggade städare</div></div>
-        <div class="kpi yellow"><div class="kpi-val" id="kpi-complaints-week">–</div><div class="kpi-lbl">Klagomål denna vecka</div></div>
-        <div class="kpi blue"><div class="kpi-val" id="kpi-noshow-month">–</div><div class="kpi-lbl">No-shows denna månad</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-avg-rating">&ndash;</div><div class="kpi-lbl">Genomsnittligt betyg (30d)</div></div>
+        <div class="kpi red"><div class="kpi-val" id="kpi-flagged-cleaners">&ndash;</div><div class="kpi-lbl">Flaggade st&auml;dare</div></div>
+        <div class="kpi yellow"><div class="kpi-val" id="kpi-complaints-week">&ndash;</div><div class="kpi-lbl">Klagom&aring;l denna vecka</div></div>
+        <div class="kpi blue"><div class="kpi-val" id="kpi-noshow-month">&ndash;</div><div class="kpi-lbl">No-shows denna m&aring;nad</div></div>
       </div>
       <div class="two-col">
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">🔴 Flaggade städare</h3>
+          <h3 style="font-weight:600;margin-bottom:16px">Flaggade st&auml;dare</h3>
           <div id="flagged-cleaners-list"><div class="loading"><div class="spin"></div></div></div>
         </div>
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">⚠️ Riskkunder</h3>
+          <h3 style="font-weight:600;margin-bottom:16px">Riskkunder</h3>
           <div id="risk-customers-list"><div class="loading"><div class="spin"></div></div></div>
         </div>
       </div>
       <div class="card">
-        <h3 style="font-weight:600;margin-bottom:16px">📊 Betygsfördelning (senaste 90 dagar)</h3>
+        <h3 style="font-weight:600;margin-bottom:16px">Betygsf&ouml;rdelning (senaste 90 dagar)</h3>
         <canvas id="rating-distribution-chart" height="200"></canvas>
       </div>
     </div>
 
-    <!-- ═══ TEAM & ROLES ═══ -->
+    <!-- TEAM -->
     <div class="page" id="page-team">
       <div class="page-header">
-        <div class="page-title">Team & Roller 🔑</div>
-        <div class="page-sub">Hantera adminanvändare, roller och behörigheter</div>
+        <div class="page-title">Team &amp; Roller &#128273;</div>
+        <div class="page-sub">Hantera adminanv&auml;ndare, roller och beh&ouml;righeter</div>
       </div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h3 style="font-weight:600">Adminanvändare</h3>
-          <button class="btn btn-primary btn-sm" onclick="showAddAdminModal()">+ Lägg till admin</button>
+          <h3 style="font-weight:600">Adminanv&auml;ndare</h3>
+          <button class="btn btn-primary btn-sm" onclick="showAddAdminModal()">+ L&auml;gg till admin</button>
         </div>
         <div class="table-wrap"><table>
           <thead><tr><th>Namn</th><th>E-post</th><th>Roll</th><th>Status</th><th>Senaste inloggning</th><th></th></tr></thead>
@@ -725,87 +716,68 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <div id="roles-list"></div>
         </div>
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">🛡️ Superadmin-skydd</h3>
-          <div style="font-size:.88rem;color:var(--m);margin-bottom:12px">
-            Systemet garanterar att minst 1 aktiv superadmin alltid finns. Sista superadmin kan aldrig nedgraderas, inaktiveras eller tas bort.
-          </div>
-          <div id="superadmin-status" style="padding:12px;background:var(--gr);border-radius:10px;font-size:.88rem;color:var(--g);font-weight:600">
-            <div class="spin"></div>
-          </div>
+          <h3 style="font-weight:600;margin-bottom:16px">Superadmin-skydd</h3>
+          <div style="font-size:.88rem;color:var(--m);margin-bottom:12px">Systemet garanterar att minst 1 aktiv superadmin alltid finns.</div>
+          <div id="superadmin-status" style="padding:12px;background:var(--gr);border-radius:10px;font-size:.88rem;color:var(--g);font-weight:600"><div class="spin"></div></div>
         </div>
       </div>
     </div>
 
-    <!-- ═══ PLATFORM SETTINGS ═══ -->
+    <!-- PLATFORM SETTINGS -->
     <div class="page" id="page-platform-settings">
       <div class="page-header">
-        <div class="page-title">Plattformsinställningar 🎛️</div>
-        <div class="page-sub">Styr bokningsregler, priser, provisioner, kvalitetströsklar och SLA</div>
+        <div class="page-title">Plattformsinst&auml;llningar &#127899;&#65039;</div>
+        <div class="page-sub">Styr bokningsregler, priser, provisioner, kvalitetstr&ouml;sklar och SLA</div>
       </div>
       <div id="platform-settings-container"><div class="loading"><div class="spin"></div></div></div>
     </div>
 
-    <!-- ═══ AUDIT LOG ═══ -->
+    <!-- AUDIT -->
     <div class="page" id="page-audit">
       <div class="page-header">
-        <div class="page-title">Ändringslogg 📋</div>
-        <div class="page-sub">Fullständig spårbarhet – vem ändrade vad, när och varför</div>
+        <div class="page-title">&Auml;ndringslogg &#128203;</div>
+        <div class="page-sub">Fullst&auml;ndig sp&aring;rbarhet &ndash; vem &auml;ndrade vad, n&auml;r och varf&ouml;r</div>
       </div>
       <div class="toolbar">
-        <input class="search-input" id="audit-search" placeholder="Sök i loggar..." oninput="renderAuditLog()">
+        <input class="search-input" id="audit-search" placeholder="S&ouml;k i loggar..." oninput="renderAuditLog()">
         <select class="filter" id="audit-filter-type" onchange="renderAuditLog()">
-          <option value="">Alla typer</option>
-          <option value="booking">Bokningar</option>
-          <option value="cleaner">Städare</option>
-          <option value="customer">Kunder</option>
-          <option value="finance">Ekonomi</option>
-          <option value="support">Support</option>
-          <option value="setting">Inställningar</option>
-          <option value="role">Roller</option>
-          <option value="auth">Inloggning</option>
+          <option value="">Alla typer</option><option value="booking">Bokningar</option><option value="cleaner">St&auml;dare</option><option value="customer">Kunder</option><option value="finance">Ekonomi</option><option value="support">Support</option><option value="setting">Inst&auml;llningar</option><option value="role">Roller</option><option value="auth">Inloggning</option>
         </select>
         <select class="filter" id="audit-filter-period" onchange="loadAuditLog()">
-          <option value="7">Senaste 7 dagar</option>
-          <option value="30" selected>Senaste 30 dagar</option>
-          <option value="90">Senaste 90 dagar</option>
+          <option value="7">Senaste 7 dagar</option><option value="30" selected>Senaste 30 dagar</option><option value="90">Senaste 90 dagar</option>
         </select>
-        <button class="btn btn-outline btn-sm" onclick="exportAuditCSV()">📥 Exportera</button>
+        <button class="btn btn-outline btn-sm" onclick="exportAuditCSV()">Exportera</button>
       </div>
       <div class="card" style="padding:0"><div class="table-wrap"><table>
-        <thead><tr><th>Tid</th><th>Admin</th><th>Åtgärd</th><th>Resurs</th><th>Detalj</th></tr></thead>
+        <thead><tr><th>Tid</th><th>Admin</th><th>&Aring;tg&auml;rd</th><th>Resurs</th><th>Detalj</th></tr></thead>
         <tbody id="audit-tbody"></tbody>
       </table></div></div>
-      <div id="audit-load-more" style="text-align:center;padding:16px">
-        <button class="btn btn-outline btn-sm" onclick="loadMoreAudit()">Ladda fler →</button>
-      </div>
     </div>
 
-    <!-- ═══ SYSTEM STATUS ═══ -->
+    <!-- SYSTEM STATUS -->
     <div class="page" id="page-system-status">
       <div class="page-header">
-        <div class="page-title">Systemstatus 🖥️</div>
-        <div class="page-sub">Överblick av alla systemkomponenter</div>
+        <div class="page-title">Systemstatus &#128421;&#65039;</div>
+        <div class="page-sub">&Ouml;verblick av alla systemkomponenter</div>
       </div>
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi-val" id="kpi-total-bookings">–</div><div class="kpi-lbl">Totala bokningar</div></div>
-        <div class="kpi"><div class="kpi-val" id="kpi-total-cleaners">–</div><div class="kpi-lbl">Registrerade städare</div></div>
-        <div class="kpi"><div class="kpi-val" id="kpi-total-customers">–</div><div class="kpi-lbl">Registrerade kunder</div></div>
-        <div class="kpi blue"><div class="kpi-val" id="kpi-db-size">–</div><div class="kpi-lbl">Tabeller i DB</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-total-bookings">&ndash;</div><div class="kpi-lbl">Totala bokningar</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-total-cleaners">&ndash;</div><div class="kpi-lbl">Registrerade st&auml;dare</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-total-customers">&ndash;</div><div class="kpi-lbl">Registrerade kunder</div></div>
+        <div class="kpi blue"><div class="kpi-val" id="kpi-db-size">&ndash;</div><div class="kpi-lbl">Tabeller i DB</div></div>
       </div>
       <div class="two-col">
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">Databasöversikt</h3>
+          <h3 style="font-weight:600;margin-bottom:16px">Databas&ouml;versikt</h3>
           <div id="db-tables-list"><div class="loading"><div class="spin"></div></div></div>
         </div>
         <div class="card">
-          <h3 style="font-weight:600;margin-bottom:16px">Snabblänkar</h3>
+          <h3 style="font-weight:600;margin-bottom:16px">Snabbl&auml;nkar</h3>
           <div style="display:flex;flex-direction:column;gap:10px">
-            <a href="https://supabase.com/dashboard/project/urjeijcncsyuletprydy" target="_blank" class="btn btn-outline">🗄 Supabase Dashboard →</a>
-            <a href="https://dashboard.stripe.com" target="_blank" class="btn btn-outline">💳 Stripe Dashboard →</a>
-            <a href="https://github.com/Spickapp/spick/actions" target="_blank" class="btn btn-outline">⚙️ GitHub Actions →</a>
-            <a href="https://clarity.microsoft.com/projects/view/w1ep5s1zm6" target="_blank" class="btn btn-outline">📈 Microsoft Clarity →</a>
-            <a href="https://search.google.com/search-console?resource_id=sc-domain%3Aspick.se" target="_blank" class="btn btn-outline">🔍 Google Search Console →</a>
-            <a href="https://analytics.google.com" target="_blank" class="btn btn-outline">📊 Google Analytics →</a>
+            <a href="https://supabase.com/dashboard/project/urjeijcncsyuletprydy" target="_blank" class="btn btn-outline">Supabase Dashboard</a>
+            <a href="https://dashboard.stripe.com" target="_blank" class="btn btn-outline">Stripe Dashboard</a>
+            <a href="https://github.com/Spickapp/spick/actions" target="_blank" class="btn btn-outline">GitHub Actions</a>
+            <a href="https://search.google.com/search-console?resource_id=sc-domain%3Aspick.se" target="_blank" class="btn btn-outline">Search Console</a>
           </div>
         </div>
       </div>
@@ -871,7 +843,7 @@ SB.auth.getSession().then(({ data: { session } }) => {
 });
 
 // Lyssna på auth-ändringar
-SB.auth.onAuthStateChange(async (event, session) => {
+SB.auth.onAuthStateChange((event, session) => {
   if (event === 'PASSWORD_RECOVERY') {
     const newPw = prompt('Ange ditt nya lösenord (minst 6 tecken):');
     if (newPw && newPw.length >= 6) {
@@ -884,28 +856,26 @@ SB.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     try {
       const email = session.user.email;
-      // Check admin access — allow ADMIN_EMAIL always (legacy fallback)
       let isAdmin = (email === ADMIN_EMAIL);
       if (!isAdmin) {
         try {
           const { data: au } = await SB.from('admin_users').select('id').eq('email', email).maybeSingle();
           isAdmin = !!au;
-        } catch(e) { console.warn('admin_users check failed:', e.message); }
+        } catch(e) { console.warn('admin_users check:', e.message); }
       }
       if (isAdmin) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        try { await loadAdminUser(); } catch(e) { console.warn('loadAdminUser failed:', e.message); }
+        try { await loadAdminUser(); } catch(e) { console.warn('loadAdminUser:', e.message); }
         await loadAll();
         setTimeout(setupRealtime, 1000);
-        loadTickets().catch(() => {});
+        loadTickets().catch(function(){});
       } else {
-        alert('Du har inte adminbehörighet. Kontakta systemadministratören.');
+        alert('Du har inte adminbehörighet.');
         SB.auth.signOut();
       }
     } catch(e) {
-      console.error('Auth handler error:', e);
-      // Fallback: show app anyway for ADMIN_EMAIL
+      console.error('Auth error:', e);
       if (session.user.email === ADMIN_EMAIL) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
@@ -925,9 +895,9 @@ async function doLogin() {
   if (!email || !pw) return;
   const btn = document.getElementById('login-btn');
   if (btn) { btn.textContent = '⏳ Loggar in...'; btn.disabled = true; }
-
+  
   const { error } = await SB.auth.signInWithPassword({ email, password: pw });
-
+  
   if (error) {
     document.getElementById('login-err').textContent = 'Fel: ' + error.message;
     document.getElementById('login-err').style.display = 'block';
@@ -1142,35 +1112,35 @@ document.getElementById('admin-pw').addEventListener('keydown', e => { if (e.key
 function renderOnboarding() {
   const apps = data.applications || [];
   const filter = document.getElementById('ob-filter')?.value || 'all';
-
+  
   // Count by phase
   const phases = { applied: 0, registering: 0, waiting_fskatt: 0, ready: 0 };
   apps.forEach(a => {
     const phase = a.onboarding_phase || (a.status === 'pending' ? 'applied' : a.status === 'godkänd' ? 'ready' : 'applied');
     if (phases[phase] !== undefined) phases[phase]++;
   });
-
+  
   document.getElementById('ob-applied').textContent = phases.applied;
   document.getElementById('ob-registering').textContent = phases.registering;
   document.getElementById('ob-waiting').textContent = phases.waiting_fskatt;
   document.getElementById('ob-ready').textContent = phases.ready;
   document.getElementById('badge-onboard').textContent = apps.filter(a => a.status === 'pending').length || '';
-
+  
   // Render list
   const filtered = filter === 'all' ? apps : apps.filter(a => {
     const phase = a.onboarding_phase || (a.status === 'pending' ? 'applied' : a.status === 'godkänd' ? 'ready' : 'applied');
     return phase === filter;
   });
-
+  
   const phaseLabel = { applied: '🟡 Ansökt', registering: '🔵 Registrerar firma', waiting_fskatt: '🟣 Väntar F-skatt', ready: '🟢 Redo att aktivera' };
   const phaseColor = { applied: '#F59E0B', registering: '#3B82F6', waiting_fskatt: '#8B5CF6', ready: '#0F6E56' };
-
+  
   const list = document.getElementById('ob-list');
   if (!filtered.length) {
     list.innerHTML = '<div style="text-align:center;color:var(--m);padding:32px;font-size:.9rem">Inga städare i denna fas</div>';
     return;
   }
-
+  
   list.innerHTML = filtered.map(a => {
     const phase = a.onboarding_phase || (a.status === 'pending' ? 'applied' : a.status === 'godkänd' ? 'ready' : 'applied');
     const nextPhase = { applied: 'registering', registering: 'waiting_fskatt', waiting_fskatt: 'ready', ready: null };
@@ -1212,7 +1182,7 @@ function showPage(id) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick')?.includes("'" + id + "'")) n.classList.add('active');
   });
-
+  
   // Load data on demand
   if (id === 'bookings') renderBookings();
   if (id === 'pending') renderPending();
@@ -1398,7 +1368,7 @@ async function loadAll() {
   data.bookings = bookings.data || [];
   data.cleaners = cleaners.data || [];
   data.applications = applications.data || [];
-
+  
   // Hämta prenumerationer
   const { data: subs } = await SB.from('subscriptions').select('*').order('created_at',{ascending:false});
   data.subscriptions = subs || [];
@@ -1454,11 +1424,11 @@ function renderDashboard() {
   document.getElementById('kpi-bookings').textContent = paid.length;
   document.getElementById('kpi-pending').textContent = pending.length;
   document.getElementById('kpi-cleaners').textContent = approvedCleaners.length;
-
+  
   // Uppdatera sist-refresh
   const rEl = document.getElementById('last-refresh');
   if (rEl) rEl.textContent = 'Uppdaterat ' + new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
-
+  
   // Alerts
   renderAlerts();
   document.getElementById('kpi-rating').textContent = avgRating + ' ⭐';
@@ -1489,7 +1459,7 @@ function renderRevenueChart() {
   const canvas = document.getElementById('revenue-chart');
   if (!canvas) return;
   const days = parseInt(document.getElementById('chart-period')?.value) || 30;
-
+  
   // Bygga dagliga intäktsdata
   const dailyData = [];
   const labels = [];
@@ -1503,10 +1473,10 @@ function renderRevenueChart() {
     dailyData.push(dayRevenue);
     labels.push(d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }));
   }
-
+  
   // Destroy previous chart
   if (window._revenueChart) window._revenueChart.destroy();
-
+  
   window._revenueChart = new Chart(canvas, {
     type: 'bar',
     data: {
@@ -1524,12 +1494,12 @@ function renderRevenueChart() {
       responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: {
+        tooltip: { 
           callbacks: { label: ctx => ctx.parsed.y.toLocaleString('sv') + ' kr' }
         }
       },
       scales: {
-        y: {
+        y: { 
           beginAtZero: true,
           ticks: { callback: v => v.toLocaleString('sv') + ' kr' }
         },
@@ -1583,7 +1553,7 @@ function renderBookings() {
     const cmp = av < bv ? -1 : av > bv ? 1 : 0;
     return _bookingSort.dir === 'asc' ? cmp : -cmp;
   });
-
+  
   const revenue = filtered.filter(b => b.payment_status==='paid').reduce((s,b) => s+(b.total_price||0), 0);
   document.getElementById('booking-count').textContent = filtered.length;
   document.getElementById('booking-revenue').textContent = Math.round(revenue).toLocaleString('sv') + ' kr';
@@ -1600,7 +1570,7 @@ function renderBookings() {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button>
-          <a href="mailto:${b.customer_email||b.email||''}?subject=Ang din städning ${b.date||''}"
+          <a href="mailto:${b.customer_email||b.email||''}?subject=Ang din städning ${b.date||''}" 
              class="btn btn-outline btn-sm" title="Maila kund" style="text-decoration:none">✉️</a>
           ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang städning ${b.date||''}" class="btn btn-outline btn-sm" title="Maila städare" style="text-decoration:none">🧹</a>` : ''}
         </div>
@@ -1648,7 +1618,7 @@ function renderCleaners() {
     let statusBadge = '<span class="badge green"><span class="dot"></span> Aktiv</span>';
     if (isSuspended) statusBadge = '<span class="badge red">⛔ Avstängd</span>';
     else if (isPaused) statusBadge = '<span class="badge yellow">⏸ Pausad</span>';
-
+    
     return `<tr style="${isSuspended ? 'opacity:.6' : ''}">
       <td>
         <div style="display:flex;align-items:center;gap:10px">
@@ -1682,7 +1652,7 @@ function renderCleaners() {
 function renderApplications() {
   const pending = data.applications.filter(a => a.status === 'pending' || !a.status);
   const reviewed = data.applications.filter(a => a.status && a.status !== 'pending');
-
+  
   document.getElementById('apps-list').innerHTML = `
     ${pending.length ? `<h3 style="font-weight:600;margin-bottom:16px">Nya ansökningar (${pending.length})</h3>` + pending.map(a => `
     <div class="card" style="margin-bottom:16px">
@@ -1698,9 +1668,9 @@ function renderApplications() {
           <p style="font-size:.75rem;color:var(--m);margin-top:6px">Ansökt: ${new Date(a.created_at).toLocaleDateString('sv')}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-primary btn-sm" style="white-space:nowrap"
-            data-id="${escHtml(a.id)}" data-name="${escHtml(a.name || a.full_name)}"
-            data-email="${escHtml(a.email)}" data-city="${escHtml(a.city||'')}"
+          <button class="btn btn-primary btn-sm" style="white-space:nowrap" 
+            data-id="${escHtml(a.id)}" data-name="${escHtml(a.name || a.full_name)}" 
+            data-email="${escHtml(a.email)}" data-city="${escHtml(a.city||'')}" 
             data-services="${escHtml(a.services||'')}" data-rate="${parseInt(a.hourly_rate)||350}"
             onclick="approveApplication(this.dataset.id, this.dataset.name, this.dataset.email, this.dataset.city, this.dataset.services, this.dataset.rate)">✅ Godkänn</button>
           <button class="btn btn-danger btn-sm" onclick="rejectApplication('${escHtml(a.id)}')">❌ Avslå</button>
@@ -1719,14 +1689,14 @@ function renderCustomers() {
   const q = document.getElementById('cust-search').value.toLowerCase();
   let filtered = data.customers;
   if (q) filtered = filtered.filter(c => `${c.email||''} ${c.name||''}`.toLowerCase().includes(q));
-
+  
   // Räkna total_spent per kund från bookings
   const custSpend = {};
   data.bookings.filter(b => b.payment_status === 'paid').forEach(b => {
     const em = b.customer_email || b.email;
     if (em) { custSpend[em] = (custSpend[em] || 0) + (b.total_price || 0); }
   });
-
+  
   document.getElementById('customers-tbody').innerHTML = filtered.length ? filtered.map(c => {
     const spent = Math.round(custSpend[c.email] || c.total_spent || 0);
     const isVip = spent > 5000 || (c.total_bookings || 0) >= 5;
@@ -1755,7 +1725,7 @@ function renderCustomers() {
 function renderPayouts() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const paidBookings = data.bookings.filter(b => b.payment_status === 'paid' && b.cleaner_id);
-
+  
   // Varning om obetalda/otilldelade bokningar (bug #29)
   const pendingAlert = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
   const unpaidAlert = data.bookings.filter(b => b.payment_status === 'pending');
@@ -1816,22 +1786,22 @@ async function renderSubscriptions() {
   const { data: subs } = await SB.from('subscriptions').select('*').order('created_at', {ascending:false});
   const all = subs || [];
   const active = all.filter(s => s.status === 'aktiv');
-
+  
   // KPIs
   const freqMultiplier = {veckovis:4.3, 'varannan-vecka':2.15, månadsvis:1};
   const mrr = active.reduce((s,sub) => {
     const m = freqMultiplier[sub.frequency] || 1;
     return s + ((sub.price || sub.total_price || 0) * m);
   }, 0);
-
+  
   document.getElementById('sub-count').textContent = active.length;
   document.getElementById('sub-mrr').textContent = Math.round(mrr).toLocaleString('sv') + ' kr';
   document.getElementById('sub-arr').textContent = Math.round(mrr * 12).toLocaleString('sv') + ' kr';
   document.getElementById('badge-subs').textContent = active.length;
-
+  
   const rows = all.map(s => {
     const freq = {veckovis:'Varje vecka 🔄', 'varannan-vecka':'Varannan vecka', månadsvis:'Månadsvis'}[s.frequency] || s.frequency;
-    const statusBadge = s.status === 'aktiv' ? '<span class="badge green">✅ Aktiv</span>' :
+    const statusBadge = s.status === 'aktiv' ? '<span class="badge green">✅ Aktiv</span>' : 
                         s.status === 'pausad' ? '<span class="badge yellow">⏸ Pausad</span>' :
                         '<span class="badge grey">Avslutad</span>';
     const discountedPrice = (s.price||s.total_price) ? Math.round((s.price||s.total_price) * (1 - (s.discount_percent||0)/100)) : '–';
@@ -1850,8 +1820,8 @@ async function renderSubscriptions() {
       </td>
     </tr>`;
   });
-
-  document.getElementById('subs-tbody').innerHTML = rows.length ? rows.join('') :
+  
+  document.getElementById('subs-tbody').innerHTML = rows.length ? rows.join('') : 
     '<tr><td colspan="9" class="empty">Inga prenumerationer ännu</td></tr>';
 }
 
@@ -1893,7 +1863,7 @@ async function createNextBookings() {
   const { data: subs } = await SB.from('subscriptions').select('*').eq('status','aktiv');
   if (!subs?.length) { showToast('Inga aktiva prenumerationer'); return; }
   const today = new Date().toISOString().split('T')[0];
-  const soon = subs.filter(s => s.next_booking_date && s.next_booking_date <=
+  const soon = subs.filter(s => s.next_booking_date && s.next_booking_date <= 
     new Date(Date.now()+7*24*3600000).toISOString().split('T')[0]);
   if (!soon.length) { showToast('Inga bokningar att skapa närmaste 7 dagarna'); return; }
   if (!confirm(`Skapa ${soon.length} bokningar för nästa vecka?`)) return;
@@ -1918,7 +1888,7 @@ async function autoAssignAll() {
   const unassigned = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
   if (!unassigned.length) { showToast('✅ Alla bokningar har städare!'); return; }
   if (!confirm(`Auto-tilldela ${unassigned.length} bokningar?`)) return;
-
+  
   let assigned = 0;
   for (const booking of unassigned) {
     const city = (booking.city || '').toLowerCase();
@@ -1927,13 +1897,13 @@ async function autoAssignAll() {
       const cc = (c.city || '').toLowerCase();
       return cc === city || cc.includes(city) || city.includes(cc);
     }).sort((a,b) => (b.avg_rating||0)-(a.avg_rating||0));
-
+    
     if (!eligible.length) continue;
-
+    
     // Kolla konflikt
     for (const cl of eligible) {
-      const conflict = data.bookings.some(b => b.cleaner_id === cl.id &&
-        (b.date === booking.date || b.scheduled_date === booking.scheduled_date) &&
+      const conflict = data.bookings.some(b => b.cleaner_id === cl.id && 
+        (b.date === booking.date || b.scheduled_date === booking.scheduled_date) && 
         b.id !== booking.id && b.payment_status === 'paid');
       if (!conflict) {
         await SB.from('bookings').update({cleaner_id:cl.id, cleaner_name:cl.full_name}).eq('id',booking.id);
@@ -2019,7 +1989,7 @@ function showBookingDetail(id) {
     ${b.photo_after_url ? `<div class="stat-row"><span class="lbl">Foto efter</span><span class="val"><a href="${b.photo_after_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])},"
+      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])}," 
          style="flex:1;padding:8px;background:var(--gr);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         ✉️ Maila kund
       </a>
@@ -2027,12 +1997,12 @@ function showBookingDetail(id) {
          style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         🧹 Maila städare
       </a>` : ''}
-      ${b.status !== 'klar' && b.payment_status === 'paid' ? `<button onclick="markBookingDone('${b.id}')"
+      ${b.status !== 'klar' && b.payment_status === 'paid' ? `<button onclick="markBookingDone('${b.id}')" 
          style="flex:1;padding:8px;background:#D1FAE5;color:#065F46;border:none;border-radius:8px;text-align:center;font-weight:600;cursor:pointer;font-size:.82rem">
         ✅ Markera klar
       </button>` : ''}
     </div>`;
-
+  
   document.getElementById('modal-refund-btn').style.display = b.payment_status === 'paid' ? '' : 'none';
   document.getElementById('modal-reassign-btn').style.display = (b.payment_status === 'paid' && b.status !== 'klar') ? '' : 'none';
   document.getElementById('modal-cancel-btn').style.display = (b.payment_status === 'paid' && b.status !== 'klar') ? '' : 'none';
@@ -2043,13 +2013,13 @@ function showCustomerBookings(email) {
   const customerBookings = data.bookings
     .filter(b => (b.customer_email || b.email) === email)
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
+  
   const customer = data.customers.find(c => c.email === email);
   const name = customer?.name || email;
-
+  
   const total = customerBookings.filter(b => b.payment_status === 'paid')
     .reduce((s,b) => s + (b.total_price || 0), 0);
-
+  
   document.getElementById('modal-title').textContent = `📋 ${name} – bokningshistorik`;
   document.getElementById('modal-body').innerHTML = `
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
@@ -2075,12 +2045,12 @@ function showCustomerBookings(email) {
         </div>
       </div>`).join('') : '<div style="color:var(--m);text-align:center;padding:20px">Inga bokningar</div>'}
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-      <a href="mailto:${encodeURIComponent(email)}?subject=Ang dina städningar på Spick"
+      <a href="mailto:${encodeURIComponent(email)}?subject=Ang dina städningar på Spick" 
          style="display:block;text-align:center;background:var(--gr);color:var(--g);padding:10px;border-radius:10px;font-weight:600;text-decoration:none">
         ✉️ Maila ${escHtml(name.split(' ')[0])}
       </a>
     </div>`;
-
+  
   document.getElementById('modal-refund-btn').style.display = 'none';
   document.getElementById('booking-modal').classList.add('open');
 }
@@ -2092,7 +2062,7 @@ function exportBookingsCSV() {
   let filtered = data.bookings;
   if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.email||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q));
   if (f) filtered = filtered.filter(b => b.payment_status === f);
-
+  
   const headers = ['Kund', 'E-post', 'Telefon', 'Tjänst', 'Timmar', 'Datum', 'Tid', 'Stad', 'Adress', 'Belopp', 'RUT', 'Status', 'Städare', 'Betalsätt'];
   const rows = filtered.map(b => [
     b.customer_name || b.name || '',
@@ -2110,7 +2080,7 @@ function exportBookingsCSV() {
     b.cleaner_name || '',
     b.payment_method || ''
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
-
+  
   const csv = [headers.join(','), ...rows].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -2128,14 +2098,14 @@ async function sendBroadcastEmail() {
   const body = prompt('Meddelande (HTML stöds):');
   if (!body) return;
   const target = confirm('Skicka till ALLA kunder? OK = Ja, Avbryt = Bara aktiva städare');
-
-  const recipients = target
+  
+  const recipients = target 
     ? [...new Set(data.bookings.map(b => b.customer_email || b.email).filter(Boolean))]
     : data.cleaners.filter(c => c.is_approved).map(c => c.email).filter(Boolean);
-
+  
   if (!recipients.length) { alert('Inga mottagare hittades'); return; }
   if (!confirm(`Skicka till ${recipients.length} mottagare?`)) return;
-
+  
   let sent = 0;
   for (const email of recipients.slice(0, 50)) { // Max 50 per broadcast
     await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
@@ -2167,18 +2137,18 @@ async function reassignBooking() {
 async function cancelBooking() {
   if (!confirm('❌ Avboka denna bokning? Kunden kommer notifieras.')) return;
   const b = data.bookings.find(x => x.id === currentBookingId);
-  await SB.from('bookings').update({
-    payment_status: 'cancelled',
+  await SB.from('bookings').update({ 
+    payment_status: 'cancelled', 
     status: 'avbokad',
     cleaner_id: null,
-    cleaner_name: null
+    cleaner_name: null 
   }).eq('id', currentBookingId);
   // Notifiera kund
   if (b?.customer_email || b?.email) {
     await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
-      body: JSON.stringify({ type: 'booking_cancelled_admin', record: {
+      body: JSON.stringify({ type: 'booking_cancelled_admin', record: { 
         customer_name: b.customer_name || b.name,
         email: b.customer_email || b.email,
         service: b.service,
@@ -2208,7 +2178,7 @@ function showCleanerDetail(id) {
   const isPaused = c.status === 'pausad';
   const isActive = c.is_approved;
   const isSuspended = c.status === 'avstängd';
-
+  
   document.getElementById('cleaner-modal-title').textContent = c.full_name || 'Städare';
   document.getElementById('cleaner-modal-body').innerHTML = `
     <!-- Status-banner -->
@@ -2216,7 +2186,7 @@ function showCleanerDetail(id) {
       ${isSuspended ? 'background:#FEE2E2;color:#991B1B' : isPaused ? 'background:#FEF3C7;color:#92400E' : 'background:#D1FAE5;color:#065F46'}">
       ${isSuspended ? '⛔ Konto avstängt' : isPaused ? '⏸ Konto pausat – inga nya bokningar' : '✅ Konto aktivt'}
     </div>
-
+    
     <!-- Visa/Redigera fält -->
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">NAMN</label>
@@ -2250,9 +2220,9 @@ function showCleanerDetail(id) {
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">BIO</label>
       <textarea id="admin-edit-bio" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem;resize:vertical">${escHtml(c.bio||'')}</textarea>
     </div>
-
+    
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-
+    
     <!-- Statistik -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
       <div style="text-align:center;background:var(--gr);border-radius:10px;padding:10px">
@@ -2272,13 +2242,13 @@ function showCleanerDetail(id) {
         <div style="font-size:.7rem;color:var(--m)">${(() => { const t = c.commission_tier || c.tier || 'new'; const n = {new:'Ny',established:'Silver',professional:'Gold',elite:'Platinum'}; return n[t] || 'Ny'; })()} provision</div>
       </div>
     </div>
-
+    
     <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Ja' : '❌ Nej'}</span></div>
     <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet'}</span></div>
     <div class="stat-row"><span class="lbl">Registrerad</span><span class="val">${c.created_at ? new Date(c.created_at).toLocaleDateString('sv') : '–'}</span></div>
-
+    
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-
+    
     <!-- Kontaktknappar -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <a href="mailto:${encodeURIComponent(c.email||'')}?subject=Ang dina uppdrag på Spick"
@@ -2287,21 +2257,21 @@ function showCleanerDetail(id) {
       </a>
       ${c.phone ? `<a href="tel:${c.phone}" style="flex:1;padding:8px;background:#DBEAFE;color:#1E40AF;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">📞 Ring</a>` : ''}
     </div>
-
+    
     <!-- Admin-notering -->
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">ADMIN-NOTERING (bara synlig för admin)</label>
       <textarea id="admin-note" rows="2" placeholder="Intern notering..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem;resize:vertical">${escHtml(c.admin_notes||'')}</textarea>
     </div>
-
+    
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-
+    
     <!-- Schema / Tillgänglighet -->
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">VECKOSCHEMA</label>
       <div id="admin-cleaner-schedule" style="font-size:.85rem;color:var(--m)">Laddar schema...</div>
     </div>
-
+    
     <!-- Preferenser & Arbetsområde -->
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">PREFERENSER & ARBETSOMRÅDE</label>
@@ -2317,7 +2287,7 @@ function showCleanerDetail(id) {
       // Fallback: check availability_schedule JSON on cleaner
       const sched = c.availability_schedule;
       if (sched && typeof sched === 'object') {
-        el.innerHTML = Object.entries(sched).map(([d, v]) =>
+        el.innerHTML = Object.entries(sched).map(([d, v]) => 
           `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${escHtml(d)}</span><span style="color:${v.active !== false ? 'var(--g)' : 'var(--r)'}; font-weight:600">${v.active !== false ? (v.start||'08:00') + '–' + (v.end||'17:00') : 'Ledig'}</span></div>`
         ).join('');
       } else {
@@ -2367,7 +2337,7 @@ function showCleanerDetail(id) {
     ${isPaused ? `<button class="btn btn-primary" onclick="activateCleaner()">▶️ Aktivera</button>` : ''}
     ${!isSuspended ? `<button class="btn btn-danger btn-sm" onclick="suspendCleaner()">⛔ Stäng av</button>` : `<button class="btn btn-primary btn-sm" onclick="reactivateCleaner()">✅ Återaktivera</button>`}
   `;
-
+  
   document.getElementById('cleaner-modal').classList.add('open');
 }
 function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
@@ -2436,7 +2406,7 @@ async function saveCleanerFromAdmin() {
     bio: document.getElementById('admin-edit-bio')?.value.trim(),
     admin_notes: document.getElementById('admin-note')?.value.trim(),
   };
-
+  
   const { error } = await SB.from('cleaners').update(updates).eq('id', currentCleanerId);
   if (error) {
     showToast('❌ Fel vid sparning: ' + error.message);
@@ -2469,14 +2439,14 @@ async function approveApplication(id, name, email, city, services, rate) {
     }]);
   }
   await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
-
+  
   // Skicka välkomstmail via Resend
   await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer '+SPICK.SUPA_KEY },
     body: JSON.stringify({ type: 'cleaner_approved', record: { full_name: name, name, email, city, hourly_rate: rate } })
   }).catch(() => {});
-
+  
   alert(`✅ ${name} är nu godkänd som städare!`);
   loadAll();
 }
@@ -2533,11 +2503,11 @@ async function openAssignModal(bookingId) {
     .select('id,full_name,city,avg_rating')
     .eq('is_approved',true)
     .order('avg_rating', { ascending: false });
-
-  let opts = cleaners?.map(c =>
+  
+  let opts = cleaners?.map(c => 
     `<option value="${c.id}">${c.full_name} (${c.city}) ⭐${c.avg_rating||'–'}</option>`
   ).join('') || '<option>Inga städare hittades</option>';
-
+  
   const modal = document.createElement('div');
   modal.id = 'assign-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
@@ -2548,9 +2518,9 @@ async function openAssignModal(bookingId) {
         ${opts}
       </select>
       <div style="display:flex;gap:.75rem">
-        <button onclick="document.getElementById('assign-modal').remove()"
+        <button onclick="document.getElementById('assign-modal').remove()" 
           style="flex:1;padding:.75rem;border:1.5px solid #E8E8E4;border-radius:10px;background:none;cursor:pointer">Avbryt</button>
-        <button onclick="confirmAssign()"
+        <button onclick="confirmAssign()" 
           style="flex:1;padding:.75rem;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">Tilldela</button>
       </div>
     </div>`;
@@ -2561,13 +2531,13 @@ async function confirmAssign() {
   const cleanerId = document.getElementById('assign-select').value;
   const cleaner = data.cleaners?.find(c => c.id === cleanerId);
   if (!cleanerId || !currentBookingId) return;
-
-  await SB.from('bookings').update({
-    cleaner_id: cleanerId,
+  
+  await SB.from('bookings').update({ 
+    cleaner_id: cleanerId, 
     cleaner_name: cleaner?.full_name,
     status: 'bekräftad'
   }).eq('id', currentBookingId);
-
+  
   document.getElementById('assign-modal').remove();
   showToast('✅ Städare tilldelad!');
   await loadAll();
@@ -2705,54 +2675,37 @@ document.querySelector('.sidebar-footer')?.insertAdjacentHTML('beforebegin',
   '<div style="padding:8px 16px;font-size:.7rem;color:rgba(255,255,255,.35);border-top:1px solid rgba(255,255,255,.1)">⌨️ Ctrl+K sök · Alt+1-7 nav · Esc stäng</div>'
 );
 
-// ══════════════════════════════════════════════════════
-// ADMIN V2 – Rollsystem, Audit, Support, Kvalitet, Team, Inställningar
-// ══════════════════════════════════════════════════════
 
-// ── ADMIN USER STATE ────────────────────────────────
-let adminUser = null; // { email, display_name, role_name, role_level, permissions:[] }
-let adminPermissions = [];
+// ======================================================
+// ADMIN V2 - Roles, Audit, Support, Quality, Team, Settings
+// ======================================================
+
+var adminUser = null;
+var adminPermissions = [];
 
 async function loadAdminUser() {
   try {
-    const { data: { user } } = await SB.auth.getUser();
+    var r = await SB.auth.getUser();
+    var user = r.data.user;
     if (!user) return;
-
-    const { data: au } = await SB.from('admin_users')
-      .select('*, admin_roles(*)')
-      .eq('email', user.email)
-      .maybeSingle();
-
+    var res = await SB.from('admin_users').select('*, admin_roles(*)').eq('email', user.email).maybeSingle();
+    var au = res.data;
     if (au && au.admin_roles) {
-      adminUser = {
-        id: au.id,
-        email: au.email,
-        display_name: au.display_name,
-        role_name: au.admin_roles.name,
-        role_level: au.admin_roles.level,
-        role_id: au.role_id,
-        is_active: au.is_active,
-      };
-
-      const { data: perms } = await SB.from('role_permissions')
-        .select('admin_permissions(*)')
-        .eq('role_id', au.role_id);
-
-      adminPermissions = (perms || []).map(p => p.admin_permissions).filter(Boolean);
-
-      const nameEl = document.getElementById('admin-name');
-      const roleEl = document.getElementById('admin-role-badge');
+      adminUser = { id: au.id, email: au.email, display_name: au.display_name, role_name: au.admin_roles.name, role_level: au.admin_roles.level, role_id: au.role_id, is_active: au.is_active };
+      var pr = await SB.from('role_permissions').select('admin_permissions(*)').eq('role_id', au.role_id);
+      adminPermissions = (pr.data || []).map(function(p){ return p.admin_permissions; }).filter(Boolean);
+      var nameEl = document.getElementById('admin-name');
+      var roleEl = document.getElementById('admin-role-badge');
       if (nameEl) nameEl.textContent = au.display_name;
       if (roleEl) roleEl.textContent = au.admin_roles.name;
-
-      SB.from('admin_users').update({ last_login: new Date().toISOString(), login_count: (au.login_count || 0) + 1 }).eq('id', au.id).then(() => {});
-      auditLog('login', 'auth', null, null, null).catch(() => {});
+      SB.from('admin_users').update({ last_login: new Date().toISOString(), login_count: (au.login_count||0)+1 }).eq('id', au.id).then(function(){});
+      auditLog('login','auth',null,null,null).catch(function(){});
     } else {
       adminUser = { email: user.email, display_name: user.email.split('@')[0], role_name: 'superadmin', role_level: 100, is_active: true };
-      const nameEl = document.getElementById('admin-name');
-      if (nameEl) nameEl.textContent = adminUser.display_name;
-      const roleEl = document.getElementById('admin-role-badge');
-      if (roleEl) roleEl.textContent = 'Superadmin (legacy)';
+      var nameEl2 = document.getElementById('admin-name');
+      if (nameEl2) nameEl2.textContent = adminUser.display_name;
+      var roleEl2 = document.getElementById('admin-role-badge');
+      if (roleEl2) roleEl2.textContent = 'Superadmin (legacy)';
     }
   } catch(e) {
     console.warn('loadAdminUser error:', e.message);
@@ -2761,645 +2714,274 @@ async function loadAdminUser() {
 }
 
 function hasPerm(resource, action) {
-  if (!adminUser) return true; // Fallback during loading
-  if (adminUser.role_level >= 100) return true; // Superadmin
-  return adminPermissions.some(p => p.resource === resource && p.action === action);
+  if (!adminUser) return true;
+  if (adminUser.role_level >= 100) return true;
+  return adminPermissions.some(function(p){ return p.resource === resource && p.action === action; });
 }
 
-// ── AUDIT LOGGING ───────────────────────────────────
+// -- AUDIT LOG --
 async function auditLog(action, resourceType, resourceId, oldValue, newValue, reason) {
   try {
     await SB.from('admin_audit_log').insert({
-      admin_email: adminUser?.email || 'unknown',
-      admin_role: adminUser?.role_name || 'unknown',
-      action,
-      resource_type: resourceType,
-      resource_id: resourceId,
-      old_value: oldValue ? (typeof oldValue === 'object' ? oldValue : { value: oldValue }) : null,
-      new_value: newValue ? (typeof newValue === 'object' ? newValue : { value: newValue }) : null,
-      reason: reason || null,
+      admin_email: adminUser ? adminUser.email : 'unknown',
+      admin_role: adminUser ? adminUser.role_name : 'unknown',
+      action: action, resource_type: resourceType, resource_id: resourceId,
+      old_value: oldValue ? (typeof oldValue === 'object' ? oldValue : {value:oldValue}) : null,
+      new_value: newValue ? (typeof newValue === 'object' ? newValue : {value:newValue}) : null,
+      reason: reason || null
     });
-  } catch (e) { console.warn('Audit log failed:', e.message); }
+  } catch(e) { console.warn('Audit log failed:', e.message); }
 }
 
-// ── AUDIT LOG VIEWER ────────────────────────────────
-let auditData = [];
-let auditOffset = 0;
-const AUDIT_PAGE_SIZE = 50;
-
+var auditData = [];
 async function loadAuditLog() {
-  auditOffset = 0;
-  const days = parseInt(document.getElementById('audit-filter-period')?.value) || 30;
-  const since = new Date(Date.now() - days * 86400000).toISOString();
-
-  const { data } = await SB.from('admin_audit_log')
-    .select('*')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(AUDIT_PAGE_SIZE);
-
-  auditData = data || [];
-  renderAuditLog();
-}
-
-async function loadMoreAudit() {
-  auditOffset += AUDIT_PAGE_SIZE;
-  const days = parseInt(document.getElementById('audit-filter-period')?.value) || 30;
-  const since = new Date(Date.now() - days * 86400000).toISOString();
-
-  const { data } = await SB.from('admin_audit_log')
-    .select('*')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .range(auditOffset, auditOffset + AUDIT_PAGE_SIZE - 1);
-
-  auditData = [...auditData, ...(data || [])];
+  var days = parseInt(document.getElementById('audit-filter-period').value) || 30;
+  var since = new Date(Date.now() - days*86400000).toISOString();
+  var res = await SB.from('admin_audit_log').select('*').gte('created_at', since).order('created_at',{ascending:false}).limit(100);
+  auditData = res.data || [];
   renderAuditLog();
 }
 
 function renderAuditLog() {
-  const search = (document.getElementById('audit-search')?.value || '').toLowerCase();
-  const typeFilter = document.getElementById('audit-filter-type')?.value || '';
-
-  let filtered = auditData;
-  if (typeFilter) filtered = filtered.filter(l => l.resource_type === typeFilter);
-  if (search) filtered = filtered.filter(l =>
-    (l.admin_email || '').toLowerCase().includes(search) ||
-    (l.action || '').toLowerCase().includes(search) ||
-    (l.resource_type || '').toLowerCase().includes(search) ||
-    (l.resource_id || '').toLowerCase().includes(search) ||
-    (l.reason || '').toLowerCase().includes(search)
-  );
-
-  const actionLabels = {
-    login: '🔓 Inloggning', logout: '🔒 Utloggning', create: '➕ Skapade', update: '✏️ Ändrade',
-    delete: '🗑 Raderade', approve: '✅ Godkände', suspend: '⏸ Pausade', refund: '↩ Återbetalade',
-    assign: '🔄 Tilldelade', export: '📥 Exporterade', resolve: '✅ Löste', escalate: '⬆️ Eskalerade',
-    setting_change: '⚙️ Ändrade inställning'
-  };
-
-  document.getElementById('audit-tbody').innerHTML = filtered.length ? filtered.map(l => {
-    const detail = l.reason ? escHtml(l.reason) :
-      (l.new_value ? '<span style="font-size:.75rem;color:var(--m)">' + escHtml(JSON.stringify(l.new_value).substring(0, 80)) + '</span>' : '–');
-    return `<tr>
-      <td style="font-size:.78rem;white-space:nowrap">${new Date(l.created_at).toLocaleString('sv', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
-      <td style="font-size:.82rem">${escHtml(l.admin_email?.split('@')[0] || '–')}<br><span style="font-size:.7rem;color:var(--m)">${escHtml(l.admin_role)}</span></td>
-      <td>${actionLabels[l.action] || escHtml(l.action)}</td>
-      <td><span class="badge grey">${escHtml(l.resource_type)}</span> <span style="font-size:.78rem">${escHtml(l.resource_id || '')}</span></td>
-      <td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">${detail}</td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="5" class="empty">Inga loggar hittades</td></tr>';
+  var search = (document.getElementById('audit-search').value || '').toLowerCase();
+  var typeF = document.getElementById('audit-filter-type').value || '';
+  var filtered = auditData;
+  if (typeF) filtered = filtered.filter(function(l){ return l.resource_type === typeF; });
+  if (search) filtered = filtered.filter(function(l){
+    return (l.admin_email||'').toLowerCase().includes(search) || (l.action||'').toLowerCase().includes(search) || (l.resource_type||'').toLowerCase().includes(search);
+  });
+  document.getElementById('audit-tbody').innerHTML = filtered.length ? filtered.map(function(l){
+    var detail = l.reason ? escHtml(l.reason) : (l.new_value ? escHtml(JSON.stringify(l.new_value).substring(0,60)) : '');
+    return '<tr><td style="font-size:.78rem;white-space:nowrap">'+new Date(l.created_at).toLocaleString('sv',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</td>'
+      +'<td style="font-size:.82rem">'+escHtml(l.admin_email.split('@')[0])+'<br><span style="font-size:.7rem;color:var(--m)">'+escHtml(l.admin_role)+'</span></td>'
+      +'<td>'+escHtml(l.action)+'</td>'
+      +'<td><span class="badge grey">'+escHtml(l.resource_type)+'</span></td>'
+      +'<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">'+detail+'</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty">Inga loggar</td></tr>';
 }
 
 function exportAuditCSV() {
-  if (!hasPerm('audit', 'read')) return showToast('❌ Behörighet saknas');
-  const rows = [['Tid', 'Admin', 'Roll', 'Åtgärd', 'Resurstyp', 'ResursID', 'Orsak']];
-  auditData.forEach(l => rows.push([
-    new Date(l.created_at).toISOString(), l.admin_email, l.admin_role, l.action, l.resource_type, l.resource_id || '', l.reason || ''
-  ]));
-  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'spick-audit-' + new Date().toISOString().split('T')[0] + '.csv';
-  a.click();
-  auditLog('export', 'audit', null, null, { rows: auditData.length });
+  var rows = [['Tid','Admin','Roll','Aktion','Resurstyp','ResursID','Orsak']];
+  auditData.forEach(function(l){ rows.push([new Date(l.created_at).toISOString(),l.admin_email,l.admin_role,l.action,l.resource_type,l.resource_id||'',l.reason||'']); });
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'spick-audit-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
 }
 
-// ── SUPPORT TICKETS ─────────────────────────────────
-let ticketsData = [];
-
+// -- SUPPORT TICKETS --
+var ticketsData = [];
 async function loadTickets() {
-  const { data } = await SB.from('support_tickets')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(200);
-  ticketsData = data || [];
+  var res = await SB.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(200);
+  ticketsData = res.data || [];
   renderTickets();
-
-  // Update badge
-  const openCount = ticketsData.filter(t => !['resolved', 'closed'].includes(t.status)).length;
-  const badge = document.getElementById('badge-support');
-  if (badge) badge.textContent = openCount || '';
+  var badge = document.getElementById('badge-support');
+  if (badge) badge.textContent = ticketsData.filter(function(t){ return !['resolved','closed'].includes(t.status); }).length || '';
 }
 
 function renderTickets() {
-  const search = (document.getElementById('ticket-search')?.value || '').toLowerCase();
-  const statusF = document.getElementById('ticket-filter-status')?.value || '';
-  const prioF = document.getElementById('ticket-filter-priority')?.value || '';
-
-  let filtered = ticketsData;
-  if (statusF) filtered = filtered.filter(t => t.status === statusF);
-  if (prioF) filtered = filtered.filter(t => t.priority === prioF);
-  if (search) filtered = filtered.filter(t =>
-    (t.ticket_number || '').toLowerCase().includes(search) ||
-    (t.subject || '').toLowerCase().includes(search) ||
-    (t.customer_email || '').toLowerCase().includes(search) ||
-    (t.description || '').toLowerCase().includes(search)
-  );
-
-  const prioBadge = p => ({
-    critical: '<span class="badge red">🔴 Kritisk</span>',
-    high: '<span class="badge yellow">🟡 Hög</span>',
-    medium: '<span class="badge grey">⚪ Medium</span>',
-    low: '<span class="badge grey">⚫ Låg</span>'
-  }[p] || p);
-
-  const statusBadgeT = s => ({
-    open: '<span class="badge blue">Öppen</span>',
-    in_progress: '<span class="badge yellow">Pågår</span>',
-    waiting_customer: '<span class="badge grey">Väntar kund</span>',
-    waiting_cleaner: '<span class="badge grey">Väntar städare</span>',
-    escalated: '<span class="badge red">Eskalerat</span>',
-    resolved: '<span class="badge green">Löst</span>',
-    closed: '<span class="badge grey">Stängt</span>'
-  }[s] || s);
-
-  // KPIs
-  const open = ticketsData.filter(t => !['resolved','closed'].includes(t.status));
+  var search = (document.getElementById('ticket-search').value || '').toLowerCase();
+  var statusF = document.getElementById('ticket-filter-status').value || '';
+  var prioF = document.getElementById('ticket-filter-priority').value || '';
+  var filtered = ticketsData;
+  if (statusF) filtered = filtered.filter(function(t){ return t.status === statusF; });
+  if (prioF) filtered = filtered.filter(function(t){ return t.priority === prioF; });
+  if (search) filtered = filtered.filter(function(t){ return (t.ticket_number||'').toLowerCase().includes(search) || (t.subject||'').toLowerCase().includes(search) || (t.customer_email||'').toLowerCase().includes(search); });
+  
+  var open = ticketsData.filter(function(t){ return !['resolved','closed'].includes(t.status); });
   document.getElementById('kpi-tickets-open').textContent = open.length;
-  document.getElementById('kpi-tickets-critical').textContent = open.filter(t => ['critical','high'].includes(t.priority)).length;
+  document.getElementById('kpi-tickets-critical').textContent = open.filter(function(t){ return ['critical','high'].includes(t.priority); }).length;
+  var now = new Date();
+  document.getElementById('kpi-tickets-sla').textContent = open.filter(function(t){ return t.sla_deadline && new Date(t.sla_deadline)<now; }).length;
+  var weekAgo = new Date(now-7*86400000);
+  document.getElementById('kpi-tickets-resolved').textContent = ticketsData.filter(function(t){ return t.status==='resolved' && new Date(t.resolved_at||t.updated_at)>=weekAgo; }).length;
 
-  const now = new Date();
-  const slaBreaches = open.filter(t => t.sla_deadline && new Date(t.sla_deadline) < now);
-  document.getElementById('kpi-tickets-sla').textContent = slaBreaches.length;
+  var prioBadge = function(p){ return {critical:'<span class="badge red">Kritisk</span>',high:'<span class="badge yellow">Hog</span>',medium:'<span class="badge grey">Medium</span>',low:'<span class="badge grey">Lag</span>'}[p]||p; };
+  var statusBadgeT = function(s){ return {open:'<span class="badge blue">Oppen</span>',in_progress:'<span class="badge yellow">Pagar</span>',escalated:'<span class="badge red">Eskalerat</span>',resolved:'<span class="badge green">Lost</span>',closed:'<span class="badge grey">Stangt</span>'}[s]||s; };
 
-  const weekAgo = new Date(now - 7 * 86400000);
-  document.getElementById('kpi-tickets-resolved').textContent = ticketsData.filter(t => t.status === 'resolved' && new Date(t.resolved_at || t.updated_at) >= weekAgo).length;
-
-  document.getElementById('tickets-tbody').innerHTML = filtered.length ? filtered.map(t => `<tr>
-    <td style="font-weight:600;font-size:.82rem">${escHtml(t.ticket_number)}</td>
-    <td>${prioBadge(t.priority)}</td>
-    <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.subject)}</td>
-    <td style="font-size:.82rem">${escHtml(t.customer_email || '–')}</td>
-    <td>${statusBadgeT(t.status)}</td>
-    <td style="font-size:.82rem">${escHtml(t.assigned_to || '–')}</td>
-    <td style="font-size:.78rem;white-space:nowrap">${new Date(t.created_at).toLocaleDateString('sv')}</td>
-    <td><button class="btn btn-outline btn-sm" onclick="showTicketDetail('${t.id}')">Visa</button></td>
-  </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga ärenden hittades</td></tr>';
+  document.getElementById('tickets-tbody').innerHTML = filtered.length ? filtered.map(function(t){
+    return '<tr><td style="font-weight:600;font-size:.82rem">'+escHtml(t.ticket_number)+'</td><td>'+prioBadge(t.priority)+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(t.subject)+'</td><td style="font-size:.82rem">'+escHtml(t.customer_email||'')+'</td><td>'+statusBadgeT(t.status)+'</td><td style="font-size:.82rem">'+escHtml(t.assigned_to||'')+'</td><td style="font-size:.78rem;white-space:nowrap">'+new Date(t.created_at).toLocaleDateString('sv')+'</td><td><button class="btn btn-outline btn-sm" onclick="showTicketDetail(\''+t.id+'\')">Visa</button></td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">Inga arenden</td></tr>';
 }
 
 function showNewTicketModal() {
-  document.getElementById('quick-modal-title').textContent = 'Nytt supportärende';
-  document.getElementById('quick-modal-body').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <input id="new-ticket-subject" class="search-input" placeholder="Ämne *" style="flex:none">
-      <div style="display:flex;gap:8px">
-        <select id="new-ticket-priority" class="filter" style="flex:1"><option value="medium">Medium</option><option value="critical">Kritisk</option><option value="high">Hög</option><option value="low">Låg</option></select>
-        <select id="new-ticket-type" class="filter" style="flex:1"><option value="complaint">Klagomål</option><option value="refund">Återbetalning</option><option value="dispute">Tvist</option><option value="incident">Incident</option><option value="general">Generellt</option></select>
-      </div>
-      <input id="new-ticket-customer" class="search-input" placeholder="Kund e-post (valfritt)" style="flex:none">
-      <textarea id="new-ticket-desc" placeholder="Beskrivning *" rows="4" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.88rem;resize:vertical"></textarea>
-    </div>`;
-  document.getElementById('quick-modal-confirm').textContent = 'Skapa ärende';
+  document.getElementById('quick-modal-title').textContent = 'Nytt supportarende';
+  document.getElementById('quick-modal-body').innerHTML = '<div style="display:flex;flex-direction:column;gap:12px"><input id="new-ticket-subject" class="search-input" placeholder="Amne *" style="flex:none"><div style="display:flex;gap:8px"><select id="new-ticket-priority" class="filter" style="flex:1"><option value="medium">Medium</option><option value="critical">Kritisk</option><option value="high">Hog</option><option value="low">Lag</option></select><select id="new-ticket-type" class="filter" style="flex:1"><option value="complaint">Klagomal</option><option value="refund">Aterbetalning</option><option value="dispute">Tvist</option><option value="general">Generellt</option></select></div><input id="new-ticket-customer" class="search-input" placeholder="Kund e-post (valfritt)" style="flex:none"><textarea id="new-ticket-desc" placeholder="Beskrivning *" rows="4" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.88rem;resize:vertical"></textarea></div>';
+  document.getElementById('quick-modal-confirm').textContent = 'Skapa';
   document.getElementById('quick-modal-confirm').onclick = createTicket;
   document.getElementById('quick-modal').classList.add('open');
 }
 
 async function createTicket() {
-  const subject = document.getElementById('new-ticket-subject').value.trim();
-  const desc = document.getElementById('new-ticket-desc').value.trim();
-  if (!subject || !desc) return showToast('❌ Ämne och beskrivning krävs');
-
-  const priority = document.getElementById('new-ticket-priority').value;
-  const type = document.getElementById('new-ticket-type').value;
-  const customer = document.getElementById('new-ticket-customer').value.trim();
-
-  // Calculate SLA deadline
-  const slaHours = { critical: 0.5, high: 2, medium: 8, low: 24 };
-  const sla = new Date(Date.now() + (slaHours[priority] || 8) * 3600000).toISOString();
-
-  const { data, error } = await SB.from('support_tickets').insert({
-    subject, description: desc, priority, type,
-    customer_email: customer || null,
-    assigned_to: adminUser?.email,
-    sla_deadline: sla,
-  }).select().single();
-
-  if (error) return showToast('❌ ' + error.message);
-
-  await auditLog('create', 'support', data?.ticket_number, null, { subject, priority, type });
+  var subject = document.getElementById('new-ticket-subject').value.trim();
+  var desc = document.getElementById('new-ticket-desc').value.trim();
+  if (!subject || !desc) return showToast('Amne och beskrivning kravs');
+  var priority = document.getElementById('new-ticket-priority').value;
+  var type = document.getElementById('new-ticket-type').value;
+  var customer = document.getElementById('new-ticket-customer').value.trim();
+  var slaH = {critical:0.5,high:2,medium:8,low:24};
+  var sla = new Date(Date.now()+(slaH[priority]||8)*3600000).toISOString();
+  var res = await SB.from('support_tickets').insert({subject:subject,description:desc,priority:priority,type:type,customer_email:customer||null,assigned_to:adminUser?adminUser.email:null,sla_deadline:sla}).select().single();
+  if (res.error) return showToast('Fel: '+res.error.message);
+  await auditLog('create','support',res.data?res.data.ticket_number:null,null,{subject:subject,priority:priority});
   document.getElementById('quick-modal').classList.remove('open');
-  showToast('✅ Ärende skapat: ' + (data?.ticket_number || ''));
+  showToast('Arende skapat: '+(res.data?res.data.ticket_number:''));
   await loadTickets();
 }
 
 async function showTicketDetail(id) {
-  const t = ticketsData.find(x => x.id === id);
+  var t = ticketsData.find(function(x){return x.id===id;});
   if (!t) return;
-
-  // Load notes
-  const { data: notes } = await SB.from('ticket_notes')
-    .select('*')
-    .eq('ticket_id', id)
-    .order('created_at', { ascending: true });
-
-  document.getElementById('modal-title').textContent = `${t.ticket_number} – ${escHtml(t.subject)}`;
-  document.getElementById('modal-body').innerHTML = `
-    <div class="stat-row"><span class="lbl">Prioritet</span><span class="val">${escHtml(t.priority)}</span></div>
-    <div class="stat-row"><span class="lbl">Typ</span><span class="val">${escHtml(t.type)}</span></div>
-    <div class="stat-row"><span class="lbl">Status</span><span class="val">${escHtml(t.status)}</span></div>
-    <div class="stat-row"><span class="lbl">Kund</span><span class="val">${escHtml(t.customer_email || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Tilldelad</span><span class="val">${escHtml(t.assigned_to || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(t.created_at).toLocaleString('sv')}</span></div>
-    <div class="stat-row"><span class="lbl">SLA</span><span class="val">${t.sla_deadline ? new Date(t.sla_deadline).toLocaleString('sv') : '–'}</span></div>
-    <hr class="divider">
-    <div style="font-size:.88rem;margin-bottom:16px"><strong>Beskrivning:</strong><br>${escHtml(t.description)}</div>
-    ${t.resolution ? `<div style="padding:10px;background:var(--gr);border-radius:8px;font-size:.85rem;margin-bottom:12px"><strong>Lösning:</strong> ${escHtml(t.resolution)}</div>` : ''}
-    <div style="margin-bottom:12px"><strong style="font-size:.88rem">Anteckningar (${(notes||[]).length})</strong></div>
-    ${(notes||[]).map(n => `<div style="padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:.82rem">
-      <div style="color:var(--m);font-size:.72rem;margin-bottom:4px">${escHtml(n.admin_email)} · ${new Date(n.created_at).toLocaleString('sv')}</div>
-      ${escHtml(n.note)}
-    </div>`).join('') || '<div style="font-size:.82rem;color:var(--m)">Inga anteckningar</div>'}
-    <hr class="divider">
-    <div style="display:flex;gap:8px">
-      <input id="ticket-note-input" class="search-input" placeholder="Lägg till anteckning..." style="flex:1">
-      <button class="btn btn-primary btn-sm" onclick="addTicketNote('${id}')">Lägg till</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      ${t.status !== 'resolved' ? `
-        <select id="ticket-status-change" class="filter" style="font-size:.82rem">
-          <option value="">Ändra status...</option>
-          <option value="in_progress">Pågår</option>
-          <option value="waiting_customer">Väntar kund</option>
-          <option value="escalated">Eskalera</option>
-          <option value="resolved">Markera löst</option>
-        </select>
-        <button class="btn btn-outline btn-sm" onclick="changeTicketStatus('${id}')">Uppdatera</button>
-      ` : '<span class="badge green">✅ Löst</span>'}
-    </div>`;
-
-  document.getElementById('modal-refund-btn').style.display = 'none';
-  document.getElementById('modal-reassign-btn').style.display = 'none';
-  document.getElementById('modal-cancel-btn').style.display = 'none';
+  var nr = await SB.from('ticket_notes').select('*').eq('ticket_id',id).order('created_at',{ascending:true});
+  var notes = nr.data || [];
+  document.getElementById('modal-title').textContent = t.ticket_number+' - '+t.subject;
+  document.getElementById('modal-body').innerHTML = '<div class="stat-row"><span class="lbl">Prioritet</span><span class="val">'+escHtml(t.priority)+'</span></div><div class="stat-row"><span class="lbl">Typ</span><span class="val">'+escHtml(t.type)+'</span></div><div class="stat-row"><span class="lbl">Status</span><span class="val">'+escHtml(t.status)+'</span></div><div class="stat-row"><span class="lbl">Kund</span><span class="val">'+escHtml(t.customer_email||'')+'</span></div><div class="stat-row"><span class="lbl">Tilldelad</span><span class="val">'+escHtml(t.assigned_to||'')+'</span></div><div class="stat-row"><span class="lbl">Skapad</span><span class="val">'+new Date(t.created_at).toLocaleString('sv')+'</span></div><hr class="divider"><div style="font-size:.88rem;margin-bottom:16px"><strong>Beskrivning:</strong><br>'+escHtml(t.description)+'</div>'
+    +notes.map(function(n){return '<div style="padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:.82rem"><div style="color:var(--m);font-size:.72rem;margin-bottom:4px">'+escHtml(n.admin_email)+' - '+new Date(n.created_at).toLocaleString('sv')+'</div>'+escHtml(n.note)+'</div>';}).join('')
+    +'<hr class="divider"><div style="display:flex;gap:8px"><input id="ticket-note-input" class="search-input" placeholder="Lagg till anteckning..." style="flex:1"><button class="btn btn-primary btn-sm" onclick="addTicketNote(\''+id+'\')">Lagg till</button></div>'
+    +(t.status!=='resolved' ? '<div style="display:flex;gap:8px;margin-top:12px"><select id="ticket-status-change" class="filter"><option value="">Andra status...</option><option value="in_progress">Pagar</option><option value="escalated">Eskalera</option><option value="resolved">Lost</option></select><button class="btn btn-outline btn-sm" onclick="changeTicketStatus(\''+id+'\')">Uppdatera</button></div>' : '<span class="badge green">Lost</span>');
+  document.getElementById('modal-refund-btn').style.display='none';
+  document.getElementById('modal-reassign-btn').style.display='none';
+  document.getElementById('modal-cancel-btn').style.display='none';
   document.getElementById('booking-modal').classList.add('open');
 }
 
 async function addTicketNote(ticketId) {
-  const note = document.getElementById('ticket-note-input')?.value.trim();
+  var note = document.getElementById('ticket-note-input').value.trim();
   if (!note) return;
-  await SB.from('ticket_notes').insert({ ticket_id: ticketId, admin_email: adminUser?.email || '–', note });
-  await auditLog('update', 'support', ticketId, null, { note: note.substring(0, 100) });
-  showTicketDetail(ticketId); // Refresh
+  await SB.from('ticket_notes').insert({ticket_id:ticketId,admin_email:adminUser?adminUser.email:'',note:note});
+  await auditLog('update','support',ticketId,null,{note:note.substring(0,100)});
+  showTicketDetail(ticketId);
 }
 
 async function changeTicketStatus(ticketId) {
-  const newStatus = document.getElementById('ticket-status-change')?.value;
+  var newStatus = document.getElementById('ticket-status-change').value;
   if (!newStatus) return;
-  const t = ticketsData.find(x => x.id === ticketId);
-  const updates = { status: newStatus, updated_at: new Date().toISOString() };
-  if (newStatus === 'resolved') {
-    updates.resolved_at = new Date().toISOString();
-    updates.resolved_by = adminUser?.email;
-  }
-  await SB.from('support_tickets').update(updates).eq('id', ticketId);
-  await auditLog('update', 'support', t?.ticket_number, { status: t?.status }, { status: newStatus });
-  showToast('✅ Status uppdaterad till ' + newStatus);
+  var t = ticketsData.find(function(x){return x.id===ticketId;});
+  var updates = {status:newStatus,updated_at:new Date().toISOString()};
+  if (newStatus==='resolved') { updates.resolved_at=new Date().toISOString(); updates.resolved_by=adminUser?adminUser.email:null; }
+  await SB.from('support_tickets').update(updates).eq('id',ticketId);
+  await auditLog('update','support',t?t.ticket_number:null,{status:t?t.status:null},{status:newStatus});
+  showToast('Status uppdaterad');
   await loadTickets();
   closeModal();
 }
 
-// ── QUALITY & RISK PANEL ────────────────────────────
+// -- QUALITY --
 async function renderQualityPanel() {
-  // Flagged cleaners
-  const flagged = data.cleaners.filter(c => c.admin_flag || c.is_blocked || (parseFloat(c.avg_rating||5) < 3.5 && (c.review_count||0) > 3));
+  var flagged = data.cleaners.filter(function(c){ return c.admin_flag || c.is_blocked || (parseFloat(c.avg_rating||5)<3.5 && (c.review_count||0)>3); });
   document.getElementById('kpi-flagged-cleaners').textContent = flagged.length;
-
-  // Average rating
-  const ratedCleaners = data.cleaners.filter(c => (c.review_count || 0) > 0);
-  const avgR = ratedCleaners.length ? (ratedCleaners.reduce((s, c) => s + parseFloat(c.avg_rating || 0), 0) / ratedCleaners.length).toFixed(1) : '–';
-  document.getElementById('kpi-avg-rating').textContent = avgR + (avgR !== '–' ? ' ⭐' : '');
-
-  // Complaints this week
-  const weekAgo = new Date(Date.now() - 7 * 86400000);
-  const complaintsWeek = ticketsData.filter(t => t.type === 'complaint' && new Date(t.created_at) >= weekAgo);
-  document.getElementById('kpi-complaints-week').textContent = complaintsWeek.length;
-
-  // No-shows (bookings marked as missed)
-  document.getElementById('kpi-noshow-month').textContent = data.cleaners.reduce((s, c) => s + (c.noshow_count_30d || 0), 0);
-
-  // Flagged cleaners list
-  document.getElementById('flagged-cleaners-list').innerHTML = flagged.length ? flagged.map(c => `
-    <div class="cleaner-card">
-      <div class="avatar">${(c.full_name || '?')[0]}</div>
-      <div class="cleaner-info" style="flex:1">
-        <h4>${escHtml(c.full_name)}</h4>
-        <p>⭐ ${parseFloat(c.avg_rating||0).toFixed(1)} · ${c.review_count||0} betyg · ${escHtml(c.city || '–')}</p>
-        ${c.admin_flag ? `<span class="badge ${c.admin_flag === 'red' ? 'red' : 'yellow'}">${c.admin_flag === 'red' ? '🔴' : '🟡'} ${escHtml(c.admin_flag_reason || c.admin_flag)}</span>` : ''}
-        ${c.is_blocked ? '<span class="badge red">🚫 Blockerad</span>' : ''}
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Detaljer</button>
-    </div>
-  `).join('') : '<div class="empty">Inga flaggade städare just nu 👍</div>';
-
-  // Risk customers
-  const riskCustomers = (data.customers || []).filter(c => c.is_blocked || c.admin_flag || (c.cancel_count_30d || 0) >= 3);
-  document.getElementById('risk-customers-list').innerHTML = riskCustomers.length ? riskCustomers.map(c => `
-    <div style="padding:10px;background:var(--bg);border-radius:10px;margin-bottom:8px;font-size:.88rem">
-      <strong>${escHtml(c.name || c.email)}</strong>
-      <div style="font-size:.78rem;color:var(--m)">${escHtml(c.email)} · ${c.total_bookings || 0} bokningar</div>
-      ${c.admin_flag ? `<span class="badge yellow">⚠️ ${escHtml(c.admin_flag)}</span>` : ''}
-      ${c.is_blocked ? '<span class="badge red">🚫 Blockerad</span>' : ''}
-    </div>
-  `).join('') : '<div class="empty">Inga riskkunder 👍</div>';
-
-  // Rating distribution chart
-  renderRatingChart();
+  var ratedCleaners = data.cleaners.filter(function(c){ return (c.review_count||0)>0; });
+  var avgR = ratedCleaners.length ? (ratedCleaners.reduce(function(s,c){return s+parseFloat(c.avg_rating||0);},0)/ratedCleaners.length).toFixed(1) : '-';
+  document.getElementById('kpi-avg-rating').textContent = avgR;
+  document.getElementById('kpi-complaints-week').textContent = ticketsData.filter(function(t){return t.type==='complaint' && new Date(t.created_at)>=new Date(Date.now()-7*86400000);}).length;
+  document.getElementById('kpi-noshow-month').textContent = data.cleaners.reduce(function(s,c){return s+(c.noshow_count_30d||0);},0);
+  document.getElementById('flagged-cleaners-list').innerHTML = flagged.length ? flagged.map(function(c){
+    return '<div class="cleaner-card"><div class="avatar">'+(c.full_name||'?')[0]+'</div><div class="cleaner-info" style="flex:1"><h4>'+escHtml(c.full_name)+'</h4><p>'+parseFloat(c.avg_rating||0).toFixed(1)+' - '+escHtml(c.city||'')+'</p></div><button class="btn btn-outline btn-sm" onclick="showCleanerDetail(\''+c.id+'\')">Detaljer</button></div>';
+  }).join('') : '<div class="empty">Inga flaggade stadare</div>';
+  document.getElementById('risk-customers-list').innerHTML = '<div class="empty">Inga riskkunder</div>';
 }
 
-function renderRatingChart() {
-  const canvas = document.getElementById('rating-distribution-chart');
-  if (!canvas || !data.reviews.length) return;
-
-  const dist = [0, 0, 0, 0, 0]; // 1-5
-  data.reviews.forEach(r => {
-    const rating = Math.min(5, Math.max(1, parseInt(r.cleaner_rating) || 5));
-    dist[rating - 1]++;
-  });
-
-  if (window._ratingChart) window._ratingChart.destroy();
-  window._ratingChart = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: ['1 ⭐', '2 ⭐', '3 ⭐', '4 ⭐', '5 ⭐'],
-      datasets: [{ label: 'Antal', data: dist, backgroundColor: ['#DC2626', '#F59E0B', '#F59E0B', '#16A34A', '#0F6E56'], borderRadius: 8 }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-  });
-}
-
-// ── TEAM & ROLES ────────────────────────────────────
-let teamData = [];
-let rolesData = [];
-
+// -- TEAM --
+var teamData = [], rolesData = [];
 async function loadTeam() {
-  const [users, roles] = await Promise.all([
-    SB.from('admin_users').select('*, admin_roles(*)').order('created_at'),
-    SB.from('admin_roles').select('*').order('level', { ascending: false }),
-  ]);
-  teamData = users.data || [];
-  rolesData = roles.data || [];
+  var u = await SB.from('admin_users').select('*, admin_roles(*)').order('created_at');
+  var r = await SB.from('admin_roles').select('*').order('level',{ascending:false});
+  teamData = u.data || []; rolesData = r.data || [];
   renderTeam();
 }
 
 function renderTeam() {
-  // Admin users table
-  document.getElementById('team-tbody').innerHTML = teamData.map(u => `<tr>
-    <td><strong>${escHtml(u.display_name)}</strong></td>
-    <td style="font-size:.82rem">${escHtml(u.email)}</td>
-    <td><span class="badge ${u.admin_roles?.level >= 90 ? 'green' : u.admin_roles?.level >= 60 ? 'blue' : 'grey'}">${escHtml(u.admin_roles?.name || '–')}</span></td>
-    <td>${u.is_active ? '<span class="badge green">Aktiv</span>' : '<span class="badge red">Inaktiv</span>'}</td>
-    <td style="font-size:.78rem">${u.last_login ? new Date(u.last_login).toLocaleString('sv') : 'Aldrig'}</td>
-    <td>${hasPerm('roles', 'assign') && adminUser?.role_level > (u.admin_roles?.level || 0) ? `<button class="btn btn-outline btn-sm" onclick="editAdminUser('${u.id}')">Redigera</button>` : ''}</td>
-  </tr>`).join('') || '<tr><td colspan="6" class="empty">Inga adminanvändare</td></tr>';
-
-  // Roles list
-  document.getElementById('roles-list').innerHTML = rolesData.map(r => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem">
-      <div><strong>${escHtml(r.name)}</strong> <span style="font-size:.75rem;color:var(--m)">nivå ${r.level}</span></div>
-      <span style="font-size:.78rem;color:var(--m)">${escHtml(r.description || '')}</span>
-    </div>
-  `).join('');
-
-  // Superadmin status
-  const superadmins = teamData.filter(u => u.admin_roles?.name === 'superadmin' && u.is_active);
-  document.getElementById('superadmin-status').innerHTML = `
-    ✅ ${superadmins.length} aktiv${superadmins.length !== 1 ? 'a' : ''} superadmin${superadmins.length !== 1 ? 's' : ''}:
-    ${superadmins.map(u => escHtml(u.display_name)).join(', ')}
-  `;
+  document.getElementById('team-tbody').innerHTML = teamData.map(function(u){
+    return '<tr><td><strong>'+escHtml(u.display_name)+'</strong></td><td style="font-size:.82rem">'+escHtml(u.email)+'</td><td><span class="badge '+(u.admin_roles&&u.admin_roles.level>=90?'green':u.admin_roles&&u.admin_roles.level>=60?'blue':'grey')+'">'+escHtml(u.admin_roles?u.admin_roles.name:'')+'</span></td><td>'+(u.is_active?'<span class="badge green">Aktiv</span>':'<span class="badge red">Inaktiv</span>')+'</td><td style="font-size:.78rem">'+(u.last_login?new Date(u.last_login).toLocaleString('sv'):'Aldrig')+'</td><td></td></tr>';
+  }).join('') || '<tr><td colspan="6" class="empty">Inga admins</td></tr>';
+  document.getElementById('roles-list').innerHTML = rolesData.map(function(r){
+    return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem"><div><strong>'+escHtml(r.name)+'</strong> <span style="font-size:.75rem;color:var(--m)">niva '+r.level+'</span></div><span style="font-size:.78rem;color:var(--m)">'+escHtml(r.description||'')+'</span></div>';
+  }).join('');
+  var sas = teamData.filter(function(u){return u.admin_roles&&u.admin_roles.name==='superadmin'&&u.is_active;});
+  document.getElementById('superadmin-status').textContent = sas.length+' aktiv superadmin: '+sas.map(function(u){return u.display_name;}).join(', ');
 }
 
 function showAddAdminModal() {
-  if (!hasPerm('roles', 'assign')) return showToast('❌ Behörighet saknas');
-  const roleOptions = rolesData
-    .filter(r => r.level < (adminUser?.role_level || 0)) // Can only assign lower roles
-    .map(r => `<option value="${r.id}">${escHtml(r.name)} (nivå ${r.level})</option>`)
-    .join('');
-
-  document.getElementById('quick-modal-title').textContent = 'Lägg till adminanvändare';
-  document.getElementById('quick-modal-body').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <input id="new-admin-name" class="search-input" placeholder="Namn *" style="flex:none">
-      <input id="new-admin-email" class="search-input" placeholder="E-post *" type="email" style="flex:none">
-      <select id="new-admin-role" class="filter" style="width:100%">${roleOptions}</select>
-    </div>`;
-  document.getElementById('quick-modal-confirm').textContent = 'Lägg till';
+  if (!hasPerm('roles','assign')) return showToast('Behorighet saknas');
+  var opts = rolesData.filter(function(r){return r.level<(adminUser?adminUser.role_level:0);}).map(function(r){return '<option value="'+r.id+'">'+escHtml(r.name)+' (niva '+r.level+')</option>';}).join('');
+  document.getElementById('quick-modal-title').textContent = 'Lagg till admin';
+  document.getElementById('quick-modal-body').innerHTML = '<div style="display:flex;flex-direction:column;gap:12px"><input id="new-admin-name" class="search-input" placeholder="Namn" style="flex:none"><input id="new-admin-email" class="search-input" placeholder="E-post" type="email" style="flex:none"><select id="new-admin-role" class="filter" style="width:100%">'+opts+'</select></div>';
+  document.getElementById('quick-modal-confirm').textContent = 'Lagg till';
   document.getElementById('quick-modal-confirm').onclick = addAdminUser;
   document.getElementById('quick-modal').classList.add('open');
 }
 
 async function addAdminUser() {
-  const name = document.getElementById('new-admin-name').value.trim();
-  const email = document.getElementById('new-admin-email').value.trim();
-  const roleId = document.getElementById('new-admin-role').value;
-  if (!name || !email || !roleId) return showToast('❌ Alla fält krävs');
-
-  const { error } = await SB.from('admin_users').insert({ display_name: name, email, role_id: roleId });
-  if (error) return showToast('❌ ' + error.message);
-
-  await auditLog('create', 'role', email, null, { name, role_id: roleId });
+  var name = document.getElementById('new-admin-name').value.trim();
+  var email = document.getElementById('new-admin-email').value.trim();
+  var roleId = document.getElementById('new-admin-role').value;
+  if (!name||!email||!roleId) return showToast('Alla falt kravs');
+  var res = await SB.from('admin_users').insert({display_name:name,email:email,role_id:roleId});
+  if (res.error) return showToast('Fel: '+res.error.message);
+  await auditLog('create','role',email,null,{name:name,role_id:roleId});
   document.getElementById('quick-modal').classList.remove('open');
-  showToast('✅ Admin tillagd: ' + name);
+  showToast('Admin tillagd: '+name);
   await loadTeam();
 }
 
-async function editAdminUser(id) {
-  const u = teamData.find(x => x.id === id);
-  if (!u) return;
-
-  const roleOptions = rolesData
-    .filter(r => r.level <= (adminUser?.role_level || 0))
-    .map(r => `<option value="${r.id}" ${r.id === u.role_id ? 'selected' : ''}>${escHtml(r.name)} (nivå ${r.level})</option>`)
-    .join('');
-
-  document.getElementById('quick-modal-title').textContent = 'Redigera: ' + u.display_name;
-  document.getElementById('quick-modal-body').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <input id="edit-admin-name" class="search-input" value="${escHtml(u.display_name)}" style="flex:none">
-      <div style="font-size:.85rem;color:var(--m)">${escHtml(u.email)}</div>
-      <select id="edit-admin-role" class="filter" style="width:100%">${roleOptions}</select>
-      <label style="font-size:.88rem;display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="edit-admin-active" ${u.is_active ? 'checked' : ''}> Aktiv
-      </label>
-    </div>`;
-  document.getElementById('quick-modal-confirm').textContent = 'Spara';
-  document.getElementById('quick-modal-confirm').onclick = async () => {
-    const newName = document.getElementById('edit-admin-name').value.trim();
-    const newRole = document.getElementById('edit-admin-role').value;
-    const newActive = document.getElementById('edit-admin-active').checked;
-
-    const { error } = await SB.from('admin_users').update({
-      display_name: newName, role_id: newRole, is_active: newActive
-    }).eq('id', id);
-
-    if (error) return showToast('❌ ' + error.message);
-
-    await auditLog('update', 'role', u.email,
-      { role_id: u.role_id, is_active: u.is_active },
-      { role_id: newRole, is_active: newActive }
-    );
-    document.getElementById('quick-modal').classList.remove('open');
-    showToast('✅ Uppdaterad');
-    await loadTeam();
-  };
-  document.getElementById('quick-modal').classList.add('open');
-}
-
-// ── PLATFORM SETTINGS ───────────────────────────────
-let platformSettings = [];
-
+// -- PLATFORM SETTINGS --
+var platformSettings = [];
 async function loadPlatformSettings() {
-  const { data } = await SB.from('admin_settings').select('*').order('category');
-  platformSettings = data || [];
+  var res = await SB.from('admin_settings').select('*').order('category');
+  platformSettings = res.data || [];
   renderPlatformSettings();
 }
 
 function renderPlatformSettings() {
-  const categories = {};
-  platformSettings.forEach(s => {
-    if (!categories[s.category]) categories[s.category] = [];
-    categories[s.category].push(s);
-  });
-
-  const catLabels = {
-    booking: '📅 Bokningsregler', finance: '💰 Ekonomi & Provisioner',
-    quality: '⭐ Kvalitet', matching: '📍 Matchning', support: '🎫 Support & SLA'
-  };
-
-  const canEdit = hasPerm('settings', 'write');
-
-  document.getElementById('platform-settings-container').innerHTML = Object.entries(categories).map(([cat, settings]) => `
-    <div class="card">
-      <h3 style="font-weight:600;margin-bottom:16px">${catLabels[cat] || cat}</h3>
-      ${settings.map(s => {
-        const val = typeof s.value === 'string' ? s.value : JSON.stringify(s.value).replace(/^"|"$/g, '');
-        const inputType = val === 'true' || val === 'false' ? 'checkbox' : 'text';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-weight:600;font-size:.88rem">${escHtml(s.label || s.key)}</div>
-            <div style="font-size:.75rem;color:var(--m)">${escHtml(s.description || '')} <span style="opacity:.5">[${s.key}]</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${inputType === 'checkbox'
-              ? `<input type="checkbox" data-key="${escHtml(s.key)}" ${val === 'true' ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onchange="updateSetting('${escHtml(s.key)}', this.checked.toString())">`
-              : `<input class="search-input" style="width:120px;font-size:.85rem;padding:6px 10px" data-key="${escHtml(s.key)}" value="${escHtml(val)}" ${canEdit ? '' : 'disabled'}>
-                 ${canEdit ? `<button class="btn btn-outline btn-sm" onclick="updateSettingFromInput('${escHtml(s.key)}')">Spara</button>` : ''}`
-            }
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-  `).join('') || '<div class="empty">Inga inställningar laddade. Kör SQL-migrationen först.</div>';
+  var cats = {};
+  platformSettings.forEach(function(s){ if(!cats[s.category]) cats[s.category]=[]; cats[s.category].push(s); });
+  var labels = {booking:'Bokningsregler',finance:'Ekonomi & Provisioner',quality:'Kvalitet',matching:'Matchning',support:'Support & SLA'};
+  document.getElementById('platform-settings-container').innerHTML = Object.keys(cats).map(function(cat){
+    return '<div class="card"><h3 style="font-weight:600;margin-bottom:16px">'+(labels[cat]||cat)+'</h3>'+cats[cat].map(function(s){
+      var val = typeof s.value==='string' ? s.value : JSON.stringify(s.value).replace(/^"|"$/g,'');
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)"><div><div style="font-weight:600;font-size:.88rem">'+escHtml(s.label||s.key)+'</div><div style="font-size:.75rem;color:var(--m)">'+escHtml(s.description||'')+' <span style="opacity:.5">['+s.key+']</span></div></div><div style="display:flex;align-items:center;gap:8px"><input class="search-input" style="width:120px;font-size:.85rem;padding:6px 10px" data-key="'+escHtml(s.key)+'" value="'+escHtml(val)+'"><button class="btn btn-outline btn-sm" onclick="updateSettingFromInput(\''+escHtml(s.key)+'\')">Spara</button></div></div>';
+    }).join('')+'</div>';
+  }).join('') || '<div class="empty">Inga installningar. Kor SQL-migrationen forst.</div>';
 }
 
 async function updateSettingFromInput(key) {
-  const input = document.querySelector(`input[data-key="${key}"]`);
+  var input = document.querySelector('input[data-key="'+key+'"]');
   if (!input) return;
-  await updateSetting(key, input.value);
-}
-
-async function updateSetting(key, newValue) {
-  if (!hasPerm('settings', 'write')) return showToast('❌ Behörighet saknas');
-
-  const old = platformSettings.find(s => s.key === key);
-  const oldVal = old ? (typeof old.value === 'string' ? old.value : JSON.stringify(old.value).replace(/^"|"$/g, '')) : null;
-
-  const { error } = await SB.from('admin_settings').update({
-    value: JSON.stringify(newValue),
-    updated_by: adminUser?.email,
-    updated_at: new Date().toISOString()
-  }).eq('key', key);
-
-  if (error) return showToast('❌ ' + error.message);
-
-  await auditLog('setting_change', 'setting', key, { value: oldVal }, { value: newValue }, 'Inställning ändrad via admin');
-  showToast('✅ Inställning sparad: ' + key);
+  var old = platformSettings.find(function(s){return s.key===key;});
+  var res = await SB.from('admin_settings').update({value:JSON.stringify(input.value),updated_by:adminUser?adminUser.email:null,updated_at:new Date().toISOString()}).eq('key',key);
+  if (res.error) return showToast('Fel: '+res.error.message);
+  await auditLog('setting_change','setting',key,old?{value:old.value}:null,{value:input.value},'Installning andrad');
+  showToast('Sparad: '+key);
   await loadPlatformSettings();
 }
 
-// ── SYSTEM STATUS ───────────────────────────────────
+// -- SYSTEM STATUS --
 async function renderSystemStatus() {
   document.getElementById('kpi-total-bookings').textContent = data.bookings.length;
   document.getElementById('kpi-total-cleaners').textContent = data.cleaners.length;
-  document.getElementById('kpi-total-customers').textContent = (data.customers || []).length;
-
-  // Count tables
-  const tables = ['bookings', 'cleaners', 'customer_profiles', 'cleaner_applications',
-    'reviews', 'subscriptions', 'emails', 'invoices', 'support_tickets',
-    'admin_users', 'admin_audit_log', 'admin_settings', 'admin_roles'];
+  document.getElementById('kpi-total-customers').textContent = (data.customers||[]).length;
+  var tables = ['bookings','cleaners','customer_profiles','cleaner_applications','reviews','subscriptions','emails','support_tickets','admin_users','admin_audit_log','admin_settings','admin_roles'];
   document.getElementById('kpi-db-size').textContent = tables.length;
-
-  // Table row counts
-  const counts = await Promise.all(tables.map(async t => {
-    try {
-      const { count } = await SB.from(t).select('id', { count: 'exact', head: true });
-      return { table: t, count: count || 0 };
-    } catch { return { table: t, count: '?' }; }
+  var counts = await Promise.all(tables.map(async function(t){
+    try { var r = await SB.from(t).select('id',{count:'exact',head:true}); return {table:t,count:r.count||0}; }
+    catch(e){ return {table:t,count:'?'}; }
   }));
-
-  document.getElementById('db-tables-list').innerHTML = counts.map(c => `
-    <div class="stat-row">
-      <span class="lbl">${escHtml(c.table)}</span>
-      <span class="val">${c.count} rader</span>
-    </div>
-  `).join('');
+  document.getElementById('db-tables-list').innerHTML = counts.map(function(c){
+    return '<div class="stat-row"><span class="lbl">'+escHtml(c.table)+'</span><span class="val">'+c.count+' rader</span></div>';
+  }).join('');
 }
 
-// ── ENHANCED PAGE LOADER ────────────────────────────
-const originalShowPage = showPage;
+// -- OVERRIDE showPage for new sections --
+var _origShowPage = showPage;
 showPage = function(id) {
-  // Remove active class from all nav items
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  // Hide all pages
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  // Show target page
-  const page = document.getElementById('page-' + id);
-  if (page) page.classList.add('active');
-  // Highlight nav item
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(n => {
-    if (n.onclick?.toString().includes("'" + id + "'")) n.classList.add('active');
-  });
-
-  // Lazy-load section data
-  switch (id) {
-    case 'support': loadTickets(); break;
-    case 'quality': renderQualityPanel(); break;
-    case 'team': loadTeam(); break;
-    case 'platform-settings': loadPlatformSettings(); break;
-    case 'audit': loadAuditLog(); break;
-    case 'system-status': renderSystemStatus(); break;
-    // Existing pages
-    case 'dashboard': renderDashboard(); break;
-    case 'bookings': renderBookings(); break;
-    case 'pending': renderPending(); break;
-    case 'cleaners': renderCleaners(); break;
-    case 'applications': renderApplications(); break;
-    case 'customers': renderCustomers(); break;
-    case 'payouts': renderPayouts(); break;
-    case 'subscriptions': renderSubscriptions(); break;
-    case 'reviews': renderReviews(); break;
-    case 'inbox': loadInbox(); break;
-    case 'onboarding': renderOnboarding(); break;
-    case 'settings': renderSettings(); break;
-  }
+  _origShowPage(id);
+  if (id==='support') loadTickets();
+  if (id==='quality') renderQualityPanel();
+  if (id==='team') loadTeam();
+  if (id==='platform-settings') loadPlatformSettings();
+  if (id==='audit') loadAuditLog();
+  if (id==='system-status') renderSystemStatus();
 };
-
-// ── AUDIT-WRAPPED ACTIONS ───────────────────────────
-// Wrap existing destructive actions with audit logging
-const _origRefund = typeof refundBooking === 'function' ? refundBooking : null;
-const _origCancel = typeof cancelBooking === 'function' ? cancelBooking : null;
-const _origSuspend = typeof suspendCleaner === 'function' ? suspendCleaner : null;
-
-// Enhanced refund with audit
-if (_origRefund) {
-  const _refundOrig = refundBooking;
-  refundBooking = async function() {
-    const b = data.bookings.find(x => x.id === currentBookingId);
-    await auditLog('refund', 'booking', currentBookingId, { payment_status: b?.payment_status }, { payment_status: 'refunded' }, 'Admin-initierad återbetalning');
-    return _refundOrig.apply(this, arguments);
-  };
-}
 
 </script>
 </body>
