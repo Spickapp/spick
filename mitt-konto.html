@@ -404,7 +404,7 @@ async function login() {
   const { data: bookings } = await SB
     .from('bookings')
     .select('*')
-    .or(`email.eq.${email},customer_email.eq.${email}`)
+    .or(`customer_email.eq.${email}`)
     .order('created_at', { ascending: false });
 
   if (!bookings || bookings.length === 0) {
@@ -417,8 +417,22 @@ async function login() {
 
   currentEmail = email;
   localStorage.setItem('spick_customer_email', email);
-  allBookings = bookings;
-  showPortal(bookings, email);
+  // Map DB column names to frontend names
+  allBookings = bookings.map(b => ({
+    ...b,
+    date: b.booking_date || b.date,
+    time: b.booking_time || b.time,
+    hours: b.booking_hours || b.hours,
+    service: b.service_type || b.service,
+    address: b.customer_address || b.address,
+    name: b.customer_name || b.name,
+    email: b.customer_email || b.email,
+    phone: b.customer_phone || b.phone,
+    sqm: b.square_meters || b.sqm,
+    rut: (b.rut_amount && b.rut_amount > 0) || b.rut,
+    stripe_payment_intent: b.payment_intent_id || b.stripe_payment_intent,
+  }));
+  showPortal(allBookings, email);
 }
 
 // ── PORTAL ───────────────────────────────────

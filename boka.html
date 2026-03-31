@@ -903,7 +903,7 @@ async function goStep2() {
   if (state.cleanerId && state.cleanerName) {
     // 1. Verifiera att städaren finns i DB och är godkänd
     try {
-      const verifyRes = await fetch(`${SUPA}/rest/v1/cleaners?id=eq.${state.cleanerId}&is_approved=eq.true&select=id,services,full_name,hourly_rate,city`, {headers:H});
+      const verifyRes = await fetch(`${SUPA}/rest/v1/v_cleaners_for_booking?id=eq.${state.cleanerId}&select=id,services,full_name,hourly_rate,city`, {headers:H});
       const verified = await verifyRes.json();
       if (!Array.isArray(verified) || verified.length === 0) {
         // Städare finns inte / ej godkänd — rensa
@@ -965,7 +965,7 @@ async function loadGlobalAvailability() {
   }));
   try {
     const [availRes, blockedRes, bookingsRes] = await Promise.all([
-      fetch(`${SUPA}/rest/v1/cleaner_availability?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H}),
+      fetch(`${SUPA}/rest/v1/v_cleaner_availability_int?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H}),
       fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H}),
       fetch(`${SUPA}/rest/v1/booking_slots?select=cleaner_id,date,time,hours&order=date.asc`, {headers:H})
     ]);
@@ -1271,7 +1271,7 @@ async function loadAvailableCleaners() {
   try {
     const dow = new Date(state.date + 'T00:00:00').getDay();
     // Hämta städare som: är godkända, har tillgänglighet denna dag, inte är blockerade, inte fullbokade
-    let url = `${SUPA}/rest/v1/cleaners?is_approved=eq.true&select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified`;
+    let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
     const res = await fetch(url, {headers:H});
     let cleaners = await res.json();
     // Filtrera: har tjänsten
@@ -1826,19 +1826,19 @@ async function doBook() {
     // which has restrictive RLS that blocks anon inserts.
     // Edge Functions use fallbacks: b.customer_email || b.email — so both work.
     const bookingData = {
-      name: state.fname+' '+state.lname,
-      email: state.email,
-      phone: state.phone,
-      address: state.address,
-      city: state.cleanerCity,
-      service: state.service,
-      date: state.date,
-      time: state.time,
-      hours: state.hours,
+      customer_name: state.fname+' '+state.lname,
+      customer_email: state.email,
+      customer_phone: state.phone,
+      customer_address: state.address + (state.cleanerCity ? ', ' + state.cleanerCity : ''),
+      service_type: state.service,
+      booking_date: state.date,
+      booking_time: state.time,
+      booking_hours: state.hours,
+      square_meters: state.sqm || null,
       total_price: total,
       status: 'pending',
       payment_status: 'pending',
-      rut: useRut,
+      rut_amount: useRut ? Math.round(total) : 0,
       cleaner_id: state.cleanerId,
       cleaner_name: state.cleanerName,
       ...(hashedPnr ? {customer_pnr_hash: hashedPnr} : {}),
@@ -1968,7 +1968,13 @@ function formatDate(dateStr) {
 // Initialt: kolla URL för bakåtkompabilitet
 const _p = new URLSearchParams(location.search);
 if (_p.get('cancelled')) {
-  setTimeout(() => alert('Betalningen avbröts. Du kan försöka igen.'), 500);
+  setTimeout(() => {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#FEF3C7;border:1.5px solid #FDE68A;border-radius:12px;padding:16px 20px;margin:16px auto;max-width:600px;display:flex;align-items:center;gap:12px;font-size:.9rem';
+    banner.innerHTML = '<span style="font-size:1.5rem">💳</span><div><div style="font-weight:600;color:#92400E">Betalningen avbröts</div><div style="color:#92400E;font-size:.85rem;margin-top:2px">Ingen debitering har gjorts. Du kan ändra uppgifter och försöka igen.</div></div><button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#92400E">✕</button>';
+    document.querySelector('.book-wrap')?.prepend(banner);
+    history.replaceState(null, '', location.pathname);
+  }, 300);
 }
 </script>
 

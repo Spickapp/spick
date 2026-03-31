@@ -87,6 +87,7 @@ h1{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--b);margin-b
       <button onclick="addToCalendar()" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.875rem;background:#fff;border:1.5px solid var(--border,#E8E8E4);border-radius:10px;font-size:.875rem;font-weight:600;cursor:pointer;color:#1C1C1A;font-family:inherit;margin-top:.625rem" id="ical-btn">
         📅 Lägg till i kalender
       </button>
+  <a href="mitt-konto.html" class="btn-outline" style="margin-top:.375rem">Mitt konto – se alla dina bokningar →</a>
   <a href="index.html" class="btn-outline">Tillbaka till startsidan</a>
       <!-- DELA / REFERRAL -->
       <div style="background:#F0FDF4;border-radius:12px;padding:1.125rem;margin-top:1rem;text-align:center">
@@ -152,16 +153,16 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
   const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
   
   const data = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?stripe_session_id=eq.${sessionId}&select=id,service,date,time,city,total_price,payment_status`,
+    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?payment_intent_id=eq.${sessionId}&select=id,service_type,booking_date,booking_time,customer_address,total_price,payment_status`,
     { headers: { 'apikey': SPICK.SUPA_KEY } }
   ).then(r => r.json()).catch(() => []);
 
   const b = data?.[0];
   if (b?.id) {
-    history.replaceState(null,'',location.pathname+'?bid='+b.id+'&service='+encodeURIComponent(b.service||'')+'&date='+encodeURIComponent(b.date||'')+'&address='+encodeURIComponent(b.city||''));
-    document.getElementById('d-service').textContent = b.service || '–';
-    document.getElementById('d-date').textContent = b.date || '–';
-    document.getElementById('d-address').textContent = b.city || '–';
+    history.replaceState(null,'',location.pathname+'?bid='+b.id+'&service='+encodeURIComponent(b.service_type||'')+'&date='+encodeURIComponent(b.booking_date||'')+'&address='+encodeURIComponent(b.customer_address||''));
+    document.getElementById('d-service').textContent = b.service_type || '–';
+    document.getElementById('d-date').textContent = b.booking_date || '–';
+    document.getElementById('d-address').textContent = b.customer_address || '–';
     document.getElementById('d-id').textContent = b.id.substring(0,8).toUpperCase();
     const bookingBtn = document.getElementById('booking-btn');
     if (bookingBtn) bookingBtn.href = `min-bokning.html?bid=${b.id}`;

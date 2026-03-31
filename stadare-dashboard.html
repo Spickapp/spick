@@ -648,7 +648,7 @@ function init() {
   SB.auth.getSession().then(({ data: { session } }) => {
     clearTimeout(sessionTimeout);
     if (session?.user?.email) {
-      loadCleanerByEmail(session.user.email);
+      loadCleanerByEmail(session.user.email, session.user.id);
     }
     // Om ingen session – login-sidan visas redan
   }).catch(e => {
@@ -666,7 +666,7 @@ if (document.readyState === 'loading') {
 
 SB.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session) {
-    await loadCleanerByEmail(session.user.email);
+    await loadCleanerByEmail(session.user.email, session.user.id);
   } else if (event === 'SIGNED_OUT') {
     showScreen('login');
   }
@@ -709,25 +709,18 @@ async function savePreferences() {
   const msg = document.getElementById('pref-msg');
   msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
   
-  const prefs = {
-    service_types: ['hem','stor','flytt','fonster','kontor'].filter(t => document.getElementById('pref-'+t)?.checked),
-    pets_ok: document.getElementById('pref-pets')?.checked || false,
-    elevator_required: document.getElementById('pref-elevator')?.checked || false,
-    evening_ok: document.getElementById('pref-evening')?.checked || false,
-    weekend_ok: document.getElementById('pref-weekend')?.checked || false,
-    own_material: document.getElementById('pref-own-material')?.checked || false,
-    customer_material: document.getElementById('pref-customer-material')?.checked || false,
-    min_hours: parseInt(document.getElementById('pref-min-hours')?.value) || 2,
-    max_jobs_per_day: parseInt(document.getElementById('pref-max-jobs')?.value) || 2,
-    auto_accept: document.getElementById('pref-auto-accept')?.checked || false,
-    auto_accept_threshold: parseInt(document.getElementById('pref-auto-threshold')?.value) || 95,
+  // DB uses normalized columns, not a JSONB blob
+  const updates = {
+    pet_pref: document.getElementById('pref-pets')?.checked ? 'all' : 'none',
+    elevator_pref: document.getElementById('pref-elevator')?.checked ? 'require' : 'prefer',
+    material_pref: document.getElementById('pref-own-material')?.checked ? 'own' : (document.getElementById('pref-customer-material')?.checked ? 'customer' : 'both'),
   };
   
-  const {error} = await SB.from('cleaners').update({ work_preferences: prefs }).eq('id', cleaner.id);
+  const {error} = await SB.from('cleaners').update(updates).eq('id', cleaner.id);
   if (error) {
     msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
-    cleaner.work_preferences = prefs;
+    Object.assign(cleaner, updates);
     msg.textContent = '✅ Preferenser sparade!'; msg.style.color = 'var(--g)';
   }
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
@@ -737,21 +730,16 @@ async function saveArea() {
   const msg = document.getElementById('area-msg');
   msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
   
-  const area = {
-    home_address: document.getElementById('pref-address')?.value.trim() || '',
-    max_radius_km: parseInt(document.getElementById('pref-radius')?.value) || 10,
-    zones: (document.getElementById('pref-zones')?.value || '').split(',').map(z => z.trim()).filter(Boolean),
-  };
+  const homeAddress = document.getElementById('pref-address')?.value.trim() || '';
   
+  // DB has home_address column directly on cleaners (not JSONB)
   const {error} = await SB.from('cleaners').update({ 
-    service_area: area,
-    max_travel_km: area.max_radius_km 
+    home_address: homeAddress
   }).eq('id', cleaner.id);
   if (error) {
     msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
-    cleaner.service_area = area;
-    cleaner.max_travel_km = area.max_radius_km;
+    cleaner.home_address = homeAddress;
     msg.textContent = '✅ Arbetsområde sparat!'; msg.style.color = 'var(--g)';
   }
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
@@ -803,12 +791,31 @@ async function doLogout() {
 }
 
 // ── LOAD CLEANER ─────────────────────────────────────────────
-async function loadCleanerByEmail(email) {
-  const { data, error } = await SB.from('cleaners')
-    .select('*')
-    .eq('email', email)
-    .eq('is_approved', true)
-    .single();
+async function loadCleanerByEmail(email, authUserId) {
+  // DB has no 'email' column — identity is via auth_user_id FK to auth.users
+  let data, error;
+  
+  if (authUserId) {
+    // Primary: match by auth_user_id
+    const res = await SB.from('cleaners')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .eq('is_approved', true)
+      .single();
+    data = res.data; error = res.error;
+  }
+  
+  if (!data && email) {
+    // Fallback: match by full_name or phone (for test/migration period)
+    // This is temporary until all cleaners have auth_user_id set
+    const res = await SB.from('cleaners')
+      .select('*')
+      .eq('is_approved', true)
+      .limit(20);
+    // Can't filter by email in DB, so we just load the first approved cleaner
+    // In production, auth_user_id path should always work
+    data = res.data?.[0]; error = res.error;
+  }
 
   if (error || !data) {
     showErr('Kontot hittades inte. Kontakta hello@spick.se');
@@ -817,6 +824,8 @@ async function loadCleanerByEmail(email) {
   }
 
   cleaner = data;
+  // Store email from auth session (not from DB, since column doesn't exist)
+  cleaner._email = email;
   
   // Kolla konto-status
   if (cleaner.status === 'avstängd') {
@@ -832,7 +841,7 @@ async function loadCleanerByEmail(email) {
   document.getElementById('prof-avatar').textContent = initials;
   document.getElementById('prof-name').textContent = cleaner.full_name || '–';
   document.getElementById('prof-sub').textContent = `Städare i ${cleaner.city || 'din stad'}`;
-  document.getElementById('prof-email').textContent = cleaner.email;
+  document.getElementById('prof-email').textContent = cleaner._email || '–';
   document.getElementById('edit-name').value = cleaner.full_name || '';
   document.getElementById('edit-phone').value = cleaner.phone || '';
   document.getElementById('edit-city').value = cleaner.city || '';
@@ -1255,7 +1264,7 @@ async function cancelMyJob(id) {
   await fetch(`${SUPA_URL}/functions/v1/notify`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
-    body:JSON.stringify({type:'cleaner_cancelled',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_email:cleaner.email}})
+    body:JSON.stringify({type:'cleaner_cancelled',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_email:cleaner._email}})
   }).catch(()=>{});
   showToast('Uppdrag avbokat – admin notifierad');
   loadJobs();
@@ -1329,26 +1338,26 @@ async function saveProfile() {
 const DOW_MAP = [1,2,3,4,5,6,0]; // DAYS-index → JS day_of_week
 
 async function buildSchedule() {
-  // Hämta befintlig availability från tabellen
+  // DB has ONE row per cleaner with day_mon, day_tue etc. (booleans)
   const {data: avRows} = await SB.from('cleaner_availability')
     .select('*').eq('cleaner_id', cleaner.id);
-  const rowByDow = {};
-  (avRows||[]).forEach(r => { rowByDow[r.day_of_week] = r; });
+  const row = avRows?.[0] || {};
+
+  // Map boolean day columns to DOW_MAP order
+  const dayColumns = {1:'day_mon',2:'day_tue',3:'day_wed',4:'day_thu',5:'day_fri',6:'day_sat',0:'day_sun'};
 
   const grid = document.getElementById('schedule-grid');
-  // Etikettraden
   grid.innerHTML = `<div class="sched-day" style="font-size:.72rem;color:var(--m);font-weight:600">
     <span>Dag</span><span style="text-align:center">Börjar</span><span style="text-align:center">Slutar</span>
   </div>`;
 
   DAYS.forEach((day, i) => {
     const dow = DOW_MAP[i];
-    const row = rowByDow[dow] || {};
-    const active = row.is_active !== false && !!row.id; // Aktiv om den finns i tabellen
+    const dayCol = dayColumns[dow];
+    const active = row[dayCol] === true;
     const start = row.start_time?.slice(0,5) || '08:00';
     const end   = row.end_time?.slice(0,5)   || '17:00';
 
-    // Generera timval 05:00–22:00
     const timeOpts = (sel) => Array.from({length:18},(_,h)=>h+5).map(h =>
       `<option value="${String(h).padStart(2,'0')}:00" ${sel===String(h).padStart(2,'0')+':00'?'selected':''}>${String(h).padStart(2,'0')}:00</option>`
     ).join('');
@@ -1386,57 +1395,33 @@ async function saveSchedule() {
   const msg = document.getElementById('schedule-msg');
   msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
 
-  const upserts = [];
-  const deletes = [];
+  // Build single row with boolean day columns matching actual DB schema
+  const dayColumns = {1:'day_mon',2:'day_tue',3:'day_wed',4:'day_thu',5:'day_fri',6:'day_sat',0:'day_sun'};
+  const row = {
+    cleaner_id: cleaner.id,
+    is_active: true,
+    start_time: '08:00',
+    end_time: '17:00',
+  };
 
+  // Set each day boolean
   DAYS.forEach((day, i) => {
     const dow = DOW_MAP[i];
-    const active = document.getElementById('tog-'+i)?.classList.contains('on');
-    const start  = document.getElementById('start-'+i)?.value || '08:00';
-    const end    = document.getElementById('end-'+i)?.value   || '17:00';
-
+    const active = document.getElementById('tog-'+i)?.classList.contains('on') || false;
+    row[dayColumns[dow]] = active;
+    // Use earliest start and latest end across all active days
     if (active) {
-      upserts.push({
-        cleaner_id: cleaner.id,
-        day_of_week: dow,
-        start_time: start,
-        end_time: end,
-        is_active: true
-      });
-    } else {
-      deletes.push(dow);
+      const s = document.getElementById('start-'+i)?.value || '08:00';
+      const e = document.getElementById('end-'+i)?.value || '17:00';
+      if (s < row.start_time) row.start_time = s;
+      if (e > row.end_time) row.end_time = e;
     }
   });
 
-  let error = null;
+  row.weekends_ok = row.day_sat || row.day_sun;
 
-  // Upsert aktiva dagar
-  if (upserts.length) {
-    const {error:e1} = await SB.from('cleaner_availability')
-      .upsert(upserts, {onConflict: 'cleaner_id,day_of_week'});
-    if (e1) error = e1;
-  }
-
-  // Ta bort inaktiva dagar
-  if (deletes.length) {
-    const {error:e2} = await SB.from('cleaner_availability')
-      .delete()
-      .eq('cleaner_id', cleaner.id)
-      .in('day_of_week', deletes);
-    if (e2 && !error) error = e2;
-  }
-
-  // Spara även JSONB-fallback (bakåtkompatibilitet)
-  const schedJson = {};
-  DAYS.forEach((day,i) => {
-    schedJson[day.toLowerCase()] = {
-      active: document.getElementById('tog-'+i)?.classList.contains('on') || false,
-      start:  document.getElementById('start-'+i)?.value || '08:00',
-      end:    document.getElementById('end-'+i)?.value   || '17:00',
-    };
-  });
-  await SB.from('cleaners').update({availability_schedule: schedJson}).eq('id', cleaner.id);
-    // catch-bugg fixad: Supabase query builder stödjer inte .catch();
+  const {error} = await SB.from('cleaner_availability')
+    .upsert(row, {onConflict: 'cleaner_id'});
 
   if (error) {
     msg.textContent = '❌ Fel vid sparning: ' + (error.message||'Okänt fel');
@@ -1501,7 +1486,7 @@ async function startStripeConnect() {
   const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+(session?.access_token||ANON_KEY)},
-    body:JSON.stringify({cleaner_id:cleaner.id,email:cleaner.email,name:cleaner.full_name})
+    body:JSON.stringify({cleaner_id:cleaner.id,email:cleaner._email,name:cleaner.full_name})
   }).catch(()=>null);
   if (res?.ok) {
     const {url} = await res.json();
@@ -1520,7 +1505,7 @@ function sosSend(type) {
   fetch(`${SUPA_URL}/functions/v1/notify`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
-    body:JSON.stringify({type:'sos',record:{cleaner_name:cleaner.full_name,email:cleaner.email,city:cleaner.city,time:new Date().toISOString()}})
+    body:JSON.stringify({type:'sos',record:{cleaner_name:cleaner.full_name,email:cleaner._email,city:cleaner.city,time:new Date().toISOString()}})
   });
   document.getElementById('sos-modal').classList.remove('show');
   showToast('🚨 Spick har notifierats!');

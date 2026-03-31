@@ -188,7 +188,23 @@ async function load() {
 
   const { data, error } = await query;
   if (error || !data?.length) { showEmpty(); return; }
-  const b = data[0];
+  // Map DB column names to frontend names
+  const raw = data[0];
+  const b = {
+    ...raw,
+    date: raw.booking_date || raw.date,
+    time: raw.booking_time || raw.time,
+    hours: raw.booking_hours || raw.hours,
+    service: raw.service_type || raw.service,
+    address: raw.customer_address || raw.address,
+    name: raw.customer_name || raw.name,
+    email: raw.customer_email || raw.email,
+    phone: raw.customer_phone || raw.phone,
+    sqm: raw.square_meters || raw.sqm,
+    rut: (raw.rut_amount && raw.rut_amount > 0) || raw.rut,
+    stripe_payment_intent: raw.payment_intent_id || raw.stripe_payment_intent,
+    scheduled_date: raw.booking_date || raw.scheduled_date,
+  };
   
   // Hämta städare om tilldelad
   let cleaner = null;
