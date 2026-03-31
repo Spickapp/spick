@@ -640,6 +640,8 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 const SUPA = SPICK.SUPA_URL;
 const KEY = SPICK.SUPA_KEY;
 const H    = {apikey:KEY, Authorization:'Bearer '+KEY};
+const SB   = supabase.createClient(SUPA, KEY);
+function syncAddr(v) { /* sidebar sync placeholder */ }
 const MONTHS = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
 const DAYS_SV = ['sön','mån','tis','ons','tor','fre','lör'];
 const COLORS  = ['#0F6E56','#7C3AED','#DC2626','#2563EB','#D97706','#0891B2','#9333EA','#059669'];
@@ -1821,10 +1823,7 @@ async function doBook() {
       hashedPnr = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
     // 2. Skapa bokning i DB
-    // NOTE: Using 'name'+'email' columns (not customer_name/customer_email)
-    // because a DB trigger on customer_email tries to upsert into customer_profiles
-    // which has restrictive RLS that blocks anon inserts.
-    // Edge Functions use fallbacks: b.customer_email || b.email — so both work.
+    // Verified DB column names (from Supabase SQL Editor, NOT migration files)
     const bookingData = {
       customer_name: state.fname+' '+state.lname,
       customer_email: state.email,
