@@ -748,6 +748,19 @@ async function saveArea() {
   } else {
     cleaner.home_address = homeAddress;
     msg.textContent = '✅ Arbetsområde sparat!'; msg.style.color = 'var(--g)';
+    // Geocode address to update home_lat/home_lng
+    try {
+      await fetch(SUPA_URL + '/functions/v1/geo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
+        body: JSON.stringify({
+          action: 'update_cleaner_location',
+          cleaner_id: cleaner.id,
+          address: homeAddress,
+          city: cleaner.city || 'Stockholm'
+        })
+      });
+    } catch(e) { console.warn('Geocoding skippat:', e.message); }
   }
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
 }

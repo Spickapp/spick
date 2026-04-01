@@ -2307,6 +2307,22 @@ function showCleanerDetail(id) {
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">PREFERENSER & ARBETSOMRÅDE</label>
       <div id="admin-cleaner-prefs" style="font-size:.85rem;color:var(--m)">Inga preferenser inställda</div>
+    </div>
+
+    <!-- Synlighet -->
+    <div style="margin-bottom:12px;padding:10px 14px;border-radius:10px;background:${c.admin_flag==='hidden'?'#FEF3C7':'#F0FDF4'};display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.82rem;font-weight:600;color:${c.admin_flag==='hidden'?'#92400E':'#065F46'}">${c.admin_flag==='hidden'?'🙈 Dold från matchning':'👁 Synlig i matchning'}</span>
+      ${c.admin_flag==='hidden'
+        ? '<button class="btn btn-sm btn-outline" onclick="toggleVisibility(\''+c.id+'\',true)">👁 Visa i matchning</button>'
+        : '<button class="btn btn-sm btn-outline" onclick="toggleVisibility(\''+c.id+'\',false)">🙈 Dölj från matchning</button>'}
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+    <!-- Historik -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">HISTORIK</label>
+      <div id="cleaner-history-list" style="font-size:.85rem;color:var(--m)">Laddar historik...</div>
     </div>`;
 
   // Hämta städarens schema asynkront
@@ -2370,8 +2386,42 @@ function showCleanerDetail(id) {
   `;
   
   document.getElementById('cleaner-modal').classList.add('open');
+  loadCleanerHistory(id);
 }
 function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
+
+async function toggleVisibility(cleanerId, visible) {
+  if (!hasPerm('cleaners','suspend')) { showToast('🔒 Ej behörighet'); return; }
+  var flag = visible ? null : 'hidden';
+  var old = data.cleaners.find(function(c){return c.id===cleanerId;});
+  var {error} = await SB.from('cleaners').update({admin_flag: flag}).eq('id', cleanerId);
+  if (error) { showToast('❌ ' + error.message); return; }
+  showToast(visible ? '✅ Städare synlig i matchning' : '✅ Städare dold från matchning');
+  await auditLog(visible?'show':'hide', 'cleaners', cleanerId, {admin_flag:old?.admin_flag}, {admin_flag:flag});
+  loadAll();
+}
+
+async function loadCleanerHistory(cleanerId) {
+  var el = document.getElementById('cleaner-history-list');
+  if (!el) return;
+  var {data:history} = await SB.from('admin_audit_log')
+    .select('*')
+    .eq('resource_type','cleaners')
+    .eq('resource_id', cleanerId)
+    .order('created_at',{ascending:false})
+    .limit(20);
+
+  if (!history?.length) { el.innerHTML = '<span style="color:var(--m)">Ingen historik</span>'; return; }
+
+  el.innerHTML = history.map(function(h) {
+    var d = new Date(h.created_at).toLocaleString('sv',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    var icons = {update:'✏️',suspend:'⛔',approve:'✅',assign:'🔄',refund:'↩️',login:'🔑',hide:'🙈',show:'👁'};
+    return '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.82rem">'
+      + '<span>'+(icons[h.action]||'📋')+'</span>'
+      + '<div style="flex:1"><strong>'+(h.admin_email||'system').split('@')[0]+'</strong> '+h.action
+      + '<div style="color:var(--m);font-size:.75rem">'+d+(h.reason?' — '+h.reason:'')+'</div></div></div>';
+  }).join('');
+}
 
 async function suspendCleaner() {
   if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
