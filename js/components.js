@@ -95,7 +95,7 @@ const MOB_HTML = `
     <a href="${P}hur-det-funkar.html">Hur det funkar</a>
     <a href="${P}priser.html">Priser</a>
     <a href="${P}tjanster.html">Tjänster</a>
-    <a href="${P}bli-stadare-guide.html">Bli städare</a>
+    <a href="${P}bli-stadare.html">Bli städare</a>
     <a href="${P}boka.html" style="background:var(--g);color:#fff;border-radius:100px;text-align:center;padding:.75rem 1.5rem;border:none;">Boka nu →</a>
   </div>
 </div>`;
@@ -127,9 +127,9 @@ const FOOTER_HTML = `
   <div>
     <h4>Städare</h4>
     <ul>
-      <li><a href="${P}bli-stadare-guide.html">Bli städare</a></li>
+      <li><a href="${P}bli-stadare.html">Bli städare</a></li>
       <li><a href="${P}utbildning-stadare.html">Spick Akademin</a></li>
-      <li><a href="${P}rekrytera.html">Varför Spick?</a></li>
+      <li><a href="${P}kalkyl-stadare.html">Varför Spick?</a></li>
       <li><a href="${P}avtal.html">Partnersavtal</a></li>
     </ul>
     <h4 style="margin-top:1rem">Guider</h4>

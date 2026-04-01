@@ -113,7 +113,7 @@ async function getStats() {
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   
   const [bookingsRes, cleanersRes, reviewsRes, topPostRes] = await Promise.all([
-    sb.from("bookings").select("id,service,city,total_price,rut").gte("created_at", weekAgo),
+    sb.from("bookings").select("id,service_type,city,total_price,rut_amount").gte("created_at", weekAgo),
     sb.from("cleaners").select("id,avg_rating,full_name,city").eq("is_approved", true),
     sb.from("reviews").select("rating,customer_comment").gte("created_at", weekAgo).gte("rating", 4).limit(3),
     sb.from("social_posts").select("fb_content,pillar,engagement_rate").order("engagement_rate", { ascending: false }).limit(1),
@@ -135,7 +135,7 @@ async function getStats() {
     topCleanerName: cleaners[0]?.full_name?.split(" ")[0] || "Sara",
     topCleanerCity: cleaners[0]?.city || "Stockholm",
     rutPercent: bookings.length
-      ? Math.round((bookings.filter((b: any) => b.rut).length / bookings.length) * 100)
+      ? Math.round((bookings.filter((b: any) => b.rut_amount).length / bookings.length) * 100)
       : 70,
     topPerformingHook: topPost?.fb_content?.split("\n")[0] || "",
     season: getSeasonalContext(),

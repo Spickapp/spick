@@ -9,6 +9,7 @@ const SPICK = Object.freeze({
   SITE_URL:  'https://spick.se',
   ADMIN_EMAIL: 'hello@spick.se',
   VERSION:   '3.0.0',
+  GOOGLE_PLACES_KEY: 'AIzaSyCScYORJPxXCyp0J-Wmr84HtiZc9FteVrs',
 });
 
 // Gemensamma headers för Supabase REST API

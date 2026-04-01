@@ -101,7 +101,10 @@ function escHtml(s) { const d = document.createElement('div'); d.textContent = s
 async function init() {
   const params = new URLSearchParams(location.search);
   const bid = params.get('bid') || params.get('booking');
-  const email = params.get('email');
+
+  // Get email from auth session (Magic Link)
+  const { data: { user } } = await SB.auth.getUser();
+  const email = user?.email;
 
   let query;
   if (bid) {
@@ -125,11 +128,11 @@ async function init() {
       <div class="prev-avatar">${initial}</div>
       <div class="prev-info">
         <div class="p-name">${escHtml(data.cleaner_name || 'Din städare')}</div>
-        <div class="p-sub">${escHtml(data.service || 'Hemstädning')} · ${data.hours || 3}h</div>
+        <div class="p-sub">${escHtml(data.service_type || 'Hemstädning')} · ${data.booking_hours || 3}h</div>
       </div>
     </div>
     <div class="prev-details">
-      <div class="prev-detail"><div class="lbl">Senast bokad</div><div class="val">${new Date(data.scheduled_date || data.date || data.created_at).toLocaleDateString('sv-SE')}</div></div>
+      <div class="prev-detail"><div class="lbl">Senast bokad</div><div class="val">${new Date(data.booking_date || data.created_at).toLocaleDateString('sv-SE')}</div></div>
       <div class="prev-detail"><div class="lbl">Pris</div><div class="val">${Math.round(data.total_price || 0).toLocaleString('sv')} kr</div></div>
     </div>`;
 
@@ -179,13 +182,13 @@ async function rebook() {
 
   // Redirect to boka.html with prefilled data
   const params = new URLSearchParams({
-    service: prevBooking.service || 'Hemstädning',
+    service: prevBooking.service_type || 'Hemstädning',
     date: selectedDate,
     time: time,
-    hours: prevBooking.hours || 3,
+    hours: prevBooking.booking_hours || 3,
     cleaner: prevBooking.cleaner_id || '',
-    address: prevBooking.address || '',
-    sqm: prevBooking.sqm || '',
+    address: prevBooking.customer_address || '',
+    sqm: prevBooking.square_meters || '',
     rebook: prevBooking.id,
   });
   location.href = 'boka.html?' + params.toString();

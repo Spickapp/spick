@@ -37,7 +37,7 @@ const STRIPE_KEY      = Deno.env.get("STRIPE_SECRET_KEY")!;
 const BASE_URL        = Deno.env.get("BASE_URL") || "https://spick.se";
 
 const CORS = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://spick.se",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
@@ -94,7 +94,8 @@ serve(async (req) => {
         .from("cleaners")
         .select("id, full_name, tier, avg_rating, total_jobs, service_radius_km, home_lat, home_lng, email, phone")
         .eq("id", cleaner_id)
-        .eq("active", true)
+        .eq("is_approved", true)
+        .eq("status", "aktiv")
         .single();
 
       if (error || !data) {
@@ -107,7 +108,8 @@ serve(async (req) => {
       const { data } = await supabase
         .from("cleaners")
         .select("id, full_name, tier, avg_rating, total_jobs, service_radius_km, home_lat, home_lng, email, phone")
-        .eq("active", true)
+        .eq("is_approved", true)
+        .eq("status", "aktiv")
         .order("avg_rating", { ascending: false })
         .limit(1);
 
@@ -175,24 +177,24 @@ serve(async (req) => {
 
     const { error: insertErr } = await supabase.from("bookings").insert({
       id: bookingId,
-      name,
-      email,
-      phone,
-      address,
+      customer_name: name,
+      customer_email: email,
+      customer_phone: phone,
+      customer_address: address,
       city: null,
-      service,
-      date,
-      time,
+      service_type: service,
+      booking_date: date,
+      booking_time: time,
       time_end: timeEnd,
-      hours: validHours,
+      booking_hours: validHours,
       total_price: netPrice,
       status: "pending",
       payment_status: "pending",
-      rut: useRut,
+      rut_amount: useRut,
       frequency: frequency || "once",
       cleaner_id: cleaner.id,
       cleaner_name: cleaner.full_name || cleaner_name,
-      sqm: sqm || null,
+      square_meters: sqm || null,
       customer_notes: customer_notes || null,
       key_info: key_info || null,
       customer_lat: customer_lat || null,
@@ -220,10 +222,15 @@ serve(async (req) => {
 
     // ── 9. LOGGA RABATTANVÄNDNING ──────────────────
     if (discount.discountId && discount.percentOff > 0) {
-      // Öka current_uses
+      // Öka current_uses — hämta först, inkrementera i JS
+      const { data: discRow } = await supabase
+        .from("discounts")
+        .select("current_uses")
+        .eq("id", discount.discountId)
+        .single();
       await supabase
         .from("discounts")
-        .update({ current_uses: supabase.sql`current_uses + 1` })
+        .update({ current_uses: (discRow?.current_uses ?? 0) + 1 })
         .eq("id", discount.discountId);
 
       // Logga användning
@@ -362,7 +369,7 @@ serve(async (req) => {
       .from("bookings")
       .update({
         stripe_session_id: session.id,
-        stripe_payment_intent_id: session.payment_intent,
+        payment_intent_id: session.payment_intent,
       })
       .eq("id", bookingId);
 

@@ -61,31 +61,31 @@ serve(async (req) => {
       .neq("status", "avbokad");
 
     for (const b of bookings || []) {
-      const dateStr  = b.booking_date || b.date;
+      const dateStr  = b.booking_date;
       if (!dateStr) continue;
-      const dateTime = new Date(`${dateStr}T${(b.booking_time || b.time || "09:00")}:00`);
+      const dateTime = new Date(`${dateStr}T${(b.booking_time || "09:00")}:00`);
       const hoursLeft = (dateTime.getTime() - now.getTime()) / 3_600_000;
       const alreadySent = (b.reminders_sent || []) as string[];
 
       // 24h-påminnelse
       if (hoursLeft <= 24 && hoursLeft > 22 && !alreadySent.includes("24h")) {
         const fname = (b.customer_name || "Kund").split(" ")[0];
-        const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(b.address || "")}`;
+        const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(b.customer_address || "")}`;
 
         // Till kund
-        await mail(b.customer_email || b.email,
-          `⏰ Påminnelse: Städning imorgon kl ${b.time || "09:00"}`,
+        await mail(b.customer_email,
+          `⏰ Påminnelse: Städning imorgon kl ${b.booking_time || "09:00"}`,
           wrap(`<h2>Din städning är imorgon! 🧹</h2>
 <p>Hej ${fname}! Påminnelse om din bokade städning.</p>
 <div class="card">
-  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type||b.service||"Hemstädning"}</span></div>
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type||"Hemstädning"}</span></div>
   <div class="row"><span class="lbl">Datum</span><span class="val">${dateStr}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">kl ${b.booking_time||b.time||"09:00"}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||b.address||"–"}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">kl ${b.booking_time||"09:00"}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||"–"}</span></div>
   <div class="row"><span class="lbl">Städare</span><span class="val">${b.cleaner_name||"Tilldelas"}</span></div>
 </div>
 <div class="info">💡 Se till att städaren kan komma in. Lämna kod eller nyckel vid behov.</div>
-<p>Avboka gratis senast kl ${b.booking_time||b.time||"09:00"} idag – skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
+<p>Avboka gratis senast kl ${b.booking_time||"09:00"} idag – skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
 <a href="https://spick.se/min-bokning.html?bid=${b.id}" class="btn">Visa min bokning →</a>`));
 
         // Till städare
@@ -94,13 +94,13 @@ serve(async (req) => {
           const cName  = b.cleaner_name || "Städare";
           const earn   = Math.round((b.total_price||0)*0.83);
           await mail(cEmail,
-            `📍 Uppdrag imorgon kl ${b.booking_time||b.time||"09:00"} – ${b.service_type||b.service||"Städning"}`,
+            `📍 Uppdrag imorgon kl ${b.booking_time||"09:00"} – ${b.service_type||"Städning"}`,
             wrap(`<h2>Påminnelse: Uppdrag imorgon! 🗓</h2>
 <p>Hej ${cName.split(" ")[0]}!</p>
 <div class="card">
-  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type||b.service||"Hemstädning"} · ${b.booking_hours||b.hours||3}h</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">kl ${b.booking_time||b.time||"09:00"}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||b.address||"–"}</span></div>
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type||"Hemstädning"} · ${b.booking_hours||3}h</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">kl ${b.booking_time||"09:00"}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||"–"}</span></div>
   <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name||"–"}</span></div>
   <div class="row"><span class="lbl">Din intjäning</span><span class="val" style="color:#0F6E56">${earn} kr</span></div>
   ${b.key_info?`<div class="row"><span class="lbl">🔑 Nyckel/Kod</span><span class="val">${b.key_info}</span></div>`:""}
@@ -116,17 +116,17 @@ serve(async (req) => {
 
       // 2h-påminnelse
       if (hoursLeft<=2 && hoursLeft>1 && !alreadySent.includes("2h")) {
-        const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(b.customer_address||b.address||"")}`;
+        const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(b.customer_address||"")}`;
         const cEmail  = b.cleaner_email || b.cleaners?.email;
         const cName   = b.cleaner_name || "";
         const earn    = Math.round((b.total_price||0)*0.83);
 
         if (cEmail) await mail(cEmail,
-          `🚨 Om 2 timmar: Städning kl ${b.booking_time||b.time||"09:00"} – ${b.customer_address||b.address||""}`,
+          `🚨 Om 2 timmar: Städning kl ${b.booking_time||"09:00"} – ${b.customer_address||""}`,
           wrap(`<h2>2 timmar kvar – dags att sätta igång! ⚡</h2>
 <div class="card">
-  <div class="row"><span class="lbl">Adress</span><span class="val" style="color:#0F6E56;font-size:15px">${b.customer_address||b.address||"–"}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">kl ${b.booking_time||b.time||"09:00"} (${b.booking_hours||b.hours||3}h)</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val" style="color:#0F6E56;font-size:15px">${b.customer_address||"–"}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">kl ${b.booking_time||"09:00"} (${b.booking_hours||3}h)</span></div>
   <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name||"–"}</span></div>
   <div class="row"><span class="lbl">Intjäning</span><span class="val" style="color:#0F6E56">${earn} kr</span></div>
   ${b.key_info?`<div class="row"><span class="lbl">🔑 Nyckel/Kod</span><span class="val" style="color:#DC2626">${b.key_info}</span></div>`:""}
@@ -146,9 +146,9 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
           wrap(`<h2>⚠️ Ingen städare tilldelad!</h2>
 <div class="card">
   <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name||"–"}</span></div>
-  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type||b.service||"Städning"}</span></div>
-  <div class="row"><span class="lbl">Datum/tid</span><span class="val">${dateStr} kl ${b.booking_time||b.time||"09:00"}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||b.address||"–"}</span></div>
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type||"Städning"}</span></div>
+  <div class="row"><span class="lbl">Datum/tid</span><span class="val">${dateStr} kl ${b.booking_time||"09:00"}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||"–"}</span></div>
 </div>
 <a href="https://spick.se/admin.html" class="btn">Tilldela städare nu →</a>`));
         await sb.from("bookings").update({reminders_sent:[...alreadySent,"no-cleaner"]}).eq("id",b.id);
@@ -167,15 +167,15 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
       const hoursAgo = (now.getTime() - comp.getTime()) / 3_600_000;
       if (hoursAgo < 2 || hoursAgo > 3) continue;
 
-      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const fname = (b.customer_name || "").split(" ")[0] || "Hej";
       const cname = b.cleaner_name || "din städare";
       const prevSent = (b.reminders_sent || []) as string[];
       const base = `https://spick.se/betyg.html?bid=${b.id}&cname=${encodeURIComponent(cname)}`;
 
-      await mail(b.customer_email || b.email,
+      await mail(b.customer_email,
         `Hur gick din städning? (1 klick) 😊`,
         wrap(`<h2>Hur gick det, ${fname}? 🧹</h2>
-<p>Din ${b.service_type || b.service || "städning"} med ${cname} är klar. Hur upplevde du det?</p>
+<p>Din ${b.service_type ||"städning"} med ${cname} är klar. Hur upplevde du det?</p>
 <div style="text-align:center;margin:24px 0">
   <a href="${base}&rating=5&sentiment=positive" style="display:inline-block;background:#ECFDF5;color:#065F46;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:1.4rem;font-weight:700;margin:0 8px;border:2px solid #6EE7B7">😊 Fantastiskt!</a>
   <a href="${base}&rating=3&sentiment=neutral" style="display:inline-block;background:#FEF3C7;color:#92400E;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:1.4rem;font-weight:700;margin:0 8px;border:2px solid #FCD34D">😐 Okej</a>
@@ -198,10 +198,10 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
       if (hoursAgo<3 || hoursAgo>48) continue;
 
       const fname = (b.customer_name||"Kund").split(" ")[0];
-      await mail(b.customer_email||b.email,
+      await mail(b.customer_email,
         `⭐ Hur gick städningen? Ditt betyg hjälper!`,
         wrap(`<h2>Hoppas du är nöjd, ${fname}! ⭐</h2>
-<p>Din ${b.service||"städning"} är klar. Hur gick det? Ditt betyg tar 30 sekunder och hjälper ${b.cleaner_name||"städaren"} enormt.</p>
+<p>Din ${b.service_type||"städning"} är klar. Hur gick det? Ditt betyg tar 30 sekunder och hjälper ${b.cleaner_name||"städaren"} enormt.</p>
 <p style="font-size:13px;color:#6B6960">87% av våra kunder lämnar betyg — det gör stor skillnad! 💚</p>
 <a href="https://spick.se/betyg.html?bid=${b.id}&cname=${encodeURIComponent(b.cleaner_name||"")}&rating=5" class="btn">⭐ Lämna betyg →</a>
 <hr style="border:none;border-top:1px solid #E8E8E4;margin:16px 0">
@@ -227,10 +227,10 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
         .select("id").eq("booking_id", b.id).limit(1);
       if (existingReview && existingReview.length > 0) continue;
 
-      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const fname = (b.customer_name || "").split(" ")[0] || "Hej";
       const prevSent = (b.reminders_sent || []) as string[];
 
-      await mail(b.customer_email || b.email,
+      await mail(b.customer_email,
         `Vi vill gärna höra från dig 🙏`,
         wrap(`<h2>${fname}, din åsikt spelar roll 🙏</h2>
 <p>Vi frågade för några dagar sedan hur din städning gick. Ditt betyg hjälper ${b.cleaner_name || "städaren"} att bli ännu bättre.</p>
@@ -244,7 +244,7 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
     // ── GOOGLE REVIEW ROUTING (T+48h after 4-5★) ────────────
     // Be kunder som gett högt betyg att lämna Google-omdöme
     const { data: googleCandidates } = await sb.from("reviews")
-      .select("*, bookings(id, customer_email, email, customer_name, name, reminders_sent)")
+      .select("*, bookings(id, customer_email, customer_name, reminders_sent)")
       .gte("rating", 4).not("google_review_requested", "is", true);
 
     for (const r of googleCandidates || []) {
@@ -253,9 +253,9 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
 
       const booking = (r as any).bookings;
       if (!booking) continue;
-      const email = booking.customer_email || booking.email;
+      const email = booking.customer_email;
       if (!email) continue;
-      const fname = (booking.customer_name || booking.name || "").split(" ")[0] || "Hej";
+      const fname = (booking.customer_name || "").split(" ")[0] || "Hej";
 
       await mail(email,
         `En sista sak — hjälp oss på Google? 🙏`,
@@ -279,16 +279,16 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
       const daysAgo = (now.getTime() - comp.getTime()) / 86_400_000;
       if (daysAgo < 7 || daysAgo > 10) continue;
 
-      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const fname = (b.customer_name || "").split(" ")[0] || "Hej";
       const cleanerName = b.cleaner_name || "din städare";
       const prevSent = (b.reminders_sent || []) as string[];
 
-      await mail(b.customer_email || b.email,
+      await mail(b.customer_email,
         `🗓 Dags att boka igen? ${cleanerName} har lediga tider`,
         wrap(`<h2>Boka ${cleanerName} igen! 🧹</h2>
-<p>Hej ${fname}! Det har gått en vecka sedan din senaste ${b.service_type || b.service || "städning"}. Vill du boka samma städare igen?</p>
+<p>Hej ${fname}! Det har gått en vecka sedan din senaste ${b.service_type ||"städning"}. Vill du boka samma städare igen?</p>
 <div class="card">
-  <div class="row"><span class="lbl">Senaste tjänst</span><span class="val">${b.service || "Hemstädning"} · ${b.hours || 3}h</span></div>
+  <div class="row"><span class="lbl">Senaste tjänst</span><span class="val">${b.service_type || "Hemstädning"} · ${b.booking_hours || 3}h</span></div>
   <div class="row"><span class="lbl">Städare</span><span class="val">${cleanerName}</span></div>
   <div class="row"><span class="lbl">Ditt betyg</span><span class="val">Tack! ⭐</span></div>
 </div>
@@ -312,14 +312,14 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
 
       // Kolla om kund redan bokat nytt
       const { data: newBookings } = await sb.from("bookings")
-        .select("id").eq("customer_email", b.customer_email || b.email)
+        .select("id").eq("customer_email", b.customer_email)
         .gt("created_at", comp.toISOString()).limit(1);
       if (newBookings && newBookings.length > 0) continue; // Redan rebookat
 
-      const fname = (b.customer_name || b.name || "").split(" ")[0] || "Hej";
+      const fname = (b.customer_name || "").split(" ")[0] || "Hej";
       const prevSent = (b.reminders_sent || []) as string[];
 
-      await mail(b.customer_email || b.email,
+      await mail(b.customer_email,
         `💚 10% rabatt — vi saknar dig!`,
         wrap(`<h2>Vi saknar dig, ${fname}! 💚</h2>
 <p>Det har gått 2 veckor sedan din senaste städning. Vi vill gärna se dig igen!</p>

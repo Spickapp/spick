@@ -120,7 +120,7 @@ serve(async (req) => {
   }
 
   // ── INPUT VALIDATION ──────────────────────────────────────
-  const ALLOWED_TYPES = ["booking","new_booking_cleaner","application","cleaner_approved",
+  const ALLOWED_TYPES = ["booking","new_booking_cleaner","application","application_confirmation","cleaner_approved",
     "reminder","review_request","uptime_alert","checkin","sos_alert","job_completed",
     "cleaner_accepted","booking_cancelled","garanti_reklamation","referral_invite",
     "contact","manual_reply","ssl_warning","custom","waitlist"];
@@ -252,6 +252,20 @@ serve(async (req) => {
       `));
     }
 
+    // ── ANSÖKAN BEKRÄFTELSE (från frontend) ────────────────────
+    else if (type === "application_confirmation") {
+      const { email, name, city } = r;
+      if (email) {
+        await sendEmail(email, "Vi har tagit emot din ansökan till Spick! ✅", wrap(`
+          <h2>Hej ${esc(name?.split(" ")[0] || "")}!</h2>
+          <p>Tack för din ansökan som städare i ${esc(city || "Sverige")}.</p>
+          <p>Vi granskar din ansökan inom <strong>1–2 arbetsdagar</strong> och återkommer till denna e-postadress.</p>
+          <p>Under tiden kan du förbereda dig via <a href="https://spick.se/utbildning-stadare.html" style="color:#0F6E56;font-weight:600">Spick Akademin</a>.</p>
+          <p>Med vänliga hälsningar,<br>Teamet på Spick</p>
+        `));
+      }
+    }
+
     // ── VÄLKOMMEN STÄDARE ─────────────────────────────────────
     else if (type === "cleaner_approved") {
       await sendEmail(r.email, `🎉 Välkommen till Spick, ${r.full_name?.split(" ")[0]}!`, wrap(`
@@ -371,8 +385,8 @@ serve(async (req) => {
 </div>
 <a href="https://spick.se/garanti.html" style="display:block;text-align:center;margin-top:12px;color:#6B6960;font-size:13px">Inte hemma? Se vad som ingår i städningen →</a>
 `);
-      const { data: bk } = await sb.from("bookings").select("customer_email,email").eq("id", r.booking_id).single();
-      if (bk) to = bk.customer_email || bk.email || ADMIN;
+      const { data: bk } = await sb.from("bookings").select("customer_email").eq("id", r.booking_id).single();
+      if (bk) to = bk.customer_email || ADMIN;
     }
         else if (type === "sos_alert") {
       const r = payload.record || {};
@@ -405,8 +419,8 @@ serve(async (req) => {
 <a href="https://spick.se/betygsatt.html?bid=${r.booking_id || ''}" class="btn">⭐ Betygsätt städningen →</a>
 <a href="https://spick.se/garanti.html" style="display:block;text-align:center;margin-top:12px;color:#DC2626;font-size:13px">Inte nöjd? Aktivera garantin →</a>
 `);
-      const { data: bk } = await sb.from("bookings").select("customer_email,email").eq("id", r.booking_id).single();
-      if (bk) to = bk.customer_email || bk.email || ADMIN;
+      const { data: bk } = await sb.from("bookings").select("customer_email").eq("id", r.booking_id).single();
+      if (bk) to = bk.customer_email || ADMIN;
     }
     else if (type === "cleaner_accepted") {
       const r = payload.record || {};
@@ -420,8 +434,8 @@ serve(async (req) => {
 <a href="https://spick.se/mitt-konto.html" class="btn">Visa min bokning →</a>
 `);
       // Skicka till kunden – hämta email från booking
-      const { data: bk } = await sb.from("bookings").select("customer_email,email").eq("id", r.booking_id).single();
-      if (bk) to = bk.customer_email || bk.email || ADMIN;
+      const { data: bk } = await sb.from("bookings").select("customer_email").eq("id", r.booking_id).single();
+      if (bk) to = bk.customer_email || ADMIN;
     }
     else if (type === "booking_cancelled") {
       const r = payload.record || {};

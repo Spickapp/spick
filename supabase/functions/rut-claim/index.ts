@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SKV_API_URL          = Deno.env.get("SKV_API_URL") || "https://api.skatteverket.se/rot-rut/v1";
-const SKV_API_KEY          = Deno.env.get("SKV_API_KEY")!;   // Skatteverket API-nyckel
+const SKV_API_KEY          = Deno.env.get("SKV_API_KEY") ?? "";  // Skatteverket API-nyckel
 const SPICK_ORG_NR         = "5594024522";                    // Spick AB org.nr
 const RESEND_API_KEY       = Deno.env.get("RESEND_API_KEY")!;
 const FROM                 = "Spick <hello@spick.se>";
@@ -45,7 +45,7 @@ function buildRutXml(booking: Record<string, unknown>): string {
     <ArbetskostnadExklMoms>${arbetskostnad * 100}</ArbetskostnadExklMoms>
     <BegartBelopp>${rutBelopp * 100}</BegartBelopp>
     <FakturaNummer>${booking.id}</FakturaNummer>
-    <FakturaDatum>${booking.date || new Date().toISOString().split("T")[0]}</FakturaDatum>
+    <FakturaDatum>${booking.booking_date || new Date().toISOString().split("T")[0]}</FakturaDatum>
     <Betaldatum>${new Date().toISOString().split("T")[0]}</Betaldatum>
   </Kop>
 </Ansokan>`;
@@ -94,8 +94,8 @@ async function submitToSkatteverket(xml: string): Promise<{
 
 // ── E-post: bekräftelse till kund ─────────────────────────────────────────
 async function sendRutConfirmation(booking: Record<string, unknown>, claimId: string) {
-  const email = (booking.email || booking.customer_email) as string;
-  const name  = ((booking.name || booking.customer_name || "Kund") as string).split(" ")[0];
+  const email = booking.customer_email as string;
+  const name  = ((booking.customer_name || "Kund") as string).split(" ")[0];
   const bruttoBelopp = Number(booking.total_price) * 2;
   const rutBelopp    = Math.round(bruttoBelopp * 0.5);
 
@@ -121,8 +121,8 @@ p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
     <p>Hej ${name}! Vi har automatiskt skickat din RUT-ansökan till Skatteverket. Du behöver inte göra något mer.</p>
     <div class="badge">✓ RUT-ärendenummer: ${claimId}</div>
     <div class="card">
-      <div class="row"><span class="lbl">Tjänst</span><span class="val">${booking.service || "Hemstädning"}</span></div>
-      <div class="row"><span class="lbl">Städdatum</span><span class="val">${booking.date || "–"}</span></div>
+      <div class="row"><span class="lbl">Tjänst</span><span class="val">${booking.service_type || "Hemstädning"}</span></div>
+      <div class="row"><span class="lbl">Städdatum</span><span class="val">${booking.booking_date || "–"}</span></div>
       <div class="row"><span class="lbl">Bruttopris</span><span class="val">${bruttoBelopp.toLocaleString("sv")} kr</span></div>
       <div class="row"><span class="lbl">RUT-avdrag (50%)</span><span class="val" style="color:#0F6E56">−${rutBelopp.toLocaleString("sv")} kr</span></div>
       <div class="row"><span class="lbl">Du betalade</span><span class="val" style="color:#0F6E56;font-size:18px">${Number(booking.total_price).toLocaleString("sv")} kr ✓</span></div>
@@ -167,7 +167,7 @@ serve(async (req) => {
     }
 
     // Kontrollera att bokningen är betald och har RUT
-    if (!booking.rut) {
+    if (!booking.rut_amount) {
       return new Response(JSON.stringify({ ok: false, reason: "Ingen RUT på denna bokning" }), {
         headers: { "Content-Type": "application/json", ...CORS },
       });
@@ -183,6 +183,35 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, reason: "RUT redan ansökt", claim_id: booking.rut_claim_id }), {
         headers: { "Content-Type": "application/json", ...CORS },
       });
+    }
+
+    // Guard: SKV_API_KEY saknas → skicka varningsmail och returnera pending
+    if (!SKV_API_KEY) {
+      console.warn("rut-claim: SKV_API_KEY ej satt — skickar varning till admin");
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: FROM,
+          to: ADMIN,
+          subject: `⚠️ RUT-ansökan väntar: SKV_API_KEY saknas`,
+          html: `<p>En RUT-bokning har betalats men kunde inte skickas till Skatteverket eftersom <strong>SKV_API_KEY</strong> inte är satt som Supabase-secret.</p>
+<p>Bokning: <strong>${booking_id}</strong><br>
+Kund: ${booking.customer_name} &lt;${booking.customer_email}&gt;<br>
+Belopp: ${Number(booking.total_price).toLocaleString("sv")} kr</p>
+<p>Sätt nyckeln med:<br>
+<code>npx supabase secrets set SKV_API_KEY=&lt;din-nyckel&gt;</code></p>`,
+        }),
+      }).catch((e: Error) => console.error("Admin mail error:", e.message));
+
+      await sb.from("bookings").update({
+        rut_claim_status: "pending_api_key",
+      }).eq("id", booking_id);
+
+      return new Response(
+        JSON.stringify({ ok: false, reason: "SKV_API_KEY saknas – admin notifierad" }),
+        { headers: { "Content-Type": "application/json", ...CORS } }
+      );
     }
 
     // Skicka XML till Skatteverket
@@ -217,7 +246,7 @@ serve(async (req) => {
         headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: FROM, to: ADMIN,
-          subject: `✅ RUT ansökt: ${booking.name} – ${result.claim_id}`,
+          subject: `✅ RUT ansökt: ${booking.customer_name} – ${result.claim_id}`,
           html: `<p>RUT-ansökan skickad till Skatteverket.<br>Bokning: ${booking_id}<br>Ärendenummer: ${result.claim_id}<br>Belopp: ${Math.round(Number(booking.total_price)).toLocaleString("sv")} kr</p>`,
         }),
       });

@@ -231,11 +231,11 @@ footer a:hover{color:#1D9E75;}
           <div class="cc-sub">Svar inom 2 timmar på vardagar</div>
         </div>
       </a>
-      <a href="https://wa.me/46700000000?text=Hej%20Spick!%20Jag%20har%20en%20fr%C3%A5ga%20ang%C3%A5ende%20st%C3%A4dning." target="_blank" rel="noopener" class="cc" style="text-decoration:none">
+      <a href="mailto:hello@spick.se" class="cc" style="text-decoration:none">
         <div class="cc-icon">💬</div>
         <div>
-          <div class="cc-label">WhatsApp</div>
-          <div class="cc-val">Chatta med oss</div>
+          <div class="cc-label">Chatt</div>
+          <div class="cc-val">hello@spick.se</div>
           <div class="cc-sub">Snabbaste svaret</div>
         </div>
       </a>
@@ -318,19 +318,30 @@ function closeChat(){
   document.getElementById('chatFab').style.display='flex';
 }
 
-// AI-svar baserade på nyckelord
-function getAIResponse(msg){
-  const m=msg.toLowerCase();
-  if(m.includes('rut')||m.includes('avdrag'))return 'RUT-avdraget ger dig 50% rabatt på städning! Du betalar bara hälften och vi hanterar allt automatiskt med Skatteverket. Maxavdraget är 75 000 kr/år. <a href="priser.html" style="color:#0F6E56">Läs mer om priser →</a>';
-  if(m.includes('boka')||m.includes('bokning'))return 'Du bokar enkelt via vår bokningssida! Välj städare, datum och tid. Vi bekräftar inom 2 timmar. <a href="boka.html" class="cta">Boka städning →</a>';
-  if(m.includes('avbok')||m.includes('ändra'))return 'Avbokning är gratis upp till 24h innan städningen. Skicka ett meddelande via formuläret nedan eller maila hello@spick.se så fixar vi det direkt.';
-  if(m.includes('pris')||m.includes('kostar')||m.includes('kr'))return 'Priserna varierar beroende på städare (250-600 kr/h). Med RUT-avdrag betalar du bara hälften! <a href="priser.html" style="color:#0F6E56">Se alla priser →</a>';
-  if(m.includes('städare')||m.includes('hitta'))return 'Vi har 9 betygsatta städare i Stockholm! Du kan filtrera på stad, tjänst och betyg. <a href="boka.html" style="color:#0F6E56">Boka städning →</a>';
-  if(m.includes('flytt')||m.includes('flytta'))return 'Vår flyttstädning är besiktningsgodkänd – perfekt för att få tillbaka din deposition. <a href="boka.html" style="color:#0F6E56">Boka flyttstädning →</a>';
-  if(m.includes('bli städare')||m.includes('jobba'))return 'Vill du bli städare? Du sätter ditt eget pris (250-600 kr/h) och behåller 83%! <a href="bli-stadare.html" style="color:#0F6E56">Ansök nu →</a>';
-  if(m.includes('betalning')||m.includes('swish')||m.includes('betala'))return 'Du betalar via Swish direkt till städaren efter utförd och godkänd städning. Inga förskottsbetalningar!';
-  if(m.includes('hej')||m.includes('hallå')||m.includes('hi'))return 'Hej! 😊 Hur kan jag hjälpa dig idag? Fråga mig gärna om bokning, priser, RUT-avdrag eller städare!';
-  return 'Tack för din fråga! För mer detaljerad hjälp, skicka ett e-postmeddelande till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så återkommer vi inom 2 timmar. Är det något mer jag kan hjälpa med?';
+async function getAIResponse(userMessage) {
+  try {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/claude`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SPICK.SUPA_KEY}`,
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: userMessage }],
+        system: `Du är en hjälpsam kundtjänstassistent för Spick – en svensk städmarknadsplats.
+Svara alltid på svenska. Håll svaren korta och konkreta (max 3 meningar).
+Du kan hjälpa med: bokningar, avbokningar, priser, RUT-avdrag, städare, betalning, och allmänna frågor om Spick.
+Om frågan kräver manuell hantering, hänvisa till hello@spick.se.
+Spick erbjuder: hemstädning, storstädning, flyttstädning, kontorsstädning.
+Pris: från 399 kr/h. RUT-avdrag: 50% rabatt för berättigade kunder.`
+      })
+    });
+    if (!res.ok) throw new Error('API-fel');
+    const data = await res.json();
+    return data.content?.[0]?.text || 'Tyvärr kunde jag inte svara just nu. Kontakta oss på hello@spick.se';
+  } catch (err) {
+    return 'Tyvärr uppstod ett fel. Kontakta oss på hello@spick.se så hjälper vi dig!';
+  }
 }
 
 function addMsg(txt,isUser){
@@ -350,7 +361,12 @@ function sendMsg(){
   if(!msg)return;
   addMsg(msg,true);
   inp.value='';
-  setTimeout(()=>addMsg(getAIResponse(msg),false),600);
+  addMsg('Tänker...', false);
+  getAIResponse(msg).then(reply => {
+    const c = document.getElementById('chatMessages');
+    c.removeChild(c.lastChild);
+    addMsg(reply, false);
+  });
 }
 
 async function send(){
@@ -440,7 +456,7 @@ function cookieChoice(accept) {
   <a href="boka.html">Boka städning</a>
   <a href="hur-det-funkar.html">Hur det funkar</a>
   <a href="priser.html">Priser</a>
-  <a href="bli-stadare-guide.html">Bli städare</a>
+  <a href="bli-stadare.html">Bli städare</a>
   <a href="boka.html" style="background:#0F6E56;color:#fff;border-radius:100px;text-align:center;padding:.75rem;border:none;font-weight:600;">Boka nu →</a>
 </div>
 <script>

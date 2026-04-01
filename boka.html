@@ -221,6 +221,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
     (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","w1ep5s1zm6");
   </script>
 <script src="js/config.js"></script>
+<script src="js/address-autocomplete.js"></script>
 <script src="js/cro.js" defer></script>
 <script src="js/components.js" defer></script>
 <script type="application/ld+json">
@@ -320,6 +321,11 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
               <label>Bostadsyta (kvm) *</label>
               <input type="number" id="sqm" min="20" max="250" placeholder="t.ex. 65" oninput="calcHours()">
               <div class="field-hint">Vi beräknar tidsåtgången automatiskt</div>
+              <div id="price-estimate" style="display:none;background:#F0FDF4;border-radius:10px;padding:12px 16px;margin-top:8px;font-size:.9rem">
+                <span style="color:#2E7D32;font-weight:600">Uppskattat pris: </span>
+                <span id="price-gross">–</span> kr
+                <span id="price-rut-line" style="color:#666"> · med RUT: <strong id="price-after-rut">–</strong> kr</span>
+              </div>
             </div>
             <div class="f">
               <label>Beräknad tid</label>
@@ -479,11 +485,8 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <div class="pnr-wrap" id="pnr-wrap">
             <div class="f">
               <label>Personnummer <span style="color:var(--g);font-weight:700">— du sparar upp till 50% med RUT ✓</span></label>
-              <div style="display:flex;gap:.625rem">
-                <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="flex:1" oninput="validatePNR(this.value)">
-                <button type="button" onclick="autofillBankID()" style="background:var(--g);color:#fff;border:none;padding:.625rem 1rem;border-radius:9px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">🔐 BankID</button>
-              </div>
-              <div id="pnr-hint" class="field-hint">🔒 Behövs för RUT-avdrag hos Skatteverket. Krypterat — lagras aldrig i klartext.</div>
+              <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="width:100%" oninput="validatePNR(this.value)">
+              <div id="pnr-hint" class="field-hint">🔒 Ditt personnummer används endast för RUT-avdrag och delas aldrig vidare. Krypterat — lagras aldrig i klartext.</div>
             </div>
           </div>
 
@@ -519,21 +522,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <textarea id="customer-notes" rows="2" placeholder="T.ex. allergier, husdjur, fokusera på köket, ring på dörren..." style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;outline:none;resize:none;line-height:1.5;margin-top:.375rem"></textarea>
           </div>
 
-          <!-- Prenumerationsalternativ -->
-          <div style="margin-top:1rem;background:linear-gradient(135deg,#E1F5EE,#fff);border:1.5px solid #A7F3D0;border-radius:12px;padding:1rem">
-            <div style="display:flex;align-items:center;gap:.75rem">
-              <input type="checkbox" id="recurring-check" style="width:18px;height:18px;cursor:pointer;accent-color:var(--g)">
-              <div>
-                <div style="font-weight:600;font-size:.88rem;color:#065F46">🔄 Återkommande städning – spara 5%</div>
-                <div style="font-size:.75rem;color:var(--g);margin-top:2px">Automatisk bokning varje månad, varannan vecka eller varje vecka</div>
-              </div>
-            </div>
-            <select id="recurring-freq" style="display:none;width:100%;margin-top:.625rem;padding:.6rem .875rem;border:1.5px solid #A7F3D0;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none;background:#fff">
-              <option value="månadsvis">Månadsvis</option>
-              <option value="varannan-vecka" selected>Varannan vecka (-5%)</option>
-              <option value="veckovis">Varje vecka (-10%)</option>
-            </select>
-          </div>
+          <!-- Prenumerationsval hanteras i steg 1 (state.frequency) -->
 
           <button class="btn-primary" onclick="goStep4()" id="step3-submit" style="margin-top:1.25rem">Gå vidare till betalning →</button>
           <button class="btn-secondary" onclick="goBack(2)">← Välj annan städare</button>
@@ -900,6 +889,18 @@ function calcHours() {
   let notice = document.getElementById('large-apt-notice');
   if (!notice) { notice = document.createElement('div'); notice.id = 'large-apt-notice'; notice.style.cssText = 'margin-top:.5rem;padding:.5rem .75rem;background:#fff8e6;border:1px solid #f0d060;border-radius:8px;font-size:.85rem;color:#7a6200;display:none;'; document.getElementById('hours-display').parentElement.appendChild(notice); }
   if (state.sqm >= 150) { notice.textContent = '\u2139\ufe0f Stor bostad \u2013 exakt tid bekr\u00e4ftas efter bokning'; notice.style.display = 'block'; } else { notice.style.display = 'none'; }
+  // Visa prisuppskattning direkt i steg 1
+  const peEl = document.getElementById('price-estimate');
+  if (peEl && state.sqm && state.service) {
+    const estRate = 450;
+    const est = Math.round(state.hours * estRate);
+    const rutEst = Math.round(est * 0.5);
+    document.getElementById('price-gross').textContent = est.toLocaleString('sv-SE');
+    document.getElementById('price-after-rut').textContent = rutEst.toLocaleString('sv-SE');
+    peEl.style.display = 'block';
+  } else if (peEl) {
+    peEl.style.display = 'none';
+  }
   updateSidebar();
 }
 
@@ -1490,9 +1491,20 @@ async function checkCoverage(address) {
   msg.style.display = 'block';
   msg.innerHTML = '<div style="color:var(--m);font-size:.85rem">⏳ Kollar tillgänglighet...</div>';
   try {
-    const {data} = await SB.from('cleaners').select('id').eq('is_approved', true).limit(1);
+    const {data} = await SB.from('cleaners').select('id, city').eq('is_approved', true);
     if (data && data.length > 0) {
-      msg.innerHTML = '<div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:.75rem 1rem;font-size:.85rem;color:#065F46">✅ Vi har städare i ditt område! Välj datum och tid nedan.</div>';
+      // Extrahera stad från adress
+      const parts = address.split(',');
+      const city = parts[parts.length - 1]?.trim().toLowerCase() || '';
+      const cityMatch = data.some(c =>
+        c.city?.toLowerCase().includes(city) ||
+        city.includes(c.city?.toLowerCase() || '')
+      );
+      if (cityMatch) {
+        msg.innerHTML = '<div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:.75rem 1rem;font-size:.85rem;color:#065F46">✅ Vi har städare i ditt område! Välj datum och tid nedan.</div>';
+      } else {
+        msg.innerHTML = '<div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:.75rem 1rem;font-size:.85rem;color:#92400E">⚠️ Vi har begränsat antal städare i ditt område just nu — du får besked inom 2h om vi kan bekräfta.</div>';
+      }
       calSec.style.display = 'block';
       state.address = address;
     } else {
@@ -1607,22 +1619,7 @@ function selectKey(el, type) {
   }
 }
 
-// Recurring toggle
-document.addEventListener('DOMContentLoaded', () => {
-  const cb = document.getElementById('recurring-check');
-  const sel = document.getElementById('recurring-freq');
-  if (cb) cb.addEventListener('change', () => {
-    state.recurring = cb.checked;
-    sel.style.display = cb.checked ? 'block' : 'none';
-    if (cb.checked) {
-      state.recurringFreq = sel.value;
-      updateSum(); // uppdatera pris med ev. rabatt
-    }
-  });
-  if (sel) sel.addEventListener('change', () => {
-    state.recurringFreq = sel.value;
-  });
-});
+// Recurring toggle removed — frequency is handled in step 1 (state.frequency)
 
 function updateAddons() {
   const addons = Array.from(document.querySelectorAll('.addon-cb:checked')).map(cb => cb.dataset.addon);
@@ -1631,26 +1628,9 @@ function updateAddons() {
   updateSum();
 }
 
-function autofillBankID() {
-  // BankID-autofyll kräver GrandID-licens (grandid.com)
-  // Tills vidare: guida kunden att fylla i manuellt
-  const btn = document.querySelector('button[onclick="autofillBankID()"]');
-  const orig = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.innerHTML = '✓ Fyll i nedan';
-    btn.style.background = '#6B7280';
-    setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2000);
-  }
-  const hint = document.getElementById('pnr-hint');
-  if (hint) {
-    hint.textContent = '→ Ange ditt personnummer manuellt (YYYYMMDD-XXXX) för att ansöka om RUT-avdrag';
-    hint.style.color = 'var(--g)';
-    hint.style.fontWeight = '500';
-  }
-  document.getElementById('pnr')?.focus();
-}
+// autofillBankID removed — BankID integration not yet available
 
-// Adress-autocomplete
+// Adress-autocomplete (Google Places via Edge Function)
 let addrTimer;
 async function addrSearch(q) {
   clearTimeout(addrTimer);
@@ -1658,23 +1638,28 @@ async function addrSearch(q) {
   if (q.length < 3) { list.style.display='none'; return; }
   addrTimer = setTimeout(async () => {
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q+', Sverige')}&limit=5&addressdetails=1&accept-language=sv`);
-      const data = await r.json();
-      if (!data.length) { list.style.display='none'; return; }
-      list.innerHTML = data.map(item => {
-        const addr = item.address;
-        const str = [addr.road, addr.house_number, addr.city||addr.town||addr.village].filter(Boolean).join(' ');
-        return `<div class="addr-item" onclick="pickAddr('${str.replace(/'/g,"\'")}')">${str || item.display_name.split(',').slice(0,2).join(',')}</div>`;
-      }).join('');
+      const res = await fetch(SPICK.SUPA_URL + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: SPICK_HEADERS,
+        body: JSON.stringify({ query: q, country: 'se', types: 'address' }),
+      });
+      const data = await res.json();
+      const predictions = data.predictions || [];
+      if (!predictions.length) { list.style.display='none'; return; }
+      list.innerHTML = predictions.map(p =>
+        `<div class="addr-item" onclick="pickAddr('${escHtml(p.description).replace(/'/g,"&#39;")}')">${escHtml(p.description)}</div>`
+      ).join('');
       list.style.display = 'block';
     } catch(e) { list.style.display='none'; }
-  }, 350);
+  }, 300);
 }
 
 function pickAddr(val) {
   document.getElementById('address').value = val;
+  var _s1 = document.getElementById('step1-address');
+  if (_s1) _s1.value = val;
   state.address = val;
-  var _al=document.getElementById('addr-list');if(_al)_al.style.display='none';var _ad=document.getElementById('addr-dd');if(_ad)_ad.style.display='none';if(document.getElementById('step1-address'))checkCoverage(val);
+  var _al=document.getElementById('addr-list');if(_al)_al.style.display='none';var _ad=document.getElementById('addr-dd');if(_ad)_ad.style.display='none';if(_s1)checkCoverage(val);
 }
 
 document.addEventListener('click', e => {
@@ -1803,18 +1788,19 @@ function buildConfirmSummary() {
   const total = gross - rut;
   document.getElementById('confirm-summary').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .875rem;font-size:.875rem">
-      <div style="color:var(--m)">Städare</div><div style="font-weight:600">${state.cleanerName}</div>
-      <div style="color:var(--m)">Tjänst</div><div style="font-weight:600">${state.service}</div>
-      <div style="color:var(--m)">Datum</div><div style="font-weight:600">${formatDate(state.date)}</div>
-      <div style="color:var(--m)">Tid</div><div style="font-weight:600">kl. ${state.time}</div>
+      <div style="color:var(--m)">Städare</div><div style="font-weight:600">${state.cleanerName} <button onclick="setStep(2)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
+      <div style="color:var(--m)">Tjänst</div><div style="font-weight:600">${state.service} <button onclick="setStep(1)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
+      <div style="color:var(--m)">Datum</div><div style="font-weight:600">${formatDate(state.date)} kl. ${state.time} <button onclick="setStep(1)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
       <div style="color:var(--m)">Adress</div><div style="font-weight:600">${state.address}</div>
-      <div style="color:var(--m)">Kontakt</div><div style="font-weight:600">${state.fname} ${state.lname}, ${state.phone}</div>
+      <div style="color:var(--m)">Kontakt</div><div style="font-weight:600">${state.fname} ${state.lname}, ${state.phone} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
     </div>
-    <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-weight:700;font-size:1rem">
-      <span>Du betalar</span>
-      <span style="color:var(--g);font-size:1.15rem">${total.toLocaleString('sv-SE')} kr</span>
-    </div>
-    ${useRut ? '<div style="font-size:.72rem;color:var(--g);text-align:right;margin-top:.2rem">Inkl. 50% RUT-avdrag</div>' : ''}`;
+    <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)">
+      ${useRut ? '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--m);margin-bottom:.25rem"><span>Pris före RUT</span><span>' + gross.toLocaleString('sv-SE') + ' kr</span></div><div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--g);margin-bottom:.5rem"><span>RUT-avdrag (50%)</span><span>−' + rut.toLocaleString('sv-SE') + ' kr</span></div>' : ''}
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1rem">
+        <span>Du betalar</span>
+        <span style="color:var(--g);font-size:1.15rem">${total.toLocaleString('sv-SE')} kr</span>
+      </div>
+    </div>`;
 }
 
 // ── STEG 4: BETALA ────────────────────────────────────────────────────────────
@@ -1870,67 +1856,34 @@ async function doBook() {
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(state.pnr));
       hashedPnr = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
-    // 2. Skapa bokning i DB
-    // Verified DB column names (from Supabase SQL Editor, NOT migration files)
-    const bookingData = {
-      customer_name: state.fname+' '+state.lname,
-      customer_email: state.email,
-      customer_phone: state.phone,
-      customer_address: state.address + (state.cleanerCity ? ', ' + state.cleanerCity : ''),
-      service_type: state.service,
-      booking_date: state.date,
-      booking_time: state.time,
-      booking_hours: state.hours,
-      square_meters: state.sqm || null,
-      total_price: total,
-      status: 'pending',
-      payment_status: 'pending',
-      rut_amount: useRut ? Math.round(total) : 0,
-      cleaner_id: state.cleanerId,
-      cleaner_name: state.cleanerName,
-      ...(hashedPnr ? {customer_pnr_hash: hashedPnr} : {}),
-      ...(state.referralCode ? {referral_code: state.referralCode} : {})
-    };
-    // Generate booking ID client-side (avoids needing return=representation which requires SELECT RLS)
-    const bookingId = crypto.randomUUID();
-    bookingData.id = bookingId;
-    const dbRes = await fetch(`${SUPA}/rest/v1/bookings`, {
-      method:'POST',
-      headers:{...H,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify(bookingData)
-    });
-    if (!dbRes.ok) {
-      const dbBody = await dbRes.text().catch(() => '');
-      console.error('Booking INSERT failed:', dbRes.status, dbBody);
-      throw new Error('DB ' + dbRes.status);
-    }
-    // 3. Stripe checkout
-    const stripeRes = await fetch(`${SUPA}/functions/v1/stripe-checkout`, {
-      method:'POST',
-      headers:{...H,'Content-Type':'application/json'},
+    // 2. Skapa bokning + Stripe-session via booking-create EF (single source of truth)
+    const bcRes = await fetch(`${SUPA}/functions/v1/booking-create`, {
+      method: 'POST',
+      headers: {...H, 'Content-Type': 'application/json'},
       body: JSON.stringify({
-        booking_id: bookingId,
-        amount: total,
-        name: state.fname+' '+state.lname,
+        name: state.fname + ' ' + state.lname,
         email: state.email,
-        service: state.service,
-        date: state.date,
-        frequency: state.frequency || 'once',
-        hours: state.hours,
-        rut: useRut,
-        sqm: state.sqm,
-        address: state.address,
         phone: state.phone,
-        cleaner_id: state.cleanerId,
-        cleaner_name: state.cleanerName,
-        referral_code: state.referralCode || undefined
+        address: state.address + (state.cleanerCity ? ', ' + state.cleanerCity : ''),
+        date: state.date,
+        time: state.time,
+        hours: state.hours,
+        service: state.service,
+        cleaner_id: state.cleanerId || undefined,
+        rut: useRut,
+        sqm: state.sqm || undefined,
+        frequency: state.frequency || 'once',
+        discount_code: state.discountCode || undefined,
+        referral_code: state.referralCode || undefined,
+        pnr_hash: hashedPnr || undefined,
       })
     });
-    if (!stripeRes.ok) {
-      const stripeBody = await stripeRes.text().catch(() => '');
-      throw new Error('Stripe ' + stripeRes.status + (stripeBody.includes('message') ? ': ' + JSON.parse(stripeBody).message : ''));
+    if (!bcRes.ok) {
+      const bcBody = await bcRes.json().catch(() => ({}));
+      console.error('booking-create failed:', bcRes.status, bcBody);
+      throw new Error(bcBody.error || 'Booking ' + bcRes.status);
     }
-    const { url } = await stripeRes.json();
+    const { url } = await bcRes.json();
     if (url) {
       sessionStorage.removeItem('spick_booking');
       window.location.href = url;

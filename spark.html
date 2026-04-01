@@ -9,6 +9,7 @@
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <link rel="canonical" href="https://spick.se/spark.html">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>
 <style>
 :root{--g:#0F6E56;--gp:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--w:#fff;--border:#E8E8E4}
@@ -69,19 +70,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b)}
     <div class="level" id="lvl-stjarna">
       <div class="level-icon">⭐</div>
       <div class="level-name">Stjärna</div>
-      <div class="level-req">10 sparks</div>
+      <div class="level-req">200 poäng</div>
       <div class="level-perk">5% rabatt</div>
     </div>
     <div class="level" id="lvl-guld">
       <div class="level-icon">🏅</div>
       <div class="level-name">Guld</div>
-      <div class="level-req">30 sparks</div>
+      <div class="level-req">500 poäng</div>
       <div class="level-perk">10% rabatt</div>
     </div>
     <div class="level" id="lvl-vip">
       <div class="level-icon">👑</div>
       <div class="level-name">VIP</div>
-      <div class="level-req">75 sparks</div>
+      <div class="level-req">1000 poäng</div>
       <div class="level-perk">15% + prioritet</div>
     </div>
   </div>
@@ -148,11 +149,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b)}
 </div>
 
 <script>
+const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+
 const LEVELS = [
   { id: 'ny', name: 'Ny', threshold: 0, discount: 0 },
-  { id: 'stjarna', name: 'Stjärna', threshold: 10, discount: 0.05 },
-  { id: 'guld', name: 'Guld', threshold: 30, discount: 0.10 },
-  { id: 'vip', name: 'VIP', threshold: 75, discount: 0.15 },
+  { id: 'stjarna', name: 'Stjärna', threshold: 200, discount: 0.05 },
+  { id: 'guld', name: 'Guld', threshold: 500, discount: 0.10 },
+  { id: 'vip', name: 'VIP', threshold: 1000, discount: 0.15 },
 ];
 
 let userSparks = 0;
@@ -160,32 +163,32 @@ let userSparks = 0;
 function updateUI(sparks) {
   userSparks = sparks;
   document.getElementById('my-sparks').textContent = sparks;
-  
+
   // Current level
   let current = LEVELS[0];
   let next = LEVELS[1];
   for (let i = LEVELS.length - 1; i >= 0; i--) {
     if (sparks >= LEVELS[i].threshold) { current = LEVELS[i]; next = LEVELS[i + 1] || null; break; }
   }
-  
+
   // Highlight active level
   LEVELS.forEach(l => document.getElementById('lvl-' + l.id).classList.remove('active'));
   document.getElementById('lvl-' + current.id).classList.add('active');
-  
+
   // Progress
   if (next) {
     const range = next.threshold - current.threshold;
     const progress = sparks - current.threshold;
     const pct = Math.min(100, Math.round((progress / range) * 100));
     document.getElementById('prog-current').textContent = current.name;
-    document.getElementById('prog-next').textContent = (next.threshold - sparks) + ' sparks till ' + next.name;
+    document.getElementById('prog-next').textContent = (next.threshold - sparks) + ' poäng till ' + next.name;
     document.getElementById('prog-fill').style.width = pct + '%';
   } else {
     document.getElementById('prog-current').textContent = 'VIP';
     document.getElementById('prog-next').textContent = 'Högsta nivån!';
     document.getElementById('prog-fill').style.width = '100%';
   }
-  
+
   // Enable/disable redeem buttons
   [5, 15, 30].forEach(cost => {
     const btn = document.getElementById('reward-' + cost);
@@ -194,19 +197,14 @@ function updateUI(sparks) {
 }
 
 async function loadSparks() {
-  const email = localStorage.getItem('spick_customer_email');
-  if (!email) { updateUI(0); return; }
-  
-  try {
-    const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
-    const { data } = await SB.from('customers')
-      .select('sparks, spark_level')
-      .eq('email', email)
-      .single();
-    updateUI(data?.sparks || 0);
-  } catch(e) {
-    updateUI(0);
-  }
+  const { data: { user } } = await SB.auth.getUser();
+  if (!user) { updateUI(0); return; }
+
+  const { data } = await SB.from('loyalty_points')
+    .select('points, tier')
+    .eq('customer_email', user.email)
+    .single();
+  updateUI(data?.points || 0);
 }
 
 function redeem(cost, reward) {
@@ -214,15 +212,7 @@ function redeem(cost, reward) {
   alert('Spark-inlösen är snart tillgänglig! Kontakta hello@spick.se för att lösa in ' + cost + ' Sparks.');
 }
 
-// Load sparks on page load
-if (typeof supabase !== 'undefined') {
-  const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-  script.onload = loadSparks;
-  document.head.appendChild(script);
-} else {
-  updateUI(0);
-}
+loadSparks();
 </script>
 </body>
 </html>

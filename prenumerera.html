@@ -10,6 +10,7 @@
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <link rel="canonical" href="https://spick.se/prenumerera.html">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>
 <style>
 :root{--g:#0F6E56;--gp:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--w:#fff;--border:#E8E8E4}
@@ -153,8 +154,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b)}
   </div>
 </div>
 
+<div class="card" id="my-subs-card" style="margin-top:24px;display:none">
+  <div class="card-title">Mina prenumerationer</div>
+  <div id="my-subs-list"></div>
+</div>
+
 <script>
+const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
 let selectedFreq = 'biweekly';
+let currentUser = null;
 const rates = { weekly: 310, biweekly: 330, monthly: 350 };
 
 function selectPlan(freq) {
@@ -170,15 +178,15 @@ function updateSummary() {
   const total = rate * hours;
   const rut = Math.round(total * 0.5);
   const freqLabel = { weekly: 'varje vecka', biweekly: 'varannan vecka', monthly: 'en gång/månad' };
-  
+
   document.getElementById('sum-base').textContent = total.toLocaleString('sv') + ' kr';
   document.getElementById('sum-rut').textContent = '–' + rut.toLocaleString('sv') + ' kr';
   document.getElementById('sum-total').textContent = (total - rut).toLocaleString('sv') + ' kr';
-  
+
   document.querySelector('.sum-row span').textContent = 'Hemstädning ' + hours + 'h × ' + freqLabel[selectedFreq];
 }
 
-function startSubscription() {
+async function startSubscription() {
   const hours = document.getElementById('cfg-hours').value;
   const day = document.getElementById('cfg-day').value;
   const time = document.getElementById('cfg-time').value;
@@ -190,7 +198,47 @@ function startSubscription() {
   location.href = 'boka.html?' + params.toString();
 }
 
+async function loadMySubscriptions() {
+  const { data: { user } } = await SB.auth.getUser();
+  if (!user) return;
+  currentUser = user;
+
+  const { data: subs } = await SB.from('subscriptions')
+    .select('*')
+    .eq('customer_email', user.email);
+
+  if (!subs || subs.length === 0) return;
+
+  const card = document.getElementById('my-subs-card');
+  const list = document.getElementById('my-subs-list');
+  card.style.display = 'block';
+
+  const freqLabel = { weekly: 'Varje vecka', biweekly: 'Varannan vecka', monthly: 'Månadsvis' };
+
+  list.innerHTML = subs.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:.9rem">${s.service_type || 'Hemstädning'} · ${s.booking_hours || 3}h</div>
+        <div style="font-size:.78rem;color:var(--m)">${freqLabel[s.frequency] || s.frequency} · ${s.status === 'active' ? '✅ Aktiv' : '⏸ Pausad'}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${s.status === 'active'
+          ? `<button onclick="updateSubStatus('${s.id}','paused')" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--w);cursor:pointer;font-family:inherit;font-size:.78rem">Pausa</button>`
+          : `<button onclick="updateSubStatus('${s.id}','active')" style="padding:6px 12px;border:1px solid var(--g);border-radius:8px;background:var(--gp);color:var(--g);cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600">Återuppta</button>`
+        }
+      </div>
+    </div>
+  `).join('');
+}
+
+async function updateSubStatus(id, status) {
+  const { error } = await SB.from('subscriptions').update({ status }).eq('id', id);
+  if (error) { alert('Kunde inte uppdatera: ' + error.message); return; }
+  loadMySubscriptions();
+}
+
 updateSummary();
+loadMySubscriptions();
 </script>
 </body>
 </html>

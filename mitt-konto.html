@@ -13,6 +13,7 @@
 <meta name="description" content="Se dina bokningar, historik och hantera ditt Spick-konto.">
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="js/patch-min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT"></script>
@@ -820,7 +821,7 @@ async function submitInlineReview() {
     }
     document.getElementById('reviewModal').style.display = 'none';
     showToast('✅ Tack för ditt betyg! Det hjälper andra kunder.');
-    setTimeout(loadBookings, 1000);
+    setTimeout(() => renderBookings('all'), 1000);
   } else {
     spickToast('Fel: ' + error.message, 'error');
     btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false;
@@ -846,14 +847,9 @@ function logout() {
 }
 
 function editProfile() {
-  const name = prompt("Ditt namn:", document.getElementById('profile-name')?.textContent || "");
-  const phone = prompt("Telefonnummer:", document.getElementById('profile-phone')?.textContent || "");
-  if(name || phone) {
-    // Spara lokalt för nu – faktisk Supabase-update kräver auth
-    if(name) document.getElementById('profile-name').textContent = name;
-    if(phone) document.getElementById('profile-phone').textContent = phone;
-    spickToast('Profil uppdaterad!', 'success');
-  }
+  // Navigate to profile tab
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(t => { if (t.textContent.includes('Profil')) t.click(); });
 }
 </script>
 <script src="js/feedback.js" defer></script>
