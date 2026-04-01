@@ -82,8 +82,8 @@ function scoreGeography(cleaner: any, booking: any): number {
   const maxRadius = area.max_radius_km || cleaner.max_travel_km || 15;
   
   // Om vi har koordinater
-  if (cleaner.latitude && cleaner.longitude && booking.latitude && booking.longitude) {
-    const dist = distanceKm(cleaner.latitude, cleaner.longitude, booking.latitude, booking.longitude);
+  if (cleaner.home_lat && cleaner.home_lng && booking.latitude && booking.longitude) {
+    const dist = distanceKm(cleaner.home_lat, cleaner.home_lng, booking.latitude, booking.longitude);
     if (dist > maxRadius) return 0;
     if (dist <= 3) return 1.0;
     if (dist <= 5) return 0.9;
@@ -139,7 +139,7 @@ function scoreHourlyRate(cleaner: any, booking: any): number {
 
 function scoreQuality(cleaner: any): number {
   const rating = parseFloat(cleaner.avg_rating || "0");
-  const reviews = cleaner.review_count || 0;
+  const reviews = cleaner.review_count || cleaner.total_ratings || 0;
   const repeatRate = cleaner.repeat_rate || 0;
   
   let score = 0.5; // default
@@ -261,8 +261,8 @@ function calculateMatch(cleaner: any, booking: any): MatchResult {
   
   // Avstånd
   let dist: number | null = null;
-  if (cleaner.latitude && cleaner.longitude && booking.latitude && booking.longitude) {
-    dist = Math.round(distanceKm(cleaner.latitude, cleaner.longitude, booking.latitude, booking.longitude) * 10) / 10;
+  if (cleaner.home_lat && cleaner.home_lng && booking.latitude && booking.longitude) {
+    dist = Math.round(distanceKm(cleaner.home_lat, cleaner.home_lng, booking.latitude, booking.longitude) * 10) / 10;
   }
   
   return {
@@ -305,10 +305,10 @@ serve(async (req) => {
       });
     }
 
-    // Hämta tillgänglighet för alla städare
+    // Hämta tillgänglighet för alla städare (v_cleaner_availability_int returnerar day_of_week som integer)
     const cleanerIds = cleaners.map(c => c.id);
-    const { data: availability } = await sb.from("cleaner_availability")
-      .select("*")
+    const { data: availability } = await sb.from("v_cleaner_availability_int")
+      .select("cleaner_id, day_of_week, is_active, start_time, end_time")
       .in("cleaner_id", cleanerIds);
 
     // Hämta senaste bokningshistorik (för history-score)

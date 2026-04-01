@@ -1308,9 +1308,36 @@ async function loadAvailableCleaners() {
     // Filtrera: inte fullbokade denna tid
     const takenNow = Array.isArray(state.bookings) ? state.bookings.filter(b => b.date === state.date && b.time?.slice(0,5) === state.time).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !takenNow.includes(c.id));
-    // Sortera: betyg → antal uppdrag → pris
+    // Sortera: betyg → antal uppdrag → pris (lokal fallback)
     cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
-  
+
+    // Optimera sortering via matchningsmotorn (optional – fallback till lokal om EF misslyckas)
+    try {
+      const matchRes = await fetch(`${SUPA}/functions/v1/cleaner-job-match`, {
+        method: 'POST',
+        headers: {...H, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          booking: {
+            date: state.date, time: state.time, hours: state.hours,
+            service: state.service, address: state.address,
+            city: state.city || '',
+            customer_email: state.email || '',
+            has_pets: state.hasPets || false,
+          },
+          limit: 15,
+          include_below_threshold: true
+        })
+      });
+      if (matchRes.ok) {
+        const matchData = await matchRes.json();
+        if (matchData.matches?.length) {
+          const scoreMap = {};
+          matchData.matches.forEach(m => { scoreMap[m.cleaner_id] = m.score; });
+          cleaners.sort((a,b) => (scoreMap[b.id]||0) - (scoreMap[a.id]||0));
+        }
+      }
+    } catch(e) { console.warn('Matchning fallback:', e.message); }
+
   // Visa prisintervall
   if (cleaners.length) {
     const rates = cleaners.map(cl => cl.hourly_rate || 350);
