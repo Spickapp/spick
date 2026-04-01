@@ -24,9 +24,9 @@ serve(async (req) => {
     
     const { data: stale, error: fetchErr } = await sb
       .from("bookings")
-      .select("id, customer_email, customer_name, service, date, created_at")
+      .select("id, created_at")
       .eq("payment_status", "pending")
-      .eq("status", "ny")
+      .in("status", ["pending", "ny"])
       .lt("created_at", cutoff);
 
     if (fetchErr) throw fetchErr;
@@ -57,7 +57,7 @@ serve(async (req) => {
     // 3. Logga i booking_status_log
     const logEntries = staleIds.map(id => ({
       booking_id: id,
-      old_status: "ny",
+      old_status: "pending",
       new_status: "avbokad",
       changed_by: "system:cleanup-stale",
     }));
@@ -78,7 +78,7 @@ serve(async (req) => {
           subject: `⚠️ ${stale.length} stale bokningar rensade`,
           html: `<p>${stale.length} bokningar som aldrig betalats (>30 min) har markerats som avbokade.</p>
             <p>Detta kan indikera ett problem med Stripe checkout-flödet.</p>
-            <ul>${stale.map(b => `<li>${b.service || "Städning"} ${b.date || "?"} — skapad ${b.created_at}</li>`).join("")}</ul>`,
+            <ul>${stale.map(b => `<li>Bokning ${b.id.slice(0,8)} — skapad ${b.created_at}</li>`).join("")}</ul>`,
         }),
       }).catch(() => {});
     }
