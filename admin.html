@@ -1377,7 +1377,7 @@ async function loadAll() {
   // Hämta prenumerationer
   const { data: subs } = await SB.from('subscriptions').select('*').order('created_at',{ascending:false});
   data.subscriptions = subs || [];
-  document.getElementById('badge-subs').textContent = (subs||[]).filter(s=>s.status==='aktiv').length || '';
+  document.getElementById('badge-subs').textContent = (subs||[]).filter(s=>s.status==='active'||s.status==='aktiv').length || '';
   data.customers = customers.data || [];
   data.reviews = reviews.data || [];
 
@@ -1404,9 +1404,12 @@ function renderDashboard() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   document.getElementById('dash-date').textContent = now.toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-  const thisMonth = data.bookings.filter(b => new Date(b.created_at) >= monthStart);
+  const monthStartStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+  const thisMonth = data.bookings.filter(b => (b.booking_date || b.created_at?.split('T')[0] || '') >= monthStartStr);
   const paid = thisMonth.filter(b => b.payment_status === 'paid');
   const revenue = paid.reduce((s, b) => s + (b.total_price || 0), 0);
+  // Konverteringsgrad
+  const conversionRate = thisMonth.length ? Math.round(paid.length / thisMonth.length * 100) : 0;
   const pending = data.bookings.filter(b => b.payment_status === 'pending');
   const approvedCleaners = data.cleaners.filter(c => c.is_approved);
   const avgRating = data.reviews.length ? (data.reviews.reduce((s,r) => s + (r.cleaner_rating||5), 0) / data.reviews.length).toFixed(1) : '–';
@@ -1416,9 +1419,11 @@ function renderDashboard() {
   // Trend vs förra månaden
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lmStartStr = lastMonthStart.getFullYear() + '-' + String(lastMonthStart.getMonth()+1).padStart(2,'0') + '-01';
+  const lmEndStr = lastMonthEnd.toISOString().split('T')[0];
   const lastRevenue = data.bookings.filter(b => {
-    const bd = new Date(b.paid_at || b.created_at);
-    return b.payment_status === 'paid' && bd >= lastMonthStart && bd <= lastMonthEnd;
+    const bd = b.booking_date || b.created_at?.split('T')[0] || '';
+    return b.payment_status === 'paid' && bd >= lmStartStr && bd <= lmEndStr;
   }).reduce((s,b) => s+(b.total_price||0), 0);
   const trendEl = document.getElementById('kpi-revenue-trend');
   if (trendEl && lastRevenue > 0) {
@@ -1445,7 +1450,7 @@ function renderDashboard() {
   const rb = data.bookings.slice(0, 6);
   document.getElementById('dash-recent-bookings').innerHTML = rb.length ? rb.map(b => `
     <div class="stat-row">
-      <span class="lbl">${escHtml(b.customer_name || b.name || '–')} · ${escHtml(b.service || 'Städning')}</span>
+      <span class="lbl">${escHtml(b.customer_name || '–')} · ${escHtml(b.service_type || b.service || 'Städning')}</span>
       <span>${statusBadge(b.payment_status)}</span>
     </div>`).join('') : '<div class="empty">Inga bokningar än</div>';
 
@@ -1474,7 +1479,7 @@ function renderRevenueChart() {
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
     const dayRevenue = data.bookings
-      .filter(b => b.payment_status === 'paid' && (b.date || b.created_at?.split('T')[0]) === dateStr)
+      .filter(b => b.payment_status === 'paid' && (b.booking_date || b.created_at?.split('T')[0]) === dateStr)
       .reduce((s, b) => s + (b.total_price || 0), 0);
     dailyData.push(dayRevenue);
     labels.push(d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }));
@@ -1791,13 +1796,15 @@ function renderPayouts() {
 async function renderSubscriptions() {
   const { data: subs } = await SB.from('subscriptions').select('*').order('created_at', {ascending:false});
   const all = subs || [];
-  const active = all.filter(s => s.status === 'aktiv');
-  
+  const active = all.filter(s => s.status === 'active' || s.status === 'aktiv');
+
   // KPIs
-  const freqMultiplier = {veckovis:4.3, 'varannan-vecka':2.15, månadsvis:1};
+  const freqMultiplier = {weekly:4.3, biweekly:2.15, monthly:1, veckovis:4.3, 'varannan-vecka':2.15, 'månadsvis':1};
   const mrr = active.reduce((s,sub) => {
     const m = freqMultiplier[sub.frequency] || 1;
-    return s + ((sub.price || sub.total_price || 0) * m);
+    const hourlyRate = sub.hourly_rate || 349;
+    const hours = sub.booking_hours || 3;
+    return s + (hourlyRate * hours * m);
   }, 0);
   
   document.getElementById('sub-count').textContent = active.length;
@@ -1806,23 +1813,29 @@ async function renderSubscriptions() {
   document.getElementById('badge-subs').textContent = active.length;
   
   const rows = all.map(s => {
-    const freq = {veckovis:'Varje vecka 🔄', 'varannan-vecka':'Varannan vecka', månadsvis:'Månadsvis'}[s.frequency] || s.frequency;
-    const statusBadge = s.status === 'aktiv' ? '<span class="badge green">✅ Aktiv</span>' : 
-                        s.status === 'pausad' ? '<span class="badge yellow">⏸ Pausad</span>' :
+    const freqLabels = {weekly:'Varje vecka 🔄', biweekly:'Varannan vecka', monthly:'Månadsvis', veckovis:'Varje vecka 🔄', 'varannan-vecka':'Varannan vecka', 'månadsvis':'Månadsvis'};
+    const freq = freqLabels[s.frequency] || s.frequency;
+    const isActive = s.status === 'active' || s.status === 'aktiv';
+    const isPaused = s.status === 'paused' || s.status === 'pausad';
+    const statusBadge = isActive ? '<span class="badge green">✅ Aktiv</span>' :
+                        isPaused ? '<span class="badge yellow">⏸ Pausad</span>' :
                         '<span class="badge grey">Avslutad</span>';
-    const discountedPrice = (s.price||s.total_price) ? Math.round((s.price||s.total_price) * (1 - (s.discount_percent||0)/100)) : '–';
+    const hourlyRate = s.hourly_rate || 349;
+    const hours = s.booking_hours || 3;
+    const basePrice = hourlyRate * hours;
+    const discountedPrice = Math.round(basePrice * (1 - (s.discount_percent||0)/100));
     return `<tr>
       <td><strong>${s.customer_name || '–'}</strong><br><span style="font-size:.75rem;color:var(--m)">${s.customer_email||''}</span></td>
-      <td>${s.service || 'Hemstädning'} · ${s.hours||3}h</td>
+      <td>${s.service_type || s.service || 'Hemstädning'} · ${s.booking_hours||s.hours||3}h</td>
       <td>${freq}</td>
-      <td>${s.city || '–'}</td>
+      <td>${s.customer_address || s.city || '–'}</td>
       <td style="color:var(--g);font-weight:600">${discountedPrice} kr${s.discount_percent ? ` <span style="font-size:.7rem;color:#16A34A">-${s.discount_percent}%</span>` : ''}</td>
       <td>${s.next_booking_date || '–'}</td>
       <td>${statusBadge}</td>
-      <td>${s.preferred_cleaner_id ? data.cleaners.find(c=>c.id===s.preferred_cleaner_id)?.full_name || 'Tilldelas' : 'Auto'}</td>
+      <td>${s.cleaner_id ? (s.cleaner_name || data.cleaners.find(c=>c.id===s.cleaner_id)?.full_name || 'Tilldelas') : 'Auto'}</td>
       <td>
         <button class="btn btn-sm btn-primary" onclick="createBookingFromSub('${s.id}')">📅 Boka</button>
-        ${s.status === 'aktiv' ? `<button class="btn btn-sm btn-outline" style="margin-top:4px" onclick="pauseSub('${s.id}')">⏸</button>` : `<button class="btn btn-sm btn-outline" style="margin-top:4px" onclick="activateSub('${s.id}')">▶️</button>`}
+        ${isActive ? `<button class="btn btn-sm btn-outline" style="margin-top:4px" onclick="pauseSub('${s.id}')">⏸</button>` : `<button class="btn btn-sm btn-outline" style="margin-top:4px" onclick="activateSub('${s.id}')">▶️</button>`}
       </td>
     </tr>`;
   });
@@ -1836,28 +1849,28 @@ async function createBookingFromSub(subId) {
   if (!sub) return;
   const nextDate = prompt('Nästa bokningsdatum (YYYY-MM-DD):', sub.next_booking_date || new Date().toISOString().split('T')[0]);
   if (!nextDate) return;
+  const hourlyRate = sub.hourly_rate || 349;
+  const hours = sub.booking_hours || 3;
+  const totalPrice = Math.round(hourlyRate * hours * (1 - (sub.discount_percent||0)/100));
   const { error } = await SB.from('bookings').insert([{
     customer_name: sub.customer_name,
     customer_email: sub.customer_email,
     customer_phone: sub.customer_phone,
-    address: sub.address,
-    city: sub.city,
-    service: sub.service,
-    hours: sub.hours,
-    total_price: sub.price || sub.total_price,
-    rut: sub.rut,
-    date: nextDate,
-    scheduled_date: nextDate,
-    time: sub.preferred_time || '09:00',
+    customer_address: sub.customer_address,
+    service_type: sub.service_type || 'Hemstädning',
+    booking_hours: sub.booking_hours || 3,
+    square_meters: sub.square_meters,
+    total_price: totalPrice,
+    booking_date: nextDate,
+    booking_time: sub.preferred_time || '09:00',
+    cleaner_id: sub.cleaner_id,
+    cleaner_name: sub.cleaner_name,
     payment_status: 'pending',
-    is_recurring: true,
-    subscription_id: sub.id,
-    key_info: sub.key_info,
-    customer_notes: sub.customer_notes,
+    status: 'ny',
   }]);
   if (!error) {
-    await auditLog('create_from_sub','booking', subId, null, {customer_name: sub.customer_name, date: nextDate, service: sub.service});
-    const nextFreq = {veckovis:7,'varannan-vecka':14,månadsvis:30}[sub.frequency]||14;
+    await auditLog('create_from_sub','booking', subId, null, {customer_name: sub.customer_name, date: nextDate, service: sub.service_type});
+    const nextFreq = {weekly:7, biweekly:14, monthly:30, veckovis:7,'varannan-vecka':14,'månadsvis':30}[sub.frequency]||14;
     const next = new Date(nextDate);
     next.setDate(next.getDate()+nextFreq);
     await SB.from('subscriptions').update({next_booking_date:next.toISOString().split('T')[0]}).eq('id',subId);
@@ -1868,7 +1881,7 @@ async function createBookingFromSub(subId) {
 }
 
 async function createNextBookings() {
-  const { data: subs } = await SB.from('subscriptions').select('*').eq('status','aktiv');
+  const { data: subs } = await SB.from('subscriptions').select('*').in('status',['active','aktiv']);
   if (!subs?.length) { showToast('Inga aktiva prenumerationer'); return; }
   const today = new Date().toISOString().split('T')[0];
   const soon = subs.filter(s => s.next_booking_date && s.next_booking_date <= 
@@ -1884,14 +1897,14 @@ async function createNextBookings() {
 }
 
 async function pauseSub(id) {
-  await SB.from('subscriptions').update({status:'pausad'}).eq('id',id);
-  await auditLog('pause','subscription', id, {status:'aktiv'}, {status:'pausad'});
+  await SB.from('subscriptions').update({status:'paused'}).eq('id',id);
+  await auditLog('pause','subscription', id, {status:'active'}, {status:'paused'});
   showToast('⏸ Prenumeration pausad');
   renderSubscriptions();
 }
 async function activateSub(id) {
-  await SB.from('subscriptions').update({status:'aktiv'}).eq('id',id);
-  await auditLog('activate','subscription', id, {status:'pausad'}, {status:'aktiv'});
+  await SB.from('subscriptions').update({status:'active'}).eq('id',id);
+  await auditLog('activate','subscription', id, {status:'paused'}, {status:'active'});
   showToast('▶️ Prenumeration aktiverad');
   renderSubscriptions();
 }
