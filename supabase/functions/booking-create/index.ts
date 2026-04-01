@@ -92,7 +92,7 @@ serve(async (req) => {
     if (cleaner_id) {
       const { data, error } = await supabase
         .from("cleaners")
-        .select("id, full_name, tier, avg_rating, total_jobs, service_radius_km, home_lat, home_lng, email, phone")
+        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone")
         .eq("id", cleaner_id)
         .eq("is_approved", true)
         .eq("status", "aktiv")
@@ -107,7 +107,7 @@ serve(async (req) => {
       // Alla aktiva städare, sorterade på rating
       const { data } = await supabase
         .from("cleaners")
-        .select("id, full_name, tier, avg_rating, total_jobs, service_radius_km, home_lat, home_lng, email, phone")
+        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone")
         .eq("is_approved", true)
         .eq("status", "aktiv")
         .order("avg_rating", { ascending: false })
@@ -181,24 +181,19 @@ serve(async (req) => {
       customer_email: email,
       customer_phone: phone,
       customer_address: address,
-      city: null,
       service_type: service,
       booking_date: date,
       booking_time: time,
-      time_end: timeEnd,
       booking_hours: validHours,
-      total_price: netPrice,
+      total_price: Math.round(netPrice),
       status: "pending",
       payment_status: "pending",
-      rut_amount: useRut,
+      rut_amount: useRut ? Math.round(rutDeduction) : 0,
       frequency: frequency || "once",
       cleaner_id: cleaner.id,
       cleaner_name: cleaner.full_name || cleaner_name,
       square_meters: sqm || null,
-      customer_notes: customer_notes || null,
-      key_info: key_info || null,
-      customer_lat: customer_lat || null,
-      customer_lng: customer_lng || null,
+      notes: customer_notes || null,
       ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
 
       // ── PRISMOTOR-FÄLT (nya) ──
