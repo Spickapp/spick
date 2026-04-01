@@ -1,16 +1,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const sb = createClient(
   "https://urjeijcncsyuletprydy.supabase.co",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
-
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
 
 // ── MATCHNINGSVIKTER (totalt 100%) ───────────────────
 const WEIGHTS = {
@@ -279,6 +274,7 @@ function calculateMatch(cleaner: any, booking: any): MatchResult {
 // ── SERVE ────────────────────────────────────────────
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {

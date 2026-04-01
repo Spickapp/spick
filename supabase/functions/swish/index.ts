@@ -14,6 +14,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const SWISH_CERT      = Deno.env.get("SWISH_CERT_PEM") || "DEMO";
 const SWISH_KEY       = Deno.env.get("SWISH_KEY_PEM") || "DEMO";
@@ -25,15 +26,10 @@ const SUPABASE_URL    = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BASE_URL        = "https://spick.se";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
-
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {

@@ -1,13 +1,9 @@
 // supabase/functions/places-autocomplete/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
+import { corsHeaders } from "../_shared/email.ts";
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {

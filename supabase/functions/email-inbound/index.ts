@@ -9,6 +9,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const SUPA_URL  = Deno.env.get("SUPABASE_URL")!;
 const SUPA_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -144,8 +145,9 @@ async function sendReply(to: string, toName: string, subject: string, html: stri
 
 // ─── Huvudfunktion ────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "https://spick.se" } });
+    return new Response("ok", { headers: CORS });
   }
 
   try {

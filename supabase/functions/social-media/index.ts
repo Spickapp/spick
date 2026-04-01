@@ -13,6 +13,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const ANTHROPIC_API_KEY    = Deno.env.get("ANTHROPIC_API_KEY")!;
 const BUFFER_ACCESS_TOKEN  = Deno.env.get("BUFFER_ACCESS_TOKEN")!;
@@ -20,12 +21,6 @@ const BUFFER_CHANNEL_ID    = Deno.env.get("BUFFER_CHANNEL_ID") || "69c417e0af47d
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY       = Deno.env.get("RESEND_API_KEY")!;
-
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -242,6 +237,7 @@ Returnera BARA inlägget som text, inga förklaringar.`;
 
 // ── MAIN HANDLER ─────────────────────────────────────────────
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {

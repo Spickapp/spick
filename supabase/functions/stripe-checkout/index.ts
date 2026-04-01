@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const BASE_URL = "https://spick.se";
@@ -8,17 +9,6 @@ const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// CORS: begränsa till spick.se
-const ALLOWED_ORIGINS = [BASE_URL, "https://www.spick.se", "http://localhost:3000"];
-function corsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || "";
-  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : BASE_URL;
-  return {
-    "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-  };
-}
 
 serve(async (req) => {
   const CORS = corsHeaders(req);

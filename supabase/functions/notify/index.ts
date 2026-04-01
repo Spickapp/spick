@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 const sb = createClient(
   "https://urjeijcncsyuletprydy.supabase.co",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -15,16 +15,6 @@ function esc(s: unknown): string {
   return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
-// CORS: begränsat till spick.se (inte wildcard *)
-function getCORS(req: Request) {
-  const origin = req.headers.get("origin") || "";
-  const allowed = ["https://spick.se", "https://www.spick.se"];
-  return {
-    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : "https://spick.se",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-  };
-}
 
 // Spick branded email wrapper
 function wrap(content: string): string {
@@ -91,7 +81,7 @@ async function queueEmail(to: string, subject: string, html: string, error: stri
 }
 
 serve(async (req) => {
-  const CORS = getCORS(req);
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   const payload = await req.json().catch(() => ({}));

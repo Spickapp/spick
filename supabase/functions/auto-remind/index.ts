@@ -4,6 +4,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -44,8 +45,26 @@ async function mail(to: string, subject: string, html: string) {
 }
 
 
+/** Fire-and-forget SMS via sms-EF. Loggar fel men kastar aldrig undantag. */
+async function sendSms(to: string | null | undefined, message: string): Promise<void> {
+  if (!to) return;
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({ to, message }),
+    });
+  } catch (e) {
+    console.warn("SMS skippat:", (e as Error).message);
+  }
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, {headers:{"Access-Control-Allow-Origin":"https://spick.se"}});
+  const CORS = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   // Auth: --no-verify-jwt på Supabase nivå + GitHub Actions secret
   // Ingen manuell auth-check behövs
@@ -109,6 +128,14 @@ serve(async (req) => {
 <a href="${mapsUrl}" class="btn" style="margin-right:8px">📍 Navigera →</a>
 <a href="https://spick.se/stadare-dashboard.html" class="btn" style="background:#1C1C1A">Öppna app →</a>`));
         }
+
+        // SMS-påminnelse 24h innan (fire-and-forget)
+        await sendSms(
+          b.customer_phone,
+          `Spick: Påminnelse 🧹 Din städning är imorgon kl ${b.booking_time || "09:00"}. ` +
+          `${b.cleaner_name ? `Städare: ${b.cleaner_name}. ` : ""}` +
+          `Adress: ${b.customer_address || ""}. Frågor? hello@spick.se`
+        );
 
         await sb.from("bookings").update({reminders_sent:[...alreadySent,"24h"]}).eq("id",b.id);
         sent.push(`24h:${b.id}`);

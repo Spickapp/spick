@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/email.ts";
 
 async function encryptPNR(pnr) {
   const keyHex = Deno.env.get("PNR_ENCRYPTION_KEY");
@@ -22,13 +17,14 @@ async function encryptPNR(pnr) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const CORS = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
     const { session_id, cleaner_id } = await req.json();
     if (!session_id) {
       return new Response(JSON.stringify({ error: "session_id krävs" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
@@ -43,21 +39,21 @@ serve(async (req) => {
     if (!ticResponse.ok) {
       console.error("TIC API error:", ticResponse.status);
       return new Response(JSON.stringify({ error: "Kunde inte verifiera BankID-session" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 502, headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
     const session = await ticResponse.json();
     if (session.status !== "complete") {
       return new Response(JSON.stringify({ error: "BankID-verifiering ej slutförd", status: session.status }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
     const { personalNumber, givenName, surname, name } = session.user;
     if (!personalNumber) {
       return new Response(JSON.stringify({ error: "Personnummer saknas" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
@@ -86,11 +82,11 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true, verified: true, name, given_name: givenName, surname,
-    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("bankid-verify error:", err);
     return new Response(JSON.stringify({ error: "Internt serverfel" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
 });

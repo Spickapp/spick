@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const sb = createClient(
   "https://urjeijcncsyuletprydy.supabase.co",
@@ -26,6 +27,8 @@ function wrap(content: string): string {
 }
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.replace("Bearer ", "");
   const CRON = Deno.env.get("CRON_SECRET");

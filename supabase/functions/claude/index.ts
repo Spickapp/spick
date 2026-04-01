@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { corsHeaders } from "../_shared/email.ts";
 
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
@@ -20,15 +21,10 @@ REGLER:
 - Uppmuntra kunden att boka på spick.se/boka`;
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   // CORS
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "https://spick.se",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-      }
-    });
+    return new Response(null, { headers: CORS });
   }
 
   try {
@@ -70,13 +66,13 @@ serve(async (req) => {
     return new Response(JSON.stringify({ reply: text }), {
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "https://spick.se",
+        ...CORS,
       }
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://spick.se" }
+      headers: { "Content-Type": "application/json", ...CORS }
     });
   }
 });

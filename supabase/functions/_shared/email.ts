@@ -8,20 +8,6 @@ const FROM  = "Spick <hello@spick.se>";
 const ADMIN = "hello@spick.se";
 
 /**
- * CORS headers med preflight-cache (24h)
- */
-export function corsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("origin") || "";
-  const allowed = ["https://spick.se", "https://www.spick.se"];
-  return {
-    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : "https://spick.se",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-    "Access-Control-Max-Age": "86400", // 24h preflight cache
-  };
-}
-
-/**
  * Fetch med timeout (default 10s)
  */
 export async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs = 10000): Promise<Response> {
@@ -125,7 +111,7 @@ export async function sendEmail(
 }
 
 /**
- * CORS-headers (begränsat till spick.se)
+ * CORS-headers (begränsat till spick.se) med 24h preflight-cache
  */
 export function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
@@ -135,6 +121,7 @@ export function corsHeaders(req: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+    "Access-Control-Max-Age": "86400",
   };
 }
 

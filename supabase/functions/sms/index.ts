@@ -9,17 +9,13 @@
  * - ELKS_API_PASSWORD
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { corsHeaders } from "../_shared/email.ts";
 
 const ELKS_USER = Deno.env.get("ELKS_API_USER")!;
 const ELKS_PASS = Deno.env.get("ELKS_API_PASSWORD")!;
 
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
-
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {

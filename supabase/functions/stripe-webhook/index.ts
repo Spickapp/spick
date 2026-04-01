@@ -18,12 +18,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, stripe-signature",
-};
+import { corsHeaders } from "../_shared/email.ts";
 
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -113,6 +108,23 @@ async function sendEmail(to: string, subject: string, html: string) {
     body: JSON.stringify({ from: FROM, to, subject, html })
   });
   if (!res.ok) console.error("Email fel:", await res.text());
+}
+
+/** Fire-and-forget SMS via sms-EF. Loggar fel men kastar aldrig undantag. */
+async function sendSms(to: string | null | undefined, message: string): Promise<void> {
+  if (!to) return;
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({ to, message }),
+    });
+  } catch (e) {
+    console.warn("SMS skippat:", (e as Error).message);
+  }
 }
 
 // ── Tilldela bästa tillgängliga städare ───────────────────────────────────
@@ -282,19 +294,21 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
     nextDate.setDate(nextDate.getDate() + (metadata.frequency === "weekly" ? 7 : metadata.frequency === "biweekly" ? 14 : 30));
     try {
       await sb.from("subscriptions").insert({
-        customer_name: booking.customer_name,
-        customer_email: booking.customer_email,
-        customer_phone: booking.customer_phone,
-        customer_address: booking.customer_address,
-        service_type: booking.service_type,
-        frequency: metadata.frequency,
-        booking_hours: booking.booking_hours,
-        square_meters: booking.square_meters || null,
-        cleaner_id: booking.cleaner_id || null,
-        cleaner_name: booking.cleaner_name || null,
-        status: "active",
-        next_booking_date: nextDate.toISOString().split("T")[0],
-        discount_percent: metadata.frequency === "weekly" ? 10 : metadata.frequency === "biweekly" ? 5 : 0,
+        customer_name:        booking.customer_name,
+        customer_email:       booking.customer_email,
+        customer_phone:       booking.customer_phone        || null,
+        address:              booking.customer_address,
+        city:                 booking.city                  || null,
+        service:              booking.service_type          || "Hemstädning",
+        frequency:            metadata.frequency,
+        hours:                booking.booking_hours         || 3,
+        preferred_cleaner_id: booking.cleaner_id            || null,
+        cleaner_name:         booking.cleaner_name          || null,
+        status:               "aktiv",
+        next_booking_date:    nextDate.toISOString().split("T")[0],
+        discount_percent:     metadata.frequency === "weekly" ? 10 : metadata.frequency === "biweekly" ? 5 : 0,
+        key_info:             booking.key_info              || null,
+        customer_notes:       booking.customer_notes        || null,
       });
       console.log("✅ Prenumeration skapad");
     } catch(e) { console.error("Prenumeration-fel:", e); }
@@ -338,6 +352,13 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 <p style="font-size:13px">🛡️ <strong>100% nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
 `);
   await sendEmail(customerEmail || booking.customer_email, `Bokningsbekräftelse – ${service} den ${date} ✅`, customerHtml);
+
+  // SMS-bekräftelse (fire-and-forget — kräver ELKS-nycklar i Secrets)
+  await sendSms(
+    booking.customer_phone,
+    `Spick: Bokning bekräftad ✅ ${service} den ${date} kl ${time}. ` +
+    `Se din bokning: https://spick.se/min-bokning.html?bid=${booking.id}`
+  );
 
   // ── 2. Notifiera städaren ────────────────────────────────────
   if (cleaner) {
@@ -489,6 +510,7 @@ async function capturePayment(bookingId: string) {
 }
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   // Direkt capture-anrop från städardashboard
   if (req.method === "POST" && req.url.includes("?action=capture")) {

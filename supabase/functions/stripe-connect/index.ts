@@ -8,6 +8,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/email.ts";
 
 const STRIPE_SECRET_KEY    = Deno.env.get("STRIPE_SECRET_KEY")!;
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
@@ -15,12 +16,6 @@ const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY       = Deno.env.get("RESEND_API_KEY")!;
 const BASE_URL             = "https://spick.se";
 const FROM                 = "Spick <hello@spick.se>";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -46,6 +41,7 @@ async function stripe(path: string, method = "GET", body?: Record<string, unknow
 }
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   const { action, ...params } = await req.json();

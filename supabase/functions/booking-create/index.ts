@@ -30,17 +30,12 @@ import {
   getAvailableCredit,
   calculateBooking,
 } from "../_shared/pricing-engine.ts";
+import { corsHeaders } from "../_shared/email.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STRIPE_KEY      = Deno.env.get("STRIPE_SECRET_KEY")!;
 const BASE_URL        = Deno.env.get("BASE_URL") || "https://spick.se";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 function json(status: number, body: any) {
   return new Response(JSON.stringify(body), {
@@ -50,6 +45,7 @@ function json(status: number, body: any) {
 }
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {

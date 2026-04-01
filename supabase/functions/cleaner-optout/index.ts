@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders } from "../_shared/email.ts";
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -6,6 +7,8 @@ const supabase = createClient(
 )
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   const url = new URL(req.url)
   const token = url.searchParams.get('token')
 

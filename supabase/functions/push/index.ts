@@ -1,13 +1,9 @@
 // SPICK – Push Notifications med VAPID
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { corsHeaders } from "../_shared/email.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const CORS = {
-  "Access-Control-Allow-Origin": "https://spick.se",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
-};
 
 async function getSubscriptions(filter?: string): Promise<any[]> {
   const url = SUPA_URL + "/rest/v1/push_subscriptions?select=*" + (filter || "");
@@ -29,6 +25,7 @@ async function sendPush(sub: any, notification: any): Promise<boolean> {
 }
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
