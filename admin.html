@@ -389,6 +389,11 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 </tr></thead>
             <tbody id="bookings-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
+          <div id="bookings-load-more" style="display:none;text-align:center;padding:16px">
+            <button onclick="loadMoreBookings()" class="btn btn-outline btn-sm">
+              Ladda fler bokningar →
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -834,12 +839,14 @@ let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[]
 let currentBookingId = null, currentCleanerId = null;
 
 // Kolla om redan inloggad
-SB.auth.getSession().then(({ data: { session } }) => {
+SB.auth.getSession().then(async ({ data: { session } }) => {
   if (session?.user?.email === ADMIN_EMAIL) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    try { await loadAdminUser(); } catch(e) { console.warn('loadAdminUser:', e.message); }
     loadAll();
     setTimeout(setupRealtime, 1000);
+    loadTickets().catch(function(){});
   }
 });
 
@@ -1364,10 +1371,28 @@ async function loadAll() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
   const [bookings, cleaners, applications, customers, reviews] = await Promise.all([
-    SB.from('bookings').select('*').order('created_at', { ascending: false }).limit(500),
-    SB.from('cleaners').select('*').order('avg_rating', { ascending: false }),
+    SB.from('bookings').select(
+      'id,booking_id,customer_name,customer_email,customer_phone,customer_address,city,' +
+      'service_type,booking_date,booking_time,booking_hours,frequency,' +
+      'total_price,payment_status,payment_intent_id,status,' +
+      'cleaner_id,cleaner_name,cleaner_email,' +
+      'rut_amount,discount_code,square_meters,customer_notes,key_info,' +
+      'created_at,updated_at,cancelled_at,cancellation_reason,refund_amount,completed_at,' +
+      'review_requested,review_requested_at,checked_in_at,scheduled_date'
+    ).order('created_at', { ascending: false }).limit(100),
+    SB.from('cleaners').select(
+      'id,full_name,email,phone,city,status,is_approved,' +
+      'avg_rating,review_count,tier,hourly_rate,services,bio,avatar_url,' +
+      'home_lat,home_lng,service_radius_km,' +
+      'identity_verified,pet_pref,elevator_pref,' +
+      'total_jobs,admin_flag,auth_user_id,' +
+      'created_at,updated_at'
+    ).order('avg_rating', { ascending: false }),
     SB.from('cleaner_applications').select('*').order('created_at', { ascending: false }),
-    SB.from('customer_profiles').select('*').order('total_bookings', { ascending: false }),
+    SB.from('customer_profiles').select(
+      'id,email,name,phone,city,total_bookings,total_spent,' +
+      'created_at,last_booking_at'
+    ).order('total_bookings', { ascending: false }),
     SB.from('reviews').select('*').order('created_at', { ascending: false }).limit(200),
   ]);
 
@@ -1587,7 +1612,45 @@ function renderBookings() {
           ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang städning ${b.booking_date||b.date||''}" class="btn btn-outline btn-sm" title="Maila städare" style="text-decoration:none">🧹</a>` : ''}
         </div>
       </td>
-    </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga bokningar hittades</td></tr>';
+    </tr>`).join('') : `<tr><td colspan="8" class="empty">
+  <div class="empty-icon">🔍</div>
+  <div>Inga bokningar matchar filtret</div>
+  <div style="font-size:.8rem;margin-top:4px">
+    Prova att rensa sökningen eller byt filter
+  </div>
+</td></tr>`;
+
+  // Visa "Ladda fler"-knapp om vi sannolikt har mer data
+  const loadMoreEl = document.getElementById('bookings-load-more');
+  if (loadMoreEl) {
+    loadMoreEl.style.display = data.bookings.length >= 100 ? 'block' : 'none';
+  }
+}
+
+async function loadMoreBookings() {
+  const lastCreatedAt = data.bookings.length
+    ? data.bookings[data.bookings.length - 1].created_at
+    : null;
+  if (!lastCreatedAt) return;
+  const { data: more } = await SB.from('bookings')
+    .select('id,booking_id,customer_name,customer_email,customer_phone,customer_address,city,' +
+      'service_type,booking_date,booking_time,booking_hours,frequency,' +
+      'total_price,payment_status,payment_intent_id,status,' +
+      'cleaner_id,cleaner_name,cleaner_email,' +
+      'rut_amount,discount_code,square_meters,customer_notes,key_info,' +
+      'created_at,updated_at,cancelled_at,cancellation_reason,refund_amount,completed_at,' +
+      'review_requested,review_requested_at,checked_in_at,scheduled_date')
+    .order('created_at', { ascending: false })
+    .lt('created_at', lastCreatedAt)
+    .limit(100);
+  if (more?.length) {
+    data.bookings = [...data.bookings, ...more];
+    renderBookings();
+    showToast(`Laddade ${more.length} fler bokningar`);
+  } else {
+    document.getElementById('bookings-load-more').style.display = 'none';
+    showToast('Inga fler bokningar');
+  }
 }
 
 // ── PENDING ───────────────────────────────────────────
@@ -1657,7 +1720,10 @@ function renderCleaners() {
           ${c.phone ? `<a href="tel:${c.phone}" class="btn btn-outline btn-sm" title="Ring" style="text-decoration:none">📞</a>` : ''}
         </div>
       </td>
-    </tr>`;}).join('') : '<tr><td colspan="8" class="empty">Inga städare hittades</td></tr>';
+    </tr>`;}).join('') : `<tr><td colspan="8" class="empty">
+  <div class="empty-icon">🧹</div>
+  <div>Inga städare matchar filtret</div>
+</td></tr>`;
 }
 
 // ── APPLICATIONS ──────────────────────────────────────
