@@ -24,7 +24,7 @@ serve(async (req) => {
     
     const { data: stale, error: fetchErr } = await sb
       .from("bookings")
-      .select("id, email, name, service, date, created_at")
+      .select("id, customer_email, customer_name, service, date, created_at")
       .eq("payment_status", "pending")
       .eq("status", "ny")
       .lt("created_at", cutoff);
