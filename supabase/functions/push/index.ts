@@ -67,7 +67,7 @@ serve(async (req) => {
       cleaner_job: {
         title: "🧹 Nytt uppdrag!",
         body: `${data?.service || "Städning"} i ${data?.city || ""} – ${data?.pay || ""} kr`,
-        url: "/stadare-dashboard.html",
+        url: "/portal",
         icon: "/assets/icon-192.png"
       },
       booking_confirmed: {

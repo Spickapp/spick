@@ -205,7 +205,7 @@ serve(async (req) => {
             <div class="row"><span class="lbl">Timmar</span><span class="val">${hours} h</span></div>
             <div class="row"><span class="lbl">Din ersättning</span><span class="val" style="color:#0F6E56;font-weight:700">${Math.round((r.total_price || 0) * 0.83).toLocaleString("sv")} kr</span></div>
           </div>
-          <a class="btn" href="https://spick.se/stadare-dashboard.html">Visa i min dashboard →</a>
+          <a class="btn" href="https://spick.se/portal">Visa i min dashboard →</a>
         `));
       }
     }
@@ -268,7 +268,7 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Betalning</span><span class="val">10 bankdagar</span></div>
         </div>
         <p>Du visas nu på spick.se och kan ta emot bokningar. Logga in för att se dina uppdrag.</p>
-        <a class="btn" href="https://spick.se/stadare-dashboard.html">Gå till min dashboard →</a>
+        <a class="btn" href="https://spick.se/portal">Gå till min dashboard →</a>
       `));
     }
 
@@ -421,7 +421,7 @@ serve(async (req) => {
 <div class="card">
   <p style="margin:0;font-size:14px;color:#6B6960">Du får en påminnelse 24h innan städningen. Städaren anländer på bokad tid.</p>
 </div>
-<a href="https://spick.se/mitt-konto.html" class="btn">Visa min bokning →</a>
+<a href="https://spick.se/konto" class="btn">Visa min bokning →</a>
 `);
       // Skicka till kunden – hämta email från booking
       const { data: bk } = await sb.from("bookings").select("customer_email").eq("id", r.booking_id).single();

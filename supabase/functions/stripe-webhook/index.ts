@@ -382,7 +382,7 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   <div class="row"><span class="lbl">Din intjäning</span><span class="val" style="color:#0F6E56">${earning} kr</span></div>
 </div>
 <p>⚠️ Kan du inte genomföra uppdraget? Hör av dig omgående till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så vi kan omfördela.</p>
-<a href="https://spick.se/stadare-dashboard.html" class="btn">Öppna dashboard →</a>
+<a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
 `);
       await sendEmail(cleanerEmail, `Nytt uppdrag: ${service} den ${date} 🧹`, cleanerHtml);
     } else {

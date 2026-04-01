@@ -126,7 +126,7 @@ serve(async (req) => {
   ${b.customer_notes?`<div class="row"><span class="lbl">Noteringar</span><span class="val">${b.customer_notes}</span></div>`:""}
 </div>
 <a href="${mapsUrl}" class="btn" style="margin-right:8px">📍 Navigera →</a>
-<a href="https://spick.se/stadare-dashboard.html" class="btn" style="background:#1C1C1A">Öppna app →</a>`));
+<a href="https://spick.se/portal" class="btn" style="background:#1C1C1A">Öppna app →</a>`));
         }
 
         // SMS-påminnelse 24h innan (fire-and-forget)

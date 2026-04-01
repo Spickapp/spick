@@ -76,8 +76,8 @@ serve(async (req) => {
       // Skapa onboarding-länk (städaren fyller i sina uppgifter)
       const link = await stripe("/account_links", "POST", {
         account: account.id,
-        refresh_url: `${BASE_URL}/stadare-dashboard.html?stripe=refresh`,
-        return_url:  `${BASE_URL}/stadare-dashboard.html?stripe=success`,
+        refresh_url: `${BASE_URL}/portal?stripe=refresh`,
+        return_url:  `${BASE_URL}/portal?stripe=success`,
         type: "account_onboarding",
       });
 
@@ -155,7 +155,7 @@ serve(async (req) => {
     </div>
   </div>
   <p style="font-size:13px;color:#9B9B95">Pengarna når ditt konto inom 1–2 bankdagar.</p>
-  <a href="${BASE_URL}/stadare-dashboard.html" style="display:inline-block;background:#0F6E56;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;font-weight:600">Se mina utbetalningar →</a>
+  <a href="${BASE_URL}/portal" style="display:inline-block;background:#0F6E56;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;font-weight:600">Se mina utbetalningar →</a>
 </div></body></html>`,
           }),
         });
