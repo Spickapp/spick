@@ -278,21 +278,23 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
 
   // Om prenumeration: skapa subscription-rad
   if (metadata.frequency && metadata.frequency !== "once") {
-    const freqMap: Record<string, string> = { weekly: "vecka", biweekly: "varannan_vecka" };
+    const nextDate = new Date(booking.booking_date);
+    nextDate.setDate(nextDate.getDate() + (metadata.frequency === "weekly" ? 7 : metadata.frequency === "biweekly" ? 14 : 30));
     try {
       await sb.from("subscriptions").insert({
         customer_name: booking.customer_name,
         customer_email: booking.customer_email,
         customer_phone: booking.customer_phone,
-        address: booking.customer_address,
-        service: booking.service_type,
-        frequency: freqMap[metadata.frequency] || metadata.frequency,
-        hours: booking.booking_hours,
-        price: amountPaid,
-        rut: booking.rut_amount > 0,
-        status: "aktiv",
-        next_booking_date: booking.booking_date,
-        discount_percent: metadata.frequency === "weekly" ? 10 : 0,
+        customer_address: booking.customer_address,
+        service_type: booking.service_type,
+        frequency: metadata.frequency,
+        booking_hours: booking.booking_hours,
+        square_meters: booking.square_meters || null,
+        cleaner_id: booking.cleaner_id || null,
+        cleaner_name: booking.cleaner_name || null,
+        status: "active",
+        next_booking_date: nextDate.toISOString().split("T")[0],
+        discount_percent: metadata.frequency === "weekly" ? 10 : metadata.frequency === "biweekly" ? 5 : 0,
       });
       console.log("✅ Prenumeration skapad");
     } catch(e) { console.error("Prenumeration-fel:", e); }
