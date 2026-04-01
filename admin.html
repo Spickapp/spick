@@ -2003,7 +2003,7 @@ async function autoAssignAll() {
     // Kolla konflikt
     for (const cl of eligible) {
       const conflict = data.bookings.some(b => b.cleaner_id === cl.id && 
-        (b.date === booking.date || b.scheduled_date === booking.scheduled_date) && 
+        ((b.booking_date || b.date) === (booking.booking_date || booking.date) || b.scheduled_date === booking.scheduled_date) && 
         b.id !== booking.id && b.payment_status === 'paid');
       if (!conflict) {
         await SB.from('bookings').update({cleaner_id:cl.id, cleaner_name:cl.full_name}).eq('id',booking.id);
