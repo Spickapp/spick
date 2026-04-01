@@ -82,8 +82,8 @@ function scoreGeography(cleaner: any, booking: any): number {
   const maxRadius = area.max_radius_km || cleaner.max_travel_km || 15;
   
   // Om vi har koordinater
-  if (cleaner.home_lat && cleaner.home_lng && booking.latitude && booking.longitude) {
-    const dist = distanceKm(cleaner.home_lat, cleaner.home_lng, booking.latitude, booking.longitude);
+  if (cleaner.home_lat && cleaner.home_lng && booking.lat && booking.lng) {
+    const dist = distanceKm(cleaner.home_lat, cleaner.home_lng, booking.lat, booking.lng);
     if (dist > maxRadius) return 0;
     if (dist <= 3) return 1.0;
     if (dist <= 5) return 0.9;
@@ -261,8 +261,8 @@ function calculateMatch(cleaner: any, booking: any): MatchResult {
   
   // Avstånd
   let dist: number | null = null;
-  if (cleaner.home_lat && cleaner.home_lng && booking.latitude && booking.longitude) {
-    dist = Math.round(distanceKm(cleaner.home_lat, cleaner.home_lng, booking.latitude, booking.longitude) * 10) / 10;
+  if (cleaner.home_lat && cleaner.home_lng && booking.lat && booking.lng) {
+    dist = Math.round(distanceKm(cleaner.home_lat, cleaner.home_lng, booking.lat, booking.lng) * 10) / 10;
   }
   
   return {
