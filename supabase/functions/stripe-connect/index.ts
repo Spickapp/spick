@@ -118,7 +118,7 @@ serve(async (req) => {
         amount: cleanerOre,
         currency: "sek",
         destination: stripeAccountId,
-        description: `Spick bokning ${booking_id} – ${booking.service || "Städning"} ${booking.date || ""}`,
+        description: `Spick bokning ${booking_id} – ${booking.service_type || "Städning"} ${booking.booking_date || ""}`,
         "metadata[booking_id]": booking_id,
         "metadata[cleaner_id]": booking.cleaner_id,
       });
@@ -146,13 +146,13 @@ serve(async (req) => {
 <div style="max-width:520px;margin:auto;background:#fff;border-radius:16px;padding:32px">
   <h2 style="color:#0F6E56">Utbetalning skickad! 💰</h2>
   <p>Hej ${cleaner.full_name?.split(" ")[0]}!</p>
-  <p>Din ersättning för bokning ${booking.date || ""} har skickats till ditt bankkonto.</p>
+  <p>Din ersättning för bokning ${booking.booking_date || ""} har skickats till ditt bankkonto.</p>
   <div style="background:#F7F7F5;border-radius:12px;padding:20px;margin:16px 0">
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4">
-      <span style="color:#9B9B95">Tjänst</span><span style="font-weight:600">${booking.service || "Hemstädning"}</span>
+      <span style="color:#9B9B95">Tjänst</span><span style="font-weight:600">${booking.service_type || "Hemstädning"}</span>
     </div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4">
-      <span style="color:#9B9B95">Datum</span><span style="font-weight:600">${booking.date || "–"}</span>
+      <span style="color:#9B9B95">Datum</span><span style="font-weight:600">${booking.booking_date || "–"}</span>
     </div>
     <div style="display:flex;justify-content:space-between;padding:12px 0">
       <span style="color:#9B9B95">Utbetalt</span><span style="font-weight:700;color:#0F6E56;font-size:18px">${cleanerShare.toLocaleString("sv")} kr ✓</span>
