@@ -486,7 +486,12 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <div class="f">
               <label>Personnummer <span style="color:var(--g);font-weight:700">— du sparar upp till 50% med RUT ✓</span></label>
               <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="width:100%" oninput="validatePNR(this.value)">
-              <div id="pnr-hint" class="field-hint">🔒 Ditt personnummer används endast för RUT-avdrag och delas aldrig vidare. Krypterat — lagras aldrig i klartext.</div>
+              <div id="pnr-hint" class="field-hint">🔒 Ditt personnummer krypteras och används endast för RUT-ansökan till Skatteverket.</div>
+              <div style="margin-top:8px;padding:10px 12px;background:#FEF3C7;border-radius:8px;font-size:.75rem;color:#92400E;line-height:1.6">
+                ⚠️ Genom att använda RUT-avdrag bekräftar du att du har utrymme kvar
+                (max 75&nbsp;000&nbsp;kr/år). Om Skatteverket avvisar ansökan
+                faktureras resterande belopp separat.
+              </div>
             </div>
           </div>
 
@@ -1857,12 +1862,9 @@ async function doBook() {
   const rut   = useRut ? Math.round(gross * 0.5) : 0;
   const total = gross - rut;
   try {
-    // 1. Hasha PNR
-    let hashedPnr = '';
-    if (useRut && state.pnr) {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(state.pnr));
-      hashedPnr = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    }
+    // PNR skickas i klartext till booking-create EF (krypteras server-side).
+    // SHA-256 används INTE längre — Skatteverket kräver riktigt personnummer.
+    const rawPnr = (useRut && state.pnr) ? state.pnr.replace(/\D/g, '') : '';
     // 2. Skapa bokning + Stripe-session via booking-create EF (single source of truth)
     const bcRes = await fetch(`${SUPA}/functions/v1/booking-create`, {
       method: 'POST',
@@ -1882,7 +1884,7 @@ async function doBook() {
         frequency: state.frequency || 'once',
         discount_code: state.discountCode || undefined,
         referral_code: state.referralCode || undefined,
-        pnr_hash: hashedPnr || undefined,
+        customer_pnr: rawPnr || undefined,
       })
     });
     if (!bcRes.ok) {

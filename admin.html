@@ -2143,6 +2143,22 @@ function showBookingDetail(id) {
     <div class="stat-row"><span class="lbl">Status</span><span class="val">${statusBadge(b.payment_status)}</span></div>
     <div class="stat-row"><span class="lbl">Städare</span><span class="val">${cleaner ? escHtml(cleaner.full_name) + ' ⭐' + parseFloat(cleaner.avg_rating||0).toFixed(1) : '⚠️ Ej tilldelad'}</span></div>
     <div class="stat-row"><span class="lbl">Stripe PI</span><span class="val" style="font-size:.75rem">${escHtml(b.stripe_payment_intent || '–')}</span></div>
+    ${b.rut_amount ? `
+    <div class="stat-row">
+      <span class="lbl">RUT-status</span>
+      <span class="val">${
+        b.rut_claim_status === 'submitted'          ? '✅ Ansökt – ' + (b.rut_claim_id || '') :
+        b.rut_claim_status === 'failed'             ? '❌ Misslyckades – ' + (b.rut_claim_error || '') :
+        b.rut_claim_status === 'pending_api_key'    ? '⚠️ Väntar på SKV API-nyckel' :
+        b.rut_claim_status === 'blocked_missing_pnr'? '⚠️ PNR saknas – hantera manuellt' :
+        b.rut_claim_status === 'pending'            ? '⏳ Väntar...' :
+        '– Ej ansökt'
+      }</span>
+    </div>
+    <div class="stat-row">
+      <span class="lbl">RUT-belopp</span>
+      <span class="val" style="color:var(--g)">${Math.round(b.rut_amount || 0).toLocaleString('sv')} kr ansökt</span>
+    </div>` : ''}
     <div class="stat-row"><span class="lbl">Skapad</span><span class="val">${new Date(b.created_at).toLocaleString('sv')}</span></div>
     <div class="stat-row"><span class="lbl">Kundanteckningar</span><span class="val">${escHtml(b.customer_notes || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Nyckelinfo</span><span class="val">${escHtml(b.key_info || '–')}</span></div>

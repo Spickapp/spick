@@ -73,6 +73,7 @@ serve(async (req) => {
       customer_lat,
       customer_lng,
       customer_pnr_hash,
+      customer_pnr,
     } = body;
 
     // Required fields
@@ -191,6 +192,7 @@ serve(async (req) => {
       square_meters: sqm || null,
       notes: customer_notes || null,
       ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
+      ...(customer_pnr     ? { customer_pnr }      : {}),
 
       // ── PRISMOTOR-FÄLT (nya) ──
       base_price_per_hour: pricing.basePricePerHour,

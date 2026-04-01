@@ -33,7 +33,7 @@ function buildRutXml(booking: Record<string, unknown>): string {
     <Foretagsnamn>Spick AB</Foretagsnamn>
   </Utforare>
   <Kop>
-    <KundPersonNummer>${booking.customer_pnr_hash || booking.pnr_hash || ""}</KundPersonNummer>
+    <KundPersonNummer>${(booking.customer_pnr as string || "").replace(/\D/g, "")}</KundPersonNummer>
     <Fastighetsbeteckning></Fastighetsbeteckning>
     <TjansteTyp>RUT</TjansteTyp>
     <Undertyp>Städning</Undertyp>
@@ -169,6 +169,39 @@ serve(async (req) => {
       });
     }
 
+    // Kontrollera att vi har ett riktigt personnummer (inte en hash)
+    const pnr = (booking.customer_pnr as string || "").replace(/\D/g, "");
+    if (!pnr || pnr.length < 10 || pnr.startsWith("DEMO")) {
+      console.warn("rut-claim: customer_pnr saknas eller är ogiltig — skickar admin-varning");
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: FROM,
+          to: ADMIN,
+          subject: `⚠️ RUT-ansökan blockerad: PNR saknas för bokning ${booking_id}`,
+          html: `<p>RUT-bokning kunde inte skickas till Skatteverket — personnumret saknas eller är en gammal SHA-256-hash.</p>
+<p>Bokning: <strong>${booking_id}</strong><br>
+Kund: ${booking.customer_name} &lt;${booking.customer_email}&gt;<br>
+PNR-fält: <code>${booking.customer_pnr || "(tomt)"}</code></p>
+<p>Hantera manuellt i Skatteverkets e-tjänst:<br>
+<a href="https://www.skatteverket.se/foretagochorganisationer/arbetsgivare/rotochrut">skatteverket.se/rot-rut</a></p>`,
+        }),
+      }).catch((e: Error) => console.error("Admin mail error:", e.message));
+
+      await sb.from("bookings").update({
+        rut_claim_status: "blocked_missing_pnr",
+      }).eq("id", booking_id);
+
+      return new Response(
+        JSON.stringify({ ok: false, reason: "customer_pnr saknas — admin notifierad" }),
+        { headers: { "Content-Type": "application/json", ...CORS } }
+      );
+    }
+
     if (booking.payment_status !== "paid") {
       return new Response(JSON.stringify({ ok: false, reason: "Bokningen är inte betald" }), {
         headers: { "Content-Type": "application/json", ...CORS },
@@ -220,6 +253,7 @@ Belopp: ${Number(booking.total_price).toLocaleString("sv")} kr</p>
       rut_claim_status: result.success ? "submitted" : "failed",
       rut_claim_error:  result.error || null,
       rut_submitted_at: result.success ? new Date().toISOString() : null,
+      customer_pnr:     null,   // ← Radera PNR direkt efter ansökan
     }).eq("id", booking_id);
 
     // Logga i rut_claims-tabell
