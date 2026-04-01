@@ -464,7 +464,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Kund</th><th>E-post</th><th>Stad</th><th>Bokningar</th><th>Senaste besök</th><th></th></tr></thead>
+            <thead><tr><th>Kund</th><th>E-post</th><th>Stad</th><th>Bokningar</th><th>Senaste besök</th><th></th><th></th></tr></thead>
             <tbody id="customers-tbody"><tr><td colspan="6" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
@@ -1607,6 +1607,9 @@ function renderBookings() {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button>
+          <a href="min-bokning.html?bid=${b.id}" target="_blank"
+             class="btn btn-outline btn-sm" title="Öppna kundvy"
+             style="text-decoration:none">🔗</a>
           <a href="mailto:${b.customer_email||b.email||''}?subject=Ang din städning ${b.booking_date||b.date||''}"
              class="btn btn-outline btn-sm" title="Maila kund" style="text-decoration:none">✉️</a>
           ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang städning ${b.booking_date||b.date||''}" class="btn btn-outline btn-sm" title="Maila städare" style="text-decoration:none">🧹</a>` : ''}
@@ -1716,6 +1719,9 @@ function renderCleaners() {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Redigera</button>
+          <a href="stadare-dashboard.html" target="_blank"
+             class="btn btn-outline btn-sm" title="Öppna städardashboard"
+             style="text-decoration:none">🏠</a>
           <a href="mailto:${c.email||''}?subject=Spick – uppdatering" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
           ${c.phone ? `<a href="tel:${c.phone}" class="btn btn-outline btn-sm" title="Ring" style="text-decoration:none">📞</a>` : ''}
         </div>
@@ -1796,7 +1802,13 @@ function renderCustomers() {
           <a href="mailto:${c.email||''}?subject=Hej ${(c.name||'').split(' ')[0]}!" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
         </div>
       </td>
-    </tr>`}).join('') : '<tr><td colspan="6" class="empty">Inga kunder hittades</td></tr>';
+      <td>
+        <a href="mitt-konto.html?email=${encodeURIComponent(c.email || '')}" target="_blank"
+           class="btn btn-outline btn-sm" style="text-decoration:none;white-space:nowrap">
+          🏠 Portal
+        </a>
+      </td>
+    </tr>`}).join('') : '<tr><td colspan="7" class="empty">Inga kunder hittades</td></tr>';
 }
 
 // ── PAYOUTS ───────────────────────────────────────────
@@ -2147,7 +2159,16 @@ function showBookingDetail(id) {
     ${b.photo_after_url ? `<div class="stat-row"><span class="lbl">Foto efter</span><span class="val"><a href="${b.photo_after_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.booking_date||b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])}," 
+      <a href="min-bokning.html?bid=${b.id}" target="_blank"
+         style="flex:1;padding:8px;background:#EFF6FF;color:#1D4ED8;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        🔗 Kundvy
+      </a>
+      ${b.payment_status === 'paid' && b.cleaner_name ? `
+      <a href="betyg.html?bid=${b.id}&cname=${encodeURIComponent(b.cleaner_name || '')}" target="_blank"
+         style="flex:1;padding:8px;background:#FEF3C7;color:#92400E;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
+        ⭐ Betygsvy
+      </a>` : ''}
+      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.booking_date||b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])},"
          style="flex:1;padding:8px;background:var(--gr);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         ✉️ Maila kund
       </a>
@@ -2198,6 +2219,10 @@ function showCustomerBookings(email) {
           <div style="font-size:.75rem;color:var(--m)">${escHtml(b.cleaner_name || 'Ej tilldelad')} · ${escHtml(b.city || '–')}</div>
         </div>
         <div style="text-align:right">
+          <a href="min-bokning.html?bid=${b.id}" target="_blank"
+             style="font-size:.75rem;color:#1D4ED8;text-decoration:none;display:block;margin-bottom:4px">
+            🔗 Öppna →
+          </a>
           <div style="color:var(--g);font-weight:600">${Math.round(b.total_price||0).toLocaleString('sv')} kr</div>
           ${statusBadge(b.payment_status)}
         </div>
