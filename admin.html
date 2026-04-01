@@ -1874,7 +1874,12 @@ async function createNextBookings() {
   const soon = subs.filter(s => s.next_booking_date && s.next_booking_date <= 
     new Date(Date.now()+7*24*3600000).toISOString().split('T')[0]);
   if (!soon.length) { showToast('Inga bokningar att skapa närmaste 7 dagarna'); return; }
-  if (!confirm(`Skapa ${soon.length} bokningar för nästa vecka?`)) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Skapa bokningar',
+    body: 'Skapa ' + soon.length + ' bokningar för nästa vecka?'
+  });
+  if (!result.ok) return;
   for (const sub of soon) await createBookingFromSub(sub.id);
 }
 
@@ -1897,7 +1902,12 @@ async function activateSub(id) {
 async function autoAssignAll() {
   const unassigned = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
   if (!unassigned.length) { showToast('✅ Alla bokningar har städare!'); return; }
-  if (!confirm(`Auto-tilldela ${unassigned.length} bokningar?`)) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Auto-tilldela',
+    body: 'Auto-tilldela ' + unassigned.length + ' bokningar?\n\nStädare väljs baserat på stad och betyg.'
+  });
+  if (!result.ok) return;
   
   let assigned = 0;
   for (const booking of unassigned) {
@@ -1924,6 +1934,63 @@ async function autoAssignAll() {
     }
   }
   showToast(`✅ Tilldelade ${assigned} av ${unassigned.length} bokningar`);
+  loadAll();
+}
+
+// ── CONFIRM DIALOG ───────────────────────────────────
+function showConfirmDialog(config) {
+  return new Promise(function(resolve) {
+    var colors = {
+      yellow: { bg:'#FEF3C7', border:'#F59E0B', icon:'⚠️', btn:'#D97706' },
+      red:    { bg:'#FEE2E2', border:'#DC2626', icon:'⛔', btn:'#DC2626' },
+    };
+    var c = colors[config.level || 'yellow'] || colors.yellow;
+    var modal = document.createElement('div');
+    modal.className = 'modal-bg open';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center';
+    modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:24px;max-width:480px;width:90%">'
+      + '<div style="background:'+c.bg+';border-left:4px solid '+c.border+';padding:16px;border-radius:8px;margin-bottom:16px">'
+      + '<div style="font-weight:700;margin-bottom:4px">'+c.icon+' '+(config.title||'Bekräfta')+'</div>'
+      + '<div style="font-size:.88rem;white-space:pre-line">'+(config.body||'Vill du fortsätta?')+'</div></div>'
+      + (config.requireReason ? '<div style="margin-bottom:16px"><label style="font-size:.75rem;font-weight:600;display:block;margin-bottom:4px">Anledning (obligatorisk)</label><input id="confirm-reason" placeholder="Beskriv varför..." style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-family:inherit;font-size:.88rem;box-sizing:border-box"></div>' : '')
+      + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+      + '<button id="confirm-cancel" style="padding:10px 20px;border:1.5px solid #ddd;border-radius:99px;background:none;cursor:pointer;font-family:inherit">Avbryt</button>'
+      + '<button id="confirm-ok" style="padding:10px 20px;border:none;border-radius:99px;background:'+c.btn+';color:#fff;cursor:pointer;font-family:inherit;font-weight:600"'+(config.requireReason?' disabled':'')+'>Bekräfta</button>'
+      + '</div></div>';
+    document.body.appendChild(modal);
+    if (config.requireReason) {
+      modal.querySelector('#confirm-reason').addEventListener('input', function(e) {
+        modal.querySelector('#confirm-ok').disabled = e.target.value.trim().length < 3;
+      });
+    }
+    modal.querySelector('#confirm-cancel').onclick = function() { modal.remove(); resolve({ok:false}); };
+    modal.querySelector('#confirm-ok').onclick = function() {
+      var reason = modal.querySelector('#confirm-reason')?.value?.trim() || null;
+      modal.remove();
+      resolve({ok:true, reason:reason});
+    };
+  });
+}
+
+// ── ROLLBACK ─────────────────────────────────────────
+async function rollbackAction(auditLogId) {
+  if (!hasPerm('settings','write')) { showToast('🔒 Ingen behörighet'); return; }
+  var res = await SB.from('admin_audit_log').select('*').eq('id', auditLogId).single();
+  var log = res.data;
+  if (!log || !log.old_value || !log.resource_id) {
+    showToast('❌ Kan inte ångra — saknar originaldata');
+    return;
+  }
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Ångra ändring',
+    body: 'Återställ ' + log.resource_type + ' till värden FÖRE ändring den ' + new Date(log.created_at).toLocaleString('sv-SE') + '?\n\nOriginalvärden: ' + JSON.stringify(log.old_value, null, 2)
+  });
+  if (!result.ok) return;
+  var updateRes = await SB.from(log.resource_type).update(log.old_value).eq('id', log.resource_id);
+  if (updateRes.error) { showToast('❌ ' + updateRes.error.message); return; }
+  await auditLog('rollback', log.resource_type, log.resource_id, log.new_value, log.old_value, 'Rollback av ' + log.action + ' (' + log.id + ')');
+  showToast('✅ Ändring ångrad');
   loadAll();
 }
 
@@ -2109,14 +2176,24 @@ async function sendBroadcastEmail() {
   if (!subject) return;
   const body = prompt('Meddelande (HTML stöds):');
   if (!body) return;
-  const target = confirm('Skicka till ALLA kunder? OK = Ja, Avbryt = Bara aktiva städare');
-  
-  const recipients = target 
+  var targetResult = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Välj mottagare',
+    body: 'Skicka till ALLA kunder?\n\nBekräfta = Alla kunder\nAvbryt = Bara aktiva städare'
+  });
+  const target = targetResult.ok;
+
+  const recipients = target
     ? [...new Set(data.bookings.map(b => b.customer_email || b.email).filter(Boolean))]
     : data.cleaners.filter(c => c.is_approved).map(c => c.email).filter(Boolean);
-  
-  if (!recipients.length) { alert('Inga mottagare hittades'); return; }
-  if (!confirm(`Skicka till ${recipients.length} mottagare?`)) return;
+
+  if (!recipients.length) { showToast('Inga mottagare hittades'); return; }
+  var sendResult = await showConfirmDialog({
+    level: 'red',
+    title: 'Skicka broadcast',
+    body: 'Skicka e-post till ' + recipients.length + ' mottagare?\n\nÄmne: ' + subject
+  });
+  if (!sendResult.ok) return;
   
   let sent = 0;
   for (const email of recipients.slice(0, 50)) { // Max 50 per broadcast
@@ -2135,7 +2212,12 @@ function closeModal() { document.getElementById('booking-modal').classList.remov
 
 async function refundBooking() {
   if (!hasPerm('finance','refund')) { showToast('🔒 Du har inte behörighet'); return; }
-  if (!confirm('↩ Återbetala denna bokning? Kunden får pengarna tillbaka via Stripe.')) return;
+  var result = await showConfirmDialog({
+    level: 'red',
+    title: 'Återbetala bokning',
+    body: 'Återbetala denna bokning?\n\nKonsekvens: Kunden får pengarna tillbaka via Stripe.'
+  });
+  if (!result.ok) return;
   const b = data.bookings.find(x => x.id === currentBookingId);
   const oldValue = b ? {payment_status: b.payment_status} : null;
   try {
@@ -2162,8 +2244,14 @@ async function reassignBooking() {
 
 async function cancelBooking() {
   if (!hasPerm('bookings','delete')) { showToast('🔒 Du har inte behörighet'); return; }
-  if (!confirm('❌ Avboka denna bokning? Kunden kommer notifieras.')) return;
   const b = data.bookings.find(x => x.id === currentBookingId);
+  var result = await showConfirmDialog({
+    level: 'red',
+    title: 'Avboka bokning',
+    body: 'Avboka bokning för ' + (b?.customer_name||b?.name||'kund') + '?\n\nKonsekvens: Kunden kommer notifieras via e-post.',
+    requireReason: true
+  });
+  if (!result.ok) return;
   const oldValue = b ? {payment_status: b.payment_status, status: b.status, cleaner_id: b.cleaner_id} : null;
   await SB.from('bookings').update({
     payment_status: 'cancelled',
@@ -2171,7 +2259,7 @@ async function cancelBooking() {
     cleaner_id: null,
     cleaner_name: null
   }).eq('id', currentBookingId);
-  await auditLog('cancel','booking', currentBookingId, oldValue, {payment_status:'cancelled', status:'avbokad'});
+  await auditLog('cancel','booking', currentBookingId, oldValue, {payment_status:'cancelled', status:'avbokad'}, result.reason);
   // Notifiera kund
   if (b?.customer_email || b?.email) {
     await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
@@ -2419,17 +2507,25 @@ async function loadCleanerHistory(cleanerId) {
     return '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.82rem">'
       + '<span>'+(icons[h.action]||'📋')+'</span>'
       + '<div style="flex:1"><strong>'+(h.admin_email||'system').split('@')[0]+'</strong> '+h.action
-      + '<div style="color:var(--m);font-size:.75rem">'+d+(h.reason?' — '+h.reason:'')+'</div></div></div>';
+      + '<div style="color:var(--m);font-size:.75rem">'+d+(h.reason?' — '+h.reason:'')+'</div></div>'
+      + (h.old_value ? '<button onclick="rollbackAction(\''+h.id+'\')" style="font-size:.7rem;padding:4px 10px;border:1px solid #ddd;border-radius:8px;background:none;cursor:pointer;align-self:center">↩ Ångra</button>' : '')
+      + '</div>';
   }).join('');
 }
 
 async function suspendCleaner() {
   if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
-  if (!confirm('⛔ Stänga av denna städare permanent? Hen kan inte längre ta emot uppdrag eller logga in.')) return;
   const c = data.cleaners.find(x => x.id === currentCleanerId);
+  var result = await showConfirmDialog({
+    level: 'red',
+    title: 'Stäng av städare',
+    body: 'Stäng av ' + (c?.full_name||'städare') + ' permanent?\n\nKonsekvens: Kan inte logga in eller ta emot uppdrag.',
+    requireReason: true
+  });
+  if (!result.ok) return;
   const oldValue = c ? {status: c.status, is_approved: c.is_approved} : null;
   await SB.from('cleaners').update({ is_approved: false, status: 'avstängd' }).eq('id', currentCleanerId);
-  await auditLog('suspend','cleaner', currentCleanerId, oldValue, {status:'avstängd', is_approved:false});
+  await auditLog('suspend','cleaner', currentCleanerId, oldValue, {status:'avstängd', is_approved:false}, result.reason);
   // Omtilldela aktiva bokningar
   const { data: activeBookings } = await SB.from('bookings')
     .select('id').eq('cleaner_id', currentCleanerId)
@@ -2446,7 +2542,12 @@ async function suspendCleaner() {
 }
 
 async function pauseCleaner() {
-  if (!confirm('⏸ Pausa denna städare? Hen behåller sitt konto men kan inte ta emot nya bokningar. Befintliga bokningar påverkas ej.')) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Pausa städare',
+    body: 'Pausa denna städare?\n\nHen behåller sitt konto men kan inte ta emot nya bokningar. Befintliga bokningar påverkas ej.'
+  });
+  if (!result.ok) return;
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   await SB.from('cleaners').update({ status: 'pausad' }).eq('id', currentCleanerId);
   await auditLog('pause','cleaner', currentCleanerId, c ? {status:c.status} : null, {status:'pausad'});
@@ -2465,7 +2566,12 @@ async function activateCleaner() {
 }
 
 async function reactivateCleaner() {
-  if (!confirm('Återaktivera denna städare?')) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Återaktivera städare',
+    body: 'Återaktivera denna städare?\n\nHen kommer kunna logga in och ta emot bokningar igen.'
+  });
+  if (!result.ok) return;
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   await SB.from('cleaners').update({ is_approved: true, status: 'aktiv' }).eq('id', currentCleanerId);
   await auditLog('reactivate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
@@ -2478,7 +2584,12 @@ async function autoPauseCritical() {
   const critical = data.cleaners.filter(c => c.is_approved && (c.review_count||0) >= 3 && parseFloat(c.avg_rating||5) < 3.0 && c.status !== 'pausad' && c.status !== 'avstangd');
   if (!critical.length) { showToast('Inga kritiska stadare att pausa'); return; }
   const names = critical.map(c => c.full_name || '-').join(', ');
-  if (!confirm('Pausa ' + critical.length + ' stadare med betyg under 3.0?\n\n' + names)) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Pausa kritiska städare',
+    body: 'Pausa ' + critical.length + ' städare med betyg under 3.0?\n\n' + names
+  });
+  if (!result.ok) return;
   let paused = 0;
   for (const c of critical) {
     const { error } = await SB.from('cleaners').update({ status: 'pausad' }).eq('id', c.id);
@@ -2552,7 +2663,12 @@ async function approveApplication(id, name, email, city, services, rate) {
 }
 
 async function rejectApplication(id) {
-  if (!confirm('Avslå denna ansökan?')) return;
+  var result = await showConfirmDialog({
+    level: 'red',
+    title: 'Avslå ansökan',
+    body: 'Avslå denna ansökan?\n\nStädaren kommer inte kunna logga in.'
+  });
+  if (!result.ok) return;
   await SB.from('cleaner_applications').update({ status: 'rejected' }).eq('id', id);
   await auditLog('reject','application', id, null, {status:'rejected'});
   loadAll();
@@ -2712,7 +2828,12 @@ async function updateBulkBar() {
 async function bulkApprove() {
   if (!hasPerm('cleaners','approve')) { showToast('🔒 Du har inte behörighet'); return; }
   if(!selectedCleaners.size) return;
-  if(!confirm(`Godkänn ${selectedCleaners.size} städare?`)) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Godkänn städare',
+    body: 'Godkänn ' + selectedCleaners.size + ' städare?\n\nDe kommer kunna logga in och ta emot bokningar.'
+  });
+  if(!result.ok) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
     const c = data.cleaners.find(x => x.id === id);
@@ -2728,7 +2849,12 @@ async function bulkApprove() {
 async function bulkPause() {
   if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
   if(!selectedCleaners.size) return;
-  if(!confirm(`Pausa ${selectedCleaners.size} städare?`)) return;
+  var result = await showConfirmDialog({
+    level: 'yellow',
+    title: 'Pausa städare',
+    body: 'Pausa ' + selectedCleaners.size + ' städare?\n\nDe behåller sina konton men kan inte ta emot nya bokningar.'
+  });
+  if(!result.ok) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
     const c = data.cleaners.find(x => x.id === id);
@@ -2744,12 +2870,18 @@ async function bulkPause() {
 async function bulkSuspend() {
   if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
   if(!selectedCleaners.size) return;
-  if(!confirm(`⛔ Stänga av ${selectedCleaners.size} städare permanent?`)) return;
+  var result = await showConfirmDialog({
+    level: 'red',
+    title: 'Stäng av städare',
+    body: 'Stäng av ' + selectedCleaners.size + ' städare permanent?\n\nKonsekvens: Kan inte logga in eller ta emot uppdrag.',
+    requireReason: true
+  });
+  if(!result.ok) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
     const c = data.cleaners.find(x => x.id === id);
     await SB.from('cleaners').update({is_approved:false, status:'avstängd'}).eq('id', id);
-    await auditLog('bulk_suspend','cleaner', id, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'avstängd', is_approved:false});
+    await auditLog('bulk_suspend','cleaner', id, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'avstängd', is_approved:false}, result.reason);
   }
   selectedCleaners.clear();
   updateBulkBar();
