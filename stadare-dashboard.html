@@ -610,7 +610,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 const SUPA_URL = SPICK.SUPA_URL;
 const SUPA_KEY = SPICK.SUPA_KEY;
 const ANON_KEY = SPICK.SUPA_KEY;
-const SB = supabase.createClient(SUPA_URL, ANON_KEY);
+const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
+  auth: {
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    autoRefreshToken: true,
+    persistSession: true
+  }
+});
 
 function closeOnboarding() {
   const modal = document.getElementById('onboard-modal');
