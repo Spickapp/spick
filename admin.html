@@ -1446,7 +1446,8 @@ function renderDashboard() {
 
   // Recent reviews
   const rr = data.reviews.slice(0, 6);
-  document.getElementById('dash-recent-reviews').innerHTML = rr.length ? rr.map(r => `
+  const reviewsEl = document.getElementById('dash-recent-reviews');
+  if (reviewsEl) reviewsEl.innerHTML = rr.length ? rr.map(r => `
     <div class="stat-row">
       <span class="lbl">${'⭐'.repeat(Math.min(5, parseInt(r.cleaner_rating) || 5))} ${r.comment ? escHtml(r.comment.substring(0,40))+'...' : 'Ingen kommentar'}</span>
       <span style="font-size:.78rem;color:var(--m)">${new Date(r.created_at).toLocaleDateString('sv')}</span>
