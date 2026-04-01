@@ -2104,6 +2104,7 @@ function exportBookingsCSV() {
 
 // ── BROADCAST ────────────────────────────────────────
 async function sendBroadcastEmail() {
+  if (!hasPerm('settings','write')) { showToast('🔒 Du har inte behörighet'); return; }
   const subject = prompt('Ämne för broadcast-mail:');
   if (!subject) return;
   const body = prompt('Meddelande (HTML stöds):');
@@ -2133,14 +2134,25 @@ async function sendBroadcastEmail() {
 function closeModal() { document.getElementById('booking-modal').classList.remove('open'); }
 
 async function refundBooking() {
-  if (!confirm('Återbetala denna bokning?')) return;
+  if (!hasPerm('finance','refund')) { showToast('🔒 Du har inte behörighet'); return; }
+  if (!confirm('↩ Återbetala denna bokning? Kunden får pengarna tillbaka via Stripe.')) return;
   const b = data.bookings.find(x => x.id === currentBookingId);
   const oldValue = b ? {payment_status: b.payment_status} : null;
-  await SB.from('bookings').update({ payment_status: 'refunded' }).eq('id', currentBookingId);
-  await auditLog('refund','booking', currentBookingId, oldValue, {payment_status:'refunded'});
-  closeModal();
-  showToast('↩ Bokning återbetald');
-  loadAll();
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/stripe-refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
+      body: JSON.stringify({ booking_id: currentBookingId, reason: 'Admin refund' })
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Refund misslyckades');
+    await auditLog('refund','booking', currentBookingId, oldValue, {payment_status:'refunded', refund_id: d.refund_id});
+    closeModal();
+    showToast('✅ Återbetalning genomförd via Stripe');
+    loadAll();
+  } catch(e) {
+    showToast('❌ ' + e.message);
+  }
 }
 
 async function reassignBooking() {
@@ -2149,6 +2161,7 @@ async function reassignBooking() {
 }
 
 async function cancelBooking() {
+  if (!hasPerm('bookings','delete')) { showToast('🔒 Du har inte behörighet'); return; }
   if (!confirm('❌ Avboka denna bokning? Kunden kommer notifieras.')) return;
   const b = data.bookings.find(x => x.id === currentBookingId);
   const oldValue = b ? {payment_status: b.payment_status, status: b.status, cleaner_id: b.cleaner_id} : null;
@@ -2361,6 +2374,7 @@ function showCleanerDetail(id) {
 function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
 
 async function suspendCleaner() {
+  if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
   if (!confirm('⛔ Stänga av denna städare permanent? Hen kan inte längre ta emot uppdrag eller logga in.')) return;
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   const oldValue = c ? {status: c.status, is_approved: c.is_approved} : null;
@@ -2428,6 +2442,7 @@ async function autoPauseCritical() {
 }
 
 async function saveCleanerFromAdmin() {
+  if (!hasPerm('cleaners','write')) { showToast('🔒 Du har inte behörighet'); return; }
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   const oldValue = c ? {full_name: c.full_name, phone: c.phone, city: c.city, hourly_rate: c.hourly_rate, services: c.services, bio: c.bio, admin_notes: c.admin_notes} : null;
   const updates = {
@@ -2564,6 +2579,7 @@ async function openAssignModal(bookingId) {
 }
 
 async function confirmAssign() {
+  if (!hasPerm('bookings','assign')) { showToast('🔒 Du har inte behörighet'); return; }
   const cleanerId = document.getElementById('assign-select').value;
   const cleaner = data.cleaners?.find(c => c.id === cleanerId);
   if (!cleanerId || !currentBookingId) return;
@@ -2644,6 +2660,7 @@ async function updateBulkBar() {
   }
 }
 async function bulkApprove() {
+  if (!hasPerm('cleaners','approve')) { showToast('🔒 Du har inte behörighet'); return; }
   if(!selectedCleaners.size) return;
   if(!confirm(`Godkänn ${selectedCleaners.size} städare?`)) return;
   const ids = Array.from(selectedCleaners);
@@ -2659,6 +2676,7 @@ async function bulkApprove() {
 }
 
 async function bulkPause() {
+  if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
   if(!selectedCleaners.size) return;
   if(!confirm(`Pausa ${selectedCleaners.size} städare?`)) return;
   const ids = Array.from(selectedCleaners);
@@ -2674,6 +2692,7 @@ async function bulkPause() {
 }
 
 async function bulkSuspend() {
+  if (!hasPerm('cleaners','suspend')) { showToast('🔒 Du har inte behörighet'); return; }
   if(!selectedCleaners.size) return;
   if(!confirm(`⛔ Stänga av ${selectedCleaners.size} städare permanent?`)) return;
   const ids = Array.from(selectedCleaners);
@@ -2990,6 +3009,7 @@ function renderPlatformSettings() {
 }
 
 async function updateSettingFromInput(key) {
+  if (!hasPerm('settings','write')) { showToast('🔒 Du har inte behörighet'); return; }
   var input = document.querySelector('input[data-key="'+key+'"]');
   if (!input) return;
   var old = platformSettings.find(function(s){return s.key===key;});
