@@ -1297,7 +1297,12 @@ async function loadAvailableCleaners() {
     // Hämta städare som: är godkända, har tillgänglighet denna dag, inte är blockerade, inte fullbokade
     let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
     const res = await fetch(url, {headers:H});
+    if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
     let cleaners = await res.json();
+    if (!Array.isArray(cleaners)) {
+      console.error('v_cleaners_for_booking returnerade:', cleaners);
+      throw new Error(cleaners?.message || cleaners?.hint || 'Oväntad data från städarlistan');
+    }
     // Filtrera: har tjänsten
     cleaners = cleaners.filter(c => {
       // Säkerställ att services alltid är en array
@@ -1381,15 +1386,17 @@ async function loadAvailableCleaners() {
     state.availableCleaners = cleaners;
     renderCleaners(cleaners);
   } catch(e) {
-    console.error('loadAvailableCleaners error:', e.message, e);
+    console.error('loadCleaners:', e.message);
+    const msg = e.message?.includes('42P01')
+      ? 'Städarlistan är tillfälligt otillgänglig. Försök igen om en stund.'
+      : (e.message || 'Kunde inte ladda städare just nu');
     wrap.innerHTML = '<div class="no-cleaners">' +
       '<div style="font-size:1.5rem;margin-bottom:.5rem">😕</div>' +
-      '<div style="font-weight:600;margin-bottom:.375rem">Kunde inte ladda städare just nu</div>' +
+      '<div style="font-weight:600;margin-bottom:.375rem">' + msg + '</div>' +
       '<div style="font-size:.82rem;color:var(--m);margin-bottom:1rem">Det kan bero på en tillfällig anslutningsstörning.</div>' +
       '<button onclick="loadAvailableCleaners()" style="background:var(--g);color:#fff;border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;margin-right:.5rem">Försök igen →</button>' +
       '<button onclick="goBack(1)" style="background:var(--border);color:var(--t);border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Ändra tid</button>' +
       '</div>';
-    // Report error
     if (typeof spickShowError === 'function') spickShowError('#cleaners-wrap', e.message);
   }
 }
