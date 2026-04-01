@@ -226,11 +226,28 @@ footer a:hover{color:#1D9E75;}
       <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
     </div>
     <button class="btn-primary" id="loginBtn" onclick="login()">
-      Visa mina bokningar →
+      Skicka inloggningslänk →
     </button>
     <p style="font-size:.75rem;color:var(--m);text-align:center;margin-top:1rem;line-height:1.6">
-      Inget lösenord krävs. Vi visar dina bokningar baserat på din e-post.
+      Vi skickar en säker inloggningslänk till din e-post. Inget lösenord krävs.
     </p>
+  </div>
+</div>
+
+<!-- MAGIC LINK SENT -->
+<div id="magicSent" style="display:none;text-align:center;padding:2rem 1rem;max-width:420px;margin:5rem auto">
+  <div style="font-size:2.5rem;margin-bottom:16px">📧</div>
+  <h2 style="font-family:'Playfair Display',serif;margin-bottom:8px">Kolla din e-post</h2>
+  <p style="color:#6B6960;margin-bottom:24px">
+    Vi har skickat en inloggningslänk till<br>
+    <strong id="magicEmail"></strong>
+  </p>
+  <p style="font-size:.85rem;color:#6B6960">
+    Klicka på länken i mailet för att logga in.<br>Länken gäller i 1 timme.
+  </p>
+  <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <button onclick="login()" style="padding:10px 20px;border:1.5px solid #E8E8E4;border-radius:100px;background:none;cursor:pointer;font-family:inherit">Skicka igen</button>
+    <button onclick="document.getElementById('magicSent').style.display='none';document.getElementById('loginSection').style.display='block'" style="padding:10px 20px;border:1.5px solid #E8E8E4;border-radius:100px;background:none;cursor:pointer;font-family:inherit">Ändra e-post</button>
   </div>
 </div>
 
@@ -370,72 +387,109 @@ footer a:hover{color:#1D9E75;}
 
 <script>
 const SB = supabase.createClient(
-  SPICK.SUPA_URL, SPICK.SUPA_KEY);
+  SPICK.SUPA_URL, SPICK.SUPA_KEY, { auth: { detectSessionInUrl: true } });
 
 let currentEmail = '';
 let allBookings = [];
 let cancelBookingId = null;
 
-// ── AUTO-LOGIN ────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('spick_customer_email');
-  const urlEmail = new URLSearchParams(location.search).get('email');
-  const email = urlEmail || saved;
-  if (email) {
-    document.getElementById('emailInput').value = email;
-    login();
+// ── AUTH STATE LISTENER ──────────────────────
+SB.auth.onAuthStateChange(function(event, session) {
+  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+    document.getElementById('loginSection').style.display = 'none';
+    var magicSent = document.getElementById('magicSent');
+    if (magicSent) magicSent.style.display = 'none';
+    loadPortalForUser(session.user.email);
+    if (location.hash.includes('access_token')) {
+      history.replaceState(null, '', location.pathname);
+    }
   }
-  document.getElementById('emailInput').addEventListener('keydown', e => {
+});
+
+// ── AUTO-LOGIN ────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('emailInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') login();
   });
 });
 
-// ── LOGIN ────────────────────────────────────
+// ── LOGIN (Magic Link) ──────────────────────
 async function login() {
-  const email = document.getElementById('emailInput').value.trim().toLowerCase();
-  if (!email || !email.includes('@')) return;
-
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spin"></div>';
-  document.getElementById('loginError').classList.remove('show');
-
-  // Hämta bokningar för denna e-post — raw fetch med x-customer-email header (RLS kräver det)
-  const bookingsRes = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/bookings?customer_email=eq.${encodeURIComponent(email)}&order=created_at.desc`,
-    {
-      headers: {
-        'apikey': SPICK.SUPA_KEY,
-        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
-        'x-customer-email': email
-      }
-    }
-  );
-  const bookings = bookingsRes.ok ? await bookingsRes.json() : [];
-
-  if (!bookings || bookings.length === 0) {
+  var email = document.getElementById('emailInput').value.trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    document.getElementById('loginError').textContent = 'Ange en giltig e-postadress';
     document.getElementById('loginError').classList.add('show');
-    btn.disabled = false;
-    btn.innerHTML = 'Visa mina bokningar →';
     return;
   }
 
+  var btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Skickar...';
+  document.getElementById('loginError').classList.remove('show');
+
+  var result = await SB.auth.signInWithOtp({
+    email: email,
+    options: { emailRedirectTo: 'https://spick.se/mitt-konto.html' }
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = 'Skicka inloggningslänk →';
+
+  if (result.error) {
+    document.getElementById('loginError').textContent = 'Kunde inte skicka länk: ' + result.error.message;
+    document.getElementById('loginError').classList.add('show');
+    return;
+  }
+
+  document.getElementById('loginSection').style.display = 'none';
+  var magicDiv = document.getElementById('magicSent');
+  if (magicDiv) {
+    magicDiv.style.display = 'block';
+    var emailEl = document.getElementById('magicEmail');
+    if (emailEl) emailEl.textContent = email;
+  } else {
+    spickToast('Inloggningslänk skickad till ' + email, 'success', 6000);
+  }
+}
+
+// ── LOAD PORTAL ─────────────────────────────
+async function loadPortalForUser(email) {
+  var bookingsRes = await fetch(
+    SPICK.SUPA_URL + '/rest/v1/bookings?customer_email=eq.' + encodeURIComponent(email) + '&order=created_at.desc',
+    { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY, 'x-customer-email': email } }
+  );
+  var bookings = bookingsRes.ok ? await bookingsRes.json() : [];
+  if (!Array.isArray(bookings) || !bookings.length) {
+    showNoBookings(email);
+    return;
+  }
   currentEmail = email;
-  localStorage.setItem('spick_customer_email', email);
-  // Map DB column names to frontend-friendly aliases
-  allBookings = bookings.map(b => ({
-    ...b,
-    date: b.booking_date || b.date,
-    time: b.booking_time || b.time,
-    hours: b.booking_hours || b.hours,
-    service: b.service_type || b.service,
-    address: b.customer_address || b.address,
-    name: b.customer_name || b.name,
-    email: b.customer_email || b.email,
-    phone: b.customer_phone || b.phone,
-    rut: b.rut_amount > 0,
-  }));
+  allBookings = bookings.map(function(b) {
+    return Object.assign({}, b, {
+      date: b.booking_date || b.date,
+      time: b.booking_time || b.time,
+      hours: b.booking_hours || b.hours,
+      service: b.service_type || b.service,
+      address: b.customer_address || b.address,
+      name: b.customer_name || b.name,
+      email: b.customer_email || b.email,
+      phone: b.customer_phone || b.phone,
+      rut: (b.rut_amount && b.rut_amount > 0)
+    });
+  });
   showPortal(allBookings, email);
+}
+
+function showNoBookings(email) {
+  currentEmail = email;
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('portalSection').style.display = 'block';
+  var name = email.split('@')[0];
+  document.getElementById('portalName').textContent = 'Hej, ' + name + '! 👋';
+  document.getElementById('portalEmail').textContent = email;
+  document.getElementById('statBookings').textContent = '0';
+  document.getElementById('statSpent').textContent = '0';
+  document.getElementById('bookingsList').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--m)"><p style="font-size:1.5rem;margin-bottom:8px">📭</p><p>Inga bokningar ännu.</p><a href="boka.html" style="color:var(--g);font-weight:600;margin-top:8px;display:inline-block">Boka din första städning →</a></div>';
 }
 
 // ── PORTAL ───────────────────────────────────
@@ -781,11 +835,13 @@ function showToast(msg) {
 }
 
 function logout() {
-  localStorage.removeItem('spick_customer_email');
+  SB.auth.signOut();
   currentEmail = '';
   allBookings = [];
   document.getElementById('loginSection').style.display = 'block';
   document.getElementById('portalSection').style.display = 'none';
+  var magicSent = document.getElementById('magicSent');
+  if (magicSent) magicSent.style.display = 'none';
   document.getElementById('emailInput').value = '';
 }
 
