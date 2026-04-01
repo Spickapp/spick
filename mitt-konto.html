@@ -400,12 +400,18 @@ async function login() {
   btn.innerHTML = '<div class="spin"></div>';
   document.getElementById('loginError').classList.remove('show');
 
-  // Hämta bokningar för denna e-post (DB column is customer_email)
-  const { data: bookings } = await SB
-    .from('bookings')
-    .select('*')
-    .or(`customer_email.eq.${email}`)
-    .order('created_at', { ascending: false });
+  // Hämta bokningar för denna e-post — raw fetch med x-customer-email header (RLS kräver det)
+  const bookingsRes = await fetch(
+    `${SPICK.SUPA_URL}/rest/v1/bookings?customer_email=eq.${encodeURIComponent(email)}&order=created_at.desc`,
+    {
+      headers: {
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
+        'x-customer-email': email
+      }
+    }
+  );
+  const bookings = bookingsRes.ok ? await bookingsRes.json() : [];
 
   if (!bookings || bookings.length === 0) {
     document.getElementById('loginError').classList.add('show');
@@ -721,9 +727,18 @@ async function submitInlineReview() {
   btn.textContent = '⏳ Sparar...'; btn.disabled = true;
   const comment = document.getElementById('review-text').value.trim();
 
-  const { data: bk } = await SB.from('bookings')
-    .select('cleaner_id, cleaner_email, cleaner_name, customer_email, customer_name, service, date')
-    .eq('id', _reviewBid).single();
+  const bkRes = await fetch(
+    `${SPICK.SUPA_URL}/rest/v1/bookings?id=eq.${_reviewBid}&select=cleaner_id,cleaner_email,cleaner_name,customer_email,customer_name,service,date`,
+    {
+      headers: {
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
+        'x-customer-email': currentEmail,
+        'Accept': 'application/vnd.pgrst.object+json'
+      }
+    }
+  );
+  const bk = bkRes.ok ? await bkRes.json() : null;
 
   if (!bk) { alert('Kunde inte hämta bokningsinfo'); btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false; return; }
 
