@@ -455,9 +455,15 @@ async function login() {
 
 // ── LOAD PORTAL ─────────────────────────────
 async function loadPortalForUser(email) {
+  // Use session token for RLS-compatible access
+  var sessionToken = SPICK.SUPA_KEY;
+  try {
+    var sess = await SB.auth.getSession();
+    if (sess.data.session) sessionToken = sess.data.session.access_token;
+  } catch(e) {}
   var bookingsRes = await fetch(
     SPICK.SUPA_URL + '/rest/v1/bookings?customer_email=eq.' + encodeURIComponent(email) + '&order=created_at.desc',
-    { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY, 'x-customer-email': email } }
+    { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + sessionToken } }
   );
   var bookings = bookingsRes.ok ? await bookingsRes.json() : [];
   if (!Array.isArray(bookings) || !bookings.length) {
@@ -649,7 +655,7 @@ function bookingCard(b) {
       <div class="bc-bottom">
         <div>
           <span class="bc-price">${parseInt(rutPrice)} kr</span>
-          ${b.rut ? `<span class="bc-rut">efter RUT-avdrag</span>` : ''}
+          ${b.rut ? `<span class="bc-rut">med RUT-avdrag</span>` : ''}
         </div>
         <div class="bc-actions">
           <a href="min-bokning.html?bid=${encodeURIComponent(b.id)}" class="btn-sm btn-outline">Detaljer</a>
@@ -797,28 +803,18 @@ async function submitInlineReview() {
 
   if (!bk) { spickToast('Kunde inte hämta bokningsinfo', 'error'); btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false; return; }
 
-  // Spara recension
+  // Spara recension — matchar faktisk DB-schema (cleaner_id, job_id, comment)
   const { error } = await SB.from('reviews').insert({
-    booking_id: _reviewBid,
-    customer_email: currentEmail,
-    customer_name: bk.customer_name || currentEmail,
-    cleaner_email: bk.cleaner_email,
-    cleaner_name: bk.cleaner_name,
+    cleaner_id:    bk.cleaner_id   || null,
+    customer_id:   null,
+    job_id:        _reviewBid      || null,
     cleaner_rating: _reviewStars,
-    cleaner_comment: comment || null,
+    comment:       comment         || null,
   });
 
   if (!error) {
     // Uppdatera review_requested_at på bokningen
     await SB.from('bookings').update({ review_requested_at: new Date().toISOString() }).eq('id', _reviewBid);
-    // Uppdatera städarens snittbetyg
-    if (bk.cleaner_id) {
-      const { data: allRevs } = await SB.from('reviews').select('cleaner_rating').eq('cleaner_email', bk.cleaner_email);
-      if (allRevs?.length) {
-        const avg = allRevs.reduce((s,r) => s + (parseFloat(r.cleaner_rating)||0), 0) / allRevs.length;
-        await SB.from('cleaners').update({ avg_rating: parseFloat(avg.toFixed(1)), review_count: allRevs.length }).eq('id', bk.cleaner_id);
-      }
-    }
     document.getElementById('reviewModal').style.display = 'none';
     showToast('✅ Tack för ditt betyg! Det hjälper andra kunder.');
     setTimeout(() => renderBookings('all'), 1000);

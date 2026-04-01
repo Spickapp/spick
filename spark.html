@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex">
 <title>Spick Spark — Lojalitetsprogram | Spick</title>
 <meta name="description" content="Tjäna Sparks vid varje städning och lås upp förmåner. Ny → Stjärna → Guld → VIP.">
 <meta property="og:title" content="Spick Spark — Lojalitetsprogram">
@@ -51,6 +52,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b)}
 .reward-btn{background:#EDE9FE;color:#7C3AED;border:none;padding:6px 14px;border-radius:8px;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
 .reward-btn:disabled{opacity:.4;cursor:not-allowed}
 </style>
+<script src="js/components.js" defer></script>
 </head>
 <body>
 
@@ -197,14 +199,26 @@ function updateUI(sparks) {
 }
 
 async function loadSparks() {
-  const { data: { user } } = await SB.auth.getUser();
-  if (!user) { updateUI(0); return; }
+  try {
+    const { data: { user } } = await SB.auth.getUser();
+    if (!user) { updateUI(0); return; }
 
-  const { data } = await SB.from('loyalty_points')
-    .select('points, tier')
-    .eq('customer_email', user.email)
-    .single();
-  updateUI(data?.points || 0);
+    // loyalty_points-tabellen är under utveckling — fallback till 0 om den saknas
+    const { data, error } = await SB.from('loyalty_points')
+      .select('points, tier')
+      .eq('customer_email', user.email)
+      .maybeSingle();
+
+    if (error) {
+      console.info('Spark: loyalty_points ej tillgänglig ännu', error.message);
+      updateUI(0);
+      return;
+    }
+    updateUI(data?.points || 0);
+  } catch(e) {
+    console.info('Spark: loadSparks fallback', e.message);
+    updateUI(0);
+  }
 }
 
 function redeem(cost, reward) {
@@ -214,5 +228,6 @@ function redeem(cost, reward) {
 
 loadSparks();
 </script>
+<div id="spick-footer"></div>
 </body>
 </html>
