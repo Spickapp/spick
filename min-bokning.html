@@ -164,7 +164,7 @@ const SB = supabase.createClient(
 const params = new URLSearchParams(window.location.search);
 const bid = params.get('bid');
 if (!bid) {
-  document.getElementById('booking-content').innerHTML = '<div style="text-align:center;padding:4rem 2rem"><div style="font-size:3rem;margin-bottom:1rem">😕</div><h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem">Bokningslänk saknas</h2><p style="color:#6B6960;margin-bottom:1.5rem">Öppna länken från din bokningsbekräftelse eller gå till Mitt konto.</p><a href="mitt-konto.html" style="background:#0F6E56;color:#fff;padding:.875rem 2rem;border-radius:100px;text-decoration:none;font-weight:600">Gå till Mitt konto →</a></div>';
+  document.getElementById('content').innerHTML = '<div style="text-align:center;padding:4rem 2rem"><div style="font-size:3rem;margin-bottom:1rem">😕</div><h2 style="font-family:Playfair Display,serif;margin-bottom:.75rem">Bokningslänk saknas</h2><p style="color:#6B6960;margin-bottom:1.5rem">Öppna länken från din bokningsbekräftelse eller gå till Mitt konto.</p><a href="mitt-konto.html" style="background:#0F6E56;color:#fff;padding:.875rem 2rem;border-radius:100px;text-decoration:none;font-weight:600">Gå till Mitt konto →</a></div>';
 }
 const email = params.get('email');
 
@@ -180,7 +180,7 @@ const statusMap = {
 async function load() {
   let query = SB.from('bookings').select('*');
   if (bid) query = query.eq('id', bid);
-  else if (email) query = query.eq('customer_email', email).order('created_at', {ascending:false}).limit(1);
+  else if (email) query = query.or(`customer_email.eq.${email}`).order('created_at', {ascending:false}).limit(1);
   else {
     showEmpty();
     return;
@@ -188,7 +188,7 @@ async function load() {
 
   const { data, error } = await query;
   if (error || !data?.length) { showEmpty(); return; }
-  // Map DB column names to frontend names
+  // Map DB column names to frontend-friendly aliases
   const raw = data[0];
   const b = {
     ...raw,
@@ -200,16 +200,14 @@ async function load() {
     name: raw.customer_name || raw.name,
     email: raw.customer_email || raw.email,
     phone: raw.customer_phone || raw.phone,
-    sqm: raw.square_meters || raw.sqm,
-    rut: (raw.rut_amount && raw.rut_amount > 0) || raw.rut,
-    stripe_payment_intent: raw.payment_intent_id || raw.stripe_payment_intent,
-    scheduled_date: raw.booking_date || raw.scheduled_date,
+    rut: raw.rut_amount > 0,
+    stripe_payment_intent: raw.stripe_payment_intent,
   };
   
   // Hämta städare om tilldelad
   let cleaner = null;
   if (b.cleaner_id) {
-    const { data: cd } = await SB.from('cleaners').select('full_name,avg_rating,city').eq('id', b.cleaner_id);
+    const { data: cd } = await SB.from('v_cleaners_for_booking').select('full_name,avg_rating,city').eq('id', b.cleaner_id);
     cleaner = cd?.[0] || null;
   }
 
@@ -236,7 +234,7 @@ async function load() {
 function renderBooking(b, cleaner) {
   const [statusClass, statusText] = statusMap[b.payment_status] || ['pending','Okänd status'];
   const isPaid = b.payment_status === 'paid';
-  const fname = b.customer_name?.split(' ')[0] || '';
+  const fname = (b.customer_name || b.name || '').split(' ')[0];
   const date = new Date(b.date);
   const isPast = date < new Date();
   const isToday = date.toDateString() === new Date().toDateString();
@@ -360,9 +358,25 @@ function showEmpty() {
 
 async function cancelBooking(id) {
   if (!confirm('Är du säker på att du vill avboka? Avbokning senare än 24h innan kan debiteras.')) return;
-  const { error } = await SB.from('bookings').update({payment_status:'cancelled'}).eq('id',id);
-  if (!error) { alert('Bokning avbokad. Vi kontaktar dig angående återbetalning.'); location.reload(); }
-  else alert('Fel vid avbokning. Kontakta hello@spick.se');
+  const b = window._booking;
+  const customerEmail = b?.customer_email || b?.email || email || '';
+  try {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/booking-cancel-v2`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ booking_id: id, customer_email: customerEmail })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      alert(result.message || 'Bokning avbokad.');
+      location.reload();
+    } else {
+      alert(result.error || 'Fel vid avbokning. Kontakta hello@spick.se');
+    }
+  } catch (e) {
+    console.error('Cancel error:', e);
+    alert('Fel vid avbokning. Kontakta hello@spick.se');
+  }
 }
 
 load();

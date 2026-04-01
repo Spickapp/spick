@@ -153,7 +153,7 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
   const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
   
   const data = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?payment_intent_id=eq.${sessionId}&select=id,service_type,booking_date,booking_time,customer_address,total_price,payment_status`,
+    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?stripe_session_id=eq.${sessionId}&select=id,service_type,booking_date,booking_time,customer_address,total_price,payment_status`,
     { headers: { 'apikey': SPICK.SUPA_KEY } }
   ).then(r => r.json()).catch(() => []);
 

@@ -45,30 +45,18 @@ async function verifyStripeSignature(body: string, sigHeader: string, secret: st
     const v1 = parts.find(p => p.startsWith("v1="))?.split("=")[1];
     if (!t || !v1) return false;
 
-    // Replay protection: reject old signatures
     const timestamp = parseInt(t, 10);
     const now = Math.floor(Date.now() / 1000);
-    if (isNaN(timestamp) || Math.abs(now - timestamp) > STRIPE_TOLERANCE_SEC) {
-      console.warn(`Stripe sig rejected: timestamp ${timestamp} vs now ${now} (diff ${Math.abs(now - timestamp)}s)`);
-      return false;
-    }
+    if (isNaN(timestamp) || Math.abs(now - timestamp) > STRIPE_TOLERANCE_SEC) return false;
 
     const payload = `${t}.${body}`;
     const key = await crypto.subtle.importKey(
       "raw", new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]
+      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
     );
     const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-
-    // Timing-safe comparison
-    const computedBytes = new Uint8Array(sig);
-    const expectedBytes = new Uint8Array(v1.match(/.{2}/g)!.map(b => parseInt(b, 16)));
-    if (computedBytes.length !== expectedBytes.length) return false;
-    let diff = 0;
-    for (let i = 0; i < computedBytes.length; i++) {
-      diff |= computedBytes[i] ^ expectedBytes[i];
-    }
-    return diff === 0;
+    const computed = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return computed === v1;
   } catch { return false; }
 }
 
@@ -119,14 +107,14 @@ async function sendEmail(to: string, subject: string, html: string) {
 
 // ── Tilldela bästa tillgängliga städare ───────────────────────────────────
 async function assignBestCleaner(booking: Record<string, unknown>): Promise<Record<string, unknown> | null> {
-  const city = (booking.city as string)?.toLowerCase() || "";
-  const service = (booking.service as string) || "Hemstädning";
-  const date = booking.date as string;
+  const city = (booking.customer_address as string)?.toLowerCase() || "";
+  const service = (booking.service_type as string) || "Hemstädning";
+  const date = booking.booking_date as string;
   
   // Hitta godkända städare i rätt stad med rätt tjänst, sorterade på betyg
   const { data: cleaners } = await sb
     .from("cleaners")
-    .select("id, full_name, email, avg_rating, services, city")
+    .select("id, full_name, avg_rating, city, auth_user_id")
     .eq("status", "godkänd")
     .order("avg_rating", { ascending: false });
 
@@ -168,20 +156,26 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
 
   // Kolla att städaren inte redan är bokad samma dag
   for (const cleaner of eligible) {
-    // Kolla tidskonflikter – hämta tid och time_end för städarens bokningar den dagen
-    const startTime = booking.time || "09:00";
-    const endTime   = booking.time_end || "12:00";
+    // Kolla tidskonflikter – hämta booking_time och booking_hours för städarens bokningar den dagen
+    const startTime = booking.booking_time || "09:00";
+    const bookingHrs = Number(booking.booking_hours) || 3;
+    const [sH, sM] = startTime.split(":").map(Number);
+    const endMin = sH * 60 + (sM || 0) + bookingHrs * 60;
+    const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
     const { data: conflicts } = await sb
       .from("bookings")
-      .select("id, time, time_end")
+      .select("id, booking_time, booking_hours")
       .eq("cleaner_id", cleaner.id)
-      .eq("date", date)
+      .eq("booking_date", date)
       .eq("payment_status", "paid");
 
     // Kontrollera om någon befintlig bokning överlappar med den nya
     const hasConflict = (conflicts || []).some(b => {
-      const bStart = b.time     || "00:00";
-      const bEnd   = b.time_end || "23:59";
+      const bStart = b.booking_time || "00:00";
+      const bH = Number(b.booking_hours) || 3;
+      const [bHr, bMn] = bStart.split(":").map(Number);
+      const bEndMin = bHr * 60 + (bMn || 0) + bH * 60;
+      const bEnd = `${String(Math.floor(bEndMin / 60)).padStart(2, "0")}:${String(bEndMin % 60).padStart(2, "0")}`;
       // Overlap: ny start < befintlig slut OCH ny slut > befintlig start
       return startTime < bEnd && endTime > bStart;
     });
@@ -217,7 +211,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   if (preferredCleanerId) {
     const { data: preferred } = await sb
       .from("cleaners")
-      .select("id, full_name, email, avg_rating")
+      .select("id, full_name, avg_rating, auth_user_id")
       .eq("id", preferredCleanerId)
       .eq("status", "godkänd")
       .single();
@@ -232,8 +226,8 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const { data: conflicts } = await sb.from("bookings")
     .select("id")
     .eq("cleaner_id", cleaner?.id || booking.cleaner_id)
-    .eq("date", booking.date)
-    .eq("time", booking.time)
+    .eq("booking_date", booking.booking_date)
+    .eq("booking_time", booking.booking_time)
     .eq("payment_status", "paid")
     .neq("status", "avbokad")
     .neq("id", bookingId)
@@ -245,7 +239,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
     await sb.from("bookings").update({ 
       payment_status: "refunded", 
       status: "avbokad",
-      customer_notes: (booking.customer_notes || '') + ' [Auto-refund: dubbelbokningskonflikt]'
+      notes: (booking.notes || '') + ' [Auto-refund: dubbelbokningskonflikt]'
     }).eq("id", bookingId);
     // Trigger Stripe refund
     if (session.payment_intent) {
@@ -266,46 +260,43 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   await sb.from("bookings").update({
     payment_status: "paid",
     payment_method: (session.payment_method_types as string[])?.[0] || "card",
-    stripe_session_id: stripeSessionId,
-    stripe_payment_intent: session.payment_intent,
-    paid_at: new Date().toISOString(),
-    reminders_sent: [],
-    ...(cleaner ? { cleaner_id: cleaner.id, cleaner_name: cleaner.full_name, cleaner_email: cleaner.email } : {}),
-    ...(metadata.sqm ? { sqm: parseInt(metadata.sqm) } : {}),
-    ...(metadata.key_info ? { key_info: metadata.key_info } : {}),
-    ...(metadata.customer_notes ? { customer_notes: metadata.customer_notes } : {}),
-    ...(metadata.frequency && metadata.frequency !== "once" ? { is_recurring: true } : {}),
+    payment_intent_id: session.payment_intent as string || null,
+    ...(cleaner ? { cleaner_id: cleaner.id, cleaner_name: cleaner.full_name } : {}),
+    ...(metadata.sqm ? { square_meters: parseInt(metadata.sqm) } : {}),
+    ...(metadata.customer_notes ? { notes: metadata.customer_notes } : {}),
   }).eq("id", bookingId);
 
   // Om prenumeration: skapa subscription-rad
   if (metadata.frequency && metadata.frequency !== "once") {
     const freqMap: Record<string, string> = { weekly: "vecka", biweekly: "varannan_vecka" };
-    await sb.from("subscriptions").insert({
-      customer_name: booking.customer_name,
-      customer_email: booking.customer_email,
-      customer_phone: booking.phone,
-      address: booking.address,
-      city: booking.city,
-      service: booking.service,
-      frequency: freqMap[metadata.frequency] || metadata.frequency,
-      hours: booking.hours,
-      price: amountPaid,
-      rut: booking.rut,
-      status: "aktiv",
-      next_booking_date: booking.date,
-      discount_percent: metadata.frequency === "weekly" ? 10 : 0,
-    }).then(() => console.log("✅ Prenumeration skapad")).catch(e => console.error("Prenumeration-fel:", e));
+    try {
+      await sb.from("subscriptions").insert({
+        customer_name: booking.customer_name,
+        customer_email: booking.customer_email,
+        customer_phone: booking.customer_phone,
+        address: booking.customer_address,
+        service: booking.service_type,
+        frequency: freqMap[metadata.frequency] || metadata.frequency,
+        hours: booking.booking_hours,
+        price: amountPaid,
+        rut: booking.rut_amount > 0,
+        status: "aktiv",
+        next_booking_date: booking.booking_date,
+        discount_percent: metadata.frequency === "weekly" ? 10 : 0,
+      });
+      console.log("✅ Prenumeration skapad");
+    } catch(e) { console.error("Prenumeration-fel:", e); }
   }
 
   const name = booking.customer_name || "Kunden";
   const fname = name.split(" ")[0];
   const price = `${Math.round(amountPaid)} kr`;
   const rutNote = isRut ? " (efter 50% RUT-avdrag)" : "";
-  const date = booking.date || "";
-  const time = booking.time || "09:00";
-  const service = booking.service || "Hemstädning";
-  const hours = booking.hours || 3;
-  const address = booking.address || "";
+  const date = booking.booking_date || "";
+  const time = booking.booking_time || "09:00";
+  const service = booking.service_type || "Hemstädning";
+  const hours = booking.booking_hours || 3;
+  const address = booking.customer_address || "";
 
   // ── 1. Bekräftelsemail till kund ────────────────────────────
   const customerHtml = wrap(`
@@ -338,8 +329,16 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 
   // ── 2. Notifiera städaren ────────────────────────────────────
   if (cleaner) {
-    const earning = Math.round(amountPaid * 0.83);
-    const cleanerHtml = wrap(`
+    // Hämta städarens email via auth.users (cleaners har ingen email-kolumn)
+    let cleanerEmail: string | null = null;
+    if (cleaner.auth_user_id) {
+      const { data: authData } = await sb.auth.admin.getUserById(cleaner.auth_user_id);
+      cleanerEmail = authData?.user?.email || null;
+    }
+
+    if (cleanerEmail) {
+      const earning = Math.round(amountPaid * 0.83);
+      const cleanerHtml = wrap(`
 <h2>Nytt uppdrag tilldelat! 🧹</h2>
 <p>Hej ${cleaner.full_name?.split(" ")[0] || ""}! Du har fått ett nytt städuppdrag.</p>
 <div class="card">
@@ -352,7 +351,10 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 <p>⚠️ Kan du inte genomföra uppdraget? Hör av dig omgående till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så vi kan omfördela.</p>
 <a href="https://spick.se/stadare-dashboard.html" class="btn">Öppna dashboard →</a>
 `);
-    await sendEmail(cleaner.email, `Nytt uppdrag: ${service} den ${date} 🧹`, cleanerHtml);
+      await sendEmail(cleanerEmail, `Nytt uppdrag: ${service} den ${date} 🧹`, cleanerHtml);
+    } else {
+      console.warn(`Ingen email hittad för städare ${cleaner.id} – kan ej notifiera`);
+    }
   }
 
   // ── 3. Admin-notis ───────────────────────────────────────────
@@ -393,17 +395,17 @@ async function handlePaymentFailed(paymentIntent: Record<string, unknown>) {
 
   await sb.from("bookings").update({ payment_status: "failed" }).eq("id", bookingId);
 
-  const { data: bookings } = await sb.from("bookings").select("customer_name,customer_email,email,service,date,time").eq("id", bookingId);
+  const { data: bookings } = await sb.from("bookings").select("customer_name,customer_email,service_type,booking_date,booking_time").eq("id", bookingId);
   const booking = bookings?.[0];
   if (!booking) return;
 
   const fname = booking.customer_name?.split(" ")[0] || "där";
   await sendEmail(
-    booking.customer_email || booking.email,
+    booking.customer_email,
     "Betalning misslyckades – försök igen ❌",
     wrap(`
 <h2>Betalningen gick inte igenom 😔</h2>
-<p>Hej ${fname}! Tyvärr misslyckades din betalning för ${booking.service} den ${booking.date}.</p>
+<p>Hej ${fname}! Tyvärr misslyckades din betalning för ${booking.service_type} den ${booking.booking_date}.</p>
 <p>Din bokning är sparad – försök betala igen:</p>
 <a href="https://spick.se/boka.html" class="btn">Försök betala igen →</a>
 <p style="font-size:13px;margin-top:16px">Behöver du hjälp? Skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
@@ -419,7 +421,7 @@ async function handleRefund(charge: Record<string, unknown>) {
   const { data: bookings } = await sb
     .from("bookings")
     .select("*")
-    .eq("stripe_payment_intent", paymentIntentId);
+    .eq("payment_intent_id", paymentIntentId);
   
   const booking = bookings?.[0];
   if (!booking) return;
@@ -430,7 +432,7 @@ async function handleRefund(charge: Record<string, unknown>) {
   const fname = booking.customer_name?.split(" ")[0] || "där";
 
   await sendEmail(
-    booking.customer_email || booking.email,
+    booking.customer_email,
     `Återbetalning bekräftad – ${Math.round(refundAmount)} kr ✅`,
     wrap(`
 <h2>Din återbetalning är genomförd ✅</h2>
@@ -440,7 +442,7 @@ async function handleRefund(charge: Record<string, unknown>) {
 <a href="https://spick.se/boka.html" class="btn">Boka igen →</a>
 `)
   );
-  await sendEmail(ADMIN, `↩️ Återbetalning: ${booking.customer_name} – ${Math.round(refundAmount)} kr`, wrap(`<h2>Återbetalning genomförd</h2><p>Kund: ${booking.customer_name}<br>Belopp: ${Math.round(refundAmount)} kr<br>Bokning: ${booking.date}</p>`));
+  await sendEmail(ADMIN, `↩️ Återbetalning: ${booking.customer_name} – ${Math.round(refundAmount)} kr`, wrap(`<h2>Återbetalning genomförd</h2><p>Kund: ${booking.customer_name}<br>Belopp: ${Math.round(refundAmount)} kr<br>Bokning: ${booking.booking_date}</p>`));
 }
 
 // ── Huvud-handler ──────────────────────────────────────────────────────────
@@ -448,14 +450,14 @@ async function handleRefund(charge: Record<string, unknown>) {
 // ── FÅNGA BETALNING (escrow → faktisk debitering) ─────────────────────────
 async function capturePayment(bookingId: string) {
   const { data: booking } = await sb.from("bookings")
-    .select("stripe_payment_intent,total_price,customer_email,email,service")
+    .select("payment_intent_id,total_price,customer_email,service_type")
     .eq("id", bookingId).single();
   
-  if (!booking?.stripe_payment_intent) return;
-  
+  if (!booking?.payment_intent_id) return;
+
   // Capture payment via Stripe API
   const captureRes = await fetch(
-    `https://api.stripe.com/v1/payment_intents/${booking.stripe_payment_intent}/capture`,
+    `https://api.stripe.com/v1/payment_intents/${booking.payment_intent_id}/capture`,
     {
       method: "POST",
       headers: {
@@ -467,9 +469,8 @@ async function capturePayment(bookingId: string) {
   
   const captured = await captureRes.json();
   if (captured.status === "succeeded") {
-    await sb.from("bookings").update({ 
+    await sb.from("bookings").update({
       payment_status: "captured",
-      captured_at: new Date().toISOString()
     }).eq("id", bookingId);
     console.log("✅ Betalning captured för bokning:", bookingId);
   }
@@ -527,10 +528,12 @@ serve(async (req) => {
 
     // ── Mark event as processed ───────────────────────────────────────────
     if (eventId) {
-      await sb.from("processed_webhook_events").insert({
-        event_id: eventId,
-        event_type: event.type as string,
-      }).catch(() => {}); // Don't fail if logging fails
+      try {
+        await sb.from("processed_webhook_events").insert({
+          event_id: eventId,
+          event_type: event.type as string,
+        });
+      } catch(_) {}
     }
   } catch (e) {
     console.error("Webhook-fel:", e);

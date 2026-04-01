@@ -400,7 +400,7 @@ async function login() {
   btn.innerHTML = '<div class="spin"></div>';
   document.getElementById('loginError').classList.remove('show');
 
-  // Hämta bokningar för denna e-post
+  // Hämta bokningar för denna e-post (DB column is customer_email)
   const { data: bookings } = await SB
     .from('bookings')
     .select('*')
@@ -408,7 +408,6 @@ async function login() {
     .order('created_at', { ascending: false });
 
   if (!bookings || bookings.length === 0) {
-    // Kolla om de kanske har fel e-post – visa tydligt felmeddelande
     document.getElementById('loginError').classList.add('show');
     btn.disabled = false;
     btn.innerHTML = 'Visa mina bokningar →';
@@ -417,7 +416,7 @@ async function login() {
 
   currentEmail = email;
   localStorage.setItem('spick_customer_email', email);
-  // Map DB column names to frontend names
+  // Map DB column names to frontend-friendly aliases
   allBookings = bookings.map(b => ({
     ...b,
     date: b.booking_date || b.date,
@@ -428,9 +427,7 @@ async function login() {
     name: b.customer_name || b.name,
     email: b.customer_email || b.email,
     phone: b.customer_phone || b.phone,
-    sqm: b.square_meters || b.sqm,
-    rut: (b.rut_amount && b.rut_amount > 0) || b.rut,
-    stripe_payment_intent: b.payment_intent_id || b.stripe_payment_intent,
+    rut: b.rut_amount > 0,
   }));
   showPortal(allBookings, email);
 }
@@ -470,15 +467,15 @@ function showNextBookingBanner(bookings) {
   const now = new Date();
   const upcoming = bookings
     .filter(b => {
-      const d = new Date(b.scheduled_date || b.date);
+      const d = new Date(b.date);
       return d >= now && b.payment_status === 'paid' && b.status !== 'avbokad';
     })
-    .sort((a, b) => new Date(a.scheduled_date || a.date) - new Date(b.scheduled_date || b.date));
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
   
   if (!upcoming.length) { banner.style.display = 'none'; return; }
   
   const next = upcoming[0];
-  const d = new Date(next.scheduled_date || next.date);
+  const d = new Date(next.date);
   const dateStr = d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' });
   const time = next.time || d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   
@@ -640,25 +637,32 @@ function closeCancelModal() {
 }
 async function confirmCancel() {
   if (!cancelBookingId) return;
-  await SB.from('bookings').update({
-    status: 'avbokad',
-    cancelled_at: new Date().toISOString()
-  }).eq('id', cancelBookingId);
-  // Notifiera admin + städare om avbokning
-  await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','apikey':SPICK.SUPA_KEY},
-    body: JSON.stringify({
-      type: 'booking_cancelled',
-      record: { booking_id: cancelBookingId, email: currentEmail }
-    })
-  }).catch(() => {});
-  allBookings = allBookings.map(b =>
-    b.id === cancelBookingId ? {...b, status: 'avbokad', cancelled_at: new Date().toISOString()} : b
-  );
-  closeCancelModal();
-  showToast('✅ Städningen är avbokad. Du är välkommen att boka igen!');
-  renderBookings('all');
+  const btn = document.querySelector('.btn-confirm');
+  if (btn) { btn.disabled = true; btn.textContent = 'Avbokar...'; }
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/booking-cancel-v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ booking_id: cancelBookingId, customer_email: currentEmail })
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      allBookings = allBookings.map(b =>
+        b.id === cancelBookingId ? {...b, status: 'avbokad', payment_status: 'cancelled', cancelled_at: new Date().toISOString()} : b
+      );
+      closeCancelModal();
+      showToast(result.message || '✅ Städningen är avbokad.');
+      renderBookings('all');
+    } else {
+      closeCancelModal();
+      showToast('⚠️ ' + (result.error || 'Kunde inte avboka. Kontakta hello@spick.se'));
+    }
+  } catch (e) {
+    console.error('Cancel error:', e);
+    closeCancelModal();
+    showToast('⚠️ Fel vid avbokning. Kontakta hello@spick.se');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Avboka'; }
 }
 
 // ── SPARA PROFIL ─────────────────────────────

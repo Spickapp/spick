@@ -61,12 +61,13 @@ serve(async (req) => {
     // Förhindra att random UUIDs skapar Stripe sessions
     const { data: existingBooking, error: bookingErr } = await sb
       .from("bookings")
-      .select("id, payment_status, email, status")
+      .select("id, payment_status, customer_email, status")
       .eq("id", booking_id)
       .single();
 
     if (bookingErr || !existingBooking) {
-      return new Response(JSON.stringify({ error: "Bokning hittades inte" }), {
+      console.error("Booking lookup failed:", JSON.stringify({ booking_id, bookingErr }));
+      return new Response(JSON.stringify({ error: "Bokning hittades inte", debug: bookingErr?.message }), {
         status: 404, headers: { "Content-Type": "application/json", ...CORS }
       });
     }

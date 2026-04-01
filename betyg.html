@@ -145,15 +145,16 @@ async function submit(){
   try{
     // 1. Spara betyg
     const {data:booking}=await SB.from('booking_confirmation').select('*').eq('id',bid).single();
-    const {data:rating,error}=await SB.from('reviews').insert([{
+    const reviewPayload = {
       booking_id:bid,
-      cleaner_email:booking?.cleaner_email||booking?.cleaner_id,
-      cleaner_name:cname,
-      customer_name:booking?.customer_name,
-      customer_email:booking?.customer_email,
+      cleaner_email:booking?.cleaner_email||'',
+      cleaner_name:cname||booking?.cleaner_name||'',
+      customer_name:booking?.customer_name||'',
+      customer_email:booking?.customer_email||'',
       cleaner_rating:chosen,
-      cleaner_comment:document.getElementById('cmt').value
-    }]).select().single();
+      cleaner_comment:document.getElementById('cmt').value||null
+    };
+    const {data:rating,error}=await SB.from('reviews').insert([reviewPayload]).select().single();
     if(error)throw error;
 
     // 2. Om betyg ≤ 2 → trigga nöjdhetsgaranti

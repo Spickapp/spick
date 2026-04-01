@@ -709,13 +709,13 @@ async function savePreferences() {
   const msg = document.getElementById('pref-msg');
   msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
   
-  // DB uses normalized columns, not a JSONB blob
+  // DB uses normalized columns, not JSONB
   const updates = {
     pet_pref: document.getElementById('pref-pets')?.checked ? 'all' : 'none',
     elevator_pref: document.getElementById('pref-elevator')?.checked ? 'require' : 'prefer',
     material_pref: document.getElementById('pref-own-material')?.checked ? 'own' : (document.getElementById('pref-customer-material')?.checked ? 'customer' : 'both'),
   };
-  
+
   const {error} = await SB.from('cleaners').update(updates).eq('id', cleaner.id);
   if (error) {
     msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
@@ -746,26 +746,15 @@ async function saveArea() {
 }
 
 function loadPreferences() {
-  const p = cleaner?.work_preferences || {};
-  ['hem','stor','flytt','fonster','kontor'].forEach(t => {
-    const el = document.getElementById('pref-'+t);
-    if (el) el.checked = p.service_types ? p.service_types.includes(t) : t === 'hem';
-  });
-  if (document.getElementById('pref-pets')) document.getElementById('pref-pets').checked = !!p.pets_ok;
-  if (document.getElementById('pref-elevator')) document.getElementById('pref-elevator').checked = !!p.elevator_required;
-  if (document.getElementById('pref-evening')) document.getElementById('pref-evening').checked = !!p.evening_ok;
-  if (document.getElementById('pref-weekend')) document.getElementById('pref-weekend').checked = !!p.weekend_ok;
-  if (document.getElementById('pref-own-material')) document.getElementById('pref-own-material').checked = !!p.own_material;
-  if (document.getElementById('pref-customer-material')) document.getElementById('pref-customer-material').checked = p.customer_material !== false;
-  if (document.getElementById('pref-min-hours')) document.getElementById('pref-min-hours').value = p.min_hours || 2;
-  if (document.getElementById('pref-max-jobs')) document.getElementById('pref-max-jobs').value = p.max_jobs_per_day || 2;
-  if (document.getElementById('pref-auto-accept')) document.getElementById('pref-auto-accept').checked = !!p.auto_accept;
-  if (document.getElementById('pref-auto-threshold')) { document.getElementById('pref-auto-threshold').value = p.auto_accept_threshold || 95; document.getElementById('threshold-val').textContent = p.auto_accept_threshold || 95; }
-  
-  const a = cleaner?.service_area || {};
-  if (document.getElementById('pref-address')) document.getElementById('pref-address').value = a.home_address || '';
-  if (document.getElementById('pref-radius')) { document.getElementById('pref-radius').value = a.max_radius_km || cleaner?.max_travel_km || 10; document.getElementById('radius-val').textContent = document.getElementById('pref-radius').value; }
-  if (document.getElementById('pref-zones')) document.getElementById('pref-zones').value = (a.zones || []).join(', ');
+  // Prefs are normalized columns directly on cleaner, not JSONB
+  if (document.getElementById('pref-pets')) document.getElementById('pref-pets').checked = cleaner?.pet_pref === 'all';
+  if (document.getElementById('pref-elevator')) document.getElementById('pref-elevator').checked = cleaner?.elevator_pref === 'require';
+  if (document.getElementById('pref-own-material')) document.getElementById('pref-own-material').checked = cleaner?.material_pref === 'own';
+  if (document.getElementById('pref-customer-material')) document.getElementById('pref-customer-material').checked = cleaner?.material_pref === 'customer';
+
+  // Area: home_address is a direct column, not nested in JSONB
+  if (document.getElementById('pref-address')) document.getElementById('pref-address').value = cleaner?.home_address || '';
+  if (document.getElementById('pref-radius')) { document.getElementById('pref-radius').value = cleaner?.service_radius_km || 10; document.getElementById('radius-val').textContent = document.getElementById('pref-radius').value; }
 }
 
 // ── DELA PROFIL ──────────────────────────────────────
@@ -792,9 +781,9 @@ async function doLogout() {
 
 // ── LOAD CLEANER ─────────────────────────────────────────────
 async function loadCleanerByEmail(email, authUserId) {
-  // DB has no 'email' column — identity is via auth_user_id FK to auth.users
+  // DB has no 'email' column on cleaners — identity is via auth_user_id FK to auth.users
   let data, error;
-  
+
   if (authUserId) {
     // Primary: match by auth_user_id
     const res = await SB.from('cleaners')
@@ -804,16 +793,13 @@ async function loadCleanerByEmail(email, authUserId) {
       .single();
     data = res.data; error = res.error;
   }
-  
+
   if (!data && email) {
-    // Fallback: match by full_name or phone (for test/migration period)
-    // This is temporary until all cleaners have auth_user_id set
+    // Fallback: load all approved and pick first (test/migration period)
     const res = await SB.from('cleaners')
       .select('*')
       .eq('is_approved', true)
       .limit(20);
-    // Can't filter by email in DB, so we just load the first approved cleaner
-    // In production, auth_user_id path should always work
     data = res.data?.[0]; error = res.error;
   }
 
