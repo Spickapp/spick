@@ -1082,6 +1082,7 @@ async function sendManualReply(emailId, toAddr) {
     replied_at: new Date().toISOString(),
     handled_at: new Date().toISOString()
   }).eq('id', emailId);
+  await auditLog('reply','email', emailId, null, {to: toAddr, status:'hanterad'});
 
   showToast('✅ Svar skickat!');
   closeEmailModal();
@@ -1089,12 +1090,14 @@ async function sendManualReply(emailId, toAddr) {
 
 async function markHandled(emailId) {
   await SB.from('emails').update({ status: 'hanterad', handled_at: new Date().toISOString() }).eq('id', emailId);
+  await auditLog('mark_handled','email', emailId, null, {status:'hanterad'});
   showToast('✅ Markerad som hanterad');
   closeEmailModal();
 }
 
 async function archiveEmail(emailId) {
   await SB.from('emails').update({ status: 'arkiverad' }).eq('id', emailId);
+  await auditLog('archive','email', emailId, null, {status:'arkiverad'});
   showToast('🗑 Arkiverad');
   closeEmailModal();
 }
@@ -1162,10 +1165,12 @@ function renderOnboarding() {
 }
 
 async function moveOnboarding(id, newPhase) {
+  const app = (data.applications||[]).find(a => a.id === id);
+  const oldPhase = app ? app.onboarding_phase : null;
   const { error } = await SB.from('cleaner_applications').update({ onboarding_phase: newPhase }).eq('id', id);
   if (error) { showToast('❌ Fel: ' + error.message); return; }
+  await auditLog('move_onboarding','application', id, {onboarding_phase: oldPhase}, {onboarding_phase: newPhase});
   // Update local data
-  const app = (data.applications||[]).find(a => a.id === id);
   if (app) app.onboarding_phase = newPhase;
   renderOnboarding();
   showToast('✅ Städare flyttad till ' + newPhase);
@@ -1851,10 +1856,12 @@ async function createBookingFromSub(subId) {
     customer_notes: sub.customer_notes,
   }]);
   if (!error) {
+    await auditLog('create_from_sub','booking', subId, null, {customer_name: sub.customer_name, date: nextDate, service: sub.service});
     const nextFreq = {veckovis:7,'varannan-vecka':14,månadsvis:30}[sub.frequency]||14;
     const next = new Date(nextDate);
     next.setDate(next.getDate()+nextFreq);
     await SB.from('subscriptions').update({next_booking_date:next.toISOString().split('T')[0]}).eq('id',subId);
+    await auditLog('update_next_date','subscription', subId, {next_booking_date: sub.next_booking_date}, {next_booking_date: next.toISOString().split('T')[0]});
     showToast('✅ Bokning skapad!');
     loadAll();
   }
@@ -1873,11 +1880,13 @@ async function createNextBookings() {
 
 async function pauseSub(id) {
   await SB.from('subscriptions').update({status:'pausad'}).eq('id',id);
+  await auditLog('pause','subscription', id, {status:'aktiv'}, {status:'pausad'});
   showToast('⏸ Prenumeration pausad');
   renderSubscriptions();
 }
 async function activateSub(id) {
   await SB.from('subscriptions').update({status:'aktiv'}).eq('id',id);
+  await auditLog('activate','subscription', id, {status:'pausad'}, {status:'aktiv'});
   showToast('▶️ Prenumeration aktiverad');
   renderSubscriptions();
 }
@@ -1908,6 +1917,7 @@ async function autoAssignAll() {
         b.id !== booking.id && b.payment_status === 'paid');
       if (!conflict) {
         await SB.from('bookings').update({cleaner_id:cl.id, cleaner_name:cl.full_name}).eq('id',booking.id);
+        await auditLog('auto_assign','booking', booking.id, {cleaner_id:null}, {cleaner_id:cl.id, cleaner_name:cl.full_name});
         assigned++;
         break;
       }
@@ -2124,7 +2134,10 @@ function closeModal() { document.getElementById('booking-modal').classList.remov
 
 async function refundBooking() {
   if (!confirm('Återbetala denna bokning?')) return;
+  const b = data.bookings.find(x => x.id === currentBookingId);
+  const oldValue = b ? {payment_status: b.payment_status} : null;
   await SB.from('bookings').update({ payment_status: 'refunded' }).eq('id', currentBookingId);
+  await auditLog('refund','booking', currentBookingId, oldValue, {payment_status:'refunded'});
   closeModal();
   showToast('↩ Bokning återbetald');
   loadAll();
@@ -2138,12 +2151,14 @@ async function reassignBooking() {
 async function cancelBooking() {
   if (!confirm('❌ Avboka denna bokning? Kunden kommer notifieras.')) return;
   const b = data.bookings.find(x => x.id === currentBookingId);
-  await SB.from('bookings').update({ 
-    payment_status: 'cancelled', 
+  const oldValue = b ? {payment_status: b.payment_status, status: b.status, cleaner_id: b.cleaner_id} : null;
+  await SB.from('bookings').update({
+    payment_status: 'cancelled',
     status: 'avbokad',
     cleaner_id: null,
-    cleaner_name: null 
+    cleaner_name: null
   }).eq('id', currentBookingId);
+  await auditLog('cancel','booking', currentBookingId, oldValue, {payment_status:'cancelled', status:'avbokad'});
   // Notifiera kund
   if (b?.customer_email || b?.email) {
     await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
@@ -2163,7 +2178,9 @@ async function cancelBooking() {
 }
 
 async function markBookingDone(id) {
+  const b = data.bookings.find(x => x.id === id);
   await SB.from('bookings').update({ status: 'klar', completed_at: new Date().toISOString() }).eq('id', id);
+  await auditLog('complete','booking', id, b ? {status:b.status} : null, {status:'klar'});
   showToast('✅ Bokning markerad som klar');
   closeModal();
   loadAll();
@@ -2345,7 +2362,10 @@ function closeCleanerModal() { document.getElementById('cleaner-modal').classLis
 
 async function suspendCleaner() {
   if (!confirm('⛔ Stänga av denna städare permanent? Hen kan inte längre ta emot uppdrag eller logga in.')) return;
+  const c = data.cleaners.find(x => x.id === currentCleanerId);
+  const oldValue = c ? {status: c.status, is_approved: c.is_approved} : null;
   await SB.from('cleaners').update({ is_approved: false, status: 'avstängd' }).eq('id', currentCleanerId);
+  await auditLog('suspend','cleaner', currentCleanerId, oldValue, {status:'avstängd', is_approved:false});
   // Omtilldela aktiva bokningar
   const { data: activeBookings } = await SB.from('bookings')
     .select('id').eq('cleaner_id', currentCleanerId)
@@ -2353,6 +2373,7 @@ async function suspendCleaner() {
   if (activeBookings?.length) {
     await SB.from('bookings').update({ cleaner_id: null, cleaner_name: null, status: 'pending' })
       .eq('cleaner_id', currentCleanerId).in('payment_status', ['paid','pending']).neq('status', 'klar');
+    await auditLog('reassign_bookings','booking', currentCleanerId, null, {count: activeBookings.length}, 'Cleaner suspended');
     showToast(`⚠️ ${activeBookings.length} bokningar omtilldelades`);
   }
   closeCleanerModal();
@@ -2362,14 +2383,18 @@ async function suspendCleaner() {
 
 async function pauseCleaner() {
   if (!confirm('⏸ Pausa denna städare? Hen behåller sitt konto men kan inte ta emot nya bokningar. Befintliga bokningar påverkas ej.')) return;
+  const c = data.cleaners.find(x => x.id === currentCleanerId);
   await SB.from('cleaners').update({ status: 'pausad' }).eq('id', currentCleanerId);
+  await auditLog('pause','cleaner', currentCleanerId, c ? {status:c.status} : null, {status:'pausad'});
   closeCleanerModal();
   showToast('⏸ Städare pausad');
   await loadAll();
 }
 
 async function activateCleaner() {
+  const c = data.cleaners.find(x => x.id === currentCleanerId);
   await SB.from('cleaners').update({ status: 'aktiv', is_approved: true }).eq('id', currentCleanerId);
+  await auditLog('activate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
   closeCleanerModal();
   showToast('▶️ Städare aktiverad');
   await loadAll();
@@ -2377,7 +2402,9 @@ async function activateCleaner() {
 
 async function reactivateCleaner() {
   if (!confirm('Återaktivera denna städare?')) return;
+  const c = data.cleaners.find(x => x.id === currentCleanerId);
   await SB.from('cleaners').update({ is_approved: true, status: 'aktiv' }).eq('id', currentCleanerId);
+  await auditLog('reactivate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
   closeCleanerModal();
   showToast('✅ Städare återaktiverad');
   await loadAll();
@@ -2391,13 +2418,18 @@ async function autoPauseCritical() {
   let paused = 0;
   for (const c of critical) {
     const { error } = await SB.from('cleaners').update({ status: 'pausad' }).eq('id', c.id);
-    if (!error) paused++;
+    if (!error) {
+      paused++;
+      await auditLog('auto_pause','cleaner', c.id, {status:c.status, avg_rating:c.avg_rating}, {status:'pausad'}, 'Betyg under 3.0');
+    }
   }
   showToast('Pausat ' + paused + ' stadare pga lagt betyg');
   await loadAll();
 }
 
 async function saveCleanerFromAdmin() {
+  const c = data.cleaners.find(x => x.id === currentCleanerId);
+  const oldValue = c ? {full_name: c.full_name, phone: c.phone, city: c.city, hourly_rate: c.hourly_rate, services: c.services, bio: c.bio, admin_notes: c.admin_notes} : null;
   const updates = {
     full_name: document.getElementById('admin-edit-name')?.value.trim(),
     phone: document.getElementById('admin-edit-phone')?.value.trim(),
@@ -2407,12 +2439,13 @@ async function saveCleanerFromAdmin() {
     bio: document.getElementById('admin-edit-bio')?.value.trim(),
     admin_notes: document.getElementById('admin-note')?.value.trim(),
   };
-  
+
   const { error } = await SB.from('cleaners').update(updates).eq('id', currentCleanerId);
   if (error) {
     showToast('❌ Fel vid sparning: ' + error.message);
     return;
   }
+  await auditLog('update','cleaner', currentCleanerId, oldValue, updates);
   closeCleanerModal();
   showToast('✅ Städarprofil sparad!');
   await loadAll();
@@ -2440,7 +2473,8 @@ async function approveApplication(id, name, email, city, services, rate) {
     }]);
   }
   await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
-  
+  await auditLog('approve','application', id, null, {name, email, city, status:'approved'});
+
   // Skicka välkomstmail via Resend
   await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
     method: 'POST',
@@ -2455,6 +2489,7 @@ async function approveApplication(id, name, email, city, services, rate) {
 async function rejectApplication(id) {
   if (!confirm('Avslå denna ansökan?')) return;
   await SB.from('cleaner_applications').update({ status: 'rejected' }).eq('id', id);
+  await auditLog('reject','application', id, null, {status:'rejected'});
   loadAll();
 }
 
@@ -2532,13 +2567,16 @@ async function confirmAssign() {
   const cleanerId = document.getElementById('assign-select').value;
   const cleaner = data.cleaners?.find(c => c.id === cleanerId);
   if (!cleanerId || !currentBookingId) return;
-  
-  await SB.from('bookings').update({ 
-    cleaner_id: cleanerId, 
+  const b = data.bookings.find(x => x.id === currentBookingId);
+  const oldValue = b ? {cleaner_id: b.cleaner_id, cleaner_name: b.cleaner_name, status: b.status} : null;
+
+  await SB.from('bookings').update({
+    cleaner_id: cleanerId,
     cleaner_name: cleaner?.full_name,
     status: 'bekräftad'
   }).eq('id', currentBookingId);
-  
+  await auditLog('assign','booking', currentBookingId, oldValue, {cleaner_id: cleanerId, cleaner_name: cleaner?.full_name, status:'bekräftad'});
+
   document.getElementById('assign-modal').remove();
   showToast('✅ Städare tilldelad!');
   await loadAll();
@@ -2610,7 +2648,9 @@ async function bulkApprove() {
   if(!confirm(`Godkänn ${selectedCleaners.size} städare?`)) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
+    const c = data.cleaners.find(x => x.id === id);
     await SB.from('cleaners').update({is_approved:true, status:'aktiv'}).eq('id', id);
+    await auditLog('bulk_approve','cleaner', id, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
   }
   selectedCleaners.clear();
   updateBulkBar();
@@ -2623,7 +2663,9 @@ async function bulkPause() {
   if(!confirm(`Pausa ${selectedCleaners.size} städare?`)) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
+    const c = data.cleaners.find(x => x.id === id);
     await SB.from('cleaners').update({status:'pausad'}).eq('id', id);
+    await auditLog('bulk_pause','cleaner', id, c ? {status:c.status} : null, {status:'pausad'});
   }
   selectedCleaners.clear();
   updateBulkBar();
@@ -2636,7 +2678,9 @@ async function bulkSuspend() {
   if(!confirm(`⛔ Stänga av ${selectedCleaners.size} städare permanent?`)) return;
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
+    const c = data.cleaners.find(x => x.id === id);
     await SB.from('cleaners').update({is_approved:false, status:'avstängd'}).eq('id', id);
+    await auditLog('bulk_suspend','cleaner', id, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'avstängd', is_approved:false});
   }
   selectedCleaners.clear();
   updateBulkBar();
