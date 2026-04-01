@@ -670,6 +670,18 @@ let state = {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Återställ booking state efter refresh
+  try {
+    var saved = sessionStorage.getItem('spick_booking');
+    if (saved) {
+      var s = JSON.parse(saved);
+      if (s.step > 1 && s.service && s.date) {
+        Object.assign(state, s);
+        setStep(s.step);
+      }
+    }
+  } catch(e) {}
+
   const p = new URLSearchParams(location.search);
   // Förifyll om städare angetts i URL (bakåtkompabilitet)
   const preCleanerId   = p.get('id');
@@ -755,6 +767,15 @@ function setStep(n) {
       if (n === 3) fbq('track', 'AddToCart', { value: price, currency: 'SEK', content_name: svc });
       if (n === 4) fbq('track', 'AddPaymentInfo', { value: price, currency: 'SEK' });
     }
+  } catch(e) {}
+  // Spara state för page-reload
+  try {
+    sessionStorage.setItem('spick_booking', JSON.stringify({
+      step: n, service: state.service, date: state.date,
+      time: state.time, hours: state.hours, address: state.address,
+      sqm: state.sqm, cleanerId: state.cleanerId,
+      cleanerName: state.cleanerName, cleanerRate: state.cleanerRate
+    }));
   } catch(e) {}
 }
 
@@ -1911,6 +1932,7 @@ async function doBook() {
     }
     const { url } = await stripeRes.json();
     if (url) {
+      sessionStorage.removeItem('spick_booking');
       window.location.href = url;
     } else {
       throw new Error('Ingen checkout-URL');
@@ -2105,6 +2127,7 @@ function showServiceDetail(name) {
 })();
 
 </script>
+<script src="js/feedback.js" defer></script>
 </body>
 </html>
 

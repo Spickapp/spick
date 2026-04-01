@@ -722,7 +722,7 @@ function setStars(n) {
 }
 
 async function submitInlineReview() {
-  if (!_reviewStars) { alert('Välj minst 1 stjärna'); return; }
+  if (!_reviewStars) { spickToast('Välj minst 1 stjärna', 'warning'); return; }
   const btn = document.getElementById('review-submit-btn');
   btn.textContent = '⏳ Sparar...'; btn.disabled = true;
   const comment = document.getElementById('review-text').value.trim();
@@ -740,7 +740,7 @@ async function submitInlineReview() {
   );
   const bk = bkRes.ok ? await bkRes.json() : null;
 
-  if (!bk) { alert('Kunde inte hämta bokningsinfo'); btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false; return; }
+  if (!bk) { spickToast('Kunde inte hämta bokningsinfo', 'error'); btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false; return; }
 
   // Spara recension
   const { error } = await SB.from('reviews').insert({
@@ -768,7 +768,7 @@ async function submitInlineReview() {
     showToast('✅ Tack för ditt betyg! Det hjälper andra kunder.');
     setTimeout(loadBookings, 1000);
   } else {
-    alert('Fel: ' + error.message);
+    spickToast('Fel: ' + error.message, 'error');
     btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false;
   }
 }
@@ -796,10 +796,11 @@ function editProfile() {
     // Spara lokalt för nu – faktisk Supabase-update kräver auth
     if(name) document.getElementById('profile-name').textContent = name;
     if(phone) document.getElementById('profile-phone').textContent = phone;
-    alert("✅ Profil uppdaterad!");
+    spickToast('Profil uppdaterad!', 'success');
   }
 }
 </script>
+<script src="js/feedback.js" defer></script>
 </body>
 </html>
 

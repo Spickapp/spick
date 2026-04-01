@@ -537,9 +537,9 @@ function selectEmoji(emoji, el) {
 function validateStep2() {
   const alias = document.getElementById('aliasInput').value.trim();
   const city = document.getElementById('aliasCity').value;
-  if (!alias) { alert('Ange ditt alias'); return; }
-  if (alias.length < 2) { alert('Alias måste vara minst 2 tecken'); return; }
-  if (!city) { alert('Välj din stad'); return; }
+  if (!alias) { spickFieldError('aliasInput', 'Ange ditt alias'); return; }
+  if (alias.length < 2) { spickFieldError('aliasInput', 'Alias måste vara minst 2 tecken'); return; }
+  if (!city) { spickFieldError('aliasCity', 'Välj din stad'); return; }
   goToStep(3);
 }
 
@@ -577,12 +577,14 @@ async function submitRegistration() {
   const bio = document.getElementById('bio').value.trim();
   const homeAddr = document.getElementById('homeAddress').value.trim();
 
-  if (!email || !phone || !pass1) { alert('Fyll i alla obligatoriska fält'); return; }
-  if (pass1 !== pass2) { alert('Lösenorden matchar inte'); return; }
-  if (pass1.length < 8) { alert('Lösenordet måste vara minst 8 tecken'); return; }
-  if (!document.getElementById('chkTerms').checked) { alert('Du måste godkänna villkoren'); return; }
-  if (!document.getElementById('chkGdpr').checked) { alert('Du måste godkänna GDPR-informationen'); return; }
-  if (!verifiedPersonalNumber) { alert('Verifiera din identitet med BankID först'); return; }
+  if (!email) { spickFieldError('emailInput', 'E-post krävs'); return; }
+  if (!phone) { spickFieldError('phoneInput', 'Telefonnummer krävs'); return; }
+  if (!pass1) { spickFieldError('passInput', 'Lösenord krävs'); return; }
+  if (pass1 !== pass2) { spickFieldError('pass2Input', 'Lösenorden matchar inte'); return; }
+  if (pass1.length < 8) { spickFieldError('passInput', 'Lösenordet måste vara minst 8 tecken'); return; }
+  if (!document.getElementById('chkTerms').checked) { spickToast('Du måste godkänna villkoren', 'warning'); return; }
+  if (!document.getElementById('chkGdpr').checked) { spickToast('Du måste godkänna GDPR-informationen', 'warning'); return; }
+  if (!verifiedPersonalNumber) { spickToast('Verifiera din identitet med BankID först', 'warning'); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -679,7 +681,7 @@ async function submitRegistration() {
   } catch(e) {
     btn.disabled = false;
     btn.textContent = 'Slutför registrering ✓';
-    alert('Något gick fel. Försök igen eller kontakta hello@spick.se');
+    spickToast('Något gick fel. Försök igen eller kontakta hello@spick.se', 'error');
   }
 }
 
@@ -707,6 +709,7 @@ function validatePNR(val) {
   }
 }
 </script>
+<script src="js/feedback.js" defer></script>
 <div style="margin:24px 0;"><div style="background:#f9f9f9;border-left:4px solid #0F6E56;border-radius:6px;padding:16px 20px;margin-bottom:16px;"><h4 style="margin:0 0 8px;font-family:DM Sans,sans-serif;color:#1a1a1a;font-size:.95rem;">Plattformsavtal</h4><p style="margin:0 0 10px;font-size:.88rem;color:#444;">Du f&ouml;rbinder dig att inte kontakta eller ta betalt av kunder utanf&ouml;r Spick &ndash; varken under din aktiva period eller 12 m&aring;nader efter avslutat konto. Brott ger skadest&aring;nd 5000&ndash;10000 kr + omedelbar avst&auml;ngning.</p></div><div style="display:flex;flex-direction:column;gap:12px;"><label style="display:flex;gap:10px;font-size:.9rem;"><input type="checkbox" id="cb-non-solicitation" required style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0;margin-top:2px"><span>Jag accepterar klausulen om kundrelationer och lovar att inte kringå plattformen.</span></label><label style="display:flex;gap:10px;font-size:.9rem;"><input type="checkbox" id="cb-quality" required style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0;margin-top:2px"><span>Jag f&ouml;rbinder mig att leverera professionell service och meddela vid avbokning i tid.</span></label><label style="display:flex;gap:10px;font-size:.9rem;"><input type="checkbox" id="cb-fskatt" required style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0;margin-top:2px"><span>Jag bekr&auml;ftar att jag innehavare eller ans&ouml;ker om F-skatt eller FA-skatt.</span></label><label style="display:flex;gap:10px;font-size:.9rem;"><input type="checkbox" id="cb-terms" required style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0;margin-top:2px"><span>Jag accepterar Spicks <a href="/villkor-stadare.html" style="color:#0F6E56">anv&auml;ndarvillkor</a> och <a href="/integritetspolicy.html" style="color:#0F6E56">integritetspolicy</a>.</span></label></div></div></body>
 </html>
 
