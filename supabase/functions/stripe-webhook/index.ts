@@ -47,7 +47,10 @@ async function verifyStripeSignature(body: string, sigHeader: string, secret: st
 
     const timestamp = parseInt(t, 10);
     const now = Math.floor(Date.now() / 1000);
-    if (isNaN(timestamp) || Math.abs(now - timestamp) > STRIPE_TOLERANCE_SEC) return false;
+    if (isNaN(timestamp) || Math.abs(now - timestamp) > STRIPE_TOLERANCE_SEC) {
+      console.warn(`Stripe replay rejected: diff ${Math.abs(now - timestamp)}s`);
+      return false;
+    }
 
     const payload = `${t}.${body}`;
     const key = await crypto.subtle.importKey(
@@ -56,8 +59,15 @@ async function verifyStripeSignature(body: string, sigHeader: string, secret: st
     );
     const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
     const computed = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (computed !== v1) {
+      console.warn(`Stripe sig mismatch: computed=${computed.substring(0,16)}... expected=${v1.substring(0,16)}...`);
+    }
     return computed === v1;
-  } catch { return false; }
+  } catch(e) {
+    console.error("Stripe sig verify error:", e);
+    return false;
+  }
 }
 
 // ── Email wrapper ──────────────────────────────────────────────────────────
