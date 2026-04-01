@@ -1,8 +1,9 @@
 /**
  * cleanup-stale — Rensar pending-bokningar som aldrig betalats
- * 
- * Körs via GitHub Actions cron var 15:e minut.
- * Kräver CRON_SECRET för autentisering.
+ *
+ * Körs via GitHub Actions cron varje timme.
+ * Uppdaterar payment_status till 'cancelled' för obetalda bokningar
+ * äldre än 30 minuter.
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -14,14 +15,11 @@ const ADMIN_EMAIL = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-serve(async (req) => {
-  // Auth: --no-verify-jwt på Supabase nivå + GitHub Actions secret
-  // Ingen manuell auth-check behövs — funktionen exponeras inte publikt
-
+serve(async (_req) => {
   try {
-    // 1. Hitta stale bokningar (obetalda >30 min)
     const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    
+
+    // 1. Find stale bookings (unpaid >30 min)
     const { data: stale, error: fetchErr } = await sb
       .from("bookings")
       .select("id, created_at")
@@ -30,55 +28,53 @@ serve(async (req) => {
       .lt("created_at", cutoff);
 
     if (fetchErr) throw fetchErr;
-    
+
     if (!stale || stale.length === 0) {
-      return new Response(JSON.stringify({ 
-        cleaned: 0, 
+      return new Response(JSON.stringify({
+        cleaned: 0,
         message: "Inga stale bokningar",
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
       }), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const staleIds = stale.map(b => b.id);
+    const staleIds = stale.map((b) => b.id);
 
-    // 2. Uppdatera status
+    // 2. Update payment_status only (avoid status check constraint issues)
     const { error: updateErr } = await sb
       .from("bookings")
-      .update({ 
-        status: "avbokad", 
-        payment_status: "cancelled"
-      })
+      .update({ payment_status: "cancelled" })
       .in("id", staleIds);
 
     if (updateErr) throw updateErr;
 
-    // 3. Logga i booking_status_log
-    const logEntries = staleIds.map(id => ({
-      booking_id: id,
-      old_status: "pending",
-      new_status: "avbokad",
-      changed_by: "system:cleanup-stale",
-    }));
+    // 3. Log in booking_status_log (non-critical)
+    try {
+      await sb.from("booking_status_log").insert(
+        staleIds.map((id) => ({
+          booking_id: id,
+          old_status: "pending",
+          new_status: "cancelled (stale)",
+          changed_by: "system:cleanup-stale",
+        })),
+      );
+    } catch (_) { /* non-critical */ }
 
-    try { await sb.from("booking_status_log").insert(logEntries); } catch(_) {}
-
-    // 4. Notifiera admin om det var många
+    // 4. Notify admin if many stale bookings
     if (stale.length >= 3 && RESEND_API_KEY) {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          Authorization: `Bearer ${RESEND_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           from: "Spick System <hello@spick.se>",
           to: ADMIN_EMAIL,
           subject: `⚠️ ${stale.length} stale bokningar rensade`,
-          html: `<p>${stale.length} bokningar som aldrig betalats (>30 min) har markerats som avbokade.</p>
-            <p>Detta kan indikera ett problem med Stripe checkout-flödet.</p>
-            <ul>${stale.map(b => `<li>Bokning ${b.id.slice(0,8)} — skapad ${b.created_at}</li>`).join("")}</ul>`,
+          html: `<p>${stale.length} bokningar som aldrig betalats (>30 min) har markerats som cancelled.</p>
+            <p>Detta kan indikera ett problem med Stripe checkout-flödet.</p>`,
         }),
       }).catch(() => {});
     }
@@ -90,12 +86,11 @@ serve(async (req) => {
     }), {
       headers: { "Content-Type": "application/json" },
     });
-
   } catch (e) {
     console.error("Cleanup error:", e);
-    return new Response(JSON.stringify({ 
-      error: e.message,
-      timestamp: new Date().toISOString() 
+    return new Response(JSON.stringify({
+      error: (e as Error).message,
+      timestamp: new Date().toISOString(),
     }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

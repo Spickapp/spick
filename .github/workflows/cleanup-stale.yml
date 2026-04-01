@@ -1,7 +1,7 @@
 name: Cleanup Stale Bookings
 'on':
   schedule:
-    - cron: '0 * * * *'    # Varje hel timme (spara Actions-minuter)
+    - cron: '0 * * * *'    # Varje hel timme
   workflow_dispatch: {}      # Manuell trigger
 
 jobs:
@@ -20,13 +20,13 @@ jobs:
             -H "apikey: $SUPA_KEY" \
             -H "Content-Type: application/json" \
             "$SUPA_URL/functions/v1/cleanup-stale")
-          
+
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -n -1)
-          
+
           echo "Status: $HTTP_CODE"
           echo "Response: $BODY"
-          
+
           if [ "$HTTP_CODE" -ge 400 ]; then
             echo "::warning::Cleanup failed with HTTP $HTTP_CODE"
             exit 1
