@@ -886,14 +886,14 @@ async function loadCleanerByEmail(email, authUserId) {
 // ── JOBS ─────────────────────────────────────────────────────
 async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
-    SB.from('bookings').select('*, key_info, customer_notes, reminders_sent').eq('cleaner_id', cleaner.id).in('payment_status', ['paid','pending']).order('date', { ascending: true }),
-    SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).eq('city', cleaner.city || '').order('date', { ascending: true }).limit(15)
+    SB.from('bookings').select('*, key_info, customer_notes, reminders_sent').eq('cleaner_id', cleaner.id).in('payment_status', ['paid','pending']).order('booking_date', { ascending: true }),
+    SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('booking_date', { ascending: true }).limit(15)
   ]);
 
   // Fallback om city-filter ger 0 resultat
   let openJobs = cityJobs.data || [];
   if (!openJobs.length) {
-    const { data: allOpen } = await SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('date', { ascending: true }).limit(10);
+    const { data: allOpen } = await SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('booking_date', { ascending: true }).limit(10);
     openJobs = allOpen || [];
   }
 
@@ -934,7 +934,7 @@ function renderJobs() {
     if (aDone !== bDone) return aDone ? 1 : -1;
     if (aMine !== bMine) return aMine ? -1 : 1;
     if (aOpen !== bOpen) return aOpen ? -1 : 1;
-    return new Date(a.scheduled_date||a.date||0) - new Date(b.scheduled_date||b.date||0);
+    return new Date(a.scheduled_date||a.booking_date||0) - new Date(b.scheduled_date||b.booking_date||0);
   });
 
   document.getElementById('jobs-list').innerHTML = sorted.map(j => jobCard(j)).join('');
@@ -947,13 +947,13 @@ function renderJobs() {
 }
 
 function jobCard(j) {
-  const d = new Date(j.scheduled_date || j.date || new Date());
+  const d = new Date(j.scheduled_date || j.booking_date || new Date());
   const isMine = j.cleaner_id === cleaner.id;
   const isOpen = !j.cleaner_id;
   const isDone = j.status === 'klar';
   const isActive = isMine && j.checked_in_at && !isDone;
-  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.hours||3)) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
-  const hours = parseInt(j.hours) || 3;
+  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.booking_hours||3)) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
+  const hours = parseInt(j.booking_hours) || 3;
   const effectiveRate = Math.round(pay / hours);
   const minRate = cleaner.hourly_rate ? Math.round(cleaner.hourly_rate * 0.7) : 200;
   const rateColor = effectiveRate >= (cleaner.hourly_rate||350)*0.83 ? 'var(--g)' : effectiveRate >= minRate ? '#92400E' : 'var(--r)';
@@ -1000,14 +1000,14 @@ function jobCard(j) {
     actionsHtml += `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:6px">✅ Klar – utbetalning på väg</div>`;
   }
 
-  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(j.address || j.city || '')}`;
+  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(j.customer_address || '')}`;
   const addrHtml = isMine ? `<div style="font-size:.75rem;margin-top:5px;">
     ${showAddr ? 
       `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <a href="${mapsUrl}" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none">📍 ${escHtml(j.address || j.city || '–')} →</a>
-        ${j.phone || j.customer_phone ? `<a href="tel:${escHtml(j.phone||j.customer_phone)}" style="background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px;text-decoration:none;font-weight:600">📞 Ring kund</a>` : ''}
+        <a href="${mapsUrl}" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none">📍 ${escHtml(j.customer_address || '–')} →</a>
+        ${j.customer_phone ? `<a href="tel:${escHtml(j.customer_phone)}" style="background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px;text-decoration:none;font-weight:600">📞 Ring kund</a>` : ''}
       </div>` : 
-      `<span style="color:var(--m)">📍 Område: ${escHtml(j.city || '–')} ${hoursUntil > 24 ? '<span style=\"color:#F59E0B\">🔒 Adress synlig 24h innan</span>' : ''}</span>`}
+      `<span style="color:var(--m)">📍 Område: ${escHtml(j.customer_address || '–')} ${hoursUntil > 24 ? '<span style=\"color:#F59E0B\">🔒 Adress synlig 24h innan</span>' : ''}</span>`}
     ${j.key_info && showAddr ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">🔑 ${escHtml(j.key_info)}</div>` : ''}
     ${j.customer_notes ? `<div style="background:#DBEAFE;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#1E40AF">📝 Kundnotering: ${escHtml(j.customer_notes)}</div>` : ''}
     ${j.allergies ? `<div style="background:#FEE2E2;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#991B1B">⚠️ Allergi: ${escHtml(j.allergies)}</div>` : ''}
@@ -1016,11 +1016,11 @@ function jobCard(j) {
   return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}">
     <div class="job-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
     <div class="job-body">
-      <div class="job-title">${escHtml(j.service || 'Hemstädning')}</div>
+      <div class="job-title">${escHtml(j.service_type || 'Hemstädning')}</div>
       <div class="job-meta">
-        <span>🕐 ${escHtml(j.time || j.scheduled_time || '09:00')}</span>
-        <span>⏱ ${parseInt(j.hours) || 3}h</span>
-        <span>📍 ${escHtml(j.city || '–')}</span>
+        <span>🕐 ${escHtml(j.booking_time || j.scheduled_time || '09:00')}</span>
+        <span>⏱ ${parseInt(j.booking_hours) || 3}h</span>
+        <span>📍 ${escHtml(j.customer_address || '–')}</span>
         ${j.customer_name && isMine ? `<span>👤 ${escHtml(j.customer_name.split(' ')[0])}</span>` : ''}
       </div>
       ${badgeHtml}
@@ -1037,7 +1037,7 @@ function jobCard(j) {
 // ── GOAL WIDGET ──────────────────────────────────────────────
 function updateGoal() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const monthJobs = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'klar' && new Date(j.scheduled_date||j.date) >= monthStart);
+  const monthJobs = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'klar' && new Date(j.scheduled_date||j.booking_date) >= monthStart);
   const earned = monthJobs.reduce((s, j) => s + Math.round((j.total_price||0) * 0.83), 0);
   const pct = Math.min(100, Math.round((earned / MONTHLY_GOAL) * 100));
   const card = document.getElementById('goal-card');
@@ -1054,13 +1054,13 @@ function updateGoal() {
 
 // ── NEXT JOB BANNER ─────────────────────────────────────────
 function updateNextBanner() {
-  const myUpcoming = jobs.filter(j => j.cleaner_id === cleaner.id && j.status !== 'klar' && new Date(j.scheduled_date||j.date) > new Date()).sort((a,b) => new Date(a.scheduled_date||a.date) - new Date(b.scheduled_date||b.date));
+  const myUpcoming = jobs.filter(j => j.cleaner_id === cleaner.id && j.status !== 'klar' && new Date(j.scheduled_date||j.booking_date) > new Date()).sort((a,b) => new Date(a.scheduled_date||a.booking_date) - new Date(b.scheduled_date||b.booking_date));
   const next = myUpcoming[0];
   if (!next) { document.getElementById('next-banner').classList.remove('show'); return; }
-  const d = new Date(next.scheduled_date || next.date);
+  const d = new Date(next.scheduled_date || next.booking_date);
   const hoursUntil = (d - new Date()) / 3600000;
-  document.getElementById('next-info').textContent = `${next.service||'Hemstädning'} · ${d.toLocaleDateString('sv-SE',{weekday:'short',month:'short',day:'numeric'})} ${next.time||''}`;
-  document.getElementById('next-addr').textContent = hoursUntil <= 24 ? (next.address || next.city || '') : `Område: ${next.city || '–'}`;
+  document.getElementById('next-info').textContent = `${next.service_type||'Hemstädning'} · ${d.toLocaleDateString('sv-SE',{weekday:'short',month:'short',day:'numeric'})} ${next.booking_time||''}`;
+  document.getElementById('next-addr').textContent = hoursUntil <= 24 ? (next.customer_address || '') : `Område: ${next.customer_address || '–'}`;
   if (hoursUntil < 1) {
     document.getElementById('cnt-num').textContent = Math.round(hoursUntil * 60);
     document.getElementById('cnt-lbl').textContent = 'min kvar';
@@ -1076,7 +1076,7 @@ function renderEarnings() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const myDone = jobs.filter(j => j.cleaner_id === cleaner.id && j.payment_status === 'paid');
-  const monthDone = myDone.filter(j => new Date(j.scheduled_date||j.date) >= monthStart);
+  const monthDone = myDone.filter(j => new Date(j.scheduled_date||j.booking_date) >= monthStart);
   const monthEarn = monthDone.reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
   const totalEarn = myDone.reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
   document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
@@ -1084,7 +1084,7 @@ function renderEarnings() {
 
   // Inkomstprognos
   const weekDone = myDone.filter(j => {
-    const jd = new Date(j.scheduled_date||j.date);
+    const jd = new Date(j.scheduled_date||j.booking_date);
     const wd = new Date(); wd.setDate(wd.getDate()-7);
     return jd >= wd;
   });
@@ -1105,10 +1105,10 @@ function renderEarnings() {
 
   // Månadsuppdrag
   const jobRows = monthDone.length ? monthDone.map(j => {
-    const d = new Date(j.scheduled_date||j.date);
+    const d = new Date(j.scheduled_date||j.booking_date);
     const pay = Math.round((j.total_price||0)*0.83);
     return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.83rem">
-      <span>${escHtml(j.service||'Städning')} · ${d.toLocaleDateString('sv-SE',{month:'short',day:'numeric'})}</span>
+      <span>${escHtml(j.service_type||'Städning')} · ${d.toLocaleDateString('sv-SE',{month:'short',day:'numeric'})}</span>
       <span style="color:var(--g);font-weight:600">+${pay.toLocaleString('sv')} kr</span>
     </div>`;
   }).join('') : '<div style="color:var(--m);padding:8px 0">Inga klarade uppdrag denna månad.</div>';
@@ -1129,7 +1129,7 @@ function renderWeekChart(doneJobs) {
     return { date: d, earn: 0, label: d.toLocaleDateString('sv-SE',{weekday:'short'}) };
   });
   doneJobs.forEach(j => {
-    const jd = new Date(j.scheduled_date||j.date);
+    const jd = new Date(j.scheduled_date||j.booking_date);
     const match = days.find(d => d.date.toDateString() === jd.toDateString());
     if (match) match.earn += Math.round((j.total_price||0)*0.83);
   });
@@ -1148,9 +1148,9 @@ async function loadFullHistory() {
   if (btn) btn.innerHTML = '<div style="text-align:center;padding:.5rem;color:var(--m);font-size:.82rem">Laddar...</div>';
   
   const { data: allJobs } = await SB.from('bookings')
-    .select('id,service,date,scheduled_date,total_price,status,payment_status,customer_name,city,hours,completed_at')
+    .select('id,service_type,booking_date,scheduled_date,total_price,status,payment_status,customer_name,booking_hours,completed_at')
     .eq('cleaner_id', cleaner.id)
-    .order('date', { ascending: false })
+    .order('booking_date', { ascending: false })
     .limit(200);
   
   const el = document.getElementById('full-history');
@@ -1171,13 +1171,13 @@ async function loadFullHistory() {
       <strong style="color:var(--g)">Totalt intjänat alla tider: ${totalAllTime.toLocaleString('sv')} kr</strong>
     </div>
     ${allJobs.map(j => {
-      const d = new Date(j.scheduled_date||j.date);
+      const d = new Date(j.scheduled_date||j.booking_date);
       const pay = Math.round((j.total_price||0)*0.83);
       const statusMap = {klar:'✅',pågår:'🧹',bekräftad:'📅',pending:'⏳',cancelled:'❌'};
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem">
         <div>
-          <div style="font-weight:500">${escHtml(j.service||'Städning')}</div>
-          <div style="font-size:.72rem;color:var(--m)">${d.toLocaleDateString('sv-SE',{year:'numeric',month:'short',day:'numeric'})} · ${escHtml(j.city||'')} · ${j.hours||3}h</div>
+          <div style="font-weight:500">${escHtml(j.service_type||'Städning')}</div>
+          <div style="font-size:.72rem;color:var(--m)">${d.toLocaleDateString('sv-SE',{year:'numeric',month:'short',day:'numeric'})} · ${escHtml(j.customer_address||'')} · ${j.booking_hours||3}h</div>
         </div>
         <div style="text-align:right">
           <div style="color:var(--g);font-weight:600">${j.payment_status==='paid'?'+'+pay.toLocaleString('sv')+' kr':'–'}</div>
