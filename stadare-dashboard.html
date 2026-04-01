@@ -815,15 +815,6 @@ async function loadCleanerByEmail(email, authUserId) {
     data = res.data; error = res.error;
   }
 
-  if (!data && email) {
-    // Fallback: load all approved and pick first (test/migration period)
-    const res = await SB.from('cleaners')
-      .select('*')
-      .eq('is_approved', true)
-      .limit(20);
-    data = res.data?.[0]; error = res.error;
-  }
-
   if (error || !data) {
     showErr('Kontot hittades inte. Kontakta hello@spick.se');
     showScreen('login');

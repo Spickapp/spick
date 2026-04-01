@@ -116,7 +116,6 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
     <a href="boka.html" style="display:block;padding:.875rem 2rem;background:var(--g);color:#fff;border-radius:100px;text-decoration:none;font-weight:600">Boka igen →</a>
     <a href="tipsa-en-van.html" style="display:block;padding:.875rem 2rem;background:var(--gr);color:var(--t);border-radius:100px;text-decoration:none;font-weight:500;border:1.5px solid var(--grd)">🎁 Tipsa en vän – ni får båda rabatt</a>
   </div>
-  <a href="boka.html">Boka igen →</a>
 </div>
 <script>
 const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
@@ -144,15 +143,15 @@ async function submit(){
   btn.innerHTML='<div class="spin"></div> Sparar...';
   try{
     // 1. Spara betyg
-    const {data:booking}=await SB.from('booking_confirmation').select('*').eq('id',bid).single();
+    const {data:booking}=await SB.from('booking_confirmation')
+  .select('id,service_type,booking_date,cleaner_id,cleaner_name,customer_name,customer_email')
+  .eq('id',bid).maybeSingle();
     const reviewPayload = {
-      booking_id:bid,
-      cleaner_email:booking?.cleaner_email||'',
-      cleaner_name:cname||booking?.cleaner_name||'',
-      customer_name:booking?.customer_name||'',
-      customer_email:booking?.customer_email||'',
-      cleaner_rating:chosen,
-      cleaner_comment:document.getElementById('cmt').value||null
+      cleaner_id:    booking?.cleaner_id  || null,
+      customer_id:   null,
+      job_id:        bid                  || null,
+      cleaner_rating: chosen,
+      comment:       document.getElementById('cmt').value || null
     };
     const {data:rating,error}=await SB.from('reviews').insert([reviewPayload]).select().single();
     if(error)throw error;
@@ -174,8 +173,8 @@ async function submit(){
       await SB.from('guarantee_requests').insert([{
         booking_id:bid,
         rating_id:rating?.id,
-        customer_name:booking?.name,
-        customer_email:booking?.email,
+        customer_name:booking?.customer_name,
+        customer_email:booking?.customer_email,
         cleaner_name:cname,
         issue_description:'Betyg '+chosen+'/5. Kommentar: '+document.getElementById('cmt').value
       }]);

@@ -1280,9 +1280,9 @@ function globalSearch(q) {
   const hits = [];
 
   // Sök bokningar
-  data.bookings.filter(b => `${b.customer_name||''} ${b.email||''} ${b.customer_email||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q)).slice(0,3).forEach(b => {
+  data.bookings.filter(b => `${b.customer_name||''} ${b.email||''} ${b.customer_email||''} ${b.service_type||b.service||''} ${b.city||''}`.toLowerCase().includes(q)).slice(0,3).forEach(b => {
     hits.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem;cursor:pointer" onclick="showPage('bookings');showBookingDetail('${b.id}')">
-      <span>📅 ${b.service||'Städning'} · ${b.customer_name||b.email||'–'} · ${b.city||'–'}</span>
+      <span>📅 ${b.service_type||b.service||'Städning'} · ${b.customer_name||b.email||'–'} · ${b.city||'–'}</span>
       <span style="color:var(--m);font-size:.75rem">${statusBadge(b.payment_status).replace(/<[^>]+>/g,'')}</span>
     </div>`);
   });
@@ -1548,14 +1548,14 @@ function renderBookings() {
   const q = document.getElementById('booking-search').value.toLowerCase();
   const f = document.getElementById('booking-filter').value;
   let filtered = data.bookings;
-  if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.name||''} ${b.address||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q));
+  if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.name||''} ${b.address||''} ${b.service_type||b.service||''} ${b.city||''}`.toLowerCase().includes(q));
   if (f) filtered = filtered.filter(b => b.payment_status === f);
 
   // Sortera
   filtered.sort((a, b) => {
     let av, bv;
     if (_bookingSort.col === 'date') {
-      av = a.date || ''; bv = b.date || '';
+      av = a.booking_date || a.date || ''; bv = b.booking_date || b.date || '';
     } else if (_bookingSort.col === 'amount') {
       av = a.total_price || 0; bv = b.total_price || 0;
     } else {
@@ -1573,8 +1573,8 @@ function renderBookings() {
   document.getElementById('bookings-tbody').innerHTML = filtered.length ? filtered.map(b => `
     <tr>
       <td><strong>${escHtml(b.customer_name || b.name || '–')}</strong><br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.customer_email || b.email || '')}</span></td>
-      <td>${escHtml(b.service || 'Hemstädning')} · ${parseInt(b.hours) || 3}h</td>
-      <td>${escHtml(b.date || '–')}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.time || '')}</span></td>
+      <td>${escHtml(b.service_type || b.service || 'Hemstädning')} · ${parseInt(b.booking_hours || b.hours) || 3}h</td>
+      <td>${escHtml(b.booking_date || b.date || '–')}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.booking_time || b.time || '')}</span></td>
       <td>${escHtml(b.city || b.address?.split(',').pop()?.trim() || '–')}</td>
       <td class="text-g">${Math.round(b.total_price || 0).toLocaleString('sv')} kr${b.rut ? '<br><span style="font-size:.72rem;color:var(--m)">RUT</span>' : ''}</td>
       <td>${statusBadge(b.payment_status)}</td>
@@ -1582,9 +1582,9 @@ function renderBookings() {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showBookingDetail('${b.id}')">Detaljer</button>
-          <a href="mailto:${b.customer_email||b.email||''}?subject=Ang din städning ${b.date||''}" 
+          <a href="mailto:${b.customer_email||b.email||''}?subject=Ang din städning ${b.booking_date||b.date||''}"
              class="btn btn-outline btn-sm" title="Maila kund" style="text-decoration:none">✉️</a>
-          ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang städning ${b.date||''}" class="btn btn-outline btn-sm" title="Maila städare" style="text-decoration:none">🧹</a>` : ''}
+          ${b.cleaner_email ? `<a href="mailto:${b.cleaner_email}?subject=Ang städning ${b.booking_date||b.date||''}" class="btn btn-outline btn-sm" title="Maila städare" style="text-decoration:none">🧹</a>` : ''}
         </div>
       </td>
     </tr>`).join('') : '<tr><td colspan="8" class="empty">Inga bokningar hittades</td></tr>';
@@ -1597,7 +1597,7 @@ function renderPending() {
     <div class="cleaner-card" style="justify-content:space-between">
       <div>
         <strong>${escHtml(b.customer_name || b.name || '–')}</strong>
-        <p>${escHtml(b.service || 'Hemstädning')} · ${escHtml(b.date || '–')} · ${escHtml(b.city || '–')}</p>
+        <p>${escHtml(b.service_type || b.service || 'Hemstädning')} · ${escHtml(b.booking_date || b.date || '–')} · ${escHtml(b.city || '–')}</p>
         <p style="font-size:.78rem;color:var(--m)">Skapad: ${new Date(b.created_at).toLocaleString('sv')}</p>
       </div>
       <div style="text-align:right">
@@ -2057,8 +2057,8 @@ function showBookingDetail(id) {
   document.getElementById('modal-body').innerHTML = `
     <div class="stat-row"><span class="lbl">Kund</span><span class="val">${escHtml(b.customer_name || b.name || '–')} · ${escHtml(b.customer_email || b.email || '')}</span></div>
     <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${escHtml(b.phone || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${escHtml(b.service || 'Hemstädning')} · ${parseInt(b.hours) || 3}h</span></div>
-    <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.date || '–')} kl ${escHtml(b.time || '–')}</span></div>
+    <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${escHtml(b.service_type || b.service || 'Hemstädning')} · ${parseInt(b.booking_hours || b.hours) || 3}h</span></div>
+    <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.booking_date || b.date || '–')} kl ${escHtml(b.booking_time || b.time || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Adress</span><span class="val">${escHtml(b.address || '–')}</span></div>
     <div class="stat-row"><span class="lbl">Belopp</span><span class="val text-g">${Math.round(b.total_price||0).toLocaleString('sv')} kr${b.rut ? ' (RUT)' : ''}</span></div>
     <div class="stat-row"><span class="lbl">Betalsätt</span><span class="val">${escHtml(b.payment_method || '–')}</span></div>
@@ -2081,11 +2081,11 @@ function showBookingDetail(id) {
     ${b.photo_after_url ? `<div class="stat-row"><span class="lbl">Foto efter</span><span class="val"><a href="${b.photo_after_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])}," 
+      <a href="mailto:${encodeURIComponent(b.customer_email||b.email||'')}?subject=Din städning ${encodeURIComponent(b.booking_date||b.date||'')}&body=Hej ${encodeURIComponent((b.customer_name||'').split(' ')[0])}," 
          style="flex:1;padding:8px;background:var(--gr);color:var(--g);border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         ✉️ Maila kund
       </a>
-      ${b.cleaner_email || cleaner?.email ? `<a href="mailto:${encodeURIComponent(b.cleaner_email||cleaner?.email||'')}?subject=Ang bokning ${encodeURIComponent(b.date||'')}"
+      ${b.cleaner_email || cleaner?.email ? `<a href="mailto:${encodeURIComponent(b.cleaner_email||cleaner?.email||'')}?subject=Ang bokning ${encodeURIComponent(b.booking_date||b.date||'')}"
          style="flex:1;padding:8px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
         🧹 Maila städare
       </a>` : ''}
@@ -2104,7 +2104,7 @@ function showBookingDetail(id) {
 function showCustomerBookings(email) {
   const customerBookings = data.bookings
     .filter(b => (b.customer_email || b.email) === email)
-    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    .sort((a, b) => (b.booking_date || b.date || '').localeCompare(a.booking_date || a.date || ''));
   
   const customer = data.customers.find(c => c.email === email);
   const name = customer?.name || email;
@@ -2128,7 +2128,7 @@ function showCustomerBookings(email) {
     ${customerBookings.length ? customerBookings.map(b => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem">
         <div>
-          <strong>${escHtml(b.service || 'Hemstädning')}</strong> · ${escHtml(b.date || '–')}
+          <strong>${escHtml(b.service_type || b.service || 'Hemstädning')}</strong> · ${escHtml(b.booking_date || b.date || '–')}
           <div style="font-size:.75rem;color:var(--m)">${escHtml(b.cleaner_name || 'Ej tilldelad')} · ${escHtml(b.city || '–')}</div>
         </div>
         <div style="text-align:right">
@@ -2152,7 +2152,7 @@ function exportBookingsCSV() {
   const q = document.getElementById('booking-search').value.toLowerCase();
   const f = document.getElementById('booking-filter').value;
   let filtered = data.bookings;
-  if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.email||''} ${b.service||''} ${b.city||''}`.toLowerCase().includes(q));
+  if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.email||''} ${b.service_type||b.service||''} ${b.city||''}`.toLowerCase().includes(q));
   if (f) filtered = filtered.filter(b => b.payment_status === f);
   
   const headers = ['Kund', 'E-post', 'Telefon', 'Tjänst', 'Timmar', 'Datum', 'Tid', 'Stad', 'Adress', 'Belopp', 'RUT', 'Status', 'Städare', 'Betalsätt'];
@@ -2160,10 +2160,10 @@ function exportBookingsCSV() {
     b.customer_name || b.name || '',
     b.customer_email || b.email || '',
     b.phone || '',
-    b.service || 'Hemstädning',
-    b.hours || 3,
-    b.date || '',
-    b.time || '',
+    b.service_type || b.service || 'Hemstädning',
+    b.booking_hours || b.hours || 3,
+    b.booking_date || b.date || '',
+    b.booking_time || b.time || '',
     b.city || '',
     (b.address || '').replace(/,/g, ' '),
     Math.round(b.total_price || 0),
@@ -2282,8 +2282,8 @@ async function cancelBooking() {
       body: JSON.stringify({ type: 'booking_cancelled_admin', record: { 
         customer_name: b.customer_name || b.name,
         email: b.customer_email || b.email,
-        service: b.service,
-        date: b.date
+        service: b.service_type || b.service,
+        date: b.booking_date || b.date
       }})
     }).catch(()=>{});
   }
@@ -2428,7 +2428,7 @@ function showCleanerDetail(id) {
     </div>`;
 
   // Hämta städarens schema asynkront
-  SB.from('cleaner_availability').select('*').eq('cleaner_id', id).order('day_of_week').then(({data: avail, error: avErr}) => {
+  SB.from('cleaner_availability').select('*').eq('cleaner_id', id).then(({data: avail, error: avErr}) => {
     const el = document.getElementById('admin-cleaner-schedule');
     if (!el) return;
     const days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
@@ -2445,7 +2445,16 @@ function showCleanerDetail(id) {
       return;
     }
     el.innerHTML = avail.map(a => {
-      const dayName = days[a.day_of_week] || 'Dag ' + a.day_of_week;
+      // Bygg dagnamn från boolean-kolumner eftersom day_of_week inte finns
+      const dayParts = [];
+      if (a.day_mon) dayParts.push('Mån');
+      if (a.day_tue) dayParts.push('Tis');
+      if (a.day_wed) dayParts.push('Ons');
+      if (a.day_thu) dayParts.push('Tor');
+      if (a.day_fri) dayParts.push('Fre');
+      if (a.day_sat) dayParts.push('Lör');
+      if (a.day_sun) dayParts.push('Sön');
+      const dayName = dayParts.join(', ') || 'Dag okänd';
       return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${dayName}</span><span style="color:${a.is_active ? 'var(--g)' : 'var(--r)'}; font-weight:600">${a.is_active ? (a.start_time||'08:00') + '–' + (a.end_time||'17:00') : 'Ledig'}</span></div>`;
     }).join('');
   });
@@ -2699,7 +2708,7 @@ function exportCSV() {
   const rows = [['Kund','E-post','Tjänst','Datum','Stad','Belopp','Status']];
   data.bookings.forEach(b => rows.push([
     b.customer_name||b.name||'', b.customer_email||b.email||'',
-    b.service||'', b.date||'', b.city||'',
+    b.service_type||b.service||'', b.booking_date||b.date||'', b.city||'',
     Math.round(b.total_price||0), b.payment_status||''
   ]));
   const csv = rows.map(r => r.join(',')).join('\n');

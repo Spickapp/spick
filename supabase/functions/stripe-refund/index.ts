@@ -16,6 +16,38 @@ const CORS = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
+  // ── AUTH GUARD: kräver giltig admin-session ──────────────────
+  try {
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "") || "";
+    if (!token || token === Deno.env.get("SUPABASE_ANON_KEY")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...CORS, "Content-Type": "application/json" }
+      });
+    }
+    const authRes = await fetch(
+      "https://urjeijcncsyuletprydy.supabase.co/auth/v1/user",
+      { headers: { "Authorization": `Bearer ${token}`, "apikey": Deno.env.get("SUPABASE_ANON_KEY")! } }
+    );
+    if (!authRes.ok) throw new Error("Invalid token");
+    const authUser = await authRes.json();
+
+    const { data: adminRow } = await sb
+      .from("admin_users")
+      .select("id")
+      .eq("email", authUser.email)
+      .maybeSingle();
+    if (!adminRow) {
+      return new Response(JSON.stringify({ error: "Forbidden: inte en admin" }), {
+        status: 403, headers: { ...CORS, "Content-Type": "application/json" }
+      });
+    }
+  } catch (authErr) {
+    return new Response(JSON.stringify({ error: "Auth check failed" }), {
+      status: 401, headers: { ...CORS, "Content-Type": "application/json" }
+    });
+  }
+  // ── SLUT AUTH GUARD ──────────────────────────────────────────
+
   try {
     const { booking_id, reason } = await req.json();
     if (!booking_id) {
