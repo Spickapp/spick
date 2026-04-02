@@ -808,6 +808,14 @@ function init() {
   if ((hash && hash.includes('access_token')) || params.has('code')) {
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
+    setTimeout(() => {
+      if (!window._cleanerLoaded) {
+        console.warn('Auth code exchange timeout — visar login');
+        if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; }
+        window.history.replaceState({}, '', window.location.pathname);
+        showScreen('login');
+      }
+    }, 8000);
     return;
   }
 
@@ -980,6 +988,9 @@ async function loadCleanerByEmail(email, authUserId) {
 
   if (error || !data) {
     showErr('Kontot hittades inte. Kontakta hello@spick.se');
+    const btn = document.getElementById('login-btn');
+    if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; }
+    window.history.replaceState({}, '', window.location.pathname);
     showScreen('login');
     return;
   }
