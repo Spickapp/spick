@@ -2,7 +2,7 @@
 // Load this BEFORE @supabase/supabase-js on pages using Supabase auth
 ;(function () {
   if (typeof navigator === 'undefined') return;
-  if (navigator.locks) return;
+  // Always override — native navigator.locks causes deadlock in Supabase SDK
   var queue = {};
   navigator.locks = {
     request: function (name, optionsOrCb, cb) {

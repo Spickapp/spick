@@ -794,6 +794,51 @@ const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
   }
 });
 
+// ── REST helpers — bypass SB.from() to avoid navigator.locks deadlock ──
+function _authHeaders() {
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+  return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
+}
+const R = {
+  async select(table, query='') {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, { headers: _authHeaders() });
+    if (!r.ok) return { data: null, error: { message: `HTTP ${r.status}` } };
+    return { data: await r.json(), error: null };
+  },
+  async selectSingle(table, query='') {
+    const res = await R.select(table, query + '&limit=1');
+    return { data: res.data?.[0] || null, error: res.data?.[0] ? null : (res.error || { message: 'Not found' }) };
+  },
+  async update(table, data, matchQuery) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${matchQuery}`, {
+      method: 'PATCH', headers: { ..._authHeaders(), 'Prefer':'return=minimal' },
+      body: JSON.stringify(data)
+    });
+    return { error: r.ok ? null : { message: `HTTP ${r.status}` } };
+  },
+  async insert(table, data) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+      method: 'POST', headers: { ..._authHeaders(), 'Prefer':'return=minimal' },
+      body: JSON.stringify(data)
+    });
+    return { error: r.ok ? null : { message: `HTTP ${r.status}`, code: r.status === 409 ? '23505' : '' } };
+  },
+  async upsert(table, data, conflictCol) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?on_conflict=${conflictCol}`, {
+      method: 'POST', headers: { ..._authHeaders(), 'Prefer':'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(data)
+    });
+    return { error: r.ok ? null : { message: `HTTP ${r.status}` } };
+  },
+  async del(table, matchQuery) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${matchQuery}`, {
+      method: 'DELETE', headers: { ..._authHeaders(), 'Prefer':'return=minimal' }
+    });
+    return { error: r.ok ? null : { message: `HTTP ${r.status}` } };
+  }
+};
+
 function closeOnboarding() {
   const modal = document.getElementById('onboard-modal');
   if (modal) modal.style.display = 'none';
@@ -921,7 +966,7 @@ async function savePreferences() {
     material_pref: document.getElementById('pref-own-material')?.checked ? 'own' : (document.getElementById('pref-customer-material')?.checked ? 'customer' : 'both'),
   };
 
-  const {error} = await SB.from('cleaners').update(updates).eq('id', cleaner.id);
+  const {error} = await R.update('cleaners', updates, `id=eq.${cleaner.id}`);
   if (error) {
     msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
@@ -937,9 +982,7 @@ async function saveArea() {
 
   const homeAddress = document.getElementById('pref-address')?.value.trim() || '';
 
-  const {error} = await SB.from('cleaners').update({
-    home_address: homeAddress
-  }).eq('id', cleaner.id);
+  const {error} = await R.update('cleaners', { home_address: homeAddress }, `id=eq.${cleaner.id}`);
   if (error) {
     msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
@@ -993,11 +1036,7 @@ async function loadCleanerByEmail(email, authUserId) {
   let data, error;
 
   if (authUserId) {
-    const res = await SB.from('cleaners')
-      .select('*')
-      .eq('auth_user_id', authUserId)
-      .eq('is_approved', true)
-      .single();
+    const res = await R.selectSingle('cleaners', `select=*&auth_user_id=eq.${authUserId}&is_approved=eq.true`);
     data = res.data; error = res.error;
   }
 
@@ -1075,13 +1114,13 @@ async function loadCleanerByEmail(email, authUserId) {
 // ── JOBS ─────────────────────────────────────────────────────
 async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
-    SB.from('bookings').select('*, key_info, customer_notes, reminders_sent').eq('cleaner_id', cleaner.id).in('payment_status', ['paid','pending']).order('booking_date', { ascending: true }),
-    SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('booking_date', { ascending: true }).limit(15)
+    R.select('bookings', `select=*,key_info,customer_notes,reminders_sent&cleaner_id=eq.${cleaner.id}&payment_status=in.(paid,pending)&order=booking_date.asc`),
+    R.select('bookings', `select=*&payment_status=eq.paid&cleaner_id=is.null&order=booking_date.asc&limit=15`)
   ]);
 
   let openJobs = cityJobs.data || [];
   if (!openJobs.length) {
-    const { data: allOpen } = await SB.from('bookings').select('*').eq('payment_status', 'paid').is('cleaner_id', null).order('booking_date', { ascending: true }).limit(10);
+    const { data: allOpen } = await R.select('bookings', `select=*&payment_status=eq.paid&cleaner_id=is.null&order=booking_date.asc&limit=10`);
     openJobs = allOpen || [];
   }
 
@@ -1614,11 +1653,7 @@ async function loadFullHistory() {
   const btn = document.getElementById('history-toggle');
   if (btn) btn.innerHTML = '<div style="text-align:center;padding:.5rem;color:var(--m);font-size:.82rem">Laddar...</div>';
 
-  const { data: allJobs } = await SB.from('bookings')
-    .select('id,service_type,booking_date,scheduled_date,total_price,status,payment_status,customer_name,booking_hours,completed_at')
-    .eq('cleaner_id', cleaner.id)
-    .order('booking_date', { ascending: false })
-    .limit(200);
+  const { data: allJobs } = await R.select('bookings', `select=id,service_type,booking_date,scheduled_date,total_price,status,payment_status,customer_name,booking_hours,completed_at&cleaner_id=eq.${cleaner.id}&order=booking_date.desc&limit=200`);
 
   const el = document.getElementById('full-history');
   const countEl = document.getElementById('history-count');
@@ -1655,7 +1690,7 @@ async function loadFullHistory() {
 }
 
 async function loadMyReviews() {
-  const { data } = await SB.from('reviews').select('*').eq('cleaner_id', cleaner.id).order('created_at', {ascending:false}).limit(5);
+  const { data } = await R.select('reviews', `select=*&cleaner_id=eq.${cleaner.id}&order=created_at.desc&limit=5`);
   if (!data?.length) return;
   document.getElementById('my-reviews').innerHTML = data.map(r => `
     <div style="padding:10px 0;border-bottom:1px solid var(--border)">
@@ -1702,7 +1737,7 @@ async function acceptJob(id, btnEl) {
     await new Promise(r => setTimeout(r, 200));
   }
 
-  await SB.from('bookings').update({cleaner_id:cleaner.id,status:'bekräftad',cleaner_name:cleaner.full_name}).eq('id', id);
+  await R.update('bookings', {cleaner_id:cleaner.id,status:'bekräftad',cleaner_name:cleaner.full_name}, `id=eq.${id}`);
   await fetch(`${SUPA_URL}/functions/v1/notify`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
@@ -1720,18 +1755,14 @@ async function acceptJob(id, btnEl) {
 }
 
 async function declineJob(id) {
-  await SB.from('bookings').update({cleaner_id:null}).eq('id', id);
+  await R.update('bookings', {cleaner_id:null}, `id=eq.${id}`);
   showToast('Uppdrag avböjt');
   loadJobs();
 }
 
 async function cancelMyJob(id) {
   if (!confirm('Vill du avboka detta uppdrag? Det blir tillgängligt för andra städare.')) return;
-  await SB.from('bookings').update({
-    cleaner_id: null,
-    cleaner_name: null,
-    status: 'pending'
-  }).eq('id', id);
+  await R.update('bookings', { cleaner_id:null, cleaner_name:null, status:'pending' }, `id=eq.${id}`);
   await fetch(`${SUPA_URL}/functions/v1/notify`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
@@ -1744,18 +1775,18 @@ async function cancelMyJob(id) {
 async function checkInGPS(bookingId) {
   showToast('📍 Hämtar position...');
   const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000})).catch(() => null);
-  await SB.from('bookings').update({
+  await R.update('bookings', {
     checked_in_at: new Date().toISOString(),
     status: 'pågår',
     ...(pos ? {checkin_lat:pos.coords.latitude,checkin_lng:pos.coords.longitude} : {})
-  }).eq('id', bookingId);
+  }, `id=eq.${bookingId}`);
   showToast('✅ Incheckad! Städningen kan börja.');
   loadJobs();
 }
 
 async function markJobDone(id) {
   if (!confirm('Markera städningen som klar?')) return;
-  await SB.from('bookings').update({status:'klar',completed_at:new Date().toISOString()}).eq('id', id);
+  await R.update('bookings', {status:'klar',completed_at:new Date().toISOString()}, `id=eq.${id}`);
   await fetch(`${SUPA_URL}/functions/v1/notify`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
@@ -1776,7 +1807,7 @@ async function takePhoto(bookingId, type) {
     if (error) { showToast('❌ Uppladdning misslyckades'); return; }
     const url = SB.storage.from('photos').getPublicUrl(path).data.publicUrl;
     const col = type === 'before' ? 'photo_before_url' : 'photo_after_url';
-    await SB.from('bookings').update({[col]:url}).eq('id', bookingId);
+    await R.update('bookings', {[col]:url}, `id=eq.${bookingId}`);
     showToast('✅ Foto sparat!');
     loadJobs();
   };
@@ -1796,7 +1827,7 @@ async function saveProfile() {
   const city = document.getElementById('edit-city').value.trim();
   const rate = parseInt(document.getElementById('edit-rate').value) || 350;
   const bio = document.getElementById('edit-bio').value.trim();
-  const {error} = await SB.from('cleaners').update({full_name:name,phone,city,hourly_rate:rate,bio}).eq('id',cleaner.id);
+  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio}, `id=eq.${cleaner.id}`);
   if (error) { showToast('❌ Fel vid sparning'); return; }
   Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio});
   document.getElementById('prof-name').textContent = name;
@@ -1808,8 +1839,7 @@ async function saveProfile() {
 const DOW_MAP = [1,2,3,4,5,6,0];
 
 async function buildSchedule() {
-  const {data: avRows} = await SB.from('cleaner_availability')
-    .select('*').eq('cleaner_id', cleaner.id);
+  const {data: avRows} = await R.select('cleaner_availability', `select=*&cleaner_id=eq.${cleaner.id}`);
   const row = avRows?.[0] || {};
 
   const dayColumns = {1:'day_mon',2:'day_tue',3:'day_wed',4:'day_thu',5:'day_fri',6:'day_sat',0:'day_sun'};
@@ -1885,8 +1915,7 @@ async function saveSchedule() {
 
   row.weekends_ok = row.day_sat || row.day_sun;
 
-  const {error} = await SB.from('cleaner_availability')
-    .upsert(row, {onConflict: 'cleaner_id'});
+  const {error} = await R.upsert('cleaner_availability', row, 'cleaner_id');
 
   if (error) {
     msg.textContent = '❌ Fel vid sparning: ' + (error.message||'Okänt fel');
@@ -1902,11 +1931,7 @@ async function saveSchedule() {
 async function loadBlockedDates() {
   const el = document.getElementById('blocked-dates-list');
   if (!el) return;
-  const {data} = await SB.from('cleaner_blocked_dates')
-    .select('id,blocked_date,reason')
-    .eq('cleaner_id', cleaner.id)
-    .gte('blocked_date', new Date().toISOString().split('T')[0])
-    .order('blocked_date');
+  const {data} = await R.select('cleaner_blocked_dates', `select=id,blocked_date,reason&cleaner_id=eq.${cleaner.id}&blocked_date=gte.${new Date().toISOString().split('T')[0]}&order=blocked_date.asc`);
 
   if (!data?.length) {
     el.innerHTML = '<span style="color:var(--m);font-size:.78rem">Inga spärrade datum</span>';
@@ -1926,10 +1951,7 @@ async function addBlockedDate() {
   const inp = document.getElementById('block-date-input');
   const dateVal = inp?.value;
   if (!dateVal) { showToast('Välj ett datum'); return; }
-  const {error} = await SB.from('cleaner_blocked_dates').insert([{
-    cleaner_id: cleaner.id,
-    blocked_date: dateVal
-  }]);
+  const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: cleaner.id, blocked_date: dateVal });
   if (error && error.code !== '23505') {
     showToast('❌ ' + error.message); return;
   }
@@ -1939,7 +1961,7 @@ async function addBlockedDate() {
 }
 
 async function removeBlockedDate(id) {
-  await SB.from('cleaner_blocked_dates').delete().eq('id', id);
+  await R.del('cleaner_blocked_dates', `id=eq.${id}`);
   showToast('✅ Datum borttaget');
   loadBlockedDates();
 }
