@@ -1,112 +1,111 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+/**
+ * SPICK – Booking Cancel v2 Edge Function
+ *
+ * POST { booking_id, customer_email, reason? }
+ * 1. Verifies customer owns the booking
+ * 2. Applies cancellation policy: free >24h, 50% refund <24h
+ * 3. Processes Stripe refund if applicable
+ * 4. Updates booking status to "cancelled"
+ * 5. Logs in booking_status_log
+ * 6. Notifies customer & cleaner
+ * 7. Returns success with refund info
+ */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
 
-serve(async (req) => {
+const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+const sb = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+Deno.serve(async (req) => {
   const CORS = corsHeaders(req);
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS });
+
+  function json(data: unknown, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json", ...CORS },
+    });
   }
+
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const { booking_id, customer_email, reason } = await req.json();
 
     if (!booking_id || !customer_email) {
-      return new Response(
-        JSON.stringify({ error: "booking_id och customer_email krävs" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...CORS } }
-      );
+      return json({ error: "booking_id och customer_email krävs" }, 400);
     }
 
-    const sb = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Fetch booking — verified DB columns (no 'email', 'name', 'date', 'time' columns)
-    const { data: booking, error: bookingErr } = await sb
+    // 1. Fetch booking
+    const { data: booking, error: fetchErr } = await sb
       .from("bookings")
-      .select("id, customer_email, customer_name, cleaner_id, cleaner_name, booking_date, booking_time, status, payment_status, total_price, rut_amount, payment_intent_id")
+      .select("id, customer_email, customer_name, cleaner_id, booking_date, booking_time, status, payment_status, total_price, rut_amount, payment_intent_id")
       .eq("id", booking_id)
       .maybeSingle();
 
-    if (bookingErr || !booking) {
-      return new Response(
-        JSON.stringify({ error: "Bokning hittades inte" }),
-        { status: 404, headers: { "Content-Type": "application/json", ...CORS } }
-      );
-    }
+    if (fetchErr || !booking) return json({ error: "Bokning hittades inte" }, 404);
 
-    // Verify customer owns this booking
+    // 2. Verify customer owns booking
     if ((booking.customer_email || "").toLowerCase() !== customer_email.toLowerCase()) {
-      return new Response(
-        JSON.stringify({ error: "E-posten matchar inte bokningen" }),
-        { status: 403, headers: { "Content-Type": "application/json", ...CORS } }
-      );
+      return json({ error: "E-posten matchar inte bokningen" }, 403);
     }
 
-    // Check if already cancelled
-    if (booking.status === "cancelled" || booking.status === "avbokad" || booking.payment_status === "cancelled") {
-      return new Response(
-        JSON.stringify({ error: "Bokningen är redan avbokad" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...CORS } }
-      );
+    // 3. Check not already cancelled
+    if (booking.status === "cancelled" || booking.status === "avbokad") {
+      return json({ error: "Bokningen är redan avbokad" }, 400);
     }
 
-    // Calculate refund based on time until booking
+    // 4. Calculate refund based on cancellation policy
     const bookingDate = booking.booking_date || "";
     const bookingTime = booking.booking_time || "09:00";
     const scheduledAt = new Date(`${bookingDate}T${bookingTime}:00`);
     const now = new Date();
-    const hoursUntilBooking = (scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const hoursUntil = (scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     const totalPrice = booking.total_price || 0;
-    let refundPercent = 100; // >24h: full refund
-    let cancellationFee = 0;
-
-    if (hoursUntilBooking < 24) {
-      refundPercent = 50; // <24h: 50% refund
-      cancellationFee = Math.round(totalPrice * 0.5);
-    }
-
+    const refundPercent = hoursUntil >= 24 ? 100 : 50;
     const refundAmount = Math.round(totalPrice * refundPercent / 100);
+    const cancellationFee = totalPrice - refundAmount;
 
-    // Process Stripe refund if payment exists
-    const paymentIntent = booking.payment_intent_id;
-    let stripeRefundId = null;
-    if (paymentIntent && refundAmount > 0) {
+    // 5. Process Stripe refund if payment exists
+    let stripeRefundId: string | null = null;
+    if (booking.payment_intent_id && refundAmount > 0 && STRIPE_KEY) {
       try {
-        const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-        if (stripeKey) {
-          const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${stripeKey}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              payment_intent: paymentIntent,
-              amount: String(refundAmount * 100), // Stripe uses öre
-            }),
-          });
-          const refundData = await refundRes.json();
-          stripeRefundId = refundData.id || null;
+        const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${STRIPE_KEY}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            payment_intent: booking.payment_intent_id,
+            amount: String(refundAmount * 100), // Stripe uses öre
+            reason: "requested_by_customer",
+          }),
+        });
+        const refundData = await refundRes.json();
 
-          if (!refundRes.ok) {
-            console.error("Stripe refund error:", refundData);
-          }
+        if (refundRes.ok) {
+          stripeRefundId = refundData.id;
+        } else {
+          console.error("Stripe refund error:", refundData);
         }
       } catch (e) {
         console.error("Stripe refund failed:", e);
       }
     }
 
-    // Update booking status (only columns that exist on bookings)
+    const oldStatus = booking.status;
+
+    // 6. Update booking status
     const { error: updateErr } = await sb
       .from("bookings")
       .update({
-        status: "avbokad",
-        payment_status: refundAmount > 0 ? "refunded" : "cancelled",
+        status: "cancelled",
+        payment_status: stripeRefundId ? "refunded" : booking.payment_status,
         cancelled_at: new Date().toISOString(),
         cancellation_reason: reason || "Kund avbokade",
         updated_at: new Date().toISOString(),
@@ -115,44 +114,25 @@ serve(async (req) => {
 
     if (updateErr) {
       console.error("Update error:", updateErr);
-      return new Response(
-        JSON.stringify({ error: "Kunde inte avboka" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...CORS } }
-      );
+      return json({ error: "Kunde inte avboka bokningen" }, 500);
     }
 
-    // Write refund details to cancellations table
-    await sb.from("cancellations").insert({
-      booking_id: booking_id,
-      cancelled_by: "customer",
-      reason: reason || "Kund avbokade",
-      refund_amount: refundAmount,
-      refunded: !!stripeRefundId,
-    }).catch((e: Error) => console.error("Cancellation insert error:", e.message));
+    // 7. Log in booking_status_log
+    await sb.from("booking_status_log").insert({
+      booking_id,
+      old_status: oldStatus,
+      new_status: "cancelled",
+      changed_by: `customer:${customer_email}`,
+    });
 
-    // Log event
-    await sb.from("booking_events").insert({
-      booking_id: booking_id,
-      event_type: "customer_cancel",
-      actor_type: "customer",
-      metadata: {
-        reason: reason || "Ingen anledning",
-        hours_before: hoursUntilBooking.toFixed(1),
-        refund_percent: refundPercent,
-        refund_amount: refundAmount,
-        cancellation_fee: cancellationFee,
-        stripe_refund_id: stripeRefundId,
-      },
-    }).catch((e: Error) => console.error("Event log error:", e.message));
-
-    // Notify customer
+    // 8. Notify customer
     await sb.functions.invoke("notify", {
       body: {
         type: "booking_cancelled",
         record: {
           email: booking.customer_email,
           customer_name: booking.customer_name,
-          booking_id: booking_id,
+          booking_id,
           date: booking.booking_date,
           time: booking.booking_time,
           refund_amount: refundAmount,
@@ -162,13 +142,13 @@ serve(async (req) => {
       },
     }).catch((e: Error) => console.error("Notify customer error:", e.message));
 
-    // Notify cleaner if assigned (cleaners has no email column — use cleaner_name from booking)
+    // 9. Notify cleaner if assigned
     if (booking.cleaner_id) {
       const { data: cleaner } = await sb
         .from("cleaners")
         .select("id, full_name")
         .eq("id", booking.cleaner_id)
-        .single();
+        .maybeSingle();
 
       if (cleaner) {
         await sb.functions.invoke("notify", {
@@ -177,7 +157,7 @@ serve(async (req) => {
             record: {
               cleaner_id: booking.cleaner_id,
               cleaner_name: cleaner.full_name,
-              booking_id: booking_id,
+              booking_id,
               booking_date: booking.booking_date,
               booking_time: booking.booking_time,
               customer_name: booking.customer_name,
@@ -187,24 +167,20 @@ serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: refundPercent === 100
-          ? "Bokningen är avbokad. Full återbetalning."
-          : `Bokningen är avbokad. ${refundPercent}% återbetalning (${refundAmount} kr). Avbokningsavgift: ${cancellationFee} kr.`,
-        refund_percent: refundPercent,
-        refund_amount: refundAmount,
-        cancellation_fee: cancellationFee,
-        stripe_refund_id: stripeRefundId,
-      }),
-      { status: 200, headers: { "Content-Type": "application/json", ...CORS } }
-    );
+    console.log(`Booking cancelled: ${booking_id} by ${customer_email} — refund ${refundPercent}% (${refundAmount} kr)`);
+
+    return json({
+      success: true,
+      message: refundPercent === 100
+        ? "Bokningen är avbokad. Full återbetalning."
+        : `Bokningen är avbokad. ${refundPercent}% återbetalning (${refundAmount} kr). Avbokningsavgift: ${cancellationFee} kr.`,
+      refund_percent: refundPercent,
+      refund_amount: refundAmount,
+      cancellation_fee: cancellationFee,
+      stripe_refund_id: stripeRefundId,
+    });
   } catch (e) {
-    console.error("Unexpected error:", e);
-    return new Response(
-      JSON.stringify({ error: "Serverfel" }),
-      { status: 500, headers: { "Content-Type": "application/json", ...CORS } }
-    );
+    console.error("booking-cancel-v2 error:", e);
+    return json({ error: (e as Error).message }, 500);
   }
 });
