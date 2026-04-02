@@ -101,16 +101,14 @@ serve(async (req) => {
       }
     }
 
-    // Update booking status
+    // Update booking status (only columns that exist on bookings)
     const { error: updateErr } = await sb
       .from("bookings")
       .update({
         status: "avbokad",
-        payment_status: "cancelled",
+        payment_status: refundAmount > 0 ? "refunded" : "cancelled",
         cancelled_at: new Date().toISOString(),
         cancellation_reason: reason || "Kund avbokade",
-        refund_amount: refundAmount,
-        refund_percent: refundPercent,
         updated_at: new Date().toISOString(),
       })
       .eq("id", booking_id);
@@ -122,6 +120,15 @@ serve(async (req) => {
         { status: 500, headers: { "Content-Type": "application/json", ...CORS } }
       );
     }
+
+    // Write refund details to cancellations table
+    await sb.from("cancellations").insert({
+      booking_id: booking_id,
+      cancelled_by: "customer",
+      reason: reason || "Kund avbokade",
+      refund_amount: refundAmount,
+      refunded: !!stripeRefundId,
+    }).catch((e: Error) => console.error("Cancellation insert error:", e.message));
 
     // Log event
     await sb.from("booking_events").insert({

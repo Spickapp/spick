@@ -383,6 +383,7 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 </div>
 <p>⚠️ Kan du inte genomföra uppdraget? Hör av dig omgående till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så vi kan omfördela.</p>
 <a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
+<p style="margin-top:24px;font-size:12px;color:#9E9E9A">Vill du sluta ta emot uppdrag? <a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/cleaner-optout?token=${cleaner.auth_user_id}" style="color:#9E9E9A">Avregistrera dig här</a></p>
 `);
       await sendEmail(cleanerEmail, `Nytt uppdrag: ${service} den ${date} 🧹`, cleanerHtml);
     } else {
@@ -530,16 +531,14 @@ serve(async (req) => {
   let event: Record<string, unknown>;
   try { event = JSON.parse(body); } catch { return new Response("Bad JSON", { status: 400 }); }
 
-  // ── IDEMPOTENCY: Skip already-processed events ──────────────────────────
+  // ── IDEMPOTENCY: claim event BEFORE processing (atomic guard) ───────────
   const eventId = event.id as string;
   if (eventId) {
-    const { data: existing } = await sb
+    const { error: claimErr } = await sb
       .from("processed_webhook_events")
-      .select("event_id")
-      .eq("event_id", eventId)
-      .maybeSingle();
-    
-    if (existing) {
+      .insert({ event_id: eventId, event_type: event.type as string });
+
+    if (claimErr) {
       console.log(`Skipping duplicate event: ${eventId} (${event.type})`);
       return new Response("Already processed", { status: 200 });
     }
@@ -560,15 +559,7 @@ serve(async (req) => {
         console.log("Unhandled event:", event.type);
     }
 
-    // ── Mark event as processed ───────────────────────────────────────────
-    if (eventId) {
-      try {
-        await sb.from("processed_webhook_events").insert({
-          event_id: eventId,
-          event_type: event.type as string,
-        });
-      } catch(_) {}
-    }
+
   } catch (e) {
     console.error("Webhook-fel:", e);
     return new Response("Internal Error", { status: 500 });

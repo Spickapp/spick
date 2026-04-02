@@ -13,9 +13,9 @@ Gå till: Supabase Dashboard → Settings → Vault → New Secret
 | SKV_API_KEY | skatteverket.se → ROT och RUT digitala tjänster | rut-claim |
 
 ## Status
-- [ ] ANTHROPIC_API_KEY — saknas (AI-chat fungerar ej)
-- [ ] STRIPE_SECRET_KEY — live-nycklar ej satta (Stripe i testläge)
-- [ ] STRIPE_WEBHOOK_SECRET — live-nyckel ej satt
-- [ ] RESEND_API_KEY — kontrollera att den är satt
+- [x] ANTHROPIC_API_KEY — ✅ Satt
+- [x] STRIPE_SECRET_KEY — ✅ Satt (live)
+- [x] STRIPE_WEBHOOK_SECRET — ✅ Satt (live, uppdaterad 2026-03-26)
+- [x] RESEND_API_KEY — ✅ Satt
 - [ ] ELKS_API_USER / ELKS_API_PASSWORD — saknas (SMS inaktivt)
 - [ ] SKV_API_KEY — saknas (RUT-ansökan manuell)

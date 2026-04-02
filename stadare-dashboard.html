@@ -778,7 +778,8 @@ const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
     detectSessionInUrl: true,
     flowType: 'pkce',
     autoRefreshToken: true,
-    persistSession: true
+    persistSession: true,
+    lock: false
   }
 });
 
@@ -803,7 +804,8 @@ function init() {
   if (errEl) errEl.style.display = 'none';
 
   const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
+  const params = new URLSearchParams(window.location.search);
+  if ((hash && hash.includes('access_token')) || params.has('code')) {
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
     return;

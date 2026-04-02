@@ -168,6 +168,36 @@ serve(async (req) => {
       0
     );
 
+    // ── 7b. DEDUP-GUARD: förhindra dubbelklick ──────
+    const { data: existingBooking } = await supabase
+      .from("bookings")
+      .select("id, stripe_session_id")
+      .eq("customer_email", email)
+      .eq("booking_date", date)
+      .eq("booking_time", time)
+      .eq("service_type", service)
+      .in("payment_status", ["pending", "paid"])
+      .maybeSingle();
+
+    if (existingBooking) {
+      if (existingBooking.stripe_session_id) {
+        const sess = await fetch(
+          `https://api.stripe.com/v1/checkout/sessions/${existingBooking.stripe_session_id}`,
+          { headers: { Authorization: `Bearer ${STRIPE_KEY}` } }
+        ).then(r => r.json());
+        if (sess?.url) {
+          return json(200, {
+            url: sess.url,
+            booking_id: existingBooking.id,
+            customer_price: netPrice,
+            cleaner_name: cleaner.full_name || cleaner_name,
+            deduplicated: true,
+          });
+        }
+      }
+      await supabase.from("bookings").delete().eq("id", existingBooking.id);
+    }
+
     // ── 8. SKAPA BOKNING I DB ──────────────────────
     const bookingId = crypto.randomUUID();
     const timeEnd = addMinutes(time, validHours * 60);
