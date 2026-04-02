@@ -189,7 +189,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   <div class="login-card">
     <div class="login-logo">Spick</div>
     <p class="login-sub">Adminpanel – endast för ägare</p>
-    <input type="email" id="admin-email" value="hello@spick.se" placeholder="E-post" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
+    <input type="email" id="admin-email" value="" placeholder="E-post" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
     <input type="password" id="admin-pw" placeholder="Lösenord" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:4px">
     <button onclick="doLogin()" id="login-btn">Logga in →</button>
     <div id="login-err"></div>
@@ -834,13 +834,14 @@ const SB = supabase.createClient(
   SPICK.SUPA_URL, SPICK.SUPA_KEY);
 const ANON_KEY = SPICK.SUPA_KEY;
 // ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
-const ADMIN_EMAIL = 'hello@spick.se';
+let ADMIN_EMAIL = null; // resolved from Supabase auth session
 let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
 let currentBookingId = null, currentCleanerId = null;
 
 // Kolla om redan inloggad
 SB.auth.getSession().then(async ({ data: { session } }) => {
-  if (session?.user?.email === ADMIN_EMAIL) {
+  if (session?.user) {
+    ADMIN_EMAIL = session.user.email;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     try { await loadAdminUser(); } catch(e) { console.warn('loadAdminUser:', e.message); }
@@ -864,14 +865,13 @@ SB.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     try {
       const email = session.user.email;
-      let isAdmin = (email === ADMIN_EMAIL);
-      if (!isAdmin) {
-        try {
-          const { data: au } = await SB.from('admin_users').select('id').eq('email', email).maybeSingle();
-          isAdmin = !!au;
-        } catch(e) { console.warn('admin_users check:', e.message); }
-      }
+      let isAdmin = false;
+      try {
+        const { data: au } = await SB.from('admin_users').select('id').eq('email', email).maybeSingle();
+        isAdmin = !!au;
+      } catch(e) { console.warn('admin_users check:', e.message); }
       if (isAdmin) {
+        ADMIN_EMAIL = email;
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         try { await loadAdminUser(); } catch(e) { console.warn('loadAdminUser:', e.message); }
@@ -884,12 +884,6 @@ SB.auth.onAuthStateChange(async (event, session) => {
       }
     } catch(e) {
       console.error('Auth error:', e);
-      if (session.user.email === ADMIN_EMAIL) {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        loadAll();
-        setTimeout(setupRealtime, 1000);
-      }
     }
   } else if (event === 'SIGNED_OUT') {
     document.getElementById('app').style.display = 'none';
@@ -914,7 +908,8 @@ async function doLogin() {
 }
 
 async function resetPassword() {
-  const email = document.getElementById('admin-email').value.trim() || ADMIN_EMAIL;
+  const email = document.getElementById('admin-email').value.trim();
+  if (!email) { alert('Ange din e-postadress först'); return; }
   const { error } = await SB.auth.resetPasswordForEmail(email, {
     redirectTo: 'https://spick.se/admin.html'
   });
@@ -1030,9 +1025,9 @@ async function openEmail(id) {
   content.innerHTML = `
     <div style="margin-bottom:20px">
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <span style="background:${cat.color}22;color:${cat.color};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">${cat.emoji} ${cat.label}</span>
-        <span style="background:${PRIO_COLORS[e.priority]||'#6B7280'}22;color:${PRIO_COLORS[e.priority]||'#6B7280'};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">Prioritet: ${e.priority}</span>
-        <span style="background:#F3F4F6;color:#6B7280;padding:4px 12px;border-radius:20px;font-size:.8rem">${e.status}</span>
+        <span style="background:${cat.color}22;color:${cat.color};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">${cat.emoji} ${escHtml(cat.label)}</span>
+        <span style="background:${PRIO_COLORS[e.priority]||'#6B7280'}22;color:${PRIO_COLORS[e.priority]||'#6B7280'};padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600">Prioritet: ${escHtml(e.priority)}</span>
+        <span style="background:#F3F4F6;color:#6B7280;padding:4px 12px;border-radius:20px;font-size:.8rem">${escHtml(e.status)}</span>
       </div>
       <h3 style="font-family:Georgia,serif;font-size:1.2rem;margin:0 0 8px">${escHtml(e.subject||'(inget ämne)')}</h3>
       <div style="font-size:.82rem;color:var(--m)">
@@ -1044,7 +1039,7 @@ async function openEmail(id) {
 
     ${e.ai_summary ? `<div style="background:#F0FDF4;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.83rem"><strong>🤖 AI-sammanfattning:</strong> ${escHtml(e.ai_summary)}</div>` : ''}
 
-    <div style="background:#F9FAFB;border-radius:10px;padding:16px;font-size:.85rem;line-height:1.7;margin-bottom:20px;max-height:300px;overflow:auto;white-space:pre-wrap">${e.body_text || '(inget innehåll)'}</div>
+    <div style="background:#F9FAFB;border-radius:10px;padding:16px;font-size:.85rem;line-height:1.7;margin-bottom:20px;max-height:300px;overflow:auto;white-space:pre-wrap">${escHtml(e.body_text || '(inget innehåll)')}</div>
 
     <!-- Svarsformulär -->
     <div style="border-top:1px solid var(--border);padding-top:16px">
