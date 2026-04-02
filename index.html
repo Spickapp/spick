@@ -393,15 +393,15 @@ footer a:hover{color:var(--gm);}
     </div>
     <!-- Trust bar -->
     <div style="display:flex;gap:1.5rem;margin-top:1.25rem;flex-wrap:wrap;font-size:.82rem;color:#6B6960">
-      <span>✓ <strong>4.9/5</strong> snittbetyg</span>
-      <span>✓ <strong id="tb-bookings">100+</strong> genomförda städningar</span>
+      <span>✓ <strong id="ps-rating-inline">4.9/5</strong> snittbetyg</span>
+      <span>✓ <strong id="ps-bookings-inline">100+</strong> genomförda städningar</span>
       <span>✓ Gratis avbokning 24h</span>
       <span>✓ Nöjdhetsgaranti</span>
     </div>
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">50%</div><div class="hs-lbl">billigare med RUT</div></div>
-      <div class="hs"><div class="hs-val">4.9 ★</div><div class="hs-lbl">snittbetyg</div></div>
-      <div class="hs"><div class="hs-val">100+</div><div class="hs-lbl">bokningar totalt</div></div>
+      <div class="hs"><div class="hs-val" id="ps-rating">4.9 ★</div><div class="hs-lbl">snittbetyg</div></div>
+      <div class="hs"><div class="hs-val" id="ps-bookings">100+</div><div class="hs-lbl">bokningar totalt</div></div>
       
     </div>
   </div>
@@ -624,14 +624,31 @@ loadStats();
 
 async function loadStats(){
   try {
-    // Hämta aggregerad stats via säker VIEW (inga PII)
-    if(eb && stats) eb.textContent = (stats.total_bookings||0)+'+';
+    const {data,error} = await SB.from('public_stats').select('*').single();
+    if(error || !data) return;
+
+    const rating = data.avg_rating || 4.9;
+    const bookings = data.total_bookings || 0;
+    const reviews = data.total_reviews || 0;
+    const cleaners = data.active_cleaners || 0;
+
+    // Hero stats
+    const elRating = document.getElementById('ps-rating');
+    const elBookings = document.getElementById('ps-bookings');
+    const elRatingInline = document.getElementById('ps-rating-inline');
+    const elBookingsInline = document.getElementById('ps-bookings-inline');
+
+    if(elRating) elRating.textContent = rating + ' ★';
+    if(elBookings) elBookings.textContent = bookings + '+';
+    if(elRatingInline) elRatingInline.textContent = rating + '/5';
+    if(elBookingsInline) elBookingsInline.textContent = bookings + '+';
+
     // Uppdatera schema.org
     const schema = document.querySelector('script[type="application/ld+json"]');
     if(schema){
       const d = JSON.parse(schema.textContent);
-      d.aggregateRating.ratingValue = String(avgRating);
-      d.aggregateRating.reviewCount = String(stats?.total_reviews || data.reduce((s,c)=>s+(c.review_count||0),0));
+      d.aggregateRating.ratingValue = String(rating);
+      d.aggregateRating.reviewCount = String(reviews);
       schema.textContent = JSON.stringify(d);
     }
   } catch(e){}
