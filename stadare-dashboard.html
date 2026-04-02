@@ -268,13 +268,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
       <div class="login-logo">Spick</div>
       <div class="login-tagline">Städarportalen · Logga in för att se dina uppdrag</div>
       <h2>Välkommen tillbaka 👋</h2>
-      <p>Ange din e-post så skickar vi en inloggningslänk direkt till dig.</p>
+      <p>Ange din e-post så skickar vi en 6-siffrig kod till dig.</p>
       <div class="inp-grp">
         <label>E-postadress</label>
         <input type="email" id="login-email" placeholder="din@email.se" autocomplete="email">
       </div>
-      <button class="btn-full" id="login-btn" onclick="sendMagicLink()">
-        <span>Skicka inloggningslänk</span>
+      <button class="btn-full" id="login-btn" onclick="sendOtpCode()">
+        <span>Skicka inloggningskod</span>
       </button>
       <div class="login-err" id="login-err"></div>
       <div class="login-success" id="login-ok">📬 Kolla din inbox!</div>
@@ -285,15 +285,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
   </div>
 </div>
 
-<!-- ── MAGIC LINK ── -->
+<!-- ── OTP VERIFY ── -->
 <div id="screen-magic" class="screen">
-  <div class="magic-icon">📬</div>
-  <div class="magic-title">Kolla din inbox!</div>
-  <div class="magic-sub">Vi har skickat en inloggningslänk till<br>
-    <span class="magic-email" id="magic-email">din@email.se</span><br>
-    Klicka på länken för att logga in.
+  <div class="login-wrap">
+    <div class="login-card" style="text-align:center">
+      <div class="magic-icon">🔐</div>
+      <div class="magic-title">Ange din kod</div>
+      <div class="magic-sub">Vi har skickat en 6-siffrig kod till<br>
+        <span class="magic-email" id="magic-email">din@email.se</span>
+      </div>
+      <div class="inp-grp" style="margin-top:20px">
+        <input type="text" id="otp-code" inputmode="numeric" autocomplete="one-time-code"
+               maxlength="6" placeholder="000000" style="text-align:center;font-size:1.8rem;letter-spacing:.5em;font-weight:700;padding:16px">
+      </div>
+      <button class="btn-full" id="otp-btn" onclick="verifyOtpCode()">
+        <span>Verifiera</span>
+      </button>
+      <div class="login-err" id="otp-err"></div>
+      <button class="btn-full" style="background:transparent;color:var(--g);margin-top:12px;font-size:.88rem" onclick="backToLogin()">← Tillbaka</button>
+    </div>
   </div>
-  <button class="btn-full" style="max-width:280px;margin-top:28px" onclick="backToLogin()">← Tillbaka</button>
 </div>
 
 <!-- ── APP ── -->
@@ -776,7 +787,7 @@ const ANON_KEY = SPICK.SUPA_KEY;
 const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
   auth: {
     detectSessionInUrl: true,
-    flowType: 'implicit',
+    flowType: 'pkce',
     autoRefreshToken: true,
     persistSession: true,
     lock: false
@@ -802,22 +813,6 @@ function init() {
   showScreen('login');
   const errEl = document.getElementById('login-err');
   if (errEl) errEl.style.display = 'none';
-
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    // Implicit flow: detectSessionInUrl + onAuthStateChange handles the token
-    const btn = document.getElementById('login-btn');
-    if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
-    setTimeout(() => {
-      if (!window._cleanerLoaded) {
-        console.warn('Implicit auth timeout — visar login');
-        if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; }
-        window.history.replaceState({}, '', window.location.pathname);
-        showScreen('login');
-      }
-    }, 8000);
-    return;
-  }
 
   const sessionTimeout = setTimeout(() => {
     console.warn('getSession timeout – visar login');
@@ -849,35 +844,71 @@ SB.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// ── AUTH ─────────────────────────────────────────────────────
-async function sendMagicLink() {
+// ── AUTH (OTP) ──────────────────────────────────────────────
+let _otpEmail = '';
+
+async function sendOtpCode() {
   const email = document.getElementById('login-email').value.trim().toLowerCase();
   if (!email || !email.includes('@')) { showErr('Ange en giltig e-postadress.'); return; }
   const btn = document.getElementById('login-btn');
   btn.disabled = true; btn.querySelector('span').textContent = 'Skickar...';
 
-  const { error } = await SB.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: 'https://spick.se/stadare-dashboard.html' }
-  });
+  const { error } = await SB.auth.signInWithOtp({ email });
 
   if (error) {
     showErr('Fel: ' + error.message);
     btn.disabled = false;
-    btn.querySelector('span').textContent = 'Skicka inloggningslänk';
+    btn.querySelector('span').textContent = 'Skicka inloggningskod';
     return;
   }
 
+  _otpEmail = email;
   document.getElementById('magic-email').textContent = email;
+  document.getElementById('otp-code').value = '';
+  const otpErr = document.getElementById('otp-err');
+  if (otpErr) otpErr.style.display = 'none';
   showScreen('magic');
+  setTimeout(() => document.getElementById('otp-code').focus(), 200);
+}
+
+async function verifyOtpCode() {
+  const token = document.getElementById('otp-code').value.trim();
+  if (token.length !== 6 || !/^\d{6}$/.test(token)) {
+    showOtpErr('Ange en 6-siffrig kod.'); return;
+  }
+  const btn = document.getElementById('otp-btn');
+  btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar...';
+
+  const { data, error } = await SB.auth.verifyOtp({
+    email: _otpEmail,
+    token,
+    type: 'email',
+  });
+
+  if (error) {
+    showOtpErr('Fel kod — försök igen.');
+    btn.disabled = false; btn.querySelector('span').textContent = 'Verifiera';
+    return;
+  }
+
+  if (data?.session) {
+    await loadCleanerByEmail(data.session.user.email, data.session.user.id);
+  }
 }
 
 function showErr(msg) {
   const el = document.getElementById('login-err');
   el.textContent = msg; el.style.display = 'block';
 }
-
-function backToLogin() { showScreen('login'); }
+function showOtpErr(msg) {
+  const el = document.getElementById('otp-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+function backToLogin() {
+  showScreen('login');
+  const btn = document.getElementById('login-btn');
+  if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningskod'; }
+}
 
 // ── PREFERENSER & ARBETSOMRÅDE ──────────────────────
 async function savePreferences() {
@@ -973,7 +1004,7 @@ async function loadCleanerByEmail(email, authUserId) {
   if (error || !data) {
     showErr('Kontot hittades inte. Kontakta hello@spick.se');
     const btn = document.getElementById('login-btn');
-    if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; }
+    if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningskod'; }
     window.history.replaceState({}, '', window.location.pathname);
     showScreen('login');
     return;
