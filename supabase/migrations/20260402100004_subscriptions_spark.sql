@@ -3,8 +3,31 @@
 -- commission_levels, commission_log, booking_status_log patch
 -- ============================================================
 
--- ========== 1. SUBSCRIPTIONS — add missing columns ==========
--- Table already exists (20260326700001). Add columns used in code.
+-- ========== 1. SUBSCRIPTIONS — ensure table exists, then add missing columns ==========
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_name     TEXT    NOT NULL,
+  customer_email    TEXT    NOT NULL,
+  customer_phone    TEXT,
+  address           TEXT    NOT NULL,
+  city              TEXT    NOT NULL,
+  service           TEXT    NOT NULL DEFAULT 'Hemstädning',
+  frequency         TEXT    NOT NULL DEFAULT 'varannan-vecka',
+  preferred_day     TEXT,
+  preferred_time    TEXT,
+  hours             INTEGER DEFAULT 3,
+  total_price       DECIMAL(10,2),
+  rut               BOOLEAN DEFAULT true,
+  preferred_cleaner_id UUID,
+  status            TEXT    DEFAULT 'aktiv',
+  next_booking_date DATE,
+  discount_percent  INTEGER DEFAULT 0,
+  key_info          TEXT,
+  customer_notes    TEXT,
+  stripe_subscription_id TEXT,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
 ALTER TABLE subscriptions
   ADD COLUMN IF NOT EXISTS pause_reason     TEXT,
   ADD COLUMN IF NOT EXISTS paused_at        TIMESTAMPTZ,
@@ -78,13 +101,35 @@ CREATE INDEX IF NOT EXISTS idx_cl_cleaner   ON commission_log (cleaner_id);
 CREATE INDEX IF NOT EXISTS idx_cl_booking   ON commission_log (booking_id);
 CREATE INDEX IF NOT EXISTS idx_cl_created   ON commission_log (created_at DESC);
 
--- ========== 5. BOOKING STATUS LOG — add missing cleaner_email column ==========
--- Table exists (20260330000001). Code in stadare-uppdrag.html inserts cleaner_email.
+-- ========== 5. BOOKING STATUS LOG — ensure table exists, then add missing column ==========
+CREATE TABLE IF NOT EXISTS booking_status_log (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id  UUID        REFERENCES bookings(id) ON DELETE CASCADE,
+  old_status  TEXT,
+  new_status  TEXT,
+  changed_by  TEXT        DEFAULT 'system',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_log_booking ON booking_status_log (booking_id);
+
 ALTER TABLE booking_status_log
   ADD COLUMN IF NOT EXISTS cleaner_email TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_bsl_cleaner_email
   ON booking_status_log (cleaner_email) WHERE cleaner_email IS NOT NULL;
+
+ALTER TABLE booking_status_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated read booking status log" ON booking_status_log;
+CREATE POLICY "Authenticated read booking status log"
+  ON booking_status_log FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Insert booking status log" ON booking_status_log;
+CREATE POLICY "Insert booking status log"
+  ON booking_status_log FOR INSERT
+  WITH CHECK (true);
 
 -- ========== 6. RLS POLICIES ==========
 
