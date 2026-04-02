@@ -24,6 +24,14 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 serve(async (req) => {
   const CORS = corsHeaders(req);
+
+  function json(data: unknown, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json", ...CORS },
+    });
+  }
+
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
@@ -179,9 +187,3 @@ async function hashPnr(pnr: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS },
-  });
-}
