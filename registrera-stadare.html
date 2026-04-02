@@ -80,17 +80,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-he
 .verified-text h4{font-size:14px;font-weight:700;color:#166534;margin-bottom:2px}
 .verified-text p{font-size:12px;color:#15803D}
 
-/* ALIAS PREVIEW */
-.alias-preview{background:linear-gradient(135deg,var(--t),#2d2d5e);border-radius:14px;
-  padding:24px;text-align:center;margin-bottom:20px;color:#fff}
-.alias-avatar{width:64px;height:64px;border-radius:50%;background:var(--accent);
-  margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px}
-.alias-name{font-size:22px;font-weight:900;margin-bottom:4px}
-.alias-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);
-  padding:4px 12px;border-radius:99px;font-size:12px;opacity:.8}
-.alias-tip{background:var(--gp);border-radius:12px;padding:12px 16px;font-size:13px;
-  color:#166534;margin-bottom:16px;display:flex;gap:8px}
-
 /* GDPR INFO BOX */
 .gdpr-box{background:#F0F4FF;border-radius:12px;padding:16px 20px;margin:16px 0;font-size:13px;color:#3730A3;display:flex;gap:10px}
 .gdpr-box .gdpr-icon{font-size:20px;flex-shrink:0}
@@ -194,18 +183,130 @@ input,select,textarea{font-size:16px!important}
     <div class="step-dot pending" id="dot4">4</div>
   </div>
   <div class="steps-labels">
-    <div class="step-label active" id="lbl1">BankID</div>
+    <div class="step-label active" id="lbl1">Kontakt</div>
     <div class="step-label" id="lbl2">Profil</div>
-    <div class="step-label" id="lbl3">Kontakt & Villkor</div>
+    <div class="step-label" id="lbl3">BankID</div>
     <div class="step-label" id="lbl4">Klart</div>
   </div>
 
-  <!-- STEP 1: BANKID VERIFICATION -->
+  <!-- STEP 1: CONTACT INFO -->
   <div id="step1">
     <div class="card">
-      <h2>🏦 Verifiera med BankID</h2>
-      <p class="desc">Vi behöver verifiera din identitet för att säkerställa trygghet för våra kunder.
-        <strong>Ditt riktiga namn visas aldrig</strong> för kunder eller andra städare.</p>
+      <h2>👤 Kontaktuppgifter</h2>
+      <p class="desc">Grundläggande uppgifter så vi kan nå dig. Visas inte för kunder.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Förnamn *</label>
+          <input type="text" id="firstNameInput" placeholder="Anna" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label>Efternamn *</label>
+          <input type="text" id="lastNameInput" placeholder="Karlsson" autocomplete="family-name">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>E-postadress *</label>
+        <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
+        <div class="field-hint">Din arbets-e-post</div>
+      </div>
+
+      <div class="field">
+        <label>Telefon *</label>
+        <input type="tel" id="phoneInput" placeholder="070 123 45 67" autocomplete="tel">
+        <div class="field-hint">Används för uppdragsnotiser</div>
+      </div>
+
+      <div class="field">
+        <label>Stad / Kommun *</label>
+        <input type="text" id="cityInput" placeholder="Skriv din stad..." autocomplete="address-level2">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="validateStep1()">Nästa steg →</button>
+  </div>
+
+  <!-- STEP 2: PROFILE & TERMS -->
+  <div id="step2" style="display:none">
+    <div class="card">
+      <h2>📝 Din profil</h2>
+      <p class="desc">Berätta lite om dig och vilka tjänster du erbjuder.</p>
+
+      <div class="field">
+        <label>Kort beskrivning av dig (visas på profilen)</label>
+        <input type="text" id="bio" placeholder="T.ex. 'Noggrann och pålitlig med 3 års erfarenhet'" maxlength="120">
+        <div class="field-hint">Max 120 tecken · Frivilligt</div>
+      </div>
+
+      <div class="field">
+        <label>Vilka tjänster erbjuder du?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="svcGrid">
+          <button type="button" class="svc-btn on" onclick="toggleSvc(this)">🏠 Hemstädning</button>
+          <button type="button" class="svc-btn" onclick="toggleSvc(this)">✨ Storstädning</button>
+          <button type="button" class="svc-btn" onclick="toggleSvc(this)">📦 Flyttstädning</button>
+          <button type="button" class="svc-btn" onclick="toggleSvc(this)">🪟 Fönsterputs</button>
+          <button type="button" class="svc-btn" onclick="toggleSvc(this)">🏢 Kontor</button>
+        </div>
+      </div>
+      <style>.svc-btn{padding:8px 14px;border:2px solid #E8E8E4;border-radius:99px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}.svc-btn:hover{border-color:var(--gl)}.svc-btn.on{background:var(--gp);border-color:var(--accent);color:var(--accent);font-weight:600}</style>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Ditt timpris (kr/h)</label>
+          <input type="number" id="priceInput" min="250" max="600" value="350" placeholder="350">
+          <div class="field-hint">Du bestämmer — ändra när du vill</div>
+        </div>
+        <div class="field">
+          <label>Arbetsområde (radie)</label>
+          <select id="serviceRadius">
+            <option value="5">5 km – Nära hemmet</option>
+            <option value="10" selected>10 km – Normalt</option>
+            <option value="15">15 km – Lite längre</option>
+            <option value="20">20 km – Hela stan</option>
+            <option value="30">30 km – Hela regionen</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- F-SKATT HELP -->
+      <div style="background:#EDE9FE;border:1.5px solid #C4B5FD;border-radius:12px;padding:1rem;margin-top:8px">
+        <div style="font-size:.8rem;font-weight:700;color:#5B21B6;margin-bottom:.3rem">Behöver du hjälp med F-skatt?</div>
+        <div style="font-size:.78rem;color:#6D28D9;margin-bottom:.625rem">F-skatt = du betalar din skatt själv. Det tar bara 15 min att ansöka — helt gratis.</div>
+        <a href="bli-stadare.html#fskatt-guide" style="background:#7C3AED;color:#fff;padding:.4rem 1rem;
+          border-radius:99px;font-size:.75rem;font-weight:600;text-decoration:none;display:inline-block">Visa F-skatt guide →</a>
+      </div>
+
+      <div style="margin-top:24px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">Godkännanden</h3>
+        <p style="font-size:12px;color:var(--m);margin-bottom:12px">Båda måste godkännas för att skicka in din ansökan.</p>
+
+        <label class="check-row">
+          <input type="checkbox" id="chkTerms">
+          <span>Jag godkänner Spicks
+            <a href="uppdragsavtal.html" target="_blank">uppdragsavtal</a> och
+            <a href="integritetspolicy.html" target="_blank">integritetspolicy</a>.</span>
+        </label>
+
+        <label class="check-row">
+          <input type="checkbox" id="chkFskatt">
+          <span>Jag bekräftar att jag har eller ansöker om F-skattsedel.</span>
+        </label>
+
+        <label class="check-row" style="background:transparent;padding:8px 12px">
+          <input type="checkbox" id="chkMarketing">
+          <span style="color:#888">Jag vill få tips om nya uppdrag och nyheter från Spick (valfritt).</span>
+        </label>
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="goToStep(1)">← Tillbaka</button>
+    <button class="btn-primary" id="submitBtn" onclick="submitRegistration()">Skicka ansökan →</button>
+  </div>
+
+  <!-- STEP 3: BANKID (optional) -->
+  <div id="step3" style="display:none">
+    <div class="card">
+      <h2>🏦 BankID-verifiering</h2>
+      <p class="desc">Verifiera din identitet för att få en verifierad-badge på din profil. Du kan också göra detta senare.</p>
 
       <div class="gdpr-box">
         <div class="gdpr-icon">🔒</div>
@@ -213,7 +314,6 @@ input,select,textarea{font-size:16px!important}
           <strong style="font-size:13px;color:#3730A3">Så skyddar vi din identitet</strong>
           <ul class="gdpr-list">
             <li>Ditt personnummer krypteras och lagras aldrig i klartext</li>
-            <li>Kunder ser bara ditt alias och betyg</li>
             <li>Vi delar aldrig din identitet med tredje part</li>
             <li>Du kan begära radering av all data när som helst</li>
           </ul>
@@ -233,7 +333,6 @@ input,select,textarea{font-size:16px!important}
         <div id="qrDisplay" style="width:200px;height:200px;background:var(--gr);border-radius:12px;
           margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:48px">📱</div>
         <p><strong>Öppna BankID-appen</strong> på din mobil och scanna QR-koden</p>
-        <p style="margin-top:6px;color:#aaa;font-size:12px">QR-koden uppdateras automatiskt</p>
       </div>
 
       <div class="bankid-status" id="bankidStatus">
@@ -251,149 +350,14 @@ input,select,textarea{font-size:16px!important}
 
       <div class="divider">eller</div>
 
-      <p style="font-size:12px;color:#aaa;text-align:center;line-height:1.6">
-        Har du inte BankID?
-        <a href="https://www.bankid.com/privatpersoner/skaffa-bankid" target="_blank"
-          style="color:var(--accent)">Skaffa BankID gratis →</a><br>
-        Problem? Kontakta <a href="mailto:hello@spick.se" style="color:var(--accent)">hello@spick.se</a>
-      </p>
-    </div>
-    <button class="btn-primary" id="step1Next" onclick="goToStep(2)" disabled>Nästa steg →</button>
-  </div>
-
-  <!-- STEP 2: PROFILE -->
-  <div id="step2" style="display:none">
-    <div class="card">
-      <h2>🎭 Välj ditt alias</h2>
-      <p class="desc">Kunder ser bara ditt alias – aldrig ditt riktiga namn. Välj ett namn du trivs med!</p>
-
-      <div class="alias-preview" id="aliasPreview">
-        <div class="alias-avatar" id="aliasAvatar">🧹</div>
-        <div class="alias-name" id="aliasDisplay">Ditt alias</div>
-        <div class="alias-badge">⭐ Ny städare · <span id="aliasCityDisplay">–</span></div>
-      </div>
-
-      <div class="alias-tip">
-        <span>💡</span>
-        <span>Tips: Välj ett enkelt förnamn eller ett smeknamn. Undvik ditt riktiga fullständiga namn.
-          <strong>Exempel: "Anna S.", "Städaren Maria", "Kalle från Söder"</strong></span>
-      </div>
-
-      <div class="field">
-        <label>Ditt alias / arbetsnamn *</label>
-        <input type="text" id="aliasInput" placeholder="T.ex. 'Anna S.' eller 'Städaren Per'" maxlength="30"
-          oninput="updateAlias(this.value)">
-        <div class="field-hint">1–30 tecken · Visas för kunder</div>
-      </div>
-
-      <div class="field">
-        <label>Välj en emoji som representerar dig</label>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="emojiPicker"></div>
-      </div>
-
-      <div class="field-row">
-        <div class="field">
-          <label>Stad du arbetar i *</label>
-          <select id="aliasCity" onchange="document.getElementById('aliasCityDisplay').textContent=this.value">
-            <option value="">Välj stad...</option>
-            <option>Stockholm</option><option>Göteborg</option><option>Malmö</option>
-            <option>Uppsala</option><option>Linköping</option><option>Örebro</option>
-            <option>Västerås</option><option>Helsingborg</option><option>Norrköping</option>
-            <option>Jönköping</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Ditt arbetsområde (radie)</label>
-          <select id="serviceRadius">
-            <option value="5">5 km – Nära hemmet</option>
-            <option value="10" selected>10 km – Normalt</option>
-            <option value="15">15 km – Lite längre</option>
-            <option value="20">20 km – Hela stan</option>
-            <option value="30">30 km – Hela regionen</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Kort beskrivning av dig (visas på profilen)</label>
-        <input type="text" id="bio" placeholder="T.ex. 'Erfaren städare med 5 års erfarenhet'" maxlength="120">
-        <div class="field-hint">Max 120 tecken · Frivilligt</div>
-      </div>
-
-      <!-- F-SKATT HELP -->
-      <div style="background:#EDE9FE;border:1.5px solid #C4B5FD;border-radius:12px;padding:1rem;margin-top:8px">
-        <div style="font-size:.8rem;font-weight:700;color:#5B21B6;margin-bottom:.3rem">🤖 Behöver du hjälp med F-skatt?</div>
-        <div style="font-size:.78rem;color:#6D28D9;margin-bottom:.625rem">F-skatt = du betalar din skatt själv. Det låter krångligt men tar bara 15 min att ansöka om!</div>
-        <a href="bli-stadare-guide.html#fskatt-guide" style="background:#7C3AED;color:#fff;padding:.4rem 1rem;
-          border-radius:99px;font-size:.75rem;font-weight:600;text-decoration:none;display:inline-block">Visa F-skatt guide →</a>
-      </div>
-    </div>
-    <button class="btn-secondary" onclick="goToStep(1)">← Tillbaka</button>
-    <button class="btn-primary" onclick="validateStep2()">Nästa steg →</button>
-  </div>
-
-  <!-- STEP 3: CONTACT & TERMS -->
-  <div id="step3" style="display:none">
-    <div class="card">
-      <h2>📋 Kontakt & Villkor</h2>
-      <p class="desc">Ange dina kontaktuppgifter och godkänn villkoren för att slutföra din ansökan.</p>
-
-      <div class="field">
-        <label>E-postadress *</label>
-        <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
-        <div class="field-hint">Din arbets-e-post – visas inte för kunder</div>
-      </div>
-
-      <div class="field">
-        <label>Telefon *</label>
-        <input type="tel" id="phoneInput" placeholder="070 123 45 67" autocomplete="tel">
-        <div class="field-hint">Används för uppdragsnotiser · Visas inte för kunder</div>
-      </div>
-
-      <div style="margin-top:24px">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">Godkännanden</h3>
-        <p style="font-size:12px;color:var(--m);margin-bottom:12px">Alla måste godkännas för att skicka in din ansökan.</p>
-
-        <!-- Platform agreement (non-solicitation) -->
-        <div style="background:#F9F9F5;border-left:4px solid var(--accent);border-radius:8px;
-          padding:14px 16px;margin-bottom:12px">
-          <h4 style="font-size:.9rem;font-weight:700;color:var(--t);margin-bottom:6px">Plattformsavtal</h4>
-          <p style="font-size:.82rem;color:#555;line-height:1.6;margin-bottom:10px">
-            Du förbinder dig att inte kontakta eller ta betalt av kunder utanför Spick –
-            varken under din aktiva period eller 12 månader efter avslutat konto.
-            Brott ger skadestånd 5 000–10 000 kr + omedelbar avstängning.</p>
-        </div>
-
-        <label class="check-row">
-          <input type="checkbox" id="chkNonSolicitation">
-          <span>Jag accepterar klausulen om kundrelationer och lovar att inte kringgå plattformen.</span>
-        </label>
-
-        <label class="check-row">
-          <input type="checkbox" id="chkQuality">
-          <span>Jag förbinder mig att leverera professionell service och meddela vid avbokning i tid.</span>
-        </label>
-
-        <label class="check-row">
-          <input type="checkbox" id="chkFskatt">
-          <span>Jag bekräftar att jag innehar eller ansöker om F-skatt eller FA-skatt.</span>
-        </label>
-
-        <label class="check-row">
-          <input type="checkbox" id="chkTerms">
-          <span>Jag accepterar Spicks
-            <a href="villkor-stadare.html" target="_blank">användarvillkor</a> och
-            <a href="integritetspolicy.html" target="_blank">integritetspolicy</a>.</span>
-        </label>
-
-        <label class="check-row" style="background:transparent;padding:8px 12px">
-          <input type="checkbox" id="chkMarketing">
-          <span style="color:#888">Jag vill få tips om nya uppdrag och nyheter från Spick (valfritt).</span>
-        </label>
+      <div style="background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:12px;padding:14px 16px;text-align:center">
+        <p style="font-size:13px;color:#92400E;line-height:1.6">
+          Du kan verifiera senare. Vi kontaktar dig för att slutföra verifieringen.
+        </p>
       </div>
     </div>
     <button class="btn-secondary" onclick="goToStep(2)">← Tillbaka</button>
-    <button class="btn-primary" id="submitBtn" onclick="submitRegistration()">Skicka ansökan →</button>
+    <button class="btn-primary" onclick="goToStep(4)">Slutför →</button>
   </div>
 
   <!-- STEP 4: DONE -->
@@ -410,16 +374,16 @@ input,select,textarea{font-size:16px!important}
         <div style="background:var(--gp);border-radius:14px;padding:20px;text-align:left;margin-bottom:16px">
           <div style="font-size:13px;color:#166534;font-weight:700;margin-bottom:10px">📋 Dina uppgifter</div>
           <div style="font-size:14px;color:#444;line-height:2">
-            <div>🎭 Alias: <strong id="confirmedAlias">–</strong></div>
+            <div>👤 Namn: <strong id="confirmedName">–</strong></div>
             <div>📧 E-post: <strong id="confirmedEmail">–</strong></div>
             <div>📍 Stad: <strong id="confirmedCity">–</strong></div>
-            <div>✅ Identitet: <strong style="color:#166534">Verifierad med BankID</strong></div>
+            <div id="confirmedBankidRow">🔒 BankID: <strong id="confirmedBankid" style="color:#166534">–</strong></div>
           </div>
         </div>
 
-        <a href="utbildning-stadare.html" style="display:block;background:linear-gradient(135deg,var(--g),var(--gm));
+        <a href="stadare-dashboard.html" style="display:block;background:linear-gradient(135deg,var(--g),var(--gm));
           color:#fff;padding:1rem;border-radius:100px;text-align:center;text-decoration:none;
-          font-weight:600;margin-bottom:12px">📚 Starta Spick Akademin – Bli 5-stjärnig städare →</a>
+          font-weight:600;margin-bottom:12px">Gå till din dashboard →</a>
 
         <a href="index.html" style="display:block;background:var(--gr);color:var(--m);padding:14px;
           border-radius:100px;font-size:14px;text-decoration:none;text-align:center">
@@ -437,296 +401,177 @@ input,select,textarea{font-size:16px!important}
 const SUPA_URL = SPICK.SUPA_URL;
 const SUPA_KEY = SPICK.SUPA_KEY;
 
-let verifiedData = null;   // { givenName, surname, personalNumberHash, demo }
-let selectedEmoji = '🧹';
+let verifiedData = null;
 let currentStep = 1;
 let bankidSessionId = null;
 let bankidPollTimer = null;
 
 // ── STEP NAVIGATION ──────────────────────────
 function goToStep(n) {
-  [1,2,3,4].forEach(i => {
+  [1,2,3,4].forEach(function(i) {
     document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
-    const dot = document.getElementById('dot' + i);
-    const lbl = document.getElementById('lbl' + i);
-    if (i < n) {
-      dot.className = 'step-dot done'; dot.textContent = '✓';
-      lbl.className = 'step-label done';
-    } else if (i === n) {
-      dot.className = 'step-dot active'; dot.textContent = i;
-      lbl.className = 'step-label active';
-    } else {
-      dot.className = 'step-dot pending'; dot.textContent = i;
-      lbl.className = 'step-label';
-    }
-    const line = document.getElementById('line' + i);
+    var dot = document.getElementById('dot' + i);
+    var lbl = document.getElementById('lbl' + i);
+    if (i < n) { dot.className = 'step-dot done'; dot.textContent = '✓'; lbl.className = 'step-label done'; }
+    else if (i === n) { dot.className = 'step-dot active'; dot.textContent = i; lbl.className = 'step-label active'; }
+    else { dot.className = 'step-dot pending'; dot.textContent = i; lbl.className = 'step-label'; }
+    var line = document.getElementById('line' + i);
     if (line) line.className = i < n ? 'step-line done' : 'step-line';
   });
   currentStep = n;
   window.scrollTo(0, 0);
 }
 
+// ── STEP 1 VALIDATION ────────────────────────
+function validateStep1() {
+  var fn = document.getElementById('firstNameInput').value.trim();
+  var ln = document.getElementById('lastNameInput').value.trim();
+  var em = document.getElementById('emailInput').value.trim();
+  var ph = document.getElementById('phoneInput').value.trim();
+  var city = document.getElementById('cityInput').value.trim();
+  if (!fn) { alert('Ange ditt förnamn'); return; }
+  if (!ln) { alert('Ange ditt efternamn'); return; }
+  if (!em || !em.includes('@')) { alert('Ange en giltig e-postadress'); return; }
+  if (!ph) { alert('Ange ditt telefonnummer'); return; }
+  if (!city) { alert('Ange din stad'); return; }
+  goToStep(2);
+}
+
+// ── SERVICE TOGGLE ───────────────────────────
+function toggleSvc(el) { el.classList.toggle('on'); }
+
 // ── BANKID (REAL EF INTEGRATION) ─────────────
 async function startBankID(method) {
-  const statusEl = document.getElementById('bankidStatus');
-  const statusText = document.getElementById('bankidStatusText');
-  const mobileBtn = document.getElementById('bankidMobileBtn');
-  const qrBtn = document.getElementById('bankidQRBtn');
-
-  // Disable buttons
-  mobileBtn.classList.add('loading');
-  qrBtn.classList.add('loading');
-  mobileBtn.disabled = true;
-  qrBtn.disabled = true;
-
+  var statusEl = document.getElementById('bankidStatus');
+  var statusText = document.getElementById('bankidStatusText');
+  var mobileBtn = document.getElementById('bankidMobileBtn');
+  var qrBtn = document.getElementById('bankidQRBtn');
+  mobileBtn.classList.add('loading'); qrBtn.classList.add('loading');
+  mobileBtn.disabled = true; qrBtn.disabled = true;
   statusEl.className = 'bankid-status waiting';
   statusText.textContent = 'Startar BankID...';
-
-  if (method === 'qr') {
-    document.getElementById('qrBox').style.display = 'block';
-  }
+  if (method === 'qr') document.getElementById('qrBox').style.display = 'block';
 
   try {
-    // Call the real BankID edge function
-    const startRes = await fetch(SUPA_URL + '/functions/v1/bankid', {
+    var startRes = await fetch(SUPA_URL + '/functions/v1/bankid', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPA_KEY,
-        Authorization: 'Bearer ' + SUPA_KEY
-      },
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
       body: JSON.stringify({ action: 'start' })
     });
-
-    const startData = await startRes.json();
-
-    if (!startRes.ok) {
-      throw new Error(startData.message || startData.error || 'Kunde inte starta BankID');
-    }
-
-    // Show test mode banner if demo
-    if (startData.demo) {
-      document.getElementById('testBanner').style.display = 'block';
-    }
-
+    var startData = await startRes.json();
+    if (!startRes.ok) throw new Error(startData.message || startData.error || 'Kunde inte starta BankID');
+    if (startData.demo) document.getElementById('testBanner').style.display = 'block';
     bankidSessionId = startData.sessionId;
-
-    // If mobile: try to open BankID app via autoStartToken
-    if (method === 'mobile' && startData.autoStartToken && !startData.demo) {
+    if (method === 'mobile' && startData.autoStartToken && !startData.demo)
       window.location.href = 'bankid:///?autostarttoken=' + startData.autoStartToken + '&redirect=null';
-    }
-
-    // If QR: display qrCode if provided
-    if (method === 'qr' && startData.qrCode) {
-      document.getElementById('qrDisplay').innerHTML =
-        '<img src="' + escHtml(startData.qrCode) + '" alt="QR-kod" style="width:180px;height:180px;border-radius:8px">';
-    }
-
+    if (method === 'qr' && startData.qrCode)
+      document.getElementById('qrDisplay').innerHTML = '<img src="' + escHtml(startData.qrCode) + '" alt="QR" style="width:180px;height:180px;border-radius:8px">';
     statusText.textContent = 'Öppna BankID-appen och godkänn...';
-
-    // Start polling
     pollBankID();
-
   } catch (err) {
     statusEl.className = 'bankid-status error';
     statusText.textContent = '❌ ' + err.message;
-    mobileBtn.classList.remove('loading');
-    qrBtn.classList.remove('loading');
-    mobileBtn.disabled = false;
-    qrBtn.disabled = false;
+    mobileBtn.classList.remove('loading'); qrBtn.classList.remove('loading');
+    mobileBtn.disabled = false; qrBtn.disabled = false;
   }
 }
 
 async function pollBankID() {
   if (!bankidSessionId) return;
-
   try {
-    const res = await fetch(SUPA_URL + '/functions/v1/bankid', {
+    var res = await fetch(SUPA_URL + '/functions/v1/bankid', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPA_KEY,
-        Authorization: 'Bearer ' + SUPA_KEY
-      },
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
       body: JSON.stringify({ action: 'poll', sessionId: bankidSessionId })
     });
-
-    const data = await res.json();
-
-    if (data.status === 'complete') {
-      bankidComplete(data);
-      return;
-    }
-
+    var data = await res.json();
+    if (data.status === 'complete') { bankidComplete(data); return; }
     if (data.status === 'failed') {
-      const statusEl = document.getElementById('bankidStatus');
-      statusEl.className = 'bankid-status error';
-      document.getElementById('bankidStatusText').textContent =
-        '❌ BankID misslyckades. Försök igen.';
-      resetBankIDButtons();
-      return;
+      document.getElementById('bankidStatus').className = 'bankid-status error';
+      document.getElementById('bankidStatusText').textContent = '❌ BankID misslyckades. Försök igen.';
+      resetBankIDButtons(); return;
     }
-
-    // Still pending — poll again
     bankidPollTimer = setTimeout(pollBankID, 2000);
-
-  } catch (err) {
-    // Network error — retry once more
-    bankidPollTimer = setTimeout(pollBankID, 3000);
-  }
+  } catch (err) { bankidPollTimer = setTimeout(pollBankID, 3000); }
 }
 
 function bankidComplete(data) {
-  verifiedData = {
-    givenName: data.givenName,
-    surname: data.surname,
-    personalNumberHash: data.personalNumberHash || null,
-    demo: !!data.demo
-  };
-
-  const statusEl = document.getElementById('bankidStatus');
-  statusEl.className = 'bankid-status success';
+  verifiedData = { givenName: data.givenName, surname: data.surname, personalNumberHash: data.personalNumberHash || null, demo: !!data.demo };
+  document.getElementById('bankidStatus').className = 'bankid-status success';
   document.getElementById('bankidStatusText').textContent = '✅ BankID verifierat!';
   document.getElementById('qrBox').style.display = 'none';
-
-  const vBox = document.getElementById('verifiedBox');
+  var vBox = document.getElementById('verifiedBox');
   vBox.style.display = 'flex';
-  document.getElementById('verifiedName').textContent =
-    'Välkommen, ' + escHtml(data.givenName) + '! Din identitet är verifierad och skyddad.';
-
-  document.getElementById('step1Next').disabled = false;
-
-  // Pre-fill alias suggestion from BankID givenName
-  if (data.givenName) {
-    const suggestion = data.givenName + ' ' + (data.surname ? data.surname.charAt(0) + '.' : '');
-    document.getElementById('aliasInput').value = suggestion;
-    updateAlias(suggestion);
-  }
+  document.getElementById('verifiedName').textContent = 'Välkommen, ' + escHtml(data.givenName) + '! Din identitet är verifierad.';
 }
 
 function resetBankIDButtons() {
-  const mobileBtn = document.getElementById('bankidMobileBtn');
-  const qrBtn = document.getElementById('bankidQRBtn');
-  mobileBtn.classList.remove('loading');
-  qrBtn.classList.remove('loading');
-  mobileBtn.disabled = false;
-  qrBtn.disabled = false;
+  var mobileBtn = document.getElementById('bankidMobileBtn');
+  var qrBtn = document.getElementById('bankidQRBtn');
+  mobileBtn.classList.remove('loading'); qrBtn.classList.remove('loading');
+  mobileBtn.disabled = false; qrBtn.disabled = false;
   bankidSessionId = null;
-}
-
-// ── ALIAS ────────────────────────────────────
-function updateAlias(val) {
-  document.getElementById('aliasDisplay').textContent = val || 'Ditt alias';
-  document.getElementById('aliasAvatar').textContent = selectedEmoji;
-}
-
-function selectEmoji(emoji, el) {
-  document.querySelectorAll('.emoji-opt').forEach(function(e) { e.style.borderColor = 'transparent'; e.style.background = 'transparent'; });
-  el.style.borderColor = 'var(--accent)';
-  el.style.background = 'var(--gp)';
-  selectedEmoji = emoji;
-  document.getElementById('aliasAvatar').textContent = emoji;
-}
-
-function validateStep2() {
-  var alias = document.getElementById('aliasInput').value.trim();
-  var city = document.getElementById('aliasCity').value;
-  if (!alias) { alert('Ange ditt alias'); return; }
-  if (alias.length < 2) { alert('Alias måste vara minst 2 tecken'); return; }
-  if (!city) { alert('Välj din stad'); return; }
-  goToStep(3);
 }
 
 // ── REGISTRATION ─────────────────────────────
 async function submitRegistration() {
+  var firstName = document.getElementById('firstNameInput').value.trim();
+  var lastName = document.getElementById('lastNameInput').value.trim();
   var email = document.getElementById('emailInput').value.trim();
   var phone = document.getElementById('phoneInput').value.trim();
-  var alias = document.getElementById('aliasInput').value.trim();
-  var city = document.getElementById('aliasCity').value;
+  var city = document.getElementById('cityInput').value.trim();
   var radius = document.getElementById('serviceRadius').value;
   var bio = document.getElementById('bio').value.trim();
+  var price = document.getElementById('priceInput').value;
+  var svcs = [];
+  document.querySelectorAll('.svc-btn.on').forEach(function(b) { svcs.push(b.textContent.trim()); });
 
-  // Validate contact
-  if (!email) { alert('Ange din e-postadress'); return; }
-  if (!phone) { alert('Ange ditt telefonnummer'); return; }
-
-  // Validate ALL checkboxes
-  if (!document.getElementById('chkNonSolicitation').checked) {
-    alert('Du måste godkänna plattformsavtalet (klausulen om kundrelationer)'); return;
-  }
-  if (!document.getElementById('chkQuality').checked) {
-    alert('Du måste godkänna kvalitetsåtagandet'); return;
-  }
-  if (!document.getElementById('chkFskatt').checked) {
-    alert('Du måste bekräfta F-skatt'); return;
-  }
-  if (!document.getElementById('chkTerms').checked) {
-    alert('Du måste godkänna användarvillkoren och integritetspolicyn'); return;
-  }
-
-  // Verify BankID was completed
-  if (!verifiedData) { alert('Verifiera din identitet med BankID först'); return; }
+  if (!document.getElementById('chkTerms').checked) { alert('Du måste godkänna uppdragsavtalet och integritetspolicyn'); return; }
+  if (!document.getElementById('chkFskatt').checked) { alert('Du måste bekräfta F-skatt'); return; }
 
   var btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.textContent = '⏳ Skickar ansökan...';
 
+  var fullName = firstName + ' ' + lastName;
   var cleanerData = {
-    full_name: alias,
-    alias: alias,
-    emoji: selectedEmoji,
+    full_name: fullName,
+    first_name: firstName,
+    last_name: lastName,
     city: city,
     bio: bio,
+    hourly_rate: parseInt(price) || 350,
+    services: svcs,
     service_radius_km: parseInt(radius),
     email: email,
     phone: phone,
-    identity_verified: true,
-    verified_at: new Date().toISOString(),
-    bankid_verified: true,
-    bankid_pnr_hash: verifiedData.personalNumberHash || null,
-    bankid_given_name: verifiedData.givenName || null,
     status: 'pending',
-    bonus_level: 'Brons',
-    avg_rating: 0,
-    review_count: 0,
     marketing_consent: document.getElementById('chkMarketing').checked,
     gdpr_consent: true,
     gdpr_consent_at: new Date().toISOString(),
-    non_solicitation_accepted: true,
-    quality_commitment_accepted: true,
     fskatt_confirmed: true
   };
 
   try {
     var res = await fetch(SUPA_URL + '/rest/v1/cleaner_applications', {
       method: 'POST',
-      headers: {
-        apikey: SUPA_KEY,
-        Authorization: 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
-      },
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify(cleanerData)
     });
 
     if (res.ok || res.status === 201) {
-      // Send notification (fire-and-forget)
       try {
         fetch(SUPA_URL + '/functions/v1/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
-          body: JSON.stringify({
-            type: 'application',
-            record: { full_name: alias, email: email, phone: phone, city: city, bio: bio, service_radius_km: parseInt(radius) }
-          })
+          body: JSON.stringify({ type: 'application', record: { full_name: fullName, email: email, phone: phone, city: city, bio: bio } })
         });
       } catch (e) { /* non-critical */ }
 
-      // Show confirmation
-      document.getElementById('confirmedAlias').textContent = alias + ' ' + selectedEmoji;
+      document.getElementById('confirmedName').textContent = fullName;
       document.getElementById('confirmedEmail').textContent = email;
       document.getElementById('confirmedCity').textContent = city;
-      goToStep(4);
+      goToStep(3); // Go to BankID step
     } else {
       throw new Error('Serverfel (' + res.status + ')');
     }
@@ -749,18 +594,6 @@ function setUILang(lang) {
     container.insertBefore(info, container.firstChild);
   }
 }
-
-// ── INIT ─────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  // Build emoji picker
-  var picker = document.getElementById('emojiPicker');
-  var emojis = ['🧹','🌟','💪','😊','🏡','✨','🌸','🦋','🌈','🎯','🔥','💎'];
-  picker.innerHTML = emojis.map(function(e) {
-    return '<span onclick="selectEmoji(\'' + e + '\', this)" ' +
-      'style="font-size:24px;cursor:pointer;padding:6px;border-radius:8px;border:2px solid transparent;transition:all .2s" ' +
-      'class="emoji-opt">' + e + '</span>';
-  }).join('');
-});
 </script>
 </body>
 </html>
