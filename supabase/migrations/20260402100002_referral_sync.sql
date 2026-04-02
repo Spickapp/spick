@@ -48,6 +48,8 @@ CREATE POLICY "Service role can update referrals"
   WITH CHECK (true);
 
 -- 3. Review sync trigger — keep avg_rating and review_count on cleaners in sync
+--    reviews may be a VIEW in production, so we detect the underlying table
+--    and attach the trigger there instead.
 CREATE OR REPLACE FUNCTION sync_cleaner_review_stats()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -57,8 +59,8 @@ BEGIN
   FROM (
     SELECT
       cleaner_id,
-      ROUND(AVG(rating)::numeric, 1) AS avg,
-      COUNT(*)::integer AS cnt
+      ROUND(AVG(rating)::numeric, 1)  AS avg,
+      COUNT(*)::integer                AS cnt
     FROM reviews
     WHERE cleaner_id = COALESCE(NEW.cleaner_id, OLD.cleaner_id)
     GROUP BY cleaner_id
@@ -69,12 +71,53 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing trigger if present, then create
-DROP TRIGGER IF EXISTS trg_sync_review_stats ON reviews;
-CREATE TRIGGER trg_sync_review_stats
-  AFTER INSERT OR UPDATE OR DELETE ON reviews
-  FOR EACH ROW
-  EXECUTE FUNCTION sync_cleaner_review_stats();
+-- Attach trigger to the real base table behind reviews (table or view)
+DO $$
+DECLARE
+  _base_table TEXT;
+  _is_view    BOOLEAN;
+BEGIN
+  -- Check if 'reviews' is a view
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.views
+    WHERE table_schema = 'public' AND table_name = 'reviews'
+  ) INTO _is_view;
+
+  IF _is_view THEN
+    -- Extract the first base table from the view definition
+    SELECT DISTINCT cl.relname INTO _base_table
+    FROM pg_rewrite rw
+    JOIN pg_depend d  ON d.objid = rw.oid
+    JOIN pg_class  cl ON cl.oid  = d.refobjid
+    WHERE rw.ev_class = (SELECT oid FROM pg_class WHERE relname = 'reviews' AND relnamespace = 'public'::regnamespace)
+      AND cl.relkind   = 'r'        -- ordinary table
+      AND cl.relname  != 'reviews'   -- not self-reference
+    LIMIT 1;
+
+    IF _base_table IS NULL THEN
+      -- Fallback: if view wraps the same-name table in another schema, skip trigger
+      RAISE NOTICE 'reviews is a view but no base table found — skipping trigger';
+      RETURN;
+    END IF;
+  ELSE
+    _base_table := 'reviews';
+  END IF;
+
+  -- Drop old trigger on both possible targets
+  EXECUTE format('DROP TRIGGER IF EXISTS trg_sync_review_stats ON %I', _base_table);
+  DROP TRIGGER IF EXISTS trg_sync_review_stats ON reviews;
+
+  -- Create trigger on the real table
+  EXECUTE format(
+    'CREATE TRIGGER trg_sync_review_stats
+       AFTER INSERT OR UPDATE OR DELETE ON %I
+       FOR EACH ROW
+       EXECUTE FUNCTION sync_cleaner_review_stats()',
+    _base_table
+  );
+
+  RAISE NOTICE 'trg_sync_review_stats attached to table: %', _base_table;
+END $$;
 
 -- 4. Auto-convert referral when a booking is completed
 CREATE OR REPLACE FUNCTION auto_convert_referral()
