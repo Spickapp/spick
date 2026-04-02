@@ -776,7 +776,7 @@ const ANON_KEY = SPICK.SUPA_KEY;
 const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
   auth: {
     detectSessionInUrl: true,
-    flowType: 'pkce',
+    flowType: 'implicit',
     autoRefreshToken: true,
     persistSession: true,
     lock: false
@@ -804,23 +804,13 @@ function init() {
   if (errEl) errEl.style.display = 'none';
 
   const hash = window.location.hash;
-  const params = new URLSearchParams(window.location.search);
-  if ((hash && hash.includes('access_token')) || params.has('code')) {
+  if (hash && hash.includes('access_token')) {
+    // Implicit flow: detectSessionInUrl + onAuthStateChange handles the token
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
-    // Explicit code exchange — don't rely solely on detectSessionInUrl
-    if (params.has('code')) {
-      SB.auth.exchangeCodeForSession(params.get('code')).then(({ data, error }) => {
-        if (error) console.error('Code exchange failed:', error.message);
-        if (data?.session) {
-          window.history.replaceState({}, '', window.location.pathname);
-          loadCleanerByEmail(data.session.user.email, data.session.user.id);
-        }
-      }).catch(e => console.error('Code exchange error:', e));
-    }
     setTimeout(() => {
       if (!window._cleanerLoaded) {
-        console.warn('Auth code exchange timeout — visar login');
+        console.warn('Implicit auth timeout — visar login');
         if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningslänk'; }
         window.history.replaceState({}, '', window.location.pathname);
         showScreen('login');
