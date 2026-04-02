@@ -150,6 +150,7 @@ const FOOTER_HTML = `
       <li><a href="${P}kalkyl-stadare.html">Varför Spick?</a></li>
       <li><a href="${P}avtal.html">Partnersavtal</a></li>
       <li><a href="${P}uppdragsavtal.html">Uppdragsavtal</a></li>
+      <li><a href="${P}tips-for-stadare.html">Tips för städare</a></li>
     </ul>
     <h4 style="margin-top:1rem">Guider</h4>
     <ul>
