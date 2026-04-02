@@ -56,7 +56,7 @@ serve(async (req) => {
         type: "express",
         country: "SE",
         email,
-        capabilities: { transfers: { requested: "true" } },
+        "capabilities[transfers][requested]": "true",
         business_type: "individual",
         "individual[email]": email,
         "individual[first_name]": name?.split(" ")[0] || "",
@@ -81,7 +81,7 @@ serve(async (req) => {
         type: "account_onboarding",
       });
 
-      return new Response(JSON.stringify({ ok: true, onboarding_url: link.url, account_id: account.id }), {
+      return new Response(JSON.stringify({ ok: true, url: link.url, account_id: account.id }), {
         headers: { "Content-Type": "application/json", ...CORS },
       });
     }
@@ -105,9 +105,9 @@ serve(async (req) => {
 
       if (!stripeAccountId) throw new Error("Städaren saknar Stripe-konto");
 
-      const totalPaid    = Number(booking.total_price) * 2; // bruttopris (kund betalar 50%)
-      const cleanerShare = Math.round(totalPaid * 0.83);    // 83% till städaren i öre
-      const cleanerOre   = cleanerShare * 100;
+      const totalKr      = Number(booking.total_price);       // fulla priset i kronor
+      const cleanerShare = Math.round(totalKr * 0.83);      // 83% till städaren i kronor
+      const cleanerOre   = cleanerShare * 100;               // konvertera till öre
 
       // Skapa transfer till städarens Stripe-konto
       const transfer = await stripe("/transfers", "POST", {
