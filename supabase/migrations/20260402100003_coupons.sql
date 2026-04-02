@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS coupons (
   max_uses_per_user INTEGER   DEFAULT 1,
   valid_from      TIMESTAMPTZ DEFAULT now(),
   valid_until     TIMESTAMPTZ,
-  is_active       BOOLEAN     DEFAULT true,
+  active       BOOLEAN     DEFAULT true,
   applies_to      TEXT        DEFAULT 'all',
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS coupons (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_coupons_code      ON coupons (code);
-CREATE INDEX IF NOT EXISTS idx_coupons_active     ON coupons (is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_coupons_active     ON coupons (active) WHERE active = true;
 CREATE INDEX IF NOT EXISTS idx_coupons_valid      ON coupons (valid_from, valid_until);
 
 -- 2. Coupon usage tracking
@@ -52,7 +52,7 @@ ALTER TABLE coupon_usages ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Anyone can read active coupons" ON coupons;
 CREATE POLICY "Anyone can read active coupons"
   ON coupons FOR SELECT
-  USING (is_active = true AND (valid_until IS NULL OR valid_until > now()));
+  USING (active = true AND (valid_until IS NULL OR valid_until > now()));
 
 -- Only service role / admin can manage coupons
 DROP POLICY IF EXISTS "Admin can manage coupons" ON coupons;
