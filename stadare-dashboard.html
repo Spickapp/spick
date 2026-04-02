@@ -808,6 +808,16 @@ function init() {
   if ((hash && hash.includes('access_token')) || params.has('code')) {
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar länk...'; }
+    // Explicit code exchange — don't rely solely on detectSessionInUrl
+    if (params.has('code')) {
+      SB.auth.exchangeCodeForSession(params.get('code')).then(({ data, error }) => {
+        if (error) console.error('Code exchange failed:', error.message);
+        if (data?.session) {
+          window.history.replaceState({}, '', window.location.pathname);
+          loadCleanerByEmail(data.session.user.email, data.session.user.id);
+        }
+      }).catch(e => console.error('Code exchange error:', e));
+    }
     setTimeout(() => {
       if (!window._cleanerLoaded) {
         console.warn('Auth code exchange timeout — visar login');
@@ -842,7 +852,7 @@ if (document.readyState === 'loading') {
 }
 
 SB.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session) {
+  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
     await loadCleanerByEmail(session.user.email, session.user.id);
   } else if (event === 'SIGNED_OUT') {
     showScreen('login');
