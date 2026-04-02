@@ -970,22 +970,6 @@ async function loadCleanerByEmail(email, authUserId) {
     data = res.data; error = res.error;
   }
 
-  if (!data && email) {
-    const res2 = await SB.from('cleaners')
-      .select('*')
-      .eq('email', email)
-      .eq('is_approved', true)
-      .single();
-    data = res2.data; error = res2.error;
-
-    if (data && authUserId && !data.auth_user_id) {
-      await SB.from('cleaners')
-        .update({ auth_user_id: authUserId })
-        .eq('id', data.id);
-      data.auth_user_id = authUserId;
-    }
-  }
-
   if (error || !data) {
     showErr('Kontot hittades inte. Kontakta hello@spick.se');
     const btn = document.getElementById('login-btn');
