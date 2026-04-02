@@ -1,5 +1,6 @@
 name: Deploy Edge Functions
-'on':
+
+on:
   push:
     branches: [main]
     paths:
@@ -10,28 +11,60 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      PROJECT_ID: urjeijcncsyuletprydy
     steps:
       - uses: actions/checkout@v4
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - run: |
-          # Deploya alla functions (med JWT-verifiering som standard)
-          supabase functions deploy --project-ref $PROJECT_ID
-          
-          # Omdeployera functions som behöver --no-verify-jwt
-          # (anropas från frontend, cron, eller webhooks utan Supabase JWT)
-          for fn in health stripe-checkout stripe-webhook notify \
-                    booking-create booking-cancel-v2 cleaner-optout cleanup-stale auto-remind \
-                    social-media geo email-inbound swish \
-                    bankid bankid-verify bankid-webhook \
-                    rut-claim push; do
-            if [ -d "supabase/functions/$fn" ]; then
-              echo "🔓 Deploy $fn (no-verify-jwt)"
-              supabase functions deploy "$fn" --project-ref $PROJECT_ID --no-verify-jwt
+
+      - name: Deploy all 29 Edge Functions
+        run: |
+          REF="${{ secrets.SUPABASE_PROJECT_ID }}"
+
+          FUNCTIONS=(
+            auto-remind
+            bankid
+            bankid-verify
+            bankid-webhook
+            booking-cancel-v2
+            booking-create
+            claude
+            cleaner-job-match
+            cleaner-optout
+            cleanup-stale
+            email-inbound
+            geo
+            get-cleaner-contact
+            health
+            notify
+            notify-new-application
+            onboarding-reminders
+            onboarding-save
+            places-autocomplete
+            push
+            referral-register
+            rut-claim
+            sms
+            social-media
+            stripe-checkout
+            stripe-connect
+            stripe-refund
+            stripe-webhook
+            swish
+          )
+
+          FAILED=0
+          for fn in "${FUNCTIONS[@]}"; do
+            echo "--- Deploying $fn ---"
+            if supabase functions deploy "$fn" --project-ref "$REF" --no-verify-jwt; then
+              echo "OK: $fn"
+            else
+              echo "FAILED: $fn"
+              FAILED=$((FAILED + 1))
             fi
           done
-          echo "✅ Alla Edge Functions deployade"
+
+          echo "--- Done: ${#FUNCTIONS[@]} functions, $FAILED failed ---"
+          [ "$FAILED" -eq 0 ] || exit 1
