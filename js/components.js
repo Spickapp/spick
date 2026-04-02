@@ -149,6 +149,7 @@ const FOOTER_HTML = `
       <li><a href="${P}utbildning-stadare.html">Spick Akademin</a></li>
       <li><a href="${P}kalkyl-stadare.html">Varför Spick?</a></li>
       <li><a href="${P}avtal.html">Partnersavtal</a></li>
+      <li><a href="${P}uppdragsavtal.html">Uppdragsavtal</a></li>
     </ul>
     <h4 style="margin-top:1rem">Guider</h4>
     <ul>
@@ -179,6 +180,7 @@ const FOOTER_HTML = `
   </div></p>
   <div class="footer-bottom-links">
     <a href="${P}integritetspolicy.html">Integritetspolicy</a>
+    <a href="${P}kundvillkor.html">Kundvillkor</a>
     <a href="${P}avtal.html">Villkor</a>
   </div>
 </div>`;
