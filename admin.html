@@ -2756,6 +2756,14 @@ async function approveApplication(id, name, email, city, services, rate) {
       created_at: new Date().toISOString()
     }]);
   }
+  // Generera unik slug
+  const baseSlug = (name || 'stadare').toLowerCase()
+    .replace(/[åä]/g, 'a').replace(/ö/g, 'o')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const { data: slugExisting } = await SB.from('cleaners').select('id').like('slug', baseSlug + '%');
+  const slug = slugExisting && slugExisting.length > 0 ? baseSlug + '-' + (slugExisting.length + 1) : baseSlug;
+  await SB.from('cleaners').update({ slug }).eq('email', email);
+
   await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
   await auditLog('approve','application', id, null, {name, email, city, status:'approved'});
 
