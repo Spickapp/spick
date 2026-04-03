@@ -822,15 +822,9 @@ let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[]
 let currentBookingId = null, currentCleanerId = null;
 
 // Kolla om redan inloggad
-SB.auth.getSession().then(async ({ data: { session } }) => {
+SB.auth.getSession().then(({ data: { session } }) => {
   if (session?.user) {
     ADMIN_EMAIL = session.user.email;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    try { await loadAdminUser(); } catch(e) { console.warn('loadAdminUser:', e.message); }
-    loadAll();
-    setTimeout(setupRealtime, 1000);
-    loadTickets().catch(function(){});
   }
 });
 
@@ -1341,53 +1335,40 @@ if (Notification && Notification.permission === 'default') {
 }
 
 async function loadAll() {
-  // Dölj skeleton när data börjar ladda
   ['kpi-skel-1','kpi-skel-2','kpi-skel-3','kpi-skel-4'].forEach(id => {
     const el = document.getElementById(id); if (el) el.remove();
   });
-  const today = new Date().toISOString().split('T')[0];
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  const [bookings, cleaners, applications, customers, reviews] = await Promise.all([
-    SB.from('bookings').select(
-      'id,booking_id,customer_name,customer_email,customer_phone,customer_address,city,' +
-      'service_type,booking_date,booking_time,booking_hours,frequency,' +
-      'total_price,payment_status,payment_intent_id,status,' +
-      'cleaner_id,cleaner_name,cleaner_email,' +
-      'rut_amount,discount_code,square_meters,customer_notes,key_info,' +
-      'created_at,updated_at,cancelled_at,cancellation_reason,refund_amount,completed_at,' +
-      'review_requested,review_requested_at,checked_in_at,scheduled_date'
-    ).order('created_at', { ascending: false }).limit(100),
-    SB.from('cleaners').select(
-      'id,full_name,email,phone,city,status,is_approved,' +
-      'avg_rating,review_count,tier,hourly_rate,services,bio,avatar_url,' +
-      'home_lat,home_lng,service_radius_km,' +
-      'identity_verified,pet_pref,elevator_pref,' +
-      'total_jobs,admin_flag,auth_user_id,' +
-      'created_at,updated_at'
-    ).order('avg_rating', { ascending: false }),
-    SB.from('cleaner_applications').select('*').order('created_at', { ascending: false }),
-    SB.from('customer_profiles').select(
-      'id,email,name,phone,city,total_bookings,total_spent,' +
-      'created_at,last_booking_at'
-    ).order('total_bookings', { ascending: false }),
-    SB.from('reviews').select('*').order('created_at', { ascending: false }).limit(200),
-  ]);
+  try {
+    const [bookings, cleaners, applications, customers, reviews] = await Promise.all([
+      SB.from('bookings').select('*').order('created_at', { ascending: false }).limit(100).then(r => r).catch(e => { console.error('bookings query failed:', e); return { data: [] }; }),
+      SB.from('cleaners').select('*').order('avg_rating', { ascending: false }).then(r => r).catch(e => { console.error('cleaners query failed:', e); return { data: [] }; }),
+      SB.from('cleaner_applications').select('*').order('created_at', { ascending: false }).then(r => r).catch(e => { console.error('applications query failed:', e); return { data: [] }; }),
+      SB.from('customer_profiles').select('*').order('total_bookings', { ascending: false }).then(r => r).catch(e => { console.error('customer_profiles query failed:', e); return { data: [] }; }),
+      SB.from('reviews').select('*').order('created_at', { ascending: false }).limit(200).then(r => r).catch(e => { console.error('reviews query failed:', e); return { data: [] }; }),
+    ]);
 
-  data.bookings = bookings.data || [];
-  data.cleaners = cleaners.data || [];
-  data.applications = applications.data || [];
-  
-  // Hämta prenumerationer
-  const { data: subs } = await SB.from('subscriptions').select('*').order('created_at',{ascending:false});
-  data.subscriptions = subs || [];
-  document.getElementById('badge-subs').textContent = (subs||[]).filter(s=>s.status==='active'||s.status==='aktiv').length || '';
-  data.customers = customers.data || [];
-  data.reviews = reviews.data || [];
+    data.bookings = bookings.data || [];
+    data.cleaners = cleaners.data || [];
+    data.applications = applications.data || [];
+    data.customers = customers.data || [];
+    data.reviews = reviews.data || [];
 
-  updateBadges();
-  renderDashboard();
-  renderOnboarding();
+    try {
+      const { data: subs } = await SB.from('subscriptions').select('*').order('created_at',{ascending:false});
+      data.subscriptions = subs || [];
+    } catch(e) { console.warn('subscriptions query failed:', e); data.subscriptions = []; }
+
+    const badgeSubs = document.getElementById('badge-subs');
+    if (badgeSubs) badgeSubs.textContent = data.subscriptions.filter(s=>s.status==='active'||s.status==='aktiv').length || '';
+
+    updateBadges();
+    renderDashboard();
+    renderOnboarding();
+  } catch(e) {
+    console.error('loadAll failed:', e);
+    showToast('⚠️ Kunde inte ladda all data. Kolla konsolen.');
+  }
 }
 
 function loadBookings() { loadAll().then(() => renderBookings()); }
@@ -3134,11 +3115,16 @@ function exportAuditCSV() {
 // -- SUPPORT TICKETS --
 var ticketsData = [];
 async function loadTickets() {
-  var res = await SB.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(200);
-  ticketsData = res.data || [];
-  renderTickets();
-  var badge = document.getElementById('badge-support');
-  if (badge) badge.textContent = ticketsData.filter(function(t){ return !['resolved','closed'].includes(t.status); }).length || '';
+  try {
+    var res = await SB.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(200);
+    ticketsData = res.data || [];
+    renderTickets();
+    var badge = document.getElementById('badge-support');
+    if (badge) badge.textContent = ticketsData.filter(function(t){ return !['resolved','closed'].includes(t.status); }).length || '';
+  } catch(e) {
+    console.warn('loadTickets failed:', e);
+    ticketsData = [];
+  }
 }
 
 function renderTickets() {
