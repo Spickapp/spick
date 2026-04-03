@@ -21,7 +21,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
 
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
-const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL          = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,37 +29,14 @@ const ADMIN                 = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// ── Stripe-signaturverifiering (timing-safe + replay protection) ───────────
-const STRIPE_TOLERANCE_SEC = 300; // 5 min replay window
-
-async function verifyStripeSignature(body: string, sigHeader: string, secret: string): Promise<boolean> {
+// ── Stripe event verification via API ───────────────────────────────────────
+async function verifyEventWithStripe(eventId: string): Promise<boolean> {
   try {
-    const parts: Record<string, string> = {};
-    for (const item of sigHeader.split(",")) {
-      const [key, val] = item.split("=");
-      if (key && val) parts[key.trim()] = val.trim();
-    }
-    const t = parts["t"];
-    const v1 = parts["v1"];
-    if (!t || !v1) { console.warn("Missing t or v1 in signature"); return false; }
-
-    const timestamp = parseInt(t, 10);
-    const now = Math.floor(Date.now() / 1000);
-    if (Math.abs(now - timestamp) > 300) { console.warn("Timestamp too old:", Math.abs(now - timestamp), "s"); return false; }
-
-    const signedPayload = t + "." + body;
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw", encoder.encode(secret),
-      { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"]
-    );
-    const sigBytes = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload));
-    const computed = [...new Uint8Array(sigBytes)].map(b => b.toString(16).padStart(2, '0')).join('');
-
-    console.log("Sig check:", { t, computed: computed.slice(0,16), expected: v1.slice(0,16), match: computed === v1 });
-    return computed === v1;
-  } catch(e) {
-    console.error("Sig verify error:", e);
+    const res = await fetch(`https://api.stripe.com/v1/events/${eventId}`, {
+      headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}` }
+    });
+    return res.ok;
+  } catch {
     return false;
   }
 }
@@ -526,20 +502,21 @@ serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   const body = await req.text();
-  const sig = req.headers.get("stripe-signature") || "";
-
-  const valid = await verifyStripeSignature(body, sig, STRIPE_WEBHOOK_SECRET);
-  if (!valid) {
-    console.warn("Stripe-signatur matchade inte — kör ändå (temporärt)");
-    console.warn("STRIPE_WEBHOOK_SECRET starts with:", STRIPE_WEBHOOK_SECRET?.slice(0, 10) || "MISSING");
-    console.warn("Signature header:", sig?.slice(0, 50) || "MISSING");
-  }
 
   let event: Record<string, unknown>;
   try { event = JSON.parse(body); } catch { return new Response("Bad JSON", { status: 400 }); }
 
-  // ── IDEMPOTENCY: check before processing, insert after success ───────────
   const eventId = event.id as string;
+  if (eventId) {
+    const isReal = await verifyEventWithStripe(eventId);
+    if (!isReal) {
+      console.error("Event verification failed:", eventId);
+      return new Response("Unauthorized", { status: 401 });
+    }
+    console.log("Event verified via Stripe API:", eventId);
+  }
+
+  // ── IDEMPOTENCY: check before processing, insert after success ───────────
   if (eventId) {
     const { data: existing } = await sb
       .from("processed_webhook_events")
