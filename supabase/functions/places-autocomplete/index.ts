@@ -1,6 +1,7 @@
-// supabase/functions/places-autocomplete/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders } from "../_shared/email.ts";
+
+const GOOGLE_API_KEY = Deno.env.get("GOOGLE_MAPS_API_KEY")!;
 
 serve(async (req) => {
   const CORS = corsHeaders(req);
@@ -16,26 +17,21 @@ serve(async (req) => {
       );
     }
 
-    // Nominatim autocomplete — respekterar User-Agent-krav
-    const url = new URL("https://nominatim.openstreetmap.org/search");
-    url.searchParams.set("q", query + ", Sweden");
-    url.searchParams.set("format", "json");
-    url.searchParams.set("limit", "5");
-    url.searchParams.set("countrycodes", country);
-    url.searchParams.set("addressdetails", "1");
+    const url = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
+    url.searchParams.set("input", query);
+    url.searchParams.set("components", "country:" + country);
+    url.searchParams.set("types", "address");
+    url.searchParams.set("language", "sv");
+    url.searchParams.set("key", GOOGLE_API_KEY);
 
-    const res = await fetch(url.toString(), {
-      headers: { "User-Agent": "Spick/1.0 hello@spick.se" },
-    });
-
-    if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error("Google Places " + res.status);
 
     const data = await res.json();
 
-    // Mappa om till det format boka.html förväntar sig: { predictions: [{description}] }
-    const predictions = data.map((item: Record<string, string>) => ({
-      description: item.display_name,
-      place_id:    item.place_id,
+    const predictions = (data.predictions || []).map((p: any) => ({
+      description: p.description,
+      place_id: p.place_id,
     }));
 
     return new Response(
