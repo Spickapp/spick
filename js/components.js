@@ -6,7 +6,7 @@
 (function() {
 'use strict';
 // ── INJECT CSP (körs direkt, före allt annat) ──────────────────
-if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
+if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]') && !document.getElementById('google_translate_element')) {
   const csp = document.createElement('meta');
   csp.httpEquiv = 'Content-Security-Policy';
   csp.content = [
