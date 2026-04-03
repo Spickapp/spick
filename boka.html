@@ -417,6 +417,14 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
         </div>
         <div class="card-body">
 
+<div id="step3-summary" style="background:var(--bg);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.82rem;display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+    <div><span id="s3-svc" style="font-weight:700">–</span> · <span id="s3-date">–</span> kl <span id="s3-time">–</span></div>
+    <div style="font-weight:700;color:var(--g)" id="s3-price">–</div>
+  </div>
+  <div style="font-size:.75rem;color:var(--m);margin-top:4px" id="s3-cleaner">–</div>
+</div>
+
           <div class="f-grid">
             <div class="f">
               <label>Förnamn *</label>
@@ -461,10 +469,8 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
               <label>Personnummer <span style="color:var(--g);font-weight:700">— du sparar upp till 50% med RUT ✓</span></label>
               <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="width:100%" oninput="validatePNR(this.value)">
               <div id="pnr-hint" class="field-hint">🔒 Ditt personnummer krypteras och används endast för RUT-ansökan till Skatteverket.</div>
-              <div style="margin-top:8px;padding:10px 12px;background:#FEF3C7;border-radius:8px;font-size:.75rem;color:#92400E;line-height:1.6">
-                ⚠️ Genom att använda RUT-avdrag bekräftar du att du har utrymme kvar
-                (max 75&nbsp;000&nbsp;kr/år). Om Skatteverket avvisar ansökan
-                faktureras resterande belopp separat.
+              <div style="margin-top:8px;padding:10px 12px;background:#F0FDF4;border-radius:8px;font-size:.75rem;color:#065F46;line-height:1.6">
+                ✅ De allra flesta får RUT-avdrag automatiskt. Max 75&nbsp;000&nbsp;kr/år per person. Vid frågor hjälper vi dig.
               </div>
             </div>
           </div>
@@ -498,7 +504,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <!-- Kundnoteringar -->
           <div style="margin-top:1rem">
             <label class="field-label">📝 Speciella önskemål (valfritt)</label>
-            <textarea id="customer-notes" rows="2" placeholder="T.ex. allergier, husdjur, fokusera på köket, ring på dörren..." style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;outline:none;resize:none;line-height:1.5;margin-top:.375rem"></textarea>
+            <textarea id="customer-notes" rows="2" placeholder="T.ex. allergier, fokusera på köket, ring på dörren..." style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;outline:none;resize:none;line-height:1.5;margin-top:.375rem"></textarea>
 <label style="display:flex;align-items:center;gap:10px;margin-top:.75rem;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:.88rem;transition:all .15s" id="pet-toggle-label">
   <input type="checkbox" id="has-pets" style="accent-color:var(--g);width:18px;height:18px" onchange="state.hasPets=this.checked; this.parentElement.style.background=this.checked?'#F0FDF4':''; this.parentElement.style.borderColor=this.checked?'var(--g)':'var(--border)'">
   <span>🐾 Husdjur hemma</span>
@@ -507,7 +513,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 
           <!-- Prenumerationsval hanteras i steg 1 (state.frequency) -->
 
-          <button class="btn-primary" onclick="goStep4()" id="step3-submit" style="margin-top:1.25rem">Gå vidare till betalning →</button>
+          <button class="btn-primary" onclick="goStep4()" id="step3-submit" style="margin-top:1.25rem">Granska bokning →</button>
           <button class="btn-secondary" onclick="goBack(2)">← Välj annan städare</button>
         </div>
       </div>
@@ -729,7 +735,22 @@ function setStep(n) {
     if (pl) pl.classList.toggle('done', i > n-1);
   });
   window.scrollTo({top:0, behavior:'smooth'});
-  
+
+  if (n === 3) {
+    var s3 = document.getElementById('step3-summary');
+    if (s3) {
+      s3.style.display = 'block';
+      document.getElementById('s3-svc').textContent = state.service || '–';
+      document.getElementById('s3-date').textContent = state.date || '–';
+      document.getElementById('s3-time').textContent = state.time || '–';
+      document.getElementById('s3-cleaner').textContent = state.cleanerName ? '🧹 ' + state.cleanerName : '';
+      var rate = state.cleanerRate || 350;
+      var hrs = state.hours || 3;
+      var gross = rate * hrs;
+      document.getElementById('s3-price').textContent = gross + ' kr' + (document.getElementById('rut-knob')?.classList.contains('on') ? ' (RUT: ' + Math.round(gross * 0.5) + ' kr)' : '');
+    }
+  }
+
   // ── CONVERSION TRACKING ──────────────────────────────────
   try {
     var price = state.totalPrice || 0;
