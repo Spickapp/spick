@@ -1673,34 +1673,9 @@ async function addrSearch(q) {
       const predictions = data.predictions || [];
       if (!predictions.length) { list.style.display='none'; return; }
       list.innerHTML = predictions.map(p => {
-        var parts = p.description.split(',').map(function(s) { return s.trim(); });
-        var street = parts[0] || '';
-        if (parts.length > 1 && /^\d/.test(street)) {
-          street = parts[1] + ' ' + street;
-          parts.splice(1, 1);
-        }
-        // Hitta stad: ta namnet från "X kommun" (t.ex. "Solna kommun" → "Solna")
-        var city = '';
-        for (var i = 1; i < parts.length; i++) {
-          if (parts[i].toLowerCase().includes(' kommun')) {
-            city = parts[i].replace(/\s*kommun$/i, '').trim();
-            break;
-          }
-        }
-        if (!city) {
-          // Fallback: ta delen precis före "kommun"-delen eller "län"-delen
-          for (var i = 1; i < parts.length; i++) {
-            var lp = parts[i].toLowerCase();
-            if (lp.match(/^\d/) || lp.includes('sverige') || lp.includes('län') || lp.includes('kommun')) continue;
-            // Hoppa över stadsdel om nästa del INTE är kommun
-            if (i + 1 < parts.length && !parts[i+1].toLowerCase().includes('kommun')) continue;
-            city = parts[i];
-            break;
-          }
-        }
-        var short = city ? street + ', ' + city : street;
+        var display = p.description.replace(/, Sverige$/, '');
         var full = escHtml(p.description).replace(/'/g,"&#39;");
-        return '<div class="addr-item" onclick="pickAddr(\'' + full + '\')">' + escHtml(short) + '</div>';
+        return '<div class="addr-item" onclick="pickAddr(\'' + full + '\')">' + escHtml(display) + '</div>';
       }).join('');
       list.style.display = 'block';
     } catch(e) { list.style.display='none'; }
@@ -1708,31 +1683,7 @@ async function addrSearch(q) {
 }
 
 function pickAddr(val) {
-  // Korta ned "Klippgatan 8A, Skytteholm, Solna, Solna kommun, Stockholms län, 171 47, Sverige"
-  // till "Klippgatan 8A, Solna" (gatuadress + stad)
-  var parts = val.split(',').map(function(s) { return s.trim(); });
-  var street = parts[0] || val;
-  if (parts.length > 1 && /^\d/.test(street)) {
-    street = parts[1].trim() + ' ' + street;
-  }
-  var city = '';
-  for (var i = 1; i < parts.length; i++) {
-    if (parts[i].toLowerCase().includes(' kommun')) {
-      city = parts[i].replace(/\s*kommun$/i, '').trim();
-      break;
-    }
-  }
-  if (!city) {
-    for (var i = 1; i < parts.length; i++) {
-      var lp = parts[i].toLowerCase();
-      if (lp.match(/^\d/) || lp.includes('sverige') || lp.includes('län') || lp.includes('kommun')) continue;
-      if (i + 1 < parts.length && !parts[i+1].toLowerCase().includes('kommun')) continue;
-      city = parts[i];
-      break;
-    }
-  }
-  var short = city ? street + ', ' + city : street;
-
+  var short = val.replace(/, Sverige$/, '');
   document.getElementById('address').value = short;
   var _s1 = document.getElementById('step1-address');
   if (_s1) _s1.value = short;
