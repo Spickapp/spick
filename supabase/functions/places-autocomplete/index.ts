@@ -29,6 +29,15 @@ serve(async (req) => {
 
     const data = await res.json();
 
+    // Google returnerar 200 även vid fel — kolla status-fältet
+    if (data.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      console.error("Google Places error:", data.status, data.error_message);
+      return new Response(
+        JSON.stringify({ predictions: [], error: data.status + ": " + (data.error_message || "Unknown error") }),
+        { status: 200, headers: { "Content-Type": "application/json", ...CORS } }
+      );
+    }
+
     const predictions = (data.predictions || []).map((p: any) => ({
       description: p.description,
       place_id: p.place_id,
