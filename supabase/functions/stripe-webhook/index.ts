@@ -538,14 +538,16 @@ serve(async (req) => {
   let event: Record<string, unknown>;
   try { event = JSON.parse(body); } catch { return new Response("Bad JSON", { status: 400 }); }
 
-  // ── IDEMPOTENCY: claim event BEFORE processing (atomic guard) ───────────
+  // ── IDEMPOTENCY: check before processing, insert after success ───────────
   const eventId = event.id as string;
   if (eventId) {
-    const { error: claimErr } = await sb
+    const { data: existing } = await sb
       .from("processed_webhook_events")
-      .insert({ event_id: eventId, event_type: event.type as string });
+      .select("event_id")
+      .eq("event_id", eventId)
+      .maybeSingle();
 
-    if (claimErr) {
+    if (existing) {
       console.log(`Skipping duplicate event: ${eventId} (${event.type})`);
       return new Response("Already processed", { status: 200 });
     }
@@ -566,6 +568,11 @@ serve(async (req) => {
         console.log("Unhandled event:", event.type);
     }
 
+    if (eventId) {
+      await sb.from("processed_webhook_events")
+        .insert({ event_id: eventId, event_type: event.type as string })
+        .catch(e => console.warn("Idempotency insert failed:", e));
+    }
 
   } catch (e) {
     console.error("Webhook-fel:", e);
