@@ -1142,8 +1142,8 @@ function updateOnboarding() {
     'ob-1': true,
     'ob-2': !!(cleaner.profile_image || cleaner.avatar || cleaner.avatar_url),
     'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
-    'ob-4': !!(cleaner.availability_schedule),
-    'ob-5': !!(cleaner.stripe_connect_id),
+    'ob-4': !!(cleaner._scheduleLoaded),
+    'ob-5': !!(cleaner.stripe_account_id || cleaner.stripe_connect_id),
     'ob-6': !!localStorage.getItem('spick-tips-read'),
   };
   let done = 0;
@@ -1407,7 +1407,8 @@ function renderAvailableJobs() {
   const el = document.getElementById('available-jobs-list');
 
   if (!open.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><strong>Inga lediga jobb just nu</strong><p style="margin-top:8px;font-size:.85rem">Nya uppdrag i ${cleaner.city||'din stad'} visas här automatiskt.</p></div>`;
+    const cityDisplay = (cleaner.city || 'ditt område').charAt(0).toUpperCase() + (cleaner.city || 'ditt område').slice(1).toLowerCase();
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><strong>Inga lediga jobb just nu</strong><p style="margin-top:8px;font-size:.85rem">Nya uppdrag i ${cityDisplay} visas här automatiskt.</p></div>`;
     return;
   }
 
@@ -1511,6 +1512,7 @@ function updateGoal() {
   const earned = monthJobs.reduce((s, j) => s + Math.round((j.total_price||0) * 0.83), 0);
   const pct = Math.min(100, Math.round((earned / MONTHLY_GOAL) * 100));
   const card = document.getElementById('goal-card');
+  if ((cleaner.total_jobs || 0) === 0) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   document.getElementById('goal-bar').style.width = pct + '%';
   document.getElementById('goal-pct-label').textContent = pct + '%';
@@ -1908,6 +1910,7 @@ const DOW_MAP = [1,2,3,4,5,6,0];
 async function buildSchedule() {
   const {data: avRows} = await R.select('cleaner_availability', `select=*&cleaner_id=eq.${cleaner.id}`);
   const row = avRows?.[0] || {};
+  if (avRows && avRows.length > 0) cleaner._scheduleLoaded = true;
 
   const dayColumns = {1:'day_mon',2:'day_tue',3:'day_wed',4:'day_thu',5:'day_fri',6:'day_sat',0:'day_sun'};
 
@@ -1943,6 +1946,7 @@ async function buildSchedule() {
       </select>`;
     grid.appendChild(el);
   });
+  updateOnboarding();
 }
 
 function toggleDay(i) {
