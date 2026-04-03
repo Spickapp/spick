@@ -848,8 +848,11 @@ SB.auth.onAuthStateChange(async (event, session) => {
       const email = session.user.email;
       let isAdmin = false;
       try {
-        const { data: au } = await SB.from('admin_users').select('id').eq('email', email).maybeSingle();
-        isAdmin = !!au;
+        const auRes = await fetch(SPICK.SUPA_URL + '/rest/v1/admin_users?email=eq.' + encodeURIComponent(email) + '&select=id&limit=1', {
+          headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + session.access_token }
+        });
+        const auData = auRes.ok ? await auRes.json() : [];
+        isAdmin = auData.length > 0;
       } catch(e) { console.warn('admin_users check:', e.message); }
       if (isAdmin) {
         ADMIN_EMAIL = email;
@@ -914,19 +917,55 @@ async function verifyOtp() {
   btn.textContent = '⏳ Verifierar...'; btn.disabled = true;
   document.getElementById('otp-err').style.display = 'none';
 
-  const { data, error } = await SB.auth.verifyOtp({
-    email: _adminOtpEmail,
-    token,
-    type: 'email'
-  });
+  try {
+    const verifyPromise = SB.auth.verifyOtp({ email: _adminOtpEmail, token, type: 'email' });
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000));
+    const { data, error } = await Promise.race([verifyPromise, timeoutPromise]);
 
-  if (error) {
-    document.getElementById('otp-err').textContent = 'Fel kod — försök igen';
-    document.getElementById('otp-err').style.display = 'block';
+    if (error) {
+      document.getElementById('otp-err').textContent = 'Fel kod — försök igen';
+      document.getElementById('otp-err').style.display = 'block';
+      btn.textContent = 'Verifiera →'; btn.disabled = false;
+      return;
+    }
+    // onAuthStateChange hanterar resten
+  } catch(e) {
+    console.error('verifyOtp error:', e);
+    // Timeout fallback: kolla om sessionen ändå skapades
+    try {
+      const sess = await Promise.race([
+        SB.auth.getSession(),
+        new Promise((_, r) => setTimeout(() => r(new Error('session timeout')), 5000))
+      ]);
+      if (sess?.data?.session?.user) {
+        // Session finns! SDK hängde men auth lyckades. Ladda manuellt.
+        const email = sess.data.session.user.email;
+        const auRes = await fetch(SPICK.SUPA_URL + '/rest/v1/admin_users?email=eq.' + encodeURIComponent(email) + '&select=id&limit=1', {
+          headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + sess.data.session.access_token }
+        });
+        const auData = auRes.ok ? await auRes.json() : [];
+        if (auData.length > 0) {
+          ADMIN_EMAIL = email;
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('app').style.display = 'block';
+          try { await loadAdminUser(); } catch(e) {}
+          await loadAll();
+          setTimeout(setupRealtime, 1000);
+          loadTickets().catch(function(){});
+        } else {
+          document.getElementById('otp-err').textContent = 'Du har inte adminbehörighet.';
+          document.getElementById('otp-err').style.display = 'block';
+        }
+      } else {
+        document.getElementById('otp-err').textContent = 'Verifiering misslyckades — försök igen';
+        document.getElementById('otp-err').style.display = 'block';
+      }
+    } catch(e2) {
+      document.getElementById('otp-err').textContent = 'Kunde inte verifiera. Ladda om sidan och försök igen.';
+      document.getElementById('otp-err').style.display = 'block';
+    }
     btn.textContent = 'Verifiera →'; btn.disabled = false;
-    return;
   }
-  // onAuthStateChange hanterar resten (visa app, ladda data)
 }
 
 // ══════════════════════════════════════════════════════
