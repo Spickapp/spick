@@ -1681,11 +1681,28 @@ async function addrSearch(q) {
 }
 
 function pickAddr(val) {
-  document.getElementById('address').value = val;
+  // Korta ned "Klippgatan 8A, Skytteholm, Solna, Solna kommun, Stockholms län, 171 47, Sverige"
+  // till "Klippgatan 8A, Solna" (gatuadress + stad)
+  var parts = val.split(',').map(function(s) { return s.trim(); });
+  var street = parts[0] || val;
+  // Hitta stad: hoppa över stadsdel, ta kommun-namnet (utan "kommun"/"län")
+  var city = '';
+  var skip = ['sverige', 'stockholms län', 'västra götalands län', 'skåne län'];
+  for (var i = 1; i < parts.length; i++) {
+    var p = parts[i].toLowerCase();
+    if (p.match(/^\d/) || skip.some(function(s) { return p.includes(s); }) || p.includes('kommun') || p.includes('län')) continue;
+    city = parts[i];
+    break;
+  }
+  var short = city ? street + ', ' + city : street;
+
+  document.getElementById('address').value = short;
   var _s1 = document.getElementById('step1-address');
-  if (_s1) _s1.value = val;
-  state.address = val;
-  var _al=document.getElementById('addr-list');if(_al)_al.style.display='none';var _ad=document.getElementById('addr-dd');if(_ad)_ad.style.display='none';if(_s1)checkCoverage(val);
+  if (_s1) _s1.value = short;
+  state.address = short;
+  var _al = document.getElementById('addr-list'); if (_al) _al.style.display = 'none';
+  var _ad = document.getElementById('addr-dd'); if (_ad) _ad.style.display = 'none';
+  if (_s1) checkCoverage(short);
 }
 
 document.addEventListener('click', e => {
