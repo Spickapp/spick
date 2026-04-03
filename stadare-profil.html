@@ -142,17 +142,24 @@ async function loadProfile() {
   const initial = (c.full_name || '?')[0].toUpperCase();
   document.getElementById('p-avatar').textContent = initial;
   document.getElementById('p-name').textContent = c.full_name || 'Städare';
-  document.getElementById('p-city').textContent = (c.city || 'Sverige') + ' · Spick-verifierad';
+  const cityDisplay = (c.city || 'Sverige').charAt(0).toUpperCase() + (c.city || 'Sverige').slice(1).toLowerCase();
+  const verified = c.identity_verified ? ' · 🔐 BankID-verifierad' : '';
+  document.getElementById('p-city').textContent = cityDisplay + verified;
   document.title = (c.full_name || 'Städare') + ' | Spick';
 
   const rating = parseFloat(c.avg_rating || 0);
-  const stars = '⭐'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
-  document.getElementById('p-stars').textContent = stars;
-  document.getElementById('p-rating-text').textContent = rating > 0 ? rating.toFixed(1) + '/5 (' + (c.review_count || 0) + ' betyg)' : 'Ny på Spick';
+  if (rating > 0) {
+    const stars = '⭐'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+    document.getElementById('p-stars').textContent = stars;
+    document.getElementById('p-rating-text').textContent = rating.toFixed(1) + '/5 (' + (c.review_count || 0) + ' betyg)';
+  } else {
+    document.getElementById('p-stars').textContent = '';
+    document.getElementById('p-rating-text').textContent = '🌟 Ny på Spick';
+  }
 
   // Badges
   const badges = [];
-  if (c.bankid_verified) badges.push('<span class="badge badge-blue">🔐 BankID-verifierad</span>');
+  if (c.identity_verified) badges.push('<span class="badge badge-blue">🔐 BankID-verifierad</span>');
   const tier = c.commission_tier || c.tier || 'new';
   const tierLabels = { new: null, established: '⭐ Silver', professional: '🏅 Gold', elite: '👑 Platinum' };
   if (tierLabels[tier]) badges.push('<span class="badge badge-purple">' + tierLabels[tier] + '</span>');
@@ -163,6 +170,9 @@ async function loadProfile() {
   document.getElementById('s-jobs').textContent = c.total_jobs || c.completed_bookings || 0;
   document.getElementById('s-rate').textContent = c.hourly_rate || 350;
   document.getElementById('s-repeat').textContent = (c.repeat_rate ? Math.round(c.repeat_rate * 100) : 0) + '%';
+  if ((c.total_jobs || 0) === 0) {
+    document.querySelector('.stats').style.display = 'none';
+  }
 
   // Bio
   if (c.bio) {
