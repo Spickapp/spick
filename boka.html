@@ -1086,6 +1086,14 @@ function getAvailableSlots(dateStr, neededHours) {
   });
   latestStart = Math.max(latestStart, earliestStart);
 
+  // Filtrera bort passerade tider om datumet är idag
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  if (dateStr === todayStr) {
+    const nowMin = today.getHours() * 60 + today.getMinutes() + 120; // +2h buffert
+    earliestStart = Math.max(earliestStart, Math.ceil(nowMin / 60) * 60); // runda upp till nästa heltimme
+  }
+
   const slots = [];
   for (let startMin = earliestStart; startMin <= latestStart; startMin += 60) {
     // Kolla om minst 1 städare kan ta detta fönster
