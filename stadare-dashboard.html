@@ -2064,18 +2064,34 @@ async function removeBlockedDate(id) {
 
 // ── STRIPE CONNECT ───────────────────────────────────────────
 async function startStripeConnect() {
-  showToast('Öppnar Stripe...');
-  const {data:{session}} = await SB.auth.getSession();
-  if (!session?.access_token) { showToast('❌ Du måste vara inloggad'); return; }
-  const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+session.access_token},
-    body:JSON.stringify({action:'onboard_cleaner',cleaner_id:cleaner.id,email:cleaner._email,name:cleaner.full_name})
-  }).catch(()=>null);
-  if (res?.ok) {
-    const {url} = await res.json();
-    if (url) window.open(url,'_blank');
-  } else { showToast('❌ Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se'); }
+  showToast('⏳ Öppnar Stripe...');
+  try {
+    const {data:{session}} = await SB.auth.getSession();
+    if (!session?.access_token) { showToast('❌ Du måste vara inloggad'); return; }
+
+    console.log('stripe-connect payload:', {cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name});
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+session.access_token},
+      body: JSON.stringify({action:'onboard_cleaner', cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name})
+    });
+
+    const body = await res.json().catch(() => ({}));
+    console.log('stripe-connect response:', res.status, body);
+
+    if (res.ok && body.url) {
+      window.open(body.url, '_blank');
+      showToast('✅ Stripe öppnad i ny flik');
+    } else {
+      const errMsg = body.error || body.message || 'Inget svar från Stripe';
+      console.error('stripe-connect error:', errMsg);
+      showToast('❌ ' + errMsg);
+    }
+  } catch(e) {
+    console.error('startStripeConnect exception:', e);
+    showToast('❌ Kunde inte ansluta: ' + e.message);
+  }
 }
 
 async function checkConnectStatus() {
