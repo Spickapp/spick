@@ -1116,8 +1116,8 @@ async function loadCleanerByEmail(email, authUserId) {
 // ── JOBS ─────────────────────────────────────────────────────
 async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
-    R.select('bookings', `select=*,key_info,customer_notes,reminders_sent&cleaner_id=eq.${cleaner.id}&payment_status=in.(paid,pending)&order=booking_date.asc`),
-    R.select('bookings', `select=*&payment_status=eq.paid&cleaner_id=is.null&city=eq.${encodeURIComponent(cleaner.city || 'Stockholm')}&order=booking_date.asc&limit=15`)
+    R.select('bookings', `select=*&cleaner_id=eq.${cleaner.id}&payment_status=in.(paid,pending)&order=booking_date.asc`),
+    R.select('bookings', `select=*&payment_status=eq.paid&cleaner_id=is.null&order=booking_date.asc&limit=15`)
   ]);
 
   let openJobs = cityJobs.data || [];
