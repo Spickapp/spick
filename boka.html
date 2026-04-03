@@ -1672,9 +1672,26 @@ async function addrSearch(q) {
       const data = await res.json();
       const predictions = data.predictions || [];
       if (!predictions.length) { list.style.display='none'; return; }
-      list.innerHTML = predictions.map(p =>
-        `<div class="addr-item" onclick="pickAddr('${escHtml(p.description).replace(/'/g,"&#39;")}')">${escHtml(p.description)}</div>`
-      ).join('');
+      list.innerHTML = predictions.map(p => {
+        var parts = p.description.split(',').map(function(s) { return s.trim(); });
+        var street = parts[0] || '';
+        // Fix "8, Klippgatan" → "Klippgatan 8"
+        if (parts.length > 1 && /^\d/.test(street)) {
+          street = parts[1] + ' ' + street;
+          parts.splice(1, 1);
+        }
+        var city = '';
+        var skip = ['sverige', 'stockholms län', 'västra götalands län', 'skåne län'];
+        for (var i = 1; i < parts.length; i++) {
+          var lp = parts[i].toLowerCase();
+          if (lp.match(/^\d/) || skip.some(function(s) { return lp.includes(s); }) || lp.includes('kommun') || lp.includes('län')) continue;
+          city = parts[i];
+          break;
+        }
+        var short = city ? street + ', ' + city : street;
+        var full = escHtml(p.description).replace(/'/g,"&#39;");
+        return '<div class="addr-item" onclick="pickAddr(\'' + full + '\')">' + escHtml(short) + '</div>';
+      }).join('');
       list.style.display = 'block';
     } catch(e) { list.style.display='none'; }
   }, 300);
@@ -1685,6 +1702,9 @@ function pickAddr(val) {
   // till "Klippgatan 8A, Solna" (gatuadress + stad)
   var parts = val.split(',').map(function(s) { return s.trim(); });
   var street = parts[0] || val;
+  if (parts.length > 1 && /^\d/.test(street)) {
+    street = parts[1].trim() + ' ' + street;
+  }
   // Hitta stad: hoppa över stadsdel, ta kommun-namnet (utan "kommun"/"län")
   var city = '';
   var skip = ['sverige', 'stockholms län', 'västra götalands län', 'skåne län'];
