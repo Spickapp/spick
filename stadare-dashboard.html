@@ -359,7 +359,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
         <div id="ob-steps">
           <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> Konto skapat</div>
-          <div class="ob-step" id="ob-2" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> Ladda upp profilbild</div>
+          <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check">⬜</span> Skicka profilbild till hello@spick.se</div>
           <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> Skriv en personlig beskrivning</div>
           <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> Ställ in ditt veckoschema</div>
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> Anslut bankkonto via Stripe</div>
@@ -1024,7 +1024,7 @@ function loadPreferences() {
 // ── DELA PROFIL ──────────────────────────────────────
 function shareProfile() {
   if (!cleaner?.id) return;
-  const url = `${location.origin}/stadare.html?focus=${cleaner.id}`;
+  const url = `${location.origin}/stadare-profil.html?id=${cleaner.id}`;
   navigator.clipboard.writeText(url).then(() => {
     showToast('✅ Länk kopierad!');
   }).catch(() => {
