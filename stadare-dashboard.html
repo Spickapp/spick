@@ -769,11 +769,6 @@ body{top:0!important}
           <input type="range" id="pref-radius" min="2" max="50" value="10" oninput="document.getElementById('radius-val').textContent=this.value" style="width:100%">
           <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--m)"><span>2 km</span><span>50 km</span></div>
         </div>
-        <div style="margin-bottom:14px">
-          <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:6px">Stadsdelar / postnummer (valfritt)</label>
-          <input type="text" id="pref-zones" placeholder="T.ex. Södermalm, Vasastan, 11230" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem;min-height:48px">
-          <div style="font-size:.7rem;color:var(--m);margin-top:4px">Kommaseparerade. Lämna tomt = hela radien.</div>
-        </div>
         <button onclick="saveArea()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">💾 Spara arbetsområde</button>
         <div id="area-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
@@ -1016,11 +1011,13 @@ async function saveArea() {
 
   const homeAddress = document.getElementById('pref-address')?.value.trim() || '';
 
-  const {error} = await R.update('cleaners', { home_address: homeAddress }, `id=eq.${cleaner.id}`);
+  const radius = parseInt(document.getElementById('pref-radius')?.value) || 10;
+  const {error} = await R.update('cleaners', { home_address: homeAddress, service_radius_km: radius }, `id=eq.${cleaner.id}`);
   if (error) {
     msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
     cleaner.home_address = homeAddress;
+    cleaner.service_radius_km = radius;
     msg.textContent = '✅ Arbetsområde sparat!'; msg.style.color = 'var(--g)';
     try {
       await fetch(SUPA_URL + '/functions/v1/geo', {
