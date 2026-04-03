@@ -1000,7 +1000,9 @@ function loadPreferences() {
 // ── DELA PROFIL ──────────────────────────────────────
 function shareProfile() {
   if (!cleaner?.id) return;
-  const url = `${location.origin}/stadare-profil.html?id=${cleaner.id}`;
+  const slug = cleaner.slug || cleaner.id;
+  const param = cleaner.slug ? 's' : 'id';
+  const url = `${location.origin}/stadare-profil.html?${param}=${slug}`;
   navigator.clipboard.writeText(url).then(() => {
     showToast('✅ Länk kopierad!');
   }).catch(() => {
