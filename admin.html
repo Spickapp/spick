@@ -2740,7 +2740,7 @@ async function approveApplication(id, name, email, city, services, rate) {
   // Skapa städare i cleaners-tabellen
   const { data: existing } = await SB.from('cleaners').select('id').eq('email', email).single();
   if (existing) {
-    await SB.from('cleaners').update({ status: 'godkänd', is_approved: true }).eq('email', email);
+    await SB.from('cleaners').update({ status: 'aktiv', is_approved: true }).eq('email', email);
   } else {
     // services kan vara komma-separerad sträng eller array
     const svcsArr = Array.isArray(services)
@@ -2750,7 +2750,7 @@ async function approveApplication(id, name, email, city, services, rate) {
       full_name: name, email, city,
       services: svcsArr,
       hourly_rate: parseInt(rate) || 350,
-      status: 'godkänd', is_approved: true,
+      status: 'aktiv', is_approved: true,
       avg_rating: null, review_count: 0,
       payout_status: 'pending',
       created_at: new Date().toISOString()

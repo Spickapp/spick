@@ -335,7 +335,7 @@ body{top:0!important}
       </div>
       <div class="inp-grp" style="margin-top:20px">
         <input type="text" id="otp-code" inputmode="numeric" autocomplete="one-time-code"
-               maxlength="6" placeholder="000000" style="text-align:center;font-size:1.8rem;letter-spacing:.5em;font-weight:700;padding:16px">
+               maxlength="8" placeholder="000000" style="text-align:center;font-size:1.8rem;letter-spacing:.5em;font-weight:700;padding:16px">
       </div>
       <button class="btn-full" id="otp-btn" onclick="verifyOtpCode()">
         <span>Verifiera</span>
@@ -900,8 +900,8 @@ async function sendOtpCode() {
 
 async function verifyOtpCode() {
   const token = document.getElementById('otp-code').value.trim();
-  if (token.length !== 6 || !/^\d{6}$/.test(token)) {
-    showOtpErr('Ange en 6-siffrig kod.'); return;
+  if (token.length < 6 || !/^\d+$/.test(token)) {
+    showOtpErr('Ange koden du fick via e-post.'); return;
   }
   const btn = document.getElementById('otp-btn');
   btn.disabled = true; btn.querySelector('span').textContent = 'Verifierar...';
