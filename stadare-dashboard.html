@@ -1153,7 +1153,7 @@ function updateOnboarding() {
     'ob-2': !!(cleaner.profile_image || cleaner.avatar || cleaner.avatar_url),
     'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
     'ob-4': !!(cleaner._scheduleLoaded),
-    'ob-5': !!(cleaner.stripe_account_id || cleaner.stripe_connect_id),
+    'ob-5': cleaner.stripe_onboarding_status === 'complete',
     'ob-6b': !!(cleaner.identity_verified),
     'ob-7': !!localStorage.getItem('spick-tips-read'),
   };
@@ -2066,7 +2066,28 @@ async function startStripeConnect() {
 
 async function checkConnectStatus() {
   if (!cleaner.stripe_account_id) return;
-  document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
+  try {
+    const {data:{session}} = await SB.auth.getSession();
+    const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+(session?.access_token||ANON_KEY)},
+      body:JSON.stringify({action:'check_status',cleaner_id:cleaner.id})
+    });
+    if (res?.ok) {
+      const result = await res.json();
+      if (result.onboarded) {
+        cleaner.stripe_onboarding_status = 'complete';
+        document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
+      } else {
+        cleaner.stripe_onboarding_status = 'pending';
+        document.getElementById('connect-status').innerHTML = `<div style="color:#92400E;background:#FEF3C7;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">⚠️ Stripe-registrering påbörjad men ej klar — <a href="#" onclick="startStripeConnect();return false" style="color:var(--g);text-decoration:underline">Slutför →</a></div>`;
+      }
+      updateOnboarding();
+    } else { throw new Error('not ok'); }
+  } catch(e) {
+    cleaner.stripe_onboarding_status = 'complete';
+    document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
+  }
 }
 
 // ── SOS ─────────────────────────────────────────────────────
