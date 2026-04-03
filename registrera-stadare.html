@@ -645,12 +645,17 @@ async function submitRegistration() {
       document.getElementById('confirmedCity').textContent = city;
       goToStep(3); // Go to BankID step
     } else {
-      throw new Error('Serverfel (' + res.status + ')');
+      var errBody = await res.text().catch(() => '');
+      console.error('Server response:', res.status, errBody);
+      throw new Error('Serverfel (' + res.status + '): ' + errBody);
     }
   } catch (e) {
     btn.disabled = false;
     btn.textContent = 'Skicka ansökan →';
-    alert('Något gick fel. Försök igen eller kontakta hello@spick.se');
+    var errDetail = '';
+    try { errDetail = JSON.stringify(await res?.text?.() || e.message); } catch(_) { errDetail = e.message || 'Okänt fel'; }
+    alert('Något gick fel: ' + errDetail + '\n\nKontakta hello@spick.se');
+    console.error('Registration error:', e, errDetail);
   }
 }
 
