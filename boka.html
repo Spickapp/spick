@@ -1632,6 +1632,7 @@ function validatePNR(val) {
 function selectKey(el, type) {
   document.querySelectorAll('.key-opt').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
+  document.getElementById('key-options').style.border = 'none';
   state.keyType = type;
   const inp = document.getElementById('key-info');
   if (type === 'open') {
@@ -1774,12 +1775,20 @@ function goStep4() {
     if (!errors.includes('address')) errors.push('address');
   }
   
+  // Key selection required
+  if (!state.keyType) {
+    errors.push('key');
+    var keySection = document.getElementById('key-options');
+    if (keySection) keySection.style.border = '2px solid #DC2626';
+  }
+
   // ── HANDLE ERRORS ────────────────────────────────────────
   if (errors.length > 0) {
     // Scroll to and focus first error
-    const firstErr = fields[errors[0]].el;
+    const firstErrField = fields[errors[0]];
+    const firstErr = firstErrField ? firstErrField.el : document.getElementById('key-options');
     firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => firstErr.focus(), 300);
+    if (firstErrField) setTimeout(() => firstErr.focus(), 300);
     
     // Show summary at top of form
     const existingSummary = document.getElementById('step3-error-summary');
@@ -1905,6 +1914,7 @@ async function doBook() {
         referral_code: state.referralCode || undefined,
         customer_pnr: rawPnr || undefined,
         customer_notes: ((state.hasPets ? '🐾 Husdjur hemma. ' : '') + (document.getElementById('customer-notes')?.value?.trim() || '')) || undefined,
+        key_info: state.keyInfo || undefined,
       })
     });
     if (!bcRes.ok) {
