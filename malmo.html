@@ -1,349 +1,67 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="UTF-8">
-  <link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Hemstädning Malmö – Boka BankID-verifierad städare med RUT | Spick</title>
-<meta name="description" content="Boka pålitlig hemstädning i Malmö. BankID-verifierade städare, RUT-avdrag 50%, betygsatta av riktiga kunder. Bekräftelse inom 2h.">
-<meta name="keywords" content="städare malmö, boka städning malmö, hemstädning malmö, RUT-avdrag malmö">
-<link rel="canonical" href="https://spick.se/malmo.html">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="js/config.js"></script>
-<script src="js/cro.js" defer></script>
-<script src="js/components.js" defer></script>
-<script src="js/supabase.min.js"></script>
-<script>
-async function joinWaitlist(city, email){
-  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
-  await fetch(SPICK.SUPA_URL+'/rest/v1/customer_profiles',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY,'Prefer':'return=minimal'},
-    body:JSON.stringify({email,city,utm_source:'waitlist'})
-  }).catch(()=>{});
-  await fetch(SPICK.SUPA_URL+'/functions/v1/notify',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY},
-    body:JSON.stringify({type:'waitlist',record:{city,email}})
-  }).catch(()=>{});
-}
-</script>
-<style>
-:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;color:var(--t);}
-nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--grd);}
-.logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--g);text-decoration:none;}
-.nc{font-size:.875rem;color:var(--m);text-decoration:none;}
-.nc:hover{color:var(--g);}
-.hero{background:linear-gradient(135deg,#0a2a1e,var(--g));padding:6rem 5rem;color:#fff;}
-.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:700;margin-bottom:1rem;line-height:1.1;}
-.hero h1 span{color:#9FE1CB;}
-.hero p{font-size:1.05rem;color:rgba(255,255,255,.8);max-width:560px;line-height:1.7;margin-bottom:2.5rem;}
-.hero-cta{display:inline-flex;align-items:center;gap:.5rem;padding:1rem 2.25rem;background:#fff;color:var(--g);border-radius:100px;text-decoration:none;font-weight:700;font-size:.95rem;transition:all .2s;}
-.hero-cta:hover{background:var(--gp);transform:translateY(-2px);}
-.stats{display:flex;gap:3rem;margin-top:3.5rem;flex-wrap:wrap;}
-.stat .sv{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;color:#9FE1CB;}
-.stat .sl{font-size:.85rem;color:rgba(255,255,255,.65);margin-top:.25rem;}
-.sec{padding:5rem 2rem;max-width:1100px;margin:0 auto;}
-.sec-tag{display:inline-block;background:var(--gp);color:var(--g);font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .875rem;border-radius:100px;margin-bottom:1rem;}
-h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--b);margin-bottom:1rem;}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2.5rem;}
-.card{background:#fff;border-radius:18px;padding:1.75rem;border:1px solid var(--grd);}
-.ci{font-size:1.5rem;margin-bottom:.75rem;}
-.card h3{font-size:.95rem;font-weight:600;color:var(--b);margin-bottom:.4rem;}
-.card p{font-size:.875rem;color:var(--m);line-height:1.65;}
-/* SOON */
-.soon-box{background:var(--gr);border-radius:24px;padding:4rem;text-align:center;margin:4rem 2rem;}
-.soon-icon{font-size:4rem;margin-bottom:1.5rem;}
-.soon-box h2{font-family:'Playfair Display',serif;font-size:2.2rem;margin-bottom:.875rem;}
-.soon-box p{font-size:1rem;color:var(--m);max-width:500px;margin:0 auto 2rem;line-height:1.7;}
-.wl-form{display:flex;gap:.75rem;max-width:420px;margin:0 auto;flex-wrap:wrap;justify-content:center;}
-.wl-form input{flex:1;min-width:200px;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;}
-.wl-form input:focus{border-color:var(--g);}
-.wl-btn{padding:.875rem 1.75rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.875rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.wl-btn:hover{background:var(--gm);}
-.faq{padding:5rem 2rem;max-width:760px;margin:0 auto;}
-.fi{border:1.5px solid var(--grd);border-radius:14px;overflow:hidden;margin-bottom:.75rem;}
-.fq{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.5rem;cursor:pointer;font-size:.925rem;font-weight:500;}
-.fq:hover{background:var(--gr);}
-.fi.open .fq{background:var(--gp);color:var(--g);}
-.fa{display:none;padding:1rem 1.5rem 1.25rem;font-size:.875rem;color:var(--m);line-height:1.75;border-top:1px solid var(--grd);}
-.fi.open .fa{display:block;}
-.cta{background:var(--b);padding:6rem 5rem;text-align:center;}
-.cta h2{font-family:'Playfair Display',serif;font-size:2.5rem;color:#fff;margin-bottom:1rem;}
-.cta p{font-size:1rem;color:#9E9E99;max-width:500px;margin:0 auto 2.5rem;line-height:1.7;}
-.cta a{display:inline-block;padding:1rem 2.75rem;background:var(--g);color:#fff;border-radius:100px;font-size:1rem;font-weight:700;text-decoration:none;}
-.cta a:hover{background:var(--gm);}
-footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
-footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2rem;font-weight:700;}
-footer p{font-size:.8rem;color:#4A4A45;}
-@media(max-width:900px){nav,footer,footer{padding:1rem 1.5rem;}.hero,.cta{padding:4rem 1.5rem;}.grid{grid-template-columns:1fr;}.sec{padding:3rem 1.5rem;}}
-
-.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;border:none;background:none;border-radius:4px;}
-.hamburger span{display:block;width:22px;height:2px;background:currentColor;border-radius:2px;transition:all .3s;}
-.mob-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;}
-.mob-panel{position:fixed;top:0;right:0;width:280px;height:100%;background:#fff;padding:2rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem;z-index:201;transform:translateX(100%);transition:transform .3s;}
-.mob-panel.open{transform:translateX(0);}
-.mob-panel a{font-size:1rem;color:#1C1C1A;text-decoration:none;font-weight:500;padding:.75rem 0;border-bottom:1px solid #E8E8E4;}
-.mob-panel a:last-child{border:none;margin-top:auto;}
-.mob-close{align-self:flex-end;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6B6960;margin-bottom:1rem;}
-@media(max-width:768px){.hamburger{display:flex!important;}}
-
-/* === SPICK NAV/FOOTER — inbyggd CSS (backup om components.js ej laddas) === */
-:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff;}
-nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8E8E4;position:sticky;top:0;z-index:100;backdrop-filter:blur(8px);}
-.logo{font-family:'Playfair Display',Georgia,serif;font-size:1.7rem;font-weight:700;color:#0F6E56;text-decoration:none;}
-.nav-links{display:flex;align-items:center;gap:2rem;}
-.nl{font-size:.9rem;color:#6B6960;text-decoration:none;transition:color .2s;}
-.nl:hover{color:#0F6E56;}
-.nl-btn{padding:.55rem 1.4rem;border-radius:100px;font-size:.875rem;font-weight:600;color:#fff;background:#0F6E56;text-decoration:none;transition:all .2s;}
-.nl-btn:hover{background:#1D9E75;}
-.nl-out{padding:.55rem 1.2rem;border-radius:100px;font-size:.875rem;font-weight:500;color:#0F6E56;border:1.5px solid #0F6E56;text-decoration:none;transition:all .2s;}
-.nl-out:hover{background:#E1F5EE;}
-.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;border:none;background:none;}
-.hamburger span{display:block;width:22px;height:2px;background:#1C1C1A;border-radius:2px;transition:all .3s;}
-.mob-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;}
-.mob-panel{background:#fff;width:280px;height:100%;margin-left:auto;padding:2rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem;}
-.mob-panel a{font-size:1.1rem;color:#1C1C1A;text-decoration:none;font-weight:500;padding:.75rem 0;border-bottom:1px solid #E8E8E4;}
-.mob-panel a:last-child{border:none;}
-footer{background:#080808;padding:4rem 5rem 2rem;}
-.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem;}
-.footer-logo{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700;color:#1D9E75;margin-bottom:.75rem;}
-.footer-desc{font-size:.875rem;color:#5A5A55;line-height:1.7;max-width:260px;}
-.footer-contact{margin-top:1.25rem;}
-.footer-contact a{font-size:.875rem;color:#1D9E75;text-decoration:none;}
-footer h4{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#3A3A35;margin-bottom:1rem;}
-footer ul{list-style:none;display:flex;flex-direction:column;gap:.625rem;}
-footer a{font-size:.875rem;color:#6B6B65;text-decoration:none;transition:color .2s;}
-footer a:hover{color:#1D9E75;}
-.footer-bottom{border-top:1px solid #1A1A1A;padding-top:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
-.footer-bottom p{font-size:.8rem;color:#3A3A35;}
-.footer-bottom-links{display:flex;gap:1.5rem;}
-.footer-bottom-links a{font-size:.8rem;color:#3A3A35;text-decoration:none;}
-@media(max-width:1024px){nav{padding:1rem 2rem;}.footer-top{grid-template-columns:1fr 1fr;}.footer-top>:first-child{grid-column:1/-1;}}
-@media(max-width:768px){.nav-links{display:none;}.hamburger{display:flex;}}
-@media(max-width:640px){footer{padding:3rem 1.5rem 2rem;}}
-/* === END SPICK NAV/FOOTER === */
-</style>
-<meta property="og:image" content="https://spick.se/assets/og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta property="og:title" content="Städare i Malmö – Spick">
-<meta property="og:description" content="Boka betygsatta städare i Malmö. RUT-avdrag 50%. Boka online på 2 min.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://spick.se/malmo.html">
-<meta property="og:image" content="https://spick.se/assets/og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://spick.se/malmo.html">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": ["LocalBusiness", "HomeAndConstructionBusiness"], "name": "Spick – Städare Malmö", "description": "Boka BankID-verifierade städare i Malmö. Hemstädning, storstädning och flyttstädning med RUT-avdrag 50%.", "url": "https://spick.se/malmo.html", "telephone": "+46760505153", "email": "hello@spick.se", "areaServed": "Malmö", "geo": {"@type": "GeoCoordinates", "latitude": "55.6050", "longitude": "13.0038"}, "priceRange": "250-600 kr/h", "paymentAccepted": "Card, Klarna, Swish", "openingHours": "Mo-Su 07:00-20:00", "aggregateRating": {"@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "47"}}</script>
-  <script src="analytics.js" defer></script>
-  <script src="pwa.js" defer></script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Hem","item":"https://spick.se/"},{"@type":"ListItem","position":2,"name":"Städare","item":"https://spick.se/stadare.html"},{"@type":"ListItem","position":3,"name":"Malmö","item":"https://spick.se/malmo.html"}]}
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hemstädning Malmö — Kommer snart | Spick</title>
+  <meta name="description" content="Spick expanderar till Malmö. Anmäl dig till väntelistan så meddelar vi dig när vi lanserar.">
+  <link rel="canonical" href="https://spick.se/malmo.html">
+  <link rel="icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'DM Sans',sans-serif;background:#FAFAF8;color:#1C1C1A;min-height:100vh;display:flex;flex-direction:column}
+    .nav{padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8E8E4}
+    .logo{font-size:1.3rem;font-weight:700;color:#0F6E56;text-decoration:none}
+    .nav-link{color:#1C1C1A;text-decoration:none;font-size:.9rem;font-weight:500}
+    .hero{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
+    .card{background:#fff;border-radius:20px;border:1.5px solid #E8E8E4;padding:3rem 2.5rem;max-width:520px;width:100%;text-align:center}
+    h1{font-size:1.8rem;margin-bottom:.75rem;line-height:1.3}
+    .sub{color:#6B6960;font-size:1rem;margin-bottom:2rem;line-height:1.6}
+    .highlight{color:#0F6E56;font-weight:600}
+    .form{display:flex;gap:.5rem;margin-bottom:1rem}
+    .form input{flex:1;padding:.75rem 1rem;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit}
+    .form button{padding:.75rem 1.5rem;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+    .form button:hover{background:#0A5A46}
+    .note{font-size:.8rem;color:#9E9E9A}
+    #wl-ok{display:none;background:#E1F5EE;border-radius:10px;padding:1rem;color:#065F46;font-size:.9rem;margin-top:1rem}
+    .active{margin-top:2rem;padding-top:1.5rem;border-top:1px solid #E8E8E4;font-size:.85rem;color:#6B6960}
+    .active a{color:#0F6E56;font-weight:600;text-decoration:none}
+    .footer{padding:1.5rem 2rem;text-align:center;font-size:.8rem;color:#9E9E9A;border-top:1px solid #E8E8E4}
+    @media(max-width:500px){.card{padding:2rem 1.5rem}.form{flex-direction:column}h1{font-size:1.4rem}}
+  </style>
+  <script>const SPICK={SUPA_URL:'https://urjeijcncsyuletprydy.supabase.co',SUPA_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MjIxNjMsImV4cCI6MjA1ODM5ODE2M30.K2Bv0mRGFup2BGLM3MUOj2MI50WQKV-cml-gCKLajE8'};</script>
+  <script src="js/supabase.min.js"></script>
 </head>
 <body>
-<nav>
-  <a href="index.html" class="logo">Spick</a>
-  <div class="nav-links">
-    <a href="hur-det-funkar.html" class="nl">Hur det funkar</a>
-    <a href="blogg/" class="nl">Blogg</a>
-    <a href="priser.html" class="nl">Priser</a>
-    <a href="boka.html" class="nl">Städare</a>
-    <a href="mitt-konto.html" class="nl">Mitt konto</a>
-    <a href="bli-stadare.html" class="nl-out">Bli städare</a>
-    <a href="boka.html" class="nl-btn">Boka städning</a>
-  </div>
-  <button class="hamburger" onclick="document.getElementById('mobMenu').style.display='flex'" aria-label="Öppna meny">
-    <span></span><span></span><span></span>
-  </button>
-</nav>
-<div class="mob-menu" id="mobMenu" style="display:none" onclick="this.style.display='none'">
-  <div class="mob-panel" onclick="event.stopPropagation()">
-    <a href="boka.html">Boka städning</a>
-    <a href="hur-det-funkar.html">Hur det funkar</a>
-    <a href="blogg/">Blogg</a>
-    <a href="priser.html">Priser</a>
-    <a href="boka.html">Städare</a>
-    <a href="bli-stadare.html">Bli städare</a>
-    <a href="faq.html">Vanliga frågor</a>
-    <a href="kontakt.html">Kontakt</a>
-  </div>
-</div>
-
-<div class="hero">
-  <h1>Städare i <span>Malmö</span><br>du verkligen litar på</h1>
-  <p>Spick lanserar i Malmö under 2026. Betygsatta städare med RUT-avdrag – boka direkt online. Anmäl dig och få 20% rabatt vid lansering!</p>
-  <a href="#waitlist" class="hero-cta">Anmäl dig – lanseras snart! →</a>
-  <div class="stats">
-    <div class="stat"><div class="sv">Snart</div><div class="sl">städare klara</div></div><div class="stat"><div class="sv">50%</div><div class="sl">billigare med RUT</div></div><div class="stat"><div class="sv">4.9★</div><div class="sl">snittbetyg</div></div>
-  </div>
-</div>
-
-<div class="soon-box" id="waitlist">
-  <div class="soon-icon">🗺️</div>
-  <h2>Spick lanserar i Malmö 2026!</h2>
-  <p>Vi rekryterar just nu städare i Malmö. Skriv upp dig på väntelistan – du får ett mail samma dag vi lanserar, och som tidig användare får du 20% rabatt på din första bokning.</p>
-  <div class="wl-form">
-    <input type="email" id="wlemail" placeholder="din@email.se">
-    <button class="wl-btn" onclick="joinWL()">Notifiera mig! →</button>
-  </div>
-  <p id="wl-ok" style="color:var(--g);margin-top:1rem;display:none">✅ Tack! Du är med på listan och får 20% rabatt vid lansering i Malmö!</p>
-</div>
-
-<div class="sec">
-  <div class="sec-tag">Varför Spick?</div>
-  <h2>Det bästa för dig i Malmö</h2>
-  <div class="grid">
-    <div class="card"><div class="ci">✓</div><h3>Verifierade städare</h3><p>Alla städare har genomgått ID-kontroll, F-skatteverifiering och referenstagning.</p></div>
-    <div class="card"><div class="ci">⭐</div><h3>Äkta betyg</h3><p>Varje betyg är satt av en riktig kund efter en riktig städning. Ingen manipulation.</p></div>
-    <div class="card"><div class="ci">💚</div><h3>RUT-avdrag 50%</h3><p>Du betalar bara hälften. Vi hanterar hela RUT-administrationen automatiskt.</p></div>
-  </div>
-</div>
-
-<div class="sec" id="cleaners-sec">
-  <div class="sec-tag">Tillgängliga städare</div>
-  <h2 id="cleaners-heading">Städare i Malmö</h2>
-  <div id="cleaners-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem">
-    <div style="grid-column:1/-1;text-align:center;padding:2rem;color:#888">Laddar städare...</div>
-  </div>
-  <div style="text-align:center;margin-top:2rem">
-    <a href="stadare.html?city=Malm%C3%B6" style="display:inline-flex;align-items:center;gap:.5rem;padding:.875rem 2rem;background:var(--g);color:#fff;border-radius:100px;text-decoration:none;font-weight:600;font-size:.9rem">
-      Se alla städare i Malmö →
-    </a>
-  </div>
-</div>
-<div class="faq">
-  <div class="sec-tag">Vanliga frågor</div>
-  <h2>Om Spick i Malmö</h2>
-  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Hur bokar jag städare i Malmö?</span><span>▼</span></div><div class="fa">Välj din städare, välj datum och tid. Bekräftelse inom 2 timmar. Betalning via Swish efter utförd städning.</div></div>
-  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Gäller RUT-avdraget i Malmö?</span><span>▼</span></div><div class="fa">Ja! RUT-avdraget gäller hela Sverige, inklusive Malmö. Du betalar 50% – vi hanterar resten med Skatteverket.</div></div>
-  <div class="fi"><div class="fq" onclick="this.closest('.fi').classList.toggle('open')"><span>Kan jag boka samma städare varje gång?</span><span>▼</span></div><div class="fa">Absolut! Vi uppmuntrar det. Välj din favorit och boka dem regelbundet – de lär sig dina önskemål.</div></div>
-</div>
-
-<div class="cta">
-  <h2>Städare i Malmö – snart!</h2>
-  <p>Vi lanserar i Malmö under 2026. Anmäl dig och var bland de första!</p>
-  <a href="#waitlist">
-    Anmäl mig →
-  </a>
-</div>
-
-<footer></footer>
-
-<script>
-const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
-async function joinWL(){
-  const city = 'Malmö';
-  const e=document.getElementById('wlemail')?.value;
-  if(!e)return;
-  await SB.from('notifications').insert([{type:'waitlist_malmo',recipient_email:e,subject:'Väntelista: Malmö',status:'pending'}]);
-  document.getElementById('wl-ok').style.display='block';
-  document.querySelector('.wl-form').style.opacity='.4';
-  // Skicka välkomstmail till oss
-  await joinWaitlist(city||'', e);
-}
-
-// Ladda städare för denna stad
-async function loadLocalCleaners(){
-  const city = 'Malmö';
-  const {data} = await SB.from('cleaners')
-    .select('id,full_name,hourly_rate,avg_rating,review_count,city,bio,services,identity_verified,bonus_level')
-    .eq('is_approved',true)
-    .ilike('city', city)
-    .order('avg_rating', {ascending:false})
-    .limit(3);
-  
-  const grid = document.getElementById('cleaners-grid');
-  if(!grid) return;
-  
-  if(!data?.length){
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#888">Inga städare i Malmö ännu – <a href=\"stadare.html\" style=\"color:var(--g)\">se alla städare →</a></div>';
-    return;
-  }
-  
-  const COLORS=['#0F6E56','#534AB7','#D85A30'];
-  function ini(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2);}
-  function stars(r){return'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r));}
-  
-  grid.innerHTML = data.map((c,i) => {
-    const price = c.hourly_rate||350;
-    const rating = parseFloat(c.avg_rating||0).toFixed(1);
-    const bio = (c.bio||'Professionell städare.').slice(0,90);
-    return `<div style="background:#fff;border-radius:16px;border:1px solid #E8E8E4;padding:1.25rem;display:flex;flex-direction:column;gap:.75rem">
-      <div style="display:flex;gap:.75rem;align-items:center">
-        <div style="width:48px;height:48px;border-radius:50%;background:${COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:#fff;flex-shrink:0">${escHtml(ini(c.full_name))}</div>
-        <div>
-          ${c.identity_verified?'<span style=\"font-size:.65rem;font-weight:600;color:#0F6E56;background:#E1F5EE;padding:.15rem .5rem;border-radius:99px\">✓ BankID</span><br>':''}
-          <div style="font-size:.9rem;font-weight:600;color:#1C1C1A">${escHtml(c.full_name)}</div>
-          <div style="font-size:.75rem;color:#6B6960">${stars(rating)} ${rating} ${c.review_count ? "("+c.review_count+")" : ""}</div>
-        </div>
+  <nav class="nav">
+    <a href="/" class="logo">Spick</a>
+    <a href="boka.html" class="nav-link">Boka städning →</a>
+  </nav>
+  <div class="hero">
+    <div class="card">
+      <h1>📍 Spick kommer till Malmö</h1>
+      <p class="sub">Just nu finns vi i <span class="highlight">Storstockholm</span>. Vi expanderar snart till Malmö — anmäl dig så blir du först att veta!</p>
+      <div class="form">
+        <input type="email" id="wl-email" placeholder="din@email.se">
+        <button onclick="joinWL()">Meddela mig</button>
       </div>
-      <div style="font-size:.8rem;color:#6B6960;line-height:1.5">${escHtml(bio)}...</div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div><span style="font-size:1rem;font-weight:700;color:#1C1C1A">${price} kr</span><span style="font-size:.75rem;color:#6B6960">/h</span></div>
-        <a href="boka.html?name=${encodeURIComponent(c.full_name)}&rate=${price}&id=${encodeURIComponent(c.id)}" style="padding:.5rem 1rem;background:#0F6E56;color:#fff;border-radius:99px;font-size:.8rem;font-weight:600;text-decoration:none">Boka →</a>
-      </div>
-    </div>`;
-  }).join('');
-}
-document.addEventListener("DOMContentLoaded", loadLocalCleaners);
-</script>
-  <style>
-#spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:white;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-#spick-cookie.show{transform:translateY(0)}
-#spick-cookie p{font-size:13px;line-height:1.5;flex:1;min-width:200px;opacity:.9}
-#spick-cookie a{color:#0F6E56;text-decoration:none}
-.cookie-btns{display:flex;gap:10px;flex-shrink:0}
-.cookie-accept{background:#0F6E56;color:white;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
-.cookie-decline{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.2);padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
-</style>
-  <div id="spick-cookie">
-  <p>🍪 Vi använder cookies för att förbättra din upplevelse Läs mer i vår <a href="integritetspolicy.html">integritetspolicy</a>.</p>
-  <div class="cookie-btns">
-    <button class="cookie-decline" onclick="cookieChoice(false)">Endast nödvändiga</button>
-    <button class="cookie-accept" onclick="cookieChoice(true)">Acceptera alla</button>
+      <p class="note">Vi spammar inte. Bara ett mejl när vi lanserar i Malmö.</p>
+      <div id="wl-ok">✅ Tack! Vi meddelar dig när vi finns i Malmö.</div>
+      <div class="active">Bor du i Stockholm? <a href="boka.html">Boka städning nu →</a></div>
+    </div>
   </div>
-</div>
+  <footer class="footer">© 2026 Spick · Haghighi Consulting AB · 559402-4522 · <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></footer>
   <script>
-(function(){
-  var c = document.getElementById('spick-cookie');
-  if (!c) return;
-  var choice = localStorage.getItem('spick-cookie-consent');
-  if (!choice) {
-    setTimeout(function(){ c.classList.add('show'); }, 3000);
-  }
-})();
-
-function cookieChoice(accept) {
-  localStorage.setItem('spick-cookie-consent', accept ? 'all' : 'necessary');
-  var c = document.getElementById('spick-cookie');
-  if (c) { c.style.transform = 'translateY(100%)'; setTimeout(function(){ c.remove(); }, 400); }
-  if (accept && window.gtag) {
-    gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'granted' });
-  }
-}
-</script>
-
-<div class="mob-panel" id="mobPanel">
-  <button class="mob-close" onclick="closeMobMenu()">✕</button>
-  <a href="index.html">Hem</a>
-  <a href="boka.html">Boka städning</a>
-  <a href="boka.html">Boka städning</a>
-  <a href="hur-det-funkar.html">Hur det funkar</a>
-  <a href="priser.html">Priser</a>
-  <a href="bli-stadare.html">Bli städare</a>
-  <a href="boka.html" style="background:#0F6E56;color:#fff;border-radius:100px;text-align:center;padding:.75rem;border:none;font-weight:600;">Boka nu →</a>
-</div>
-<script>
-function openMobMenu(){document.getElementById('mobOverlay').style.display='block';document.getElementById('mobPanel').classList.add('open');}
-function closeMobMenu(){document.getElementById('mobOverlay').style.display='none';document.getElementById('mobPanel').classList.remove('open');}
-</script>
+    const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+    async function joinWL() {
+      const email = document.getElementById('wl-email').value.trim();
+      if (!email || !email.includes('@')) return;
+      await SB.from('waitlist').insert([{ city: 'Malmö', email }]).catch(() => {});
+      document.getElementById('wl-ok').style.display = 'block';
+      document.querySelector('.form').style.opacity = '.4';
+      document.querySelector('.form button').disabled = true;
+    }
+  </script>
 </body>
 </html>
-
-
-
-

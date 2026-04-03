@@ -142,16 +142,12 @@ const FOOTER_HTML = `
     </ul>
   </div>
   <div>
-    <h4>Populära städer</h4>
+    <h4>Städer</h4>
     <ul>
-      <li><a href="${P}stockholm.html">Stockholm</a></li>
-      <li><a href="${P}goteborg.html">Göteborg</a></li>
-      <li><a href="${P}malmo.html">Malmö</a></li>
-      <li><a href="${P}uppsala.html">Uppsala</a></li>
-      <li><a href="${P}helsingborg.html">Helsingborg</a></li>
-      <li><a href="${P}linkoping.html">Linköping</a></li>
-      <li><a href="${P}orebro.html">Örebro</a></li>
-      <li><a href="${P}lund.html">Lund</a></li>
+      <li><a href="${P}stockholm.html">Stockholm ✓</a></li>
+      <li><a href="${P}goteborg.html">Göteborg — snart</a></li>
+      <li><a href="${P}malmo.html">Malmö — snart</a></li>
+      <li><a href="${P}uppsala.html">Uppsala — snart</a></li>
     </ul>
   </div>
 </div>

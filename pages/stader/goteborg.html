@@ -1,13 +1,67 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="UTF-8">
-<title>Omdirigerar till spick.se/goteborg.html</title>
-<link rel="canonical" href="https://spick.se/goteborg.html">
-<meta http-equiv="refresh" content="0;url=/goteborg.html">
-<script>window.location.replace('/goteborg.html');</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hemstädning Göteborg — Kommer snart | Spick</title>
+  <meta name="description" content="Spick expanderar till Göteborg. Anmäl dig till väntelistan så meddelar vi dig när vi lanserar.">
+  <link rel="canonical" href="https://spick.se/goteborg.html">
+  <link rel="icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'DM Sans',sans-serif;background:#FAFAF8;color:#1C1C1A;min-height:100vh;display:flex;flex-direction:column}
+    .nav{padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8E8E4}
+    .logo{font-size:1.3rem;font-weight:700;color:#0F6E56;text-decoration:none}
+    .nav-link{color:#1C1C1A;text-decoration:none;font-size:.9rem;font-weight:500}
+    .hero{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
+    .card{background:#fff;border-radius:20px;border:1.5px solid #E8E8E4;padding:3rem 2.5rem;max-width:520px;width:100%;text-align:center}
+    h1{font-size:1.8rem;margin-bottom:.75rem;line-height:1.3}
+    .sub{color:#6B6960;font-size:1rem;margin-bottom:2rem;line-height:1.6}
+    .highlight{color:#0F6E56;font-weight:600}
+    .form{display:flex;gap:.5rem;margin-bottom:1rem}
+    .form input{flex:1;padding:.75rem 1rem;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit}
+    .form button{padding:.75rem 1.5rem;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+    .form button:hover{background:#0A5A46}
+    .note{font-size:.8rem;color:#9E9E9A}
+    #wl-ok{display:none;background:#E1F5EE;border-radius:10px;padding:1rem;color:#065F46;font-size:.9rem;margin-top:1rem}
+    .active{margin-top:2rem;padding-top:1.5rem;border-top:1px solid #E8E8E4;font-size:.85rem;color:#6B6960}
+    .active a{color:#0F6E56;font-weight:600;text-decoration:none}
+    .footer{padding:1.5rem 2rem;text-align:center;font-size:.8rem;color:#9E9E9A;border-top:1px solid #E8E8E4}
+    @media(max-width:500px){.card{padding:2rem 1.5rem}.form{flex-direction:column}h1{font-size:1.4rem}}
+  </style>
+  <script>const SPICK={SUPA_URL:'https://urjeijcncsyuletprydy.supabase.co',SUPA_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MjIxNjMsImV4cCI6MjA1ODM5ODE2M30.K2Bv0mRGFup2BGLM3MUOj2MI50WQKV-cml-gCKLajE8'};</script>
+  <script src="js/supabase.min.js"></script>
 </head>
 <body>
-<p>Omdirigerar till <a href="/goteborg.html">spick.se/goteborg.html</a>...</p>
+  <nav class="nav">
+    <a href="/" class="logo">Spick</a>
+    <a href="boka.html" class="nav-link">Boka städning →</a>
+  </nav>
+  <div class="hero">
+    <div class="card">
+      <h1>📍 Spick kommer till Göteborg</h1>
+      <p class="sub">Just nu finns vi i <span class="highlight">Storstockholm</span>. Vi expanderar snart till Göteborg — anmäl dig så blir du först att veta!</p>
+      <div class="form">
+        <input type="email" id="wl-email" placeholder="din@email.se">
+        <button onclick="joinWL()">Meddela mig</button>
+      </div>
+      <p class="note">Vi spammar inte. Bara ett mejl när vi lanserar i Göteborg.</p>
+      <div id="wl-ok">✅ Tack! Vi meddelar dig när vi finns i Göteborg.</div>
+      <div class="active">Bor du i Stockholm? <a href="boka.html">Boka städning nu →</a></div>
+    </div>
+  </div>
+  <footer class="footer">© 2026 Spick · Haghighi Consulting AB · 559402-4522 · <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></footer>
+  <script>
+    const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+    async function joinWL() {
+      const email = document.getElementById('wl-email').value.trim();
+      if (!email || !email.includes('@')) return;
+      await SB.from('waitlist').insert([{ city: 'Göteborg', email }]).catch(() => {});
+      document.getElementById('wl-ok').style.display = 'block';
+      document.querySelector('.form').style.opacity = '.4';
+      document.querySelector('.form button').disabled = true;
+    }
+  </script>
 </body>
 </html>
