@@ -136,8 +136,8 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
   // Hitta godkända städare i rätt stad med rätt tjänst, sorterade på betyg
   const { data: cleaners } = await sb
     .from("cleaners")
-    .select("id, full_name, avg_rating, city, auth_user_id")
-    .eq("status", "godkänd")
+    .select("id, full_name, avg_rating, city, auth_user_id, email")
+    .eq("status", "aktiv")
     .order("avg_rating", { ascending: false });
 
   if (!cleaners?.length) return null;
@@ -233,9 +233,9 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   if (preferredCleanerId) {
     const { data: preferred } = await sb
       .from("cleaners")
-      .select("id, full_name, avg_rating, auth_user_id")
+      .select("id, full_name, avg_rating, auth_user_id, email")
       .eq("id", preferredCleanerId)
-      .eq("status", "godkänd")
+      .eq("status", "aktiv")
       .single();
     cleaner = preferred;
   }
@@ -367,6 +367,9 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
     if (cleaner.auth_user_id) {
       const { data: authData } = await sb.auth.admin.getUserById(cleaner.auth_user_id);
       cleanerEmail = authData?.user?.email || null;
+    }
+    if (!cleanerEmail && cleaner.email) {
+      cleanerEmail = cleaner.email;
     }
 
     if (cleanerEmail) {
