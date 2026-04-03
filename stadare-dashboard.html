@@ -15,6 +15,17 @@ document.documentElement.style.visibility='hidden';
 <meta name="robots" content="noindex,nofollow">
   <link rel="canonical" href="https://spick.se/stadare-dashboard.html">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'sv',
+    includedLanguages: 'sv,en,uk,ru,pl,th,tl,so,es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <script src="js/patch-min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <style>
@@ -255,6 +266,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 /* Green flash animation for job accept */
 @keyframes flashGreen{0%{background:#D1FAE5;transform:scale(.98)}50%{background:#A7F3D0}100%{opacity:0;transform:scale(.95) translateX(100px);height:0;padding:0;margin:0;overflow:hidden}}
 .job-card.accepted-flash{animation:flashGreen .6s ease forwards}
+.lang-bar{background:#085041;padding:5px 1rem;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
+.lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
+.lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.lang-sep{color:rgba(255,255,255,.2);font-size:.7rem;user-select:none}
+#google_translate_element{position:absolute;left:-9999px;opacity:0;pointer-events:none}
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#goog-gt-tt,.goog-te-balloon-frame{display:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}
 .ob-step{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:.88rem;cursor:pointer}
 .ob-step:last-child{border:none}
 .ob-step.done{color:var(--g)}
@@ -268,7 +289,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 
 <!-- ── LOGIN ── -->
 <div id="screen-login" class="screen">
-  <div class="login-wrap">
+  <div class="lang-bar" style="position:fixed;top:0;left:0;right:0;z-index:300">
+    <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/16x12/se.png" alt="Svenska" width="16" height="12"></button>
+    <span class="lang-sep">·</span>
+    <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/16x12/gb.png" alt="English" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/16x12/ua.png" alt="Українська" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/16x12/ru.png" alt="Русский" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/16x12/pl.png" alt="Polski" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/16x12/th.png" alt="ภาษาไทย" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/16x12/ph.png" alt="Tagalog" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/16x12/so.png" alt="Soomaali" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/16x12/es.png" alt="Español" width="16" height="12"></button>
+  </div>
+  <div id="google_translate_element"></div>
+  <div class="login-wrap" style="margin-top:32px">
     <div class="login-card">
       <div class="login-logo">Spick</div>
       <div class="login-tagline">Städarportalen · Logga in för att se dina uppdrag</div>
@@ -314,6 +348,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 
 <!-- ── APP ── -->
 <div id="screen-app" class="screen">
+
+  <!-- Language Selector -->
+  <div class="lang-bar">
+    <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/16x12/se.png" alt="Svenska" width="16" height="12"></button>
+    <span class="lang-sep">·</span>
+    <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/16x12/gb.png" alt="English" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/16x12/ua.png" alt="Українська" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/16x12/ru.png" alt="Русский" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/16x12/pl.png" alt="Polski" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/16x12/th.png" alt="ภาษาไทย" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/16x12/ph.png" alt="Tagalog" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/16x12/so.png" alt="Soomaali" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/16x12/es.png" alt="Español" width="16" height="12"></button>
+  </div>
 
   <!-- Header -->
   <div class="app-header">
@@ -559,6 +607,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
           </div>
         </div>
 
+        <div class="settings-section">
+          <div class="settings-section-title">Behöver du hjälp?</div>
+          <div class="card" style="text-align:center">
+            <p style="font-size:.88rem;color:var(--m);margin-bottom:14px">Vi svarar snabbt — oftast inom minuter.</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a href="https://wa.me/46760505153" target="_blank" style="display:block;background:#25D366;color:#fff;padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">💬 Skriv på WhatsApp</a>
+              <a href="tel:+46760505153" style="display:block;background:var(--gr);color:var(--g);padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">📞 Ring 076-050 51 53</a>
+              <a href="mailto:hello@spick.se" style="display:block;background:#f5f5f3;color:var(--b);padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">✉️ hello@spick.se</a>
+            </div>
+          </div>
+        </div>
 
         <!-- Logout -->
         <button onclick="doLogout()" style="width:100%;padding:14px;background:#FEE2E2;color:#991B1B;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;min-height:48px">Logga ut</button>
@@ -742,34 +801,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
   </div>
 </div><!-- /screen-app -->
 
-<!-- ONBOARDING för nya städare -->
-<div id="onboard-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:24px;padding:36px;max-width:440px;width:100%;text-align:center">
-    <div style="font-size:3rem;margin-bottom:12px">🎉</div>
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:8px">Välkommen till Spick!</h2>
-    <p style="color:#6B6960;font-size:.88rem;line-height:1.7;margin-bottom:20px">Här är allt du behöver veta för att komma igång:</p>
-    <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
-      <div style="display:flex;gap:12px;align-items:flex-start">
-        <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">1</div>
-        <div><div style="font-weight:600;font-size:.88rem">Acceptera uppdrag</div><div style="font-size:.8rem;color:#6B6960">Nya bokningar visas direkt – acceptera eller avböj</div></div>
-      </div>
-      <div style="display:flex;gap:12px;align-items:flex-start">
-        <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">2</div>
-        <div><div style="font-weight:600;font-size:.88rem">Checka in på plats</div><div style="font-size:.8rem;color:#6B6960">GPS-incheckning startar städningen och frigör betalningen</div></div>
-      </div>
-      <div style="display:flex;gap:12px;align-items:flex-start">
-        <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">3</div>
-        <div><div style="font-weight:600;font-size:.88rem">Markera klar</div><div style="font-size:.8rem;color:#6B6960">Meddela oss när städningen är klar</div></div>
-      </div>
-      <div style="display:flex;gap:12px;align-items:flex-start">
-        <div style="width:32px;height:32px;background:#F59E0B;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">💰</div>
-        <div><div style="font-weight:600;font-size:.88rem">Utbetalning</div><div style="font-size:.8rem;color:#6B6960">83% av bokningsbeloppet – utbetalt inom 3–5 bankdagar</div></div>
-      </div>
-    </div>
-    <button onclick="closeOnboarding()" style="width:100%;padding:14px;background:#0F6E56;color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Kom igång! →</button>
-    <button onclick="closeOnboarding()" style="background:none;border:none;color:#6B6960;font-size:.78rem;cursor:pointer;margin-top:8px;min-height:48px">Visa inte igen</button>
-  </div>
-</div>
 
 <!-- SOS -->
 <div id="sos-btn" title="SOS Nödknapp" style="display:none" onclick="document.getElementById('sos-modal').classList.add('show')">🆘</div>
@@ -847,11 +878,6 @@ const R = {
   }
 };
 
-function closeOnboarding() {
-  const modal = document.getElementById('onboard-modal');
-  if (modal) modal.style.display = 'none';
-  localStorage.setItem('spick_onboarded', '1');
-}
 
 let cleaner = null, jobs = [], realtimeCh = null, countdownTimer = null;
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
@@ -1064,7 +1090,7 @@ async function loadCleanerByEmail(email, authUserId) {
   }
 
   if (error || !data) {
-    showErr('Kontot hittades inte. Kontakta hello@spick.se');
+    showErr('Kontot hittades inte. Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se');
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningskod'; }
     window.history.replaceState({}, '', window.location.pathname);
@@ -1076,7 +1102,7 @@ async function loadCleanerByEmail(email, authUserId) {
   cleaner._email = email;
 
   if (cleaner.status === 'avstängd') {
-    showErr('⛔ Ditt konto har stängts av. Kontakta hello@spick.se för mer information.');
+    showErr('⛔ Ditt konto har stängts av. Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se');
     showScreen('login');
     return;
   }
@@ -1127,11 +1153,6 @@ async function loadCleanerByEmail(email, authUserId) {
 
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
   setupRealtime();
-  if ((cleaner.total_jobs || 0) === 0 && !localStorage.getItem('spick_onboarded')) {
-    setTimeout(() => {
-      document.getElementById('onboard-modal').style.display = 'flex';
-    }, 800);
-  }
 }
 
 // ── JOBS ─────────────────────────────────────────────────────
@@ -1196,6 +1217,30 @@ function updateOnboarding() {
   }
   const prog = document.getElementById('ob-progress');
   if (prog) prog.textContent = done + ' av 6 klart';
+}
+
+function switchLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  // Sync both lang-bars
+  document.querySelectorAll(`.lang-btn[title="${btn?.title}"]`).forEach(b => b.classList.add('on'));
+  if (lang === 'sv') {
+    const frame = document.querySelector('.goog-te-banner-frame');
+    if (frame) {
+      const innerDoc = frame.contentDocument || frame.contentWindow.document;
+      const restoreBtn = innerDoc.querySelector('.goog-close-link');
+      if (restoreBtn) restoreBtn.click();
+    }
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
+    if (!document.querySelector('.goog-te-banner-frame')) location.reload();
+    return;
+  }
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
+  const sel = document.querySelector('.goog-te-combo');
+  if (sel) { sel.value = lang; sel.dispatchEvent(new Event('change')); }
+  else { location.reload(); }
 }
 
 function markTipsRead() {
@@ -2040,7 +2085,7 @@ async function startStripeConnect() {
   if (res?.ok) {
     const {url} = await res.json();
     if (url) window.open(url,'_blank');
-  } else { showToast('❌ Kontakta hello@spick.se'); }
+  } else { showToast('❌ Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se'); }
 }
 
 async function checkConnectStatus() {
