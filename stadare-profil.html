@@ -145,7 +145,7 @@ async function loadProfile() {
   document.getElementById('p-avatar').textContent = initial;
   document.getElementById('p-name').textContent = c.full_name || 'Städare';
   const cityDisplay = (c.city || 'Sverige').charAt(0).toUpperCase() + (c.city || 'Sverige').slice(1).toLowerCase();
-  const verified = c.identity_verified ? ' · 🔐 BankID-verifierad' : '';
+  const verified = c.identity_verified ? ' · 🔐 ID-verifierad' : '';
   document.getElementById('p-city').textContent = cityDisplay + verified;
   document.title = (c.full_name || 'Städare') + ' | Spick';
 
@@ -161,7 +161,7 @@ async function loadProfile() {
 
   // Badges
   const badges = [];
-  if (c.identity_verified) badges.push('<span class="badge badge-blue">🔐 BankID-verifierad</span>');
+  if (c.identity_verified) badges.push('<span class="badge badge-blue">🔐 ID-verifierad</span>');
   const tier = c.commission_tier || c.tier || 'new';
   const tierLabels = { new: null, established: '⭐ Silver', professional: '🏅 Gold', elite: '👑 Platinum' };
   if (tierLabels[tier]) badges.push('<span class="badge badge-purple">' + tierLabels[tier] + '</span>');

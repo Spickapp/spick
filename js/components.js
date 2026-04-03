@@ -120,8 +120,8 @@ const FOOTER_HTML = `
       <li><a href="${P}blogg/">Blogg & Guider</a></li>
       <li><a href="${P}kontakt.html">Kontakt</a></li>
       <li><a href="${P}mitt-konto.html">Mitt konto</a></li>
-      <li><a href="${P}presentkort.html">Presentkort 🎁</a></li>
-      <li><a href="${P}garanti.html">Nöjdhetsgaranti</a></li>
+      <li><a href="${P}presentkort.html">Presentkort</a></li>
+      <li><a href="${P}nojdhetsgaranti.html">Nöjdhetsgaranti</a></li>
       <li><a href="${P}sakerhet.html">Säkerhet</a></li>
       <li><a href="${P}priser.html">Priser</a></li>
     </ul>
