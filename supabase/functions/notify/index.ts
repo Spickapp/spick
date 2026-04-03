@@ -267,8 +267,8 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Spick provision</span><span class="val">17%</span></div>
           <div class="row"><span class="lbl">Betalning</span><span class="val">3–5 bankdagar</span></div>
         </div>
-        <p>Du visas nu på spick.se och kan ta emot bokningar. Logga in för att se dina uppdrag.</p>
-        <a class="btn" href="https://portal.spick.se">Gå till min dashboard →</a>
+        <p>Du visas nu på spick.se och kan ta emot bokningar. Logga in med din e-post — du får en engångskod.</p>
+        <a class="btn" href="https://spick.se/stadare-dashboard.html">Gå till min dashboard →</a>
       `));
     }
 
