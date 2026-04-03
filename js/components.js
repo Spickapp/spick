@@ -5,23 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 (function() {
 'use strict';
-// ── INJECT CSP (körs direkt, före allt annat) ──────────────────
-if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]') && !document.getElementById('google_translate_element')) {
-  const csp = document.createElement('meta');
-  csp.httpEquiv = 'Content-Security-Policy';
-  csp.content = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.clarity.ms https://translate.google.com https://translate.googleapis.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://*.supabase.co https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://flagcdn.com https://translate.google.com https://www.google.com https://translate.googleapis.com",
-    "connect-src 'self' https://urjeijcncsyuletprydy.supabase.co https://js.stripe.com https://www.google-analytics.com https://www.facebook.com https://region1.google-analytics.com https://www.clarity.ms https://translate.googleapis.com",
-    "frame-src 'self' https://js.stripe.com https://translate.google.com",
-    "object-src 'none'",
-    "base-uri 'self'"
-  ].join('; ');
-  document.head.prepend(csp);
-}
+
 
 // ── INJECT CSS (körs direkt, innan DOM-beroende logik) ───────
 // Injicera en gång per sida även om scriptet laddas flera gånger
