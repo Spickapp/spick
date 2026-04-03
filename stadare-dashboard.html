@@ -255,6 +255,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 /* Green flash animation for job accept */
 @keyframes flashGreen{0%{background:#D1FAE5;transform:scale(.98)}50%{background:#A7F3D0}100%{opacity:0;transform:scale(.95) translateX(100px);height:0;padding:0;margin:0;overflow:hidden}}
 .job-card.accepted-flash{animation:flashGreen .6s ease forwards}
+.ob-step{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:.88rem;cursor:pointer}
+.ob-step:last-child{border:none}
+.ob-step.done{color:var(--g)}
+.ob-step:not(.done):hover{background:#f9f9f7;border-radius:8px}
+.ob-check{font-size:1.1rem;flex-shrink:0}
 </style>
 <script src="js/config.js"></script>
 <script src="js/commission.js"></script>
@@ -346,6 +351,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
         <div style="font-size:2.5rem;margin-bottom:10px">☀️</div>
         <div style="font-family:'Playfair Display',serif;font-size:1.15rem;margin-bottom:6px">Inga jobb idag</div>
         <div style="color:var(--m);font-size:.85rem;line-height:1.6">Kolla fliken <strong>Jobb</strong> för nya matchningar.</div>
+      </div>
+
+      <!-- Onboarding Checklist -->
+      <div class="card" id="onboarding-checklist" style="display:none;margin:16px;border:2px solid var(--g);border-radius:16px;padding:20px">
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:4px">Kom igång på Spick</div>
+        <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
+        <div id="ob-steps">
+          <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> Konto skapat</div>
+          <div class="ob-step" id="ob-2" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> Ladda upp profilbild</div>
+          <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> Skriv en personlig beskrivning</div>
+          <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> Ställ in ditt veckoschema</div>
+          <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> Anslut bankkonto via Stripe</div>
+          <div class="ob-step" id="ob-6" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
+        </div>
+        <div style="margin-top:12px;font-size:.78rem;color:var(--m)" id="ob-progress">1 av 6 klart</div>
       </div>
 
       <!-- Today's Timeline -->
@@ -539,17 +559,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
           </div>
         </div>
 
-        <!-- Tips för städare -->
-        <div class="card" style="background:linear-gradient(135deg,var(--gr),#fff);border:1px solid #A7F3D0">
-          <div style="display:flex;align-items:center;gap:14px">
-            <div style="font-size:2.5rem">💡</div>
-            <div>
-              <div style="font-weight:700;margin-bottom:4px">Tips för städare</div>
-              <div style="font-size:.82rem;color:var(--m);margin-bottom:10px">Så får du fler bokningar och bättre omdömen.</div>
-              <a href="tips-for-stadare.html" style="display:inline-flex;align-items:center;gap:6px;background:var(--g);color:#fff;padding:10px 16px;border-radius:10px;font-size:.82rem;font-weight:600;text-decoration:none;min-height:48px">Läs tips →</a>
-            </div>
-          </div>
-        </div>
 
         <!-- Logout -->
         <button onclick="doLogout()" style="width:100%;padding:14px;background:#FEE2E2;color:#991B1B;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;min-height:48px">Logga ut</button>
@@ -1140,6 +1149,43 @@ function renderHome() {
   renderMyUpcomingJobs();
   updateGoal();
   updateBadge();
+  updateOnboarding();
+}
+
+function updateOnboarding() {
+  if (!cleaner) return;
+  const checks = {
+    'ob-1': true,
+    'ob-2': !!(cleaner.profile_image || cleaner.avatar || cleaner.avatar_url),
+    'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
+    'ob-4': !!(cleaner.availability_schedule),
+    'ob-5': !!(cleaner.stripe_connect_id),
+    'ob-6': !!localStorage.getItem('spick-tips-read'),
+  };
+  let done = 0;
+  Object.entries(checks).forEach(([id, ok]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (ok) {
+      el.classList.add('done');
+      el.querySelector('.ob-check').textContent = '✅';
+      done++;
+    } else {
+      el.classList.remove('done');
+      el.querySelector('.ob-check').textContent = '⬜';
+    }
+  });
+  const box = document.getElementById('onboarding-checklist');
+  if (box) {
+    box.style.display = done >= 6 ? 'none' : 'block';
+  }
+  const prog = document.getElementById('ob-progress');
+  if (prog) prog.textContent = done + ' av 6 klart';
+}
+
+function markTipsRead() {
+  localStorage.setItem('spick-tips-read', '1');
+  updateOnboarding();
 }
 
 function renderHeroCard() {
