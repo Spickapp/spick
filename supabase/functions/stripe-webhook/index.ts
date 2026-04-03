@@ -35,32 +35,32 @@ const STRIPE_TOLERANCE_SEC = 300; // 5 min replay window
 
 async function verifyStripeSignature(body: string, sigHeader: string, secret: string): Promise<boolean> {
   try {
-    const parts = sigHeader.split(",");
-    const t = parts.find(p => p.startsWith("t="))?.split("=")[1];
-    const v1 = parts.find(p => p.startsWith("v1="))?.split("=")[1];
-    if (!t || !v1) return false;
+    const parts: Record<string, string> = {};
+    for (const item of sigHeader.split(",")) {
+      const [key, val] = item.split("=");
+      if (key && val) parts[key.trim()] = val.trim();
+    }
+    const t = parts["t"];
+    const v1 = parts["v1"];
+    if (!t || !v1) { console.warn("Missing t or v1 in signature"); return false; }
 
     const timestamp = parseInt(t, 10);
     const now = Math.floor(Date.now() / 1000);
-    if (isNaN(timestamp) || Math.abs(now - timestamp) > STRIPE_TOLERANCE_SEC) {
-      console.warn(`Stripe replay rejected: diff ${Math.abs(now - timestamp)}s`);
-      return false;
-    }
+    if (Math.abs(now - timestamp) > 300) { console.warn("Timestamp too old:", Math.abs(now - timestamp), "s"); return false; }
 
-    const payload = `${t}.${body}`;
+    const signedPayload = t + "." + body;
+    const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
-      "raw", new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      "raw", encoder.encode(secret),
+      { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"]
     );
-    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-    const computed = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const sigBytes = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload));
+    const computed = [...new Uint8Array(sigBytes)].map(b => b.toString(16).padStart(2, '0')).join('');
 
-    if (computed !== v1) {
-      console.warn(`Stripe sig mismatch: computed=${computed.substring(0,16)}... expected=${v1.substring(0,16)}...`);
-    }
+    console.log("Sig check:", { t, computed: computed.slice(0,16), expected: v1.slice(0,16), match: computed === v1 });
     return computed === v1;
   } catch(e) {
-    console.error("Stripe sig verify error:", e);
+    console.error("Sig verify error:", e);
     return false;
   }
 }
@@ -531,6 +531,8 @@ serve(async (req) => {
   const valid = await verifyStripeSignature(body, sig, STRIPE_WEBHOOK_SECRET);
   if (!valid) {
     console.warn("Stripe-signatur matchade inte — kör ändå (temporärt)");
+    console.warn("STRIPE_WEBHOOK_SECRET starts with:", STRIPE_WEBHOOK_SECRET?.slice(0, 10) || "MISSING");
+    console.warn("Signature header:", sig?.slice(0, 50) || "MISSING");
   }
 
   let event: Record<string, unknown>;
