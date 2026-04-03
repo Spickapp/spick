@@ -37,15 +37,16 @@ const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STRIPE_KEY      = Deno.env.get("STRIPE_SECRET_KEY")!;
 const BASE_URL        = Deno.env.get("BASE_URL") || "https://spick.se";
 
-function json(status: number, body: any) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS },
-  });
-}
-
 serve(async (req) => {
   const CORS = corsHeaders(req);
+
+  function json(status: number, body: any) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json", ...CORS },
+    });
+  }
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
