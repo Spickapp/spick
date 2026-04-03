@@ -635,18 +635,18 @@ body{top:0!important}
     <div class="sub-view-header"><button onclick="closeSubView('sv-profile')">←</button><h2>Redigera profil</h2></div>
     <div class="sub-view-body">
       <div class="card">
-        <div class="prof-row"><span class="lbl">Namn</span><input class="edit-input" id="edit-name" placeholder="Ditt namn" style="max-width:180px"></div>
+        <div class="prof-row"><span class="lbl">Namn <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-name" placeholder="Ditt namn" required></div>
         <div class="prof-row"><span class="lbl">E-post</span><span id="prof-email" style="font-size:.85rem;color:var(--m)">–</span></div>
-        <div class="prof-row"><span class="lbl">Telefon</span><input class="edit-input" id="edit-phone" placeholder="07X-XXX XX XX" style="max-width:160px"></div>
-        <div class="prof-row"><span class="lbl">Stad</span><input class="edit-input" id="edit-city" placeholder="Stockholm" style="max-width:140px"></div>
+        <div class="prof-row"><span class="lbl">Telefon <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-phone" placeholder="07X-XXX XX XX" required></div>
+        <div class="prof-row"><span class="lbl">Stad <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-city" placeholder="Stockholm" required></div>
         <div class="prof-row"><span class="lbl">Timpris</span>
           <div style="display:flex;align-items:center;gap:6px">
-            <input class="edit-input" id="edit-rate" type="number" min="250" max="600" style="max-width:80px">
-            <span style="font-size:.82rem;color:var(--m)">kr/h · du får <strong style="color:var(--g)" id="edit-keep">291 kr/h</strong></span>
+            <input class="edit-input" id="edit-rate" type="number" min="250" max="600">
+            <span style="font-size:.82rem;color:var(--m)" title="Efter Spicks plattformsavgift (12–17% beroende på nivå)">kr/h · du behåller <strong style="color:var(--g)" id="edit-keep">– kr/h</strong></span>
           </div>
         </div>
-        <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="2" style="max-width:220px;resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea></div>
-        <button class="btn-save" onclick="saveProfile()">💾 Spara ändringar</button>
+        <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
+        <button class="btn-save" id="btn-save-profile" onclick="saveProfile()">💾 Spara ändringar</button>
         <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">✅ Profil sparad!</div>
       </div>
     </div>
@@ -1900,16 +1900,29 @@ function updateKeep() {
   document.getElementById('edit-keep').textContent = Math.round(rate * keepRate) + ' kr/h';
 }
 document.getElementById('edit-rate').addEventListener('input', updateKeep);
+document.getElementById('edit-bio').addEventListener('input', function() { document.getElementById('bio-counter').textContent = this.value.length + '/300'; });
 
 async function saveProfile() {
   const name = document.getElementById('edit-name').value.trim();
-  const phone = document.getElementById('edit-phone').value.trim();
+  const rawPhone = document.getElementById('edit-phone').value.trim();
+  const phone = rawPhone.replace(/[\s\-]/g, '');
   const city = document.getElementById('edit-city').value.trim();
   const rate = parseInt(document.getElementById('edit-rate').value) || 350;
   const bio = document.getElementById('edit-bio').value.trim();
-  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio}, `id=eq.${cleaner.id}`);
+
+  if (name.length < 2) { showToast('Ange ditt namn'); return; }
+  if (!/^0\d{8,11}$/.test(phone)) { showToast('Ange ett giltigt telefonnummer'); return; }
+  if (city.length < 2) { showToast('Ange din stad'); return; }
+  if (rate < 250 || rate > 600) { showToast('Timpris måste vara 250–600 kr'); return; }
+
+  const btn = document.getElementById('btn-save-profile');
+  btn.disabled = true; btn.textContent = '⏳ Sparar...';
+
+  const slug = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug}, `id=eq.${cleaner.id}`);
+  btn.disabled = false; btn.textContent = '💾 Spara ändringar';
   if (error) { showToast('❌ Fel vid sparning'); return; }
-  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio});
+  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug});
   document.getElementById('prof-name').textContent = name;
   document.getElementById('earn-rate').textContent = rate + ' kr/h';
   showToast('✅ Profil sparad!');
