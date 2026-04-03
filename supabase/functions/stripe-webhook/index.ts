@@ -260,6 +260,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   // Uppdatera bokning
   const metadata = session.metadata as Record<string, string> || {};
   await sb.from("bookings").update({
+    status: "pending_confirmation",
     payment_status: "paid",
     payment_method: (session.payment_method_types as string[])?.[0] || "card",
     payment_intent_id: session.payment_intent as string || null,
@@ -307,11 +308,11 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   // ── 1. Bekräftelsemail till kund ────────────────────────────
   const customerHtml = wrap(`
 <div class="check">
-  <span class="check-icon">✅</span>
-  <div class="check-text">Din bokning är bekräftad!</div>
+  <span class="check-icon">⏳</span>
+  <div class="check-text">Bokning mottagen!</div>
 </div>
 <h2>Tack för din bokning, ${fname}! 🌿</h2>
-<p>Vi har tagit emot din betalning och en BankID-verifierad städare är tilldelad till dig.</p>
+<p>Tack för din betalning! Din städare bekräftar uppdraget inom 2 timmar. Du får ett mejl så snart bokningen är bekräftad.</p>
 <div class="card">
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
   <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
@@ -321,7 +322,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
 </div>
 <div class="steps">
-  <div class="step"><div class="step-num">1</div><div class="step-text">Du får en påminnelse 24 timmar innan städningen</div></div>
+  <div class="step"><div class="step-num">1</div><div class="step-text">Din städare bekräftar inom 2 timmar — du får mejl</div></div>
   <div class="step"><div class="step-num">2</div><div class="step-text">Städaren anländer på utsatt tid och utför jobbet</div></div>
   <div class="step"><div class="step-num">3</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
 </div>
@@ -329,14 +330,14 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 <a href="https://spick.se/min-bokning.html?bid=${bookingId}" class="btn">Visa min bokning →</a>
 <hr class="divider">
 <p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
-<p style="font-size:13px">🛡️ <strong>100% nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
+<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
 `);
-  await sendEmail(customerEmail || booking.customer_email, `Bokningsbekräftelse – ${service} den ${date} ✅`, customerHtml);
+  await sendEmail(customerEmail || booking.customer_email, `Bokning mottagen – ${service} den ${date} ⏳`, customerHtml);
 
   // SMS-bekräftelse (fire-and-forget — kräver ELKS-nycklar i Secrets)
   await sendSms(
     booking.customer_phone,
-    `Spick: Bokning bekräftad ✅ ${service} den ${date} kl ${time}. ` +
+    `Spick: Bokning mottagen ⏳ ${service} den ${date} kl ${time}. Din städare bekräftar inom 2h. ` +
     `Se din bokning: https://spick.se/min-bokning.html?bid=${booking.id}`
   );
 
@@ -357,6 +358,9 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
       const cleanerHtml = wrap(`
 <h2>Nytt uppdrag tilldelat! 🧹</h2>
 <p>Hej ${cleaner.full_name?.split(" ")[0] || ""}! Du har fått ett nytt städuppdrag.</p>
+<div style="background:#FEF3C7;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#92400E">
+  <strong>⏰ Bekräfta inom 2 timmar</strong> — Kunden väntar på ditt svar. Logga in på dashboarden för att acceptera eller avvisa uppdraget.
+</div>
 <div class="card">
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
   <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
