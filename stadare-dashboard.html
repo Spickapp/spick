@@ -759,7 +759,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start">
         <div style="width:32px;height:32px;background:#0F6E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">3</div>
-        <div><div style="font-weight:600;font-size:.88rem">Markera klar + ta foton</div><div style="font-size:.8rem;color:#6B6960">Foton skyddar dig vid eventuella klagomål</div></div>
+        <div><div style="font-weight:600;font-size:.88rem">Markera klar</div><div style="font-size:.8rem;color:#6B6960">Meddela oss när städningen är klar</div></div>
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start">
         <div style="width:32px;height:32px;background:#F59E0B;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">💰</div>
@@ -1049,6 +1049,21 @@ async function loadCleanerByEmail(email, authUserId) {
   }
 
   if (error || !data) {
+    // Fallback: sök på email och länka auth_user_id
+    if (email) {
+      const emailRes = await R.selectSingle('cleaners', `select=*&email=eq.${encodeURIComponent(email)}&is_approved=eq.true`);
+      if (emailRes.data) {
+        data = emailRes.data;
+        error = null;
+        // Länka auth_user_id för framtida inloggningar
+        if (authUserId) {
+          await R.update('cleaners', { auth_user_id: authUserId }, `id=eq.${data.id}`);
+        }
+      }
+    }
+  }
+
+  if (error || !data) {
     showErr('Kontot hittades inte. Kontakta hello@spick.se');
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningskod'; }
@@ -1123,7 +1138,7 @@ async function loadCleanerByEmail(email, authUserId) {
 async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
     R.select('bookings', `select=*,key_info,customer_notes,reminders_sent&cleaner_id=eq.${cleaner.id}&payment_status=in.(paid,pending)&order=booking_date.asc`),
-    R.select('bookings', `select=*&payment_status=eq.paid&cleaner_id=is.null&order=booking_date.asc&limit=15`)
+    R.select('bookings', `select=*&payment_status=eq.paid&cleaner_id=is.null&city=eq.${encodeURIComponent(cleaner.city || 'Stockholm')}&order=booking_date.asc&limit=15`)
   ]);
 
   let openJobs = cityJobs.data || [];
@@ -1449,10 +1464,11 @@ function jobCard(j) {
       <span class="timer-dot"></span>
       <span>Tid på plats: </span><span id="timer-txt-${j.id}" style="font-weight:700">00:00</span>
     </div>
+    <!-- Foto-knappar (avaktiverade tills vidare)
     <div style="display:flex;gap:6px;margin-top:6px">
       <button onclick="takePhoto('${j.id}','before')" class="action-btn" style="flex:1;background:${j.photo_before_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_before_url?'#166534':'#374151'}">${j.photo_before_url?'✅':'📸'} Innan</button>
       <button onclick="takePhoto('${j.id}','after')" class="action-btn" style="flex:1;background:${j.photo_after_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_after_url?'#166534':'#374151'}">${j.photo_after_url?'✅':'📸'} Efter</button>
-    </div>
+    </div> -->
     <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;font-size:.82rem">✅ Markera som klar – frigör betalning</button>`;
   }
 
