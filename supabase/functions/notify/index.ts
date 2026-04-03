@@ -90,7 +90,7 @@ serve(async (req) => {
 
   // ── AUTH CHECK ────────────────────────────────────────────
   // Känsliga typer kräver service_role (server-anrop)
-  const SENSITIVE_TYPES = ["cleaner_approved", "manual_reply", "sos_alert", "custom"];
+  const SENSITIVE_TYPES = ["manual_reply", "sos_alert", "custom"];
   if (SENSITIVE_TYPES.includes(type)) {
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.replace("Bearer ", "");
@@ -265,10 +265,10 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Ditt timpris</span><span class="val">${r.hourly_rate || 350} kr/h</span></div>
           <div class="row"><span class="lbl">Din andel</span><span class="val">83% (${Math.round((r.hourly_rate || 350) * 0.83)} kr/h)</span></div>
           <div class="row"><span class="lbl">Spick provision</span><span class="val">17%</span></div>
-          <div class="row"><span class="lbl">Betalning</span><span class="val">10 bankdagar</span></div>
+          <div class="row"><span class="lbl">Betalning</span><span class="val">3–5 bankdagar</span></div>
         </div>
         <p>Du visas nu på spick.se och kan ta emot bokningar. Logga in för att se dina uppdrag.</p>
-        <a class="btn" href="https://spick.se/portal">Gå till min dashboard →</a>
+        <a class="btn" href="https://portal.spick.se">Gå till min dashboard →</a>
       `));
     }
 
