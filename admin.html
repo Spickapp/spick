@@ -873,13 +873,30 @@ async function doLogin() {
   const pw = document.getElementById('admin-pw').value.trim();
   if (!email || !pw) return;
   const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-err');
   if (btn) { btn.textContent = '⏳ Loggar in...'; btn.disabled = true; }
-  
-  const { error } = await SB.auth.signInWithPassword({ email, password: pw });
-  
-  if (error) {
-    document.getElementById('login-err').textContent = 'Fel: ' + error.message;
-    document.getElementById('login-err').style.display = 'block';
+
+  try {
+    console.log('Attempting login for:', email);
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Login timeout efter 10s')), 10000)
+    );
+
+    const loginPromise = SB.auth.signInWithPassword({ email, password: pw });
+    const result = await Promise.race([loginPromise, timeoutPromise]);
+
+    console.log('Login result:', result);
+
+    if (result.error) {
+      errEl.textContent = 'Fel: ' + result.error.message;
+      errEl.style.display = 'block';
+      if (btn) { btn.textContent = 'Logga in →'; btn.disabled = false; }
+    }
+  } catch(e) {
+    console.error('Login exception:', e);
+    errEl.textContent = 'Inloggning misslyckades: ' + e.message;
+    errEl.style.display = 'block';
     if (btn) { btn.textContent = 'Logga in →'; btn.disabled = false; }
   }
 }
