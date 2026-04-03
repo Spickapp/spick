@@ -17,6 +17,17 @@
 <meta property="og:locale" content="sv_SE">
 <link rel="canonical" href="https://spick.se/kontakt.html">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'sv',
+    includedLanguages: 'sv,en,uk,ru,pl,th,tl,so,es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
@@ -82,6 +93,18 @@ h1{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;color:v
 footer{background:#080808;padding:2rem 5rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-top:0;}
 footer span{font-family:'Playfair Display',serif;color:var(--gm);font-size:1.2rem;font-weight:700;}
 footer p{font-size:.8rem;color:#4A4A45;}
+/* ─── LANGUAGE SELECTOR ─── */
+.lang-bar{background:#085041;padding:5px 1.5rem;display:flex;align-items:center;justify-content:center;gap:6px}
+.lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
+.lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
+.lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.lang-sep{color:rgba(255,255,255,.2);font-size:.7rem;user-select:none}
+#google_translate_element{position:absolute;left:-9999px;opacity:0;pointer-events:none}
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#goog-gt-tt,.goog-te-balloon-frame{display:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}
+
 @media(max-width:900px){nav,footer{padding:1rem 1.5rem;}.page{grid-template-columns:1fr;padding:2rem 1rem 4rem;}.ai-features{grid-template-columns:1fr;}}
 
 .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;border:none;background:none;border-radius:4px;}
@@ -143,6 +166,22 @@ footer a:hover{color:#1D9E75;}
 </script>
 </head>
 <body>
+
+<!-- LANGUAGE SELECTOR -->
+<div class="lang-bar">
+  <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska">🇸🇪</button>
+  <span class="lang-sep">·</span>
+  <button class="lang-btn" onclick="switchLang('en',this)" title="English">🇬🇧</button>
+  <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська">🇺🇦</button>
+  <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский">🇷🇺</button>
+  <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski">🇵🇱</button>
+  <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย">🇹🇭</button>
+  <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog">🇵🇭</button>
+  <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali">🇸🇴</button>
+  <button class="lang-btn" onclick="switchLang('es',this)" title="Español">🇦🇷</button>
+</div>
+<div id="google_translate_element"></div>
+
 <nav>
   <a href="index.html" class="logo">Spick</a>
   <div class="nav-links">
@@ -446,6 +485,29 @@ function cookieChoice(accept) {
 <script>
 function openMobMenu(){document.getElementById('mobOverlay').style.display='block';document.getElementById('mobPanel').classList.add('open');}
 function closeMobMenu(){document.getElementById('mobOverlay').style.display='none';document.getElementById('mobPanel').classList.remove('open');}
+
+/* ── LANGUAGE SWITCHER ─────────────── */
+function switchLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  if (lang === 'sv') {
+    const frame = document.querySelector('.goog-te-banner-frame');
+    if (frame) {
+      const innerDoc = frame.contentDocument || frame.contentWindow.document;
+      const restoreBtn = innerDoc.querySelector('.goog-close-link');
+      if (restoreBtn) restoreBtn.click();
+    }
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
+    if (!document.querySelector('.goog-te-banner-frame')) location.reload();
+    return;
+  }
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
+  const sel = document.querySelector('.goog-te-combo');
+  if (sel) { sel.value = lang; sel.dispatchEvent(new Event('change')); }
+  else { location.reload(); }
+}
 </script>
 </body>
 </html>
