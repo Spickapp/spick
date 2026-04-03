@@ -359,7 +359,10 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   <div class="row"><span class="lbl">Tid</span><span class="val">${time}</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
   <div class="row"><span class="lbl">Din intjäning</span><span class="val" style="color:#0F6E56">${earning} kr</span></div>
+  ${booking.key_info ? `<div class="row"><span class="lbl">Tillträde</span><span class="val">🔑 ${esc(booking.key_info)}</span></div>` : ''}
+  ${booking.notes && booking.notes.includes('🐾') ? `<div class="row"><span class="lbl">Husdjur</span><span class="val">🐾 Husdjur hemma</span></div>` : ''}
 </div>
+${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#1E40AF"><strong>📝 Kundens önskemål:</strong> ${esc(booking.notes)}</div>` : ''}
 <p>⚠️ Kan du inte genomföra uppdraget? Hör av dig omgående till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så vi kan omfördela.</p>
 <a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
 <p style="margin-top:24px;font-size:12px;color:#9E9E9A">Vill du sluta ta emot uppdrag? <a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/cleaner-optout?token=${cleaner.auth_user_id}" style="color:#9E9E9A">Avregistrera dig här</a></p>
@@ -378,6 +381,8 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
   <div class="row"><span class="lbl">Datum</span><span class="val">${date} ${time}</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
+  ${booking.key_info ? `<div class="row"><span class="lbl">Tillträde</span><span class="val">🔑 ${esc(booking.key_info)}</span></div>` : ''}
+  ${booking.notes ? `<div class="row"><span class="lbl">Notering</span><span class="val">${esc(booking.notes)}</span></div>` : ''}
   <div class="row"><span class="lbl">Belopp</span><span class="val">${price}${rutNote}</span></div>
   <div class="row"><span class="lbl">Städare</span><span class="val">${cleaner ? cleaner.full_name : "⚠️ EJ TILLDELAD"}</span></div>
   <div class="row"><span class="lbl">Stripe Session</span><span class="val" style="font-size:11px">${stripeSessionId}</span></div>
