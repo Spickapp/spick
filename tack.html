@@ -55,6 +55,9 @@ h1{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--b);margin-b
     <div class="row"><span class="lbl">Tjänst</span><span class="val" id="d-service">–</span></div>
     <div class="row"><span class="lbl">Datum</span><span class="val" id="d-date">–</span></div>
     <div class="row"><span class="lbl">Adress</span><span class="val" id="d-address">–</span></div>
+    <div class="row" id="d-time-row" style="display:none"><span class="lbl">Tid</span><span class="val" id="d-time">–</span></div>
+    <div class="row" id="d-cleaner-row" style="display:none"><span class="lbl">Din städare</span><span class="val" id="d-cleaner">–</span></div>
+    <div class="row" id="d-price-row" style="display:none"><span class="lbl">Betalt</span><span class="val" id="d-price" style="color:var(--g)">–</span></div>
     <div class="row"><span class="lbl">Bokningsnr</span><span class="val" id="d-id" style="font-size:.78rem">–</span></div>
   </div>
 
@@ -70,26 +73,6 @@ h1{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--b);margin-b
       </button>
   <a href="mitt-konto.html" class="btn-outline" style="margin-top:.375rem">Mitt konto – se alla dina bokningar →</a>
   <a href="index.html" class="btn-outline">Tillbaka till startsidan</a>
-      <!-- DELA / REFERRAL -->
-      <div style="background:#F0FDF4;border-radius:12px;padding:1.125rem;margin-top:1rem;text-align:center">
-        <div style="font-size:.85rem;font-weight:600;color:#065F46;margin-bottom:.625rem">🎁 Dela med en vän – ni får båda 100 kr</div>
-        <a id="whatsapp-share" href="#" target="_blank" rel="noopener" 
-           style="display:inline-block;background:#25D366;color:#fff;padding:8px 18px;border-radius:100px;font-size:.82rem;font-weight:600;text-decoration:none;margin:4px">
-          💬 Dela via WhatsApp
-        </a>
-        <button onclick="copyShareLink()" 
-           style="background:#fff;border:1.5px solid #0F6E56;color:#0F6E56;padding:8px 18px;border-radius:100px;font-size:.82rem;font-weight:600;cursor:pointer;margin:4px;font-family:inherit"
-           id="copy-share-btn">
-          📋 Kopiera länk
-        </button>
-      </div>
-
-      <!-- UPSELL -->
-      <div style="background:#F7F7F5;border-radius:12px;padding:1.125rem;margin-top:1.25rem;text-align:center">
-        <div style="font-size:.8rem;font-weight:600;color:#6B6960;margin-bottom:.875rem;text-transform:uppercase;letter-spacing:.05em">Vill du ha det rent varje vecka?</div>
-        <a href="boka.html" style="display:inline-block;background:#0F6E56;color:#fff;padding:.625rem 1.25rem;border-radius:99px;font-size:.825rem;font-weight:600;text-decoration:none;margin:.25rem">Boka abonnemang →</a>
-        <div style="font-size:.75rem;color:#6B6960;margin-top:.75rem">Spara 10% med veckobokning · Avboka när som helst</div>
-      </div>
 </div>
 
 <script>
@@ -99,6 +82,9 @@ const bid = params.get('bid');
 const service = params.get('service');
 const date = params.get('date');
 const address = params.get('address');
+const time = params.get('time');
+const cleanerName = params.get('cleaner_name');
+const price = params.get('price');
 
 // Kalenderexport (.ics)
 function addToCalendar() {
@@ -106,8 +92,13 @@ function addToCalendar() {
   const dt = date ? decodeURIComponent(date) : '';
   const addr = address ? decodeURIComponent(address) : '';
   if (!dt) { alert('Datum saknas – se din bokningsbekräftelse via e-post.'); return; }
-  const start = dt.replace(/-/g, '') + 'T090000';
-  const end   = dt.replace(/-/g, '') + 'T120000';
+  const t = time ? decodeURIComponent(time).replace(':','') : '0900';
+  const hours = 3;
+  const startH = parseInt(t.slice(0,2)) || 9;
+  const startM = parseInt(t.slice(2,4)) || 0;
+  const endH = startH + hours;
+  const start = dt.replace(/-/g, '') + 'T' + String(startH).padStart(2,'0') + String(startM).padStart(2,'0') + '00';
+  const end = dt.replace(/-/g, '') + 'T' + String(endH).padStart(2,'0') + String(startM).padStart(2,'0') + '00';
   const ics = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Spick//Bokning//SV',
     'BEGIN:VEVENT',
@@ -144,6 +135,8 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
     document.getElementById('d-service').textContent = b.service_type || '–';
     document.getElementById('d-date').textContent = b.booking_date || '–';
     document.getElementById('d-address').textContent = b.customer_address || '–';
+    if (b.booking_time) { document.getElementById('d-time').textContent = b.booking_time.slice(0,5); document.getElementById('d-time-row').style.display = 'flex'; }
+    if (b.total_price) { document.getElementById('d-price').textContent = Math.round(b.total_price) + ' kr'; document.getElementById('d-price-row').style.display = 'flex'; }
     document.getElementById('d-id').textContent = b.id.substring(0,8).toUpperCase();
     const bookingBtn = document.getElementById('booking-btn');
     if (bookingBtn) bookingBtn.href = `min-bokning.html?bid=${b.id}`;
@@ -163,6 +156,9 @@ if (service || date) {
   if (service) document.getElementById('d-service').textContent = decodeURIComponent(service);
   if (date) document.getElementById('d-date').textContent = decodeURIComponent(date);
   if (address) document.getElementById('d-address').textContent = decodeURIComponent(address);
+  if (time) { document.getElementById('d-time').textContent = decodeURIComponent(time); document.getElementById('d-time-row').style.display = 'flex'; }
+  if (cleanerName) { document.getElementById('d-cleaner').textContent = decodeURIComponent(cleanerName); document.getElementById('d-cleaner-row').style.display = 'flex'; }
+  if (price) { document.getElementById('d-price').textContent = decodeURIComponent(price) + ' kr'; document.getElementById('d-price-row').style.display = 'flex'; }
   if (bid) {
     document.getElementById('d-id').textContent = bid.substring(0,8).toUpperCase();
     document.getElementById('booking-btn').href = `min-bokning.html?bid=${bid}`;
@@ -198,41 +194,7 @@ if (typeof gtag !== 'undefined') {
 }
 </script>
 <script>
-// Lägg till betygsätt-länk efter 2 sekunder
-setTimeout(() => {
-  const bid = new URLSearchParams(location.search).get('bid') || 
-              new URLSearchParams(location.search).get('session_id');
-  if (bid) {
-    const link = document.createElement('div');
-    link.style.cssText = 'text-align:center;margin:2rem 0;';
-    link.innerHTML = `<a href="betygsatt.html?bid=${encodeURIComponent(bid)}" 
-      style="display:inline-block;background:#F59E0B;color:#fff;padding:.875rem 2rem;border-radius:100px;font-weight:700;text-decoration:none;font-family:DM Sans,sans-serif">
-      ⭐ Betygsätt din städare →</a>`;
-    document.body.appendChild(link);
-  }
-}, 3000);
-</script>
-
-<script>
-// Dela-länk
-(function() {
-  const email = new URLSearchParams(window.location.search).get('email') || '';
-  const code  = email ? btoa(email).slice(0,8).toUpperCase() : 'SPICK10';
-  const link  = `${window.location.origin}/boka.html?ref=${code}`;
-  const msg   = `Boka städning hos Spick – jag har precis bokat och rekommenderar! Använd min länk och vi får båda 100 kr: ${link}`;
-  const wpEl  = document.getElementById('whatsapp-share');
-  if (wpEl) wpEl.href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window._shareLink = link;
-})();
-
-function copyShareLink() {
-  navigator.clipboard.writeText(window._shareLink || window.location.origin).then(() => {
-    const btn = document.getElementById('copy-share-btn');
-    if (btn) { btn.textContent = '✅ Kopierat!'; setTimeout(() => btn.textContent = '📋 Kopiera länk', 2500); }
-  });
-}
-
-// Push-notiser uppmaning (bug #33)
+// Push-notiser uppmaning
 async function askPushPermission() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
   if (Notification.permission === 'granted' || Notification.permission === 'denied') return;

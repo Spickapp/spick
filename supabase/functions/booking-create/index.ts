@@ -331,7 +331,7 @@ serve(async (req) => {
     params.append("customer_email", email);
     params.append(
       "success_url",
-      `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}&address=${encodeURIComponent(address || "")}`
+      `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}&address=${encodeURIComponent(address || "")}&time=${encodeURIComponent(time || "")}&cleaner_name=${encodeURIComponent(cleaner.full_name || cleaner_name || "")}&price=${stripeAmount}`
     );
     params.append("cancel_url", `${BASE_URL}/boka.html?cancelled=1`);
 
