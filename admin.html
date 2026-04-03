@@ -829,6 +829,40 @@ const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY, {
   }
 });
 const ANON_KEY = SPICK.SUPA_KEY;
+
+// REST helpers — bypass SB.from() to avoid SDK deadlock
+function _adminHeaders() {
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+  return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
+}
+const AR = {
+  async select(table, query) {
+    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + (query||''), { headers: _adminHeaders() });
+    return { data: r.ok ? await r.json() : [], error: r.ok ? null : { message: 'HTTP ' + r.status } };
+  },
+  async update(table, data, matchQuery) {
+    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + matchQuery, {
+      method: 'PATCH', headers: { ..._adminHeaders(), 'Prefer':'return=minimal' },
+      body: JSON.stringify(data)
+    });
+    return { error: r.ok ? null : { message: 'HTTP ' + r.status } };
+  },
+  async insert(table, data) {
+    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table, {
+      method: 'POST', headers: { ..._adminHeaders(), 'Prefer':'return=representation' },
+      body: JSON.stringify(data)
+    });
+    return { data: r.ok ? await r.json() : null, error: r.ok ? null : { message: 'HTTP ' + r.status } };
+  },
+  async del(table, matchQuery) {
+    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + matchQuery, {
+      method: 'DELETE', headers: { ..._adminHeaders(), 'Prefer':'return=minimal' }
+    });
+    return { error: r.ok ? null : { message: 'HTTP ' + r.status } };
+  }
+};
+
 // ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
 let ADMIN_EMAIL = null; // resolved from Supabase auth session
 let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
@@ -995,18 +1029,18 @@ async function loadInbox() {
 
   listEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--m)">Laddar...</div>';
 
-  let query = SB.from('emails').select('*').order('received_at', { ascending: false }).limit(100);
-  if (catFilter)    query = query.eq('category', catFilter);
-  if (statusFilter) query = query.eq('status', statusFilter);
+  let qp = 'select=*&order=received_at.desc&limit=100';
+  if (catFilter)    qp += '&category=eq.' + encodeURIComponent(catFilter);
+  if (statusFilter) qp += '&status=eq.' + encodeURIComponent(statusFilter);
 
-  const { data: emails, error } = await query;
+  const { data: emails, error } = await AR.select('emails', qp);
   if (error || !emails) {
     listEl.innerHTML = '<div style="color:red;padding:1rem">Fel: ' + (error?.message||'okänd') + '</div>';
     return;
   }
 
   // Statistikrad
-  const { data: allStats } = await SB.from('emails').select('category,status,priority');
+  const { data: allStats } = await AR.select('emails', 'select=category,status,priority');
   if (allStats && statsEl) {
     const nya     = allStats.filter(e => e.status === 'ny').length;
     const hög     = allStats.filter(e => e.priority === 'hög').length;
@@ -1058,8 +1092,8 @@ async function loadInbox() {
 }
 
 async function openEmail(id) {
-  const { data: e } = await SB.from('emails').select('*').eq('id', id).single();
-  if (!e) return;
+  const { data: eArr } = await AR.select('emails', 'select=*&id=eq.' + id + '&limit=1');
+  const e = eArr?.[0]; if (!e) return;
 
   const cat = CAT_LABELS[e.category] || CAT_LABELS.okategoriserat;
   const modal = document.getElementById('email-modal');
@@ -1100,7 +1134,7 @@ async function openEmail(id) {
 
   // Markera som läst
   if (e.status === 'ny') {
-    await SB.from('emails').update({ status: 'läst' }).eq('id', id);
+    await AR.update('emails', { status: 'läst' }, 'id=eq.' + id);
   }
 }
 
@@ -1115,8 +1149,9 @@ async function sendManualReply(emailId, toAddr) {
 
   const html = `<div style="font-family:sans-serif;max-width:580px"><p style="white-space:pre-wrap">${body}</p><p style="color:#6B6960;font-size:13px;margin-top:24px">Med vänliga hälsningar<br><strong>Spick-teamet</strong><br>hello@spick.se · spick.se</p></div>`;
 
-  const { data: email } = await SB.from('emails').select('subject').eq('id', emailId).single();
-  const subject = email?.subject ? 'Re: ' + email.subject : 'Svar från Spick';
+  const { data: emailArr } = await AR.select('emails', 'select=subject&id=eq.' + emailId + '&limit=1');
+  const emailRec = emailArr?.[0];
+  const subject = emailRec?.subject ? 'Re: ' + emailRec.subject : 'Svar från Spick';
 
   const res = await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
     method: 'POST',
@@ -1124,11 +1159,11 @@ async function sendManualReply(emailId, toAddr) {
     body: JSON.stringify({ type: 'manual_reply', record: { to: toAddr, subject, html } })
   });
 
-  await SB.from('emails').update({
+  await AR.update('emails', {
     status: 'hanterad',
     replied_at: new Date().toISOString(),
     handled_at: new Date().toISOString()
-  }).eq('id', emailId);
+  }, 'id=eq.' + emailId);
   await auditLog('reply','email', emailId, null, {to: toAddr, status:'hanterad'});
 
   showToast('✅ Svar skickat!');
@@ -1136,14 +1171,14 @@ async function sendManualReply(emailId, toAddr) {
 }
 
 async function markHandled(emailId) {
-  await SB.from('emails').update({ status: 'hanterad', handled_at: new Date().toISOString() }).eq('id', emailId);
+  await AR.update('emails', { status: 'hanterad', handled_at: new Date().toISOString() }, 'id=eq.' + emailId);
   await auditLog('mark_handled','email', emailId, null, {status:'hanterad'});
   showToast('✅ Markerad som hanterad');
   closeEmailModal();
 }
 
 async function archiveEmail(emailId) {
-  await SB.from('emails').update({ status: 'arkiverad' }).eq('id', emailId);
+  await AR.update('emails', { status: 'arkiverad' }, 'id=eq.' + emailId);
   await auditLog('archive','email', emailId, null, {status:'arkiverad'});
   showToast('🗑 Arkiverad');
   closeEmailModal();
@@ -1212,7 +1247,7 @@ function renderOnboarding() {
 async function moveOnboarding(id, newPhase) {
   const app = (data.applications||[]).find(a => a.id === id);
   const oldPhase = app ? app.onboarding_phase : null;
-  const { error } = await SB.from('cleaner_applications').update({ onboarding_phase: newPhase }).eq('id', id);
+  const { error } = await AR.update('cleaner_applications', { onboarding_phase: newPhase }, 'id=eq.' + id);
   if (error) { showToast('❌ Fel: ' + error.message); return; }
   await auditLog('move_onboarding','application', id, {onboarding_phase: oldPhase}, {onboarding_phase: newPhase});
   // Update local data
@@ -1406,11 +1441,11 @@ async function loadAll() {
 
   try {
     const [bookings, cleaners, applications, customers, reviews] = await Promise.all([
-      SB.from('bookings').select('*').order('created_at', { ascending: false }).limit(100).then(r => r).catch(e => { console.error('bookings query failed:', e); return { data: [] }; }),
-      SB.from('cleaners').select('*').order('avg_rating', { ascending: false }).then(r => r).catch(e => { console.error('cleaners query failed:', e); return { data: [] }; }),
-      SB.from('cleaner_applications').select('*').order('created_at', { ascending: false }).then(r => r).catch(e => { console.error('applications query failed:', e); return { data: [] }; }),
-      SB.from('customer_profiles').select('*').order('total_bookings', { ascending: false }).then(r => r).catch(e => { console.error('customer_profiles query failed:', e); return { data: [] }; }),
-      SB.from('reviews').select('*').order('created_at', { ascending: false }).limit(200).then(r => r).catch(e => { console.error('reviews query failed:', e); return { data: [] }; }),
+      AR.select('bookings', 'select=*&order=created_at.desc&limit=100'),
+      AR.select('cleaners', 'select=*&order=avg_rating.desc.nullslast'),
+      AR.select('cleaner_applications', 'select=*&order=created_at.desc'),
+      AR.select('customer_profiles', 'select=*&order=total_bookings.desc.nullslast'),
+      AR.select('reviews', 'select=*&order=created_at.desc&limit=200'),
     ]);
 
     data.bookings = bookings.data || [];
@@ -1420,9 +1455,9 @@ async function loadAll() {
     data.reviews = reviews.data || [];
 
     try {
-      const { data: subs } = await SB.from('subscriptions').select('*').order('created_at',{ascending:false});
-      data.subscriptions = subs || [];
-    } catch(e) { console.warn('subscriptions query failed:', e); data.subscriptions = []; }
+      const subs = await AR.select('subscriptions', 'select=*&order=created_at.desc');
+      data.subscriptions = subs.data || [];
+    } catch(e) { data.subscriptions = []; }
 
     const badgeSubs = document.getElementById('badge-subs');
     if (badgeSubs) badgeSubs.textContent = data.subscriptions.filter(s=>s.status==='active'||s.status==='aktiv').length || '';
@@ -1659,17 +1694,7 @@ async function loadMoreBookings() {
     ? data.bookings[data.bookings.length - 1].created_at
     : null;
   if (!lastCreatedAt) return;
-  const { data: more } = await SB.from('bookings')
-    .select('id,booking_id,customer_name,customer_email,customer_phone,customer_address,city,' +
-      'service_type,booking_date,booking_time,booking_hours,frequency,' +
-      'total_price,payment_status,payment_intent_id,status,' +
-      'cleaner_id,cleaner_name,cleaner_email,' +
-      'rut_amount,discount_code,square_meters,customer_notes,key_info,' +
-      'created_at,updated_at,cancelled_at,cancellation_reason,refund_amount,completed_at,' +
-      'review_requested,review_requested_at,checked_in_at,scheduled_date')
-    .order('created_at', { ascending: false })
-    .lt('created_at', lastCreatedAt)
-    .limit(100);
+  const { data: more } = await AR.select('bookings', 'select=*&order=created_at.desc&created_at=lt.' + encodeURIComponent(lastCreatedAt) + '&limit=100');
   if (more?.length) {
     data.bookings = [...data.bookings, ...more];
     renderBookings();
@@ -1897,7 +1922,7 @@ function renderPayouts() {
 // PRENUMERATIONER
 // ═══════════════════════════════════════════════════════════
 async function renderSubscriptions() {
-  const { data: subs } = await SB.from('subscriptions').select('*').order('created_at', {ascending:false});
+  const { data: subs } = await AR.select('subscriptions', 'select=*&order=created_at.desc');
   const all = subs || [];
   const active = all.filter(s => s.status === 'active' || s.status === 'aktiv');
 
@@ -1948,14 +1973,14 @@ async function renderSubscriptions() {
 }
 
 async function createBookingFromSub(subId) {
-  const { data: sub } = await SB.from('subscriptions').select('*').eq('id', subId).single();
-  if (!sub) return;
+  const { data: subArr } = await AR.select('subscriptions', 'select=*&id=eq.' + subId + '&limit=1');
+  const sub = subArr?.[0]; if (!sub) return;
   const nextDate = prompt('Nästa bokningsdatum (YYYY-MM-DD):', sub.next_booking_date || new Date().toISOString().split('T')[0]);
   if (!nextDate) return;
   const hourlyRate = sub.hourly_rate || 349;
   const hours = sub.booking_hours || 3;
   const totalPrice = Math.round(hourlyRate * hours * (1 - (sub.discount_percent||0)/100));
-  const { error } = await SB.from('bookings').insert([{
+  const { error } = await AR.insert('bookings', {
     customer_name: sub.customer_name,
     customer_email: sub.customer_email,
     customer_phone: sub.customer_phone,
@@ -1970,13 +1995,13 @@ async function createBookingFromSub(subId) {
     cleaner_name: sub.cleaner_name,
     payment_status: 'pending',
     status: 'ny',
-  }]);
+  });
   if (!error) {
     await auditLog('create_from_sub','booking', subId, null, {customer_name: sub.customer_name, date: nextDate, service: sub.service_type});
     const nextFreq = {weekly:7, biweekly:14, monthly:30, veckovis:7,'varannan-vecka':14,'månadsvis':30}[sub.frequency]||14;
     const next = new Date(nextDate);
     next.setDate(next.getDate()+nextFreq);
-    await SB.from('subscriptions').update({next_booking_date:next.toISOString().split('T')[0]}).eq('id',subId);
+    await AR.update('subscriptions', {next_booking_date:next.toISOString().split('T')[0]}, 'id=eq.'+subId);
     await auditLog('update_next_date','subscription', subId, {next_booking_date: sub.next_booking_date}, {next_booking_date: next.toISOString().split('T')[0]});
     showToast('✅ Bokning skapad!');
     loadAll();
@@ -1984,7 +2009,7 @@ async function createBookingFromSub(subId) {
 }
 
 async function createNextBookings() {
-  const { data: subs } = await SB.from('subscriptions').select('*').in('status',['active','aktiv']);
+  const { data: subs } = await AR.select('subscriptions', 'select=*&status=in.(active,aktiv)');
   if (!subs?.length) { showToast('Inga aktiva prenumerationer'); return; }
   const today = new Date().toISOString().split('T')[0];
   const soon = subs.filter(s => s.next_booking_date && s.next_booking_date <= 
@@ -2000,13 +2025,13 @@ async function createNextBookings() {
 }
 
 async function pauseSub(id) {
-  await SB.from('subscriptions').update({status:'paused'}).eq('id',id);
+  await AR.update('subscriptions', {status:'paused'}, 'id=eq.'+id);
   await auditLog('pause','subscription', id, {status:'active'}, {status:'paused'});
   showToast('⏸ Prenumeration pausad');
   renderSubscriptions();
 }
 async function activateSub(id) {
-  await SB.from('subscriptions').update({status:'active'}).eq('id',id);
+  await AR.update('subscriptions', {status:'active'}, 'id=eq.'+id);
   await auditLog('activate','subscription', id, {status:'paused'}, {status:'active'});
   showToast('▶️ Prenumeration aktiverad');
   renderSubscriptions();
@@ -2042,7 +2067,7 @@ async function autoAssignAll() {
         ((b.booking_date || b.date) === (booking.booking_date || booking.date) || b.scheduled_date === booking.scheduled_date) && 
         b.id !== booking.id && b.payment_status === 'paid');
       if (!conflict) {
-        await SB.from('bookings').update({cleaner_id:cl.id, cleaner_name:cl.full_name}).eq('id',booking.id);
+        await AR.update('bookings', {cleaner_id:cl.id, cleaner_name:cl.full_name}, 'id=eq.'+booking.id);
         await auditLog('auto_assign','booking', booking.id, {cleaner_id:null}, {cleaner_id:cl.id, cleaner_name:cl.full_name});
         assigned++;
         break;
@@ -2091,8 +2116,8 @@ function showConfirmDialog(config) {
 // ── ROLLBACK ─────────────────────────────────────────
 async function rollbackAction(auditLogId) {
   if (!hasPerm('settings','write')) { showToast('🔒 Ingen behörighet'); return; }
-  var res = await SB.from('admin_audit_log').select('*').eq('id', auditLogId).single();
-  var log = res.data;
+  var res = await AR.select('admin_audit_log', 'select=*&id=eq.' + auditLogId + '&limit=1');
+  var log = res.data?.[0];
   if (!log || !log.old_value || !log.resource_id) {
     showToast('❌ Kan inte ångra — saknar originaldata');
     return;
@@ -2103,7 +2128,7 @@ async function rollbackAction(auditLogId) {
     body: 'Återställ ' + log.resource_type + ' till värden FÖRE ändring den ' + new Date(log.created_at).toLocaleString('sv-SE') + '?\n\nOriginalvärden: ' + JSON.stringify(log.old_value, null, 2)
   });
   if (!result.ok) return;
-  var updateRes = await SB.from(log.resource_type).update(log.old_value).eq('id', log.resource_id);
+  var updateRes = await AR.update(log.resource_type, log.old_value, 'id=eq.' + log.resource_id);
   if (updateRes.error) { showToast('❌ ' + updateRes.error.message); return; }
   await auditLog('rollback', log.resource_type, log.resource_id, log.new_value, log.old_value, 'Rollback av ' + log.action + ' (' + log.id + ')');
   showToast('✅ Ändring ångrad');
@@ -2398,12 +2423,12 @@ async function cancelBooking() {
   });
   if (!result.ok) return;
   const oldValue = b ? {payment_status: b.payment_status, status: b.status, cleaner_id: b.cleaner_id} : null;
-  await SB.from('bookings').update({
+  await AR.update('bookings', {
     payment_status: 'cancelled',
     status: 'avbokad',
     cleaner_id: null,
     cleaner_name: null
-  }).eq('id', currentBookingId);
+  }, 'id=eq.' + currentBookingId);
   await auditLog('cancel','booking', currentBookingId, oldValue, {payment_status:'cancelled', status:'avbokad'}, result.reason);
   // Notifiera kund
   if (b?.customer_email || b?.email) {
@@ -2425,7 +2450,7 @@ async function cancelBooking() {
 
 async function markBookingDone(id) {
   const b = data.bookings.find(x => x.id === id);
-  await SB.from('bookings').update({ status: 'klar', completed_at: new Date().toISOString() }).eq('id', id);
+  await AR.update('bookings', { status: 'klar', completed_at: new Date().toISOString() }, 'id=eq.' + id);
   await auditLog('complete','booking', id, b ? {status:b.status} : null, {status:'klar'});
   showToast('✅ Bokning markerad som klar');
   closeModal();
@@ -2559,7 +2584,7 @@ function showCleanerDetail(id) {
     </div>`;
 
   // Hämta städarens schema asynkront
-  SB.from('cleaner_availability').select('*').eq('cleaner_id', id).then(({data: avail, error: avErr}) => {
+  AR.select('cleaner_availability', 'select=*&cleaner_id=eq.' + id).then(({data: avail, error: avErr}) => {
     const el = document.getElementById('admin-cleaner-schedule');
     if (!el) return;
     const days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
@@ -2636,7 +2661,7 @@ async function toggleVisibility(cleanerId, visible) {
   if (!hasPerm('cleaners','suspend')) { showToast('🔒 Ej behörighet'); return; }
   var flag = visible ? null : 'hidden';
   var old = data.cleaners.find(function(c){return c.id===cleanerId;});
-  var {error} = await SB.from('cleaners').update({admin_flag: flag}).eq('id', cleanerId);
+  var {error} = await AR.update('cleaners', {admin_flag: flag}, 'id=eq.' + cleanerId);
   if (error) { showToast('❌ ' + error.message); return; }
   showToast(visible ? '✅ Städare synlig i matchning' : '✅ Städare dold från matchning');
   await auditLog(visible?'show':'hide', 'cleaners', cleanerId, {admin_flag:old?.admin_flag}, {admin_flag:flag});
@@ -2646,12 +2671,7 @@ async function toggleVisibility(cleanerId, visible) {
 async function loadCleanerHistory(cleanerId) {
   var el = document.getElementById('cleaner-history-list');
   if (!el) return;
-  var {data:history} = await SB.from('admin_audit_log')
-    .select('*')
-    .eq('resource_type','cleaners')
-    .eq('resource_id', cleanerId)
-    .order('created_at',{ascending:false})
-    .limit(20);
+  var {data:history} = await AR.select('admin_audit_log', 'select=*&resource_type=eq.cleaners&resource_id=eq.' + cleanerId + '&order=created_at.desc&limit=20');
 
   if (!history?.length) { el.innerHTML = '<span style="color:var(--m)">Ingen historik</span>'; return; }
 
@@ -2678,15 +2698,12 @@ async function suspendCleaner() {
   });
   if (!result.ok) return;
   const oldValue = c ? {status: c.status, is_approved: c.is_approved} : null;
-  await SB.from('cleaners').update({ is_approved: false, status: 'avstängd' }).eq('id', currentCleanerId);
+  await AR.update('cleaners', { is_approved: false, status: 'avstängd' }, 'id=eq.' + currentCleanerId);
   await auditLog('suspend','cleaner', currentCleanerId, oldValue, {status:'avstängd', is_approved:false}, result.reason);
   // Omtilldela aktiva bokningar
-  const { data: activeBookings } = await SB.from('bookings')
-    .select('id').eq('cleaner_id', currentCleanerId)
-    .in('payment_status', ['paid','pending']).neq('status', 'klar');
+  const { data: activeBookings } = await AR.select('bookings', 'select=id&cleaner_id=eq.' + currentCleanerId + '&payment_status=in.(paid,pending)&status=neq.klar');
   if (activeBookings?.length) {
-    await SB.from('bookings').update({ cleaner_id: null, cleaner_name: null, status: 'pending' })
-      .eq('cleaner_id', currentCleanerId).in('payment_status', ['paid','pending']).neq('status', 'klar');
+    await AR.update('bookings', { cleaner_id: null, cleaner_name: null, status: 'pending' }, 'cleaner_id=eq.' + currentCleanerId + '&payment_status=in.(paid,pending)&status=neq.klar');
     await auditLog('reassign_bookings','booking', currentCleanerId, null, {count: activeBookings.length}, 'Cleaner suspended');
     showToast(`⚠️ ${activeBookings.length} bokningar omtilldelades`);
   }
@@ -2703,7 +2720,7 @@ async function pauseCleaner() {
   });
   if (!result.ok) return;
   const c = data.cleaners.find(x => x.id === currentCleanerId);
-  await SB.from('cleaners').update({ status: 'pausad' }).eq('id', currentCleanerId);
+  await AR.update('cleaners', { status: 'pausad' }, 'id=eq.' + currentCleanerId);
   await auditLog('pause','cleaner', currentCleanerId, c ? {status:c.status} : null, {status:'pausad'});
   closeCleanerModal();
   showToast('⏸ Städare pausad');
@@ -2712,7 +2729,7 @@ async function pauseCleaner() {
 
 async function activateCleaner() {
   const c = data.cleaners.find(x => x.id === currentCleanerId);
-  await SB.from('cleaners').update({ status: 'aktiv', is_approved: true }).eq('id', currentCleanerId);
+  await AR.update('cleaners', { status: 'aktiv', is_approved: true }, 'id=eq.' + currentCleanerId);
   await auditLog('activate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
   closeCleanerModal();
   showToast('▶️ Städare aktiverad');
@@ -2727,7 +2744,7 @@ async function reactivateCleaner() {
   });
   if (!result.ok) return;
   const c = data.cleaners.find(x => x.id === currentCleanerId);
-  await SB.from('cleaners').update({ is_approved: true, status: 'aktiv' }).eq('id', currentCleanerId);
+  await AR.update('cleaners', { is_approved: true, status: 'aktiv' }, 'id=eq.' + currentCleanerId);
   await auditLog('reactivate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
   closeCleanerModal();
   showToast('✅ Städare återaktiverad');
@@ -2746,7 +2763,7 @@ async function autoPauseCritical() {
   if (!result.ok) return;
   let paused = 0;
   for (const c of critical) {
-    const { error } = await SB.from('cleaners').update({ status: 'pausad' }).eq('id', c.id);
+    const { error } = await AR.update('cleaners', { status: 'pausad' }, 'id=eq.' + c.id);
     if (!error) {
       paused++;
       await auditLog('auto_pause','cleaner', c.id, {status:c.status, avg_rating:c.avg_rating}, {status:'pausad'}, 'Betyg under 3.0');
@@ -2770,7 +2787,7 @@ async function saveCleanerFromAdmin() {
     admin_notes: document.getElementById('admin-note')?.value.trim(),
   };
 
-  const { error } = await SB.from('cleaners').update(updates).eq('id', currentCleanerId);
+  const { error } = await AR.update('cleaners', updates, 'id=eq.' + currentCleanerId);
   if (error) {
     showToast('❌ Fel vid sparning: ' + error.message);
     return;
@@ -2784,15 +2801,15 @@ async function saveCleanerFromAdmin() {
 // ── APPLICATIONS ──────────────────────────────────────
 async function approveApplication(id, name, email, city, services, rate) {
   // Skapa städare i cleaners-tabellen
-  const { data: existing } = await SB.from('cleaners').select('id').eq('email', email).single();
-  if (existing) {
-    await SB.from('cleaners').update({ status: 'aktiv', is_approved: true }).eq('email', email);
+  const { data: existingArr } = await AR.select('cleaners', 'select=id&email=eq.' + encodeURIComponent(email) + '&limit=1');
+  if (existingArr?.length) {
+    await AR.update('cleaners', { status: 'aktiv', is_approved: true }, 'email=eq.' + encodeURIComponent(email));
   } else {
     // services kan vara komma-separerad sträng eller array
     const svcsArr = Array.isArray(services)
       ? services
       : (services || 'Hemstädning').split(',').map(s => s.trim()).filter(Boolean);
-    await SB.from('cleaners').insert([{
+    await AR.insert('cleaners', {
       full_name: name, email, city,
       services: svcsArr,
       hourly_rate: parseInt(rate) || 350,
@@ -2800,17 +2817,17 @@ async function approveApplication(id, name, email, city, services, rate) {
       avg_rating: null, review_count: 0,
       payout_status: 'pending',
       created_at: new Date().toISOString()
-    }]);
+    });
   }
   // Generera unik slug
   const baseSlug = (name || 'stadare').toLowerCase()
     .replace(/[åä]/g, 'a').replace(/ö/g, 'o')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const { data: slugExisting } = await SB.from('cleaners').select('id').like('slug', baseSlug + '%');
+  const { data: slugExisting } = await AR.select('cleaners', 'select=id&slug=like.' + encodeURIComponent(baseSlug + '%'));
   const slug = slugExisting && slugExisting.length > 0 ? baseSlug + '-' + (slugExisting.length + 1) : baseSlug;
-  await SB.from('cleaners').update({ slug }).eq('email', email);
+  await AR.update('cleaners', { slug }, 'email=eq.' + encodeURIComponent(email));
 
-  await SB.from('cleaner_applications').update({ status: 'approved' }).eq('id', id);
+  await AR.update('cleaner_applications', { status: 'approved' }, 'id=eq.' + id);
   await auditLog('approve','application', id, null, {name, email, city, status:'approved'});
 
   // Skicka välkomstmail via Resend
@@ -2831,7 +2848,7 @@ async function rejectApplication(id) {
     body: 'Avslå denna ansökan?\n\nStädaren kommer inte kunna logga in.'
   });
   if (!result.ok) return;
-  await SB.from('cleaner_applications').update({ status: 'rejected' }).eq('id', id);
+  await AR.update('cleaner_applications', { status: 'rejected' }, 'id=eq.' + id);
   await auditLog('reject','application', id, null, {status:'rejected'});
   loadAll();
 }
@@ -2878,10 +2895,7 @@ document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click'
 async function openAssignModal(bookingId) {
   currentBookingId = bookingId;
   // Hämta godkända städare
-  const { data: cleaners } = await SB.from('cleaners')
-    .select('id,full_name,city,avg_rating')
-    .eq('is_approved',true)
-    .order('avg_rating', { ascending: false });
+  const { data: cleaners } = await AR.select('cleaners', 'select=id,full_name,city,avg_rating&is_approved=eq.true&order=avg_rating.desc.nullslast');
   
   let opts = cleaners?.map(c => 
     `<option value="${c.id}">${c.full_name} (${c.city}) ⭐${c.avg_rating||'–'}</option>`
@@ -2914,11 +2928,11 @@ async function confirmAssign() {
   const b = data.bookings.find(x => x.id === currentBookingId);
   const oldValue = b ? {cleaner_id: b.cleaner_id, cleaner_name: b.cleaner_name, status: b.status} : null;
 
-  await SB.from('bookings').update({
+  await AR.update('bookings', {
     cleaner_id: cleanerId,
     cleaner_name: cleaner?.full_name,
     status: 'bekräftad'
-  }).eq('id', currentBookingId);
+  }, 'id=eq.' + currentBookingId);
   await auditLog('assign','booking', currentBookingId, oldValue, {cleaner_id: cleanerId, cleaner_name: cleaner?.full_name, status:'bekräftad'});
 
   document.getElementById('assign-modal').remove();
@@ -2999,7 +3013,7 @@ async function bulkApprove() {
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
     const c = data.cleaners.find(x => x.id === id);
-    await SB.from('cleaners').update({is_approved:true, status:'aktiv'}).eq('id', id);
+    await AR.update('cleaners', {is_approved:true, status:'aktiv'}, 'id=eq.'+id);
     await auditLog('bulk_approve','cleaner', id, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
   }
   selectedCleaners.clear();
@@ -3020,7 +3034,7 @@ async function bulkPause() {
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
     const c = data.cleaners.find(x => x.id === id);
-    await SB.from('cleaners').update({status:'pausad'}).eq('id', id);
+    await AR.update('cleaners', {status:'pausad'}, 'id=eq.'+id);
     await auditLog('bulk_pause','cleaner', id, c ? {status:c.status} : null, {status:'pausad'});
   }
   selectedCleaners.clear();
@@ -3042,7 +3056,7 @@ async function bulkSuspend() {
   const ids = Array.from(selectedCleaners);
   for(const id of ids) {
     const c = data.cleaners.find(x => x.id === id);
-    await SB.from('cleaners').update({is_approved:false, status:'avstängd'}).eq('id', id);
+    await AR.update('cleaners', {is_approved:false, status:'avstängd'}, 'id=eq.'+id);
     await auditLog('bulk_suspend','cleaner', id, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'avstängd', is_approved:false}, result.reason);
   }
   selectedCleaners.clear();
@@ -3096,17 +3110,17 @@ async function loadAdminUser() {
     var r = await SB.auth.getUser();
     var user = r.data.user;
     if (!user) return;
-    var res = await SB.from('admin_users').select('*, admin_roles(*)').eq('email', user.email).maybeSingle();
-    var au = res.data;
+    var auRes = await AR.select('admin_users', 'select=*,admin_roles(*)&email=eq.' + encodeURIComponent(user.email) + '&limit=1');
+    var au = auRes.data?.[0] || null;
     if (au && au.admin_roles) {
       adminUser = { id: au.id, email: au.email, display_name: au.display_name, role_name: au.admin_roles.name, role_level: au.admin_roles.level, role_id: au.role_id, is_active: au.is_active };
-      var pr = await SB.from('role_permissions').select('admin_permissions(*)').eq('role_id', au.role_id);
+      var pr = await AR.select('role_permissions', 'select=admin_permissions(*)&role_id=eq.' + au.role_id);
       adminPermissions = (pr.data || []).map(function(p){ return p.admin_permissions; }).filter(Boolean);
       var nameEl = document.getElementById('admin-name');
       var roleEl = document.getElementById('admin-role-badge');
       if (nameEl) nameEl.textContent = au.display_name;
       if (roleEl) roleEl.textContent = au.admin_roles.name;
-      SB.from('admin_users').update({ last_login: new Date().toISOString(), login_count: (au.login_count||0)+1 }).eq('id', au.id).then(function(){});
+      AR.update('admin_users', { last_login: new Date().toISOString(), login_count: (au.login_count||0)+1 }, 'id=eq.' + au.id).then(function(){});
       auditLog('login','auth',null,null,null).catch(function(){});
     } else {
       adminUser = { email: user.email, display_name: user.email.split('@')[0], role_name: 'superadmin', role_level: 100, is_active: true };
@@ -3130,7 +3144,7 @@ function hasPerm(resource, action) {
 // -- AUDIT LOG --
 async function auditLog(action, resourceType, resourceId, oldValue, newValue, reason) {
   try {
-    await SB.from('admin_audit_log').insert({
+    await AR.insert('admin_audit_log', {
       admin_email: adminUser ? adminUser.email : 'unknown',
       admin_role: adminUser ? adminUser.role_name : 'unknown',
       action: action, resource_type: resourceType, resource_id: resourceId,
@@ -3145,7 +3159,7 @@ var auditData = [];
 async function loadAuditLog() {
   var days = parseInt(document.getElementById('audit-filter-period').value) || 30;
   var since = new Date(Date.now() - days*86400000).toISOString();
-  var res = await SB.from('admin_audit_log').select('*').gte('created_at', since).order('created_at',{ascending:false}).limit(100);
+  var res = await AR.select('admin_audit_log', 'select=*&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.desc&limit=100');
   auditData = res.data || [];
   renderAuditLog();
 }
@@ -3181,7 +3195,7 @@ function exportAuditCSV() {
 var ticketsData = [];
 async function loadTickets() {
   try {
-    var res = await SB.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(200);
+    var res = await AR.select('support_tickets', 'select=*&order=created_at.desc&limit=200');
     ticketsData = res.data || [];
     renderTickets();
     var badge = document.getElementById('badge-support');
@@ -3234,18 +3248,19 @@ async function createTicket() {
   var customer = document.getElementById('new-ticket-customer').value.trim();
   var slaH = {critical:0.5,high:2,medium:8,low:24};
   var sla = new Date(Date.now()+(slaH[priority]||8)*3600000).toISOString();
-  var res = await SB.from('support_tickets').insert({subject:subject,description:desc,priority:priority,type:type,customer_email:customer||null,assigned_to:adminUser?adminUser.email:null,sla_deadline:sla}).select().single();
+  var res = await AR.insert('support_tickets', {subject:subject,description:desc,priority:priority,type:type,customer_email:customer||null,assigned_to:adminUser?adminUser.email:null,sla_deadline:sla});
   if (res.error) return showToast('Fel: '+res.error.message);
-  await auditLog('create','support',res.data?res.data.ticket_number:null,null,{subject:subject,priority:priority});
+  var ticketData = Array.isArray(res.data) ? res.data[0] : res.data;
+  await auditLog('create','support',ticketData?ticketData.ticket_number:null,null,{subject:subject,priority:priority});
   document.getElementById('quick-modal').classList.remove('open');
-  showToast('Arende skapat: '+(res.data?res.data.ticket_number:''));
+  showToast('Arende skapat: '+(ticketData?ticketData.ticket_number:''));
   await loadTickets();
 }
 
 async function showTicketDetail(id) {
   var t = ticketsData.find(function(x){return x.id===id;});
   if (!t) return;
-  var nr = await SB.from('ticket_notes').select('*').eq('ticket_id',id).order('created_at',{ascending:true});
+  var nr = await AR.select('ticket_notes', 'select=*&ticket_id=eq.'+id+'&order=created_at.asc');
   var notes = nr.data || [];
   document.getElementById('modal-title').textContent = t.ticket_number+' - '+t.subject;
   document.getElementById('modal-body').innerHTML = '<div class="stat-row"><span class="lbl">Prioritet</span><span class="val">'+escHtml(t.priority)+'</span></div><div class="stat-row"><span class="lbl">Typ</span><span class="val">'+escHtml(t.type)+'</span></div><div class="stat-row"><span class="lbl">Status</span><span class="val">'+escHtml(t.status)+'</span></div><div class="stat-row"><span class="lbl">Kund</span><span class="val">'+escHtml(t.customer_email||'')+'</span></div><div class="stat-row"><span class="lbl">Tilldelad</span><span class="val">'+escHtml(t.assigned_to||'')+'</span></div><div class="stat-row"><span class="lbl">Skapad</span><span class="val">'+new Date(t.created_at).toLocaleString('sv')+'</span></div><hr class="divider"><div style="font-size:.88rem;margin-bottom:16px"><strong>Beskrivning:</strong><br>'+escHtml(t.description)+'</div>'
@@ -3261,7 +3276,7 @@ async function showTicketDetail(id) {
 async function addTicketNote(ticketId) {
   var note = document.getElementById('ticket-note-input').value.trim();
   if (!note) return;
-  await SB.from('ticket_notes').insert({ticket_id:ticketId,admin_email:adminUser?adminUser.email:'',note:note});
+  await AR.insert('ticket_notes', {ticket_id:ticketId,admin_email:adminUser?adminUser.email:'',note:note});
   await auditLog('update','support',ticketId,null,{note:note.substring(0,100)});
   showTicketDetail(ticketId);
 }
@@ -3272,7 +3287,7 @@ async function changeTicketStatus(ticketId) {
   var t = ticketsData.find(function(x){return x.id===ticketId;});
   var updates = {status:newStatus,updated_at:new Date().toISOString()};
   if (newStatus==='resolved') { updates.resolved_at=new Date().toISOString(); updates.resolved_by=adminUser?adminUser.email:null; }
-  await SB.from('support_tickets').update(updates).eq('id',ticketId);
+  await AR.update('support_tickets', updates, 'id=eq.'+ticketId);
   await auditLog('update','support',t?t.ticket_number:null,{status:t?t.status:null},{status:newStatus});
   showToast('Status uppdaterad');
   await loadTickets();
@@ -3297,8 +3312,8 @@ async function renderQualityPanel() {
 // -- TEAM --
 var teamData = [], rolesData = [];
 async function loadTeam() {
-  var u = await SB.from('admin_users').select('*, admin_roles(*)').order('created_at');
-  var r = await SB.from('admin_roles').select('*').order('level',{ascending:false});
+  var u = await AR.select('admin_users', 'select=*,admin_roles(*)&order=created_at');
+  var r = await AR.select('admin_roles', 'select=*&order=level.desc');
   teamData = u.data || []; rolesData = r.data || [];
   renderTeam();
 }
@@ -3329,7 +3344,7 @@ async function addAdminUser() {
   var email = document.getElementById('new-admin-email').value.trim();
   var roleId = document.getElementById('new-admin-role').value;
   if (!name||!email||!roleId) return showToast('Alla falt kravs');
-  var res = await SB.from('admin_users').insert({display_name:name,email:email,role_id:roleId});
+  var res = await AR.insert('admin_users', {display_name:name,email:email,role_id:roleId});
   if (res.error) return showToast('Fel: '+res.error.message);
   await auditLog('create','role',email,null,{name:name,role_id:roleId});
   document.getElementById('quick-modal').classList.remove('open');
@@ -3340,7 +3355,7 @@ async function addAdminUser() {
 // -- PLATFORM SETTINGS --
 var platformSettings = [];
 async function loadPlatformSettings() {
-  var res = await SB.from('admin_settings').select('*').order('category');
+  var res = await AR.select('admin_settings', 'select=*&order=category');
   platformSettings = res.data || [];
   renderPlatformSettings();
 }
@@ -3362,7 +3377,7 @@ async function updateSettingFromInput(key) {
   var input = document.querySelector('input[data-key="'+key+'"]');
   if (!input) return;
   var old = platformSettings.find(function(s){return s.key===key;});
-  var res = await SB.from('admin_settings').update({value:JSON.stringify(input.value),updated_by:adminUser?adminUser.email:null,updated_at:new Date().toISOString()}).eq('key',key);
+  var res = await AR.update('admin_settings', {value:JSON.stringify(input.value),updated_by:adminUser?adminUser.email:null,updated_at:new Date().toISOString()}, 'key=eq.'+encodeURIComponent(key));
   if (res.error) return showToast('Fel: '+res.error.message);
   await auditLog('setting_change','setting',key,old?{value:old.value}:null,{value:input.value},'Installning andrad');
   showToast('Sparad: '+key);
@@ -3377,7 +3392,7 @@ async function renderSystemStatus() {
   var tables = ['bookings','cleaners','customer_profiles','cleaner_applications','reviews','subscriptions','emails','support_tickets','admin_users','admin_audit_log','admin_settings','admin_roles'];
   document.getElementById('kpi-db-size').textContent = tables.length;
   var counts = await Promise.all(tables.map(async function(t){
-    try { var r = await SB.from(t).select('id',{count:'exact',head:true}); return {table:t,count:r.count||0}; }
+    try { var r = await AR.select(t, 'select=id&limit=1000'); return {table:t,count:r.data?r.data.length:0}; }
     catch(e){ return {table:t,count:'?'}; }
   }));
   document.getElementById('db-tables-list').innerHTML = counts.map(function(c){
