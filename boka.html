@@ -499,6 +499,10 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <div style="margin-top:1rem">
             <label class="field-label">📝 Speciella önskemål (valfritt)</label>
             <textarea id="customer-notes" rows="2" placeholder="T.ex. allergier, husdjur, fokusera på köket, ring på dörren..." style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;outline:none;resize:none;line-height:1.5;margin-top:.375rem"></textarea>
+<label style="display:flex;align-items:center;gap:10px;margin-top:.75rem;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:.88rem;transition:all .15s" id="pet-toggle-label">
+  <input type="checkbox" id="has-pets" style="accent-color:var(--g);width:18px;height:18px" onchange="state.hasPets=this.checked; this.parentElement.style.background=this.checked?'#F0FDF4':''; this.parentElement.style.borderColor=this.checked?'var(--g)':'var(--border)'">
+  <span>🐾 Husdjur hemma</span>
+</label>
           </div>
 
           <!-- Prenumerationsval hanteras i steg 1 (state.frequency) -->
@@ -629,6 +633,7 @@ let state = {
   useRut: true, pnr: '',
   keyType: '', keyInfo: '',
   customerNotes: '',
+  hasPets: false,
   recurring: false, recurringFreq: 'varannan-vecka',
   fname:'', lname:'', email:'', phone:'', address:'',
   step: 1,
@@ -1865,6 +1870,7 @@ async function doBook() {
         discount_code: state.discountCode || undefined,
         referral_code: state.referralCode || undefined,
         customer_pnr: rawPnr || undefined,
+        customer_notes: ((state.hasPets ? '🐾 Husdjur hemma. ' : '') + (document.getElementById('customer-notes')?.value?.trim() || '')) || undefined,
       })
     });
     if (!bcRes.ok) {
