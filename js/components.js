@@ -14,7 +14,7 @@ if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.clarity.ms",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://*.supabase.co https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com",
+    "img-src 'self' data: blob: https://*.supabase.co https://www.facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://flagcdn.com",
     "connect-src 'self' https://urjeijcncsyuletprydy.supabase.co https://js.stripe.com https://www.google-analytics.com https://www.facebook.com https://region1.google-analytics.com https://www.clarity.ms",
     "frame-src 'self' https://js.stripe.com",
     "object-src 'none'",
