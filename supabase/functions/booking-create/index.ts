@@ -90,7 +90,7 @@ serve(async (req) => {
     if (cleaner_id) {
       const { data, error } = await supabase
         .from("cleaners")
-        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone")
+        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone, hourly_rate")
         .eq("id", cleaner_id)
         .eq("is_approved", true)
         .eq("status", "aktiv")
@@ -105,7 +105,7 @@ serve(async (req) => {
       // Alla aktiva städare, sorterade på rating
       const { data } = await supabase
         .from("cleaners")
-        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone")
+        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone, hourly_rate")
         .eq("is_approved", true)
         .eq("status", "aktiv")
         .order("avg_rating", { ascending: false })
@@ -137,6 +137,11 @@ serve(async (req) => {
 
     // ── 5. BERÄKNA PRIS — PRICING ENGINE ───────────
     const settings = await loadSettings(supabase);
+
+    // Använd städarens eget timpris istället för plattformens standardpris
+    if (cleaner.hourly_rate && cleaner.hourly_rate > 0) {
+      settings.basePricePerHour = cleaner.hourly_rate;
+    }
 
     const pricing = calculateBooking(settings, {
       hours: validHours,
