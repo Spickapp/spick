@@ -1675,18 +1675,28 @@ async function addrSearch(q) {
       list.innerHTML = predictions.map(p => {
         var parts = p.description.split(',').map(function(s) { return s.trim(); });
         var street = parts[0] || '';
-        // Fix "8, Klippgatan" → "Klippgatan 8"
         if (parts.length > 1 && /^\d/.test(street)) {
           street = parts[1] + ' ' + street;
           parts.splice(1, 1);
         }
+        // Hitta stad: ta namnet från "X kommun" (t.ex. "Solna kommun" → "Solna")
         var city = '';
-        var skip = ['sverige', 'stockholms län', 'västra götalands län', 'skåne län'];
         for (var i = 1; i < parts.length; i++) {
-          var lp = parts[i].toLowerCase();
-          if (lp.match(/^\d/) || skip.some(function(s) { return lp.includes(s); }) || lp.includes('kommun') || lp.includes('län')) continue;
-          city = parts[i];
-          break;
+          if (parts[i].toLowerCase().includes(' kommun')) {
+            city = parts[i].replace(/\s*kommun$/i, '').trim();
+            break;
+          }
+        }
+        if (!city) {
+          // Fallback: ta delen precis före "kommun"-delen eller "län"-delen
+          for (var i = 1; i < parts.length; i++) {
+            var lp = parts[i].toLowerCase();
+            if (lp.match(/^\d/) || lp.includes('sverige') || lp.includes('län') || lp.includes('kommun')) continue;
+            // Hoppa över stadsdel om nästa del INTE är kommun
+            if (i + 1 < parts.length && !parts[i+1].toLowerCase().includes('kommun')) continue;
+            city = parts[i];
+            break;
+          }
         }
         var short = city ? street + ', ' + city : street;
         var full = escHtml(p.description).replace(/'/g,"&#39;");
@@ -1705,14 +1715,21 @@ function pickAddr(val) {
   if (parts.length > 1 && /^\d/.test(street)) {
     street = parts[1].trim() + ' ' + street;
   }
-  // Hitta stad: hoppa över stadsdel, ta kommun-namnet (utan "kommun"/"län")
   var city = '';
-  var skip = ['sverige', 'stockholms län', 'västra götalands län', 'skåne län'];
   for (var i = 1; i < parts.length; i++) {
-    var p = parts[i].toLowerCase();
-    if (p.match(/^\d/) || skip.some(function(s) { return p.includes(s); }) || p.includes('kommun') || p.includes('län')) continue;
-    city = parts[i];
-    break;
+    if (parts[i].toLowerCase().includes(' kommun')) {
+      city = parts[i].replace(/\s*kommun$/i, '').trim();
+      break;
+    }
+  }
+  if (!city) {
+    for (var i = 1; i < parts.length; i++) {
+      var lp = parts[i].toLowerCase();
+      if (lp.match(/^\d/) || lp.includes('sverige') || lp.includes('län') || lp.includes('kommun')) continue;
+      if (i + 1 < parts.length && !parts[i+1].toLowerCase().includes('kommun')) continue;
+      city = parts[i];
+      break;
+    }
   }
   var short = city ? street + ', ' + city : street;
 
