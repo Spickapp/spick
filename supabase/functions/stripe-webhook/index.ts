@@ -147,8 +147,12 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
     return cleanerServices.includes("hem") || cleanerServices.includes("städ");
   });
 
-  // Fallback om ingen i rätt stad
-  const pool = eligible.length ? eligible : cleaners;
+  // Ingen fallback — returnera null om ingen matchar
+  if (!eligible.length) {
+    console.warn("Ingen städare matchar stad:", city);
+    return null;
+  }
+  const pool = eligible;
   
   console.log(`Auto-assign: ${pool.length} kandidater för ${city}`);
 
