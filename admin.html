@@ -172,12 +172,18 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   <div class="login-card">
     <div class="login-logo">Spick</div>
     <p class="login-sub">Adminpanel – endast för ägare</p>
-    <input type="email" id="admin-email" value="" placeholder="E-post" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
-    <input type="password" id="admin-pw" placeholder="Lösenord" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:4px">
-    <button onclick="doLogin()" id="login-btn">Logga in →</button>
-    <div id="login-err"></div>
-    <p id="reset-link" style="text-align:center;margin-top:8px;font-size:.8rem"><a href="#" onclick="resetPassword();return false" style="color:var(--g)">Glömt lösenord? Skicka återställningslänk</a></p>
-    <div id="reset-msg" style="display:none;text-align:center;margin-top:8px;font-size:.82rem;color:var(--g);font-weight:600"></div>
+    <div id="login-step-email">
+      <input type="email" id="admin-email" placeholder="E-postadress" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
+      <div id="login-err" style="display:none;color:#DC2626;font-size:.85rem;margin-bottom:8px"></div>
+      <button onclick="sendOtp()" id="login-btn" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">Skicka inloggningskod →</button>
+    </div>
+    <div id="login-step-otp" style="display:none">
+      <p style="font-size:.85rem;color:var(--m);margin-bottom:12px;text-align:center">Ange koden som skickades till <strong id="otp-email-display"></strong></p>
+      <input type="text" id="admin-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000" style="width:100%;padding:14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:1.5rem;text-align:center;letter-spacing:.4em;font-weight:700;margin-bottom:8px">
+      <div id="otp-err" style="display:none;color:#DC2626;font-size:.85rem;margin-bottom:8px"></div>
+      <button onclick="verifyOtp()" id="otp-btn" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">Verifiera →</button>
+      <button onclick="document.getElementById('login-step-email').style.display='block';document.getElementById('login-step-otp').style.display='none'" style="width:100%;padding:10px;background:none;border:none;color:var(--m);font-size:.85rem;cursor:pointer;margin-top:4px">← Ändra e-post</button>
+    </div>
   </div>
 </div>
 
@@ -837,15 +843,6 @@ SB.auth.getSession().then(({ data: { session } }) => {
 
 // Lyssna på auth-ändringar
 SB.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'PASSWORD_RECOVERY') {
-    const newPw = prompt('Ange ditt nya lösenord (minst 6 tecken):');
-    if (newPw && newPw.length >= 6) {
-      SB.auth.updateUser({ password: newPw }).then(({ error }) => {
-        alert(error ? 'Fel: ' + error.message : '✅ Lösenord uppdaterat! Logga in med ditt nya lösenord.');
-      });
-    }
-    return;
-  }
   if (session?.user) {
     try {
       const email = session.user.email;
@@ -875,54 +872,61 @@ SB.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-async function doLogin() {
+let _adminOtpEmail = '';
+
+async function sendOtp() {
   const email = document.getElementById('admin-email').value.trim();
-  const pw = document.getElementById('admin-pw').value.trim();
-  if (!email || !pw) return;
-  const btn = document.getElementById('login-btn');
-  const errEl = document.getElementById('login-err');
-  if (btn) { btn.textContent = '⏳ Loggar in...'; btn.disabled = true; }
-
-  try {
-    console.log('Attempting login for:', email);
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Login timeout efter 10s')), 10000)
-    );
-
-    const loginPromise = SB.auth.signInWithPassword({ email, password: pw });
-    const result = await Promise.race([loginPromise, timeoutPromise]);
-
-    console.log('Login result:', result);
-
-    if (result.error) {
-      errEl.textContent = 'Fel: ' + result.error.message;
-      errEl.style.display = 'block';
-      if (btn) { btn.textContent = 'Logga in →'; btn.disabled = false; }
-    }
-  } catch(e) {
-    console.error('Login exception:', e);
-    errEl.textContent = 'Inloggning misslyckades: ' + e.message;
-    errEl.style.display = 'block';
-    if (btn) { btn.textContent = 'Logga in →'; btn.disabled = false; }
+  if (!email || !email.includes('@')) {
+    document.getElementById('login-err').textContent = 'Ange en giltig e-postadress';
+    document.getElementById('login-err').style.display = 'block';
+    return;
   }
+  const btn = document.getElementById('login-btn');
+  btn.textContent = '⏳ Skickar...'; btn.disabled = true;
+  document.getElementById('login-err').style.display = 'none';
+
+  const { error } = await SB.auth.signInWithOtp({ email });
+
+  if (error) {
+    document.getElementById('login-err').textContent = 'Fel: ' + error.message;
+    document.getElementById('login-err').style.display = 'block';
+    btn.textContent = 'Skicka inloggningskod →'; btn.disabled = false;
+    return;
+  }
+
+  _adminOtpEmail = email;
+  document.getElementById('otp-email-display').textContent = email;
+  document.getElementById('login-step-email').style.display = 'none';
+  document.getElementById('login-step-otp').style.display = 'block';
+  document.getElementById('admin-otp').value = '';
+  setTimeout(() => document.getElementById('admin-otp').focus(), 200);
+  btn.textContent = 'Skicka inloggningskod →'; btn.disabled = false;
 }
 
-async function resetPassword() {
-  const email = document.getElementById('admin-email').value.trim();
-  if (!email) { alert('Ange din e-postadress först'); return; }
-  const { error } = await SB.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://spick.se/admin.html'
-  });
-  const msg = document.getElementById('reset-msg');
-  if (error) {
-    msg.textContent = '❌ ' + error.message;
-    msg.style.color = 'var(--r)';
-  } else {
-    msg.textContent = '✅ Återställningslänk skickad till ' + email;
-    msg.style.color = 'var(--g)';
+async function verifyOtp() {
+  const token = document.getElementById('admin-otp').value.trim();
+  if (token.length < 6 || !/^\d+$/.test(token)) {
+    document.getElementById('otp-err').textContent = 'Ange koden du fick via e-post';
+    document.getElementById('otp-err').style.display = 'block';
+    return;
   }
-  msg.style.display = 'block';
+  const btn = document.getElementById('otp-btn');
+  btn.textContent = '⏳ Verifierar...'; btn.disabled = true;
+  document.getElementById('otp-err').style.display = 'none';
+
+  const { data, error } = await SB.auth.verifyOtp({
+    email: _adminOtpEmail,
+    token,
+    type: 'email'
+  });
+
+  if (error) {
+    document.getElementById('otp-err').textContent = 'Fel kod — försök igen';
+    document.getElementById('otp-err').style.display = 'block';
+    btn.textContent = 'Verifiera →'; btn.disabled = false;
+    return;
+  }
+  // onAuthStateChange hanterar resten (visa app, ladda data)
 }
 
 // ══════════════════════════════════════════════════════
@@ -1111,9 +1115,7 @@ async function doLogout() {
   await SB.auth.signOut();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('admin-pw').value = '';
 }
-document.getElementById('admin-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
 // ── ONBOARDING PIPELINE ──────────────────────────────
 function renderOnboarding() {
