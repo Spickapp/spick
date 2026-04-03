@@ -411,9 +411,10 @@ body{top:0!important}
           <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> Skriv en personlig beskrivning</div>
           <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> Ställ in ditt veckoschema</div>
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> Anslut bankkonto via Stripe</div>
-          <div class="ob-step" id="ob-6" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
+          <div class="ob-step" id="ob-6b" onclick="window.open('https://spick.se/registrera-stadare.html#bankid','_blank')"><span class="ob-check">⬜</span> Verifiera med BankID</div>
+          <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
         </div>
-        <div style="margin-top:12px;font-size:.78rem;color:var(--m)" id="ob-progress">1 av 6 klart</div>
+        <div style="margin-top:12px;font-size:.78rem;color:var(--m)" id="ob-progress">1 av 7 klart</div>
       </div>
 
       <!-- Today's Timeline -->
@@ -562,6 +563,7 @@ body{top:0!important}
             <span style="font-size:.8rem;color:var(--m);margin-left:6px" id="prof-rating-txt"></span>
           </div>
           <span id="prof-status" style="color:var(--g);font-size:.85rem">✅ Aktiv</span>
+          <div id="bankid-badge" style="margin-top:4px"></div>
         </div>
 
         <!-- Settings menu -->
@@ -1088,6 +1090,12 @@ async function loadCleanerByEmail(email, authUserId) {
     if (cleaner.status === 'pausad') { statusEl.innerHTML = '<span style="color:#92400E">⏸ Pausad</span>'; statusEl.style.color = '#92400E'; }
     else { statusEl.innerHTML = '✅ Aktiv'; statusEl.style.color = 'var(--g)'; }
   }
+  const bankidBadge = document.getElementById('bankid-badge');
+  if (bankidBadge) {
+    bankidBadge.innerHTML = cleaner.identity_verified
+      ? '<span style="color:#0F6E56;font-size:.8rem">🔐 BankID-verifierad</span>'
+      : '<span style="color:#F59E0B;font-size:.8rem">⚠️ BankID ej verifierad — <a href="registrera-stadare.html#bankid" style="color:var(--g)">Verifiera nu →</a></span>';
+  }
   window._cleanerLoaded=true;
   showScreen('app');
 
@@ -1144,7 +1152,8 @@ function updateOnboarding() {
     'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
     'ob-4': !!(cleaner._scheduleLoaded),
     'ob-5': !!(cleaner.stripe_account_id || cleaner.stripe_connect_id),
-    'ob-6': !!localStorage.getItem('spick-tips-read'),
+    'ob-6b': !!(cleaner.identity_verified),
+    'ob-7': !!localStorage.getItem('spick-tips-read'),
   };
   let done = 0;
   Object.entries(checks).forEach(([id, ok]) => {
@@ -1164,7 +1173,7 @@ function updateOnboarding() {
     box.style.display = done >= 6 ? 'none' : 'block';
   }
   const prog = document.getElementById('ob-progress');
-  if (prog) prog.textContent = done + ' av 6 klart';
+  if (prog) prog.textContent = done + ' av 7 klart';
 }
 
 function switchLang(lang, btn) {
