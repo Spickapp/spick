@@ -14,7 +14,7 @@ RETURNS TABLE (
   avg_rating numeric,
   total_reviews integer,
   review_count integer,
-  services text[],
+  services jsonb,
   city text,
   identity_verified boolean,
   home_lat double precision,
