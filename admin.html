@@ -353,6 +353,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Uppdatera</button>
           <button class="btn btn-primary btn-sm" onclick="autoAssignAll()">🤖 Auto-tilldela alla</button>
           <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportera CSV</button>
+          <button class="btn btn-outline btn-sm" onclick="runBookingTimeout(this)">🕐 Hantera timeout</button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <div class="mini-stats">
@@ -1807,8 +1808,8 @@ function renderApplications() {
             data-id="${escHtml(a.id)}" data-name="${escHtml(a.name || a.full_name)}" 
             data-email="${escHtml(a.email)}" data-city="${escHtml(a.city||'')}" 
             data-services="${escHtml(a.services||'')}" data-rate="${parseInt(a.hourly_rate)||350}"
-            onclick="approveApplication(this.dataset.id, this.dataset.name, this.dataset.email, this.dataset.city, this.dataset.services, this.dataset.rate)">✅ Godkänn</button>
-          <button class="btn btn-danger btn-sm" onclick="rejectApplication('${escHtml(a.id)}')">❌ Avslå</button>
+            onclick="approveApplication(this, this.dataset.id, this.dataset.name, this.dataset.email, this.dataset.city, this.dataset.services, this.dataset.rate)">✅ Godkänn</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectApplication(this, '${escHtml(a.id)}')">❌ Avslå</button>
         </div>
       </div>
     </div>`).join('') : '<div class="empty"><div class="empty-icon">✅</div>Inga nya ansökningar</div>'}
@@ -2042,6 +2043,30 @@ async function activateSub(id) {
 // ═══════════════════════════════════════════════════════════
 // AUTO-ASSIGN
 // ═══════════════════════════════════════════════════════════
+async function runBookingTimeout(btn) {
+  if (!confirm('Timeout:a bokningar som väntat > 2h utan svar?\n\nKunder får återbetalning och mejl.')) return;
+  btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/booking-auto-timeout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+    });
+    const result = await res.json();
+    btn.disabled = false; btn.textContent = '🕐 Hantera timeout';
+    if (result.success) {
+      alert(result.message);
+      if (result.count > 0) loadAll();
+    } else {
+      alert('Fel: ' + (result.error || 'Okänt fel'));
+    }
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '🕐 Hantera timeout';
+    alert('Nätverksfel: ' + e.message);
+  }
+}
+
 async function autoAssignAll() {
   const unassigned = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
   if (!unassigned.length) { showToast('✅ Alla bokningar har städare!'); return; }
@@ -2802,9 +2827,10 @@ async function saveCleanerFromAdmin() {
 }
 
 // ── APPLICATIONS ──────────────────────────────────────
-async function approveApplication(id, name, email, city, services, rate) {
+async function approveApplication(btn, id, name, email, city, services, rate) {
   if (!confirm(`Godkänn ${name}?\n\nEtt konto skapas, profil läggs till i cleaners och välkomstmejl skickas.`)) return;
 
+  btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
   const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
 
@@ -2820,14 +2846,16 @@ async function approveApplication(id, name, email, city, services, rate) {
       alert(`✅ ${name} är nu godkänd som städare! Välkomstmejl skickat.`);
       loadAll();
     } else {
+      btn.disabled = false; btn.textContent = '✅ Godkänn';
       alert('Fel: ' + (result.error || 'Okänt fel'));
     }
   } catch (e) {
+    btn.disabled = false; btn.textContent = '✅ Godkänn';
     alert('Nätverksfel: ' + e.message);
   }
 }
 
-async function rejectApplication(id) {
+async function rejectApplication(btn, id) {
   var result = await showConfirmDialog({
     level: 'red',
     title: 'Avslå ansökan',
@@ -2835,6 +2863,7 @@ async function rejectApplication(id) {
   });
   if (!result.ok) return;
 
+  btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
   const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
 
@@ -2850,9 +2879,11 @@ async function rejectApplication(id) {
       alert('❌ Ansökan avslagen. Mejl skickat.');
       loadAll();
     } else {
+      btn.disabled = false; btn.textContent = '❌ Avslå';
       alert('Fel: ' + (result2.error || 'Okänt fel'));
     }
   } catch (e) {
+    btn.disabled = false; btn.textContent = '❌ Avslå';
     alert('Nätverksfel: ' + e.message);
   }
 }

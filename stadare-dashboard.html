@@ -1466,8 +1466,8 @@ function jobCard(j) {
   let actionsHtml = '';
   if (isPendingConfirmation) {
     actionsHtml = `<div class="job-actions" style="margin-top:8px">
-      <button class="btn-accept" onclick="respondToBooking('${j.id}','accept')">✅ Acceptera uppdrag</button>
-      <button class="btn-decline" onclick="respondToBooking('${j.id}','reject')">❌ Avböj</button>
+      <button class="btn-accept" onclick="respondToBooking(this,'${j.id}','accept')">✅ Acceptera uppdrag</button>
+      <button class="btn-decline" onclick="respondToBooking(this,'${j.id}','reject')">❌ Avböj</button>
     </div>`;
   } else if (isOpen) {
     actionsHtml = `<div class="job-actions">
@@ -1894,7 +1894,7 @@ async function markJobDone(id) {
   loadJobs();
 }
 
-async function respondToBooking(bookingId, action) {
+async function respondToBooking(btn, bookingId, action) {
   const confirmMsg = action === 'accept'
     ? 'Acceptera detta uppdrag? Kunden får bekräftelsemejl.'
     : 'Avböj detta uppdrag? Kunden får full återbetalning.';
@@ -1904,6 +1904,12 @@ async function respondToBooking(bookingId, action) {
   if (action === 'reject') {
     reason = prompt('Valfritt: varför avböjer du?') || '';
   }
+
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
+  // Disable sibling button too
+  const sibling = btn.parentElement.querySelector(btn.classList.contains('btn-accept') ? '.btn-decline' : '.btn-accept');
+  if (sibling) sibling.disabled = true;
 
   const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
   const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
@@ -1923,9 +1929,13 @@ async function respondToBooking(bookingId, action) {
       loadJobs();
     } else {
       if (card) card.style.opacity = '1';
+      btn.disabled = false; btn.textContent = origText;
+      if (sibling) sibling.disabled = false;
       showToast('⚠️ Fel: ' + (result.error || 'Okänt fel'));
     }
   } catch (e) {
+    btn.disabled = false; btn.textContent = origText;
+    if (sibling) sibling.disabled = false;
     showToast('⚠️ Nätverksfel: ' + e.message);
   }
 }
