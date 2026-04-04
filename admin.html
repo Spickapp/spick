@@ -896,6 +896,7 @@ SB.auth.onAuthStateChange(async (event, session) => {
         await loadAll();
         setTimeout(setupRealtime, 1000);
         loadTickets().catch(function(){});
+        setTimeout(function(){ if(!document.querySelector('.booking-card')) loadAll(); }, 500);
       } else {
         alert('Du har inte adminbehörighet.');
         SB.auth.signOut();
@@ -986,6 +987,7 @@ async function verifyOtp() {
           await loadAll();
           setTimeout(setupRealtime, 1000);
           loadTickets().catch(function(){});
+          setTimeout(function(){ if(!document.querySelector('.booking-card')) loadAll(); }, 500);
         } else {
           document.getElementById('otp-err').textContent = 'Du har inte adminbehörighet.';
           document.getElementById('otp-err').style.display = 'block';
