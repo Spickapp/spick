@@ -112,7 +112,7 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
   // Hitta godkända städare i rätt stad med rätt tjänst, sorterade på betyg
   const { data: cleaners } = await sb
     .from("cleaners")
-    .select("id, full_name, avg_rating, city, auth_user_id, email")
+    .select("id, full_name, avg_rating, city, auth_user_id, email, company_id")
     .eq("status", "aktiv")
     .order("avg_rating", { ascending: false });
 
@@ -213,7 +213,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   if (preferredCleanerId) {
     const { data: preferred } = await sb
       .from("cleaners")
-      .select("id, full_name, avg_rating, auth_user_id, email")
+      .select("id, full_name, avg_rating, auth_user_id, email, company_id")
       .eq("id", preferredCleanerId)
       .eq("status", "aktiv")
       .single();
@@ -376,6 +376,14 @@ ${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px
 <p style="margin-top:24px;font-size:12px;color:#9E9E9A">Vill du sluta ta emot uppdrag? <a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/cleaner-optout?token=${cleaner.auth_user_id}" style="color:#9E9E9A">Avregistrera dig här</a></p>
 `);
       await sendEmail(cleanerEmail, `Nytt uppdrag: ${service} den ${date} 🧹`, cleanerHtml);
+
+      // Also notify company owner if cleaner belongs to a company
+      if (cleaner.company_id) {
+        const { data: owner } = await sb.from("cleaners").select("email, full_name").eq("company_id", cleaner.company_id).eq("is_company_owner", true).maybeSingle();
+        if (owner?.email && owner.email !== cleanerEmail) {
+          await sendEmail(owner.email, `Nytt uppdrag för ${cleaner.full_name}: ${service} den ${date} 🧹`, cleanerHtml);
+        }
+      }
     } else {
       console.warn(`Ingen email hittad för städare ${cleaner.id} – kan ej notifiera`);
     }

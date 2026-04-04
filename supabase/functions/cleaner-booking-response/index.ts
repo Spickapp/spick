@@ -26,7 +26,7 @@ serve(async (req) => {
     // Find cleaner by auth_user_id
     const { data: cleaner, error: clErr } = await sb
       .from("cleaners")
-      .select("id, full_name, email")
+      .select("id, full_name, email, company_id, is_company_owner")
       .eq("auth_user_id", authUser.id)
       .eq("is_approved", true)
       .maybeSingle();
@@ -48,8 +48,20 @@ serve(async (req) => {
 
     if (bkErr || !booking) return json({ error: "Bokning hittades inte" }, 404, CORS);
 
-    // Verify this cleaner owns this booking
-    if (booking.cleaner_id !== cleaner.id) {
+    // Verify this cleaner owns this booking (or is company owner of the assigned cleaner)
+    let isAuthorized = booking.cleaner_id === cleaner.id;
+    if (!isAuthorized && cleaner.is_company_owner && cleaner.company_id) {
+      // Check if the assigned cleaner belongs to the same company
+      const { data: assignedCleaner } = await sb
+        .from("cleaners")
+        .select("company_id")
+        .eq("id", booking.cleaner_id)
+        .maybeSingle();
+      if (assignedCleaner?.company_id === cleaner.company_id) {
+        isAuthorized = true;
+      }
+    }
+    if (!isAuthorized) {
       return json({ error: "Du har inte tillgång till denna bokning" }, 403, CORS);
     }
 

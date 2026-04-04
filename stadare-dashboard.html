@@ -732,7 +732,53 @@ body{top:0!important}
     </div>
   </div>
 
-  <!-- BOTTOM NAV — 5 tabs -->
+    <!-- ═══ TAB: TEAM (only visible for company owners) ═══ -->
+    <div class="tab-content" id="tab-team">
+      <div class="tab-pad">
+        <div class="card" style="padding:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
+              <p style="font-size:.82rem;color:var(--m)" id="team-count">Laddar...</p>
+            </div>
+            <button onclick="showAddMemberModal()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till</button>
+          </div>
+          <div id="team-list"></div>
+        </div>
+
+        <div class="card" style="padding:20px;margin-top:12px">
+          <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets bokningar</h4>
+          <div id="team-bookings-list"><p style="color:var(--m);font-size:.85rem">Laddar...</p></div>
+        </div>
+      </div>
+    </div>
+
+  <!-- ADD TEAM MEMBER MODAL -->
+  <div id="add-member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%">
+      <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Lägg till teammedlem</h3>
+      <div style="margin-bottom:12px">
+        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Förnamn *</label>
+        <input type="text" id="member-fname" placeholder="Anna" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Efternamn *</label>
+        <input type="text" id="member-lname" placeholder="Karlsson" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">E-post *</label>
+        <input type="email" id="member-email" placeholder="anna@email.se" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Telefon</label>
+        <input type="tel" id="member-phone" placeholder="070 123 45 67" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+      </div>
+      <button id="add-member-btn" onclick="addTeamMember()" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit">Lägg till teammedlem</button>
+      <p id="add-member-msg" style="font-size:.8rem;margin-top:8px;text-align:center;display:none"></p>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV — 5 tabs + conditional Team -->
   <div class="bottom-nav">
     <button class="nav-btn active" id="nav-hem" onclick="switchTab('hem')">
       <span class="ni">🏠</span><span>Hem</span>
@@ -746,6 +792,9 @@ body{top:0!important}
     </button>
     <button class="nav-btn" id="nav-inkomst" onclick="switchTab('inkomst')">
       <span class="ni">💰</span><span>Inkomst</span>
+    </button>
+    <button class="nav-btn" id="nav-team" onclick="switchTab('team')" style="display:none">
+      <span class="ni">👥</span><span>Team</span>
     </button>
     <button class="nav-btn" id="nav-inst" onclick="switchTab('inst')">
       <span class="ni">⚙️</span><span>Mer</span>
@@ -1105,6 +1154,7 @@ async function loadCleanerByEmail(email, authUserId) {
       : '<span style="color:#F59E0B;font-size:.8rem">⚠️ Ej verifierad — <a href="registrera-stadare.html#bankid" style="color:var(--g)">Verifiera nu →</a></span>';
   }
   window._cleanerLoaded=true;
+  showTeamTab();
   showScreen('app');
 
   if (cleaner.status === 'pausad') {
@@ -2223,12 +2273,134 @@ function switchTab(tab) {
   if (tab === 'jobb') renderAvailableJobs();
   if (tab === 'kalender') renderCalendar();
   if (tab === 'inkomst') { renderEarnings(); setTimeout(loadMyReviews, 200); }
+  if (tab === 'team') renderTeam();
 }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── TEAM FUNCTIONS ───────────��──────────────────────────────
+function showTeamTab() {
+  if (cleaner && cleaner.is_company_owner) {
+    document.getElementById('nav-team').style.display = '';
+  }
+}
+
+async function renderTeam() {
+  if (!cleaner || !cleaner.company_id) return;
+
+  // Fetch company info
+  const { data: company } = await R.selectSingle('companies', `select=*&id=eq.${cleaner.company_id}`);
+  if (company) {
+    document.getElementById('team-company-name').textContent = '🏢 ' + (company.name || 'Ditt team');
+  }
+
+  // Fetch team members
+  const { data: members } = await R.select('cleaners', `select=id,full_name,email,phone,status,completed_jobs&company_id=eq.${cleaner.company_id}&order=created_at.asc`);
+  const teamMembers = members || [];
+
+  document.getElementById('team-count').textContent = teamMembers.length + ' teammedlemmar';
+  document.getElementById('team-list').innerHTML = teamMembers.length ? teamMembers.map(m => {
+    const isOwner = m.id === cleaner.id;
+    const statusBadge = m.status === 'aktiv' ? '<span style="color:var(--g);font-size:.75rem">● Aktiv</span>'
+      : m.status === 'inactive' ? '<span style="color:var(--m);font-size:.75rem">● Inaktiv</span>'
+      : '<span style="color:#F59E0B;font-size:.75rem">● ' + escHtml(m.status || 'ny') + '</span>';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:.9rem">${escHtml(m.full_name || '–')} ${isOwner ? '<span style="font-size:.7rem;background:var(--gr);padding:1px 6px;border-radius:8px;color:var(--g);font-weight:700">Ägare</span>' : ''}</div>
+        <div style="font-size:.78rem;color:var(--m)">${escHtml(m.email || '')} ${m.phone ? '· ' + escHtml(m.phone) : ''}</div>
+        <div style="font-size:.75rem;margin-top:2px">${statusBadge} · ${m.completed_jobs || 0} uppdrag</div>
+      </div>
+      ${!isOwner ? `<button onclick="toggleMemberStatus('${m.id}','${m.status === 'inactive' ? 'aktiv' : 'inactive'}')" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;background:none;font-size:.75rem;cursor:pointer;font-family:inherit">${m.status === 'inactive' ? '✅ Aktivera' : '⏸ Pausa'}</button>` : ''}
+    </div>`;
+  }).join('') : '<p style="color:var(--m);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
+
+  // Fetch team bookings
+  const memberIds = teamMembers.map(m => m.id);
+  if (memberIds.length > 0) {
+    const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
+    const { data: bookings } = await R.select('bookings', `select=id,customer_name,service_type,booking_date,booking_time,status,cleaner_id,cleaner_name,total_price&or=(${idFilter})&order=booking_date.desc&limit=20`);
+    const teamBookings = bookings || [];
+    document.getElementById('team-bookings-list').innerHTML = teamBookings.length ? teamBookings.map(b => {
+      const st = b.status === 'confirmed' ? '✅' : b.status === 'pending_confirmation' ? '⏳' : b.status === 'completed' ? '🏁' : '📋';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+        <div>
+          <strong>${escHtml(b.customer_name || '–')}</strong> · ${escHtml(b.service_type || 'Städning')}<br>
+          <span style="font-size:.78rem;color:var(--m)">${b.booking_date || '–'} ${b.booking_time || ''} · ${escHtml(b.cleaner_name || '–')}</span>
+        </div>
+        <div style="text-align:right">
+          <span>${st} ${escHtml(b.status || '–')}</span><br>
+          <span style="font-size:.78rem;font-weight:600;color:var(--g)">${b.total_price ? b.total_price + ' kr' : ''}</span>
+        </div>
+      </div>`;
+    }).join('') : '<p style="color:var(--m);font-size:.85rem">Inga bokningar ännu.</p>';
+  }
+}
+
+function showAddMemberModal() {
+  document.getElementById('add-member-modal').style.display = 'flex';
+  document.getElementById('member-fname').value = '';
+  document.getElementById('member-lname').value = '';
+  document.getElementById('member-email').value = '';
+  document.getElementById('member-phone').value = '';
+  document.getElementById('add-member-msg').style.display = 'none';
+}
+
+async function addTeamMember() {
+  const fname = document.getElementById('member-fname').value.trim();
+  const lname = document.getElementById('member-lname').value.trim();
+  const email = document.getElementById('member-email').value.trim();
+  const phone = document.getElementById('member-phone').value.trim();
+  const msgEl = document.getElementById('add-member-msg');
+
+  if (!fname || !lname) { msgEl.textContent = 'Ange för- och efternamn'; msgEl.style.display = 'block'; msgEl.style.color = '#DC2626'; return; }
+  if (!email || !email.includes('@')) { msgEl.textContent = 'Ange en giltig e-postadress'; msgEl.style.display = 'block'; msgEl.style.color = '#DC2626'; return; }
+
+  const btn = document.getElementById('add-member-btn');
+  btn.disabled = true; btn.textContent = 'Lägger till...';
+
+  try {
+    const fullName = fname + ' ' + lname;
+    const { error } = await R.insert('cleaner_applications', {
+      full_name: fullName,
+      first_name: fname,
+      last_name: lname,
+      email: email,
+      phone: phone || null,
+      home_address: cleaner.home_address || '',
+      home_lat: cleaner.home_lat || null,
+      home_lng: cleaner.home_lng || null,
+      hourly_rate: cleaner.hourly_rate || 350,
+      services: cleaner.services || ['Hemstädning'],
+      service_radius_km: cleaner.service_radius_km || 30,
+      status: 'pending',
+      is_company: false,
+      company_name: null,
+      gdpr_consent: true,
+      gdpr_consent_at: new Date().toISOString(),
+      fskatt_confirmed: true,
+    });
+
+    if (error) throw new Error(error.message || 'Insert failed');
+
+    msgEl.textContent = '✅ ' + fullName + ' tillagd! Väntar på admin-godkännande.';
+    msgEl.style.display = 'block'; msgEl.style.color = 'var(--g)';
+    btn.disabled = false; btn.textContent = 'Lägg till teammedlem';
+  } catch (e) {
+    msgEl.textContent = 'Fel: ' + e.message;
+    msgEl.style.display = 'block'; msgEl.style.color = '#DC2626';
+    btn.disabled = false; btn.textContent = 'Lägg till teammedlem';
+  }
+}
+
+async function toggleMemberStatus(memberId, newStatus) {
+  if (!confirm(newStatus === 'inactive' ? 'Pausa denna teammedlem?' : 'Aktivera denna teammedlem?')) return;
+  await R.update('cleaners', { status: newStatus }, `id=eq.${memberId}`);
+  renderTeam();
+  showToast(newStatus === 'inactive' ? 'Teammedlem pausad' : 'Teammedlem aktiverad');
 }
 
 // Service Worker

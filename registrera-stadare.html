@@ -135,6 +135,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-he
 .id-verify-notice{background:#F0FAF6;border-radius:12px;padding:1.5rem;text-align:center;font-size:.9rem;line-height:1.6}
 .id-later-note{font-size:.85rem;color:#6B6960;margin-top:.5rem}
 .price-range-labels{display:flex;justify-content:space-between;font-size:.8rem;color:#9E9E9A;margin-top:.25rem}
+/* REG TYPE TOGGLE */
+.reg-type-btn{flex:1;padding:12px;border:2px solid #E8E8E4;border-radius:12px;background:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.reg-type-btn:hover{border-color:var(--gl)}
+.reg-type-btn.on{background:var(--gp);border-color:var(--accent);color:var(--accent)}
+
 @media(max-width:480px){.field-row{grid-template-columns:1fr}}
 input,select,textarea{font-size:16px!important}
 @media(max-width:768px){
@@ -252,7 +258,14 @@ var _arTranslations = {
   gorsInom24h: 'يتم خلال ٢٤ ساعة',
   helpText: 'تحتاج مساعدة؟ اتصل أو أرسل بريداً — نرد بسرعة.',
   btnDashboard: 'اذهب إلى لوحة التحكم →',
-  btnStartsidan: '← العودة إلى الصفحة الرئيسية'
+  btnStartsidan: '← العودة إلى الصفحة الرئيسية',
+  lblRegTyp: 'هل تسجل كفرد أم شركة؟',
+  btnPrivat: '👤 فرد',
+  btnForetag: '🏢 شركة',
+  lblForetagsnamn: 'اسم الشركة *',
+  lblOrgNr: 'رقم المنظمة *',
+  hintOrgNr: 'الصيغة: 556677-8899',
+  lblTeamSize: 'عدد عمال النظافة في الفريق *'
 };
 
 function applyArabic() {
@@ -302,6 +315,14 @@ function updateDynamicTexts() {
       }
     }
   }
+}
+
+var _regType = 'privat';
+function setRegType(type) {
+  _regType = type;
+  document.getElementById('regTypePrivat').classList.toggle('on', type === 'privat');
+  document.getElementById('regTypeForetag').classList.toggle('on', type === 'foretag');
+  document.getElementById('companyFields').style.display = type === 'foretag' ? 'block' : 'none';
 }
 
 function switchLang(lang, btn) {
@@ -427,6 +448,34 @@ function switchLang(lang, btn) {
         <div id="cleaner-addr-results"></div>
         <input type="hidden" id="cleaner-lat">
         <input type="hidden" id="cleaner-lng">
+      </div>
+
+      <!-- COMPANY TOGGLE -->
+      <div class="field" style="margin-top:20px">
+        <label data-i18n="lblRegTyp">Registrerar du dig som privatperson eller företag?</label>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button type="button" class="reg-type-btn on" id="regTypePrivat" onclick="setRegType('privat')" data-i18n="btnPrivat">👤 Privatperson</button>
+          <button type="button" class="reg-type-btn" id="regTypeForetag" onclick="setRegType('foretag')" data-i18n="btnForetag">🏢 Företag</button>
+        </div>
+      </div>
+
+      <!-- COMPANY FIELDS (hidden by default) -->
+      <div id="companyFields" style="display:none">
+        <div class="field">
+          <label data-i18n="lblForetagsnamn">Företagsnamn *</label>
+          <input type="text" id="companyName" placeholder="AB Städarna">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label data-i18n="lblOrgNr">Organisationsnummer *</label>
+            <input type="text" id="orgNumber" placeholder="556677-8899" pattern="\d{6}-\d{4}">
+            <div class="field-hint" data-i18n="hintOrgNr">Format: 556677-8899</div>
+          </div>
+          <div class="field">
+            <label data-i18n="lblTeamSize">Antal städare i teamet *</label>
+            <input type="number" id="teamSize" min="2" max="50" value="2" placeholder="2">
+          </div>
+        </div>
       </div>
     </div>
     <button class="btn-primary" onclick="validateStep1()" data-i18n="btnNasta">Nästa steg →</button>
@@ -628,6 +677,15 @@ function validateStep1() {
     alert('Välj din adress från listan så vi kan hitta kunder nära dig.');
     return;
   }
+  // Validate company fields
+  if (_regType === 'foretag') {
+    var cn = document.getElementById('companyName').value.trim();
+    var on = document.getElementById('orgNumber').value.trim();
+    var ts = parseInt(document.getElementById('teamSize').value);
+    if (!cn) { alert('Ange företagsnamn'); return; }
+    if (!on || !/^\d{6}-\d{4}$/.test(on)) { alert('Ange organisationsnummer (format: 556677-8899)'); return; }
+    if (!ts || ts < 2) { alert('Ange antal städare (minst 2)'); return; }
+  }
   goToStep(2);
 }
 
@@ -747,6 +805,14 @@ async function submitRegistration() {
     gdpr_consent_at: new Date().toISOString(),
     fskatt_confirmed: true
   };
+
+  // Company fields
+  if (_regType === 'foretag') {
+    cleanerData.is_company = true;
+    cleanerData.company_name = document.getElementById('companyName').value.trim();
+    cleanerData.org_number = document.getElementById('orgNumber').value.trim();
+    cleanerData.team_size = parseInt(document.getElementById('teamSize').value) || 2;
+  }
 
   try {
     var res = await fetch(SUPA_URL + '/rest/v1/cleaner_applications', {

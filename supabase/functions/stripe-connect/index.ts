@@ -101,7 +101,18 @@ serve(async (req) => {
       }
 
       const cleaner         = booking.cleaners;
-      const stripeAccountId = cleaner?.stripe_account_id;
+      let stripeAccountId = cleaner?.stripe_account_id;
+
+      // If cleaner belongs to a company, use company's Stripe account
+      if (!stripeAccountId && booking.cleaner_id) {
+        const { data: fullCleaner } = await sb.from("cleaners").select("company_id").eq("id", booking.cleaner_id).single();
+        if (fullCleaner?.company_id) {
+          const { data: company } = await sb.from("companies").select("stripe_account_id").eq("id", fullCleaner.company_id).single();
+          if (company?.stripe_account_id) {
+            stripeAccountId = company.stripe_account_id;
+          }
+        }
+      }
 
       if (!stripeAccountId) throw new Error("Städaren saknar Stripe-konto");
 

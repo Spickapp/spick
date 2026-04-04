@@ -160,16 +160,57 @@ serve(async (req) => {
         .eq("email", email)
         .maybeSingle();
 
+      let cleanerId: string;
       if (existing) {
         await sb.from("cleaners").update({
           ...cleanerData,
           slug: undefined, // don't overwrite slug on re-approve
         }).eq("id", existing.id);
+        cleanerId = existing.id;
       } else {
-        const { error: insertErr } = await sb.from("cleaners").insert(cleanerData);
-        if (insertErr) {
-          log("error", "admin-approve-cleaner", "Insert cleaner failed", { error: insertErr.message });
-          return json({ error: "Kunde inte skapa städarprofil: " + insertErr.message }, 500, CORS);
+        const { data: inserted, error: insertErr } = await sb.from("cleaners").insert(cleanerData).select("id").single();
+        if (insertErr || !inserted) {
+          log("error", "admin-approve-cleaner", "Insert cleaner failed", { error: insertErr?.message });
+          return json({ error: "Kunde inte skapa städarprofil: " + (insertErr?.message || "unknown") }, 500, CORS);
+        }
+        cleanerId = inserted.id;
+      }
+
+      // 3b. If company application, create company and link
+      if (app.is_company && app.company_name) {
+        try {
+          const { data: company, error: compErr } = await sb.from("companies").insert({
+            name: app.company_name,
+            org_number: app.org_number || null,
+            owner_cleaner_id: cleanerId,
+            commission_rate: 0.17,
+          }).select("id").single();
+
+          if (compErr || !company) {
+            log("error", "admin-approve-cleaner", "Company insert failed, rolling back", { error: compErr?.message });
+            // Rollback: delete cleaner
+            await sb.from("cleaners").delete().eq("id", cleanerId);
+            if (authUserId) await sb.auth.admin.deleteUser(authUserId);
+            return json({ error: "Kunde inte skapa företag: " + (compErr?.message || "unknown") }, 500, CORS);
+          }
+
+          // Link cleaner to company
+          await sb.from("cleaners").update({
+            company_id: company.id,
+            is_company_owner: true,
+          }).eq("id", cleanerId);
+
+          log("info", "admin-approve-cleaner", "Company created", {
+            companyId: company.id,
+            companyName: app.company_name,
+            ownerId: cleanerId,
+          });
+        } catch (e) {
+          log("error", "admin-approve-cleaner", "Company creation exception", { error: (e as Error).message });
+          // Rollback
+          await sb.from("cleaners").delete().eq("id", cleanerId);
+          if (authUserId) await sb.auth.admin.deleteUser(authUserId);
+          return json({ error: "Företagsskapande misslyckades: " + (e as Error).message }, 500, CORS);
         }
       }
 
@@ -197,10 +238,12 @@ serve(async (req) => {
 
       // 6. Send welcome email (trilingual: SV + EN + AR)
       const hr = parseInt(app.hourly_rate) || 350;
+      const isCompany = app.is_company && app.company_name;
       const html = wrap(`
         <h2>Välkommen till Spick! 🎉</h2>
         <p>Hej ${esc(name)}!</p>
         <p>Grattis — din ansökan är godkänd! Du är nu en del av Spick-teamet.</p>
+        ${isCompany ? `<p>🏢 <strong>${esc(app.company_name)}</strong> är registrerat. Du kan lägga till teammedlemmar via din dashboard.</p>` : ""}
         ${card([
           ["Timpris", `${hr} kr/h`],
           ["Provision", "17% (du behåller 83%)"],

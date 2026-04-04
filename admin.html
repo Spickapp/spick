@@ -1758,7 +1758,7 @@ function renderCleaners() {
         <div style="display:flex;align-items:center;gap:10px">
           <input type="checkbox" onchange="toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer">
           <div class="avatar" style="width:36px;height:36px;font-size:.85rem;${isPaused?'background:#F59E0B':''}${isSuspended?'background:#6B7280':''}">${(c.full_name||'?').charAt(0)}</div>
-          <div><strong>${escHtml(c.full_name || '–')}</strong><br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
+          <div><strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
         </div>
       </td>
       <td>${escHtml(c.city || '–')}</td>
@@ -1799,8 +1799,9 @@ function renderApplications() {
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
         <div>
-          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${escHtml(a.name || a.full_name || '–')}</h4>
+          <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${escHtml(a.name || a.full_name || '–')} ${a.is_company ? '<span style="background:#DBEAFE;color:#1E40AF;font-size:.72rem;padding:2px 8px;border-radius:12px;font-weight:600;margin-left:6px">🏢 Företag</span>' : ''}</h4>
           <p style="color:var(--m);font-size:.88rem">${escHtml(a.email)} · ${escHtml(a.phone || '–')} · ${escHtml(a.city || '–')}</p>
+          ${a.is_company ? `<p style="font-size:.85rem;margin-top:4px"><strong>🏢 Företag:</strong> ${escHtml(a.company_name || '–')} · <strong>Org.nr:</strong> ${escHtml(a.org_number || '–')} · <strong>Teamstorlek:</strong> ${a.team_size || '–'}</p>` : ''}
           <p style="font-size:.85rem;margin-top:8px">${a.home_address ? '📍 <strong>Adress:</strong> ' + escHtml(a.home_address) : '<span style="color:#D97706">⚠️ Adress saknas</span>'} · ${a.service_radius_km ? '🔄 <strong>Radie:</strong> ' + parseInt(a.service_radius_km) + ' km' : '<span style="color:#D97706">⚠️ Radie ej angiven</span>'}</p>
           <p style="font-size:.75rem;color:#9E9E9A;margin-top:2px">🗺️ ${a.home_lat && a.home_lng ? parseFloat(a.home_lat).toFixed(4) + ', ' + parseFloat(a.home_lng).toFixed(4) : '<span style="color:#D97706">⚠️ Koordinater saknas</span>'}</p>
           <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(Array.isArray(a.services) ? a.services.join(', ') : a.services || '–')}</p>
