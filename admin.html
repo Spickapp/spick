@@ -1796,13 +1796,15 @@ function renderApplications() {
         <div>
           <h4 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">${escHtml(a.name || a.full_name || '–')}</h4>
           <p style="color:var(--m);font-size:.88rem">${escHtml(a.email)} · ${escHtml(a.phone || '–')} · ${escHtml(a.city || '–')}</p>
-          <p style="font-size:.85rem;margin-top:8px">${a.home_address ? '📍 <strong>Adress:</strong> ' + escHtml(a.home_address) : '<span style="color:#D97706">📍 <strong>Adress:</strong> Ej angiven ⚠️</span>'} · ${a.service_radius_km ? '🔄 <strong>Radie:</strong> ' + parseInt(a.service_radius_km) + ' km' : '<span style="color:#D97706">🔄 <strong>Radie:</strong> Ej angiven ⚠️</span>'}</p>
-          <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(a.services || '–')}</p>
-          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt ? '✅ Ja' : '❌ Nej'}</p>
-          ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${escHtml(a.bio.substring(0,120))}..."</p>` : ''}
+          <p style="font-size:.85rem;margin-top:8px">${a.home_address ? '📍 <strong>Adress:</strong> ' + escHtml(a.home_address) : '<span style="color:#D97706">⚠️ Adress saknas</span>'} · ${a.service_radius_km ? '🔄 <strong>Radie:</strong> ' + parseInt(a.service_radius_km) + ' km' : '<span style="color:#D97706">⚠️ Radie ej angiven</span>'}</p>
+          <p style="font-size:.75rem;color:#9E9E9A;margin-top:2px">🗺️ ${a.home_lat && a.home_lng ? parseFloat(a.home_lat).toFixed(4) + ', ' + parseFloat(a.home_lng).toFixed(4) : '<span style="color:#D97706">⚠️ Koordinater saknas</span>'}</p>
+          <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(Array.isArray(a.services) ? a.services.join(', ') : a.services || '–')}</p>
+          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt || a.fskatt_confirmed ? '✅ Ja' : '❌ Nej'}</p>
+          ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${escHtml(a.bio.substring(0,120))}${a.bio.length > 120 ? '...' : ''}"</p>` : ''}
           ${a.available_days ? `<p style="font-size:.82rem;margin-top:4px"><strong>Tillgängliga dagar:</strong> ${escHtml(a.available_days)}</p>` : ''}
           ${a.languages ? `<p style="font-size:.82rem"><strong>Språk:</strong> ${escHtml(a.languages)}</p>` : ''}
-          <p style="font-size:.75rem;color:var(--m);margin-top:6px">Ansökt: ${new Date(a.created_at).toLocaleString('sv-SE',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
+          <p style="font-size:.75rem;color:#9E9E9A;margin-top:6px">${a.gdpr_consent ? '✅ GDPR' : '❌ GDPR'} · ${a.fskatt_confirmed ? '✅ F-skatt bekräftad' : '❌ F-skatt ej bekräftad'} · ${a.marketing_consent ? '✅ Marknadsföring' : '❌ Marknadsföring'}</p>
+          <p style="font-size:.75rem;color:var(--m);margin-top:4px">Ansökt: ${new Date(a.created_at).toLocaleString('sv-SE',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-primary btn-sm" style="white-space:nowrap" 
