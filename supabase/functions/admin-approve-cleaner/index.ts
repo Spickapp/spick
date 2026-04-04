@@ -47,8 +47,18 @@ serve(async (req) => {
       return json({ error: `Ansökan redan hanterad (status: ${app.status})` }, 409, CORS);
     }
 
-    const name = app.name || app.full_name || "Städare";
+    const firstName = app.first_name || "";
+    const lastName = app.last_name || "";
+    const name = app.full_name || app.name || [firstName, lastName].filter(Boolean).join(" ") || "Städare";
     const email = app.email;
+
+    log("info", "admin-approve-cleaner", "Application data", {
+      id: application_id, action, email, name, firstName, lastName,
+      hourly_rate: app.hourly_rate, services: app.services,
+      home_lat: app.home_lat, home_lng: app.home_lng,
+      service_radius_km: app.service_radius_km, city: app.city,
+      bio: app.bio ? app.bio.substring(0, 50) : null,
+    });
 
     // ════════════════════════════════════════════════════════
     // APPROVE
@@ -99,11 +109,14 @@ serve(async (req) => {
 
       const cleanerData: Record<string, unknown> = {
         full_name: name,
+        first_name: firstName || name.split(" ")[0] || "Städare",
+        last_name: lastName || name.split(" ").slice(1).join(" ") || "",
         email,
         phone: app.phone || null,
-        home_lat: app.home_lat || null,
-        home_lng: app.home_lng || null,
-        service_radius_km: app.service_radius_km || 10,
+        city: app.city || null,
+        home_lat: app.home_lat ? parseFloat(app.home_lat) : null,
+        home_lng: app.home_lng ? parseFloat(app.home_lng) : null,
+        service_radius_km: app.service_radius_km ? parseInt(app.service_radius_km) : 10,
         hourly_rate: parseInt(app.hourly_rate) || 350,
         services: svcs,
         bio: app.bio || null,
@@ -117,6 +130,12 @@ serve(async (req) => {
         review_count: 0,
         created_at: new Date().toISOString(),
       };
+
+      log("info", "admin-approve-cleaner", "Inserting cleaner", {
+        email, slug, first_name: cleanerData.first_name, last_name: cleanerData.last_name,
+        home_lat: cleanerData.home_lat, home_lng: cleanerData.home_lng,
+        hourly_rate: cleanerData.hourly_rate, services: svcs,
+      });
 
       // Check if cleaner already exists (by email)
       const { data: existing } = await sb
