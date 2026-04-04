@@ -415,10 +415,12 @@ body{top:0!important}
           <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> <span>Skriv en personlig beskrivning</span></div>
           <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> <span>Ställ in ditt veckoschema</span></div>
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> <span>Anslut bankkonto via Stripe</span></div>
+          <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><span class="ob-check">⬜</span> <a href="stadare-handbok.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markHandbookRead()">Läs Städarhandboken →</a></div>
+          <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank')"><span class="ob-check">⬜</span> <a href="stadare-test.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation()">Gör kompetenstestet →</a></div>
           <div class="ob-step" id="ob-6b" onclick="window.open('https://spick.se/registrera-stadare.html#bankid','_blank')"><span class="ob-check">⬜</span> <span>Verifiera med BankID</span></div>
           <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
         </div>
-        <div style="margin-top:12px;font-size:.78rem;color:var(--m)" id="ob-progress">1 av 7 klart</div>
+        <div style="margin-top:12px;font-size:.78rem;color:var(--m)" id="ob-progress">1 av 9 klart</div>
       </div>
 
       <!-- Today's Timeline -->
@@ -1210,10 +1212,13 @@ function updateOnboarding() {
     'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
     'ob-4': !!(cleaner._scheduleLoaded),
     'ob-5': cleaner.stripe_onboarding_status === 'complete',
+    'ob-6': !!localStorage.getItem('spick-handbook-read'),
+    'ob-6t': !!localStorage.getItem('spick_test_score'),
     'ob-6b': !!(cleaner.identity_verified),
     'ob-7': !!localStorage.getItem('spick-tips-read'),
   };
   let done = 0;
+  const total = Object.keys(checks).length;
   Object.entries(checks).forEach(([id, ok]) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1228,10 +1233,10 @@ function updateOnboarding() {
   });
   const box = document.getElementById('onboarding-checklist');
   if (box) {
-    box.style.display = done >= 6 ? 'none' : 'block';
+    box.style.display = done >= (total - 1) ? 'none' : 'block';
   }
   const prog = document.getElementById('ob-progress');
-  if (prog) prog.textContent = done + ' av 7 klart';
+  if (prog) prog.textContent = done + ' av ' + total + ' klart';
 }
 
 function switchLang(lang, btn) {
@@ -1252,6 +1257,11 @@ function switchLang(lang, btn) {
 
 function markTipsRead() {
   localStorage.setItem('spick-tips-read', '1');
+  updateOnboarding();
+}
+
+function markHandbookRead() {
+  localStorage.setItem('spick-handbook-read', '1');
   updateOnboarding();
 }
 
@@ -1560,6 +1570,17 @@ function jobCard(j) {
     ${j.allergies ? `<div style="background:#FEE2E2;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#991B1B">⚠️ Allergi: ${escHtml(j.allergies)}</div>` : ''}
   </div>` : '';
 
+  // Checklist link for accepted jobs
+  let checklistHtml = '';
+  if (isMine && !isDone) {
+    const svc = (j.service_type || 'Hemstädning').toLowerCase();
+    let clType = 'hem';
+    if (svc.includes('flytt')) clType = 'flytt';
+    else if (svc.includes('stor')) clType = 'stor';
+    else if (svc.includes('fönster') || svc.includes('fonster')) clType = 'fonster';
+    checklistHtml = `<a href="stadare-checklista.html?type=${clType}" target="_blank" style="display:inline-block;margin-top:6px;font-size:.78rem;color:var(--g);font-weight:600;text-decoration:none">📋 Öppna checklista →</a>`;
+  }
+
   return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}" id="jc-${j.id}">
     <div class="job-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
     <div class="job-body">
@@ -1573,6 +1594,7 @@ function jobCard(j) {
       ${badgeHtml}
       ${addrHtml}
       ${actionsHtml}
+      ${checklistHtml}
     </div>
     <div class="job-pay">
       <div>${pay.toLocaleString('sv')} kr</div>

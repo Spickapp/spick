@@ -251,6 +251,12 @@ serve(async (req) => {
         ])}
         <p>Klicka på knappen nedan för att logga in på din dashboard där du kan se och hantera bokningar:</p>
         <p><a href="${esc(magicLinkUrl)}" class="btn">Logga in på din dashboard →</a></p>
+        <h3 style="margin-top:28px;font-size:15px">📚 Kom igång — tre steg</h3>
+        <ol style="font-size:14px;color:#1C1C1A;line-height:1.8;padding-left:20px">
+          <li><a href="https://spick.se/stadare-handbok.html" style="color:#0F6E56;font-weight:600">Läs Städarhandboken</a> — allt du behöver veta</li>
+          <li><a href="https://spick.se/stadare-test.html" style="color:#0F6E56;font-weight:600">Gör kompetenstestet</a> — 25 frågor, ta 10 min</li>
+          <li><a href="https://spick.se/stadare-checklista.html" style="color:#0F6E56;font-weight:600">Kolla checklistorna</a> — använd vid varje uppdrag</li>
+        </ol>
         <p style="font-size:13px;color:#9B9B95;margin-top:20px">Länken är giltig i 24 timmar. Du kan alltid begära en ny inloggningslänk via dashboarden.</p>
         <p style="font-size:13px;color:#9B9B95;margin-top:8px">Har du frågor? Ring oss på 076-050 51 53 eller skriv på WhatsApp.</p>
         <p style="margin-top:4px">Välkommen till Spick!<br>Farhad</p>
@@ -267,6 +273,12 @@ serve(async (req) => {
         ])}
         <p>Click the button below to log in to your dashboard where you can see and manage your bookings:</p>
         <p><a href="${esc(magicLinkUrl)}" class="btn">Log in to your dashboard →</a></p>
+        <h3 style="margin-top:28px;font-size:15px">📚 Get started — three steps</h3>
+        <ol style="font-size:14px;color:#1C1C1A;line-height:1.8;padding-left:20px">
+          <li><a href="https://spick.se/stadare-handbok.html" style="color:#0F6E56;font-weight:600">Read the Cleaner Handbook</a> — everything you need to know</li>
+          <li><a href="https://spick.se/stadare-test.html" style="color:#0F6E56;font-weight:600">Take the competency test</a> — 25 questions, takes 10 min</li>
+          <li><a href="https://spick.se/stadare-checklista.html" style="color:#0F6E56;font-weight:600">Check the checklists</a> — use on every job</li>
+        </ol>
         <p style="font-size:13px;color:#9B9B95;margin-top:20px">The link is valid for 24 hours. You can always request a new login link via the dashboard.</p>
         <p style="font-size:13px;color:#9B9B95;margin-top:8px">Questions? Call us at 076-050 51 53 or message on WhatsApp.</p>
         <p style="margin-top:4px">Welcome to Spick!<br>Farhad</p>
@@ -284,6 +296,12 @@ serve(async (req) => {
           ])}
           <p>اضغط على الزر أدناه لتسجيل الدخول إلى لوحة التحكم:</p>
           <p><a href="${esc(magicLinkUrl)}" class="btn">← تسجيل الدخول إلى لوحة التحكم</a></p>
+          <h3 style="margin-top:28px;font-size:15px">📚 ابدأ — ثلاث خطوات</h3>
+          <ol style="font-size:14px;color:#1C1C1A;line-height:1.8;padding-right:20px">
+            <li><a href="https://spick.se/stadare-handbok.html" style="color:#0F6E56;font-weight:600">اقرأ دليل التنظيف</a> — كل ما تحتاج معرفته</li>
+            <li><a href="https://spick.se/stadare-test.html" style="color:#0F6E56;font-weight:600">قم باختبار الكفاءة</a> — ٢٥ سؤال، ١٠ دقائق</li>
+            <li><a href="https://spick.se/stadare-checklista.html" style="color:#0F6E56;font-weight:600">تحقق من القوائم</a> — استخدمها في كل مهمة</li>
+          </ol>
           <p style="font-size:13px;color:#9B9B95;margin-top:20px">الرابط صالح لمدة ٢٤ ساعة. يمكنك دائماً طلب رابط جديد عبر لوحة التحكم.</p>
           <p style="font-size:13px;color:#9B9B95;margin-top:8px">هل لديك أسئلة؟ اتصل بنا على 053 51 050-076 أو عبر WhatsApp.</p>
           <p style="margin-top:4px">مرحباً بك في Spick!<br>فرهاد</p>

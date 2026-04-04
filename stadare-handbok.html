@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Städarhandbok | Spick</title>
+<meta name="description" content="Allt du behöver veta för att lyckas som städare på Spick.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="js/config.js"></script>
+<script src="js/components.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--gd:#085041;--b:#0E0E0E;--t:#1C1C1A;--m:#6B6960;--bg:#F7F7F5;--border:#E8E8E4;--w:#fff;--r:14px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-height:1.6}
+
+.lang-bar{background:var(--gd);padding:5px 1.5rem;display:flex;align-items:center;justify-content:center;gap:6px}
+.lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
+.lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
+.lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.lang-sep{color:rgba(255,255,255,.2);font-size:.7rem;user-select:none}
+#google_translate_element{position:absolute;left:-9999px;opacity:0;pointer-events:none}
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#goog-gt-tt,.goog-te-balloon-frame{display:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}
+
+.hero{background:linear-gradient(135deg,#0a2a1e,#0F6E56);color:#fff;padding:3rem 1.5rem;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:.5rem}
+.hero p{font-size:.95rem;opacity:.85;max-width:500px;margin:0 auto}
+
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 80px}
+
+.sec{margin-bottom:32px}
+.sec-num{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--g);color:#fff;border-radius:50%;font-size:.85rem;font-weight:800;margin-right:8px}
+.sec h2{font-size:1.25rem;font-weight:800;margin-bottom:16px;display:flex;align-items:center}
+.card{background:var(--w);border-radius:16px;padding:24px;box-shadow:0 2px 16px rgba(0,0,0,.05);margin-bottom:16px}
+
+.checklist{list-style:none;padding:0}
+.checklist li{padding:10px 0;border-bottom:1px solid var(--border);font-size:.9rem;display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'☐';font-size:1.1rem;flex-shrink:0;margin-top:1px}
+
+.step-list{list-style:none;padding:0;counter-reset:step}
+.step-list li{padding:10px 0;border-bottom:1px solid var(--border);font-size:.9rem;display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+.step-list li:last-child{border-bottom:none}
+.step-list li::before{counter-increment:step;content:counter(step)'.';font-weight:700;color:var(--g);flex-shrink:0;min-width:24px}
+
+.rule{padding:16px 0;border-bottom:1px solid var(--border)}
+.rule:last-child{border-bottom:none}
+.rule h4{font-size:.95rem;font-weight:700;margin-bottom:4px}
+.rule p{font-size:.85rem;color:var(--m);line-height:1.5}
+
+/* ACCORDION */
+.acc{border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.acc-head{padding:14px 16px;background:var(--w);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:.92rem}
+.acc-head::after{content:'▸';transition:transform .2s;font-size:.8rem;color:var(--m)}
+.acc.open .acc-head::after{transform:rotate(90deg)}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.acc.open .acc-body{max-height:2000px}
+.acc-inner{padding:0 16px 16px;font-size:.85rem;line-height:1.7}
+.acc-inner h5{font-size:.85rem;font-weight:700;margin:12px 0 6px;color:var(--g)}
+.acc-inner ul{padding-left:20px;margin-bottom:8px}
+.acc-inner li{margin-bottom:4px}
+
+/* SCENARIO */
+.scenario{padding:16px;border-radius:12px;margin-bottom:12px}
+.scenario-q{font-weight:700;font-size:.92rem;margin-bottom:6px}
+.scenario-a{font-size:.85rem;color:var(--m);line-height:1.5}
+.scenario-a::before{content:'→ ';font-weight:700;color:var(--g)}
+
+/* WARNING */
+.warning-card{background:#FEF2F2;border:2px solid #FECACA;border-radius:14px;padding:20px;margin-bottom:16px}
+.warning-card h3{color:#991B1B;font-size:1rem;margin-bottom:12px}
+.warning-item{padding:8px 0;font-size:.9rem;line-height:1.5;border-bottom:1px solid #FECACA}
+.warning-item:last-child{border-bottom:none}
+.safe-item{color:#166534;padding:8px 0;font-size:.9rem}
+
+/* TIP */
+.tip{background:var(--gp);border-radius:12px;padding:16px;margin-bottom:12px}
+.tip h4{font-size:.9rem;font-weight:700;color:var(--g);margin-bottom:4px}
+.tip p{font-size:.85rem;color:#085041}
+
+.footer-contact{text-align:center;padding:32px 16px;font-size:.9rem;color:var(--m);line-height:2}
+.footer-contact a{color:var(--g);text-decoration:none;font-weight:600}
+</style>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'sv',
+    includedLanguages: 'sv,en,ar,uk,ru,pl,th,tl,so,es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</head>
+<body>
+
+<div class="lang-bar">
+  <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/16x12/se.png" alt="Svenska" width="16" height="12"></button>
+  <span class="lang-sep">·</span>
+  <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/16x12/gb.png" alt="English" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/16x12/ua.png" alt="Українська" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/16x12/ru.png" alt="Русский" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/16x12/pl.png" alt="Polski" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/16x12/th.png" alt="ภาษาไทย" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/16x12/ph.png" alt="Tagalog" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/16x12/so.png" alt="Soomaali" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/16x12/es.png" alt="Español" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي"><img src="https://flagcdn.com/16x12/sa.png" alt="عربي" width="16" height="12"></button>
+</div>
+<div id="google_translate_element"></div>
+
+<nav></nav>
+
+<div class="hero">
+  <h1>Spick Städarhandbok</h1>
+  <p>Allt du behöver veta för att lyckas. Läs igenom — tar 10 minuter.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- 1. FÖRE JOBBET -->
+  <div class="sec">
+    <h2><span class="sec-num">1</span> Förbered dig rätt</h2>
+    <div class="card">
+      <ul class="checklist">
+        <li>Läs bokningsdetaljerna noggrant (tid, adress, tjänst, noteringar)</li>
+        <li>Kolla kundens önskemål (husdjur, allergier, nyckelinfo)</li>
+        <li>Packa din väska: mikrofiberdukar (minst 4 st — olika färger för kök/bad/ytor/glas), handskar, allrengöring, badrumsspray, fönsterspray, svamp, skrapa</li>
+        <li>Fråga kunden i förväg: "Har du dammsugare och mopp jag kan använda?"</li>
+        <li>Planera resan — var på plats 5 minuter före</li>
+        <li>Ha telefonen laddad (du behöver den för Spick)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 2. VID ANKOMST -->
+  <div class="sec">
+    <h2><span class="sec-num">2</span> Första 5 minuterna avgör allt</h2>
+    <div class="card">
+      <ol class="step-list">
+        <li>Hälsa, le, presentera dig: "Hej! Jag heter [namn] från Spick."</li>
+        <li>Fråga: "Finns det något speciellt du vill att jag fokuserar på idag?"</li>
+        <li>Bekräfta: "Jag börjar med badrummet, sedan köket, och avslutar med golven. Låter det bra?"</li>
+        <li>Fråga om skor: "Ska jag ta av mig skorna?"</li>
+        <li>Fråga om husdjur: "Var vill du att jag gör med katten/hunden medan jag städar?"</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 3. GULDREGLERNA -->
+  <div class="sec">
+    <h2><span class="sec-num">3</span> 6 regler som ger dig 5-stjärniga omdömen</h2>
+    <div class="card">
+      <div class="rule">
+        <h4>1. Uppifrån och ner</h4>
+        <p>Börja med lampor och hyllor, avsluta med golv. Smuts faller nedåt.</p>
+      </div>
+      <div class="rule">
+        <h4>2. Torrt före vått</h4>
+        <p>Dammsug innan du moppar. Alltid.</p>
+      </div>
+      <div class="rule">
+        <h4>3. Låt medlen verka</h4>
+        <p>Sprejar du badrum/ugn? Vänta 5–10 minuter innan du skrubbar. Gör annat under tiden.</p>
+      </div>
+      <div class="rule">
+        <h4>4. Olika dukar för olika ytor</h4>
+        <p>Toalettduk = ALDRIG på köksbänken. Använd färgkodning.</p>
+      </div>
+      <div class="rule">
+        <h4>5. Det lilla extra</h4>
+        <p>Vik handduken snyggt. Ställ skor prydligt i hallen. Torka av ljusknappar. Kunden märker.</p>
+      </div>
+      <div class="rule">
+        <h4>6. Lämna det bättre</h4>
+        <p>Gå igenom varje rum en sista gång innan du går. Skulle DU vara nöjd?</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. TJÄNSTEGUIDER -->
+  <div class="sec">
+    <h2><span class="sec-num">4</span> Vad ingår i varje tjänst?</h2>
+
+    <div class="acc" onclick="this.classList.toggle('open')">
+      <div class="acc-head">Hemstädning</div>
+      <div class="acc-body"><div class="acc-inner">
+        <h5>Ingår alltid:</h5>
+        <ul>
+          <li>Dammsugning alla golv + mattor</li>
+          <li>Moppning/våttorkning hårda golv</li>
+          <li>Badrum: toalett, handfat, dusch/badkar, spegel, golv</li>
+          <li>Kök: diskbänk, spis (ovansida), bänkytor, golv</li>
+          <li>Damning av fria ytor (inte inuti skåp)</li>
+          <li>Tömma små sopkorgar</li>
+          <li>Bädda sängar (om kunden vill)</li>
+          <li>Torka av ljusknappar och dörrhandtag</li>
+        </ul>
+        <h5>Ingår INTE (om kunden inte bokat separat):</h5>
+        <ul>
+          <li>Fönsterputsning</li>
+          <li>Insida ugn/kyl/frys</li>
+          <li>Strykning / tvätt</li>
+          <li>Balkong</li>
+          <li>Insida skåp och garderober</li>
+        </ul>
+      </div></div>
+    </div>
+
+    <div class="acc" onclick="this.classList.toggle('open')">
+      <div class="acc-head">Flyttstädning</div>
+      <div class="acc-body"><div class="acc-inner">
+        <h5>ALLT ska vara besiktningsklart:</h5>
+        <ul>
+          <li>Alla golv: dammsugna + moppa</li>
+          <li>Alla fönster: in- och utsida</li>
+          <li>Kök: ugn (insida!), kyl (insida!), frys, fläktkåpa, alla skåp (insida), diskmaskin, bänkar, väggar bakom spis</li>
+          <li>Badrum: toalett (inkl bakom/under), dusch, badkar, kakel, fogar, handfat, spegel, ventil</li>
+          <li>Alla rum: socklar, dörrkarm, dörrhandtag, garderober (insida), hyllor</li>
+          <li>Eluttag och strömbrytare: torka av</li>
+          <li>Ventiler: dammsug + torka</li>
+          <li>Balkong: sopa + torka räcke</li>
+        </ul>
+        <h5>Vanligaste underkännandena:</h5>
+        <ol>
+          <li>Insida ugn</li>
+          <li>Fläktkåpa/ventiler</li>
+          <li>Insida garderober</li>
+          <li>Socklar/golvlister</li>
+          <li>Bakom toalett</li>
+        </ol>
+      </div></div>
+    </div>
+
+    <div class="acc" onclick="this.classList.toggle('open')">
+      <div class="acc-head">Storstädning</div>
+      <div class="acc-body"><div class="acc-inner">
+        <h5>Allt i hemstädning PLUS:</h5>
+        <ul>
+          <li>Bakom och under möbler</li>
+          <li>Insida skåp i kök och badrum</li>
+          <li>Fönster invändigt</li>
+          <li>Avkalkning badrum (dusch, kranar, kakel)</li>
+          <li>Damning av taklampor, bokhyllor, tavlor</li>
+          <li>Golvlister/socklar</li>
+          <li>Dörrkarmar och dörrar</li>
+        </ul>
+      </div></div>
+    </div>
+
+    <div class="acc" onclick="this.classList.toggle('open')">
+      <div class="acc-head">Fönsterputs</div>
+      <div class="acc-body"><div class="acc-inner">
+        <h5>Ingår:</h5>
+        <ul>
+          <li>Alla fönster in- och utsida (om tillgängliga)</li>
+          <li>Fönsterkarmar och -bräden</li>
+          <li>Teknik: applicera lösning → skrapa med squeegee → torka kanter med duk</li>
+          <li>Undvik direkt solsken (lämnar ränder)</li>
+        </ul>
+        <h5>Säkerhet:</h5>
+        <ul>
+          <li>Putsa ALDRIG utvändigt från stege ovanför 2 meter utan säkerhetsutrustning</li>
+          <li>Om fönster är otillgängliga (högt, takluckor) — meddela kunden</li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- 5. PROBLEMHANTERING -->
+  <div class="sec">
+    <h2><span class="sec-num">5</span> När saker inte går som planerat</h2>
+    <div class="card">
+      <div class="scenario">
+        <div class="scenario-q">Du går sönder något</div>
+        <div class="scenario-a">Berätta direkt. Ta foto. Meddela Spick via hello@spick.se. Ljug aldrig.</div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-q">Kunden klagar under städningen</div>
+        <div class="scenario-a">Lyssna. Fråga: "Vad vill du att jag gör annorlunda?" Åtgärda direkt. Var aldrig defensiv.</div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-q">Kunden klagar efteråt (via Spick)</div>
+        <div class="scenario-a">Du har 48h att åtgärda. Spick kontaktar dig. Lyssna på kundens feedback. Erbjud att komma tillbaka.</div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-q">Du blir sjuk samma dag</div>
+        <div class="scenario-a">Meddela Spick DIREKT (ring 076-050 51 53). Vi försöker hitta ersättare. Avboka ALDRIG utan att kontakta Spick.</div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-q">Kunden beter sig olämpligt</div>
+        <div class="scenario-a">Lämna bostaden. Ring Spick omedelbart. Du behöver aldrig acceptera kränkande beteende. Spick står bakom dig.</div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-q">Kunden ber dig jobba "utanför Spick" nästa gång</div>
+        <div class="scenario-a">Du bestämmer själv. Men via Spick får du betalningsskydd, RUT-hantering, försäkring och nya kunder. Utan Spick hanterar du allt själv.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. TJÄNA MER -->
+  <div class="sec">
+    <h2><span class="sec-num">6</span> 5 sätt att öka din inkomst</h2>
+    <div class="card">
+      <div class="rule">
+        <h4>1. Svara snabbt på bokningar</h4>
+        <p>Städare som accepterar inom 30 minuter får fler förfrågningar.</p>
+      </div>
+      <div class="rule">
+        <h4>2. Be om omdömen</h4>
+        <p>Säg: "Om du var nöjd, sätt gärna ett betyg på Spick. Det hjälper mig jättemycket."</p>
+      </div>
+      <div class="rule">
+        <h4>3. Skriv en bra profilbeskrivning</h4>
+        <p>"Noggrann och pålitlig med 3 års erfarenhet" slår "Jag städar".</p>
+      </div>
+      <div class="rule">
+        <h4>4. Ha en profilbild</h4>
+        <p>Profiler med foto får 3x fler bokningar.</p>
+      </div>
+      <div class="rule">
+        <h4>5. Leverera det lilla extra</h4>
+        <p>En snyggt vikt handduk, prydligt uppställda skor, en liten lapp: "Städat av [namn] — hoppas du trivs!" Det skapar wow-effekt.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. KEMIKALIESÄKERHET -->
+  <div class="sec">
+    <h2><span class="sec-num">7</span> Blanda ALDRIG dessa</h2>
+    <div class="warning-card">
+      <h3>Kemikalievarning</h3>
+      <div class="warning-item">🚫 <strong>KLORIN + AMMONIAK</strong> = giftig gas (livsfarligt)</div>
+      <div class="warning-item">🚫 <strong>KLORIN + ÄTTIKA</strong> = klorgas (livsfarligt)</div>
+      <div class="warning-item">🚫 <strong>VÄTEPEROXID + ÄTTIKA</strong> = frätande syra</div>
+      <div class="safe-item">✅ <strong>ALLTID:</strong> ventilera, använd handskar, läs etiketten</div>
+    </div>
+  </div>
+
+  <!-- FOOTER CONTACT -->
+  <div class="footer-contact">
+    <strong>Frågor? Kontakta Spick:</strong><br>
+    📞 <a href="tel:+46760505153">076-050 51 53</a><br>
+    ✉️ <a href="mailto:hello@spick.se">hello@spick.se</a><br>
+    💬 <a href="https://wa.me/46760505153">WhatsApp</a>
+  </div>
+
+</div>
+
+<footer></footer>
+
+<script>
+function switchLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  if (lang === 'sv') {
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
+    if (!document.querySelector('.goog-te-banner-frame')) location.reload();
+    return;
+  }
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
+  var sel = document.querySelector('.goog-te-combo');
+  if (sel) { sel.value = lang; sel.dispatchEvent(new Event('change')); }
+  else { location.reload(); }
+}
+</script>
+</body>
+</html>

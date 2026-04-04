@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Checklista | Spick</title>
+<meta name="description" content="Interaktiv checklista för städuppdrag via Spick.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="js/config.js"></script>
+<script src="js/components.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;--gd:#085041;--b:#0E0E0E;--t:#1C1C1A;--m:#6B6960;--bg:#F7F7F5;--border:#E8E8E4;--w:#fff;--r:14px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-height:1.6;min-height:100vh}
+
+/* LANG BAR */
+.lang-bar{background:var(--gd);padding:5px 1.5rem;display:flex;align-items:center;justify-content:center;gap:6px}
+.lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
+.lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
+.lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.lang-sep{color:rgba(255,255,255,.2);font-size:.7rem;user-select:none}
+#google_translate_element{position:absolute;left:-9999px;opacity:0;pointer-events:none}
+.goog-te-banner-frame{display:none!important}
+body{top:0!important}
+#goog-gt-tt,.goog-te-balloon-frame{display:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}
+
+/* LAYOUT */
+.hero{background:linear-gradient(135deg,#0a2a1e,#0F6E56);color:#fff;padding:2.5rem 1.5rem;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem}
+.hero p{font-size:.9rem;opacity:.85}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 100px}
+
+/* TYPE SELECTOR */
+.type-select{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.type-btn{padding:16px 12px;border:2px solid var(--border);border-radius:14px;background:var(--w);cursor:pointer;text-align:center;font-family:inherit;transition:all .15s}
+.type-btn:hover{border-color:var(--gl);background:#FAFFF8}
+.type-btn.active{border-color:var(--g);background:var(--gp)}
+.type-btn .type-icon{font-size:1.6rem;display:block;margin-bottom:4px}
+.type-btn .type-label{font-size:.85rem;font-weight:700}
+
+/* PROGRESS */
+.progress-sticky{position:sticky;top:0;z-index:50;background:var(--bg);padding:12px 0 8px;border-bottom:1px solid var(--border)}
+.progress-row{display:flex;align-items:center;gap:12px}
+.progress-bar{flex:1;background:var(--border);border-radius:99px;height:10px;overflow:hidden}
+.progress-fill{background:var(--g);height:100%;border-radius:99px;transition:width .4s ease}
+.progress-fill.done{background:#16A34A}
+.progress-text{font-size:.85rem;font-weight:700;color:var(--g);white-space:nowrap}
+
+/* ROOM GROUP */
+.room{margin-bottom:20px}
+.room-head{display:flex;align-items:center;gap:8px;padding:10px 0;font-weight:700;font-size:.95rem;color:var(--gd);border-bottom:2px solid var(--gp);margin-bottom:8px}
+.room-head .room-icon{font-size:1.2rem}
+
+/* CHECK ITEM */
+.check-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.check-item:last-child{border-bottom:none}
+.check-item input[type=checkbox]{width:22px;height:22px;flex-shrink:0;margin-top:1px;accent-color:var(--g);cursor:pointer}
+.check-item label{font-size:.9rem;cursor:pointer;line-height:1.5;flex:1}
+.check-item.checked label{text-decoration:line-through;color:var(--m)}
+
+/* DONE BUTTON */
+.done-btn{display:block;width:100%;padding:16px;background:var(--g);color:#fff;border:none;border-radius:100px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;margin-top:24px;text-align:center}
+.done-btn:hover{background:var(--gm)}
+.done-btn:disabled{background:#ccc;cursor:not-allowed}
+
+/* DONE SCREEN */
+.done-screen{display:none;text-align:center;padding:40px 20px}
+.done-screen.active{display:block}
+.done-icon{font-size:64px;margin-bottom:16px}
+.done-title{font-size:1.4rem;font-weight:800;margin-bottom:8px}
+.done-sub{font-size:.9rem;color:var(--m);margin-bottom:24px}
+.btn-outline{display:inline-block;padding:12px 24px;border:2px solid var(--border);border-radius:100px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;color:var(--t)}
+
+/* LINKS */
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;color:var(--m);text-decoration:none;margin-bottom:16px}
+.back-link:hover{color:var(--g)}
+</style>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'sv',
+    includedLanguages: 'sv,en,ar,uk,ru,pl,th,tl,so,es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</head>
+<body>
+
+<!-- LANGUAGE SELECTOR -->
+<div class="lang-bar">
+  <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/16x12/se.png" alt="Svenska" width="16" height="12"></button>
+  <span class="lang-sep">&middot;</span>
+  <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/16x12/gb.png" alt="English" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/16x12/ua.png" alt="Українська" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/16x12/ru.png" alt="Русский" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/16x12/pl.png" alt="Polski" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/16x12/th.png" alt="ภาษาไทย" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/16x12/ph.png" alt="Tagalog" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/16x12/so.png" alt="Soomaali" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/16x12/es.png" alt="Español" width="16" height="12"></button>
+  <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي"><img src="https://flagcdn.com/16x12/sa.png" alt="عربي" width="16" height="12"></button>
+</div>
+<div id="google_translate_element"></div>
+
+<nav></nav>
+
+<div class="hero">
+  <h1 id="hero-title">Checklista</h1>
+  <p id="hero-sub">Bocka av varje moment — missa inget</p>
+</div>
+
+<div class="wrap">
+
+  <!-- TYPE SELECTOR (shown if no ?type param) -->
+  <div id="type-picker">
+    <a href="stadare-dashboard.html" class="back-link">← Tillbaka till dashboard</a>
+    <h2 style="font-size:1.1rem;margin-bottom:14px">Välj typ av städning</h2>
+    <div class="type-select">
+      <button class="type-btn" onclick="selectType('hem')"><span class="type-icon">🏠</span><span class="type-label">Hemstädning</span></button>
+      <button class="type-btn" onclick="selectType('flytt')"><span class="type-icon">📦</span><span class="type-label">Flyttstädning</span></button>
+      <button class="type-btn" onclick="selectType('stor')"><span class="type-icon">✨</span><span class="type-label">Storstädning</span></button>
+      <button class="type-btn" onclick="selectType('fonster')"><span class="type-icon">🪟</span><span class="type-label">Fönsterputs</span></button>
+    </div>
+  </div>
+
+  <!-- CHECKLIST AREA -->
+  <div id="checklist-area" style="display:none">
+    <a href="stadare-dashboard.html" class="back-link">← Tillbaka till dashboard</a>
+
+    <div class="progress-sticky">
+      <div class="progress-row">
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0"></div></div>
+        <span class="progress-text" id="prog-text">0 av 0 klara</span>
+      </div>
+    </div>
+
+    <div id="rooms-container"></div>
+
+    <button class="done-btn" id="done-btn" onclick="markDone()">✅ Allt klart — markera uppdraget som färdigt</button>
+  </div>
+
+  <!-- DONE SCREEN -->
+  <div class="done-screen" id="done-screen">
+    <div class="done-icon">🎉</div>
+    <div class="done-title">Snyggt jobbat!</div>
+    <div class="done-sub">Alla moment avklarade. Du kan nu markera uppdraget som slutfört i din dashboard.</div>
+    <a href="stadare-dashboard.html" class="btn-outline">← Tillbaka till dashboard</a>
+  </div>
+
+</div>
+
+<footer></footer>
+
+<script>
+// ── LANG ────────────────────────────────────────────
+function switchLang(lang, btn) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  if (lang === 'sv') {
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
+    if (!document.querySelector('.goog-te-banner-frame')) location.reload();
+    return;
+  }
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
+  document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
+  var sel = document.querySelector('.goog-te-combo');
+  if (sel) { sel.value = lang; sel.dispatchEvent(new Event('change')); }
+  else { location.reload(); }
+}
+
+// ── CHECKLISTS DATA ─────────────────────────────────
+const CHECKLISTS = {
+  hem: {
+    title: 'Hemstädning',
+    icon: '🏠',
+    rooms: [
+      { name: 'Hall', icon: '🚪', items: ['Dammsug/torka golv','Torka av hatthylla och skohylla','Torka dörrhandtag och strömbrytare'] },
+      { name: 'Kök', icon: '🍳', items: ['Diska eller fyll/töm diskmaskin','Torka av alla bänkytor och spis','Rengör spishäll och stänkskydd','Torka utsidan av vitvaror (kyl, micro, ugn)','Torka av köksluckor (synliga fläckar)','Töm soptunnan och byt påse','Dammsug/moppa golvet'] },
+      { name: 'Badrum', icon: '🚿', items: ['Rengör toalettstol (in- och utsida)','Rengör handfat och blandare','Rengör dusch/badkar och väggar','Torka spegel','Torka av badrumsskåp (utsida)','Moppa golvet','Fyll på toalettpapper om tillgängligt'] },
+      { name: 'Vardagsrum', icon: '🛋️', items: ['Dammsug golv och mattor','Torka av alla ytor (bord, hyllor, fönsterbrädor)','Torka TV-bänk och synlig elektronik (torr trasa)','Puffa kuddar och ordna soffan'] },
+      { name: 'Sovrum', icon: '🛏️', items: ['Bädda sängen','Dammsug golv och under sängen','Torka nattduksbord och byrå','Torka av fönsterbrädor'] },
+      { name: 'Avslutning', icon: '✅', items: ['Gå igenom alla rum — en sista kontroll','Töm dammsugaren om full','Samla ihop all utrustning','Lås dörren (om överenskommet)','Ta en avslutningsbild (valfritt)'] }
+    ]
+  },
+  flytt: {
+    title: 'Flyttstädning',
+    icon: '📦',
+    rooms: [
+      { name: 'Kök', icon: '🍳', items: ['Rengör insidan av ugn och ugnsgaller','Rengör insidan av kyl och frys (hyllor, lådor)','Rengör insidan av diskmaskin','Rengör insidan av micro','Torka insidan av alla skåp och lådor','Rengör spis, spishäll och fläktfilter','Torka alla bänkytor, stänkskydd och kakel','Rengör vask och blandare','Torka utsidan av alla vitvaror','Moppa golvet (inklusive under vitvaror)'] },
+      { name: 'Badrum', icon: '🚿', items: ['Rengör toalettstol grundligt (även under kanten)','Rengör handfat, blandare och avlopp','Rengör dusch/badkar, kakel och fogar','Avkalka duschmunstycke','Torka spegel och badrumsskåp (in- och utsida)','Rengör golvbrunn','Moppa golvet'] },
+      { name: 'Alla rum', icon: '🏠', items: ['Torka insidan av alla garderober och skåp','Torka fönsterbrädor och element','Torka eluttag, strömbrytare och dörrhandtag','Torka golvlister','Dammsug och moppa alla golv','Putsa fönster (insida)','Torka av lampkontakter i tak och väggar'] },
+      { name: 'Slutkontroll', icon: '🔍', items: ['Kontrollera varje rum med besiktningsögon','Kolla in i alla skåp — inga smulor eller fläckar','Fotografera resultat (före/efter om möjligt)','Stäng alla fönster och lås'] }
+    ]
+  },
+  stor: {
+    title: 'Storstädning',
+    icon: '✨',
+    rooms: [
+      { name: 'Hall', icon: '🚪', items: ['Dammsug/torka golv','Torka av hatthylla och skohylla','Torka dörrhandtag och strömbrytare','Torka golvlister'] },
+      { name: 'Kök', icon: '🍳', items: ['Diska eller fyll/töm diskmaskin','Torka av alla bänkytor och spis','Rengör spishäll och stänkskydd','Torka utsidan av vitvaror','Rengör insidan av ugn','Rengör insidan av micro','Torka insidan av kyl (om överenskommet)','Torka av köksluckor','Rengör fläktfilter','Töm soptunnan och byt påse','Moppa golvet'] },
+      { name: 'Badrum', icon: '🚿', items: ['Rengör toalettstol grundligt','Rengör handfat och blandare','Rengör dusch/badkar, kakel och fogar','Avkalka duschmunstycke och blandare','Torka spegel','Rengör badrumsskåp utsida','Rengör golvbrunn','Moppa golvet'] },
+      { name: 'Vardagsrum', icon: '🛋️', items: ['Dammsug golv, mattor och möbler','Torka alla ytor inkl. hyllor och fönsterbrädor','Torka golvlister','Torka element','Dammsug/torka under möbler'] },
+      { name: 'Sovrum', icon: '🛏️', items: ['Bädda sängen','Dammsug golv och under sängen','Torka nattduksbord och byrå','Torka fönsterbrädor och golvlister','Torka insidan av garderober (om överenskommet)'] },
+      { name: 'Avslutning', icon: '✅', items: ['Torka alla dörrhandtag och strömbrytare','Gå igenom alla rum — slutkontroll','Töm dammsugaren','Samla ihop utrustning'] }
+    ]
+  },
+  fonster: {
+    title: 'Fönsterputs',
+    icon: '🪟',
+    rooms: [
+      { name: 'Förberedelse', icon: '🧴', items: ['Kontrollera antal fönster med kund','Förbered utrustning: skrapa, mopp, trasa, medel','Skydda golv under fönster med handduk/trasa','Ta bort gardiner/persienner om överenskommet'] },
+      { name: 'Per fönster', icon: '🪟', items: ['Torka av fönsterbräda och karm','Blöt fönstret med mopp och rengöringsmedel','Skrapa uppifrån och ner i jämna drag','Torka av kanter med torr trasa','Putsa bågar och spröjs','Kontrollera mot ljus — inga ränder?'] },
+      { name: 'Slutkontroll', icon: '🔍', items: ['Gå igenom alla fönster mot ljus','Plocka bort skyddsmaterial','Häng tillbaka gardiner om borttagna','Torka fönsterbrädor en sista gång'] }
+    ]
+  }
+};
+
+// ── INIT ────────────────────────────────────────────
+let currentType = null;
+let totalItems = 0;
+let checkedItems = 0;
+
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get('type');
+  if (type && CHECKLISTS[type]) {
+    loadChecklist(type);
+  } else {
+    document.getElementById('type-picker').style.display = '';
+    document.getElementById('checklist-area').style.display = 'none';
+  }
+}
+
+function selectType(type) {
+  window.history.replaceState(null, '', '?type=' + type);
+  loadChecklist(type);
+}
+
+function loadChecklist(type) {
+  currentType = type;
+  const data = CHECKLISTS[type];
+  if (!data) return;
+
+  document.getElementById('type-picker').style.display = 'none';
+  document.getElementById('checklist-area').style.display = '';
+  document.getElementById('done-screen').classList.remove('active');
+
+  document.getElementById('hero-title').textContent = data.title;
+  document.getElementById('hero-sub').textContent = 'Bocka av varje moment — missa inget';
+
+  const container = document.getElementById('rooms-container');
+  container.innerHTML = '';
+  totalItems = 0;
+  checkedItems = 0;
+  let itemId = 0;
+
+  data.rooms.forEach(room => {
+    const roomDiv = document.createElement('div');
+    roomDiv.className = 'room';
+    roomDiv.innerHTML = '<div class="room-head"><span class="room-icon">' + room.icon + '</span> ' + room.name + '</div>';
+
+    room.items.forEach(item => {
+      const id = 'chk-' + (itemId++);
+      const div = document.createElement('div');
+      div.className = 'check-item';
+      div.innerHTML = '<input type="checkbox" id="' + id + '" onchange="toggle(this)"><label for="' + id + '">' + item + '</label>';
+      roomDiv.appendChild(div);
+      totalItems++;
+    });
+
+    container.appendChild(roomDiv);
+  });
+
+  updateProgress();
+}
+
+function toggle(cb) {
+  const item = cb.closest('.check-item');
+  if (cb.checked) {
+    item.classList.add('checked');
+    checkedItems++;
+  } else {
+    item.classList.remove('checked');
+    checkedItems--;
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const pct = totalItems === 0 ? 0 : Math.round((checkedItems / totalItems) * 100);
+  const fill = document.getElementById('prog-fill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('done', pct === 100);
+  document.getElementById('prog-text').textContent = checkedItems + ' av ' + totalItems + ' klara';
+  document.getElementById('done-btn').disabled = checkedItems < totalItems;
+}
+
+function markDone() {
+  if (checkedItems < totalItems) return;
+  document.getElementById('checklist-area').style.display = 'none';
+  document.getElementById('done-screen').classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>
