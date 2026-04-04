@@ -2803,10 +2803,13 @@ async function saveCleanerFromAdmin() {
 
 // ── APPLICATIONS ──────────────────────────────────────
 async function approveApplication(id, name, email, city, services, rate) {
+  // Hämta service_radius_km från ansökan
+  const { data: appData } = await AR.select('cleaner_applications', 'select=service_radius_km&id=eq.' + id + '&limit=1');
+  const radiusKm = appData?.[0]?.service_radius_km || 10;
   // Skapa städare i cleaners-tabellen
   const { data: existingArr } = await AR.select('cleaners', 'select=id&email=eq.' + encodeURIComponent(email) + '&limit=1');
   if (existingArr?.length) {
-    await AR.update('cleaners', { status: 'aktiv', is_approved: true }, 'email=eq.' + encodeURIComponent(email));
+    await AR.update('cleaners', { status: 'aktiv', is_approved: true, service_radius_km: radiusKm }, 'email=eq.' + encodeURIComponent(email));
   } else {
     // services kan vara komma-separerad sträng eller array
     const svcsArr = Array.isArray(services)
@@ -2816,6 +2819,7 @@ async function approveApplication(id, name, email, city, services, rate) {
       full_name: name, email, city,
       services: svcsArr,
       hourly_rate: parseInt(rate) || 350,
+      service_radius_km: radiusKm,
       status: 'aktiv', is_approved: true,
       avg_rating: null, review_count: 0,
       payout_status: 'pending',

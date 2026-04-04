@@ -643,6 +643,7 @@ let state = {
   hasPets: false,
   recurring: false, recurringFreq: 'varannan-vecka',
   fname:'', lname:'', email:'', phone:'', address:'',
+  lat: null, lng: null,
   step: 1,
   // Kalender
   calYear: 0, calMonth: 0,
@@ -1314,13 +1315,25 @@ async function loadAvailableCleaners() {
   document.getElementById('step2-sub').textContent = state.service + ' · ' + formatDate(state.date) + ' kl. ' + state.time;
   try {
     const dow = new Date(state.date + 'T00:00:00').getDay();
-    // Hämta städare som: är godkända, har tillgänglighet denna dag, inte är blockerade, inte fullbokade
-    let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
-    const res = await fetch(url, {headers:H});
-    if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
-    let cleaners = await res.json();
+    let cleaners;
+    // Radius-matchning: använd find_nearby_cleaners RPC om lat/lng finns
+    if (state.lat && state.lng) {
+      const rpcRes = await fetch(`${SUPA}/rest/v1/rpc/find_nearby_cleaners`, {
+        method: 'POST',
+        headers: {...H, 'Content-Type':'application/json'},
+        body: JSON.stringify({ customer_lat: state.lat, customer_lng: state.lng })
+      });
+      if (!rpcRes.ok) throw new Error(`Kunde inte hämta städare (HTTP ${rpcRes.status})`);
+      cleaners = await rpcRes.json();
+    } else {
+      // Fallback: hämta alla godkända städare (inget lat/lng)
+      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
+      const res = await fetch(url, {headers:H});
+      if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
+      cleaners = await res.json();
+    }
     if (!Array.isArray(cleaners)) {
-      console.error('v_cleaners_for_booking returnerade:', cleaners);
+      console.error('Städarlista returnerade:', cleaners);
       throw new Error(cleaners?.message || cleaners?.hint || 'Oväntad data från städarlistan');
     }
     // Filtrera: har tjänsten
@@ -1424,12 +1437,25 @@ async function loadAvailableCleaners() {
 function renderCleaners(cleaners) {
   const wrap = document.getElementById('cleaners-wrap');
   if (!cleaners.length) {
-    wrap.innerHTML = `<div class="no-cleaners">
-      <div style="font-size:2rem;margin-bottom:.75rem">📅</div>
-      <div style="font-weight:600;margin-bottom:.375rem">Ingen tillgänglig denna tid</div>
-      <div style="font-size:.82rem;color:var(--m);margin-bottom:1rem">Prova ett annat datum eller en annan tid</div>
-      <button onclick="goBack(1)" style="background:var(--g);color:#fff;border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Välj annan tid →</button>
-    </div>`;
+    // Kolla om det beror på radie (inga städare i området) vs tid
+    var noArea = state.lat && state.lng && (!state.availableCleaners || state.availableCleaners.length === 0);
+    if (noArea) {
+      wrap.innerHTML = '<div class="no-cleaners">' +
+        '<div style="font-size:1.5rem;margin-bottom:.5rem">😔</div>' +
+        '<div style="font-weight:700;margin-bottom:.375rem;color:#991B1B">Vi har tyvärr inga städare i ditt område ännu</div>' +
+        '<div style="font-size:.82rem;color:#6B7280;margin-bottom:1rem">Vi expanderar snabbt! Lämna din e-post så hör vi av oss.</div>' +
+        '<div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">' +
+        '<input type="email" id="notify-email" placeholder="din@email.se" style="padding:.5rem .75rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.85rem">' +
+        '<button onclick="notifyMe()" style="background:var(--g);color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Meddela mig</button>' +
+        '</div><div id="notify-result" style="margin-top:.5rem;font-size:.8rem"></div></div>';
+    } else {
+      wrap.innerHTML = '<div class="no-cleaners">' +
+        '<div style="font-size:2rem;margin-bottom:.75rem">📅</div>' +
+        '<div style="font-weight:600;margin-bottom:.375rem">Ingen tillgänglig denna tid</div>' +
+        '<div style="font-size:.82rem;color:var(--m);margin-bottom:1rem">Prova ett annat datum eller en annan tid</div>' +
+        '<button onclick="goBack(1)" style="background:var(--g);color:#fff;border:none;padding:.625rem 1.25rem;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Välj annan tid →</button>' +
+        '</div>';
+    }
     return;
   }
   const list = document.createElement('div');
@@ -1512,45 +1538,20 @@ function renderCleaners(cleaners) {
 
 
 
-async function checkCoverage(address) {
-  const msg = document.getElementById('coverage-msg');
-  const calSec = document.getElementById('cal-section');
-  msg.style.display = 'block';
-  msg.innerHTML = '<div style="color:var(--m);font-size:.85rem">⏳ Kollar tillgänglighet...</div>';
-  try {
-    const {data} = await SB.from('cleaners').select('id, city').eq('is_approved', true);
-    if (data && data.length > 0) {
-      // Extrahera stad från adress
-      const parts = address.split(',');
-      const city = parts[parts.length - 1]?.trim().toLowerCase() || '';
-      const cityMatch = data.some(c =>
-        c.city?.toLowerCase().includes(city) ||
-        city.includes(c.city?.toLowerCase() || '')
-      );
-      if (cityMatch) {
-        msg.innerHTML = '<div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:.75rem 1rem;font-size:.85rem;color:#065F46">✅ Vi har städare i ditt område! Välj datum och tid nedan.</div>';
-      } else {
-        msg.innerHTML = '<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:1.25rem;text-align:center"><div style="font-size:1.5rem;margin-bottom:.5rem">😔</div><div style="font-weight:700;margin-bottom:.375rem;color:#991B1B">Vi har inte kommit till ditt område ännu</div><div style="font-size:.82rem;color:#6B7280;margin-bottom:1rem">Just nu finns vi i Storstockholm. Lämna din e-post så hör vi av oss!</div><div style="display:flex;gap:.5rem;justify-content:center"><input type="email" id="notify-email" placeholder="din@email.se" style="padding:.5rem .75rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.85rem"><button onclick="notifyMe()" style="background:var(--g);color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Meddela mig</button></div><div id="notify-result" style="margin-top:.5rem;font-size:.8rem"></div></div>';
-        calSec.style.display = 'none';
-        return;
-      }
-      calSec.style.display = 'block';
-      state.address = address;
-    } else {
-      msg.innerHTML = '<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:1.25rem;text-align:center"><div style="font-size:1.5rem;margin-bottom:.5rem">😔</div><div style="font-weight:700;margin-bottom:.375rem;color:#991B1B">Tyvärr, vi har inga städare i ditt område ännu</div><div style="font-size:.82rem;color:#6B7280;margin-bottom:1rem">Vi expanderar snabbt! Lämna din e-post så meddelar vi dig när vi finns hos dig.</div><div style="display:flex;gap:.5rem;justify-content:center"><input type="email" id="notify-email" placeholder="din@email.se" style="padding:.5rem .75rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.85rem"><button onclick="notifyMe()" style="background:var(--g);color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Meddela mig</button></div><div id="notify-result" style="margin-top:.5rem;font-size:.8rem"></div></div>';
-      calSec.style.display = 'none';
-    }
-  } catch(e) {
-    msg.innerHTML = '<div style="color:#991B1B;font-size:.85rem">⚠ Just nu finns det inga städare tillgängliga på din adress.</div>';
-    calSec.style.display = 'block';
-  }
-}
+// checkCoverage borttagen — geo-blockering ersatt med radius-matchning i loadAvailableCleaners
 
 async function notifyMe() {
   const email = document.getElementById('notify-email')?.value;
   const result = document.getElementById('notify-result');
   if (!email || !email.includes('@')) { result.textContent = 'Ange en giltig e-post'; return; }
-  result.textContent = '✅ Tack! Vi meddelar dig.';
+  try {
+    const city = (state.address || '').split(',').pop()?.trim() || 'okänd';
+    await fetch(SUPA + '/rest/v1/waitlist', {
+      method: 'POST', headers: {...H, 'Content-Type':'application/json', 'Prefer':'return=minimal'},
+      body: JSON.stringify({ city: city, email: email })
+    });
+  } catch(e) { /* silently continue */ }
+  result.textContent = '✅ Tack! Vi meddelar dig när vi finns i ditt område.';
 }
 async function findFirstAvailable() {
   const btn = document.getElementById('find-first-btn');
@@ -1679,14 +1680,15 @@ async function addrSearch(q) {
       list.innerHTML = predictions.map(p => {
         var display = p.description.replace(/, Sverige$/, '');
         var full = escHtml(p.description).replace(/'/g,"&#39;");
-        return '<div class="addr-item" onclick="pickAddr(\'' + full + '\')">' + escHtml(display) + '</div>';
+        var pid = escHtml(p.place_id || '').replace(/'/g,"&#39;");
+        return '<div class="addr-item" onclick="pickAddr(\'' + full + '\',\'' + pid + '\')">' + escHtml(display) + '</div>';
       }).join('');
       list.style.display = 'block';
     } catch(e) { list.style.display='none'; }
   }, 300);
 }
 
-function pickAddr(val) {
+async function pickAddr(val, placeId) {
   var short = val.replace(/, Sverige$/, '');
   document.getElementById('address').value = short;
   var _s1 = document.getElementById('step1-address');
@@ -1694,7 +1696,26 @@ function pickAddr(val) {
   state.address = short;
   var _al = document.getElementById('addr-list'); if (_al) _al.style.display = 'none';
   var _ad = document.getElementById('addr-dd'); if (_ad) _ad.style.display = 'none';
-  if (_s1) checkCoverage(short);
+  // Geocode: hämta lat/lng från place_id
+  if (placeId) {
+    try {
+      var geoRes = await fetch(SPICK.SUPA_URL + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: SPICK_HEADERS,
+        body: JSON.stringify({ place_id: placeId }),
+      });
+      var geoData = await geoRes.json();
+      if (geoData.lat && geoData.lng) {
+        state.lat = geoData.lat;
+        state.lng = geoData.lng;
+      }
+    } catch(e) { console.warn('Geocoding failed:', e.message); }
+  }
+  // Visa kalender direkt — ingen geo-blockering
+  var calSec = document.getElementById('cal-section');
+  if (calSec) calSec.style.display = 'block';
+  var msg = document.getElementById('coverage-msg');
+  if (msg) msg.style.display = 'none';
 }
 
 document.addEventListener('click', e => {

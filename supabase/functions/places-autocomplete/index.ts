@@ -8,7 +8,24 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    const { query, country = "se" } = await req.json();
+    const { query, country = "se", place_id } = await req.json();
+
+    // Geocode mode: get lat/lng from place_id
+    if (place_id) {
+      const detailUrl = new URL("https://maps.googleapis.com/maps/api/place/details/json");
+      detailUrl.searchParams.set("place_id", place_id);
+      detailUrl.searchParams.set("fields", "geometry");
+      detailUrl.searchParams.set("key", GOOGLE_API_KEY);
+      const detailRes = await fetch(detailUrl.toString());
+      if (!detailRes.ok) throw new Error("Google Place Details " + detailRes.status);
+      const detailData = await detailRes.json();
+      if (detailData.status !== "OK") throw new Error("Place Details: " + detailData.status);
+      const loc = detailData.result?.geometry?.location;
+      return new Response(
+        JSON.stringify({ lat: loc?.lat, lng: loc?.lng }),
+        { headers: { "Content-Type": "application/json", ...CORS } }
+      );
+    }
 
     if (!query || query.length < 3) {
       return new Response(
