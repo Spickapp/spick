@@ -438,13 +438,13 @@ body{top:0!important}
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> <span>Anslut bankkonto via Stripe</span></div>
           <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check">⬜</span> <span>Skicka profilbild till hello@spick.se</span></div>
           <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><span class="ob-check">⬜</span> <a href="stadare-handbok.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markHandbookRead()">Läs Städarhandboken →</a></div>
-          <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank')"><span class="ob-check">⬜</span> <a href="stadare-test.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation()">Gör kompetenstestet →</a></div>
+          <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html?email='+encodeURIComponent(cleaner?.email||''),'_blank')"><span class="ob-check">⬜</span> <a href="#" onclick="event.preventDefault();event.stopPropagation();window.open('stadare-test.html?email='+encodeURIComponent(cleaner?.email||''),'_blank')" style="color:var(--g);text-decoration:underline">Gör kompetenstestet →</a></div>
           <!-- More steps (expandable) -->
           <div id="ob-more" style="display:none">
             <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> <span>Konto skapat</span></div>
             <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> <span>Skriv en personlig beskrivning</span></div>
             <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> <span>Ställ in ditt veckoschema</span></div>
-            <div class="ob-step" id="ob-6b"><span class="ob-check">⬜</span> <span>ID-verifiering (kommer snart)</span></div>
+            <div class="ob-step" id="ob-6b" style="opacity:.5;cursor:default;pointer-events:none"><span class="ob-check">🔒</span> <span>ID-verifiering (kommer snart)</span></div>
             <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
           </div>
           <button onclick="document.getElementById('ob-more').style.display=this.dataset.open?'none':'block';this.textContent=this.dataset.open?'Visa fler steg →':'Dölj';this.dataset.open=this.dataset.open?'':'1'" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit">Visa fler steg →</button>
@@ -1449,9 +1449,9 @@ function expandTimelineJob(jobId) {
 
   let actionsHtml = '';
   if (!j.checked_in_at && !isDone) {
-    actionsHtml = `<div style="display:flex;gap:8px;margin-top:10px">
-      <button onclick="startJob('${j.id}')" class="action-btn" style="flex:1;background:#DBEAFE;color:#1E40AF;min-height:48px">▶️ Påbörja uppdrag</button>
-      <button onclick="cancelMyJob('${j.id}')" class="action-btn" style="background:#FEE2E2;color:#991B1B;min-height:48px">✕</button>
+    actionsHtml = `<div style="margin-top:10px">
+      <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px">▶️ Påbörja uppdrag</button>
+      <div style="text-align:center;margin-top:8px"><button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button></div>
     </div>`;
   } else if (isActive) {
     actionsHtml = `<button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:10px;background:#DCFCE7;color:#166534;min-height:48px">✅ Markera klar</button>`;
