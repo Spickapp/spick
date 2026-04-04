@@ -222,7 +222,10 @@ serve(async (req) => {
             <div class="row"><span class="lbl">Stad</span><span class="val">${esc(r.city || "–")}</span></div>
           </div>
           <p><strong>Vad händer nu?</strong></p>
-          <p>Vi verifierar dina uppgifter och återkommer med besked via e-post. Under tiden kan du förbereda dig genom att läsa vår <a href="https://spick.se/utbildning-stadare.html" style="color:#0F6E56;font-weight:600">utbildningsguide</a>.</p>
+          <p><strong>Under tiden kan du förbereda dig:</strong></p>
+          <p>📖 <a href="https://spick.se/stadare-handbok.html" style="color:#0F6E56;font-weight:600">Läs Städarhandboken</a></p>
+          <p>📝 <a href="https://spick.se/stadare-test.html" style="color:#0F6E56;font-weight:600">Gör kompetenstestet</a></p>
+          <p>📋 <a href="https://spick.se/stadare-checklista.html" style="color:#0F6E56;font-weight:600">Se checklistor</a></p>
           <p style="font-size:13px;color:#9B9B95;margin-top:16px">Frågor? Svara på detta mejl eller kontakta hello@spick.se</p>
         `));
       }
@@ -250,7 +253,10 @@ serve(async (req) => {
           <h2>Hej ${esc(name?.split(" ")[0] || "")}!</h2>
           <p>Tack för din ansökan som städare i ${esc(city || "Sverige")}.</p>
           <p>Vi granskar din ansökan inom <strong>1–2 arbetsdagar</strong> och återkommer till denna e-postadress.</p>
-          <p>Under tiden kan du förbereda dig via <a href="https://spick.se/utbildning-stadare.html" style="color:#0F6E56;font-weight:600">Spick Akademin</a>.</p>
+          <p><strong>Under tiden kan du förbereda dig:</strong></p>
+          <p>📖 <a href="https://spick.se/stadare-handbok.html" style="color:#0F6E56;font-weight:600">Läs Städarhandboken</a></p>
+          <p>📝 <a href="https://spick.se/stadare-test.html" style="color:#0F6E56;font-weight:600">Gör kompetenstestet</a></p>
+          <p>📋 <a href="https://spick.se/stadare-checklista.html" style="color:#0F6E56;font-weight:600">Se checklistor</a></p>
           <p>Med vänliga hälsningar,<br>Teamet på Spick</p>
         `));
       }
