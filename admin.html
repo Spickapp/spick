@@ -421,10 +421,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <button class="btn btn-danger btn-sm" onclick="bulkSuspend()">⛔ Stäng av</button>
           <button class="btn btn-outline btn-sm" onclick="selectedCleaners.clear();updateBulkBar();renderCleaners()">✕ Avmarkera</button>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap" style="overflow-x:auto">
           <table>
-            <thead><tr><th>Städare</th><th>Stad</th><th>Betyg</th><th>Tjänster</th><th>Timpris</th><th>Status</th><th>Uppdrag</th><th></th></tr></thead>
-            <tbody id="cleaners-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+            <thead><tr><th>Städare</th><th>Stad</th><th>Telefon</th><th>Betyg</th><th>Tjänster</th><th>Timpris</th><th>Radie</th><th>F-skatt</th><th>Stripe</th><th>Status</th><th>Uppdrag</th><th></th></tr></thead>
+            <tbody id="cleaners-tbody"><tr><td colspan="12" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1749,6 +1749,10 @@ function renderCleaners() {
     if (isSuspended) statusBadge = '<span class="badge red">⛔ Avstängd</span>';
     else if (isPaused) statusBadge = '<span class="badge yellow">⏸ Pausad</span>';
     
+    const svcsDisplay = Array.isArray(c.services) ? c.services.map(s => escHtml(s)).join(', ') : escHtml(c.services || '–');
+    const hasFskatt = c.fskatt_confirmed || c.verified || c.has_fskatt;
+    const stripeOk = c.stripe_onboarding_status === 'complete';
+
     return `<tr style="${isSuspended ? 'opacity:.6' : ''}">
       <td>
         <div style="display:flex;align-items:center;gap:10px">
@@ -1758,27 +1762,28 @@ function renderCleaners() {
         </div>
       </td>
       <td>${escHtml(c.city || '–')}</td>
+      <td>${c.phone ? `<a href="tel:${escHtml(c.phone)}" style="color:var(--g);text-decoration:none;font-size:.82rem">${escHtml(c.phone)}</a>` : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
       <td>
         <span style="font-size:.9rem">⭐ ${c.avg_rating || '–'}</span>
         <div style="font-size:.72rem;color:var(--m)">${c.review_count || 0} betyg</div>
       </td>
+      <td style="max-width:180px;font-size:.78rem;white-space:normal">${svcsDisplay}</td>
+      <td>${c.hourly_rate || '350'} kr/h</td>
+      <td>${c.service_radius_km ? c.service_radius_km + ' km' : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
+      <td>${hasFskatt ? '✅' : '❌'}</td>
+      <td>${stripeOk ? '✅' : '❌'}</td>
+      <td>${statusBadge}</td>
       <td>
         <div style="font-weight:600;color:var(--g)">${cleaner_jobs} uppdrag</div>
         <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr intjänat</div>
       </td>
-      <td>${c.hourly_rate || '350'} kr/h</td>
-      <td>${statusBadge}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Redigera</button>
-          <a href="/portal" target="_blank"
-             class="btn btn-outline btn-sm" title="Öppna städardashboard"
-             style="text-decoration:none">🏠</a>
           <a href="mailto:${c.email||''}?subject=Spick – uppdatering" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
-          ${c.phone ? `<a href="tel:${c.phone}" class="btn btn-outline btn-sm" title="Ring" style="text-decoration:none">📞</a>` : ''}
         </div>
       </td>
-    </tr>`;}).join('') : `<tr><td colspan="8" class="empty">
+    </tr>`;}).join('') : `<tr><td colspan="12" class="empty">
   <div class="empty-icon">🧹</div>
   <div>Inga städare matchar filtret</div>
 </td></tr>`;
@@ -2668,11 +2673,11 @@ function showCleanerDetail(id) {
     const lng = c.home_lng ? parseFloat(c.home_lng).toFixed(4) : '–';
     const zones = ((c.service_area || {}).zones || []).join(', ') || '';
     prefBox.innerHTML = `
-      <div style="margin-bottom:8px"><span style="font-weight:600;font-size:.8rem">Tjänster:</span> <span style="font-size:.82rem">${escHtml(svcs)}</span></div>
+      <div style="margin-bottom:8px"><span style="font-weight:600;font-size:.8rem">Tjänster:</span> <span style="font-size:.82rem">${svcs !== 'Ej inställt' ? escHtml(svcs) : '<span style="color:#D97706">⚠️ Ej angiven</span>'}</span></div>
       ${conditions.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${conditions.map(c => `<span style="font-size:.72rem;padding:2px 8px;background:#F3F4F6;border-radius:6px">${c}</span>`).join('')}</div>` : ''}
       <div style="font-size:.82rem;color:var(--m)">
-        <div>📍 ${escHtml(addr)} · Radie: <strong>${radius} km</strong></div>
-        <div style="margin-top:2px;font-size:.75rem;color:#9E9E9A">Koordinater: ${lat}, ${lng}</div>
+        <div>📍 ${addr !== '–' ? escHtml(addr) : '<span style="color:#D97706">⚠️ Adress ej angiven</span>'} · 🔄 Radie: <strong>${radius !== '–' ? radius + ' km' : '<span style="color:#D97706">⚠️ Ej angiven</span>'}</strong></div>
+        <div style="margin-top:2px;font-size:.75rem;color:#9E9E9A">🗺️ Koordinater: ${lat !== '–' && lng !== '–' ? lat + ', ' + lng : '<span style="color:#D97706">⚠️ Saknas</span>'}</div>
         ${zones ? `<div style="margin-top:2px">Zoner: ${escHtml(zones)}</div>` : ''}
         ${p.min_hours ? `<div style="margin-top:2px">Min ${p.min_hours}h/uppdrag · Max ${p.max_jobs_per_day || '–'} jobb/dag</div>` : ''}
       </div>`;
