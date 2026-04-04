@@ -131,8 +131,8 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .jobs-teaser .count{background:var(--warning);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);margin-right:10px}
 
 /* ═══ BOTTOM NAV ═══ */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-around;z-index:100;padding:6px 0 env(safe-area-inset-bottom,8px)}
-.nav-btn{flex:1;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--gray-400);border:none;background:none;font-family:inherit;font-size:10px;font-weight:500;transition:color .15s;min-height:48px;justify-content:center}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-around;z-index:100;padding:8px 4px env(safe-area-inset-bottom,12px)}
+.nav-btn{flex:1;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--gray-400);border:none;background:none;font-family:inherit;font-size:10px;font-weight:500;transition:color .15s;min-height:48px;min-width:56px;justify-content:center;text-align:center}
 .nav-btn.active{color:var(--spick-500)}
 .nav-btn .ni{font-size:1.3rem;line-height:1}
 .nav-btn svg{width:24px;height:24px}
@@ -316,7 +316,10 @@ body{top:0!important}
 .ob-step.done{color:var(--spick-500)}
 .ob-step:not(.done):hover{background:var(--gray-50);border-radius:var(--radius-sm)}
 .ob-step a{min-height:44px;display:inline-flex;align-items:center}
-.ob-check{font-size:1.1rem;flex-shrink:0}
+.ob-check{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:2px solid var(--gray-300);display:flex;align-items:center;justify-content:center}
+.ob-step.done .ob-check{background:var(--spick-500);border-color:var(--spick-500)}
+.ob-step.done .ob-check svg{display:block}
+.ob-check svg{display:none}
 
 /* ═══ RESPONSIVE ═══ */
 @media(min-width:768px){
@@ -460,27 +463,32 @@ body{top:0!important}
       </div>
 
       <!-- Onboarding Checklist -->
-      <div class="card" id="onboarding-checklist" style="display:none;margin:16px;border:2px solid var(--g);border-radius:16px;padding:20px">
+      <div class="card" id="onboarding-checklist" style="display:none;margin:16px;border-radius:16px;padding:20px;background:white;box-shadow:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.04)">
         <div style="font-family:inherit;font-size:1.1rem;margin-bottom:4px">Kom igång på Spick</div>
         <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
         <div id="ob-steps">
           <!-- Priority steps (always visible) -->
-          <div class="ob-step" id="ob-fskatt" style="display:none"><span class="ob-check">⬜</span> <a href="bli-stadare.html#fskatt-guide" target="_blank" style="color:#7C3AED;text-decoration:underline;font-weight:600">📋 Ansök om F-skatt — vi hjälper dig</a></div>
-          <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> <span>Anslut bankkonto via Stripe</span></div>
-          <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check">⬜</span> <span>Skicka profilbild till hello@spick.se</span></div>
-          <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><span class="ob-check">⬜</span> <a href="stadare-handbok.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markHandbookRead()">Läs Städarhandboken →</a></div>
-          <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html?email='+encodeURIComponent(cleaner?.email||''),'_blank')"><span class="ob-check">⬜</span> <a href="#" onclick="event.preventDefault();event.stopPropagation();window.open('stadare-test.html?email='+encodeURIComponent(cleaner?.email||''),'_blank')" style="color:var(--g);text-decoration:underline">Gör kompetenstestet →</a></div>
+          <div class="ob-step" id="ob-fskatt" style="display:none"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <a href="bli-stadare.html#fskatt-guide" target="_blank" style="color:#7C3AED;text-decoration:underline;font-weight:600">Ansök om F-skatt — vi hjälper dig</a></div>
+          <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <span>Anslut bankkonto via Stripe</span></div>
+          <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <span>Skicka profilbild till hello@spick.se</span></div>
+          <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <a href="stadare-handbok.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markHandbookRead()">Läs Städarhandboken →</a></div>
+          <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html?email='+encodeURIComponent(cleaner?.email||''),'_blank')"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <a href="#" onclick="event.preventDefault();event.stopPropagation();window.open('stadare-test.html?email='+encodeURIComponent(cleaner?.email||''),'_blank')" style="color:var(--g);text-decoration:underline">Gör kompetenstestet →</a></div>
           <!-- More steps (expandable) -->
           <div id="ob-more" style="display:none">
-            <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> <span>Konto skapat</span></div>
-            <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> <span>Skriv en personlig beskrivning</span></div>
-            <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> <span>Ställ in ditt veckoschema</span></div>
-            <div class="ob-step" id="ob-6b" style="opacity:.5;cursor:default;pointer-events:none"><span class="ob-check">🔒</span> <span>ID-verifiering (kommer snart)</span></div>
-            <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
+            <div class="ob-step done" id="ob-1"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <span>Konto skapat</span></div>
+            <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <span>Skriv en personlig beskrivning</span></div>
+            <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <span>Ställ in ditt veckoschema</span></div>
+            <div class="ob-step" id="ob-6b" style="opacity:.5;cursor:default;pointer-events:none"><span class="ob-check" style="border-color:var(--gray-200);background:var(--gray-100)"><svg width="12" height="12" fill="none" stroke="#a8a69e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="6" height="5" rx="1"/><path d="M4 6V4a2 2 0 014 0v2"/></svg></span> <span>ID-verifiering (kommer snart)</span></div>
+            <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check"><svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
           </div>
           <button onclick="document.getElementById('ob-more').style.display=this.dataset.open?'none':'block';this.textContent=this.dataset.open?'Visa fler steg →':'Dölj';this.dataset.open=this.dataset.open?'':'1'" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit">Visa fler steg →</button>
         </div>
-        <div style="margin-top:8px;font-size:.78rem;color:var(--m)" id="ob-progress">0 av 9 klart</div>
+        <div style="margin-top:12px">
+          <div style="height:4px;background:#e8e6e1;border-radius:2px">
+            <div id="ob-progress-bar" style="height:100%;width:0%;background:var(--spick-500);border-radius:2px;transition:width .5s ease"></div>
+          </div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:6px" id="ob-progress">0 av 9 klart</div>
+        </div>
       </div>
 
       <!-- Today's Timeline -->
@@ -1279,13 +1287,13 @@ function updateOnboarding() {
     if (cleaner.has_fskatt) {
       fskattEl.style.display = 'block';
       fskattEl.classList.add('done');
-      fskattEl.querySelector('.ob-check').textContent = '✅';
-      fskattEl.querySelector('a').textContent = '✅ F-skatt bekräftad';
+      fskattEl.querySelector('.ob-check').innerHTML = '<svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>';
+      fskattEl.querySelector('a').textContent = 'F-skatt bekräftad';
       fskattEl.querySelector('a').style.color = 'var(--g)';
     } else {
       fskattEl.style.display = 'block';
       fskattEl.classList.remove('done');
-      fskattEl.querySelector('.ob-check').textContent = '⬜';
+      fskattEl.querySelector('.ob-check').innerHTML = '<svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>';
     }
   }
 
@@ -1307,11 +1315,11 @@ function updateOnboarding() {
     if (!el) return;
     if (ok) {
       el.classList.add('done');
-      el.querySelector('.ob-check').textContent = '✅';
+      el.querySelector('.ob-check').innerHTML = '<svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>';
       done++;
     } else {
       el.classList.remove('done');
-      el.querySelector('.ob-check').textContent = '⬜';
+      el.querySelector('.ob-check').innerHTML = '<svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>';
     }
   });
   const box = document.getElementById('onboarding-checklist');
@@ -1320,6 +1328,8 @@ function updateOnboarding() {
   }
   const prog = document.getElementById('ob-progress');
   if (prog) prog.textContent = done + ' av ' + total + ' klart';
+  const progBar = document.getElementById('ob-progress-bar');
+  if (progBar) progBar.style.width = Math.round((done / total) * 100) + '%';
 }
 
 function switchLang(lang, btn) {
@@ -1490,7 +1500,7 @@ function expandTimelineJob(jobId) {
       <div style="text-align:center;margin-top:8px"><button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button></div>
     </div>`;
   } else if (isActive) {
-    actionsHtml = `<button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:10px;background:#DCFCE7;color:#166534;min-height:48px">✅ Markera klar</button>`;
+    actionsHtml = `<button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:10px;background:#DCFCE7;color:#166534;min-height:48px">Markera klar</button>`;
   }
 
   expand.innerHTML = `
@@ -1597,17 +1607,17 @@ function jobCard(j) {
   const isPendingConfirmation = isMine && (j.status === 'pending_confirmation');
 
   let badgeHtml = '';
-  if (isPendingConfirmation) badgeHtml = `<span class="badge badge-pending">⏳ Väntar på ditt svar</span>`;
-  else if (isOpen) badgeHtml = `<span class="badge badge-new">🆕 Ny förfrågan</span>`;
-  else if (isDone) badgeHtml = `<span class="badge badge-done">✅ Klar</span>`;
-  else if (isActive) badgeHtml = `<span class="badge badge-inprogress">🧹 Pågår</span>`;
-  else if (isMine) badgeHtml = `<span class="badge badge-ok">✅ Bekräftat</span>`;
+  if (isPendingConfirmation) badgeHtml = `<span class="badge badge-pending">Väntar på ditt svar</span>`;
+  else if (isOpen) badgeHtml = `<span class="badge badge-new">Ny förfrågan</span>`;
+  else if (isDone) badgeHtml = `<span class="badge badge-done">Klar</span>`;
+  else if (isActive) badgeHtml = `<span class="badge badge-inprogress">Pågår</span>`;
+  else if (isMine) badgeHtml = `<span class="badge badge-ok">Bekräftat</span>`;
 
   let actionsHtml = '';
   if (isPendingConfirmation) {
     actionsHtml = `<div class="job-actions" style="margin-top:8px">
-      <button class="btn-accept" onclick="respondToBooking(this,'${j.id}','accept')">✅ Acceptera uppdrag</button>
-      <button class="btn-decline" onclick="respondToBooking(this,'${j.id}','reject')">❌ Avböj</button>
+      <button class="btn-accept" onclick="respondToBooking(this,'${j.id}','accept')">Acceptera uppdrag</button>
+      <button class="btn-decline" onclick="respondToBooking(this,'${j.id}','reject')">Avböj</button>
     </div>`;
   } else if (isOpen) {
     actionsHtml = `<div class="job-actions">
@@ -1635,11 +1645,11 @@ function jobCard(j) {
       <button onclick="takePhoto('${j.id}','before')" class="action-btn" style="flex:1;background:${j.photo_before_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_before_url?'#166534':'#374151'}">${j.photo_before_url?'✅':'📸'} Innan</button>
       <button onclick="takePhoto('${j.id}','after')" class="action-btn" style="flex:1;background:${j.photo_after_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_after_url?'#166534':'#374151'}">${j.photo_after_url?'✅':'📸'} Efter</button>
     </div> -->
-    <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;font-size:.82rem">✅ Markera som klar – frigör betalning</button>`;
+    <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;font-size:.82rem">Markera som klar – frigör betalning</button>`;
   }
 
   if (isDone && isMine) {
-    actionsHtml += `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:6px">✅ Klar – utbetalning på väg</div>`;
+    actionsHtml += `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:6px">Klar – utbetalning på väg</div>`;
   }
 
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(j.customer_address || '')}`;
