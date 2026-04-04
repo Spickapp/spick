@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Ansök som städare – Boka egna uppdrag & tjäna mer | Spick</title>
-<meta name="description" content="Bli städare hos Spick. Verifiera med BankID och välj ditt arbetspseudonym.">
+<meta name="description" content="Bli städare hos Spick. Ansök gratis och börja ta emot bokningar på dina villkor.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Registrera dig som städare | Spick">
 <meta property="og:description" content="Skapa ditt städarkonto på Spick. Börja ta emot bokningar och sätt ditt eget pris.">
@@ -29,7 +29,7 @@
   --g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;
   --accent:#0F6E56;
   --b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff;
-  --bankid:#193E8F;
+  --bankid:#193E8F; /* TODO: remove when BankID is replaced */
 }
 body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-height:100vh}
 
@@ -125,6 +125,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-he
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:#E8E8E4}
 
 /* RESPONSIVE */
+.radius-slider{display:flex;align-items:center;gap:1rem;margin:.5rem 0}
+.radius-slider input[type=range]{flex:1}
+.radius-slider span{font-weight:600;white-space:nowrap;min-width:80px}
+#cleaner-addr-results{background:#fff;border:1px solid #E8E8E4;border-radius:8px;max-height:200px;overflow-y:auto}
+#cleaner-addr-results:empty{display:none}
+.addr-item{padding:.6rem .8rem;cursor:pointer;font-size:.9rem}
+.addr-item:hover{background:#f0f0ed}
 @media(max-width:480px){.field-row{grid-template-columns:1fr}}
 input,select,textarea{font-size:16px!important}
 @media(max-width:768px){
@@ -222,7 +229,7 @@ function switchLang(lang, btn) {
 
   <!-- TEST MODE BANNER (shown if BankID EF returns demo:true) -->
   <div class="test-banner" id="testBanner">
-    ⚠️ TEST MODE — BankID-verifiering körs i testläge. Ingen riktig identitetsverifiering sker.
+    ⚠️ TEST MODE — ID-verifiering körs i testläge. Ingen riktig identitetsverifiering sker.
   </div>
 
   <!-- STEP NAVIGATION -->
@@ -238,7 +245,7 @@ function switchLang(lang, btn) {
   <div class="steps-labels">
     <div class="step-label active" id="lbl1">Kontakt</div>
     <div class="step-label" id="lbl2">Profil</div>
-    <div class="step-label" id="lbl3">BankID</div>
+    <div class="step-label" id="lbl3">ID-koll</div>
     <div class="step-label" id="lbl4">Klart</div>
   </div>
 
@@ -272,8 +279,11 @@ function switchLang(lang, btn) {
       </div>
 
       <div class="field">
-        <label>Var jobbar du? *</label>
-        <input type="text" id="cityInput" placeholder="T.ex. Stockholm, Solna, Göteborg..." autocomplete="address-level2">
+        <label>Var bor du? *</label>
+        <input type="text" id="cleaner-address" placeholder="Skriv din adress..." autocomplete="off" required>
+        <div id="cleaner-addr-results"></div>
+        <input type="hidden" id="cleaner-lat">
+        <input type="hidden" id="cleaner-lng">
       </div>
     </div>
     <button class="btn-primary" onclick="validateStep1()">Nästa steg →</button>
@@ -310,16 +320,11 @@ function switchLang(lang, btn) {
           <div class="field-hint">Du bestämmer — ändra när du vill</div>
         </div>
         <div class="field">
-          <label>Arbetsområde (radie)</label>
-          <select id="serviceRadius">
-            <option value="5">5 km – Nära hemmet</option>
-            <option value="10" selected>10 km – Normalt</option>
-            <option value="20">20 km – Hela stan</option>
-            <option value="30">30 km – Regionen</option>
-            <option value="50">50 km – Stor radie</option>
-            <option value="100">100 km – Hela länet</option>
-            <option value="0">Hela Sverige</option>
-          </select>
+          <label>Hur långt kan du resa till kunder?</label>
+          <div class="radius-slider">
+            <input type="range" id="cleaner-radius" min="10" max="100" value="30" step="5">
+            <span id="radius-value">30 km radie</span>
+          </div>
         </div>
       </div>
 
@@ -365,7 +370,7 @@ function switchLang(lang, btn) {
   <!-- STEP 3: BANKID (optional) -->
   <div id="step3" style="display:none">
     <div class="card">
-      <h2>🏦 BankID-verifiering</h2>
+      <h2>🔒 ID-verifiering</h2>
       <p class="desc">Verifiera din identitet för att få en verifierad-badge på din profil. Du kan också göra detta senare.</p>
 
       <div class="gdpr-box">
@@ -436,8 +441,8 @@ function switchLang(lang, btn) {
           <div style="font-size:14px;color:#444;line-height:2">
             <div>👤 Namn: <strong id="confirmedName">–</strong></div>
             <div>📧 E-post: <strong id="confirmedEmail">–</strong></div>
-            <div>📍 Stad: <strong id="confirmedCity">–</strong></div>
-            <div id="confirmedBankidRow">🔒 BankID: <strong id="confirmedBankid" style="color:#166534">–</strong></div>
+            <div>📍 Adress: <strong id="confirmedCity">–</strong></div>
+            <div id="confirmedBankidRow">🔒 ID-verifiering: <strong id="confirmedBankid" style="color:#166534">–</strong></div>
           </div>
         </div>
 
@@ -500,12 +505,16 @@ function validateStep1() {
   var ln = document.getElementById('lastNameInput').value.trim();
   var em = document.getElementById('emailInput').value.trim();
   var ph = document.getElementById('phoneInput').value.trim();
-  var city = document.getElementById('cityInput').value.trim();
+  var addr = document.getElementById('cleaner-address').value.trim();
   if (!fn) { alert('Ange ditt förnamn'); return; }
   if (!ln) { alert('Ange ditt efternamn'); return; }
   if (!em || !em.includes('@')) { alert('Ange en giltig e-postadress'); return; }
   if (!ph) { alert('Ange ditt telefonnummer'); return; }
-  if (!city) { alert('Ange din stad'); return; }
+  if (!addr) { alert('Ange din adress'); return; }
+  if (!document.getElementById('cleaner-lat').value || !document.getElementById('cleaner-lng').value) {
+    alert('Välj din adress från listan så vi kan hitta kunder nära dig.');
+    return;
+  }
   goToStep(2);
 }
 
@@ -591,8 +600,8 @@ async function submitRegistration() {
   var lastName = document.getElementById('lastNameInput').value.trim();
   var email = document.getElementById('emailInput').value.trim();
   var phone = document.getElementById('phoneInput').value.trim();
-  var city = document.getElementById('cityInput').value.trim();
-  var radius = document.getElementById('serviceRadius').value;
+  var address = document.getElementById('cleaner-address').value.trim();
+  var radius = document.getElementById('cleaner-radius').value;
   var bio = document.getElementById('bio').value.trim();
   var price = document.getElementById('priceInput').value;
   var svcs = [];
@@ -610,11 +619,13 @@ async function submitRegistration() {
     full_name: fullName,
     first_name: firstName,
     last_name: lastName,
-    city: city,
+    home_address: address,
+    home_lat: parseFloat(document.getElementById('cleaner-lat').value) || null,
+    home_lng: parseFloat(document.getElementById('cleaner-lng').value) || null,
     bio: bio,
     hourly_rate: parseInt(price) || 350,
     services: svcs,
-    service_radius_km: parseInt(radius),
+    service_radius_km: parseInt(radius) || 30,
     email: email,
     phone: phone,
     status: 'pending',
@@ -636,13 +647,13 @@ async function submitRegistration() {
         fetch(SUPA_URL + '/functions/v1/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
-          body: JSON.stringify({ type: 'application', record: { full_name: fullName, email: email, phone: phone, city: city, bio: bio } })
+          body: JSON.stringify({ type: 'application', record: { full_name: fullName, email: email, phone: phone, address: address, bio: bio } })
         });
       } catch (e) { /* non-critical */ }
 
       document.getElementById('confirmedName').textContent = fullName;
       document.getElementById('confirmedEmail').textContent = email;
-      document.getElementById('confirmedCity').textContent = city;
+      document.getElementById('confirmedCity').textContent = address;
       goToStep(3); // Go to BankID step
     } else {
       var errBody = await res.text().catch(() => '');
@@ -658,6 +669,57 @@ async function submitRegistration() {
     console.error('Registration error:', e, errDetail);
   }
 }
+
+// ── RADIUS SLIDER ───────────────────────────
+document.getElementById('cleaner-radius')?.addEventListener('input', function() {
+  document.getElementById('radius-value').textContent = this.value + ' km radie';
+});
+
+// ── ADDRESS AUTOCOMPLETE ────────────────────
+(function() {
+  var input = document.getElementById('cleaner-address');
+  if (!input) return;
+  var debounce;
+  input.addEventListener('input', function() {
+    clearTimeout(debounce);
+    var q = this.value.trim();
+    if (q.length < 3) { document.getElementById('cleaner-addr-results').innerHTML = ''; return; }
+    debounce = setTimeout(async function() {
+      try {
+        var res = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
+          body: JSON.stringify({ query: q, country: 'se' })
+        });
+        var data = await res.json();
+        var list = document.getElementById('cleaner-addr-results');
+        list.innerHTML = '';
+        (data.predictions || []).forEach(function(p) {
+          var div = document.createElement('div');
+          div.className = 'addr-item';
+          div.textContent = p.description.replace(/, Sverige$/, '');
+          div.onclick = async function() {
+            input.value = p.description.replace(/, Sverige$/, '');
+            list.innerHTML = '';
+            try {
+              var geoRes = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
+                body: JSON.stringify({ place_id: p.place_id })
+              });
+              var geo = await geoRes.json();
+              if (geo.lat && geo.lng) {
+                document.getElementById('cleaner-lat').value = geo.lat;
+                document.getElementById('cleaner-lng').value = geo.lng;
+              }
+            } catch(e) { console.error('Geocode error', e); }
+          };
+          list.appendChild(div);
+        });
+      } catch(e) { console.error('Places error', e); }
+    }, 300);
+  });
+})();
 
 // ── LANGUAGE PICKER ──────────────────────────
 function setUILang(lang) {
