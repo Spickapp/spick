@@ -410,6 +410,7 @@ body{top:0!important}
         <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:4px">Kom igång på Spick</div>
         <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
         <div id="ob-steps">
+          <div class="ob-step" id="ob-fskatt" style="display:none"><span class="ob-check">⬜</span> <a href="bli-stadare.html#fskatt-guide" target="_blank" style="color:#7C3AED;text-decoration:underline;font-weight:600">📋 Ansök om F-skatt — vi hjälper dig</a></div>
           <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> <span>Konto skapat</span></div>
           <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check">⬜</span> <span>Skicka profilbild till hello@spick.se</span></div>
           <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> <span>Skriv en personlig beskrivning</span></div>
@@ -1206,6 +1207,23 @@ function renderHome() {
 
 function updateOnboarding() {
   if (!cleaner) return;
+
+  // F-skatt onboarding step
+  const fskattEl = document.getElementById('ob-fskatt');
+  if (fskattEl) {
+    if (cleaner.has_fskatt) {
+      fskattEl.style.display = 'block';
+      fskattEl.classList.add('done');
+      fskattEl.querySelector('.ob-check').textContent = '✅';
+      fskattEl.querySelector('a').textContent = '✅ F-skatt bekräftad';
+      fskattEl.querySelector('a').style.color = 'var(--g)';
+    } else {
+      fskattEl.style.display = 'block';
+      fskattEl.classList.remove('done');
+      fskattEl.querySelector('.ob-check').textContent = '⬜';
+    }
+  }
+
   const checks = {
     'ob-1': true,
     'ob-2': !!(cleaner.profile_image || cleaner.avatar || cleaner.avatar_url),

@@ -1751,6 +1751,7 @@ function renderCleaners() {
     
     const svcsDisplay = Array.isArray(c.services) ? c.services.map(s => escHtml(s)).join(', ') : escHtml(c.services || '–');
     const hasFskatt = c.fskatt_confirmed || c.verified || c.has_fskatt;
+    const fskattNeedsHelp = c.fskatt_needs_help;
     const stripeOk = c.stripe_onboarding_status === 'complete';
 
     return `<tr style="${isSuspended ? 'opacity:.6' : ''}">
@@ -1770,7 +1771,7 @@ function renderCleaners() {
       <td style="max-width:180px;font-size:.78rem;white-space:normal">${svcsDisplay}</td>
       <td>${c.hourly_rate || '350'} kr/h</td>
       <td>${c.service_radius_km ? c.service_radius_km + ' km' : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
-      <td>${hasFskatt ? '✅' : '❌'}</td>
+      <td>${hasFskatt ? '✅' : fskattNeedsHelp ? '📝' : '❌'}</td>
       <td>${stripeOk ? '✅' : '❌'}</td>
       <td>${statusBadge}</td>
       <td>
@@ -1805,11 +1806,11 @@ function renderApplications() {
           <p style="font-size:.85rem;margin-top:8px">${a.home_address ? '📍 <strong>Adress:</strong> ' + escHtml(a.home_address) : '<span style="color:#D97706">⚠️ Adress saknas</span>'} · ${a.service_radius_km ? '🔄 <strong>Radie:</strong> ' + parseInt(a.service_radius_km) + ' km' : '<span style="color:#D97706">⚠️ Radie ej angiven</span>'}</p>
           <p style="font-size:.75rem;color:#9E9E9A;margin-top:2px">🗺️ ${a.home_lat && a.home_lng ? parseFloat(a.home_lat).toFixed(4) + ', ' + parseFloat(a.home_lng).toFixed(4) : '<span style="color:#D97706">⚠️ Koordinater saknas</span>'}</p>
           <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(Array.isArray(a.services) ? a.services.join(', ') : a.services || '–')}</p>
-          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.has_fskatt || a.fskatt_confirmed ? '✅ Ja' : '❌ Nej'}</p>
+          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.fskatt_confirmed ? '<span style="color:#16a34a">✅ Har</span>' : a.fskatt_needs_help ? '<span style="color:#ca8a04">📝 Vill ha hjälp</span>' : '<span style="color:#ea580c">❓ Okänd</span>'}</p>
           ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${escHtml(a.bio.substring(0,120))}${a.bio.length > 120 ? '...' : ''}"</p>` : ''}
           ${a.available_days ? `<p style="font-size:.82rem;margin-top:4px"><strong>Tillgängliga dagar:</strong> ${escHtml(a.available_days)}</p>` : ''}
           ${a.languages ? `<p style="font-size:.82rem"><strong>Språk:</strong> ${escHtml(a.languages)}</p>` : ''}
-          <p style="font-size:.75rem;color:#9E9E9A;margin-top:6px">${a.gdpr_consent ? '✅ GDPR' : '❌ GDPR'} · ${a.fskatt_confirmed ? '✅ F-skatt bekräftad' : '❌ F-skatt ej bekräftad'} · ${a.marketing_consent ? '✅ Marknadsföring' : '❌ Marknadsföring'}</p>
+          <p style="font-size:.75rem;color:#9E9E9A;margin-top:6px">${a.gdpr_consent ? '✅ GDPR' : '❌ GDPR'} · ${a.fskatt_confirmed ? '✅ F-skatt bekräftad' : a.fskatt_needs_help ? '📝 F-skatt: vill ha hjälp' : '❓ F-skatt okänd'} · ${a.marketing_consent ? '✅ Marknadsföring' : '❌ Marknadsföring'}</p>
           <p style="font-size:.75rem;color:var(--m);margin-top:4px">Ansökt: ${new Date(a.created_at).toLocaleString('sv-SE',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -2569,7 +2570,7 @@ function showCleanerDetail(id) {
       </div>
     </div>
     
-    <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Ja' : '❌ Nej'}</span></div>
+    <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Har F-skatt' : c.fskatt_needs_help ? '📝 Behöver hjälp — kontakta för onboarding' : '❓ Vet ej'}</span></div>
     <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet'}</span></div>
     <div class="stat-row"><span class="lbl">Registrerad</span><span class="val">${c.created_at ? new Date(c.created_at).toLocaleDateString('sv') : '–'}</span></div>
     

@@ -146,6 +146,8 @@ serve(async (req) => {
         completed_jobs: 0,
         verified: false,
         stripe_onboarding_status: "pending",
+        has_fskatt: !!app.fskatt_confirmed,
+        fskatt_needs_help: !!app.fskatt_needs_help,
 
         created_at: new Date().toISOString(),
       };
@@ -244,6 +246,7 @@ serve(async (req) => {
         <p>Hej ${esc(name)}!</p>
         <p>Grattis — din ansökan är godkänd! Du är nu en del av Spick-teamet.</p>
         ${isCompany ? `<p>🏢 <strong>${esc(app.company_name)}</strong> är registrerat. Du kan lägga till teammedlemmar via din dashboard.</p>` : ""}
+        ${app.fskatt_needs_help ? `<p style="background:#EDE9FE;border-radius:12px;padding:12px 16px;font-size:14px;color:#5B21B6">📋 <strong>Nästa steg:</strong> Du behöver F-skattsedel för att ta emot bokningar. Vi hjälper dig — <a href="https://spick.se/bli-stadare.html#fskatt-guide" style="color:#7C3AED;font-weight:600">läs guiden</a> eller ring oss på 076-050 51 53.</p>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-skatt bekräftad — du är redo att ta emot bokningar!</p>` : ""}
         ${card([
           ["Timpris", `${hr} kr/h`],
           ["Provision", "17% (du behåller 83%)"],
@@ -266,6 +269,7 @@ serve(async (req) => {
         <h2>Welcome to Spick! 🎉</h2>
         <p>Hi ${esc(name)}!</p>
         <p>Congratulations — your application has been approved! You are now part of the Spick team.</p>
+        ${app.fskatt_needs_help ? `<p style="background:#EDE9FE;border-radius:12px;padding:12px 16px;font-size:14px;color:#5B21B6">📋 <strong>Next step:</strong> You need an F-tax certificate to receive bookings. We'll help you — <a href="https://spick.se/bli-stadare.html#fskatt-guide" style="color:#7C3AED;font-weight:600">read the guide</a> or call us at 076-050 51 53.</p>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-tax confirmed — you're ready to receive bookings!</p>` : ""}
         ${card([
           ["Hourly rate", `${hr} kr/h`],
           ["Commission", "17% (you keep 83%)"],
@@ -289,6 +293,7 @@ serve(async (req) => {
           <h2>مرحباً بك في Spick! 🎉</h2>
           <p>مرحباً ${esc(name)}!</p>
           <p>تهانينا — تمت الموافقة على طلبك. أنت الآن جزء من فريق Spick.</p>
+          ${app.fskatt_needs_help ? `<p style="background:#EDE9FE;border-radius:12px;padding:12px 16px;font-size:14px;color:#5B21B6">📋 <strong>الخطوة التالية:</strong> تحتاج شهادة ضريبة F لاستقبال الحجوزات. سنساعدك — <a href="https://spick.se/bli-stadare.html#fskatt-guide" style="color:#7C3AED;font-weight:600">اقرأ الدليل</a> أو اتصل بنا: 076-050 51 53</p>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ تم تأكيد ضريبة F — أنت جاهز لاستقبال الحجوزات!</p>` : ""}
           ${card([
             ["سعر الساعة", `${hr} كرونة/ساعة`],
             ["العمولة", "١٧٪ (تحتفظ بـ ٨٣٪)"],

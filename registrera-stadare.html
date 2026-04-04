@@ -234,7 +234,11 @@ var _arTranslations = {
   h3Godkannanden: 'الموافقات',
   descGodkannanden: 'يجب الموافقة على كليهما لإرسال طلبك.',
   chkTermsLabel: 'أوافق على <a href="uppdragsavtal.html" target="_blank">اتفاقية العمل</a> و<a href="integritetspolicy.html" target="_blank">سياسة الخصوصية</a> الخاصة بـ Spick.',
-  chkFskattLabel: 'أؤكد أن لدي أو أتقدم بطلب للحصول على شهادة ضريبة F.',
+  fskattQuestion: 'هل لديك شهادة ضريبة F؟',
+  fskattOptYes: 'نعم، لدي ضريبة F',
+  fskattOptApplying: 'لا، لكن أريد التقديم — ساعدوني',
+  fskattOptUnknown: 'لا أعرف ما هي ضريبة F',
+  fskattReassure: 'لا تقلق! معظم عمال النظافة لدينا حصلوا على مساعدة في التقديم.',
   chkMarketingLabel: 'أريد تلقي نصائح حول مهام جديدة وأخبار من Spick (اختياري).',
   btnTillbaka: 'رجوع →',
   btnSkicka: '← إرسال الطلب',
@@ -315,6 +319,15 @@ function updateDynamicTexts() {
       }
     }
   }
+}
+
+var _fskattStatus = null;
+function setFskattStatus(val) {
+  _fskattStatus = val;
+  document.getElementById('fskattYes').classList.toggle('on', val === 'yes');
+  document.getElementById('fskattApplying').classList.toggle('on', val === 'applying');
+  document.getElementById('fskattUnknown').classList.toggle('on', val === 'unknown');
+  document.getElementById('fskattHelpText').style.display = (val === 'applying' || val === 'unknown') ? 'block' : 'none';
 }
 
 var _regType = 'privat';
@@ -545,10 +558,18 @@ function switchLang(lang, btn) {
             <a href="integritetspolicy.html" target="_blank">integritetspolicy</a>.</span>
         </label>
 
-        <label class="check-row">
-          <input type="checkbox" id="chkFskatt">
-          <span data-i18n="chkFskattLabel">Jag bekräftar att jag har eller ansöker om F-skattsedel.</span>
-        </label>
+        <div class="form-group" style="margin-bottom:12px">
+          <label style="font-size:13px;font-weight:700;color:#555;margin-bottom:8px;display:block" data-i18n="fskattQuestion"><strong>Har du F-skattsedel?</strong></label>
+          <div class="fskatt-options" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <button type="button" class="svc-btn" id="fskattYes" data-fskatt="yes" onclick="setFskattStatus('yes')"><span data-i18n="fskattOptYes">✅ Ja, jag har F-skatt</span></button>
+            <button type="button" class="svc-btn" id="fskattApplying" data-fskatt="applying" onclick="setFskattStatus('applying')"><span data-i18n="fskattOptApplying">📝 Nej, men jag vill ansöka — hjälp mig</span></button>
+            <button type="button" class="svc-btn" id="fskattUnknown" data-fskatt="unknown" onclick="setFskattStatus('unknown')"><span data-i18n="fskattOptUnknown">❓ Jag vet inte vad F-skatt är</span></button>
+          </div>
+          <div id="fskattHelpText" style="display:none;background:#EDE9FE;border:1.5px solid #C4B5FD;border-radius:12px;padding:1rem;margin-top:10px">
+            <div style="font-size:.85rem;color:#5B21B6;line-height:1.6" data-i18n="fskattReassure">Ingen fara! De flesta av våra städare fick hjälp att ansöka. Det tar 15 minuter och är gratis.</div>
+            <a href="bli-stadare.html#fskatt-guide" target="_blank" style="background:#7C3AED;color:#fff;padding:.4rem 1rem;border-radius:99px;font-size:.75rem;font-weight:600;text-decoration:none;display:inline-block;margin-top:8px" data-i18n="fskattLink">Visa F-skatt guide →</a>
+          </div>
+        </div>
 
         <label class="check-row" style="background:transparent;padding:8px 12px">
           <input type="checkbox" id="chkMarketing">
@@ -779,7 +800,7 @@ async function submitRegistration() {
   document.querySelectorAll('.svc-btn.on').forEach(function(b) { svcs.push(b.textContent.trim()); });
 
   if (!document.getElementById('chkTerms').checked) { alert('Du måste godkänna uppdragsavtalet och integritetspolicyn'); return; }
-  if (!document.getElementById('chkFskatt').checked) { alert('Du måste bekräfta F-skatt'); return; }
+  if (!_fskattStatus) { alert('Välj ditt F-skatt-status'); return; }
 
   var btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -803,7 +824,8 @@ async function submitRegistration() {
     marketing_consent: document.getElementById('chkMarketing').checked,
     gdpr_consent: true,
     gdpr_consent_at: new Date().toISOString(),
-    fskatt_confirmed: true
+    fskatt_confirmed: _fskattStatus === 'yes',
+    fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown'
   };
 
   // Company fields
