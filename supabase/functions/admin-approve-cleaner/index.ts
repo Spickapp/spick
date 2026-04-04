@@ -106,37 +106,52 @@ serve(async (req) => {
         ? `${baseSlug}-${slugExisting.length + 1}`
         : baseSlug;
 
-      // 3. Create cleaner row
+      // 3. Create cleaner row — copy ALL fields from application
+      // services: keep as-is if already array (jsonb), otherwise split string
       const svcs = Array.isArray(app.services)
         ? app.services
         : (app.services || "Hemstädning").split(",").map((s: string) => s.trim()).filter(Boolean);
 
       const cleanerData: Record<string, unknown> = {
+        // Identity
         full_name: name,
         first_name: firstName || name.split(" ")[0] || "Städare",
         last_name: lastName || name.split(" ").slice(1).join(" ") || "",
         email,
         phone: app.phone || null,
-        city: app.city || null,
-        home_address: app.home_address || null,
+
+        // Location
+        city: app.city || "",
+        home_address: app.home_address || "",
         home_lat: app.home_lat != null ? parseFloat(String(app.home_lat)) : null,
         home_lng: app.home_lng != null ? parseFloat(String(app.home_lng)) : null,
         service_radius_km: app.service_radius_km ? parseInt(String(app.service_radius_km)) : 30,
+
+        // Work profile
         hourly_rate: parseFloat(String(app.hourly_rate)) || 350,
         services: svcs,
         bio: app.bio || "",
+
+        // Auth & status
         is_approved: true,
         auth_user_id: authUserId,
         tier: "new",
         commission_rate: 0.17,
         status: "aktiv",
         slug,
-        avg_rating: null,
+
+        // Stats (new cleaner defaults)
+        avg_rating: 0,
         review_count: 0,
+        completed_jobs: 0,
+        verified: false,
+        stripe_onboarding_status: "pending",
+
         created_at: new Date().toISOString(),
       };
 
-      log("info", "admin-approve-cleaner", "Inserting cleaner — full payload", cleanerData);
+      console.log("Application data:", JSON.stringify(app));
+      console.log("Inserting into cleaners:", JSON.stringify(cleanerData));
 
       // Check if cleaner already exists (by email)
       const { data: existing } = await sb
