@@ -132,6 +132,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--gr);color:var(--t);min-he
 #cleaner-addr-results:empty{display:none}
 .addr-item{padding:.6rem .8rem;cursor:pointer;font-size:.9rem}
 .addr-item:hover{background:#f0f0ed}
+.id-verify-notice{background:#F0FAF6;border-radius:12px;padding:1.5rem;text-align:center;font-size:.9rem;line-height:1.6}
+.id-later-note{font-size:.85rem;color:#6B6960;margin-top:.5rem}
+.price-range-labels{display:flex;justify-content:space-between;font-size:.8rem;color:#9E9E9A;margin-top:.25rem}
 @media(max-width:480px){.field-row{grid-template-columns:1fr}}
 input,select,textarea{font-size:16px!important}
 @media(max-width:768px){
@@ -269,7 +272,7 @@ function switchLang(lang, btn) {
       <div class="field">
         <label>E-postadress *</label>
         <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
-        <div class="field-hint">Din arbets-e-post</div>
+        <div class="field-hint">Din e-postadress</div>
       </div>
 
       <div class="field">
@@ -316,8 +319,9 @@ function switchLang(lang, btn) {
       <div class="field-row">
         <div class="field">
           <label>Ditt timpris (kr/h)</label>
-          <input type="number" id="priceInput" min="250" max="600" value="350" placeholder="350">
-          <div class="field-hint">Du bestämmer — ändra när du vill</div>
+          <input type="range" id="priceInput" min="200" max="600" value="350" step="10">
+          <div class="price-range-labels"><span>200 kr/h</span><span>600 kr/h</span></div>
+          <div class="field-hint" id="priceHint">350 kr/h — du behåller 291 kr/h (83%)</div>
         </div>
         <div class="field">
           <label>Hur långt kan du resa till kunder?</label>
@@ -385,40 +389,9 @@ function switchLang(lang, btn) {
         </div>
       </div>
 
-      <button class="bankid-btn" onclick="startBankID('mobile')" id="bankidMobileBtn">
-        🔐 BankID på den här enheten
-      </button>
-
-      <button class="bankid-btn" onclick="startBankID('qr')" id="bankidQRBtn"
-        style="background:#2C5282">
-        📱 BankID på annan enhet (QR-kod)
-      </button>
-
-      <div class="bankid-qr" id="qrBox">
-        <div id="qrDisplay" style="width:200px;height:200px;background:var(--gr);border-radius:12px;
-          margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:48px">📱</div>
-        <p><strong>Öppna BankID-appen</strong> på din mobil och scanna QR-koden</p>
-      </div>
-
-      <div class="bankid-status" id="bankidStatus">
-        <div class="spinner"></div>
-        <span id="bankidStatusText">Väntar på BankID...</span>
-      </div>
-
-      <div class="verified-box" id="verifiedBox">
-        <div class="verified-icon">✅</div>
-        <div class="verified-text">
-          <h4>Identitet verifierad!</h4>
-          <p id="verifiedName">Välkommen!</p>
-        </div>
-      </div>
-
-      <div class="divider">eller</div>
-
-      <div style="background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:12px;padding:14px 16px;text-align:center">
-        <p style="font-size:13px;color:#92400E;line-height:1.6">
-          Du kan verifiera senare. Vi kontaktar dig för att slutföra verifieringen.
-        </p>
+      <div class="id-verify-notice">
+        <p>Vi verifierar din identitet för allas trygghet. Just nu hanterar vi detta manuellt — vi kontaktar dig efter ansökan.</p>
+        <p class="id-later-note">Du kan fortsätta utan verifiering nu. Vi återkommer inom 24h.</p>
       </div>
     </div>
     <button class="btn-secondary" onclick="goToStep(2)">← Tillbaka</button>
@@ -442,7 +415,7 @@ function switchLang(lang, btn) {
             <div>👤 Namn: <strong id="confirmedName">–</strong></div>
             <div>📧 E-post: <strong id="confirmedEmail">–</strong></div>
             <div>📍 Adress: <strong id="confirmedCity">–</strong></div>
-            <div id="confirmedBankidRow">🔒 ID-verifiering: <strong id="confirmedBankid" style="color:#166534">–</strong></div>
+            <div id="confirmedBankidRow">🔒 ID-verifiering: <strong id="confirmedBankid" style="color:#166534">Görs inom 24h</strong></div>
           </div>
         </div>
 
@@ -451,10 +424,10 @@ function switchLang(lang, btn) {
           📖 Läs: Så lyckas du på Spick — tips för fler bokningar →</a>
 
         <div style="background:#E8F5E9;border:1.5px solid #81C784;border-radius:14px;padding:1rem 1.25rem;margin-bottom:12px;text-align:center">
-          <div style="font-size:.85rem;font-weight:600;color:#1B5E20;margin-bottom:.5rem">Behöver du hjälp? Skriv till oss direkt på WhatsApp eller ring — vi svarar snabbt.</div>
+          <div style="font-size:.85rem;font-weight:600;color:#1B5E20;margin-bottom:.5rem">Behöver du hjälp? Ring eller mejla — vi svarar snabbt.</div>
           <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
-            <a href="https://wa.me/46760505153" target="_blank" style="background:#25D366;color:#fff;padding:.5rem 1.25rem;border-radius:99px;font-size:.85rem;font-weight:600;text-decoration:none;display:inline-block">💬 WhatsApp</a>
             <a href="tel:+46760505153" style="background:#fff;color:#1B5E20;border:1.5px solid #81C784;padding:.5rem 1.25rem;border-radius:99px;font-size:.85rem;font-weight:600;text-decoration:none;display:inline-block">📞 076-050 51 53</a>
+            <a href="mailto:hello@spick.se" style="background:#fff;color:#1B5E20;border:1.5px solid #81C784;padding:.5rem 1.25rem;border-radius:99px;font-size:.85rem;font-weight:600;text-decoration:none;display:inline-block">✉️ hello@spick.se</a>
           </div>
         </div>
 
@@ -673,6 +646,13 @@ async function submitRegistration() {
 // ── RADIUS SLIDER ───────────────────────────
 document.getElementById('cleaner-radius')?.addEventListener('input', function() {
   document.getElementById('radius-value').textContent = this.value + ' km radie';
+});
+
+// ── PRICE SLIDER ────────────────────────────
+document.getElementById('priceInput')?.addEventListener('input', function() {
+  var rate = parseInt(this.value) || 350;
+  var net = Math.round(rate * 0.83);
+  document.getElementById('priceHint').textContent = rate + ' kr/h — du behåller ' + net + ' kr/h (83%)';
 });
 
 // ── ADDRESS AUTOCOMPLETE ────────────────────
