@@ -195,19 +195,56 @@ serve(async (req) => {
         log("warn", "admin-approve-cleaner", "Magic link generation failed", { error: (e as Error).message });
       }
 
-      // 6. Send welcome email
+      // 6. Send welcome email (trilingual: SV + EN + AR)
+      const hr = parseInt(app.hourly_rate) || 350;
       const html = wrap(`
         <h2>Välkommen till Spick! 🎉</h2>
         <p>Hej ${esc(name)}!</p>
         <p>Grattis — din ansökan är godkänd! Du är nu en del av Spick-teamet.</p>
         ${card([
-          ["Timpris", `${parseInt(app.hourly_rate) || 350} kr/h`],
+          ["Timpris", `${hr} kr/h`],
           ["Provision", "17% (du behåller 83%)"],
           ["Tjänster", svcs.join(", ")],
         ])}
         <p>Klicka på knappen nedan för att logga in på din dashboard där du kan se och hantera bokningar:</p>
         <p><a href="${esc(magicLinkUrl)}" class="btn">Logga in på din dashboard →</a></p>
         <p style="font-size:13px;color:#9B9B95;margin-top:20px">Länken är giltig i 24 timmar. Du kan alltid begära en ny inloggningslänk via dashboarden.</p>
+        <p style="font-size:13px;color:#9B9B95;margin-top:8px">Har du frågor? Ring oss på 076-050 51 53 eller skriv på WhatsApp.</p>
+        <p style="margin-top:4px">Välkommen till Spick!<br>Farhad</p>
+
+        <hr style="border:none;border-top:1px solid #E8E8E4;margin:28px 0">
+
+        <h2>Welcome to Spick! 🎉</h2>
+        <p>Hi ${esc(name)}!</p>
+        <p>Congratulations — your application has been approved! You are now part of the Spick team.</p>
+        ${card([
+          ["Hourly rate", `${hr} kr/h`],
+          ["Commission", "17% (you keep 83%)"],
+          ["Services", svcs.join(", ")],
+        ])}
+        <p>Click the button below to log in to your dashboard where you can see and manage your bookings:</p>
+        <p><a href="${esc(magicLinkUrl)}" class="btn">Log in to your dashboard →</a></p>
+        <p style="font-size:13px;color:#9B9B95;margin-top:20px">The link is valid for 24 hours. You can always request a new login link via the dashboard.</p>
+        <p style="font-size:13px;color:#9B9B95;margin-top:8px">Questions? Call us at 076-050 51 53 or message on WhatsApp.</p>
+        <p style="margin-top:4px">Welcome to Spick!<br>Farhad</p>
+
+        <hr style="border:none;border-top:1px solid #E8E8E4;margin:28px 0">
+
+        <div dir="rtl" style="text-align:right">
+          <h2>مرحباً بك في Spick! 🎉</h2>
+          <p>مرحباً ${esc(name)}!</p>
+          <p>تهانينا — تمت الموافقة على طلبك. أنت الآن جزء من فريق Spick.</p>
+          ${card([
+            ["سعر الساعة", `${hr} كرونة/ساعة`],
+            ["العمولة", "١٧٪ (تحتفظ بـ ٨٣٪)"],
+            ["الخدمات", svcs.join(", ")],
+          ])}
+          <p>اضغط على الزر أدناه لتسجيل الدخول إلى لوحة التحكم:</p>
+          <p><a href="${esc(magicLinkUrl)}" class="btn">← تسجيل الدخول إلى لوحة التحكم</a></p>
+          <p style="font-size:13px;color:#9B9B95;margin-top:20px">الرابط صالح لمدة ٢٤ ساعة. يمكنك دائماً طلب رابط جديد عبر لوحة التحكم.</p>
+          <p style="font-size:13px;color:#9B9B95;margin-top:8px">هل لديك أسئلة؟ اتصل بنا على 053 51 050-076 أو عبر WhatsApp.</p>
+          <p style="margin-top:4px">مرحباً بك في Spick!<br>فرهاد</p>
+        </div>
       `);
 
       await sendEmail(email, "Välkommen till Spick! 🎉 Logga in på din dashboard", html);
