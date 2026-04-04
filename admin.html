@@ -2648,9 +2648,10 @@ function showCleanerDetail(id) {
   const prefBox = document.getElementById('admin-cleaner-prefs');
   if (prefBox) {
     const p = c.work_preferences || {};
-    const a = c.service_area || {};
-    const svcLabels = {hem:'Hemstädning',stor:'Storstädning',flytt:'Flyttstädning',fonster:'Fönsterputs',kontor:'Kontorsstädning'};
-    const svcs = (p.service_types || []).map(t => svcLabels[t] || t).join(', ') || 'Ej inställt';
+    // Tjänster: flat column c.services (jsonb array) — fallback till work_preferences
+    const svcsRaw = c.services || p.service_types || [];
+    const svcsArr = Array.isArray(svcsRaw) ? svcsRaw : (typeof svcsRaw === 'string' ? svcsRaw.split(',').map(s=>s.trim()) : []);
+    const svcs = svcsArr.join(', ') || 'Ej inställt';
     const conditions = [
       p.pets_ok ? '🐾 Husdjur OK' : null,
       p.elevator_required ? '🛗 Hiss krävs' : null,
@@ -2658,15 +2659,19 @@ function showCleanerDetail(id) {
       p.weekend_ok ? '📅 Helgjobb' : null,
       p.own_material ? '🧴 Eget material' : null,
     ].filter(Boolean);
-    const radius = a.max_radius_km || c.max_travel_km || '–';
-    const zones = (a.zones || []).join(', ') || '–';
-    const addr = a.home_address || '–';
+    // Arbetsområde: flat columns on cleaners
+    const radius = c.service_radius_km || c.max_travel_km || '–';
+    const addr = c.home_address || '–';
+    const lat = c.home_lat ? parseFloat(c.home_lat).toFixed(4) : '–';
+    const lng = c.home_lng ? parseFloat(c.home_lng).toFixed(4) : '–';
+    const zones = ((c.service_area || {}).zones || []).join(', ') || '';
     prefBox.innerHTML = `
       <div style="margin-bottom:8px"><span style="font-weight:600;font-size:.8rem">Tjänster:</span> <span style="font-size:.82rem">${escHtml(svcs)}</span></div>
       ${conditions.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${conditions.map(c => `<span style="font-size:.72rem;padding:2px 8px;background:#F3F4F6;border-radius:6px">${c}</span>`).join('')}</div>` : ''}
       <div style="font-size:.82rem;color:var(--m)">
         <div>📍 ${escHtml(addr)} · Radie: <strong>${radius} km</strong></div>
-        ${zones !== '–' ? `<div style="margin-top:2px">Zoner: ${escHtml(zones)}</div>` : ''}
+        <div style="margin-top:2px;font-size:.75rem;color:#9E9E9A">Koordinater: ${lat}, ${lng}</div>
+        ${zones ? `<div style="margin-top:2px">Zoner: ${escHtml(zones)}</div>` : ''}
         ${p.min_hours ? `<div style="margin-top:2px">Min ${p.min_hours}h/uppdrag · Max ${p.max_jobs_per_day || '–'} jobb/dag</div>` : ''}
       </div>`;
   }
