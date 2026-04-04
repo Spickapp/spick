@@ -154,6 +154,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 .job-pay{font-size:1.05rem;font-weight:700;color:var(--g);white-space:nowrap;flex-shrink:0;font-family:'Playfair Display',serif}
 .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
 .badge-new{background:#FEF3C7;color:#92400E}
+.badge-pending{background:#FEF3C7;color:#92400E;animation:pulse-badge 2s infinite}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.6}}
 .badge-ok{background:#D1FAE5;color:#065F46}
 .badge-done{background:#F3F4F6;color:#6B7280}
 .badge-inprogress{background:#DBEAFE;color:#1E40AF}
@@ -1383,7 +1385,13 @@ function renderJobsTeaser() {
 
 function renderMyUpcomingJobs() {
   const myConfirmed = jobs.filter(j => j.cleaner_id === cleaner.id && j.status !== 'klar')
-    .sort((a,b) => new Date(a.scheduled_date||a.booking_date) - new Date(b.scheduled_date||b.booking_date));
+    .sort((a,b) => {
+      // pending_confirmation first
+      const aP = a.status === 'pending_confirmation' ? 0 : 1;
+      const bP = b.status === 'pending_confirmation' ? 0 : 1;
+      if (aP !== bP) return aP - bP;
+      return new Date(a.scheduled_date||a.booking_date) - new Date(b.scheduled_date||b.booking_date);
+    });
 
   const today = new Date().toDateString();
   // Exclude today's jobs (shown in timeline)
@@ -1403,8 +1411,10 @@ function renderMyUpcomingJobs() {
 
 function updateBadge() {
   const open = jobs.filter(j => !j.cleaner_id);
+  const pendingConfirm = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'pending_confirmation');
+  const count = open.length + pendingConfirm.length;
   const badge = document.getElementById('nav-badge');
-  if (open.length > 0) { badge.textContent = open.length; badge.style.display = 'block'; }
+  if (count > 0) { badge.textContent = count; badge.style.display = 'block'; }
   else { badge.style.display = 'none'; }
 }
 
@@ -1444,14 +1454,22 @@ function jobCard(j) {
   const hoursUntil = (d - new Date()) / 3600000;
   const showAddr = isMine && hoursUntil <= 24;
 
+  const isPendingConfirmation = isMine && (j.status === 'pending_confirmation');
+
   let badgeHtml = '';
-  if (isOpen) badgeHtml = `<span class="badge badge-new">🆕 Ny förfrågan</span>`;
+  if (isPendingConfirmation) badgeHtml = `<span class="badge badge-pending">⏳ Väntar på ditt svar</span>`;
+  else if (isOpen) badgeHtml = `<span class="badge badge-new">🆕 Ny förfrågan</span>`;
   else if (isDone) badgeHtml = `<span class="badge badge-done">✅ Klar</span>`;
   else if (isActive) badgeHtml = `<span class="badge badge-inprogress">🧹 Pågår</span>`;
   else if (isMine) badgeHtml = `<span class="badge badge-ok">✅ Bekräftat</span>`;
 
   let actionsHtml = '';
-  if (isOpen) {
+  if (isPendingConfirmation) {
+    actionsHtml = `<div class="job-actions" style="margin-top:8px">
+      <button class="btn-accept" onclick="respondToBooking('${j.id}','accept')">✅ Acceptera uppdrag</button>
+      <button class="btn-decline" onclick="respondToBooking('${j.id}','reject')">❌ Avböj</button>
+    </div>`;
+  } else if (isOpen) {
     actionsHtml = `<div class="job-actions">
       <button class="btn-accept" onclick="acceptJob('${j.id}',this)">✓ Acceptera</button>
       <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
@@ -1874,6 +1892,42 @@ async function markJobDone(id) {
   }).catch(()=>{});
   showToast('🎉 Jobb klart! Kunden notifieras.');
   loadJobs();
+}
+
+async function respondToBooking(bookingId, action) {
+  const confirmMsg = action === 'accept'
+    ? 'Acceptera detta uppdrag? Kunden får bekräftelsemejl.'
+    : 'Avböj detta uppdrag? Kunden får full återbetalning.';
+  if (!confirm(confirmMsg)) return;
+
+  let reason = '';
+  if (action === 'reject') {
+    reason = prompt('Valfritt: varför avböjer du?') || '';
+  }
+
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+
+  try {
+    const card = document.getElementById('jc-' + bookingId);
+    if (card) card.style.opacity = '0.5';
+
+    const res = await fetch(SUPA_URL + '/functions/v1/cleaner-booking-response', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ booking_id: bookingId, action, reason })
+    });
+    const result = await res.json();
+    if (result.success) {
+      showToast(action === 'accept' ? '✅ Uppdrag accepterat! Kunden notifierad.' : '❌ Uppdrag avböjt. Kunden får återbetalning.');
+      loadJobs();
+    } else {
+      if (card) card.style.opacity = '1';
+      showToast('⚠️ Fel: ' + (result.error || 'Okänt fel'));
+    }
+  } catch (e) {
+    showToast('⚠️ Nätverksfel: ' + e.message);
+  }
 }
 
 async function takePhoto(bookingId, type) {

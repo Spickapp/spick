@@ -2803,61 +2803,58 @@ async function saveCleanerFromAdmin() {
 
 // ── APPLICATIONS ──────────────────────────────────────
 async function approveApplication(id, name, email, city, services, rate) {
-  // Hämta service_radius_km från ansökan
-  const { data: appData } = await AR.select('cleaner_applications', 'select=service_radius_km&id=eq.' + id + '&limit=1');
-  const radiusKm = appData?.[0]?.service_radius_km || 10;
-  // Skapa städare i cleaners-tabellen
-  const { data: existingArr } = await AR.select('cleaners', 'select=id&email=eq.' + encodeURIComponent(email) + '&limit=1');
-  if (existingArr?.length) {
-    await AR.update('cleaners', { status: 'aktiv', is_approved: true, service_radius_km: radiusKm }, 'email=eq.' + encodeURIComponent(email));
-  } else {
-    // services kan vara komma-separerad sträng eller array
-    const svcsArr = Array.isArray(services)
-      ? services
-      : (services || 'Hemstädning').split(',').map(s => s.trim()).filter(Boolean);
-    await AR.insert('cleaners', {
-      full_name: name, email, city,
-      services: svcsArr,
-      hourly_rate: parseInt(rate) || 350,
-      service_radius_km: radiusKm,
-      status: 'aktiv', is_approved: true,
-      avg_rating: null, review_count: 0,
-      payout_status: 'pending',
-      created_at: new Date().toISOString()
+  if (!confirm(`Godkänn ${name}?\n\nEtt konto skapas, profil läggs till i cleaners och välkomstmejl skickas.`)) return;
+
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ application_id: id, action: 'approve' })
     });
+    const result = await res.json();
+    if (result.success) {
+      await auditLog('approve','application', id, null, {name, email, city, status:'approved'});
+      alert(`✅ ${name} är nu godkänd som städare! Välkomstmejl skickat.`);
+      loadAll();
+    } else {
+      alert('Fel: ' + (result.error || 'Okänt fel'));
+    }
+  } catch (e) {
+    alert('Nätverksfel: ' + e.message);
   }
-  // Generera unik slug
-  const baseSlug = (name || 'stadare').toLowerCase()
-    .replace(/[åä]/g, 'a').replace(/ö/g, 'o')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const { data: slugExisting } = await AR.select('cleaners', 'select=id&slug=like.' + encodeURIComponent(baseSlug + '%'));
-  const slug = slugExisting && slugExisting.length > 0 ? baseSlug + '-' + (slugExisting.length + 1) : baseSlug;
-  await AR.update('cleaners', { slug }, 'email=eq.' + encodeURIComponent(email));
-
-  await AR.update('cleaner_applications', { status: 'approved' }, 'id=eq.' + id);
-  await auditLog('approve','application', id, null, {name, email, city, status:'approved'});
-
-  // Skicka välkomstmail via Resend
-  await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer '+SPICK.SUPA_KEY },
-    body: JSON.stringify({ type: 'cleaner_approved', record: { full_name: name, name, email, city, hourly_rate: rate } })
-  }).catch(() => {});
-  
-  alert(`✅ ${name} är nu godkänd som städare!`);
-  loadAll();
 }
 
 async function rejectApplication(id) {
   var result = await showConfirmDialog({
     level: 'red',
     title: 'Avslå ansökan',
-    body: 'Avslå denna ansökan?\n\nStädaren kommer inte kunna logga in.'
+    body: 'Avslå denna ansökan?\n\nEtt avslags-mejl skickas till städaren.'
   });
   if (!result.ok) return;
-  await AR.update('cleaner_applications', { status: 'rejected' }, 'id=eq.' + id);
-  await auditLog('reject','application', id, null, {status:'rejected'});
-  loadAll();
+
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ application_id: id, action: 'reject' })
+    });
+    const result2 = await res.json();
+    if (result2.success) {
+      await auditLog('reject','application', id, null, {status:'rejected'});
+      alert('❌ Ansökan avslagen. Mejl skickat.');
+      loadAll();
+    } else {
+      alert('Fel: ' + (result2.error || 'Okänt fel'));
+    }
+  } catch (e) {
+    alert('Nätverksfel: ' + e.message);
+  }
 }
 
 // ── UTILITIES ─────────────────────────────────────────
