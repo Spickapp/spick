@@ -321,6 +321,17 @@ body{top:0!important}
 .ob-step.done .ob-check svg{display:block}
 .ob-check svg{display:none}
 
+/* ═══ TEAM CHIPS ═══ */
+.tm-chip{padding:8px 16px;border-radius:999px;border:1.5px solid var(--gray-300);background:var(--bg-primary);font-size:14px;color:var(--gray-700);cursor:pointer;transition:all .15s ease;font-family:inherit;min-height:44px}
+.tm-chip.active{border-color:var(--spick-500);background:var(--spick-50);color:var(--spick-500);font-weight:500}
+.tm-member-card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-card);border:1px solid rgba(0,0,0,.04);margin-bottom:10px;transition:opacity .2s}
+.tm-member-card.paused{opacity:.55}
+.tm-svc-badge{display:inline-block;padding:2px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:500;background:var(--spick-50);color:var(--spick-600);margin:2px 2px 2px 0}
+.tm-form-group{margin-bottom:16px}
+.tm-form-group label{font-size:.82rem;font-weight:600;color:var(--gray-600);display:block;margin-bottom:6px}
+.tm-input{width:100%;padding:12px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-md);font-size:16px;font-family:inherit;outline:none;background:var(--bg-secondary);transition:border-color .2s,box-shadow .2s}
+.tm-input:focus{border-color:var(--spick-500);box-shadow:0 0 0 3px rgba(26,125,86,.1)}
+
 /* ═══ RESPONSIVE ═══ */
 @media(min-width:768px){
   .content{max-width:900px}
@@ -823,27 +834,104 @@ body{top:0!important}
       </div>
     </div>
 
-  <!-- ADD TEAM MEMBER MODAL -->
-  <div id="add-member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)this.style.display='none'">
-    <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%">
-      <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Lägg till teammedlem</h3>
-      <div style="margin-bottom:12px">
-        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Förnamn *</label>
-        <input type="text" id="member-fname" placeholder="Anna" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+  <!-- ADD/EDIT TEAM MEMBER MODAL -->
+  <div id="add-member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeTeamModal()">
+    <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h3 id="team-modal-title" style="font-size:1.1rem;font-weight:700">Lägg till teammedlem</h3>
+        <button onclick="closeTeamModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;padding:4px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:var(--gray-500)">✕</button>
       </div>
-      <div style="margin-bottom:12px">
-        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Efternamn *</label>
-        <input type="text" id="member-lname" placeholder="Karlsson" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+
+      <!-- Fält 1: Förnamn -->
+      <div class="tm-form-group">
+        <label>Förnamn *</label>
+        <input type="text" id="team-fname" class="tm-input" placeholder="Anna">
       </div>
-      <div style="margin-bottom:12px">
-        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">E-post *</label>
-        <input type="email" id="member-email" placeholder="anna@email.se" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+
+      <!-- Fält 2: Efternamn -->
+      <div class="tm-form-group">
+        <label>Efternamn *</label>
+        <input type="text" id="team-lname" class="tm-input" placeholder="Karlsson">
       </div>
-      <div style="margin-bottom:16px">
-        <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Telefon</label>
-        <input type="tel" id="member-phone" placeholder="070 123 45 67" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:10px;font-size:.9rem;font-family:inherit">
+
+      <!-- Fält 3: Telefon -->
+      <div class="tm-form-group">
+        <label>Telefon</label>
+        <input type="tel" id="team-phone" class="tm-input" placeholder="070 123 45 67">
       </div>
-      <button id="add-member-btn" onclick="addTeamMember()" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Lägg till teammedlem</button>
+
+      <!-- Fält 4: E-post -->
+      <div class="tm-form-group">
+        <label>E-post</label>
+        <input type="email" id="team-email" class="tm-input" placeholder="anna@email.se">
+      </div>
+
+      <!-- Fält 5: Tjänster -->
+      <div class="tm-form-group">
+        <label>Tjänster *</label>
+        <div id="team-services" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+          <button type="button" class="tm-chip active" data-svc="Hemstädning" onclick="toggleTeamSvc(this)">Hemstädning</button>
+          <button type="button" class="tm-chip" data-svc="Storstädning" onclick="toggleTeamSvc(this)">Storstädning</button>
+          <button type="button" class="tm-chip" data-svc="Flyttstädning" onclick="toggleTeamSvc(this)">Flyttstädning</button>
+          <button type="button" class="tm-chip" data-svc="Fönsterputs" onclick="toggleTeamSvc(this)">Fönsterputs</button>
+        </div>
+      </div>
+
+      <!-- Fält 6: Timpris -->
+      <div class="tm-form-group">
+        <label>Timpris <span id="team-rate-val" style="color:var(--spick-500);font-weight:600">350 kr/h</span></label>
+        <input type="range" id="team-rate" min="200" max="600" value="350" step="10"
+          oninput="document.getElementById('team-rate-val').textContent=this.value+' kr/h'"
+          style="width:100%">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--gray-400);margin-top:4px">
+          <span>200 kr/h</span><span>600 kr/h</span>
+        </div>
+      </div>
+
+      <!-- Fält 7: Arbetsområde -->
+      <div class="tm-form-group">
+        <label>Arbetsområde</label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:4px;cursor:pointer">
+          <input type="checkbox" id="team-same-area" checked onchange="toggleTeamArea(this)" style="width:16px;height:16px;accent-color:var(--spick-500)">
+          <span style="font-size:14px">Samma område som mig</span>
+        </label>
+        <div id="team-area-custom" style="display:none;margin-top:12px">
+          <input type="text" id="team-address" class="tm-input" placeholder="Adress, t.ex. Storgatan 1, Solna">
+          <div style="margin-top:10px">
+            <label style="font-size:13px">Radie: <span id="team-radius-val" style="font-weight:500">30 km</span></label>
+            <input type="range" id="team-radius" min="5" max="100" value="30" step="5" style="width:100%;margin-top:4px"
+              oninput="document.getElementById('team-radius-val').textContent=this.value+' km'">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--gray-400)">
+              <span>5 km</span><span>100 km</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fält 8: Husdjur -->
+      <div class="tm-form-group">
+        <label>Husdjur</label>
+        <div id="team-pet-options" style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <button type="button" class="tm-chip active" data-pet="ok" onclick="setTeamPet(this)">Inga problem</button>
+          <button type="button" class="tm-chip" data-pet="allergy" onclick="setTeamPet(this)">Allergisk</button>
+          <button type="button" class="tm-chip" data-pet="avoid" onclick="setTeamPet(this)">Undviker helst</button>
+        </div>
+      </div>
+
+      <!-- Fält 9: Bio -->
+      <div class="tm-form-group">
+        <label>Kort beskrivning <span style="color:var(--gray-400);font-size:13px">(valfritt, syns för kunder)</span></label>
+        <textarea id="team-bio" rows="2" maxlength="120" placeholder="T.ex. Noggrann och pålitlig med 3 års erfarenhet"
+          class="tm-input" style="resize:none"
+          oninput="document.getElementById('team-bio-count').textContent=this.value.length+'/120'"></textarea>
+        <div id="team-bio-count" style="font-size:11px;color:var(--gray-400);margin-top:4px;text-align:right">0/120</div>
+      </div>
+
+      <!-- Fält 10: Submit -->
+      <button id="add-member-btn" class="team-submit-btn" onclick="addTeamMember()"
+        style="width:100%;padding:14px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;min-height:52px;transition:background .15s">
+        Lägg till teammedlem
+      </button>
       <p id="add-member-msg" style="font-size:.8rem;margin-top:8px;text-align:center;display:none"></p>
     </div>
   </div>
@@ -2439,7 +2527,9 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ── TEAM FUNCTIONS ───────────��──────────────────────────────
+// ── TEAM FUNCTIONS ──────────────────────────────────────────
+let _teamMembers = [];
+
 function showTeamTab() {
   if (cleaner && cleaner.is_company_owner) {
     document.getElementById('nav-team').style.display = '';
@@ -2452,110 +2542,360 @@ async function renderTeam() {
   // Fetch company info
   const { data: company } = await R.selectSingle('companies', `select=*&id=eq.${cleaner.company_id}`);
   if (company) {
-    document.getElementById('team-company-name').textContent = '🏢 ' + (company.name || 'Ditt team');
+    document.getElementById('team-company-name').textContent = (company.name || 'Ditt team');
   }
 
-  // Fetch team members
-  const { data: members } = await R.select('cleaners', `select=id,full_name,email,phone,status,completed_jobs&company_id=eq.${cleaner.company_id}&order=created_at.asc`);
-  const teamMembers = members || [];
+  // Fetch team members with all fields
+  const { data: members } = await R.select('cleaners', `select=*&company_id=eq.${cleaner.company_id}&order=first_name.asc`);
+  _teamMembers = members || [];
 
-  document.getElementById('team-count').textContent = teamMembers.length + ' teammedlemmar';
-  document.getElementById('team-list').innerHTML = teamMembers.length ? teamMembers.map(m => {
+  const nonOwner = _teamMembers.filter(m => m.id !== cleaner.id);
+  document.getElementById('team-count').textContent = nonOwner.length + ' teammedlem' + (nonOwner.length !== 1 ? 'mar' : '');
+
+  document.getElementById('team-list').innerHTML = _teamMembers.length ? _teamMembers.map(m => {
     const isOwner = m.id === cleaner.id;
-    const statusBadge = m.status === 'aktiv' ? '<span style="color:var(--g);font-size:.75rem">● Aktiv</span>'
-      : m.status === 'inactive' ? '<span style="color:var(--m);font-size:.75rem">● Inaktiv</span>'
-      : '<span style="color:#F59E0B;font-size:.75rem">● ' + escHtml(m.status || 'ny') + '</span>';
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <div style="font-weight:600;font-size:.9rem">${escHtml(m.full_name || '–')} ${isOwner ? '<span style="font-size:.7rem;background:var(--gr);padding:1px 6px;border-radius:8px;color:var(--g);font-weight:700">Ägare</span>' : ''}</div>
-        <div style="font-size:.78rem;color:var(--m)">${escHtml(m.email || '')} ${m.phone ? '· ' + escHtml(m.phone) : ''}</div>
-        <div style="font-size:.75rem;margin-top:2px">${statusBadge} · ${m.completed_jobs || 0} uppdrag</div>
+    const isPaused = m.status === 'inactive' || m.is_active === false;
+    const statusDot = isPaused
+      ? '<span style="color:var(--gray-400);font-size:11px">● Pausad</span>'
+      : '<span style="color:var(--spick-500);font-size:11px">● Aktiv</span>';
+
+    const svcs = (m.services || []).map(s => `<span class="tm-svc-badge">${escHtml(s)}</span>`).join('');
+    const petLabel = m.pet_pref === 'allergy' ? '<span style="font-size:11px;color:var(--danger)">Allergisk mot husdjur</span>'
+      : m.pet_pref === 'avoid' ? '<span style="font-size:11px;color:var(--warning)">Undviker husdjur</span>' : '';
+
+    return `<div class="tm-member-card ${isPaused ? 'paused' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:600;font-size:.92rem">${escHtml(m.full_name || m.first_name + ' ' + (m.last_name||''))}
+            ${isOwner ? '<span style="font-size:11px;background:var(--spick-50);padding:2px 8px;border-radius:var(--radius-full);color:var(--spick-600);font-weight:600;margin-left:6px">Ägare</span>' : ''}</div>
+          <div style="font-size:.78rem;color:var(--gray-500);margin-top:2px">${escHtml(m.email || '')}${m.phone ? ' · ' + escHtml(m.phone) : ''}</div>
+          <div style="margin-top:4px">${statusDot} · ${m.completed_jobs || 0} uppdrag · ${m.hourly_rate || 350} kr/h</div>
+          ${svcs ? '<div style="margin-top:6px">' + svcs + '</div>' : ''}
+          ${petLabel ? '<div style="margin-top:4px">' + petLabel + '</div>' : ''}
+          ${m.bio ? '<div style="font-size:.78rem;color:var(--gray-500);margin-top:4px;font-style:italic">"' + escHtml(m.bio) + '"</div>' : ''}
+        </div>
       </div>
-      ${!isOwner ? `<button onclick="toggleMemberStatus('${m.id}','${m.status === 'inactive' ? 'aktiv' : 'inactive'}')" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;background:none;font-size:.75rem;cursor:pointer;font-family:inherit">${m.status === 'inactive' ? '✅ Aktivera' : '⏸ Pausa'}</button>` : ''}
+      ${!isOwner ? `<div style="display:flex;gap:8px;margin-top:12px">
+        <button onclick="editTeamMember('${m.id}')" style="flex:1;padding:10px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Redigera</button>
+        <button onclick="toggleMemberStatus('${m.id}','${isPaused ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused ? 'Aktivera' : 'Pausa'}</button>
+      </div>` : ''}
     </div>`;
-  }).join('') : '<p style="color:var(--m);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
+  }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
 
   // Fetch team bookings
-  const memberIds = teamMembers.map(m => m.id);
+  const memberIds = _teamMembers.map(m => m.id);
   if (memberIds.length > 0) {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
     const { data: bookings } = await R.select('bookings', `select=id,customer_name,service_type,booking_date,booking_time,status,cleaner_id,cleaner_name,total_price&or=(${idFilter})&order=booking_date.desc&limit=20`);
     const teamBookings = bookings || [];
+    const stMap = {confirmed:'Bekräftad',pending_confirmation:'Väntar',completed:'Klar',klar:'Klar'};
     document.getElementById('team-bookings-list').innerHTML = teamBookings.length ? teamBookings.map(b => {
-      const st = b.status === 'confirmed' ? '✅' : b.status === 'pending_confirmation' ? '⏳' : b.status === 'completed' ? '🏁' : '📋';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+      const stLabel = stMap[b.status] || b.status || '–';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-200);font-size:.85rem">
         <div>
           <strong>${escHtml(b.customer_name || '–')}</strong> · ${escHtml(b.service_type || 'Städning')}<br>
-          <span style="font-size:.78rem;color:var(--m)">${b.booking_date || '–'} ${b.booking_time || ''} · ${escHtml(b.cleaner_name || '–')}</span>
+          <span style="font-size:.78rem;color:var(--gray-500)">${b.booking_date || '–'} ${b.booking_time || ''} · ${escHtml(b.cleaner_name || '–')}</span>
         </div>
         <div style="text-align:right">
-          <span>${st} ${escHtml(b.status || '–')}</span><br>
-          <span style="font-size:.78rem;font-weight:600;color:var(--g)">${b.total_price ? b.total_price + ' kr' : ''}</span>
+          <span style="font-size:.78rem">${escHtml(stLabel)}</span><br>
+          <span style="font-size:.78rem;font-weight:600;color:var(--spick-500)">${b.total_price ? b.total_price + ' kr' : ''}</span>
         </div>
       </div>`;
-    }).join('') : '<p style="color:var(--m);font-size:.85rem">Inga bokningar ännu.</p>';
+    }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar ännu.</p>';
   }
 }
 
+// ── TEAM MODAL ──────────────────────────────────────────────
 function showAddMemberModal() {
+  resetTeamModal();
+  document.getElementById('team-modal-title').textContent = 'Lägg till teammedlem';
+  const btn = document.getElementById('add-member-btn');
+  btn.textContent = 'Lägg till teammedlem';
+  btn.onclick = addTeamMember;
   document.getElementById('add-member-modal').style.display = 'flex';
-  document.getElementById('member-fname').value = '';
-  document.getElementById('member-lname').value = '';
-  document.getElementById('member-email').value = '';
-  document.getElementById('member-phone').value = '';
-  document.getElementById('add-member-msg').style.display = 'none';
 }
 
-async function addTeamMember() {
-  const fname = document.getElementById('member-fname').value.trim();
-  const lname = document.getElementById('member-lname').value.trim();
-  const email = document.getElementById('member-email').value.trim();
-  const phone = document.getElementById('member-phone').value.trim();
-  const msgEl = document.getElementById('add-member-msg');
+function closeTeamModal() {
+  document.getElementById('add-member-modal').style.display = 'none';
+  resetTeamModal();
+}
 
-  if (!fname || !lname) { msgEl.textContent = 'Ange för- och efternamn'; msgEl.style.display = 'block'; msgEl.style.color = '#DC2626'; return; }
-  if (!email || !email.includes('@')) { msgEl.textContent = 'Ange en giltig e-postadress'; msgEl.style.display = 'block'; msgEl.style.color = '#DC2626'; return; }
+function resetTeamModal() {
+  document.getElementById('team-fname').value = '';
+  document.getElementById('team-lname').value = '';
+  document.getElementById('team-phone').value = '';
+  document.getElementById('team-email').value = '';
+  document.getElementById('team-bio').value = '';
+  document.getElementById('team-bio-count').textContent = '0/120';
+  document.getElementById('team-rate').value = 350;
+  document.getElementById('team-rate-val').textContent = '350 kr/h';
+  document.getElementById('team-same-area').checked = true;
+  document.getElementById('team-area-custom').style.display = 'none';
+  document.getElementById('team-address').value = '';
+  document.getElementById('team-radius').value = 30;
+  document.getElementById('team-radius-val').textContent = '30 km';
+  document.querySelectorAll('#team-services .tm-chip').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.querySelectorAll('#team-pet-options .tm-chip').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.getElementById('add-member-msg').style.display = 'none';
+  const btn = document.getElementById('add-member-btn');
+  btn.disabled = false;
+  btn.textContent = 'Lägg till teammedlem';
+  btn.onclick = addTeamMember;
+}
+
+function toggleTeamSvc(btn) {
+  btn.classList.toggle('active');
+  if (document.querySelectorAll('#team-services .tm-chip.active').length === 0) btn.classList.add('active');
+}
+
+function setTeamPet(btn) {
+  document.querySelectorAll('#team-pet-options .tm-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleTeamArea(cb) {
+  document.getElementById('team-area-custom').style.display = cb.checked ? 'none' : 'block';
+}
+
+// ── ADD TEAM MEMBER ─────────────────────────────────────────
+async function addTeamMember() {
+  const firstName = document.getElementById('team-fname').value.trim();
+  const lastName = document.getElementById('team-lname').value.trim();
+  const msgEl = document.getElementById('add-member-msg');
+  msgEl.style.display = 'none';
+
+  if (!firstName) { showTeamMsg('Förnamn krävs', true); return; }
+  if (!lastName) { showTeamMsg('Efternamn krävs', true); return; }
+
+  const services = [...document.querySelectorAll('#team-services .tm-chip.active')].map(b => b.dataset.svc);
+  if (services.length === 0) { showTeamMsg('Välj minst en tjänst', true); return; }
+
+  const hourlyRate = parseInt(document.getElementById('team-rate').value || '350');
+  const phone = document.getElementById('team-phone').value.trim() || null;
+  const email = document.getElementById('team-email').value.trim() || null;
+  const bio = document.getElementById('team-bio').value.trim() || null;
+  const petPref = document.querySelector('#team-pet-options .tm-chip.active')?.dataset?.pet || 'ok';
+
+  // Arbetsområde
+  const sameArea = document.getElementById('team-same-area').checked;
+  let homeLat, homeLng, homeAddress, serviceRadius, city;
+
+  if (sameArea) {
+    homeLat = cleaner.home_lat;
+    homeLng = cleaner.home_lng;
+    homeAddress = cleaner.home_address;
+    serviceRadius = cleaner.service_radius_km || 30;
+    city = cleaner.city;
+  } else {
+    const customAddress = document.getElementById('team-address').value.trim();
+    if (!customAddress) { showTeamMsg('Ange en adress för arbetsområdet', true); return; }
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}&countrycodes=se&limit=1&addressdetails=1`);
+      const geoData = await geoRes.json();
+      if (!geoData || geoData.length === 0) { showTeamMsg('Kunde inte hitta adressen. Kontrollera stavningen.', true); return; }
+      homeLat = parseFloat(geoData[0].lat);
+      homeLng = parseFloat(geoData[0].lon);
+      homeAddress = customAddress;
+      city = geoData[0].address?.city || geoData[0].address?.town || geoData[0].address?.municipality || null;
+    } catch (e) {
+      showTeamMsg('Fel vid adresssökning: ' + e.message, true); return;
+    }
+    serviceRadius = parseInt(document.getElementById('team-radius').value || '30');
+  }
+
+  if (!cleaner.company_id) { showTeamMsg('Ditt konto är inte kopplat till ett företag. Kontakta Spick support.', true); return; }
 
   const btn = document.getElementById('add-member-btn');
   btn.disabled = true; btn.textContent = 'Lägger till...';
 
   try {
-    const fullName = fname + ' ' + lname;
-    const { error } = await R.insert('cleaner_applications', {
-      full_name: fullName,
-      first_name: fname,
-      last_name: lname,
+    const { error } = await R.insert('cleaners', {
+      first_name: firstName,
+      last_name: lastName,
+      full_name: firstName + ' ' + lastName,
+      phone: phone,
       email: email,
-      phone: phone || null,
-      home_address: cleaner.home_address || '',
-      home_lat: cleaner.home_lat || null,
-      home_lng: cleaner.home_lng || null,
-      hourly_rate: cleaner.hourly_rate || 350,
-      services: cleaner.services || ['Hemstädning'],
-      service_radius_km: cleaner.service_radius_km || 30,
-      status: 'pending',
-      is_company: false,
-      company_name: null,
-      gdpr_consent: true,
-      gdpr_consent_at: new Date().toISOString(),
-      fskatt_confirmed: true,
+      services: services,
+      hourly_rate: hourlyRate,
+      home_lat: homeLat,
+      home_lng: homeLng,
+      home_address: homeAddress,
+      service_radius_km: serviceRadius,
+      city: city,
+      pet_pref: petPref,
+      bio: bio,
+      company_id: cleaner.company_id,
+      added_by_owner_id: cleaner.id,
+      is_company_owner: false,
+      is_approved: true,
+      is_active: true,
+      status: 'aktiv',
+      commission_rate: 0.17,
+      experience: 'new',
+      review_count: 0,
+      rating: 0,
+      avg_rating: 0,
+      total_reviews: 0,
+      total_jobs: 0,
+      completed_jobs: 0,
+      total_earned: 0,
+      cancellation_count: 0,
+      cancellation_rate: 0,
+      spark_points: 0,
+      tier: 'new',
+      verified: false,
+      onboarding_completed: false,
+      onboarding_step: 0,
+      profile_completeness: 0
     });
 
     if (error) throw new Error(error.message || 'Insert failed');
 
-    msgEl.textContent = '✅ ' + fullName + ' tillagd! Väntar på admin-godkännande.';
-    msgEl.style.display = 'block'; msgEl.style.color = 'var(--g)';
-    btn.disabled = false; btn.textContent = 'Lägg till teammedlem';
+    showToast(firstName + ' ' + lastName + ' tillagd i ditt team!');
+    closeTeamModal();
+    renderTeam();
   } catch (e) {
-    msgEl.textContent = 'Fel: ' + e.message;
-    msgEl.style.display = 'block'; msgEl.style.color = '#DC2626';
+    showTeamMsg('Fel: ' + e.message, true);
+  } finally {
     btn.disabled = false; btn.textContent = 'Lägg till teammedlem';
   }
 }
 
+// ── EDIT TEAM MEMBER ────────────────────────────────────────
+function editTeamMember(memberId) {
+  const member = _teamMembers.find(m => m.id === memberId);
+  if (!member) return;
+
+  document.getElementById('team-fname').value = member.first_name || '';
+  document.getElementById('team-lname').value = member.last_name || '';
+  document.getElementById('team-phone').value = member.phone || '';
+  document.getElementById('team-email').value = member.email || '';
+  document.getElementById('team-bio').value = member.bio || '';
+  document.getElementById('team-bio-count').textContent = (member.bio || '').length + '/120';
+  document.getElementById('team-rate').value = member.hourly_rate || 350;
+  document.getElementById('team-rate-val').textContent = (member.hourly_rate || 350) + ' kr/h';
+
+  // Tjänster
+  const memberSvcs = member.services || [];
+  document.querySelectorAll('#team-services .tm-chip').forEach(btn => {
+    btn.classList.toggle('active', memberSvcs.includes(btn.dataset.svc));
+  });
+  // Om inga tjänster var valda, välj Hemstädning
+  if (document.querySelectorAll('#team-services .tm-chip.active').length === 0) {
+    document.querySelector('#team-services .tm-chip').classList.add('active');
+  }
+
+  // Husdjur
+  document.querySelectorAll('#team-pet-options .tm-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.pet === (member.pet_pref || 'ok'));
+  });
+
+  // Område
+  if (member.home_address === cleaner.home_address || !member.home_address) {
+    document.getElementById('team-same-area').checked = true;
+    document.getElementById('team-area-custom').style.display = 'none';
+  } else {
+    document.getElementById('team-same-area').checked = false;
+    document.getElementById('team-area-custom').style.display = 'block';
+    document.getElementById('team-address').value = member.home_address || '';
+    document.getElementById('team-radius').value = member.service_radius_km || 30;
+    document.getElementById('team-radius-val').textContent = (member.service_radius_km || 30) + ' km';
+  }
+
+  document.getElementById('team-modal-title').textContent = 'Redigera teammedlem';
+  const btn = document.getElementById('add-member-btn');
+  btn.textContent = 'Spara ändringar';
+  btn.onclick = () => updateTeamMember(memberId);
+
+  document.getElementById('add-member-modal').style.display = 'flex';
+}
+
+async function updateTeamMember(memberId) {
+  const firstName = document.getElementById('team-fname').value.trim();
+  const lastName = document.getElementById('team-lname').value.trim();
+
+  if (!firstName) { showTeamMsg('Förnamn krävs', true); return; }
+  if (!lastName) { showTeamMsg('Efternamn krävs', true); return; }
+
+  const services = [...document.querySelectorAll('#team-services .tm-chip.active')].map(b => b.dataset.svc);
+  if (services.length === 0) { showTeamMsg('Välj minst en tjänst', true); return; }
+
+  const hourlyRate = parseInt(document.getElementById('team-rate').value || '350');
+  const phone = document.getElementById('team-phone').value.trim() || null;
+  const email = document.getElementById('team-email').value.trim() || null;
+  const bio = document.getElementById('team-bio').value.trim() || null;
+  const petPref = document.querySelector('#team-pet-options .tm-chip.active')?.dataset?.pet || 'ok';
+
+  const sameArea = document.getElementById('team-same-area').checked;
+  let homeLat, homeLng, homeAddress, serviceRadius, city;
+
+  if (sameArea) {
+    homeLat = cleaner.home_lat;
+    homeLng = cleaner.home_lng;
+    homeAddress = cleaner.home_address;
+    serviceRadius = cleaner.service_radius_km || 30;
+    city = cleaner.city;
+  } else {
+    const customAddress = document.getElementById('team-address').value.trim();
+    if (!customAddress) { showTeamMsg('Ange en adress för arbetsområdet', true); return; }
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}&countrycodes=se&limit=1&addressdetails=1`);
+      const geoData = await geoRes.json();
+      if (!geoData || geoData.length === 0) { showTeamMsg('Kunde inte hitta adressen.', true); return; }
+      homeLat = parseFloat(geoData[0].lat);
+      homeLng = parseFloat(geoData[0].lon);
+      homeAddress = customAddress;
+      city = geoData[0].address?.city || geoData[0].address?.town || geoData[0].address?.municipality || null;
+    } catch (e) {
+      showTeamMsg('Fel vid adresssökning: ' + e.message, true); return;
+    }
+    serviceRadius = parseInt(document.getElementById('team-radius').value || '30');
+  }
+
+  const btn = document.getElementById('add-member-btn');
+  btn.disabled = true; btn.textContent = 'Sparar...';
+
+  try {
+    const { error } = await R.update('cleaners', {
+      first_name: firstName,
+      last_name: lastName,
+      full_name: firstName + ' ' + lastName,
+      phone: phone,
+      email: email,
+      services: services,
+      hourly_rate: hourlyRate,
+      home_lat: homeLat,
+      home_lng: homeLng,
+      home_address: homeAddress,
+      service_radius_km: serviceRadius,
+      city: city,
+      pet_pref: petPref,
+      bio: bio
+    }, `id=eq.${memberId}`);
+
+    if (error) throw new Error(error.message || 'Update failed');
+
+    showToast('Ändringar sparade!');
+    closeTeamModal();
+    renderTeam();
+  } catch (e) {
+    showTeamMsg('Fel: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Spara ändringar';
+  }
+}
+
+function showTeamMsg(text, isError) {
+  const el = document.getElementById('add-member-msg');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--danger)' : 'var(--spick-500)';
+  el.style.display = 'block';
+}
+
 async function toggleMemberStatus(memberId, newStatus) {
   if (!confirm(newStatus === 'inactive' ? 'Pausa denna teammedlem?' : 'Aktivera denna teammedlem?')) return;
-  await R.update('cleaners', { status: newStatus }, `id=eq.${memberId}`);
+  const isActive = newStatus !== 'inactive';
+  await R.update('cleaners', { status: newStatus, is_active: isActive }, `id=eq.${memberId}`);
   renderTeam();
   showToast(newStatus === 'inactive' ? 'Teammedlem pausad' : 'Teammedlem aktiverad');
 }
