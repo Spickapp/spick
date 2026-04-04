@@ -219,7 +219,7 @@ serve(async (req) => {
           <p>Vi har tagit emot din ansökan och granskar den inom <strong>24 timmar</strong>.</p>
           <div class="card">
             <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.full_name || "–")}</span></div>
-            <div class="row"><span class="lbl">Stad</span><span class="val">${esc(r.city || "–")}</span></div>
+            <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.home_address || r.city || "–")}</span></div>
           </div>
           <p><strong>Vad händer nu?</strong></p>
           <p><strong>Under tiden kan du förbereda dig:</strong></p>
@@ -231,15 +231,21 @@ serve(async (req) => {
       }
 
       // 2. Admin-notis
-      await sendEmail(ADMIN, `👷 Ny städaransökan: ${esc(r.full_name || "okänd")} – ${esc(r.city || "")}`, wrap(`
+      const svcs = Array.isArray(r.services) ? r.services.join(", ") : (r.services || "–");
+      const fskattLabel = r.fskatt_confirmed ? "✅ Ja" : r.fskatt_needs_help ? "📝 Vill ha hjälp" : "❌ Nej";
+      await sendEmail(ADMIN, `👷 Ny städaransökan: ${esc(r.full_name || "okänd")} – ${esc(r.home_address || r.city || "")}`, wrap(`
         <h2>Ny ansökan inkommen!</h2>
         <div class="card">
-          <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.full_name || "–")}</span></div>
+          <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.full_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || "–")}</span></div>
           <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.email || "–")}</span></div>
           <div class="row"><span class="lbl">Telefon</span><span class="val">${esc(r.phone || "–")}</span></div>
-          <div class="row"><span class="lbl">Stad</span><span class="val">${esc(r.city || "–")}</span></div>
-          <div class="row"><span class="lbl">Tjänster</span><span class="val">${r.services || "–"}</span></div>
-          <div class="row"><span class="lbl">F-skatt</span><span class="val">${r.has_fskatt ? "✅ Ja" : "❌ Nej"}</span></div>
+          <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.home_address || r.city || "–")}</span></div>
+          <div class="row"><span class="lbl">Radie</span><span class="val">${r.service_radius_km ? r.service_radius_km + " km" : "–"}</span></div>
+          <div class="row"><span class="lbl">Tjänster</span><span class="val">${esc(svcs)}</span></div>
+          <div class="row"><span class="lbl">Timpris</span><span class="val">${r.hourly_rate ? r.hourly_rate + " kr/h" : "–"}</span></div>
+          <div class="row"><span class="lbl">F-skatt</span><span class="val">${fskattLabel}</span></div>
+          ${r.bio ? `<div class="row"><span class="lbl">Bio</span><span class="val">${esc(r.bio)}</span></div>` : ""}
+          ${r.is_company ? `<div class="row"><span class="lbl">Företag</span><span class="val">${esc(r.company_name || "–")} · ${esc(r.org_number || "–")}</span></div>` : ""}
         </div>
         <a class="btn" href="https://spick.se/admin.html">Granska ansökan →</a>
       `));

@@ -848,7 +848,7 @@ async function submitRegistration() {
         fetch(SUPA_URL + '/functions/v1/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
-          body: JSON.stringify({ type: 'application', record: { full_name: fullName, email: email, phone: phone, address: address, bio: bio } })
+          body: JSON.stringify({ type: 'application', record: { full_name: fullName, first_name: firstName, last_name: lastName, email: email, phone: phone, home_address: address, bio: bio, services: svcs, hourly_rate: parseInt(price) || 350, service_radius_km: parseInt(radius) || 30, fskatt_confirmed: _fskattStatus === 'yes', fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown', is_company: _regType === 'foretag', company_name: _regType === 'foretag' ? document.getElementById('companyName').value.trim() : null, org_number: _regType === 'foretag' ? document.getElementById('orgNumber').value.trim() : null } })
         });
       } catch (e) { /* non-critical */ }
 
