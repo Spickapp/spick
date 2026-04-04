@@ -52,12 +52,16 @@ serve(async (req) => {
     const name = app.full_name || app.name || [firstName, lastName].filter(Boolean).join(" ") || "Städare";
     const email = app.email;
 
-    log("info", "admin-approve-cleaner", "Application data", {
-      id: application_id, action, email, name, firstName, lastName,
+    log("info", "admin-approve-cleaner", "Raw application data", {
+      id: application_id, action,
+      keys: Object.keys(app),
+      email: app.email, name, firstName, lastName,
       hourly_rate: app.hourly_rate, services: app.services,
+      home_address: app.home_address,
       home_lat: app.home_lat, home_lng: app.home_lng,
       service_radius_km: app.service_radius_km, city: app.city,
-      bio: app.bio ? app.bio.substring(0, 50) : null,
+      bio: app.bio ? app.bio.substring(0, 80) : null,
+      phone: app.phone,
     });
 
     // ════════════════════════════════════════════════════════
@@ -114,12 +118,13 @@ serve(async (req) => {
         email,
         phone: app.phone || null,
         city: app.city || null,
-        home_lat: app.home_lat ? parseFloat(app.home_lat) : null,
-        home_lng: app.home_lng ? parseFloat(app.home_lng) : null,
-        service_radius_km: app.service_radius_km ? parseInt(app.service_radius_km) : 10,
-        hourly_rate: parseInt(app.hourly_rate) || 350,
+        home_address: app.home_address || null,
+        home_lat: app.home_lat != null ? parseFloat(String(app.home_lat)) : null,
+        home_lng: app.home_lng != null ? parseFloat(String(app.home_lng)) : null,
+        service_radius_km: app.service_radius_km ? parseInt(String(app.service_radius_km)) : 30,
+        hourly_rate: parseFloat(String(app.hourly_rate)) || 350,
         services: svcs,
-        bio: app.bio || null,
+        bio: app.bio || "",
         is_approved: true,
         auth_user_id: authUserId,
         tier: "new",
@@ -131,11 +136,7 @@ serve(async (req) => {
         created_at: new Date().toISOString(),
       };
 
-      log("info", "admin-approve-cleaner", "Inserting cleaner", {
-        email, slug, first_name: cleanerData.first_name, last_name: cleanerData.last_name,
-        home_lat: cleanerData.home_lat, home_lng: cleanerData.home_lng,
-        hourly_rate: cleanerData.hourly_rate, services: svcs,
-      });
+      log("info", "admin-approve-cleaner", "Inserting cleaner — full payload", cleanerData);
 
       // Check if cleaner already exists (by email)
       const { data: existing } = await sb
