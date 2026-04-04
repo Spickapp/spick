@@ -141,13 +141,20 @@ select.filter{padding:9px 12px;border:1.5px solid var(--border);border-radius:10
 .loading{text-align:center;padding:40px;color:var(--m)}
 hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+/* ── MOBILE NAV BAR ── */
+.mobile-nav{display:none;position:sticky;top:0;z-index:101;background:var(--b);overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 8px}
+.mobile-nav-inner{display:flex;gap:2px;min-width:max-content}
+.mobile-nav-btn{padding:10px 14px;color:rgba(255,255,255,.65);background:none;border:none;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;border-bottom:2px solid transparent;min-height:44px}
+.mobile-nav-btn.active{color:#fff;border-bottom-color:var(--g)}
 @media(max-width:900px){
   .two-col{grid-template-columns:1fr}
   .sidebar{display:none}
-  .main{margin-left:0}
+  .mobile-nav{display:block}
+  .main{margin-left:0;padding-top:8px}
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   table{font-size:.78rem}
   th,td{padding:.5rem .6rem}
+  .btn-sm{padding:8px 14px;font-size:.82rem;min-height:44px}
 }
 @media(max-width:600px){
   .kpi-grid{grid-template-columns:1fr 1fr}
@@ -156,6 +163,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   .search-input{width:100%}
   th:nth-child(4),td:nth-child(4),
   th:nth-child(7),td:nth-child(7){display:none}
+  .btn-sm{padding:10px 16px;font-size:.85rem;min-height:48px}
 }
 .stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0F0EC;font-size:.88rem}
 .stat-row:last-child{border-bottom:none}
@@ -245,6 +253,20 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     </div>
   </div>
 
+  <!-- MOBILE NAV -->
+  <div class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-nav-btn active" onclick="mobileNav('dashboard',this)">📊 Dashboard</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('applications',this)">📋 Ansökningar</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('cleaners',this)">🧹 Städare</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('bookings',this)">📅 Bokningar</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('customers',this)">👥 Kunder</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('payouts',this)">💸 Utbetalningar</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('onboarding',this)">🚀 Onboarding</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('settings',this)">⚙️</button>
+    </div>
+  </div>
+
   <!-- MAIN -->
   <div class="main">
 
@@ -253,6 +275,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="page-header">
         <div class="page-title">Dashboard 📊</div>
         <div class="page-sub" id="dash-date">Laddar...</div>
+        <button class="btn btn-outline btn-sm" onclick="loadAll()" style="margin-left:auto">↻ Ladda om</button>
       </div>
       <div class="kpi-grid" id="kpi-grid">
         <div class="kpi"><div class="kpi-val" id="kpi-revenue">–</div><div class="kpi-lbl">Omsättning denna månad</div><div class="kpi-trend up" id="kpi-revenue-trend"></div></div>
@@ -898,6 +921,7 @@ SB.auth.onAuthStateChange(async (event, session) => {
         setTimeout(setupRealtime, 1000);
         loadTickets().catch(function(){});
         setTimeout(function(){ if(!document.querySelector('.booking-card')) loadAll(); }, 500);
+        setTimeout(function(){ if(document.getElementById('kpi-revenue')?.textContent === '–') loadAll(); }, 3000);
       } else {
         alert('Du har inte adminbehörighet.');
         SB.auth.signOut();
@@ -1261,6 +1285,12 @@ async function moveOnboarding(id, newPhase) {
 
 // ── NAVIGATION ────────────────────────────────────────
 let page = 'dashboard';
+function mobileNav(id, btn) {
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  showPage(id);
+}
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
