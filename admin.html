@@ -411,7 +411,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <select class="filter" id="cleaner-filter" onchange="renderCleaners()">
             <option value="">Alla städer</option>
           </select>
-          <button class="btn btn-outline btn-sm" onclick="loadAll().then(renderCleaners)">↻ Uppdatera</button>
+          <button class="btn btn-outline btn-sm" onclick="console.log('Uppdatera clicked');this.textContent='⏳ Laddar...';loadAll().then(()=>{renderCleaners();this.textContent='↻ Uppdatera';console.log('Cleaners refreshed:',data.cleaners.length)}).catch(e=>{this.textContent='↻ Uppdatera';console.error(e)})">↻ Uppdatera</button>
         </div>
         <!-- Bulk action bar -->
         <div id="bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:#DBEAFE;border-radius:10px;margin-bottom:12px">
