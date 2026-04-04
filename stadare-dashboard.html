@@ -70,7 +70,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 .btn-logout:hover{background:rgba(255,255,255,.25)}
 
 /* ─── HERO NEXT JOB CARD ─── */
-.hero-card{background:linear-gradient(135deg,#0F6E56,#0A5240);color:#fff;margin:16px 16px 0;border-radius:20px;padding:24px;position:relative;overflow:hidden;display:none}
+.hero-card{background:linear-gradient(135deg,#0F6E56,#0A5240);color:#fff;margin:16px 16px 0;border-radius:20px;padding:24px;position:relative;overflow:hidden;display:none;border-left:5px solid #22C55E}
 .hero-card.show{display:block}
 .hero-card::after{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:rgba(255,255,255,.06);border-radius:50%}
 .hero-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;opacity:.8;margin-bottom:6px}
@@ -81,7 +81,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 .hero-detail .icon{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .hero-pay{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
 .hero-cta{display:flex;gap:10px}
-.hero-cta .btn-nav{flex:1;padding:14px;background:#fff;color:var(--g);border:none;border-radius:14px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px}
+.hero-cta .btn-nav{flex:1;padding:16px 20px;background:#fff;color:var(--g);border:none;border-radius:14px;font-size:1.05rem;font-weight:700;cursor:pointer;font-family:inherit;min-height:56px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.15)}
 .hero-cta .btn-nav:active{transform:scale(.97)}
 
 /* ─── TODAY TIMELINE ─── */
@@ -268,6 +268,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 /* Green flash animation for job accept */
 @keyframes flashGreen{0%{background:#D1FAE5;transform:scale(.98)}50%{background:#A7F3D0}100%{opacity:0;transform:scale(.95) translateX(100px);height:0;padding:0;margin:0;overflow:hidden}}
 .job-card.accepted-flash{animation:flashGreen .6s ease forwards}
+.jx-expand{display:none;margin-top:6px}
+.jx-expand.open{display:block}
 .lang-bar{background:#085041;padding:5px 1rem;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
 .lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
 .lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
@@ -390,6 +392,20 @@ body{top:0!important}
     <!-- ═══ TAB: HEM ═══ -->
     <div class="tab-content active" id="tab-hem">
 
+      <!-- Income Stats Strip -->
+      <div id="home-stats" style="display:none;padding:16px 16px 0;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+          <div style="font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna vecka</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;color:var(--g);margin-top:2px" id="home-week-earn">0 kr</div>
+          <div style="font-size:.7rem;color:var(--m);margin-top:2px" id="home-week-jobs">0 uppdrag</div>
+        </div>
+        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+          <div style="font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna månad</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;color:var(--g);margin-top:2px" id="home-month-earn">0 kr</div>
+          <div style="font-size:.7rem;color:var(--m);margin-top:2px" id="home-month-jobs">0 uppdrag</div>
+        </div>
+      </div>
+
       <!-- Hero: Next Job Card -->
       <div class="hero-card" id="hero-card">
         <div class="hero-label">Nästa jobb</div>
@@ -417,18 +433,23 @@ body{top:0!important}
         <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:4px">Kom igång på Spick</div>
         <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
         <div id="ob-steps">
+          <!-- Priority steps (always visible) -->
           <div class="ob-step" id="ob-fskatt" style="display:none"><span class="ob-check">⬜</span> <a href="bli-stadare.html#fskatt-guide" target="_blank" style="color:#7C3AED;text-decoration:underline;font-weight:600">📋 Ansök om F-skatt — vi hjälper dig</a></div>
-          <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> <span>Konto skapat</span></div>
-          <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check">⬜</span> <span>Skicka profilbild till hello@spick.se</span></div>
-          <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> <span>Skriv en personlig beskrivning</span></div>
-          <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> <span>Ställ in ditt veckoschema</span></div>
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><span class="ob-check">⬜</span> <span>Anslut bankkonto via Stripe</span></div>
+          <div class="ob-step" id="ob-2" onclick="window.open('mailto:hello@spick.se?subject=Profilbild&body=Hej! Här kommer min profilbild för Spick.')"><span class="ob-check">⬜</span> <span>Skicka profilbild till hello@spick.se</span></div>
           <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><span class="ob-check">⬜</span> <a href="stadare-handbok.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markHandbookRead()">Läs Städarhandboken →</a></div>
           <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank')"><span class="ob-check">⬜</span> <a href="stadare-test.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation()">Gör kompetenstestet →</a></div>
-          <div class="ob-step" id="ob-6b" onclick="window.open('https://spick.se/registrera-stadare.html#bankid','_blank')"><span class="ob-check">⬜</span> <span>Verifiera med BankID</span></div>
-          <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
+          <!-- More steps (expandable) -->
+          <div id="ob-more" style="display:none">
+            <div class="ob-step done" id="ob-1"><span class="ob-check">✅</span> <span>Konto skapat</span></div>
+            <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><span class="ob-check">⬜</span> <span>Skriv en personlig beskrivning</span></div>
+            <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><span class="ob-check">⬜</span> <span>Ställ in ditt veckoschema</span></div>
+            <div class="ob-step" id="ob-6b"><span class="ob-check">⬜</span> <span>ID-verifiering (kommer snart)</span></div>
+            <div class="ob-step" id="ob-7" onclick="markTipsRead()"><span class="ob-check">⬜</span> <a href="tips-for-stadare.html" target="_blank" style="color:var(--g);text-decoration:underline" onclick="event.stopPropagation();markTipsRead()">Läs: Så lyckas du på Spick →</a></div>
+          </div>
+          <button onclick="document.getElementById('ob-more').style.display=this.dataset.open?'none':'block';this.textContent=this.dataset.open?'Visa fler steg →':'Dölj';this.dataset.open=this.dataset.open?'':'1'" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit">Visa fler steg →</button>
         </div>
-        <div style="margin-top:12px;font-size:.78rem;color:var(--m)" id="ob-progress">1 av 9 klart</div>
+        <div style="margin-top:8px;font-size:.78rem;color:var(--m)" id="ob-progress">0 av 9 klart</div>
       </div>
 
       <!-- Today's Timeline -->
@@ -1208,6 +1229,7 @@ function renderHome() {
   renderJobsTeaser();
   renderMyUpcomingJobs();
   updateGoal();
+  updateHomeStats();
   updateBadge();
   updateOnboarding();
 }
@@ -1323,7 +1345,7 @@ function renderHeroCard() {
 
   const [h,m] = (next.booking_time||next.scheduled_time||'09:00').split(':').map(Number);
   const jobTime = new Date(now); jobTime.setHours(h,m,0,0);
-  const pay = Math.round((next.total_price || (cleaner.hourly_rate||350) * (next.booking_hours||3)) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
+  const pay = Math.round((cleaner.hourly_rate||350) * (next.booking_hours||3) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
 
   // Countdown
   function updateCountdown() {
@@ -1421,14 +1443,14 @@ function expandTimelineJob(jobId) {
   const j = jobs.find(x => x.id === jobId);
   if (!j) return;
   const expand = document.getElementById('tl-expand');
-  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.booking_hours||3)) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
+  const pay = Math.round((cleaner.hourly_rate||350) * (j.booking_hours||3) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
   const isDone = j.status === 'klar';
   const isActive = j.checked_in_at && !isDone;
 
   let actionsHtml = '';
   if (!j.checked_in_at && !isDone) {
     actionsHtml = `<div style="display:flex;gap:8px;margin-top:10px">
-      <button onclick="checkInGPS('${j.id}')" class="action-btn" style="flex:1;background:#DBEAFE;color:#1E40AF;min-height:48px">📍 Checka in</button>
+      <button onclick="startJob('${j.id}')" class="action-btn" style="flex:1;background:#DBEAFE;color:#1E40AF;min-height:48px">▶️ Påbörja uppdrag</button>
       <button onclick="cancelMyJob('${j.id}')" class="action-btn" style="background:#FEE2E2;color:#991B1B;min-height:48px">✕</button>
     </div>`;
   } else if (isActive) {
@@ -1524,12 +1546,13 @@ function jobCard(j) {
   const isOpen = !j.cleaner_id;
   const isDone = j.status === 'klar';
   const isActive = isMine && j.checked_in_at && !isDone;
-  const pay = Math.round((j.total_price || (cleaner.hourly_rate||350) * (j.booking_hours||3)) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
+  const keepRate = typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83;
   const hours = parseInt(j.booking_hours) || 3;
+  const grossPay = (cleaner.hourly_rate || 350) * hours;
+  const pay = Math.round(grossPay * keepRate);
   const effectiveRate = Math.round(pay / hours);
-  const minRate = cleaner.hourly_rate ? Math.round(cleaner.hourly_rate * 0.7) : 200;
-  const rateColor = effectiveRate >= (cleaner.hourly_rate||350)*0.83 ? 'var(--g)' : effectiveRate >= minRate ? '#92400E' : 'var(--r)';
-  const rateWarning = effectiveRate < minRate ? ' ⚠️' : '';
+  const rateColor = effectiveRate < 200 ? 'var(--r)' : 'var(--g)';
+  const rateWarning = effectiveRate < 200 ? ' ⚠️' : '';
   const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
   const [mon, day] = dateStr.split(' ');
   const hoursUntil = (d - new Date()) / 3600000;
@@ -1557,9 +1580,11 @@ function jobCard(j) {
     </div>`;
   } else if (isMine && !j.checked_in_at && !isDone) {
     actionsHtml = `
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="checkInGPS('${j.id}')" class="action-btn" style="flex:1;background:#DBEAFE;color:#1E40AF">📍 Checka in – jag är på plats</button>
-        <button onclick="cancelMyJob('${j.id}')" class="action-btn" style="background:#FEE2E2;color:#991B1B;font-size:.72rem">✕ Avboka</button>
+      <div style="margin-top:8px">
+        <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px;font-size:.88rem">▶️ Påbörja uppdrag</button>
+        <div style="text-align:center;margin-top:10px">
+          <button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button>
+        </div>
       </div>`;
   }
 
@@ -1606,10 +1631,19 @@ function jobCard(j) {
     checklistHtml = `<a href="stadare-checklista.html?type=${clType}" target="_blank" style="display:inline-block;margin-top:6px;font-size:.78rem;color:var(--g);font-weight:600;text-decoration:none">📋 Öppna checklista →</a>`;
   }
 
-  return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}" id="jc-${j.id}">
+  const hasExpandContent = addrHtml || actionsHtml || checklistHtml;
+  const expandId = `jx-${j.id}`;
+  const expandToggle = hasExpandContent ? ` onclick="toggleJobExpand('${expandId}',event)"` : '';
+  const expandArrow = hasExpandContent ? `<span class="jx-arrow" style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block">▼</span>` : '';
+  // Auto-expand active jobs (pågår) and pending confirmation
+  const autoExpand = (isActive || isPendingConfirmation) ? ' style="display:block"' : '';
+  const autoArrowStyle = (isActive || isPendingConfirmation) ? ' style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block;transform:rotate(180deg)"' : '';
+  const arrowHtml = hasExpandContent ? `<span class="jx-arrow"${(isActive || isPendingConfirmation) ? autoArrowStyle : ' style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block"'}>▼</span>` : '';
+
+  return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}" id="jc-${j.id}"${expandToggle} style="cursor:${hasExpandContent?'pointer':'default'}">
     <div class="job-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
     <div class="job-body">
-      <div class="job-title">${escHtml(j.service_type || 'Hemstädning')}</div>
+      <div class="job-title">${escHtml(j.service_type || 'Hemstädning')} ${arrowHtml}</div>
       <div class="job-meta">
         <span>🕐 ${escHtml(j.booking_time || j.scheduled_time || '09:00')}</span>
         <span>⏱ ${parseInt(j.booking_hours) || 3}h</span>
@@ -1617,9 +1651,11 @@ function jobCard(j) {
         ${j.customer_name && isMine ? `<span>👤 ${escHtml(j.customer_name.split(' ')[0])}</span>` : ''}
       </div>
       ${badgeHtml}
-      ${addrHtml}
-      ${actionsHtml}
-      ${checklistHtml}
+      <div class="jx-expand" id="${expandId}"${autoExpand}>
+        ${addrHtml}
+        ${actionsHtml}
+        ${checklistHtml}
+      </div>
     </div>
     <div class="job-pay">
       <div>${pay.toLocaleString('sv')} kr</div>
@@ -1645,6 +1681,26 @@ function updateGoal() {
   else if (pct >= 75) document.getElementById('goal-msg').textContent = '🔥 Nästan i mål! ' + (MONTHLY_GOAL - earned).toLocaleString('sv') + ' kr kvar.';
   else if (pct > 0) document.getElementById('goal-msg').textContent = `${pct}% av månadsmålet uppnått.`;
   else document.getElementById('goal-msg').textContent = 'Acceptera ditt första uppdrag denna månad!';
+}
+
+// ── HOME STATS CARDS ────────────────────────────────────────
+function updateHomeStats() {
+  const wrap = document.getElementById('home-stats');
+  if (!wrap) return;
+  const keepRate = typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); weekStart.setHours(0,0,0,0);
+  const myDone = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'klar');
+  const weekJobs = myDone.filter(j => new Date(j.scheduled_date||j.booking_date) >= weekStart);
+  const monthJobs = myDone.filter(j => new Date(j.scheduled_date||j.booking_date) >= monthStart);
+  const weekEarn = weekJobs.reduce((s,j) => s + Math.round((cleaner.hourly_rate||350) * (parseInt(j.booking_hours)||3) * keepRate), 0);
+  const monthEarn = monthJobs.reduce((s,j) => s + Math.round((cleaner.hourly_rate||350) * (parseInt(j.booking_hours)||3) * keepRate), 0);
+  document.getElementById('home-week-earn').textContent = weekEarn.toLocaleString('sv') + ' kr';
+  document.getElementById('home-week-jobs').textContent = weekJobs.length + ' uppdrag';
+  document.getElementById('home-month-earn').textContent = monthEarn.toLocaleString('sv') + ' kr';
+  document.getElementById('home-month-jobs').textContent = monthJobs.length + ' uppdrag';
+  wrap.style.display = 'grid';
 }
 
 // ── CALENDAR TAB ────────────────────────────────────────────
@@ -1963,15 +2019,23 @@ async function cancelMyJob(id) {
   loadJobs();
 }
 
-async function checkInGPS(bookingId) {
-  showToast('📍 Hämtar position...');
-  const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000})).catch(() => null);
+function toggleJobExpand(id, e) {
+  if (e.target.closest('button,a')) return; // don't toggle when clicking buttons/links
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.style.display === 'block';
+  el.style.display = open ? 'none' : 'block';
+  const arrow = el.closest('.job-card')?.querySelector('.jx-arrow');
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+async function startJob(bookingId) {
+  if (!confirm('Påbörja uppdraget?')) return;
   await R.update('bookings', {
     checked_in_at: new Date().toISOString(),
-    status: 'pågår',
-    ...(pos ? {checkin_lat:pos.coords.latitude,checkin_lng:pos.coords.longitude} : {})
+    status: 'pågår'
   }, `id=eq.${bookingId}`);
-  showToast('✅ Incheckad! Städningen kan börja.');
+  showToast('✅ Uppdrag påbörjat!');
   loadJobs();
 }
 
