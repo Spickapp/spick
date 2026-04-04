@@ -631,6 +631,12 @@ async function submitRegistration() {
     } else {
       var errBody = await res.text().catch(() => '');
       console.error('Server response:', res.status, errBody);
+      if (res.status === 409 || (errBody && errBody.includes('23505'))) {
+        btn.disabled = false;
+        btn.textContent = 'Skicka ansökan →';
+        alert('Du har redan en ansökan hos oss! Kolla din e-post eller kontakta hello@spick.se om du vill uppdatera den.');
+        return;
+      }
       throw new Error('Serverfel (' + res.status + '): ' + errBody);
     }
   } catch (e) {
