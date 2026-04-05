@@ -1896,6 +1896,16 @@ function goStep4() {
     if (keySection) keySection.style.border = '2px solid #DC2626';
   }
 
+  // Key info required for code/key/portphone
+  if (state.keyType && state.keyType !== 'open') {
+    var keyInfoVal = (state.keyInfo || '').trim();
+    if (keyInfoVal.length < 2) {
+      errors.push('key-info');
+      var ki = document.getElementById('key-info');
+      if (ki) { ki.classList.add('invalid'); ki.style.borderColor = '#dc2626'; }
+    }
+  }
+
   // ── HANDLE ERRORS ────────────────────────────────────────
   if (errors.length > 0) {
     // Scroll to and focus first error
@@ -1928,31 +1938,6 @@ function goStep4() {
   state.address = fields.address.val;
   state.pnr = useRut ? fields.pnr.val : '';
   state.customerNotes = document.getElementById('customer-notes')?.value?.trim() || '';
-
-  // Nyckelval obligatoriskt
-  if (!state.keyType) {
-    var keySection = document.getElementById('key-options');
-    if (keySection) {
-      keySection.scrollIntoView({behavior:'smooth', block:'center'});
-      keySection.style.outline = '2px solid #dc2626';
-      setTimeout(function() { keySection.style.outline = ''; }, 3000);
-    }
-    return;
-  }
-
-  // keyInfo obligatoriskt för alla utom "open"
-  if (state.keyType !== 'open' && (!state.keyInfo || state.keyInfo.trim().length < 2)) {
-    var keyInput = document.getElementById('key-info');
-    if (keyInput) {
-      keyInput.focus();
-      keyInput.style.outline = '2px solid #dc2626';
-      keyInput.placeholder = state.keyType === 'code' ? '⚠️ Ange portkod/larmkod'
-        : state.keyType === 'key' ? '⚠️ Beskriv var nyckeln finns'
-        : '⚠️ Ange namn/lägenhet att ringa';
-      setTimeout(function() { keyInput.style.outline = ''; }, 3000);
-    }
-    return;
-  }
 
   buildConfirmSummary();
   setStep(4);
