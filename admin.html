@@ -1786,7 +1786,9 @@ function renderCleaners() {
       <td>
         <div style="display:flex;align-items:center;gap:10px">
           <input type="checkbox" onchange="toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer">
-          <div class="avatar" style="width:36px;height:36px;font-size:.85rem;${isPaused?'background:#F59E0B':''}${isSuspended?'background:#6B7280':''}">${(c.full_name||'?').charAt(0)}</div>
+          ${c.avatar_url
+            ? '<div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0"><img src="' + c.avatar_url + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover"></div>'
+            : '<div style="width:36px;height:36px;border-radius:50%;background:' + (isSuspended ? '#6B7280' : isPaused ? '#F59E0B' : '#0F6E5620') + ';color:' + (isSuspended || isPaused ? '#fff' : '#0F6E56') + ';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0">' + (c.full_name||'?').charAt(0).toUpperCase() + '</div>'}
           <div><strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
         </div>
       </td>
