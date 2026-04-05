@@ -126,7 +126,7 @@ async function loadProfile() {
     return;
   }
 
-  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,test_score&is_approved=eq.true&';
+  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs&is_approved=eq.true&';
   if (slug) cleanerUrl += 'slug=eq.' + encodeURIComponent(slug);
   else cleanerUrl += 'id=eq.' + encodeURIComponent(id);
 
@@ -166,7 +166,7 @@ async function loadProfile() {
   // Badge + rating line
   var badgeParts = [];
   if (c.identity_verified) badgeParts.push('<span style="color:#065F46;font-weight:600">✓ ID-verifierad</span>');
-  if (c.test_score && c.test_score > 0) badgeParts.push('<span style="color:#065F46">📝 Kompetenstest godkänt</span>');
+  if (false) badgeParts.push('<span style="color:#065F46">📝 Kompetenstest godkänt</span>');
   if (hasRatings) {
     badgeParts.push('<span style="color:#f59e0b">' + '★'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960">(' + c.review_count + ' omdömen)</span>');
   } else {
@@ -242,7 +242,7 @@ async function loadProfile() {
       '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Nöjdhetsgaranti — vi städar om gratis</div>' +
       '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Säker betalning via kort eller Klarna</div>' +
       '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Gratis avbokning upp till 24 timmar</div>' +
-      (c.test_score && c.test_score > 0 ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Genomgått Spicks kompetenstest</div>' : '') +
+      (false ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Genomgått Spicks kompetenstest</div>' : '') +
     '</div>' +
   '</div>';
   var reviewsCard = document.getElementById('p-reviews').closest('.card');
