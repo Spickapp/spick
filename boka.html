@@ -493,7 +493,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           
           <!-- Nyckelhantering -->
           <div style="margin-top:1rem">
-            <label class="field-label">🔑 Hur tar städaren sig in?</label>
+            <label class="field-label">🔑 Hur tar städaren sig in? <span style="color:#DC2626">*</span></label>
             <div id="key-options" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.5rem 0">
               <div class="key-opt" onclick="selectKey(this,'code')" data-key="code" style="border:1.5px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;text-align:center;font-size:.82rem;transition:all .15s">🔢<br>Portkod/larmkod</div>
               <div class="key-opt" onclick="selectKey(this,'key')" data-key="key" style="border:1.5px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;text-align:center;font-size:.82rem;transition:all .15s">🗝️<br>Nyckeln delas ut</div>
@@ -1728,9 +1728,12 @@ function selectKey(el, type) {
   const inp = document.getElementById('key-info');
   if (type === 'open') {
     inp.style.display = 'none';
+    inp.required = false;
     state.keyInfo = 'Dörren är olåst';
   } else {
     inp.style.display = 'block';
+    inp.required = true;
+    inp.style.borderColor = '#6EE7B7';
     const hints = {code:'T.ex. portkod: 1234#, larmkod: 9876',key:'T.ex. nyckel under mattan / brevlåda',portphone:'T.ex. ring på Andersson – 3:a våningen'};
     inp.placeholder = hints[type] || 'Beskriv hur städaren kommer in...';
     inp.oninput = () => { state.keyInfo = inp.value; };
@@ -1925,9 +1928,32 @@ function goStep4() {
   state.address = fields.address.val;
   state.pnr = useRut ? fields.pnr.val : '';
   state.customerNotes = document.getElementById('customer-notes')?.value?.trim() || '';
-  state.keyType = state.keyType || 'open';
-  state.keyInfo = state.keyInfo || '';
-  
+
+  // Nyckelval obligatoriskt
+  if (!state.keyType) {
+    var keySection = document.getElementById('key-options');
+    if (keySection) {
+      keySection.scrollIntoView({behavior:'smooth', block:'center'});
+      keySection.style.outline = '2px solid #dc2626';
+      setTimeout(function() { keySection.style.outline = ''; }, 3000);
+    }
+    return;
+  }
+
+  // keyInfo obligatoriskt för alla utom "open"
+  if (state.keyType !== 'open' && (!state.keyInfo || state.keyInfo.trim().length < 2)) {
+    var keyInput = document.getElementById('key-info');
+    if (keyInput) {
+      keyInput.focus();
+      keyInput.style.outline = '2px solid #dc2626';
+      keyInput.placeholder = state.keyType === 'code' ? '⚠️ Ange portkod/larmkod'
+        : state.keyType === 'key' ? '⚠️ Beskriv var nyckeln finns'
+        : '⚠️ Ange namn/lägenhet att ringa';
+      setTimeout(function() { keyInput.style.outline = ''; }, 3000);
+    }
+    return;
+  }
+
   buildConfirmSummary();
   setStep(4);
 }
@@ -1944,6 +1970,7 @@ function buildConfirmSummary() {
       <div style="color:var(--m)">Datum</div><div style="font-weight:600">${formatDate(state.date)} kl. ${state.time} <button onclick="setStep(1)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
       <div style="color:var(--m)">Adress</div><div style="font-weight:600">${state.address}</div>
       <div style="color:var(--m)">Kontakt</div><div style="font-weight:600">${state.fname} ${state.lname}, ${state.phone} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
+      <div style="color:var(--m)">Tillträde</div><div style="font-weight:600">${state.keyType === 'code' ? '🔢 Portkod' : state.keyType === 'key' ? '🗝️ Nyckel' : state.keyType === 'portphone' ? '📱 Porttelefon' : '🚪 Öppen dörr'}${state.keyInfo && state.keyType !== 'open' ? ' — ' + escHtml(state.keyInfo) : ''} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
     </div>
     <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)">
       ${useRut ? '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--m);margin-bottom:.25rem"><span>Pris före RUT</span><span>' + gross.toLocaleString('sv-SE') + ' kr</span></div><div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--g);margin-bottom:.5rem"><span>RUT-avdrag (50%)</span><span>−' + rut.toLocaleString('sv-SE') + ' kr</span></div>' : ''}
@@ -2025,7 +2052,10 @@ async function doBook() {
         referral_code: state.referralCode || undefined,
         customer_pnr: rawPnr || undefined,
         customer_notes: ((state.hasPets ? '🐾 Husdjur hemma. ' : '') + (document.getElementById('customer-notes')?.value?.trim() || '')) || undefined,
-        key_info: state.keyInfo || undefined,
+        key_type: state.keyType || 'open',
+        key_info: state.keyType === 'open'
+          ? 'Dörren är olåst'
+          : (state.keyType === 'code' ? 'Portkod: ' : state.keyType === 'key' ? 'Nyckel: ' : 'Porttelefon: ') + (state.keyInfo || ''),
       })
     });
     if (!bcRes.ok) {
