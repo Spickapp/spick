@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
 </body>
 </html>`
 
-    return new Response(html, {
+    return new Response(new TextEncoder().encode(html), {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/html; charset=utf-8',
