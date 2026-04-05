@@ -2536,6 +2536,7 @@ function showCleanerDetail(id) {
   const isSuspended = c.status === 'avstängd';
   
   document.getElementById('cleaner-modal-title').textContent = c.full_name || 'Städare';
+  var profileUrl = 'https://spick.se/stadare-profil.html?' + (c.slug ? 's=' + c.slug : 'id=' + c.id);
   document.getElementById('cleaner-modal-body').innerHTML = `
     <!-- Status-banner -->
     <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
@@ -2553,6 +2554,10 @@ function showCleanerDetail(id) {
       <input type="file" id="admin-avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="adminUploadAvatar('${c.id}')">
       <button onclick="document.getElementById('admin-avatar-input').click()" style="font-size:.75rem;color:#0F6E56;background:none;border:1px solid #6EE7B7;border-radius:99px;padding:.3rem .75rem;cursor:pointer;font-family:inherit">📷 Byt bild</button>
       <div id="admin-avatar-status" style="font-size:.7rem;color:#6B6960;margin-top:.25rem"></div>
+    </div>
+    <div style="text-align:center;margin-bottom:.75rem">
+      <a href="${profileUrl}" target="_blank" style="font-size:.75rem;color:#0F6E56;text-decoration:underline">🔗 ${profileUrl}</a>
+      <button onclick="navigator.clipboard.writeText('${profileUrl}');this.textContent='✓ Kopierad!';setTimeout(()=>this.textContent='Kopiera',2000)" style="font-size:.7rem;color:#0F6E56;background:none;border:1px solid #6EE7B7;border-radius:99px;padding:.2rem .5rem;margin-left:.5rem;cursor:pointer;font-family:inherit">Kopiera</button>
     </div>
 
     <!-- Visa/Redigera fält -->
