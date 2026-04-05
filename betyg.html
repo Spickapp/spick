@@ -19,7 +19,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="js/config.js"></script>
 <script src="js/components.js" defer></script>
-<script src="js/supabase.min.js"></script>
 <script>
 async function joinWaitlist(city, email){
   // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
@@ -93,80 +92,117 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
   </div>
 </div>
 <script>
-const SB=supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
-const p=new URLSearchParams(location.search);
-const bid=p.get('bid'), cname=decodeURIComponent(p.get('cname')||''), preRating=+p.get('rating')||0;
-const LABELS=['','😞 Dåligt','😐 Okej','🙂 Bra','😊 Mycket bra','🤩 Fantastiskt!'];
-let chosen=preRating||0;
+var SUPA = SPICK.SUPA_URL;
+var KEY = SPICK.SUPA_KEY;
+var H = {apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json'};
 
-if(cname) document.getElementById('sub').textContent='Betygsätt '+cname+' – det tar bara 30 sekunder.';
-if(preRating) setRating(preRating);
+var p = new URLSearchParams(location.search);
+var bid = p.get('bid'), cname = decodeURIComponent(p.get('cname') || '');
+var preRating = parseInt(p.get('rating')) || 0;
+if (preRating < 1 || preRating > 5) preRating = 0;
+var LABELS = ['', '😞 Dåligt', '😐 Okej', '🙂 Bra', '😊 Mycket bra', '🤩 Fantastiskt!'];
+var chosen = preRating || 0;
 
-function setRating(n){
-  chosen=n;
-  document.querySelectorAll('.star').forEach((s,i)=>{
-    s.classList.toggle('active',i<n);
+if (cname) document.getElementById('sub').textContent = 'Betygsätt ' + cname + ' – det tar bara 30 sekunder.';
+if (preRating) setRating(preRating);
+
+function setRating(n) {
+  chosen = n;
+  document.querySelectorAll('.star').forEach(function(s, i) {
+    s.classList.toggle('active', i < n);
   });
-  document.getElementById('lbl').textContent=LABELS[n]||'';
-  document.getElementById('btn').disabled=false;
+  document.getElementById('lbl').textContent = LABELS[n] || '';
+  document.getElementById('btn').disabled = false;
 }
 
-async function submit(){
-  if(!chosen)return;
-  const btn=document.getElementById('btn');
-  btn.disabled=true;
-  btn.innerHTML='<div class="spin"></div> Sparar...';
-  try{
-    // 1. Spara betyg
-    const {data:booking}=await SB.from('booking_confirmation')
-  .select('id,service_type,booking_date,cleaner_id,cleaner_name,customer_name,customer_email')
-  .eq('id',bid).maybeSingle();
-    const reviewPayload = {
-      cleaner_id:    booking?.cleaner_id  || null,
-      customer_id:   null,
-      job_id:        bid                  || null,
-      cleaner_rating: chosen,
-      comment:       document.getElementById('cmt').value || null
+async function submit() {
+  if (!chosen) return;
+  var btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Sparar...';
+
+  try {
+    // 1. Slå upp bokning
+    var bookingRes = await fetch(SUPA + '/rest/v1/booking_confirmation?id=eq.' + encodeURIComponent(bid) + '&select=id,cleaner_id,cleaner_name,customer_name,customer_email&apikey=' + KEY, {headers: H});
+    var bookingArr = bookingRes.ok ? await bookingRes.json() : [];
+    var booking = Array.isArray(bookingArr) && bookingArr.length > 0 ? bookingArr[0] : null;
+
+    // 2. Validera rating
+    var ratingVal = parseInt(chosen);
+    if (isNaN(ratingVal) || ratingVal < 1 || ratingVal > 5) {
+      btn.disabled = false;
+      btn.innerHTML = 'Skicka betyg';
+      alert('Välj ett betyg mellan 1 och 5.');
+      return;
+    }
+
+    var commentVal = (document.getElementById('cmt').value || '').trim();
+
+    // 3. INSERT i ratings-tabellen
+    var insertData = {
+      cleaner_id: booking ? booking.cleaner_id : null,
+      job_id: bid || null,
+      rating: ratingVal,
+      comment: commentVal || null
     };
-    const {data:rating,error}=await SB.from('reviews').insert([reviewPayload]).select().single();
-    if(error)throw error;
 
-    // 2. Om betyg ≤ 2 → trigga nöjdhetsgaranti
-    if(chosen<=2 && booking?.customer_email){
-      // Notifiera admin om garantiärende
-      await fetch(SPICK.SUPA_URL+'/functions/v1/notify',{
-        method:'POST',
-        headers:{'Content-Type':'application/json',
-          'apikey':SPICK.SUPA_KEY,
-          'Authorization':'Bearer '+SPICK.SUPA_KEY},
-        body:JSON.stringify({type:'guarantee',record:{
-          customer_email:booking?.customer_email,customer_name:booking?.customer_name,
-          cleaner_name:cname,rating:chosen,
-          comment:document.getElementById('cmt').value
+    var insertRes = await fetch(SUPA + '/rest/v1/ratings?apikey=' + KEY, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify(insertData)
+    });
+
+    if (!insertRes.ok) {
+      var errBody = await insertRes.json().catch(function() { return {}; });
+      if (insertRes.status === 409 || errBody.code === '23505') {
+        btn.disabled = false;
+        btn.innerHTML = 'Skicka betyg';
+        alert('Du har redan lämnat ett omdöme för denna städning.');
+        return;
+      }
+      throw new Error(errBody.message || 'Kunde inte spara betyg');
+    }
+
+    // 4. Om betyg <= 2 → trigga nöjdhetsgaranti
+    if (ratingVal <= 2 && booking && booking.customer_email) {
+      await fetch(SUPA + '/functions/v1/notify', {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({type: 'guarantee', record: {
+          customer_email: booking.customer_email,
+          customer_name: booking.customer_name,
+          cleaner_name: cname,
+          rating: ratingVal,
+          comment: commentVal
         }})
-      }).catch(()=>{});
-      await SB.from('guarantee_requests').insert([{
-        booking_id:bid,
-        rating_id:rating?.id,
-        customer_name:booking?.customer_name,
-        customer_email:booking?.customer_email,
-        cleaner_name:cname,
-        issue_description:'Betyg '+chosen+'/5. Kommentar: '+document.getElementById('cmt').value
-      }]);
+      }).catch(function() {});
+
+      await fetch(SUPA + '/rest/v1/guarantee_requests?apikey=' + KEY, {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({
+          booking_id: bid,
+          customer_name: booking.customer_name || null,
+          customer_email: booking.customer_email || null,
+          cleaner_name: booking.cleaner_name || null,
+          issue_description: 'Betyg ' + ratingVal + '/5. Kommentar: ' + commentVal
+        })
+      }).catch(function(e) { console.warn('Guarantee request failed:', e.message); });
     }
 
-    // Visa bekräftelse
-    document.getElementById('form').style.display='none';
-    const done=document.getElementById('done');
-    done.style.display='block';
-    if(chosen<=2){
-      document.getElementById('doneIcon').textContent='🛡️';
-      document.getElementById('doneTitle').textContent='Tack – vi aktiverar garantin!';
-      document.getElementById('doneSub').textContent='Vi kontaktar dig inom 24h för att ordna en kompletterande städning kostnadsfritt.';
+    // 5. Visa bekräftelse
+    document.getElementById('form').style.display = 'none';
+    var done = document.getElementById('done');
+    done.style.display = 'block';
+    if (ratingVal <= 2) {
+      document.getElementById('doneIcon').textContent = '🛡️';
+      document.getElementById('doneTitle').textContent = 'Tack – vi aktiverar garantin!';
+      document.getElementById('doneSub').textContent = 'Vi kontaktar dig inom 24h för att ordna en kompletterande städning kostnadsfritt.';
     }
-  }catch(e){
-    btn.disabled=false;
-    btn.innerHTML='Skicka betyg';
+  } catch(e) {
+    console.error('Rating error:', e);
+    btn.disabled = false;
+    btn.innerHTML = 'Skicka betyg';
     alert('Något gick fel – försök igen.');
   }
 }
