@@ -3670,15 +3670,17 @@ async function updateSettingFromInput(key) {
 
 // -- SYSTEM STATUS --
 async function renderSystemStatus() {
-  document.getElementById('kpi-total-bookings').textContent = data.bookings.length;
-  document.getElementById('kpi-total-cleaners').textContent = data.cleaners.length;
-  document.getElementById('kpi-total-customers').textContent = (data.customers||[]).length;
   var tables = ['bookings','cleaners','customer_profiles','cleaner_applications','reviews','subscriptions','emails','support_tickets','admin_users','admin_audit_log','admin_settings','admin_roles'];
   document.getElementById('kpi-db-size').textContent = tables.length;
   var counts = await Promise.all(tables.map(async function(t){
     try { var r = await AR.select(t, 'select=id&limit=1000'); return {table:t,count:r.data?r.data.length:0}; }
     catch(e){ return {table:t,count:'?'}; }
   }));
+  var tableCounts = {};
+  counts.forEach(function(c){ tableCounts[c.table] = c.count; });
+  document.getElementById('kpi-total-bookings').textContent = tableCounts['bookings'] || 0;
+  document.getElementById('kpi-total-cleaners').textContent = tableCounts['cleaners'] || 0;
+  document.getElementById('kpi-total-customers').textContent = tableCounts['customer_profiles'] || 0;
   document.getElementById('db-tables-list').innerHTML = counts.map(function(c){
     return '<div class="stat-row"><span class="lbl">'+escHtml(c.table)+'</span><span class="val">'+c.count+' rader</span></div>';
   }).join('');
