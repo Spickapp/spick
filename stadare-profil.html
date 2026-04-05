@@ -91,7 +91,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 
     <div class="card">
       <div class="card-title">Recensioner</div>
-      <div id="p-reviews"><span style="color:var(--m);font-size:.85rem">Inga recensioner än.</span></div>
+      <div id="p-reviews"></div>
     </div>
 
     <div class="card qr-section" id="qr-card">
@@ -126,7 +126,7 @@ async function loadProfile() {
     return;
   }
 
-  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs&is_approved=eq.true&';
+  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,test_score&is_approved=eq.true&';
   if (slug) cleanerUrl += 'slug=eq.' + encodeURIComponent(slug);
   else cleanerUrl += 'id=eq.' + encodeURIComponent(id);
 
@@ -150,18 +150,29 @@ async function loadProfile() {
     document.getElementById('p-avatar').textContent = initial;
   }
   document.getElementById('p-name').textContent = c.full_name || 'Städare';
-  const cityDisplay = (c.city || 'Sverige').charAt(0).toUpperCase() + (c.city || 'Sverige').slice(1).toLowerCase();
-  document.getElementById('p-city').textContent = cityDisplay;
-
-  // Steg 1 — Badge + rating line
-  var badgeLine = '';
-  if (c.identity_verified) badgeLine += '<span style="color:#065F46;font-weight:600;font-size:.85rem">✓ ID-verifierad</span>';
-  if (hasRatings) {
-    badgeLine += (badgeLine ? ' · ' : '') + '<span style="color:#f59e0b">' + '★'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960;font-size:.8rem">(' + c.review_count + ' omdömen)</span>';
+  var locationText = '';
+  if (c.city) {
+    locationText = c.city.charAt(0).toUpperCase() + c.city.slice(1).toLowerCase();
+    if (c.service_radius_km && c.service_radius_km > 20) {
+      locationText += ' · Täcker ' + c.service_radius_km + ' km radie';
+    }
+  } else if (c.service_radius_km) {
+    locationText = 'Täcker ' + c.service_radius_km + ' km radie';
   } else {
-    badgeLine += (badgeLine ? ' · ' : '') + '<span style="color:#6B6960;font-size:.85rem">Ny på Spick</span>';
+    locationText = 'Sverige';
   }
-  document.getElementById('p-stars').innerHTML = badgeLine;
+  document.getElementById('p-city').textContent = locationText;
+
+  // Badge + rating line
+  var badgeParts = [];
+  if (c.identity_verified) badgeParts.push('<span style="color:#065F46;font-weight:600">✓ ID-verifierad</span>');
+  if (c.test_score && c.test_score > 0) badgeParts.push('<span style="color:#065F46">📝 Kompetenstest godkänt</span>');
+  if (hasRatings) {
+    badgeParts.push('<span style="color:#f59e0b">' + '★'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960">(' + c.review_count + ' omdömen)</span>');
+  } else {
+    badgeParts.push('<span style="color:#6B6960">🌟 Ny på Spick</span>');
+  }
+  document.getElementById('p-stars').innerHTML = '<div style="font-size:.85rem">' + badgeParts.join(' <span style="color:#D1D5DB">·</span> ') + '</div>';
   document.getElementById('p-rating-text').textContent = '';
 
   // Badges
@@ -170,20 +181,24 @@ async function loadProfile() {
   if (c.completed_jobs >= 10) badges.push('<span class="badge badge-green">✅ Erfaren</span>');
   document.getElementById('p-badges').innerHTML = badges.join('');
 
-  // Stats — RUT-pris + dynamisk tredje kolumn
+  // Stats — RUT-pris som huvudsiffra
   var statsHTML = '';
-  statsHTML += '<div class="stat"><div class="stat-val" style="color:var(--g)">' + (c.hourly_rate || 350) + '</div><div class="stat-lbl">kr/h</div></div>';
   statsHTML += '<div class="stat"><div class="stat-val" style="color:var(--g)">' + Math.round((c.hourly_rate || 350) * 0.5) + '</div><div class="stat-lbl">kr/h med RUT</div></div>';
-  if (hasRatings) {
-    statsHTML += '<div class="stat"><div class="stat-val">' + c.avg_rating.toFixed(1) + '</div><div class="stat-lbl">snittbetyg</div></div>';
-  } else if (c.completed_jobs > 0) {
-    statsHTML += '<div class="stat"><div class="stat-val">' + c.completed_jobs + '</div><div class="stat-lbl">uppdrag</div></div>';
+  statsHTML += '<div class="stat"><div class="stat-val">' + (Array.isArray(c.services) ? c.services.length : '–') + '</div><div class="stat-lbl">tjänster</div></div>';
+  if (c.member_since) {
+    var ms2 = new Date(c.member_since);
+    var monthNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+    statsHTML += '<div class="stat"><div class="stat-val" style="font-size:1rem">' + monthNames[ms2.getMonth()] + ' ' + ms2.getFullYear() + '</div><div class="stat-lbl">medlem sedan</div></div>';
   }
   document.getElementById('stats-grid').innerHTML = statsHTML;
 
-  // Bio — visa alltid
-  if (c.bio) {
-    document.getElementById('p-bio').textContent = c.bio;
+  // Bio — filtrera meningslösa svar
+  var firstName = (c.full_name || '').split(' ')[0];
+  var bioText = (c.bio || '').trim();
+  var hasBio = bioText.length > 10 && bioText.toLowerCase() !== 'ja' && bioText.toLowerCase() !== 'nej' && bioText !== '-';
+  document.getElementById('bio-card').querySelector('.card-title').textContent = 'Om ' + escHtml(firstName);
+  if (hasBio) {
+    document.getElementById('p-bio').textContent = bioText;
   } else {
     document.getElementById('p-bio').innerHTML = '<span style="color:#6B6960;font-style:italic">Ingen personlig beskrivning ännu.</span>';
   }
@@ -219,6 +234,20 @@ async function loadProfile() {
     document.getElementById('p-services').closest('.card').after(infoCard);
   }
 
+  // Trygghetsgaranti
+  var trustHTML = '<div class="card">' +
+    '<div class="card-title">Trygghetsgaranti</div>' +
+    '<div style="display:flex;flex-direction:column;gap:.5rem">' +
+      (c.identity_verified ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> ID-verifierad av Spick</div>' : '') +
+      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Nöjdhetsgaranti — vi städar om gratis</div>' +
+      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Säker betalning via kort eller Klarna</div>' +
+      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Gratis avbokning upp till 24 timmar</div>' +
+      (c.test_score && c.test_score > 0 ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Genomgått Spicks kompetenstest</div>' : '') +
+    '</div>' +
+  '</div>';
+  var reviewsCard = document.getElementById('p-reviews').closest('.card');
+  reviewsCard.insertAdjacentHTML('beforebegin', trustHTML);
+
   // Reviews
   var reviewsUrl = SUPA + '/rest/v1/reviews?select=rating,cleaner_rating,comment,created_at,customer_name&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
   var reviewsRes = await fetch(reviewsUrl + '&apikey=' + KEY, {headers: H});
@@ -226,7 +255,7 @@ async function loadProfile() {
   if (!Array.isArray(reviews)) reviews = [];
 
   if (reviews && reviews.length) {
-    document.getElementById('p-reviews').innerHTML = reviews.map(r => {
+    document.getElementById('p-reviews').innerHTML = reviews.map(function(r) {
       const date = new Date(r.created_at).toLocaleDateString('sv-SE', { year: 'numeric', month: 'short', day: 'numeric' });
       var reviewRating = r.rating || r.cleaner_rating;
       return '<div class="review">' +
@@ -235,6 +264,13 @@ async function loadProfile() {
         (r.comment ? '<div class="review-text">' + escHtml(r.comment) + '</div>' : '') +
         '</div>';
     }).join('');
+  } else {
+    document.getElementById('p-reviews').innerHTML =
+      '<div style="text-align:center;padding:1rem;color:#6B6960">' +
+        '<div style="font-size:1.25rem;margin-bottom:.5rem">⭐</div>' +
+        '<div style="font-weight:600;margin-bottom:.25rem">Inga omdömen ännu</div>' +
+        '<div style="font-size:.82rem">Boka ' + escHtml(firstName) + ' och bli först att lämna ett omdöme!</div>' +
+      '</div>';
   }
 
   // QR code
@@ -248,10 +284,7 @@ async function loadProfile() {
   // Booking CTA
   var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + (c.hourly_rate || 350);
   document.getElementById('book-btn').href = bokaHref;
-  var rutNote = document.createElement('div');
-  rutNote.style.cssText = 'font-size:.75rem;color:#065F46;margin-top:.25rem;text-align:center';
-  rutNote.textContent = 'från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT-avdrag';
-  document.getElementById('book-btn').after(rutNote);
+  document.getElementById('book-btn').textContent = 'Boka ' + escHtml(firstName) + ' — från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h →';
   document.getElementById('cta-bar').style.display = 'flex';
 
   // Dynamisk SEO
