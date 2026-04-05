@@ -1,7 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 function escOg(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code > 127) {
+      out += '&#' + code + ';';
+    } else if (s[i] === '&') out += '&amp;';
+    else if (s[i] === '"') out += '&quot;';
+    else if (s[i] === '<') out += '&lt;';
+    else if (s[i] === '>') out += '&gt;';
+    else out += s[i];
+  }
+  return out;
 }
 
 const corsHeaders = {
@@ -82,7 +93,7 @@ Deno.serve(async (req) => {
 <link rel="canonical" href="${profileUrl}">
 </head>
 <body>
-<p>Omdirigerar till <a href="${profileUrl}">${escOg(c.full_name)} på Spick</a>...</p>
+<p>Omdirigerar till <a href="${profileUrl}">${escOg(c.full_name)} p&#229; Spick</a>...</p>
 </body>
 </html>`
 
