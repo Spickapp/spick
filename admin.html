@@ -1803,7 +1803,7 @@ function renderCleaners() {
       <td>${c.service_radius_km ? c.service_radius_km + ' km' : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
       <td>${hasFskatt ? '✅' : fskattNeedsHelp ? '📝' : '❌'}</td>
       <td>${stripeOk ? '✅' : '❌'}</td>
-      <td>${statusBadge}</td>
+      <td>${statusBadge}${c.last_active_at ? '<div style="font-size:.68rem;color:#6B6960">' + new Date(c.last_active_at).toLocaleDateString('sv-SE', {day:'numeric',month:'short'}) + '</div>' : ''}</td>
       <td>
         <div style="font-weight:600;color:var(--g)">${cleaner_jobs} uppdrag</div>
         <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr intjänat</div>
@@ -2650,6 +2650,7 @@ function showCleanerDetail(id) {
     </span></div>
     <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet'}</span></div>
     <div class="stat-row"><span class="lbl">Registrerad</span><span class="val">${c.created_at ? new Date(c.created_at).toLocaleDateString('sv') : '–'}</span></div>
+    <div class="stat-row"><span class="lbl">Senast aktiv</span><span class="val">${c.last_active_at ? '<span style="color:' + (Date.now() - new Date(c.last_active_at).getTime() < 86400000 ? '#065F46;font-weight:600' : '#6B6960') + '">' + new Date(c.last_active_at).toLocaleDateString('sv-SE', {day:'numeric',month:'short',year:'numeric'}) + ' ' + new Date(c.last_active_at).toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '<span style="color:#DC2626">Aldrig</span>'}</span></div>
     
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
     
