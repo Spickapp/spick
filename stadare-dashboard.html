@@ -226,7 +226,14 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .cal-day.other-month{color:var(--gray-300)}
 
 /* ═══ PROFILE / SETTINGS ═══ */
-.prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--spick-500),var(--spick-700));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;margin:0 auto 12px}
+.prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--spick-500),var(--spick-700));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;margin:0 auto 12px;overflow:hidden}
+.prof-avatar img{width:100%;height:100%;object-fit:cover}
+.avatar-upload{display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:1.25rem;background:#fff;border-radius:14px;border:1.5px solid #E8E8E4;margin-bottom:1rem}
+.avatar-preview{width:100px;height:100px;border-radius:50%;background:#E1F5EE;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;overflow:hidden;border:3px solid #6EE7B7}
+.avatar-preview img{width:100%;height:100%;object-fit:cover}
+.avatar-upload-btn{padding:.5rem 1.25rem;background:#0F6E56;color:#fff;border:none;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px}
+.avatar-upload-btn:disabled{opacity:0.5;cursor:not-allowed}
+.avatar-status{font-size:.78rem;color:#6B6960;text-align:center}
 .prof-name{font-size:1.25rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
 .prof-sub{color:var(--gray-500);font-size:.82rem;text-align:center;margin-bottom:14px}
 .prof-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-200);font-size:.88rem;min-height:48px}
@@ -719,6 +726,12 @@ body{top:0!important}
   <div class="sub-view" id="sv-profile">
     <div class="sub-view-header"><button onclick="closeSubView('sv-profile')">←</button><h2>Redigera profil</h2></div>
     <div class="sub-view-body">
+      <div class="avatar-upload" id="avatar-section">
+        <div class="avatar-preview" id="dash-avatar">?</div>
+        <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+        <button class="avatar-upload-btn" id="avatar-btn" onclick="document.getElementById('avatar-input').click()">📷 Byt profilbild</button>
+        <div class="avatar-status" id="avatar-status">Max 5 MB · JPG, PNG eller WebP</div>
+      </div>
       <div class="card">
         <div class="prof-row"><span class="lbl">Namn <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-name" placeholder="Ditt namn" required></div>
         <div class="prof-row"><span class="lbl">E-post</span><span id="prof-email" style="font-size:.85rem;color:var(--m)">–</span></div>
@@ -1291,6 +1304,7 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('edit-rate').value = cleaner.hourly_rate || 350;
   document.getElementById('edit-bio').value = cleaner.bio || '';
   updateKeep();
+  initAvatarUpload();
   document.getElementById('earn-rate').textContent = (cleaner.hourly_rate || 350) + ' kr/h';
   const svcText = Array.isArray(cleaner.services) ? cleaner.services.join(', ') : (cleaner.services || '–');
   document.getElementById('prof-services').textContent = svcText;
@@ -2257,6 +2271,107 @@ function updateKeep() {
 }
 document.getElementById('edit-rate').addEventListener('input', updateKeep);
 document.getElementById('edit-bio').addEventListener('input', function() { document.getElementById('bio-counter').textContent = this.value.length + '/300'; });
+
+// ── PROFILBILD ────────────────────────────────────────────────────────
+function initAvatarUpload() {
+  var preview = document.getElementById('dash-avatar');
+  var input = document.getElementById('avatar-input');
+  var status = document.getElementById('avatar-status');
+  var btn = document.getElementById('avatar-btn');
+  if (!preview || !input) return;
+
+  // Visa befintlig bild eller initial
+  if (cleaner.avatar_url) {
+    preview.innerHTML = '<img src="' + cleaner.avatar_url + '?t=' + Date.now() + '" alt="Profilbild">';
+    btn.textContent = '📷 Byt profilbild';
+  } else {
+    preview.textContent = (cleaner.full_name || '?')[0].toUpperCase();
+    btn.textContent = '📷 Ladda upp profilbild';
+  }
+
+  // Visa även i header + profil-avatar
+  if (cleaner.avatar_url) {
+    document.getElementById('hdr-avatar').innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    document.getElementById('prof-avatar').innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+  }
+
+  input.onchange = async function() {
+    var file = input.files[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      status.textContent = '❌ Bara JPG, PNG eller WebP';
+      status.style.color = '#DC2626';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      status.textContent = '❌ Bilden är för stor (max 5 MB)';
+      status.style.color = '#DC2626';
+      return;
+    }
+    btn.disabled = true;
+    status.textContent = '⏳ Bearbetar bild...';
+    status.style.color = '#6B6960';
+    try {
+      var resized = await resizeImage(file, 500);
+      var sessionRes = await SB.auth.getSession();
+      var userId = sessionRes.data?.session?.user?.id;
+      if (!userId) {
+        status.textContent = '❌ Du är inte inloggad';
+        status.style.color = '#DC2626';
+        btn.disabled = false;
+        return;
+      }
+      preview.innerHTML = '<img src="' + URL.createObjectURL(resized) + '" alt="Preview">';
+      status.textContent = '⏳ Laddar upp...';
+      // OBS: cleaners UPDATE policy krävs i Supabase (auth_user_id = auth.uid())
+      var filePath = userId + '/avatar.webp';
+      var uploadRes = await SB.storage.from('avatars').upload(filePath, resized, {
+        contentType: 'image/webp',
+        upsert: true
+      });
+      if (uploadRes.error) throw new Error(uploadRes.error.message);
+      var urlRes = SB.storage.from('avatars').getPublicUrl(filePath);
+      var publicUrl = urlRes.data.publicUrl;
+      var updateRes = await SB.from('cleaners').update({
+        avatar_url: publicUrl
+      }).eq('auth_user_id', userId);
+      if (updateRes.error) throw new Error(updateRes.error.message);
+      cleaner.avatar_url = publicUrl;
+      preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" alt="Profilbild">';
+      document.getElementById('hdr-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      document.getElementById('prof-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+      status.textContent = '✅ Profilbild uppdaterad!';
+      status.style.color = '#065F46';
+      btn.textContent = '📷 Byt profilbild';
+      btn.disabled = false;
+    } catch(err) {
+      console.error('Avatar upload error:', err);
+      status.textContent = '❌ Uppladdning misslyckades: ' + (err.message || 'Okänt fel');
+      status.style.color = '#DC2626';
+      btn.disabled = false;
+    }
+  };
+}
+
+function resizeImage(file, maxSize) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
+      else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        if (blob) resolve(blob);
+        else reject(new Error('Kunde inte konvertera bild'));
+      }, 'image/webp', 0.85);
+    };
+    img.onerror = function() { reject(new Error('Kunde inte läsa bilden')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 async function saveProfile() {
   const name = document.getElementById('edit-name').value.trim();

@@ -1539,8 +1539,11 @@ function renderCleaners(cleaners) {
     expandHTML += '<a href="stadare-profil.html?id=' + cl.id + '" target="_blank" style="display:block;text-align:center;font-size:.78rem;color:var(--g);margin-bottom:.625rem;text-decoration:underline">Visa fullständig profil</a>';
     expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml((cl.full_name || '').split(' ')[0]) + ' →</button>';
     expandHTML += '</div>';
+    var avatarHTML = cl.avatar_url
+      ? '<div class="cleaner-av" style="padding:0;overflow:hidden"><img src="' + cl.avatar_url + '" alt="' + escHtml(cl.full_name||'') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
+      : '<div class="cleaner-av" style="background:' + col + '20;color:' + col + '">' + ini + '</div>';
     card.innerHTML = `
-      <div class="cleaner-av" style="background:${col}20;color:${col}">${ini}</div>
+      ${avatarHTML}
       <div class="cleaner-info">
         <div class="cleaner-name">${cl.full_name||'Städare'}</div>
         <div class="cleaner-meta">
