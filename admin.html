@@ -3036,20 +3036,7 @@ async function adminUploadAvatar(cleanerId) {
 
     var publicUrl = SPICK.SUPA_URL + '/storage/v1/object/public/avatars/' + cleanerId + '/avatar.webp';
 
-    var dbRes = await fetch(SPICK.SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleanerId, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SPICK.SUPA_KEY,
-        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ avatar_url: publicUrl })
-    });
-
-    if (!dbRes.ok) {
-      throw new Error('Kunde inte spara i databasen (' + dbRes.status + ')');
-    }
+    await AR.update('cleaners', { avatar_url: publicUrl }, 'id=eq.' + cleanerId);
 
     if (preview) preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover">';
     status.textContent = '✅ Bild uppdaterad!';
