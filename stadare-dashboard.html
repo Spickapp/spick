@@ -331,6 +331,8 @@ body{top:0!important}
 /* ═══ TEAM CHIPS ═══ */
 .tm-chip{padding:8px 16px;border-radius:999px;border:1.5px solid var(--gray-300);background:var(--bg-primary);font-size:14px;color:var(--gray-700);cursor:pointer;transition:all .15s ease;font-family:inherit;min-height:44px}
 .tm-chip.active{border-color:var(--spick-500);background:var(--spick-50);color:var(--spick-500);font-weight:500}
+.svc-chip{padding:.4rem .875rem;border-radius:99px;border:1.5px solid #E8E8E4;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;font-family:inherit;color:#6B6960;transition:all .15s}
+.svc-chip.active{background:#E1F5EE;border-color:#6EE7B7;color:#065F46;font-weight:600}
 .tm-member-card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-card);border:1px solid rgba(0,0,0,.04);margin-bottom:10px;transition:opacity .2s}
 .tm-member-card.paused{opacity:.55}
 .tm-svc-badge{display:inline-block;padding:2px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:500;background:var(--spick-50);color:var(--spick-600);margin:2px 2px 2px 0}
@@ -687,7 +689,7 @@ body{top:0!important}
         <div class="settings-section">
           <div class="settings-section-title">Tjänster</div>
           <div class="card">
-            <div class="card-title">🧹 Mina tjänster</div>
+            <div class="card-title">🧹 Mina tjänster <a id="prof-services-edit" onclick="openSubView('sv-profile')" style="font-size:.75rem;color:#0F6E56;cursor:pointer;text-decoration:underline;margin-left:.5rem">Ändra</a></div>
             <div id="prof-services" style="color:var(--m);font-size:.88rem;line-height:1.8">Laddar...</div>
           </div>
         </div>
@@ -743,6 +745,16 @@ body{top:0!important}
           </div>
         </div>
         <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
+        <div style="margin-top:1rem">
+          <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Mina tjänster</label>
+          <div id="profile-services" style="display:flex;flex-wrap:wrap;gap:.5rem">
+            <button type="button" class="svc-chip" data-svc="Hemstädning" onclick="toggleProfileSvc(this)">🏠 Hemstädning</button>
+            <button type="button" class="svc-chip" data-svc="Storstädning" onclick="toggleProfileSvc(this)">✨ Storstädning</button>
+            <button type="button" class="svc-chip" data-svc="Flyttstädning" onclick="toggleProfileSvc(this)">📦 Flyttstädning</button>
+            <button type="button" class="svc-chip" data-svc="Fönsterputs" onclick="toggleProfileSvc(this)">🪟 Fönsterputs</button>
+          </div>
+          <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">Välj de tjänster du erbjuder. Kunder filtreras på detta.</div>
+        </div>
         <button class="btn-save" id="btn-save-profile" onclick="saveProfile()">💾 Spara ändringar</button>
         <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">✅ Profil sparad!</div>
       </div>
@@ -1307,6 +1319,7 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('earn-rate').textContent = (cleaner.hourly_rate || 350) + ' kr/h';
   const svcText = Array.isArray(cleaner.services) ? cleaner.services.join(', ') : (cleaner.services || '–');
   document.getElementById('prof-services').textContent = svcText;
+  initProfileServices(cleaner.services);
   const rating = cleaner.avg_rating;
   if (rating) {
     const stars = '⭐'.repeat(Math.round(rating));
@@ -2376,6 +2389,36 @@ function resizeImage(file, maxSize) {
   });
 }
 
+// ── TJÄNSTEVAL I PROFIL ───────────────────────────────────────────────
+function toggleProfileSvc(btn) {
+  btn.classList.toggle('active');
+}
+
+function getSelectedProfileServices() {
+  var chips = document.querySelectorAll('#profile-services .svc-chip.active');
+  var services = [];
+  chips.forEach(function(c) { services.push(c.dataset.svc); });
+  return services;
+}
+
+function initProfileServices(cleanerServices) {
+  var svcs = [];
+  if (Array.isArray(cleanerServices)) {
+    svcs = cleanerServices;
+  } else if (typeof cleanerServices === 'string' && cleanerServices.length > 0) {
+    svcs = cleanerServices.split(',').map(function(s) { return s.trim(); });
+  }
+  document.querySelectorAll('#profile-services .svc-chip').forEach(function(chip) {
+    var svcName = chip.dataset.svc;
+    var isActive = svcs.some(function(s) {
+      return s.toLowerCase().includes(svcName.toLowerCase().slice(0, 4)) ||
+             svcName.toLowerCase().includes(s.toLowerCase().slice(0, 4));
+    });
+    if (isActive) chip.classList.add('active');
+    else chip.classList.remove('active');
+  });
+}
+
 async function saveProfile() {
   const name = document.getElementById('edit-name').value.trim();
   const rawPhone = document.getElementById('edit-phone').value.trim();
@@ -2383,6 +2426,7 @@ async function saveProfile() {
   const city = document.getElementById('edit-city').value.trim();
   const rate = parseInt(document.getElementById('edit-rate').value) || 350;
   const bio = document.getElementById('edit-bio').value.trim();
+  const services = getSelectedProfileServices();
 
   if (name.length < 2) { showToast('Ange ditt namn'); return; }
   if (!/^0\d{8,11}$/.test(phone)) { showToast('Ange ett giltigt telefonnummer'); return; }
@@ -2393,12 +2437,14 @@ async function saveProfile() {
   btn.disabled = true; btn.textContent = '⏳ Sparar...';
 
   const slug = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug}, `id=eq.${cleaner.id}`);
+  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug,services}, `id=eq.${cleaner.id}`);
   btn.disabled = false; btn.textContent = '💾 Spara ändringar';
   if (error) { showToast('❌ Fel vid sparning'); return; }
-  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug});
+  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug,services});
   document.getElementById('prof-name').textContent = name;
   document.getElementById('earn-rate').textContent = rate + ' kr/h';
+  const svcText = services.length > 0 ? services.join(', ') : '–';
+  document.getElementById('prof-services').textContent = svcText;
   showToast('✅ Profil sparad!');
 }
 
