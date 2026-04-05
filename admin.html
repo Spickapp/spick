@@ -2543,6 +2543,18 @@ function showCleanerDetail(id) {
       ${isSuspended ? '⛔ Konto avstängt' : isPaused ? '⏸ Konto pausat – inga nya bokningar' : '✅ Konto aktivt'}
     </div>
     
+    <!-- Profilbild -->
+    <div style="text-align:center;margin-bottom:1rem">
+      <div id="admin-avatar-preview" style="width:80px;height:80px;border-radius:50%;margin:0 auto .5rem;overflow:hidden;background:#E1F5EE;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;border:3px solid #6EE7B7">
+        ${c.avatar_url
+          ? '<img src="' + c.avatar_url + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover">'
+          : (c.full_name||'?').charAt(0).toUpperCase()}
+      </div>
+      <input type="file" id="admin-avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="adminUploadAvatar('${c.id}')">
+      <button onclick="document.getElementById('admin-avatar-input').click()" style="font-size:.75rem;color:#0F6E56;background:none;border:1px solid #6EE7B7;border-radius:99px;padding:.3rem .75rem;cursor:pointer;font-family:inherit">📷 Byt bild</button>
+      <div id="admin-avatar-status" style="font-size:.7rem;color:#6B6960;margin-top:.25rem"></div>
+    </div>
+
     <!-- Visa/Redigera fält -->
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">NAMN</label>
@@ -2608,12 +2620,28 @@ function showCleanerDetail(id) {
         <div style="font-size:.7rem;color:var(--m)">${c.review_count||0} betyg</div>
       </div>
       <div style="text-align:center;background:#FDF4FF;border-radius:10px;padding:10px">
-        <div style="font-weight:700;font-size:1.1rem;color:#7C3AED">${(() => { const t = c.commission_tier || c.tier || 'new'; const m = {new:'17%',established:'15%',professional:'13%',elite:'12%'}; return m[t] || '17%'; })()}</div>
-        <div style="font-size:.7rem;color:var(--m)">${(() => { const t = c.commission_tier || c.tier || 'new'; const n = {new:'Ny',established:'Silver',professional:'Gold',elite:'Platinum'}; return n[t] || 'Ny'; })()} provision</div>
+        <div style="font-weight:700;font-size:1.1rem;color:#7C3AED">${c.commission_rate != null ? c.commission_rate + '%' : (() => { const t = c.commission_tier || c.tier || 'new'; const m = {new:'17%',established:'15%',professional:'13%',elite:'12%'}; return m[t] || '17%'; })()}</div>
+        <div style="font-size:.7rem;color:var(--m)">provision</div>
       </div>
     </div>
-    
-    <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">${c.has_fskatt ? '✅ Har F-skatt' : c.fskatt_needs_help ? '📝 Behöver hjälp — kontakta för onboarding' : '❓ Vet ej'}</span></div>
+
+    <div class="stat-row"><span class="lbl">F-skatt</span><span class="val">
+      <select id="cd-fskatt" style="padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem;font-family:inherit">
+        <option value="yes"${c.has_fskatt ? ' selected' : ''}>✅ Ja, har F-skatt</option>
+        <option value="help"${c.fskatt_needs_help ? ' selected' : ''}>📝 Behöver hjälp ansöka</option>
+        <option value="no"${!c.has_fskatt && !c.fskatt_needs_help ? ' selected' : ''}>❌ Saknar F-skatt</option>
+      </select>
+    </span></div>
+    <div class="stat-row"><span class="lbl">Provision (%)</span><span class="val">
+      <input type="number" id="cd-commission" value="${c.commission_rate != null ? c.commission_rate : 17}" min="0" max="50" style="width:70px;padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem;font-family:inherit">
+      <span style="font-size:.75rem;color:#6B6960;margin-left:4px">%</span>
+    </span></div>
+    <div class="stat-row"><span class="lbl">ID-verifiering</span><span class="val">
+      <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;margin:0">
+        <input type="checkbox" id="cd-identity-verified"${c.identity_verified ? ' checked' : ''} style="accent-color:#0F6E56">
+        <span style="font-size:.82rem">${c.identity_verified ? '✅ Verifierad' : 'Ej verifierad'}</span>
+      </label>
+    </span></div>
     <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet'}</span></div>
     <div class="stat-row"><span class="lbl">Registrerad</span><span class="val">${c.created_at ? new Date(c.created_at).toLocaleDateString('sv') : '–'}</span></div>
     
@@ -2644,9 +2672,32 @@ function showCleanerDetail(id) {
     
     <!-- Preferenser & Arbetsområde -->
     <div style="margin-bottom:12px">
-      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">PREFERENSER & ARBETSOMRÅDE</label>
-      <div id="admin-cleaner-prefs" style="font-size:.85rem;color:var(--m)">Inga preferenser inställda</div>
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">PREFERENSER</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:.72rem;color:var(--m);display:block;margin-bottom:3px">Husdjur</label>
+          <select id="cd-pet-pref" style="width:100%;padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem;font-family:inherit">
+            <option value=""${!c.pet_pref ? ' selected' : ''}>Ej angivet</option>
+            <option value="yes"${c.pet_pref === 'yes' || c.pet_pref === true ? ' selected' : ''}>🐾 Djurvänlig</option>
+            <option value="no"${c.pet_pref === 'no' || c.pet_pref === false ? ' selected' : ''}>Nej</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.72rem;color:var(--m);display:block;margin-bottom:3px">Hiss</label>
+          <select id="cd-elevator-pref" style="width:100%;padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem;font-family:inherit">
+            <option value=""${!c.elevator_pref ? ' selected' : ''}>Ej angivet</option>
+            <option value="required"${c.elevator_pref === 'required' ? ' selected' : ''}>🛗 Hiss krävs</option>
+            <option value="preferred"${c.elevator_pref === 'preferred' ? ' selected' : ''}>Hiss föredras</option>
+            <option value="no"${c.elevator_pref === 'no' ? ' selected' : ''}>Ingen preferens</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <label style="font-size:.72rem;color:var(--m);display:block;margin-bottom:3px">Språk (kommaseparerade)</label>
+        <input type="text" id="cd-languages" value="${escHtml(Array.isArray(c.languages) ? c.languages.join(', ') : (c.languages || ''))}" placeholder="Svenska, Arabiska, Engelska" style="width:100%;padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem;font-family:inherit">
+      </div>
     </div>
+    <div id="admin-cleaner-prefs" style="font-size:.85rem;color:var(--m);margin-bottom:12px"></div>
 
     <!-- Synlighet -->
     <div style="margin-bottom:12px;padding:10px 14px;border-radius:10px;background:${c.admin_flag==='hidden'?'#FEF3C7':'#F0FDF4'};display:flex;align-items:center;justify-content:space-between">
@@ -2862,7 +2913,7 @@ async function autoPauseCritical() {
 async function saveCleanerFromAdmin() {
   if (!hasPerm('cleaners','write')) { showToast('🔒 Du har inte behörighet'); return; }
   const c = data.cleaners.find(x => x.id === currentCleanerId);
-  const oldValue = c ? {full_name: c.full_name, phone: c.phone, city: c.city, hourly_rate: c.hourly_rate, services: c.services, bio: c.bio, admin_notes: c.admin_notes, home_address: c.home_address, service_radius_km: c.service_radius_km} : null;
+  const oldValue = c ? {full_name: c.full_name, phone: c.phone, city: c.city, hourly_rate: c.hourly_rate, services: c.services, bio: c.bio, admin_notes: c.admin_notes, home_address: c.home_address, service_radius_km: c.service_radius_km, has_fskatt: c.has_fskatt, fskatt_needs_help: c.fskatt_needs_help, commission_rate: c.commission_rate, identity_verified: c.identity_verified, pet_pref: c.pet_pref, elevator_pref: c.elevator_pref, languages: c.languages} : null;
   const updates = {
     full_name: document.getElementById('admin-edit-name')?.value.trim(),
     phone: document.getElementById('admin-edit-phone')?.value.trim(),
@@ -2875,6 +2926,27 @@ async function saveCleanerFromAdmin() {
     service_radius_km: parseInt(document.getElementById('admin-edit-radius')?.value) || 30,
   };
 
+  // F-skatt
+  var fskattVal = document.getElementById('cd-fskatt')?.value;
+  if (fskattVal === 'yes') { updates.has_fskatt = true; updates.fskatt_needs_help = false; }
+  else if (fskattVal === 'help') { updates.has_fskatt = false; updates.fskatt_needs_help = true; }
+  else { updates.has_fskatt = false; updates.fskatt_needs_help = false; }
+
+  // Provision
+  var commVal = parseInt(document.getElementById('cd-commission')?.value);
+  if (!isNaN(commVal) && commVal >= 0 && commVal <= 50) updates.commission_rate = commVal;
+
+  // ID-verifierad
+  updates.identity_verified = document.getElementById('cd-identity-verified')?.checked || false;
+
+  // Preferenser
+  updates.pet_pref = document.getElementById('cd-pet-pref')?.value || null;
+  updates.elevator_pref = document.getElementById('cd-elevator-pref')?.value || null;
+
+  // Språk
+  var langVal = (document.getElementById('cd-languages')?.value || '').trim();
+  updates.languages = langVal ? langVal.split(',').map(function(l) { return l.trim(); }).filter(Boolean) : null;
+
   const { error } = await AR.update('cleaners', updates, 'id=eq.' + currentCleanerId);
   if (error) {
     showToast('❌ Fel vid sparning: ' + error.message);
@@ -2884,6 +2956,72 @@ async function saveCleanerFromAdmin() {
   closeCleanerModal();
   showToast('✅ Städarprofil sparad!');
   await loadAll();
+}
+
+// ── ADMIN AVATAR UPLOAD ──────────────────────────────
+async function adminUploadAvatar(cleanerId) {
+  var input = document.getElementById('admin-avatar-input');
+  var status = document.getElementById('admin-avatar-status');
+  var preview = document.getElementById('admin-avatar-preview');
+  var file = input.files[0];
+  if (!file) return;
+
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    status.textContent = '❌ Bara JPG, PNG eller WebP';
+    status.style.color = '#DC2626';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    status.textContent = '❌ Max 5 MB';
+    status.style.color = '#DC2626';
+    return;
+  }
+
+  status.textContent = '⏳ Laddar upp...';
+  status.style.color = '#6B6960';
+
+  try {
+    var resized = await adminResizeImage(file, 500);
+    var filePath = cleanerId + '/avatar.webp';
+    var uploadRes = await SB.storage.from('avatars').upload(filePath, resized, {
+      contentType: 'image/webp',
+      upsert: true
+    });
+    if (uploadRes.error) throw new Error(uploadRes.error.message);
+
+    var urlRes = SB.storage.from('avatars').getPublicUrl(filePath);
+    var publicUrl = urlRes.data.publicUrl;
+
+    await AR.update('cleaners', { avatar_url: publicUrl }, 'id=eq.' + cleanerId);
+
+    preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover">';
+    status.textContent = '✅ Bild uppdaterad';
+    status.style.color = '#065F46';
+  } catch(err) {
+    console.error('Admin avatar upload:', err);
+    status.textContent = '❌ ' + (err.message || 'Uppladdning misslyckades');
+    status.style.color = '#DC2626';
+  }
+}
+
+function adminResizeImage(file, maxSize) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
+      else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        if (blob) resolve(blob);
+        else reject(new Error('Konvertering misslyckades'));
+      }, 'image/webp', 0.85);
+    };
+    img.onerror = function() { reject(new Error('Kunde inte läsa bild')); };
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 // ── APPLICATIONS ──────────────────────────────────────
