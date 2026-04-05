@@ -446,7 +446,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
         <div class="table-wrap" style="overflow-x:auto">
           <table>
-            <thead><tr><th>Städare</th><th>Stad</th><th>Telefon</th><th>Betyg</th><th>Tjänster</th><th>Timpris</th><th>Radie</th><th>F-skatt</th><th>Stripe</th><th>Status</th><th>Uppdrag</th><th></th></tr></thead>
+            <thead><tr><th>Städare</th><th>Plats</th><th>Telefon</th><th>Betyg</th><th>Tjänster</th><th>Timpris</th><th>Radie</th><th>F-skatt</th><th>Stripe</th><th>Status</th><th>Uppdrag</th><th></th></tr></thead>
             <tbody id="cleaners-tbody"><tr><td colspan="12" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
@@ -1792,7 +1792,7 @@ function renderCleaners() {
           <div><strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
         </div>
       </td>
-      <td>${escHtml(c.city || '–')}</td>
+      <td>${c.city ? '<div style="font-weight:600">' + escHtml(c.city) + '</div>' : ''}${c.home_address ? '<div style="font-size:.72rem;color:#6B6960">' + escHtml(c.home_address) + '</div>' : ''}${!c.city && !c.home_address ? '–' : ''}</td>
       <td>${c.phone ? `<a href="tel:${escHtml(c.phone)}" style="color:var(--g);text-decoration:none;font-size:.82rem">${escHtml(c.phone)}</a>` : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
       <td>
         <span style="font-size:.9rem">⭐ ${c.avg_rating || '–'}</span>
@@ -2569,6 +2569,20 @@ function showCleanerDetail(id) {
         <input id="admin-edit-rate" type="number" min="200" max="800" value="${parseInt(c.hourly_rate)||350}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
       </div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">HEMADRESS</label>
+        <input id="admin-edit-home-address" value="${escHtml(c.home_address||'')}" placeholder="Gatuadress, ort" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+        <div style="font-size:.65rem;color:#9E9E9A;margin-top:2px">Används för radieberäkning (PostGIS)</div>
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">SERVICERADIE</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input id="admin-edit-radius" type="number" min="1" max="150" value="${parseInt(c.service_radius_km)||30}" style="width:80px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+          <span style="font-size:.85rem;color:#6B6960">km</span>
+        </div>
+      </div>
+    </div>
     <div style="margin-bottom:12px">
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">TJÄNSTER (kommaseparerade)</label>
       <input id="admin-edit-services" value="${escHtml(Array.isArray(c.services)?c.services.join(', '):c.services||'')}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
@@ -2849,7 +2863,7 @@ async function autoPauseCritical() {
 async function saveCleanerFromAdmin() {
   if (!hasPerm('cleaners','write')) { showToast('🔒 Du har inte behörighet'); return; }
   const c = data.cleaners.find(x => x.id === currentCleanerId);
-  const oldValue = c ? {full_name: c.full_name, phone: c.phone, city: c.city, hourly_rate: c.hourly_rate, services: c.services, bio: c.bio, admin_notes: c.admin_notes} : null;
+  const oldValue = c ? {full_name: c.full_name, phone: c.phone, city: c.city, hourly_rate: c.hourly_rate, services: c.services, bio: c.bio, admin_notes: c.admin_notes, home_address: c.home_address, service_radius_km: c.service_radius_km} : null;
   const updates = {
     full_name: document.getElementById('admin-edit-name')?.value.trim(),
     phone: document.getElementById('admin-edit-phone')?.value.trim(),
@@ -2858,6 +2872,8 @@ async function saveCleanerFromAdmin() {
     services: (document.getElementById('admin-edit-services')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
     bio: document.getElementById('admin-edit-bio')?.value.trim(),
     admin_notes: document.getElementById('admin-note')?.value.trim(),
+    home_address: document.getElementById('admin-edit-home-address')?.value.trim() || null,
+    service_radius_km: parseInt(document.getElementById('admin-edit-radius')?.value) || 30,
   };
 
   const { error } = await AR.update('cleaners', updates, 'id=eq.' + currentCleanerId);
