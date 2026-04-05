@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Städarprofil | Spick</title>
 <meta name="description" content="Se profil, betyg och boka denna städare direkt via Spick.">
-<meta property="og:type" content="website">
+<meta property="og:type" content="profile">
+<meta property="og:site_name" content="Spick">
 <meta property="og:title" content="Städarprofil | Spick">
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="robots" content="index, follow">
@@ -104,7 +105,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 
 <div class="cta-bar" id="cta-bar" style="display:none">
   <a class="btn-book" id="book-btn" href="boka.html">Boka denna städare →</a>
-  <button class="btn-share" onclick="shareProfile()">🔗</button>
+  <button class="btn-share" onclick="shareProfile()">📋 Kopiera länk</button>
 </div>
 
 <script>
@@ -125,7 +126,7 @@ async function loadProfile() {
     return;
   }
 
-  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved&is_approved=eq.true&';
+  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs&is_approved=eq.true&';
   if (slug) cleanerUrl += 'slug=eq.' + encodeURIComponent(slug);
   else cleanerUrl += 'id=eq.' + encodeURIComponent(id);
 
@@ -140,52 +141,83 @@ async function loadProfile() {
   _cleaner = c;
 
   // Populate profile
+  var hasRatings = c.avg_rating != null && c.review_count > 0;
   const initial = (c.full_name || '?')[0].toUpperCase();
-  document.getElementById('p-avatar').textContent = initial;
+  // Steg 4 — Avatar med fallback
+  if (c.avatar_url || c.profile_image_url) {
+    document.getElementById('p-avatar').innerHTML = '<img src="' + escHtml(c.avatar_url || c.profile_image_url) + '" alt="' + escHtml(c.full_name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+  } else {
+    document.getElementById('p-avatar').textContent = initial;
+  }
   document.getElementById('p-name').textContent = c.full_name || 'Städare';
   const cityDisplay = (c.city || 'Sverige').charAt(0).toUpperCase() + (c.city || 'Sverige').slice(1).toLowerCase();
-  const verified = c.identity_verified ? ' · 🔐 ID-verifierad' : '';
-  document.getElementById('p-city').textContent = cityDisplay + verified;
-  document.title = (c.full_name || 'Städare') + ' | Spick';
+  document.getElementById('p-city').textContent = cityDisplay;
 
-  const rating = parseFloat(c.avg_rating || 0);
-  if (rating > 0) {
-    const stars = '⭐'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
-    document.getElementById('p-stars').textContent = stars;
-    document.getElementById('p-rating-text').textContent = rating.toFixed(1) + '/5 (' + (c.review_count || 0) + ' betyg)';
+  // Steg 1 — Badge + rating line
+  var badgeLine = '';
+  if (c.identity_verified) badgeLine += '<span style="color:#065F46;font-weight:600;font-size:.85rem">✓ ID-verifierad</span>';
+  if (hasRatings) {
+    badgeLine += (badgeLine ? ' · ' : '') + '<span style="color:#f59e0b">' + '★'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960;font-size:.8rem">(' + c.review_count + ' omdömen)</span>';
   } else {
-    document.getElementById('p-stars').textContent = '';
-    document.getElementById('p-rating-text').textContent = '🌟 Ny på Spick';
+    badgeLine += (badgeLine ? ' · ' : '') + '<span style="color:#6B6960;font-size:.85rem">Ny på Spick</span>';
   }
+  document.getElementById('p-stars').innerHTML = badgeLine;
+  document.getElementById('p-rating-text').textContent = '';
 
   // Badges
-  const badges = [];
+  var badges = [];
   if (c.identity_verified) badges.push('<span class="badge badge-blue">🔐 ID-verifierad</span>');
-  const tier = c.commission_tier || c.tier || 'new';
-  const tierLabels = { new: null, established: '⭐ Silver', professional: '🏅 Gold', elite: '👑 Platinum' };
-  if (tierLabels[tier]) badges.push('<span class="badge badge-purple">' + tierLabels[tier] + '</span>');
-  if ((c.total_jobs || 0) >= 10) badges.push('<span class="badge badge-green">✅ Erfaren</span>');
+  if (c.completed_jobs >= 10) badges.push('<span class="badge badge-green">✅ Erfaren</span>');
   document.getElementById('p-badges').innerHTML = badges.join('');
 
-  // Stats — visa bara det som finns i DB
-  var statsHTML = '<div class="stat"><div class="stat-val">' + (c.hourly_rate || 350) + '</div><div class="stat-lbl">kr/h</div></div>';
-  if (c.review_count > 0) {
-    statsHTML += '<div class="stat"><div class="stat-val">' + c.review_count + '</div><div class="stat-lbl">omdömen</div></div>';
-  }
-  if (c.avg_rating) {
-    statsHTML += '<div class="stat"><div class="stat-val">' + parseFloat(c.avg_rating).toFixed(1) + '</div><div class="stat-lbl">snittbetyg</div></div>';
+  // Stats — RUT-pris + dynamisk tredje kolumn
+  var statsHTML = '';
+  statsHTML += '<div class="stat"><div class="stat-val" style="color:var(--g)">' + (c.hourly_rate || 350) + '</div><div class="stat-lbl">kr/h</div></div>';
+  statsHTML += '<div class="stat"><div class="stat-val" style="color:var(--g)">' + Math.round((c.hourly_rate || 350) * 0.5) + '</div><div class="stat-lbl">kr/h med RUT</div></div>';
+  if (hasRatings) {
+    statsHTML += '<div class="stat"><div class="stat-val">' + c.avg_rating.toFixed(1) + '</div><div class="stat-lbl">snittbetyg</div></div>';
+  } else if (c.completed_jobs > 0) {
+    statsHTML += '<div class="stat"><div class="stat-val">' + c.completed_jobs + '</div><div class="stat-lbl">uppdrag</div></div>';
   }
   document.getElementById('stats-grid').innerHTML = statsHTML;
 
-  // Bio
+  // Bio — visa alltid
   if (c.bio) {
     document.getElementById('p-bio').textContent = c.bio;
-    document.getElementById('bio-card').style.display = 'block';
+  } else {
+    document.getElementById('p-bio').innerHTML = '<span style="color:#6B6960;font-style:italic">Ingen personlig beskrivning ännu.</span>';
   }
+  document.getElementById('bio-card').style.display = 'block';
 
   // Services
   const svcs = Array.isArray(c.services) ? c.services : (c.services || 'Hemstädning').split(',');
   document.getElementById('p-services').innerHTML = svcs.map(s => '<span class="service-tag">' + escHtml(s.trim()) + '</span>').join('');
+
+  // Info-taggar
+  var infoTags = [];
+  if (c.member_since) {
+    var ms = new Date(c.member_since);
+    var months = ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'];
+    infoTags.push('📅 Medlem sedan ' + months[ms.getMonth()] + ' ' + ms.getFullYear());
+  }
+  if (c.languages) {
+    var langs = Array.isArray(c.languages) ? c.languages.join(', ') : c.languages;
+    if (langs) infoTags.push('🗣 ' + escHtml(langs));
+  }
+  if (c.pet_pref && c.pet_pref !== 'no' && c.pet_pref !== false) {
+    infoTags.push('🐾 Djurvänlig');
+  }
+  if (c.service_radius_km) {
+    infoTags.push('📍 Täcker ' + c.service_radius_km + ' km radie');
+  }
+  if (infoTags.length > 0) {
+    var infoCard = document.createElement('div');
+    infoCard.className = 'card';
+    infoCard.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:.5rem">' + infoTags.map(function(tag) {
+      return '<span style="font-size:.8rem;padding:.35rem .75rem;border-radius:99px;background:var(--bg);color:#6B6960;border:1px solid #E8E8E4">' + tag + '</span>';
+    }).join('') + '</div>';
+    document.getElementById('p-services').closest('.card').after(infoCard);
+  }
 
   // Reviews
   var reviewsUrl = SUPA + '/rest/v1/reviews?select=rating,cleaner_rating,comment,created_at,customer_name&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
@@ -214,8 +246,26 @@ async function loadProfile() {
   } catch(e) { document.getElementById('qr-card').style.display = 'none'; }
 
   // Booking CTA
-  document.getElementById('book-btn').href = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + (c.hourly_rate || 350);
+  var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + (c.hourly_rate || 350);
+  document.getElementById('book-btn').href = bokaHref;
+  var rutNote = document.createElement('div');
+  rutNote.style.cssText = 'font-size:.75rem;color:#065F46;margin-top:.25rem;text-align:center';
+  rutNote.textContent = 'från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT-avdrag';
+  document.getElementById('book-btn').after(rutNote);
   document.getElementById('cta-bar').style.display = 'flex';
+
+  // Dynamisk SEO
+  document.title = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick';
+  var metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) {
+    metaDesc.content = 'Boka ' + c.full_name + ' för ' + ((Array.isArray(c.services) ? c.services.join(', ') : '') || 'städning').toLowerCase() + ' i ' + (c.city || 'Stockholm') + '. ' + (c.hourly_rate || 350) + ' kr/h (' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT).';
+  }
+  var ogTitle = document.querySelector('meta[property="og:title"]');
+  if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
+  ogTitle.content = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick';
+  var ogDesc = document.querySelector('meta[property="og:description"]');
+  if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
+  ogDesc.content = 'Boka ' + c.full_name + ' för städning i ' + (c.city || 'Stockholm') + '. Från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT.';
 
   // Schema.org
   document.getElementById('schema-json').textContent = JSON.stringify({
@@ -247,8 +297,8 @@ function shareProfile() {
   } else {
     navigator.clipboard.writeText(url).then(() => {
       const btn = document.querySelector('.btn-share');
-      btn.textContent = '✅';
-      setTimeout(() => btn.textContent = '🔗', 2000);
+      btn.textContent = '✓ Kopierad!';
+      setTimeout(function() { btn.textContent = '📋 Kopiera länk'; }, 2000);
     }).catch(() => prompt('Kopiera länken:', url));
   }
 }
