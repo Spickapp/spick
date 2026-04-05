@@ -110,9 +110,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-});
+const SUPA = SPICK.SUPA_URL;
+const KEY = SPICK.SUPA_KEY;
+const H = {apikey: KEY, Authorization: 'Bearer ' + KEY};
 
 let _cleaner = null;
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -127,13 +127,15 @@ async function loadProfile() {
     return;
   }
 
-  let query = SB.from('cleaners').select('id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved');
-  if (slug) query = query.eq('slug', slug);
-  else query = query.eq('id', id);
-  query = query.eq('is_approved', true).single();
+  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved&is_approved=eq.true&';
+  if (slug) cleanerUrl += 'slug=eq.' + encodeURIComponent(slug);
+  else cleanerUrl += 'id=eq.' + encodeURIComponent(id);
 
-  const { data: c, error } = await query;
-  if (error || !c) {
+  var cleanerRes = await fetch(cleanerUrl, {headers: H, method: 'GET'});
+  var cleanerArr = cleanerRes.ok ? await cleanerRes.json() : [];
+  var c = Array.isArray(cleanerArr) && cleanerArr.length > 0 ? cleanerArr[0] : null;
+
+  if (!c) {
     showError('Städaren hittades inte eller är inte aktiv.');
     return;
   }
@@ -188,11 +190,10 @@ async function loadProfile() {
   document.getElementById('p-services').innerHTML = svcs.map(s => '<span class="service-tag">' + escHtml(s.trim()) + '</span>').join('');
 
   // Reviews
-  const { data: reviews } = await SB.from('reviews')
-    .select('rating,cleaner_rating,customer_name,comment,created_at')
-    .eq('cleaner_id', c.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
+  var reviewsUrl = SUPA + '/rest/v1/reviews?select=rating,cleaner_rating,comment,created_at,customer_name&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
+  var reviewsRes = await fetch(reviewsUrl, {headers: H});
+  var reviews = reviewsRes.ok ? await reviewsRes.json() : [];
+  if (!Array.isArray(reviews)) reviews = [];
 
   if (reviews && reviews.length) {
     document.getElementById('p-reviews').innerHTML = reviews.map(r => {
