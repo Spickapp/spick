@@ -2990,15 +2990,7 @@ async function adminUploadAvatar(cleanerId) {
 
     // Upload via raw fetch (SDK auth hänger i Edge)
     var uploadUrl = SPICK.SUPA_URL + '/storage/v1/object/avatars/' + filePath;
-    var session = null;
-    try {
-      var s = await SB.auth.getSession();
-      session = s?.data?.session;
-    } catch(e) {}
-
-    var authHeader = session?.access_token
-      ? 'Bearer ' + session.access_token
-      : 'Bearer ' + SPICK.SUPA_KEY;
+    var authHeader = 'Bearer ' + SPICK.SUPA_KEY;
 
     var upRes = await fetch(uploadUrl, {
       method: 'POST',
