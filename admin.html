@@ -3612,17 +3612,102 @@ async function changeTicketStatus(ticketId) {
 
 // -- QUALITY --
 async function renderQualityPanel() {
-  var flagged = data.cleaners.filter(function(c){ return c.admin_flag || c.is_blocked || (parseFloat(c.avg_rating||5)<3.5 && (c.review_count||0)>3); });
+  // Ladda tickets om inte redan laddade
+  if (!window.ticketsData || !Array.isArray(window.ticketsData)) {
+    try {
+      var tRes = await fetch(SPICK.SUPA_URL + '/rest/v1/support_tickets?select=*&order=created_at.desc&limit=200&apikey=' + SPICK.SUPA_KEY, {headers:{'apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY}});
+      window.ticketsData = tRes.ok ? await tRes.json() : [];
+    } catch(e) { window.ticketsData = []; }
+  }
+
+  // Flaggade städare
+  var flagged = data.cleaners.filter(function(c) {
+    return c.admin_flag || c.is_blocked || (parseFloat(c.avg_rating || 5) < 3.5 && (c.review_count || 0) > 3);
+  });
   document.getElementById('kpi-flagged-cleaners').textContent = flagged.length;
-  var ratedCleaners = data.cleaners.filter(function(c){ return (c.review_count||0)>0; });
-  var avgR = ratedCleaners.length ? (ratedCleaners.reduce(function(s,c){return s+parseFloat(c.avg_rating||0);},0)/ratedCleaners.length).toFixed(1) : '-';
+
+  // Genomsnittligt betyg — viktat per antal recensioner
+  var ratedCleaners = data.cleaners.filter(function(c) { return (c.review_count || 0) > 0; });
+  var totalReviews = ratedCleaners.reduce(function(s, c) { return s + (c.review_count || 0); }, 0);
+  var weightedSum = ratedCleaners.reduce(function(s, c) { return s + (parseFloat(c.avg_rating || 0) * (c.review_count || 0)); }, 0);
+  var avgR = totalReviews > 0 ? (weightedSum / totalReviews).toFixed(1) : '-';
   document.getElementById('kpi-avg-rating').textContent = avgR;
-  document.getElementById('kpi-complaints-week').textContent = ticketsData.filter(function(t){return t.type==='complaint' && new Date(t.created_at)>=new Date(Date.now()-7*86400000);}).length;
-  document.getElementById('kpi-noshow-month').textContent = data.cleaners.reduce(function(s,c){return s+(c.noshow_count_30d||0);},0);
-  document.getElementById('flagged-cleaners-list').innerHTML = flagged.length ? flagged.map(function(c){
-    return '<div class="cleaner-card"><div class="avatar">'+(c.full_name||'?')[0]+'</div><div class="cleaner-info" style="flex:1"><h4>'+escHtml(c.full_name)+'</h4><p>'+parseFloat(c.avg_rating||0).toFixed(1)+' - '+escHtml(c.city||'')+'</p></div><button class="btn btn-outline btn-sm" onclick="showCleanerDetail(\''+c.id+'\')">Detaljer</button></div>';
-  }).join('') : '<div class="empty">Inga flaggade stadare</div>';
-  document.getElementById('risk-customers-list').innerHTML = '<div class="empty">Inga riskkunder</div>';
+
+  // Klagomål denna vecka
+  var weekAgo = Date.now() - 7 * 86400000;
+  var complaints = (window.ticketsData || []).filter(function(t) {
+    return t.type === 'complaint' && new Date(t.created_at).getTime() >= weekAgo;
+  });
+  document.getElementById('kpi-complaints-week').textContent = complaints.length;
+
+  // No-shows denna månad — räkna från bookings
+  var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  var noShows = (data.bookings || []).filter(function(b) {
+    return b.status === 'no_show' && new Date(b.booking_date || b.created_at) >= monthStart;
+  });
+  document.getElementById('kpi-noshow-month').textContent = noShows.length;
+
+  // Flaggade-listan
+  var flaggedEl = document.getElementById('flagged-cleaners-list');
+  if (flaggedEl) {
+    flaggedEl.innerHTML = flagged.length ? flagged.map(function(c) {
+      var reasons = [];
+      if (c.admin_flag) reasons.push('Flaggad av admin');
+      if (c.is_blocked) reasons.push('Blockerad');
+      if (parseFloat(c.avg_rating || 5) < 3.5 && (c.review_count || 0) > 3) reasons.push('Lågt betyg: ' + parseFloat(c.avg_rating).toFixed(1));
+      return '<div style="padding:.5rem 0;border-bottom:1px solid #E8E8E4;display:flex;justify-content:space-between;align-items:center">' +
+        '<div><strong>' + escHtml(c.full_name) + '</strong><div style="font-size:.75rem;color:#6B6960">' + reasons.join(' · ') + '</div></div>' +
+        '<button onclick="showCleanerDetail(\'' + c.id + '\')" style="font-size:.75rem;padding:.25rem .5rem;border:1px solid #E8E8E4;border-radius:6px;background:#fff;cursor:pointer">Granska</button>' +
+      '</div>';
+    }).join('') : '<div class="empty">Inga flaggade städare</div>';
+  }
+
+  // Riskkunder — kunder med 2+ klagomål
+  var riskEl = document.getElementById('risk-customers-list');
+  if (riskEl) {
+    var customerComplaints = {};
+    (window.ticketsData || []).filter(function(t) { return t.type === 'complaint'; }).forEach(function(t) {
+      var key = t.customer_email || 'Okänd';
+      if (!customerComplaints[key]) customerComplaints[key] = { email: key, name: t.customer_name || 'Okänd', count: 0 };
+      customerComplaints[key].count++;
+    });
+    var riskCustomers = Object.values(customerComplaints).filter(function(c) { return c.count >= 2; });
+    riskEl.innerHTML = riskCustomers.length ? riskCustomers.map(function(c) {
+      return '<div style="padding:.5rem 0;border-bottom:1px solid #E8E8E4"><strong>' + escHtml(c.name) + '</strong> <span style="font-size:.75rem;color:#6B6960">(' + escHtml(c.email) + ')</span> — ' + c.count + ' klagomål</div>';
+    }).join('') : '<div class="empty">Inga riskkunder</div>';
+  }
+
+  // Betygsfördelning — Chart.js
+  var canvas = document.getElementById('rating-distribution-chart');
+  if (canvas && typeof Chart !== 'undefined') {
+    var dist = [0, 0, 0, 0, 0];
+    try {
+      var ratingsRes = await fetch(SPICK.SUPA_URL + '/rest/v1/ratings?select=rating&created_at=gte.' + new Date(Date.now() - 90 * 86400000).toISOString() + '&apikey=' + SPICK.SUPA_KEY, {headers:{'apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY}});
+      var ratings = ratingsRes.ok ? await ratingsRes.json() : [];
+      ratings.forEach(function(r) {
+        var v = Math.round(r.rating);
+        if (v >= 1 && v <= 5) dist[v - 1]++;
+      });
+    } catch(e) {}
+
+    if (canvas._chartInstance) canvas._chartInstance.destroy();
+    canvas._chartInstance = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: ['1 ★', '2 ★', '3 ★', '4 ★', '5 ★'],
+        datasets: [{
+          data: dist,
+          backgroundColor: ['#DC2626', '#F59E0B', '#F59E0B', '#22C55E', '#0F6E56'],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+  }
 }
 
 // -- TEAM --
