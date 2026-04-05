@@ -1507,7 +1507,7 @@ function renderCleaners(cleaners) {
     const col = COLORS[(cl.full_name||'').charCodeAt(0) % COLORS.length];
     const rate = cl.hourly_rate || 350;
     const rutRate = Math.round(rate * 0.5);
-    const stars = '⭐'.repeat(Math.round(cl.avg_rating||5));
+    const hasRatings = cl.avg_rating != null && cl.review_count > 0;
     const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : typeof cl.services === 'string' ? cl.services.split(',').slice(0,3).map(s=>s.trim()).filter(Boolean) : [];
     const card = document.createElement('div');
     card.className = 'cleaner-card';
@@ -1516,9 +1516,11 @@ function renderCleaners(cleaners) {
       <div class="cleaner-info">
         <div class="cleaner-name">${cl.full_name||'Städare'}</div>
         <div class="cleaner-meta">
-          <span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating||5))}</span>
-          <span>${(cl.avg_rating||5).toFixed(1)}</span>
-          ${cl.review_count ? `<span>(${cl.review_count} rec.)</span>` : ''}
+          ${hasRatings
+            ? `<span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating))}</span>
+               <span>${cl.avg_rating.toFixed(1)}</span>
+               <span>(${cl.review_count} rec.)</span>`
+            : '<span style="color:#6B6960;font-size:.75rem">Ny på Spick</span>'}
           ${cl.city ? `<span>📍 ${cl.city}</span>` : ''}
         </div>
         <div class="cleaner-tags">
@@ -1529,7 +1531,7 @@ function renderCleaners(cleaners) {
         <div class="cleaner-price">${rate} kr/h</div>
         <div class="cleaner-rut">= ${rutRate} kr/h med RUT</div>
         ${cl.bankid_verified ? '<div class="badge-bankid">✓ Verifierad</div>' : ''}
-        ${(cl.avg_rating||0) >= 4.8 ? '<div class="badge-gold">⭐ Toppvald</div>' : ''}
+        ${hasRatings && cl.avg_rating >= 4.8 && cl.review_count >= 3 ? '<div class="badge-gold">⭐ Toppvald</div>' : ''}
       </div>`;
     card.onclick = () => selectCleaner(cl, card);
     list.appendChild(card);
