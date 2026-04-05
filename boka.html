@@ -1049,8 +1049,6 @@ function isDayAvailable(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   const dow = d.getDay(); // 0=sön, 1=mån, ..., 6=lör
 
-  if (dow === 0) return false; // Söndag stängd
-
   if (state.cleanerId) {
     const hasDay = state.availability.some(a =>
       (a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)) &&
@@ -1105,7 +1103,8 @@ function getAvailableSlots(dateStr, neededHours) {
   if (!dayAvails.length) {
     if (dow >= 1 && dow <= 6) {
       dayAvails.push({ cleaner_id: state.cleanerId || null, day_of_week: dow, start_time: '08:00', end_time: '18:00' });
-    } else {
+    } else if (dow === 0) {
+      // Söndag: bara om riktig availability-data finns (inget fallback-gissande)
       return [];
     }
   }
