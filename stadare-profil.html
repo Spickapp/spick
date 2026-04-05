@@ -323,16 +323,21 @@ function showError(msg) {
 }
 
 function shareProfile() {
-  const url = _cleaner?.slug ? location.origin + '/stadare-profil.html?s=' + _cleaner.slug : location.href;
-  const title = (_cleaner?.full_name || 'Städare') + ' — Spick';
+  var c = _cleaner;
+  if (!c) return;
+  var shareUrl = 'https://urjeijcncsyuletprydy.supabase.co/functions/v1/cleaner-og?' + (c.slug ? 's=' + c.slug : 'id=' + c.id);
+
   if (navigator.share) {
-    navigator.share({ title, url }).catch(() => {});
+    navigator.share({
+      title: c.full_name + ' — Städare på Spick',
+      text: 'Boka ' + (c.full_name || '').split(' ')[0] + ' för städning via Spick — från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT',
+      url: shareUrl
+    }).catch(function() {});
   } else {
-    navigator.clipboard.writeText(url).then(() => {
-      const btn = document.querySelector('.btn-share');
-      btn.textContent = '✓ Kopierad!';
-      setTimeout(function() { btn.textContent = '📋 Kopiera länk'; }, 2000);
-    }).catch(() => prompt('Kopiera länken:', url));
+    navigator.clipboard.writeText(shareUrl).then(function() {
+      var btn = document.querySelector('.btn-share');
+      if (btn) { btn.textContent = '✓ Kopierad!'; setTimeout(function() { btn.textContent = '📋 Kopiera länk'; }, 2000); }
+    }).catch(function() {});
   }
 }
 
