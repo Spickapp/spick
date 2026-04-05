@@ -2231,14 +2231,36 @@ function renderReviews() {
 
 // ── SETTINGS ──────────────────────────────────────────
 function renderSettings() {
+  var activeCleaners = data.cleaners ? data.cleaners.filter(function(c){ return c.is_approved && c.status === 'aktiv'; }).length : '–';
+  var totalBookings = data.bookings ? data.bookings.length : '–';
+  var totalCleaners = data.cleaners ? data.cleaners.length : '–';
+
   document.getElementById('system-status').innerHTML = `
-    <div class="stat-row"><span class="lbl">Supabase</span><span class="badge green"><span class="dot"></span>Aktiv</span></div>
-    <div class="stat-row"><span class="lbl">spick.se</span><span class="badge green"><span class="dot"></span>Live med HTTPS</span></div>
+    <div class="stat-row"><span class="lbl">Supabase</span><span id="sys-supabase" class="badge yellow">⏳ Kollar...</span></div>
+    <div class="stat-row"><span class="lbl">spick.se</span><span id="sys-site" class="badge yellow">⏳ Kollar...</span></div>
     <div class="stat-row"><span class="lbl">Stripe</span><span class="badge green"><span class="dot"></span>Live-läge</span></div>
-    <div class="stat-row"><span class="lbl">Resend (e-post)</span><span class="badge green"><span class="dot"></span>Aktiv</span></div>
-    <div class="stat-row"><span class="lbl">Edge Functions</span><span class="badge green"><span class="dot"></span>10 deployade</span></div>
+    <div class="stat-row"><span class="lbl">Resend (e-post)</span><span class="badge green"><span class="dot"></span>Konfigurerad</span></div>
+    <div class="stat-row"><span class="lbl">Edge Functions</span><span class="badge green"><span class="dot"></span>34 deployade</span></div>
     <div class="stat-row"><span class="lbl">Microsoft Clarity</span><span class="badge green"><span class="dot"></span>w1ep5s1zm6</span></div>
-    <div class="stat-row"><span class="lbl">Databas</span><span class="badge green"><span class="dot"></span>${data.bookings.length} bokningar · ${data.cleaners.length} städare</span></div>`;
+    <div class="stat-row"><span class="lbl">Databas</span><span class="badge green"><span class="dot"></span>${totalBookings} bokningar · ${totalCleaners} städare (${activeCleaners} aktiva)</span></div>`;
+
+  // Dynamisk Supabase-check
+  fetch(SPICK.SUPA_URL + '/rest/v1/?apikey=' + SPICK.SUPA_KEY).then(function(r) {
+    var el = document.getElementById('sys-supabase');
+    if (el) { el.className = 'badge ' + (r.ok ? 'green' : 'red'); el.innerHTML = (r.ok ? '<span class="dot"></span>Aktiv' : '❌ Nere'); }
+  }).catch(function() {
+    var el = document.getElementById('sys-supabase');
+    if (el) { el.className = 'badge red'; el.innerHTML = '❌ Nere'; }
+  });
+
+  // Dynamisk spick.se-check
+  fetch('https://spick.se/', {mode:'no-cors'}).then(function() {
+    var el = document.getElementById('sys-site');
+    if (el) { el.className = 'badge green'; el.innerHTML = '<span class="dot"></span>Live'; }
+  }).catch(function() {
+    var el = document.getElementById('sys-site');
+    if (el) { el.className = 'badge red'; el.innerHTML = '❌ Nere'; }
+  });
 }
 
 // ── BOOKING DETAIL ────────────────────────────────────
