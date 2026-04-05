@@ -2967,10 +2967,11 @@ async function adminUploadAvatar(cleanerId) {
   var input = document.getElementById('admin-avatar-input');
   var status = document.getElementById('admin-avatar-status');
   var preview = document.getElementById('admin-avatar-preview');
-  var file = input.files[0];
+  var file = input ? input.files[0] : null;
   if (!file) return;
 
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+  var validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (validTypes.indexOf(file.type) === -1) {
     status.textContent = '❌ Bara JPG, PNG eller WebP';
     status.style.color = '#DC2626';
     return;
@@ -2981,65 +2982,85 @@ async function adminUploadAvatar(cleanerId) {
     return;
   }
 
-  status.textContent = '⏳ Laddar upp...';
+  status.textContent = '⏳ Bearbetar bild...';
   status.style.color = '#6B6960';
 
   try {
-    var resized = await adminResizeImage(file, 500);
-    var filePath = cleanerId + '/avatar.webp';
+    var blob = await new Promise(function(resolve, reject) {
+      var timeout = setTimeout(function() { reject(new Error('Timeout vid bildbearbetning')); }, 15000);
+      var reader = new FileReader();
+      reader.onerror = function() { clearTimeout(timeout); reject(new Error('Kunde inte läsa filen')); };
+      reader.onload = function() {
+        var img = new Image();
+        img.onerror = function() { clearTimeout(timeout); reject(new Error('Kunde inte ladda bilden')); };
+        img.onload = function() {
+          var w = img.width;
+          var h = img.height;
+          var max = 500;
+          if (w > h) { if (w > max) { h = Math.round(h * max / w); w = max; } }
+          else { if (h > max) { w = Math.round(w * max / h); h = max; } }
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function(b) {
+            clearTimeout(timeout);
+            if (b) resolve(b);
+            else reject(new Error('Bildkonvertering misslyckades'));
+          }, 'image/webp', 0.85);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
 
-    // Upload via raw fetch (SDK auth hänger i Edge)
-    var uploadUrl = SPICK.SUPA_URL + '/storage/v1/object/avatars/' + filePath;
-    var authHeader = 'Bearer ' + SPICK.SUPA_KEY;
+    status.textContent = '⏳ Laddar upp...';
 
-    var upRes = await fetch(uploadUrl, {
+    var url = SPICK.SUPA_URL + '/storage/v1/object/avatars/' + cleanerId + '/avatar.webp';
+    var res = await fetch(url, {
       method: 'POST',
       headers: {
         'apikey': SPICK.SUPA_KEY,
-        'Authorization': authHeader,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
         'Content-Type': 'image/webp',
         'x-upsert': 'true'
       },
-      body: resized
+      body: blob
     });
 
-    if (!upRes.ok) {
-      var errText = await upRes.text().catch(function() { return 'Upload failed'; });
-      throw new Error(errText);
+    if (!res.ok) {
+      var errMsg = '';
+      try { errMsg = await res.text(); } catch(e) {}
+      throw new Error('Upload misslyckades (' + res.status + '): ' + errMsg);
     }
 
-    var publicUrl = SPICK.SUPA_URL + '/storage/v1/object/public/avatars/' + filePath;
+    var publicUrl = SPICK.SUPA_URL + '/storage/v1/object/public/avatars/' + cleanerId + '/avatar.webp';
 
-    await AR.update('cleaners', { avatar_url: publicUrl }, 'id=eq.' + cleanerId);
+    var dbRes = await fetch(SPICK.SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleanerId, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ avatar_url: publicUrl })
+    });
 
-    preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover">';
-    status.textContent = '✅ Bild uppdaterad';
+    if (!dbRes.ok) {
+      throw new Error('Kunde inte spara i databasen (' + dbRes.status + ')');
+    }
+
+    if (preview) preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover">';
+    status.textContent = '✅ Bild uppdaterad!';
     status.style.color = '#065F46';
-  } catch(err) {
-    console.error('Admin avatar upload:', err);
-    status.textContent = '❌ ' + (err.message || 'Uppladdning misslyckades');
-    status.style.color = '#DC2626';
-  }
-}
 
-function adminResizeImage(file, maxSize) {
-  return new Promise(function(resolve, reject) {
-    var img = new Image();
-    img.onload = function() {
-      var w = img.width, h = img.height;
-      if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
-      else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
-      var canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(function(blob) {
-        if (blob) resolve(blob);
-        else reject(new Error('Konvertering misslyckades'));
-      }, 'image/webp', 0.85);
-    };
-    img.onerror = function() { reject(new Error('Kunde inte läsa bild')); };
-    img.src = URL.createObjectURL(file);
-  });
+  } catch(err) {
+    if (status) {
+      status.textContent = '❌ ' + (err.message || 'Något gick fel');
+      status.style.color = '#DC2626';
+    }
+  }
 }
 
 // ── APPLICATIONS ──────────────────────────────────────
