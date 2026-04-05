@@ -71,6 +71,7 @@ serve(async (req) => {
       sqm,
       customer_notes,
       key_info,
+      key_type,
       customer_lat,
       customer_lng,
       customer_pnr_hash,
@@ -229,6 +230,8 @@ serve(async (req) => {
       notes: customer_notes || null,
       ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
       ...(customer_pnr     ? { customer_pnr }      : {}),
+      key_type: key_type || 'open',
+      key_info: key_info || null,
 
       // ── PRISMOTOR-FÄLT (nya) ──
       base_price_per_hour: pricing.basePricePerHour,

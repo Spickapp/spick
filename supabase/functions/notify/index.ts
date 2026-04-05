@@ -149,6 +149,8 @@ serve(async (req) => {
       const address = r.customer_address || r.address || "–";
       const hours = r.booking_hours || r.hours || 3;
       const price = r.total_price || r.price || 0;
+      const keyType = r.key_type || "";
+      const keyInfo = r.key_info || "";
       const hasRut = (r.rut_amount > 0) || r.rut;
       const rut = hasRut ? `<div class="badge">✓ RUT-avdrag aktivt – du betalar ${price.toLocaleString("sv")} kr</div>` : "";
 
@@ -159,6 +161,7 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(service)}</span></div>
           <div class="row"><span class="lbl">Datum</span><span class="val">${date || "–"} ${time ? "kl " + time : ""}</span></div>
           <div class="row"><span class="lbl">Adress</span><span class="val">${esc(address)}</span></div>
+          ${keyInfo ? `<div class="row"><span class="lbl">Tillträde</span><span class="val">${esc(keyInfo)}</span></div>` : ""}
           <div class="row"><span class="lbl">Timmar</span><span class="val">${hours} h</span></div>
           <div class="row"><span class="lbl">Du betalar</span><span class="val" style="color:#0F6E56;font-size:18px">${price.toLocaleString("sv")} kr</span></div>
         </div>
@@ -176,6 +179,7 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(service)}</span></div>
           <div class="row"><span class="lbl">Datum/tid</span><span class="val">${date || "–"} ${time ? "kl " + time : ""}</span></div>
           <div class="row"><span class="lbl">Adress</span><span class="val">${esc(address)}</span></div>
+          ${keyInfo ? `<div class="row"><span class="lbl">Tillträde</span><span class="val">${keyType === "code" ? "🔢 Portkod" : keyType === "key" ? "🗝️ Nyckel" : keyType === "portphone" ? "📱 Porttelefon" : "🚪 Öppen dörr"} — ${esc(keyInfo)}</span></div>` : ""}
           <div class="row"><span class="lbl">Timmar</span><span class="val">${hours} h</span></div>
           <div class="row"><span class="lbl">Pris</span><span class="val">${price.toLocaleString("sv")} kr</span></div>
           <div class="row"><span class="lbl">RUT</span><span class="val">${hasRut ? "✅ Ja" : "❌ Nej"}</span></div>
