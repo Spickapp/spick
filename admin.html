@@ -2987,14 +2987,36 @@ async function adminUploadAvatar(cleanerId) {
   try {
     var resized = await adminResizeImage(file, 500);
     var filePath = cleanerId + '/avatar.webp';
-    var uploadRes = await SB.storage.from('avatars').upload(filePath, resized, {
-      contentType: 'image/webp',
-      upsert: true
-    });
-    if (uploadRes.error) throw new Error(uploadRes.error.message);
 
-    var urlRes = SB.storage.from('avatars').getPublicUrl(filePath);
-    var publicUrl = urlRes.data.publicUrl;
+    // Upload via raw fetch (SDK auth hänger i Edge)
+    var uploadUrl = SPICK.SUPA_URL + '/storage/v1/object/avatars/' + filePath;
+    var session = null;
+    try {
+      var s = await SB.auth.getSession();
+      session = s?.data?.session;
+    } catch(e) {}
+
+    var authHeader = session?.access_token
+      ? 'Bearer ' + session.access_token
+      : 'Bearer ' + SPICK.SUPA_KEY;
+
+    var upRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': authHeader,
+        'Content-Type': 'image/webp',
+        'x-upsert': 'true'
+      },
+      body: resized
+    });
+
+    if (!upRes.ok) {
+      var errText = await upRes.text().catch(function() { return 'Upload failed'; });
+      throw new Error(errText);
+    }
+
+    var publicUrl = SPICK.SUPA_URL + '/storage/v1/object/public/avatars/' + filePath;
 
     await AR.update('cleaners', { avatar_url: publicUrl }, 'id=eq.' + cleanerId);
 
