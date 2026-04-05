@@ -108,14 +108,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
   <button class="btn-share" onclick="shareProfile()">🔗</button>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const SUPA = SPICK.SUPA_URL;
 const KEY = SPICK.SUPA_KEY;
 const H = {apikey: KEY, Authorization: 'Bearer ' + KEY};
-console.log('[PROFIL DEBUG] SUPA:', SUPA ? SUPA.substring(0,30) + '...' : 'UNDEFINED');
-console.log('[PROFIL DEBUG] KEY:', KEY ? KEY.substring(0,20) + '...' : 'UNDEFINED');
-console.log('[PROFIL DEBUG] H:', JSON.stringify(H).substring(0,60));
 
 let _cleaner = null;
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -134,7 +130,7 @@ async function loadProfile() {
   if (slug) cleanerUrl += 'slug=eq.' + encodeURIComponent(slug);
   else cleanerUrl += 'id=eq.' + encodeURIComponent(id);
 
-  var cleanerRes = await fetch(cleanerUrl, {headers: H, method: 'GET'});
+  var cleanerRes = await fetch(cleanerUrl + '&apikey=' + KEY, {headers: H});
   var cleanerArr = cleanerRes.ok ? await cleanerRes.json() : [];
   var c = Array.isArray(cleanerArr) && cleanerArr.length > 0 ? cleanerArr[0] : null;
 
@@ -194,7 +190,7 @@ async function loadProfile() {
 
   // Reviews
   var reviewsUrl = SUPA + '/rest/v1/reviews?select=rating,cleaner_rating,comment,created_at,customer_name&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
-  var reviewsRes = await fetch(reviewsUrl, {headers: H});
+  var reviewsRes = await fetch(reviewsUrl + '&apikey=' + KEY, {headers: H});
   var reviews = reviewsRes.ok ? await reviewsRes.json() : [];
   if (!Array.isArray(reviews)) reviews = [];
 
