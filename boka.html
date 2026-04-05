@@ -98,6 +98,9 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 .cal-day.past,.cal-day.unavail{color:#D1D5DB;background:#F9FAFB}
 .cal-day.blocked{background:var(--red);color:#9CA3AF;text-decoration:line-through}
 .cal-day.today.avail{outline:2px solid var(--g);outline-offset:1px}
+.cal-badge{position:absolute;top:1px;right:1px;background:#DC2626;color:#fff;font-size:.48rem;min-width:13px;height:13px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;pointer-events:none}
+.cal-day.avail.full{opacity:0.4;cursor:not-allowed;border-style:dashed}
+.cal-day.avail.full:hover{transform:none;background:var(--gl)}
 .cal-date-lbl{font-size:.8rem;font-weight:600;margin-bottom:.625rem}
 /* (Legacy .slot CSS removed — replaced by .tl-card above) */
 
@@ -999,23 +1002,43 @@ async function goStep2() {
 
 // ── KALENDER ──────────────────────────────────────────────────────────────────
 async function loadGlobalAvailability() {
-  const fallbackAvail = [1,2,3,4,5].map(d => ({
-    cleaner_id:null, day_of_week:d, start_time:'08:00', end_time:'17:00'
+  const fallbackAvail = [1,2,3,4,5,6].map(d => ({
+    cleaner_id: null, day_of_week: d, start_time: '08:00', end_time: '18:00', is_active: true
   }));
   try {
-    const [availRes, blockedRes, bookingsRes] = await Promise.all([
-      fetch(`${SUPA}/rest/v1/v_cleaner_availability_int?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H}),
-      fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H}),
-      fetch(`${SUPA}/rest/v1/booking_slots?select=cleaner_id,date,time,hours&order=date.asc`, {headers:H})
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const [availRes, blockedRes, bookingSlotsRes, bookingsRes] = await Promise.all([
+      fetch(`${SUPA}/rest/v1/v_cleaner_availability_int?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H, signal: controller.signal}),
+      fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H, signal: controller.signal}),
+      fetch(`${SUPA}/rest/v1/booking_slots?is_booked=eq.true&select=cleaner_id,date,time,hours&order=date.asc`, {headers:H, signal: controller.signal}),
+      fetch(`${SUPA}/rest/v1/bookings?status=in.(confirmed,pending)&select=cleaner_id,booking_date,booking_time,hours&order=booking_date.asc`, {headers:H, signal: controller.signal}).catch(() => ({ok:false}))
     ]);
-    const avail   = await availRes.json();
-    const blocked = await blockedRes.json();
-    const bookings= await bookingsRes.json();
-    // Validera att vi fick arrayer (skyddar mot saknade tabeller)
-    state.availability = Array.isArray(avail)   && avail.length   > 0 ? avail   : fallbackAvail;
+    clearTimeout(timeout);
+
+    const avail    = availRes.ok ? await availRes.json() : [];
+    const blocked  = blockedRes.ok ? await blockedRes.json() : [];
+    const bSlots   = bookingSlotsRes.ok ? await bookingSlotsRes.json() : [];
+    const bookings = bookingsRes.ok ? await bookingsRes.json() : [];
+
+    state.availability = Array.isArray(avail) && avail.length > 0 ? avail : fallbackAvail;
     state.blocked      = Array.isArray(blocked) ? blocked : [];
-    state.bookings     = Array.isArray(bookings)? bookings: [];
+
+    const normalizedSlots = Array.isArray(bSlots) ? bSlots.map(b => ({
+      cleaner_id: b.cleaner_id, date: b.date,
+      time: (b.time || '').slice(0, 5), hours: b.hours || 3
+    })) : [];
+
+    const normalizedBookings = Array.isArray(bookings) ? bookings.map(b => ({
+      cleaner_id: b.cleaner_id, date: b.booking_date,
+      time: (b.booking_time || '').slice(0, 5), hours: b.hours || 3
+    })) : [];
+
+    state.bookings = [...normalizedSlots, ...normalizedBookings];
+    console.log('[SPICK] availability:', state.availability.length, 'blocked:', state.blocked.length, 'bookings:', state.bookings.length);
   } catch(e) {
+    console.warn('[SPICK] loadGlobalAvailability failed:', e.message);
     state.availability = fallbackAvail;
     state.blocked      = [];
     state.bookings     = [];
@@ -1024,17 +1047,30 @@ async function loadGlobalAvailability() {
 
 function isDayAvailable(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  const dow = d.getDay(); // 0=sön,1=mån,...
-  // Om städare pre-vald: visa BARA hens dagar (och kolla blockerade)
+  const dow = d.getDay(); // 0=sön, 1=mån, ..., 6=lör
+
+  if (dow === 0) return false; // Söndag stängd
+
   if (state.cleanerId) {
-    const hasDay = state.availability.some(a => a.day_of_week === dow && a.cleaner_id === state.cleanerId);
+    const hasDay = state.availability.some(a =>
+      (a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)) &&
+      a.cleaner_id === state.cleanerId
+    );
     if (!hasDay) return false;
-    const isBlocked = Array.isArray(state.blocked) && state.blocked.some(b => b.cleaner_id === state.cleanerId && b.blocked_date === dateStr);
+    const isBlocked = Array.isArray(state.blocked) && state.blocked.some(b =>
+      b.cleaner_id === state.cleanerId && b.blocked_date === dateStr
+    );
     return !isBlocked;
   }
-  // Annars: visa dag om MINST EN städare är tillgänglig
-  const hasAvailCleaner = state.availability.some(a => a.day_of_week === dow);
-  if (!hasAvailCleaner && state.availability.length > 0) return false;
+
+  const hasAvailCleaner = state.availability.some(a =>
+    a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)
+  );
+  if (!hasAvailCleaner && state.availability.length > 0) {
+    const isFallback = state.availability.some(a => a.cleaner_id === null);
+    if (isFallback) return dow >= 1 && dow <= 6;
+    return false;
+  }
   return true;
 }
 
@@ -1059,77 +1095,69 @@ function getAvailableSlots(dateStr, neededHours) {
   const neededMins = neededHours * 60;
   const dow = new Date(dateStr + 'T00:00:00').getDay();
 
-  // Hämta tillgängliga städare med sina fönster denna dag
-  let dayAvails = state.availability.filter(a => a.day_of_week === dow && a.is_active !== false);
-  // Om städare pre-vald: visa BARA hens tidsfönster
+  let dayAvails = state.availability.filter(a =>
+    (a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)) &&
+    a.is_active !== false
+  );
   if (state.cleanerId) {
     dayAvails = dayAvails.filter(a => a.cleaner_id === state.cleanerId);
   }
   if (!dayAvails.length) {
-    // Fallback: mån–fre 08–17
-    dayAvails.push({cleaner_id: null, day_of_week: dow, start_time: '08:00', end_time: '17:00'});
+    if (dow >= 1 && dow <= 6) {
+      dayAvails.push({ cleaner_id: state.cleanerId || null, day_of_week: dow, start_time: '08:00', end_time: '18:00' });
+    } else {
+      return [];
+    }
   }
 
-  // Bokade fönster denna dag (per städare): [{cleanerId, startMin, endMin}]
-  // +30 min resttid/restid efter varje bokning
   const TRAVEL_BUFFER = 30;
   const bookedWindows = state.bookings
     .filter(b => b.date === dateStr)
     .map(b => ({
       cleanerId: b.cleaner_id,
-      startMin:  timeToMin(b.time),
-      endMin:    (timeToMin(b.time_end) || timeToMin(b.time) + (b.hours||3)*60) + TRAVEL_BUFFER
+      startMin: timeToMin(b.time),
+      endMin: timeToMin(b.time) + (b.hours || 3) * 60 + TRAVEL_BUFFER
     }));
 
-  // För varje möjlig starttid (var 30:e minut inom det bredaste fönstret):
-  // Är det MINST EN städare som kan ta uppdraget utan konflikt?
-  let earliestStart = 480, latestStart = 1020; // 08:00 – 17:00 default
+  let earliestStart = Infinity;
+  let latestStart = -Infinity;
   dayAvails.forEach(a => {
     earliestStart = Math.min(earliestStart, timeToMin(a.start_time));
-    latestStart   = Math.max(latestStart,   timeToMin(a.end_time) - neededMins);
+    latestStart   = Math.max(latestStart, timeToMin(a.end_time) - neededMins);
   });
-  latestStart = Math.max(latestStart, earliestStart);
+  if (earliestStart === Infinity || latestStart < earliestStart) return [];
 
-  // Filtrera bort passerade tider om datumet är idag
   const today = new Date();
   const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
   if (dateStr === todayStr) {
-    const nowMin = today.getHours() * 60 + today.getMinutes() + 120; // +2h buffert
-    earliestStart = Math.max(earliestStart, Math.ceil(nowMin / 60) * 60); // runda upp till nästa heltimme
+    const nowMin = today.getHours() * 60 + today.getMinutes() + 120;
+    earliestStart = Math.max(earliestStart, Math.ceil(nowMin / 60) * 60);
   }
+  if (latestStart < earliestStart) return [];
 
   const slots = [];
   for (let startMin = earliestStart; startMin <= latestStart; startMin += 60) {
-    // Kolla om minst 1 städare kan ta detta fönster
     const available = dayAvails.some(a => {
       const aStart = timeToMin(a.start_time);
       const aEnd   = timeToMin(a.end_time);
-      // Passar uppdraget inom städarens fönster?
       if (startMin < aStart || startMin + neededMins > aEnd) return false;
-      // Finns det en bokning som krockar för DENNA städare?
       const cid = a.cleaner_id;
-      const myBookings = cid
-        ? bookedWindows.filter(bw => bw.cleanerId === cid)
-        : bookedWindows; // null cleaner_id = fallback, kolla alla
+      if (!cid) return true;
+      const myBookings = bookedWindows.filter(bw => bw.cleanerId === cid);
       return !myBookings.some(bw => overlaps(startMin, neededMins, bw.startMin, bw.endMin));
     });
 
-    // Kolla om ALLA städare är bokade (= rödmarkera)
     const allTaken = dayAvails.every(a => {
       const aStart = timeToMin(a.start_time);
       const aEnd   = timeToMin(a.end_time);
-      if (startMin < aStart || startMin + neededMins > aEnd) return true; // utanför fönster = kan ej ta
+      if (startMin < aStart || startMin + neededMins > aEnd) return true;
       const cid = a.cleaner_id;
-      const myBookings = cid
-        ? bookedWindows.filter(bw => bw.cleanerId === cid)
-        : bookedWindows;
+      if (!cid) return false;
+      const myBookings = bookedWindows.filter(bw => bw.cleanerId === cid);
       return myBookings.some(bw => overlaps(startMin, neededMins, bw.startMin, bw.endMin));
     });
 
-    slots.push({
-      time:  minToTime(startMin),
-      taken: !available || allTaken
-    });
+    slots.push({ time: minToTime(startMin), taken: !available || allTaken });
   }
   return slots;
 }
@@ -1162,19 +1190,24 @@ function renderCalendar() {
     else if (isPast) { el.className = 'cal-day past'; }
     else if (isBlocked) { el.className = 'cal-day blocked'; el.title='Ej tillgänglig'; }
     else if (avail) {
-      // Kolla hur många tider som finns kvar denna dag
       const daySlots = getAvailableSlots(dateStr, state.hours || 3);
       const freeCount = daySlots.filter(s => !s.taken).length;
       const totalCount = daySlots.length;
-      el.className = 'cal-day avail' + (isToday ? ' today' : '') + (freeCount === 0 ? ' full' : '');
-      el.title = freeCount > 0 ? `${freeCount} av ${totalCount} tider lediga` : 'Fullbokad';
-      el.onclick = freeCount > 0 ? () => selectDate(dateStr) : null;
-      if (freeCount > 0 && freeCount <= 2) {
-        // Få tider kvar – visa varning
-        const badge = document.createElement('span');
-        badge.className = 'cal-badge';
-        badge.textContent = freeCount;
-        el.appendChild(badge);
+      if (freeCount === 0) {
+        el.className = 'cal-day avail full' + (isToday ? ' today' : '');
+        el.title = 'Fullbokad denna dag';
+      } else {
+        el.className = 'cal-day avail' + (isToday ? ' today' : '');
+        el.title = freeCount <= 2
+          ? 'Bara ' + freeCount + ' tid' + (freeCount > 1 ? 'er' : '') + ' kvar!'
+          : freeCount + ' av ' + totalCount + ' tider lediga';
+        el.onclick = () => selectDate(dateStr);
+        if (freeCount <= 2) {
+          const badge = document.createElement('span');
+          badge.className = 'cal-badge';
+          badge.textContent = freeCount;
+          el.appendChild(badge);
+        }
       }
     } else {
       el.className = 'cal-day unavail'; el.title='Ej tillgänglig';
@@ -1282,7 +1315,7 @@ function selectBlockTime(t, card, endTime) {
 
   // Mini-gantt: dag 08:00–18:00 = 600 minuter
   const DAY_S   = 8 * 60;   // 480
-  const DAY_E   = 18 * 60;  // 1080
+  const DAY_E   = 22 * 60;  // 1320
   const RANGE   = DAY_E - DAY_S;
   const startM  = timeToMin(t);
   const endM    = timeToMin(endTime);
@@ -1368,7 +1401,14 @@ async function loadAvailableCleaners() {
     const blockedToday = Array.isArray(state.blocked) ? state.blocked.filter(b => b.blocked_date === state.date).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !blockedToday.includes(c.id));
     // Filtrera: inte fullbokade denna tid
-    const takenNow = Array.isArray(state.bookings) ? state.bookings.filter(b => b.date === state.date && b.time?.slice(0,5) === state.time).map(b => b.cleaner_id) : [];
+      const myStart = timeToMin(state.time);
+      const myEnd = myStart + (state.hours || 3) * 60;
+      const takenNow = Array.isArray(state.bookings) ? state.bookings.filter(b => {
+        if (b.date !== state.date) return false;
+        const bStart = timeToMin(b.time);
+        const bEnd = bStart + (b.hours || 3) * 60;
+        return myStart < bEnd && myEnd > bStart;
+      }).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !takenNow.includes(c.id));
     // Sortera: betyg → antal uppdrag → pris (lokal fallback)
     cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
@@ -1882,7 +1922,7 @@ async function doBook() {
   // Verify the cleaner is STILL available (overlap check, not just exact time)
   try {
     const conflictRes = await fetch(
-      `${SUPA}/rest/v1/booking_slots?cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&select=time,hours`,
+      `${SUPA}/rest/v1/booking_slots?is_booked=eq.true&cleaner_id=eq.${state.cleanerId}&date=eq.${state.date}&select=time,hours`,
       { headers: H }
     );
     const sameDayBookings = await conflictRes.json();
