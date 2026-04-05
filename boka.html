@@ -1508,6 +1508,14 @@ async function loadAvailableCleaners() {
 
 function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+function getMaterialText(serviceType) {
+  var svc = (serviceType || '').toLowerCase();
+  if (svc.includes('flytt') || svc.includes('fönster') || svc.includes('fonster')) {
+    return 'Städaren tar med all utrustning — du behöver inte förbereda något.';
+  }
+  return 'Se till att dammsugare, mopp och rengöringsmedel finns tillgängliga.';
+}
+
 function renderCleaners(cleaners) {
   const wrap = document.getElementById('cleaners-wrap');
   if (!cleaners.length) {
@@ -1977,6 +1985,9 @@ function buildConfirmSummary() {
       <div style="color:var(--m)">Adress</div><div style="font-weight:600">${state.address}</div>
       <div style="color:var(--m)">Kontakt</div><div style="font-weight:600">${state.fname} ${state.lname}, ${state.phone} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
       <div style="color:var(--m)">Tillträde</div><div style="font-weight:600">${state.keyType === 'code' ? '🔢 Portkod' : state.keyType === 'key' ? '🗝️ Nyckel' : state.keyType === 'portphone' ? '📱 Porttelefon' : '🚪 Öppen dörr'}${state.keyInfo && state.keyType !== 'open' ? ' — ' + escHtml(state.keyInfo) : ''} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
+    </div>
+    <div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:.82rem;color:#92400E;line-height:1.5">
+      🧹 <strong>Material:</strong> ${getMaterialText(state.service)}
     </div>
     <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)">
       ${useRut ? '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--m);margin-bottom:.25rem"><span>Pris före RUT</span><span>' + gross.toLocaleString('sv-SE') + ' kr</span></div><div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--g);margin-bottom:.5rem"><span>RUT-avdrag (50%)</span><span>−' + rut.toLocaleString('sv-SE') + ' kr</span></div>' : ''}

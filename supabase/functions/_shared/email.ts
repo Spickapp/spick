@@ -125,4 +125,27 @@ export function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
+export function getMaterialInfo(serviceType: string): { customer: string; cleaner: string; emoji: string } {
+  const svc = (serviceType || "").toLowerCase();
+  if (svc.includes("flytt")) {
+    return {
+      customer: "Städaren tar med all utrustning och alla rengöringsmedel. Du behöver inte förbereda något.",
+      cleaner: "⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, allrengöring, ugnsrengöring, avkalkningsmedel, fönsterspray, mikrofiberdukar, skrapa, handskar. Lägenheten är tom.",
+      emoji: "🧰"
+    };
+  }
+  if (svc.includes("fönster") || svc.includes("fonster")) {
+    return {
+      customer: "Städaren tar med all fönsterputsutrustning. Du behöver inte förbereda något.",
+      cleaner: "Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, mikrofiberdukar.",
+      emoji: "🪟"
+    };
+  }
+  return {
+    customer: "Se till att dammsugare, mopp och rengöringsmedel finns tillgängliga för städaren.",
+    cleaner: "Kundens utrustning — dammsugare och mopp ska finnas på plats.",
+    emoji: "🏠"
+  };
+}
+
 export { FROM, ADMIN };

@@ -107,6 +107,7 @@ serve(async (req) => {
   <div class="row"><span class="lbl">Städare</span><span class="val">${b.cleaner_name||"Tilldelas"}</span></div>
 </div>
 <div class="info">💡 Se till att städaren kan komma in. Lämna kod eller nyckel vid behov.</div>
+<div style="background:#FEF3C7;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px;color:#92400E">🧹 <strong>Material:</strong> ${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt')) return 'Städaren tar med all utrustning och alla rengöringsmedel. Du behöver inte förbereda något.'; if(s.includes('fönster')||s.includes('fonster')) return 'Städaren tar med all fönsterputsutrustning. Du behöver inte förbereda något.'; return 'Se till att dammsugare, mopp och rengöringsmedel finns tillgängliga för städaren.'; })()}</div>
 <p>Avboka gratis senast kl ${b.booking_time||"09:00"} idag – skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
 <a href="https://spick.se/min-bokning.html?bid=${b.id}" class="btn">Visa min bokning →</a>`));
 
@@ -129,7 +130,8 @@ serve(async (req) => {
   ${b.customer_notes?`<div class="row"><span class="lbl">Noteringar</span><span class="val">${b.customer_notes}</span></div>`:""}
 </div>
 <a href="${mapsUrl}" class="btn" style="margin-right:8px">📍 Navigera →</a>
-<a href="https://spick.se/portal" class="btn" style="background:#1C1C1A">Öppna app →</a>`));
+<a href="https://spick.se/portal" class="btn" style="background:#1C1C1A">Öppna app →</a>
+${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, allrengöring, ugnsrengöring, avkalkningsmedel, fönsterspray, mikrofiberdukar, skrapa, handskar. Lägenheten är tom.</strong></div>'; if(s.includes('fönster')||s.includes('fonster')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, mikrofiberdukar.</strong></div>'; return '<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;color:#166534">🏠 Kundens utrustning — dammsugare och mopp ska finnas på plats.</div>'; })()}`));
         }
 
         // SMS-påminnelse 24h innan (fire-and-forget)
@@ -163,6 +165,7 @@ serve(async (req) => {
   ${b.customer_notes?`<div class="row"><span class="lbl">📝 Noteringar</span><span class="val">${b.customer_notes}</span></div>`:""}
 </div>
 ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta kunden om du inte kan komma in.</div>':""}
+${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, alla rengöringsmedel. Lägenheten är tom.</strong></div>'; if(s.includes('fönster')||s.includes('fonster')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, mikrofiberdukar.</strong></div>'; return '<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;color:#166534">🏠 Kundens utrustning — dammsugare och mopp ska finnas på plats.</div>'; })()}
 <a href="${mapsUrl}" class="btn">📍 Starta navigering →</a>`));
 
         await sb.from("bookings").update({reminders_sent:[...alreadySent,"2h"]}).eq("id",b.id);

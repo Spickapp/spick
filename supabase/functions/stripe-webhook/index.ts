@@ -18,7 +18,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/email.ts";
+import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
 const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
@@ -323,6 +323,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const service = booking.service_type || "Hemstädning";
   const hours = booking.booking_hours || 3;
   const address = booking.customer_address || "";
+  const matInfo = getMaterialInfo(service);
 
   // ── 1. Bekräftelsemail till kund ────────────────────────────
   const customerHtml = autoConfirm
@@ -340,6 +341,9 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
   ${cleaner ? `<div class="row"><span class="lbl">Din städare</span><span class="val">${cleaner.full_name} ⭐ ${cleaner.avg_rating || "5.0"}</span></div>` : ""}
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
+</div>
+<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;color:#92400E;line-height:1.6">
+  ${matInfo.emoji} <strong>Förberedelse:</strong> ${matInfo.customer}
 </div>
 <div class="steps">
   <div class="step"><div class="step-num">1</div><div class="step-text">Städaren anländer på utsatt tid och utför jobbet</div></div>
@@ -365,6 +369,9 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
   ${cleaner ? `<div class="row"><span class="lbl">Din städare</span><span class="val">${cleaner.full_name} ⭐ ${cleaner.avg_rating || "5.0"}</span></div>` : ""}
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
+</div>
+<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;color:#92400E;line-height:1.6">
+  ${matInfo.emoji} <strong>Förberedelse:</strong> ${matInfo.customer}
 </div>
 <div class="steps">
   <div class="step"><div class="step-num">1</div><div class="step-text">Din städare bekräftar inom 90 minuter — du får mejl</div></div>
@@ -422,6 +429,7 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   ${booking.notes && booking.notes.includes('🐾') ? `<div class="row"><span class="lbl">Husdjur</span><span class="val">🐾 Husdjur hemma</span></div>` : ''}
 </div>
 ${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#1E40AF"><strong>📝 Kundens önskemål:</strong> ${esc(booking.notes)}</div>` : ''}
+${matInfo.emoji === "🧰" ? `<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>${matInfo.cleaner}</strong></div>` : `<div style="background:#F0FDF4;border-radius:8px;padding:12px;margin:12px 0;font-size:13px;color:#166534">${matInfo.emoji} ${matInfo.cleaner}</div>`}
 <p>Kan du inte genomföra uppdraget? Avboka senast 24h innan i dashboarden eller kontakta <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a>.</p>
 <a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
 `)
@@ -441,6 +449,7 @@ ${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px
   ${booking.notes && booking.notes.includes('🐾') ? `<div class="row"><span class="lbl">Husdjur</span><span class="val">🐾 Husdjur hemma</span></div>` : ''}
 </div>
 ${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#1E40AF"><strong>📝 Kundens önskemål:</strong> ${esc(booking.notes)}</div>` : ''}
+${matInfo.emoji === "🧰" ? `<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>${matInfo.cleaner}</strong></div>` : `<div style="background:#F0FDF4;border-radius:8px;padding:12px;margin:12px 0;font-size:13px;color:#166534">${matInfo.emoji} ${matInfo.cleaner}</div>`}
 <p>⚠️ Kan du inte genomföra uppdraget? Hör av dig omgående till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så vi kan omfördela.</p>
 <a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
 `);

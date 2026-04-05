@@ -845,8 +845,10 @@ body{top:0!important}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
           <label class="pref-toggle"><input type="checkbox" id="pref-pets"> Husdjur OK</label>
           <label class="pref-toggle"><input type="checkbox" id="pref-elevator"> Hiss krävs</label>
-          <label class="pref-toggle"><input type="checkbox" id="pref-own-material"> Eget material</label>
-          <label class="pref-toggle"><input type="checkbox" id="pref-customer-material" checked> Kundens material</label>
+        </div>
+        <div style="background:#F0FDF4;border-radius:10px;padding:14px;margin-bottom:16px;font-size:.85rem;color:#166534;line-height:1.6">
+          <strong>🏠 Hemstädning & Storstädning:</strong> Kunden tillhandahåller utrustning (dammsugare, mopp, rengöringsmedel).<br>
+          <strong>🧰 Flyttstädning & Fönsterputs:</strong> Du tar med all utrustning och alla produkter.
         </div>
 
         <button onclick="savePreferences()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">💾 Spara preferenser</button>
@@ -867,8 +869,8 @@ body{top:0!important}
         </div>
         <div style="margin-bottom:14px">
           <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:4px">Max resradie: <strong id="radius-val">10</strong> km</label>
-          <input type="range" id="pref-radius" min="2" max="50" value="10" oninput="document.getElementById('radius-val').textContent=this.value" style="width:100%">
-          <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--m)"><span>2 km</span><span>50 km</span></div>
+          <input type="range" id="pref-radius" min="2" max="150" value="10" oninput="document.getElementById('radius-val').textContent=this.value" style="width:100%">
+          <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--m)"><span>2 km</span><span>150 km</span></div>
         </div>
         <button onclick="saveArea()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">💾 Spara arbetsområde</button>
         <div id="area-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
@@ -879,7 +881,7 @@ body{top:0!important}
     <!-- ═══ TAB: TEAM (only visible for company owners) ═══ -->
     <div class="tab-content" id="tab-team">
       <div class="tab-pad">
-        <div class="card" style="padding:20px">
+        <div class="card" style="padding:20px" id="team-management-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <div>
               <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
@@ -890,7 +892,7 @@ body{top:0!important}
           <div id="team-list"></div>
         </div>
 
-        <div class="card" style="padding:20px;margin-top:12px">
+        <div class="card" style="padding:20px;margin-top:12px" id="team-bookings-card">
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets bokningar</h4>
           <div id="team-bookings-list"><p style="color:var(--m);font-size:.85rem">Laddar...</p></div>
         </div>
@@ -1224,7 +1226,6 @@ async function savePreferences() {
   const updates = {
     pet_pref: document.getElementById('pref-pets')?.checked ? 'all' : 'none',
     elevator_pref: document.getElementById('pref-elevator')?.checked ? 'require' : 'prefer',
-    material_pref: document.getElementById('pref-own-material')?.checked ? 'own' : (document.getElementById('pref-customer-material')?.checked ? 'customer' : 'both'),
   };
 
   const {error} = await R.update('cleaners', updates, `id=eq.${cleaner.id}`);
@@ -1270,8 +1271,6 @@ async function saveArea() {
 function loadPreferences() {
   if (document.getElementById('pref-pets')) document.getElementById('pref-pets').checked = cleaner?.pet_pref === 'all';
   if (document.getElementById('pref-elevator')) document.getElementById('pref-elevator').checked = cleaner?.elevator_pref === 'require';
-  if (document.getElementById('pref-own-material')) document.getElementById('pref-own-material').checked = cleaner?.material_pref === 'own';
-  if (document.getElementById('pref-customer-material')) document.getElementById('pref-customer-material').checked = cleaner?.material_pref === 'customer';
   if (document.getElementById('pref-address')) document.getElementById('pref-address').value = cleaner?.home_address || '';
   if (document.getElementById('pref-radius')) { document.getElementById('pref-radius').value = cleaner?.service_radius_km || 10; document.getElementById('radius-val').textContent = document.getElementById('pref-radius').value; }
 }
@@ -1781,6 +1780,17 @@ function renderAvailableJobs() {
 }
 
 // ── JOB CARD (reused) ───────────────────────────────────────
+function getMaterialInfo(serviceType) {
+  var svc = (serviceType || '').toLowerCase();
+  if (svc.includes('flytt')) {
+    return { customer: 'Städaren tar med all utrustning.', cleaner: '⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, alla rengöringsmedel. Lägenheten är tom.', isCleanerEquip: true };
+  }
+  if (svc.includes('fönster') || svc.includes('fonster')) {
+    return { customer: 'Städaren tar med utrustning.', cleaner: 'Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, dukar.', isCleanerEquip: true };
+  }
+  return { customer: 'Dammsugare, mopp och rengöringsmedel ska finnas tillgängliga.', cleaner: 'Kundens utrustning — dammsugare och mopp ska finnas.', isCleanerEquip: false };
+}
+
 function jobCard(j) {
   const d = new Date(j.scheduled_date || j.booking_date || new Date());
   const isMine = j.cleaner_id === cleaner.id;
@@ -1859,6 +1869,12 @@ function jobCard(j) {
     ${j.customer_notes && j.customer_notes.includes('🐾') ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">🐾 Husdjur hemma</div>` : ''}
     ${j.customer_notes ? `<div style="background:#DBEAFE;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#1E40AF">📝 Kundnotering: ${escHtml(j.customer_notes)}</div>` : ''}
     ${j.allergies ? `<div style="background:#FEE2E2;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#991B1B">⚠️ Allergi: ${escHtml(j.allergies)}</div>` : ''}
+    ${isMine && !isDone ? (function(){
+      var mat = getMaterialInfo(j.service_type || 'Hemstädning');
+      return mat.isCleanerEquip
+        ? '<div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:6px;padding:6px 8px;margin-top:4px;font-size:.72rem;color:#92400E;font-weight:600">' + mat.cleaner + '</div>'
+        : '<div style="background:#F0FDF4;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#166534">🏠 ' + mat.cleaner + '</div>';
+    })() : ''}
   </div>` : '';
 
   // Checklist link for accepted jobs
@@ -2855,6 +2871,10 @@ function showTeamTab() {
         teamContent.prepend(cta);
       }
     }
+    var mgmtCard = document.getElementById('team-management-card');
+    var bookCard = document.getElementById('team-bookings-card');
+    if (mgmtCard) mgmtCard.style.display = 'none';
+    if (bookCard) bookCard.style.display = 'none';
     return;
   }
   // Företagsägare — visa teamhantering (nav-knappen redan synlig)
