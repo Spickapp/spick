@@ -1294,6 +1294,13 @@ async function loadCleanerByEmail(email, authUserId) {
   cleaner = data;
   cleaner._email = email;
 
+  // Uppdatera last_active_at tyst i bakgrunden
+  fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
+    method: 'PATCH',
+    headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ last_active_at: new Date().toISOString() })
+  }).catch(function(){});
+
   if (cleaner.status === 'avstängd') {
     showErr('⛔ Ditt konto har stängts av. Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se');
     showScreen('login');
