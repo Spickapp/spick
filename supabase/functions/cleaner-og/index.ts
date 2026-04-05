@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+function escOg(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -44,14 +48,16 @@ Deno.serve(async (req) => {
     const profileUrl = 'https://spick.se/stadare-profil.html?' + (c.slug ? 's=' + c.slug : 'id=' + c.id)
 
     // Tjänster som text
-    const services = Array.isArray(c.services) ? c.services.join(', ') : ''
+    const services = Array.isArray(c.services)
+      ? c.services.map((s: string) => s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/gu, '').trim()).join(', ')
+      : ''
 
     // OG-bild: städarens avatar eller generisk Spick-bild
     const ogImage = c.avatar_url || 'https://spick.se/assets/og-image.png'
 
     // Bygg titel och beskrivning
-    const ogTitle = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick'
-    const ogDesc = 'Boka ' + firstName + ' för ' + (services || 'städning').toLowerCase() + ' i ' + (c.city || 'Stockholm') + '. Från ' + rutPrice + ' kr/h med RUT-avdrag.' + (c.identity_verified ? ' ✓ ID-verifierad.' : '')
+    const ogTitle = escOg(c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick')
+    const ogDesc = escOg('Boka ' + firstName + ' för ' + (services || 'städning').toLowerCase() + ' i ' + (c.city || 'Stockholm') + '. Från ' + rutPrice + ' kr/h med RUT-avdrag.' + (c.identity_verified ? ' ✓ ID-verifierad.' : ''))
 
     // Returnera HTML med OG-taggar + omdirigering
     const html = `<!DOCTYPE html>
@@ -76,7 +82,7 @@ Deno.serve(async (req) => {
 <link rel="canonical" href="${profileUrl}">
 </head>
 <body>
-<p>Omdirigerar till <a href="${profileUrl}">${c.full_name} på Spick</a>...</p>
+<p>Omdirigerar till <a href="${profileUrl}">${escOg(c.full_name)} på Spick</a>...</p>
 </body>
 </html>`
 
