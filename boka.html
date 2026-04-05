@@ -151,6 +151,16 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 .cleaner-badges{display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}
 .badge-bankid{font-size:.65rem;background:#dbeafe;color:#1e40af;padding:.15rem .5rem;border-radius:99px;font-weight:600}
 .badge-gold{font-size:.65rem;background:#fef3c7;color:#92400e;padding:.15rem .5rem;border-radius:99px;font-weight:600}
+.cleaner-card{transition:all .2s ease}
+.cleaner-card.expanded{border-color:var(--g);box-shadow:0 4px 20px rgba(15,110,86,.12)}
+.cleaner-expand{display:none;padding:.875rem 0 .25rem;border-top:1px solid var(--border);margin-top:.75rem;font-size:.85rem;color:var(--b);line-height:1.6}
+.cleaner-card.expanded .cleaner-expand{display:block}
+.cleaner-bio{color:var(--m);font-size:.82rem;margin-bottom:.75rem;font-style:italic}
+.cleaner-details-grid{display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:.875rem}
+.cleaner-detail-tag{font-size:.72rem;padding:.25rem .625rem;border-radius:99px;background:var(--bg);color:var(--m);font-weight:500;border:1px solid var(--border)}
+.cleaner-detail-tag.green{background:var(--gl);color:#065F46;border-color:#6EE7B7}
+.cleaner-choose-btn{width:100%;padding:.75rem;background:var(--g);color:#fff;border:none;border-radius:99px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;box-shadow:0 2px 8px rgba(15,110,86,.25)}
+.cleaner-choose-btn:hover{background:var(--gd)}
 .no-cleaners{text-align:center;padding:2rem;color:var(--m);font-size:.875rem}
 .loading-pulse{display:flex;flex-direction:column;gap:.75rem}
 .pulse{height:72px;border-radius:12px;background:linear-gradient(90deg,#f0f0ec 25%,#e8e8e2 50%,#f0f0ec 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
@@ -1475,6 +1485,8 @@ async function loadAvailableCleaners() {
   }
 }
 
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
 function renderCleaners(cleaners) {
   const wrap = document.getElementById('cleaners-wrap');
   if (!cleaners.length) {
@@ -1511,6 +1523,21 @@ function renderCleaners(cleaners) {
     const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : typeof cl.services === 'string' ? cl.services.split(',').slice(0,3).map(s=>s.trim()).filter(Boolean) : [];
     const card = document.createElement('div');
     card.className = 'cleaner-card';
+    // Bygg expand-sektion med säker escaping
+    var expandTags = [];
+    if (cl.identity_verified) expandTags.push('<span class="cleaner-detail-tag green">✓ ID-verifierad</span>');
+    if (cl.pet_pref && cl.pet_pref !== 'no' && cl.pet_pref !== false) expandTags.push('<span class="cleaner-detail-tag green">🐾 Djurvänlig</span>');
+    if (cl.elevator_pref === 'required') expandTags.push('<span class="cleaner-detail-tag">🛗 Hiss krävs</span>');
+    if (hasRatings) {
+      expandTags.push('<span class="cleaner-detail-tag green">⭐ ' + cl.review_count + ' omdömen</span>');
+    } else {
+      expandTags.push('<span class="cleaner-detail-tag">Ny städare</span>');
+    }
+    var expandHTML = '<div class="cleaner-expand">';
+    if (cl.bio) expandHTML += '<div class="cleaner-bio">"' + escHtml(cl.bio) + '"</div>';
+    expandHTML += '<div class="cleaner-details-grid">' + expandTags.join('') + '</div>';
+    expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml((cl.full_name || '').split(' ')[0]) + ' →</button>';
+    expandHTML += '</div>';
     card.innerHTML = `
       <div class="cleaner-av" style="background:${col}20;color:${col}">${ini}</div>
       <div class="cleaner-info">
@@ -1532,8 +1559,21 @@ function renderCleaners(cleaners) {
         <div class="cleaner-rut">= ${rutRate} kr/h med RUT</div>
         ${cl.bankid_verified ? '<div class="badge-bankid">✓ Verifierad</div>' : ''}
         ${hasRatings && cl.avg_rating >= 4.8 && cl.review_count >= 3 ? '<div class="badge-gold">⭐ Toppvald</div>' : ''}
-      </div>`;
-    card.onclick = () => selectCleaner(cl, card);
+      </div>
+      ${expandHTML}`;
+    card.onclick = function(e) {
+      if (e.target.classList.contains('cleaner-choose-btn')) {
+        selectCleaner(cl, card);
+        return;
+      }
+      var wasExpanded = card.classList.contains('expanded');
+      document.querySelectorAll('.cleaner-card.expanded').forEach(function(c) {
+        c.classList.remove('expanded');
+      });
+      if (!wasExpanded) {
+        card.classList.add('expanded');
+      }
+    };
     list.appendChild(card);
     } catch(cardErr) { console.warn('Render cleaner card failed:', cl.id, cardErr.message); }
   });
@@ -1646,7 +1686,7 @@ function selectCleaner(cl, cardEl) {
   cardEl.classList.add('selected');
   updateSidebar();
   // Kort animering sedan gå vidare
-  setTimeout(() => setStep(3), 350);
+  setStep(3);
 }
 
 // ── STEG 3: UPPGIFTER ─────────────────────────────────────────────────────────
