@@ -29,6 +29,17 @@ const ADMIN                 = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+// ── Smart Auto-Confirm trösklar ────────────────────────────
+const AUTO_CONFIRM_MIN_JOBS = 5;
+const AUTO_CONFIRM_MIN_RATING = 4.0;
+
+function isExperiencedCleaner(cleaner: any): boolean {
+  if (!cleaner) return false;
+  const jobs = Number(cleaner.completed_jobs || cleaner.total_jobs || 0);
+  const rating = Number(cleaner.avg_rating || 0);
+  return jobs >= AUTO_CONFIRM_MIN_JOBS && rating >= AUTO_CONFIRM_MIN_RATING;
+}
+
 // ── Stripe event verification via API ───────────────────────────────────────
 async function verifyEventWithStripe(eventId: string): Promise<boolean> {
   try {
@@ -112,7 +123,7 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
   // Hitta godkända städare i rätt stad med rätt tjänst, sorterade på betyg
   const { data: cleaners } = await sb
     .from("cleaners")
-    .select("id, full_name, avg_rating, city, auth_user_id, email, company_id")
+    .select("id, full_name, avg_rating, city, auth_user_id, email, company_id, completed_jobs, total_jobs, phone")
     .eq("status", "aktiv")
     .order("avg_rating", { ascending: false });
 
@@ -213,7 +224,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   if (preferredCleanerId) {
     const { data: preferred } = await sb
       .from("cleaners")
-      .select("id, full_name, avg_rating, auth_user_id, email, company_id")
+      .select("id, full_name, avg_rating, auth_user_id, email, company_id, completed_jobs, total_jobs, phone")
       .eq("id", preferredCleanerId)
       .eq("status", "aktiv")
       .single();
@@ -259,12 +270,20 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
 
   // Uppdatera bokning
   const metadata = session.metadata as Record<string, string> || {};
+  const autoConfirm = isExperiencedCleaner(cleaner);
+  const bookingStatus = autoConfirm ? "bekräftad" : "pending_confirmation";
+
   await sb.from("bookings").update({
-    status: "pending_confirmation",
+    status: bookingStatus,
     payment_status: "paid",
     payment_method: (session.payment_method_types as string[])?.[0] || "card",
     payment_intent_id: session.payment_intent as string || null,
-    ...(cleaner ? { cleaner_id: cleaner.id, cleaner_name: cleaner.full_name } : {}),
+    ...(cleaner ? {
+      cleaner_id: cleaner.id,
+      cleaner_name: cleaner.full_name,
+      cleaner_email: cleaner.email || null,
+      cleaner_phone: cleaner.phone || null,
+    } : {}),
     ...(metadata.sqm ? { square_meters: parseInt(metadata.sqm) } : {}),
     ...(metadata.customer_notes ? { notes: metadata.customer_notes } : {}),
   }).eq("id", bookingId);
@@ -306,13 +325,14 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const address = booking.customer_address || "";
 
   // ── 1. Bekräftelsemail till kund ────────────────────────────
-  const customerHtml = wrap(`
+  const customerHtml = autoConfirm
+    ? wrap(`
 <div class="check">
-  <span class="check-icon">⏳</span>
-  <div class="check-text">Bokning mottagen!</div>
+  <span class="check-icon">✅</span>
+  <div class="check-text">Bokning bekräftad!</div>
 </div>
-<h2>Tack för din bokning, ${fname}! 🌿</h2>
-<p>Tack för din betalning! Din städare bekräftar uppdraget inom 2 timmar. Du får ett mejl så snart bokningen är bekräftad.</p>
+<h2>Allt klart, ${fname}! 🌿</h2>
+<p>${cleaner ? cleaner.full_name : "Din städare"} har bekräftats för ditt uppdrag. Du behöver inte göra något mer!</p>
 <div class="card">
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
   <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
@@ -322,7 +342,32 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
 </div>
 <div class="steps">
-  <div class="step"><div class="step-num">1</div><div class="step-text">Din städare bekräftar inom 2 timmar — du får mejl</div></div>
+  <div class="step"><div class="step-num">1</div><div class="step-text">Städaren anländer på utsatt tid och utför jobbet</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
+</div>
+${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin:16px 0"><p style="margin:0;font-size:14px;color:#0F6E56">🏦 <strong>RUT-avdrag:</strong> Vi ansöker automatiskt om ditt RUT-avdrag hos Skatteverket. Du behöver inte göra något.</p></div>` : ""}
+<a href="https://spick.se/min-bokning.html?bid=${bookingId}" class="btn">Visa min bokning →</a>
+<hr class="divider">
+<p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
+<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
+`)
+    : wrap(`
+<div class="check">
+  <span class="check-icon">⏳</span>
+  <div class="check-text">Bokning mottagen!</div>
+</div>
+<h2>Tack för din bokning, ${fname}! 🌿</h2>
+<p>Tack för din betalning! Din städare bekräftar uppdraget inom 90 minuter. Du får ett mejl så snart bokningen är bekräftad.</p>
+<div class="card">
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${time}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
+  ${cleaner ? `<div class="row"><span class="lbl">Din städare</span><span class="val">${cleaner.full_name} ⭐ ${cleaner.avg_rating || "5.0"}</span></div>` : ""}
+  <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
+</div>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-text">Din städare bekräftar inom 90 minuter — du får mejl</div></div>
   <div class="step"><div class="step-num">2</div><div class="step-text">Städaren anländer på utsatt tid och utför jobbet</div></div>
   <div class="step"><div class="step-num">3</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
 </div>
@@ -332,13 +377,18 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 <p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
 <p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
 `);
-  await sendEmail(customerEmail || booking.customer_email, `Bokning mottagen – ${service} den ${date} ⏳`, customerHtml);
+  await sendEmail(customerEmail || booking.customer_email,
+    autoConfirm
+      ? `Bokning bekräftad – ${service} den ${date} ✅`
+      : `Bokning mottagen – ${service} den ${date} ⏳`,
+    customerHtml);
 
-  // SMS-bekräftelse (fire-and-forget — kräver ELKS-nycklar i Secrets)
+  // SMS-bekräftelse
   await sendSms(
     booking.customer_phone,
-    `Spick: Bokning mottagen ⏳ ${service} den ${date} kl ${time}. Din städare bekräftar inom 2h. ` +
-    `Se din bokning: https://spick.se/min-bokning.html?bid=${booking.id}`
+    autoConfirm
+      ? `Spick: Bokning bekräftad ✅ ${service} den ${date} kl ${time} med ${cleaner?.full_name || "din städare"}. Se bokningen: https://spick.se/min-bokning.html?bid=${booking.id}`
+      : `Spick: Bokning mottagen ⏳ ${service} den ${date} kl ${time}. Din städare bekräftar inom 90 min. Se bokningen: https://spick.se/min-bokning.html?bid=${booking.id}`
   );
 
   // ── 2. Notifiera städaren ────────────────────────────────────
@@ -355,11 +405,31 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 
     if (cleanerEmail) {
       const earning = Math.round(amountPaid * 0.83);
-      const cleanerHtml = wrap(`
+      const cleanerHtml = autoConfirm
+        ? wrap(`
+<h2>Nytt uppdrag bekräftat! 🧹</h2>
+<p>Hej ${cleaner.full_name?.split(" ")[0] || ""}! Du har ett nytt bekräftat städuppdrag.</p>
+<div style="background:#E1F5EE;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#0F6E56">
+  <strong>✅ Automatiskt bekräftat</strong> — Kunden har fått bekräftelse. Du behöver inte göra något förrän uppdragsdagen.
+</div>
+<div class="card">
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${time}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
+  <div class="row"><span class="lbl">Din intjäning</span><span class="val" style="color:#0F6E56">${earning} kr</span></div>
+  ${booking.key_info ? `<div class="row"><span class="lbl">Tillträde</span><span class="val">🔑 ${esc(booking.key_info)}</span></div>` : ''}
+  ${booking.notes && booking.notes.includes('🐾') ? `<div class="row"><span class="lbl">Husdjur</span><span class="val">🐾 Husdjur hemma</span></div>` : ''}
+</div>
+${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#1E40AF"><strong>📝 Kundens önskemål:</strong> ${esc(booking.notes)}</div>` : ''}
+<p>Kan du inte genomföra uppdraget? Avboka senast 24h innan i dashboarden eller kontakta <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a>.</p>
+<a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
+`)
+        : wrap(`
 <h2>Nytt uppdrag tilldelat! 🧹</h2>
 <p>Hej ${cleaner.full_name?.split(" ")[0] || ""}! Du har fått ett nytt städuppdrag.</p>
 <div style="background:#FEF3C7;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#92400E">
-  <strong>⏰ Bekräfta inom 2 timmar</strong> — Kunden väntar på ditt svar. Logga in på dashboarden för att acceptera eller avvisa uppdraget.
+  <strong>⏰ Bekräfta inom 90 minuter</strong> — Kunden väntar på ditt svar. Logga in på dashboarden för att acceptera eller avvisa uppdraget.
 </div>
 <div class="card">
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
@@ -373,9 +443,12 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
 ${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;margin:12px 0;font-size:14px;color:#1E40AF"><strong>📝 Kundens önskemål:</strong> ${esc(booking.notes)}</div>` : ''}
 <p>⚠️ Kan du inte genomföra uppdraget? Hör av dig omgående till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> så vi kan omfördela.</p>
 <a href="https://spick.se/portal" class="btn">Öppna dashboard →</a>
-<p style="margin-top:24px;font-size:12px;color:#9E9E9A">Vill du sluta ta emot uppdrag? <a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/cleaner-optout?token=${cleaner.auth_user_id}" style="color:#9E9E9A">Avregistrera dig här</a></p>
 `);
-      await sendEmail(cleanerEmail, `Nytt uppdrag: ${service} den ${date} 🧹`, cleanerHtml);
+      await sendEmail(cleanerEmail,
+        autoConfirm
+          ? `Nytt bekräftat uppdrag: ${service} den ${date} ✅`
+          : `Nytt uppdrag: ${service} den ${date} — bekräfta inom 90 min 🧹`,
+        cleanerHtml);
 
       // Also notify company owner if cleaner belongs to a company
       if (cleaner.company_id) {
@@ -401,6 +474,7 @@ ${booking.notes ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px
   ${booking.notes ? `<div class="row"><span class="lbl">Notering</span><span class="val">${esc(booking.notes)}</span></div>` : ''}
   <div class="row"><span class="lbl">Belopp</span><span class="val">${price}${rutNote}</span></div>
   <div class="row"><span class="lbl">Städare</span><span class="val">${cleaner ? cleaner.full_name : "⚠️ EJ TILLDELAD"}</span></div>
+  <div class="row"><span class="lbl">Status</span><span class="val">${autoConfirm ? "✅ Auto-bekräftad (erfaren)" : "⏳ Väntar på städarens svar (90 min)"}</span></div>
   <div class="row"><span class="lbl">Stripe Session</span><span class="val" style="font-size:11px">${stripeSessionId}</span></div>
 </div>
 ${!cleaner ? `<div style="background:#FFF5E5;border-left:4px solid #F59E0B;padding:12px;border-radius:0 8px 8px 0;margin:8px 0"><strong>⚠️ Ingen städare tilldelad!</strong> Tilldela manuellt i admin-panelen.</div>` : ""}

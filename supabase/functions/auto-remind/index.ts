@@ -13,6 +13,9 @@ const FROM       = "Spick <hello@spick.se>";
 const ADMIN      = "hello@spick.se";
 const sb         = createClient(SUPA_URL, SUPA_KEY);
 
+const NUDGE_AFTER_MIN = 30;
+const TIMEOUT_AFTER_MIN = 90;
+
 function wrap(html: string) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 body{margin:0;background:#F7F7F5;font-family:'DM Sans',Arial,sans-serif}
@@ -253,6 +256,141 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
 <a href="https://spick.se/admin.html" class="btn">Tilldela städare nu →</a>`));
         await sb.from("bookings").update({reminders_sent:[...alreadySent,"no-cleaner"]}).eq("id",b.id);
         sent.push(`no-cleaner:${b.id}`);
+      }
+
+      // ── NUDGE: Ny städare har inte svarat på bokning (30 min) ──
+      if (b.status === "pending_confirmation" && b.cleaner_id && !alreadySent.includes("confirm_nudge_30")) {
+        const createdAt = b.created_at ? new Date(b.created_at) : null;
+        if (createdAt) {
+          const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / 60_000;
+          if (minutesSinceCreated >= NUDGE_AFTER_MIN && minutesSinceCreated < TIMEOUT_AFTER_MIN) {
+            const cEmail = b.cleaner_email || null;
+            const cPhone = b.cleaner_phone || null;
+            const cleanerFirst = (b.cleaner_name || "").split(" ")[0] || "Hej";
+            const minutesLeft = Math.round(TIMEOUT_AFTER_MIN - minutesSinceCreated);
+
+            if (cPhone) {
+              await sendSms(cPhone,
+                `Spick: Du har en ny bokning som väntar! ${b.service_type || "Städning"} den ${b.booking_date} kl ${b.booking_time || "09:00"}. Svara inom ${minutesLeft} min i appen: spick.se/stadare-dashboard.html`
+              );
+            }
+
+            if (cEmail) {
+              await mail(cEmail,
+                `⏰ Ny bokning väntar på ditt svar — ${minutesLeft} min kvar`,
+                wrap(`<h2>Du har en bokning som väntar! ⏰</h2>
+<p>Hej ${cleanerFirst}! En kund har bokat dig men du har inte svarat ännu.</p>
+<div class="card">
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type || "Städning"} · ${b.booking_hours || 3}h</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${b.booking_date} kl ${b.booking_time || "09:00"}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address || "–"}</span></div>
+  <div class="row"><span class="lbl">Din intjäning</span><span class="val" style="color:#0F6E56">${Math.round((b.total_price || 0) * 0.83)} kr</span></div>
+</div>
+<div class="warn">⏰ Om du inte svarar inom ${minutesLeft} minuter avbokas bokningen automatiskt och kunden återbetalas.</div>
+<a href="https://spick.se/stadare-dashboard.html" class="btn">Acceptera i appen →</a>`)
+              );
+            }
+
+            await sb.from("bookings").update({ reminders_sent: [...alreadySent, "confirm_nudge_30"] }).eq("id", b.id);
+            sent.push(`confirm_nudge_30:${b.id}`);
+          }
+        }
+      }
+
+      // ── AUTO-TIMEOUT: Ny städare har inte svarat (90 min) ──────
+      if (b.status === "pending_confirmation" && b.cleaner_id && !alreadySent.includes("auto_timeout_90")) {
+        const createdAt = b.created_at ? new Date(b.created_at) : null;
+        if (createdAt) {
+          const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / 60_000;
+          if (minutesSinceCreated >= TIMEOUT_AFTER_MIN) {
+            const cleanerFirst = (b.cleaner_name || "").split(" ")[0] || "städaren";
+            const custFirst = (b.customer_name || "").split(" ")[0] || "Kund";
+
+            // 1. Uppdatera bokningsstatus
+            await sb.from("bookings").update({
+              status: "timed_out",
+              rejected_at: now.toISOString(),
+              rejection_reason: `Auto-timeout efter ${TIMEOUT_AFTER_MIN} min utan svar`,
+              reminders_sent: [...alreadySent, "auto_timeout_90"],
+            }).eq("id", b.id);
+
+            // 2. Stripe-refund
+            let refundStatus = "skipped";
+            const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY");
+            if (b.payment_intent_id && STRIPE_KEY) {
+              try {
+                const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Basic ${btoa(STRIPE_KEY + ":")}`,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                  },
+                  body: `payment_intent=${b.payment_intent_id}`,
+                });
+                refundStatus = refundRes.ok ? "initiated" : "failed";
+                if (refundRes.ok) {
+                  await sb.from("bookings").update({ payment_status: "refunded" }).eq("id", b.id);
+                }
+              } catch (e) {
+                refundStatus = "error";
+                console.error("Timeout refund error:", (e as Error).message);
+              }
+            }
+
+            // 3. Mejl till kund
+            if (b.customer_email) {
+              await mail(b.customer_email,
+                `Din bokning har avbokats — full återbetalning`,
+                wrap(`<h2>Din bokning har avbokats</h2>
+<p>Hej ${custFirst}, tyvärr hann inte ${b.cleaner_name || "städaren"} bekräfta din bokning i tid, så den har avbokats automatiskt.</p>
+${b.payment_intent_id ? `<p><strong>Full återbetalning är på väg</strong> — du ser pengarna på ditt konto inom 3–5 bankdagar.</p>` : ""}
+<p>Du är välkommen att boka en annan städare — vi har fler duktiga städare tillgängliga!</p>
+<a href="https://spick.se/boka.html" class="btn">Boka en annan städare →</a>
+<hr style="border:none;border-top:1px solid #E8E8E4;margin:20px 0">
+<p style="font-size:13px">Ursäkta besväret! Kontakta oss på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> om du har frågor.</p>`)
+              );
+            }
+
+            // 4. SMS till kund
+            await sendSms(b.customer_phone,
+              `Spick: Tyvärr avbokades din städning ${b.booking_date} — städaren svarade inte i tid. Full återbetalning på väg. Boka ny: spick.se/boka.html`
+            );
+
+            // 5. Admin-alert
+            await mail(ADMIN,
+              `⏰ Auto-timeout: ${b.cleaner_name || "?"} svarade inte — ${custFirst} återbetalad`,
+              wrap(`<h2>⏰ Bokning timeout:ad efter ${TIMEOUT_AFTER_MIN} min</h2>
+<div class="card">
+  <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Städare</span><span class="val">${b.cleaner_name || "–"} (svarade ej)</span></div>
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type || "Städning"} · ${b.booking_hours || 3}h</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${b.booking_date} kl ${b.booking_time || "09:00"}</span></div>
+  <div class="row"><span class="lbl">Refund</span><span class="val">${refundStatus}</span></div>
+</div>
+<a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>`)
+            );
+
+            // 6. Mejl till städare
+            const cEmail = b.cleaner_email || null;
+            if (cEmail) {
+              await mail(cEmail,
+                `Missad bokning — du svarade inte i tid`,
+                wrap(`<h2>Du missade en bokning ⚠️</h2>
+<p>Hej ${cleanerFirst}, du svarade inte på en bokning inom 90 minuter och den har avbokats automatiskt.</p>
+<div class="card">
+  <div class="row"><span class="lbl">Tjänst</span><span class="val">${b.service_type || "Städning"}</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${b.booking_date}</span></div>
+  <div class="row"><span class="lbl">Missad intjäning</span><span class="val" style="color:#DC2626">${Math.round((b.total_price || 0) * 0.83)} kr</span></div>
+</div>
+<p>Tips: Svara alltid inom 90 minuter för att behålla dina bokningar. Snabbare svar = fler kunder!</p>
+<a href="https://spick.se/stadare-dashboard.html" class="btn">Öppna dashboard →</a>`)
+              );
+            }
+
+            sent.push(`auto_timeout_90:${b.id}`);
+          }
+        }
       }
     }
 
