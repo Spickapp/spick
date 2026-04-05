@@ -966,7 +966,7 @@ body{top:0!important}
       <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       <span>Inkomst</span>
     </button>
-    <button class="nav-btn" id="nav-team" onclick="switchTab('team')" style="display:none">
+    <button class="nav-btn" id="nav-team" onclick="switchTab('team')">
       <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       <span>Team</span>
     </button>
@@ -2649,9 +2649,27 @@ function showToast(msg) {
 let _teamMembers = [];
 
 function showTeamTab() {
-  if (cleaner && cleaner.is_company_owner) {
-    document.getElementById('nav-team').style.display = '';
+  if (!cleaner) return;
+  if (!cleaner.is_company_owner && !cleaner.company_id) {
+    // Solo-städare — visa CTA istället för teamhantering
+    var teamContent = document.getElementById('tab-team');
+    if (teamContent) {
+      var existingCTA = document.getElementById('team-solo-cta');
+      if (!existingCTA) {
+        var cta = document.createElement('div');
+        cta.id = 'team-solo-cta';
+        cta.style.cssText = 'text-align:center;padding:2rem 1rem';
+        cta.innerHTML = '<div style="font-size:2rem;margin-bottom:.75rem">👥</div>' +
+          '<div style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Har du ett städföretag?</div>' +
+          '<p style="font-size:.85rem;color:#6B6960;line-height:1.5;margin-bottom:1rem;max-width:300px;margin-left:auto;margin-right:auto">Lägg till teammedlemmar och hantera bokningar tillsammans. Vi hjälper dig komma igång!</p>' +
+          '<a href="https://wa.me/46760505153?text=Hej!%20Jag%20vill%20lägga%20till%20teammedlemmar%20på%20Spick" target="_blank" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:99px;font-size:.88rem;font-weight:600;text-decoration:none;font-family:inherit">💬 Kontakta oss via WhatsApp</a>' +
+          '<div style="font-size:.72rem;color:#6B6960;margin-top:.75rem">Vi hjälper dig registrera företag och lägga till personal</div>';
+        teamContent.prepend(cta);
+      }
+    }
+    return;
   }
+  // Företagsägare — visa teamhantering (nav-knappen redan synlig)
 }
 
 async function renderTeam() {
