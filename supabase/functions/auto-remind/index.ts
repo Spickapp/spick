@@ -209,6 +209,75 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
         sent.push(`checkin_nudge:${b.id}`);
       }
 
+      // ── KUNDNOTIS: Städare ej incheckad +30 min ────────────
+      if (hoursLeft <= -0.5 && hoursLeft > -0.75 && b.cleaner_id && b.status === "bekräftad" && !b.checked_in_at && !alreadySent.includes("noshow_customer_30")) {
+        const custFirst = (b.customer_name || "").split(" ")[0] || "Hej";
+        const cleanerName = b.cleaner_name || "din städare";
+        const refundUrl = `https://spick.se/noshow-refund.html?bid=${b.id}&token=${b.id.slice(0,8)}`;
+
+        if (b.customer_email) {
+          await mail(b.customer_email,
+            `Har din städare anlänt? 🧹`,
+            wrap(`<h2>Hej ${custFirst}!</h2>
+<p>Din städning med ${cleanerName} skulle ha börjat kl ${b.booking_time || "09:00"} men vi har inte fått bekräftelse på att ${cleanerName} har checkat in ännu.</p>
+<div class="info">Om ${cleanerName} redan är hos dig kan du ignorera detta mejl — det händer ibland att städare glömmer att checka in i appen.</div>
+<p>Om ingen har kommit kan du avboka med full återbetalning:</p>
+<a href="${refundUrl}" class="btn">Avboka och få återbetalning →</a>
+<hr style="border:none;border-top:1px solid #E8E8E4;margin:20px 0">
+<p style="font-size:13px">Frågor? Kontakta oss på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> eller <a href="https://wa.me/46760505153" style="color:#0F6E56">WhatsApp</a></p>`)
+          );
+        }
+
+        await sendSms(b.customer_phone,
+          `Spick: Din städare har inte checkat in ännu. Om hen redan är hos dig — ignorera detta. Om ingen kommit, avboka med full återbetalning: ${refundUrl}`
+        );
+
+        await sb.from("bookings").update({ reminders_sent: [...alreadySent, "noshow_customer_30"] }).eq("id", b.id);
+        sent.push(`noshow_customer_30:${b.id}`);
+      }
+
+      // ── KUNDNOTIS: Städare ej incheckad +60 min (skarpare) ──
+      if (hoursLeft <= -1 && hoursLeft > -1.25 && b.cleaner_id && b.status === "bekräftad" && !b.checked_in_at && !alreadySent.includes("noshow_customer_60")) {
+        const custFirst = (b.customer_name || "").split(" ")[0] || "Hej";
+        const cleanerName = b.cleaner_name || "din städare";
+        const refundUrl = `https://spick.se/noshow-refund.html?bid=${b.id}&token=${b.id.slice(0,8)}`;
+
+        if (b.customer_email) {
+          await mail(b.customer_email,
+            `⚠️ Vi har fortfarande inte hört från din städare`,
+            wrap(`<h2>${custFirst}, vi ber om ursäkt</h2>
+<p>Det har nu gått 60 minuter och ${cleanerName} har fortfarande inte checkat in för ditt uppdrag kl ${b.booking_time || "09:00"}.</p>
+<p><strong>Om ingen har kommit rekommenderar vi att du avbokar:</strong></p>
+<a href="${refundUrl}" class="btn" style="background:#DC2626">Avboka — full återbetalning →</a>
+<p style="margin-top:12px;font-size:13px">Vi tar kontakt med ${cleanerName} och ser till att detta inte händer igen. Ursäkta besväret!</p>
+<hr style="border:none;border-top:1px solid #E8E8E4;margin:20px 0">
+<p style="font-size:13px">Kontakta oss direkt: <a href="tel:+46760505153" style="color:#0F6E56">076-050 51 53</a></p>`)
+          );
+        }
+
+        await sendSms(b.customer_phone,
+          `Spick: Ursäkta! Din städare har inte dykt upp. Avboka med full återbetalning här: ${refundUrl} Frågor? Ring 076-050 51 53`
+        );
+
+        // Admin-alert
+        await mail(ADMIN,
+          `🚨 Möjlig no-show: ${b.cleaner_name || "?"} dök inte upp hos ${b.customer_name || "?"} kl ${b.booking_time || "?"}`,
+          wrap(`<h2>🚨 Trolig no-show — 60 min utan check-in</h2>
+<div class="card">
+  <div class="row"><span class="lbl">Städare</span><span class="val">${b.cleaner_name || "–"} (${b.cleaner_phone || "–"})</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name || "–"} (${b.customer_phone || "–"})</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${b.booking_time || "09:00"} (60 min sedan)</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address || "–"}</span></div>
+  <div class="row"><span class="lbl">Belopp</span><span class="val">${b.total_price || 0} kr</span></div>
+</div>
+<p>Kunden har fått en refund-länk. Ring städaren och ta reda på vad som hänt.</p>
+<a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>`)
+        );
+
+        await sb.from("bookings").update({ reminders_sent: [...alreadySent, "noshow_customer_60"] }).eq("id", b.id);
+        sent.push(`noshow_customer_60:${b.id}`);
+      }
+
       // ── NUDGE: Glömd markera klar (30 min efter estimerad sluttid) ──
       if (b.checked_in_at && b.status === "pågår" && !b.completed_at && !alreadySent.includes("checkout_nudge")) {
         const startTime = new Date(`${dateStr}T${(b.booking_time || "09:00")}:00`);
@@ -609,6 +678,45 @@ ${b.payment_intent_id ? `<p><strong>Full återbetalning är på väg</strong> �
         }).eq("id", q.id);
       }
     }
+
+    // ── GDPR AUTO-CLEANUP (30 dagar) ───────────────────────────
+    // Nollställ GPS-data för bokningar äldre än 30 dagar
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000).toISOString().slice(0, 10);
+    const { data: gpsCleanup } = await sb.from("bookings")
+      .update({
+        checkin_lat: null, checkin_lng: null,
+        checkout_lat: null, checkout_lng: null,
+      })
+      .lt("booking_date", thirtyDaysAgo)
+      .not("checkin_lat", "is", null)
+      .select("id");
+    if (gpsCleanup?.length) sent.push(`gdpr_gps_cleanup:${gpsCleanup.length}`);
+
+    // Radera före-/efterfoton äldre än 30 dagar
+    const { data: photoCleanup } = await sb.from("bookings")
+      .select("id, photo_before_url, photo_after_url")
+      .lt("booking_date", thirtyDaysAgo)
+      .or("photo_before_url.not.is.null,photo_after_url.not.is.null");
+
+    for (const b of photoCleanup || []) {
+      const paths: string[] = [];
+      if (b.photo_before_url) {
+        const match = b.photo_before_url.match(/photos\/(.+?)(\?|$)/);
+        if (match) paths.push(match[1]);
+      }
+      if (b.photo_after_url) {
+        const match = b.photo_after_url.match(/photos\/(.+?)(\?|$)/);
+        if (match) paths.push(match[1]);
+      }
+      if (paths.length) {
+        await sb.storage.from("photos").remove(paths);
+      }
+      await sb.from("bookings").update({
+        photo_before_url: null,
+        photo_after_url: null,
+      }).eq("id", b.id);
+    }
+    if (photoCleanup?.length) sent.push(`gdpr_photo_cleanup:${photoCleanup.length}`);
 
     // ── RATE LIMIT CLEANUP ────────────────────────────────────
     await sb.rpc("cleanup_rate_limits").catch((e) => { console.warn("auto-remind: suppressed error", e); });

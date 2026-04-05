@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="sv"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Återbetalning – Spick</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--r:#DC2626;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--gr);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--g);margin-bottom:24px;text-align:center}
+.card{background:#fff;border-radius:16px;padding:32px;max-width:480px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.07)}
+h1{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--t);margin-bottom:8px}
+p{color:var(--m);line-height:1.7;font-size:.9rem;margin-bottom:12px}
+.info-box{background:var(--gr);border-radius:12px;padding:16px;margin:16px 0}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--grd);font-size:.85rem}
+.row:last-child{border:none}.lbl{color:var(--m)}.val{font-weight:600;color:var(--t)}
+.warn{background:#FEF3C7;border-left:3px solid #F59E0B;padding:12px;border-radius:0 8px 8px 0;margin:16px 0;font-size:.82rem;color:#92400E}
+.btn{display:block;width:100%;background:var(--r);color:#fff;border:none;padding:14px;border-radius:100px;font-size:1rem;font-weight:600;cursor:pointer;margin-top:16px;font-family:inherit;transition:opacity .2s}
+.btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-back{display:block;text-align:center;color:var(--g);font-size:.85rem;margin-top:12px;text-decoration:none;font-weight:500}
+#status{margin-top:16px;padding:14px;border-radius:12px;font-size:.85rem;display:none}
+.ok{background:var(--gp);color:#065F46;display:block!important}
+.err{background:#FEE2E2;color:#991B1B;display:block!important}
+.loading{text-align:center;padding:40px;color:var(--m)}
+</style></head><body>
+
+<div class="logo">Spick</div>
+<div class="card" id="main">
+  <div class="loading" id="loader">Laddar bokningsdetaljer...</div>
+  <div id="content" style="display:none">
+    <h1>Avboka och få återbetalning</h1>
+    <p>Din städare har inte dykt upp. Du kan avboka med full återbetalning nedan.</p>
+    <div class="info-box" id="booking-info"></div>
+    <div class="warn">Pengarna återbetalas till samma betalningsmetod inom 3–5 bankdagar.</div>
+    <button class="btn" id="refund-btn" onclick="requestRefund()">Avboka — full återbetalning</button>
+    <a href="https://spick.se" class="btn-back">Tillbaka till Spick</a>
+    <div id="status"></div>
+  </div>
+  <div id="error-view" style="display:none">
+    <h1>Något gick fel</h1>
+    <p id="error-msg"></p>
+    <a href="https://spick.se" class="btn-back">Tillbaka till Spick</a>
+  </div>
+  <div id="done-view" style="display:none">
+    <h1 style="color:#065F46">Återbetalning bekräftad</h1>
+    <p>Din bokning är avbokad och full återbetalning är på väg. Du ser pengarna inom 3–5 bankdagar.</p>
+    <p>Vi ber om ursäkt för besväret!</p>
+    <a href="https://spick.se/boka.html" class="btn" style="background:var(--g);text-decoration:none;text-align:center;color:#fff">Boka ny städning</a>
+    <a href="https://spick.se" class="btn-back">Tillbaka till Spick</a>
+  </div>
+</div>
+
+<script>
+const SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MTEwNzcsImV4cCI6MjA1ODA4NzA3N30.rmxFPkI_02E-KMdNqjGWMVOA9DT6bYDiSVHbgjlROPE';
+
+const params = new URLSearchParams(location.search);
+const bid = params.get('bid');
+const token = params.get('token');
+
+let bookingData = null;
+
+async function init() {
+  const loader = document.getElementById('loader');
+  const content = document.getElementById('content');
+  const errorView = document.getElementById('error-view');
+  const errorMsg = document.getElementById('error-msg');
+
+  if (!bid || !token) {
+    loader.style.display = 'none';
+    errorView.style.display = 'block';
+    errorMsg.textContent = 'Ogiltig länk — saknar boknings-ID eller token.';
+    return;
+  }
+
+  if (token !== bid.slice(0, 8)) {
+    loader.style.display = 'none';
+    errorView.style.display = 'block';
+    errorMsg.textContent = 'Ogiltig token — länken är inte giltig.';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/bookings?id=eq.${bid}&select=id,service_type,booking_date,booking_time,booking_hours,total_price,customer_name,cleaner_name,status,payment_status`, {
+      headers: { apikey: SUPA_ANON, Authorization: `Bearer ${SUPA_ANON}` }
+    });
+    const data = await res.json();
+    if (!data || data.length === 0) {
+      loader.style.display = 'none';
+      errorView.style.display = 'block';
+      errorMsg.textContent = 'Bokningen hittades inte.';
+      return;
+    }
+
+    bookingData = data[0];
+
+    if (bookingData.status === 'no_show_refunded' || bookingData.payment_status === 'refunded') {
+      loader.style.display = 'none';
+      document.getElementById('done-view').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('booking-info').innerHTML = `
+      <div class="row"><span class="lbl">Tjänst</span><span class="val">${bookingData.service_type || 'Hemstädning'} · ${bookingData.booking_hours || 3}h</span></div>
+      <div class="row"><span class="lbl">Datum</span><span class="val">${bookingData.booking_date} kl ${bookingData.booking_time || '09:00'}</span></div>
+      <div class="row"><span class="lbl">Städare</span><span class="val">${bookingData.cleaner_name || '–'}</span></div>
+      <div class="row"><span class="lbl">Belopp</span><span class="val">${bookingData.total_price || 0} kr</span></div>
+    `;
+
+    loader.style.display = 'none';
+    content.style.display = 'block';
+  } catch (e) {
+    loader.style.display = 'none';
+    errorView.style.display = 'block';
+    errorMsg.textContent = 'Kunde inte ladda bokningen. Försök igen eller kontakta hello@spick.se';
+  }
+}
+
+async function requestRefund() {
+  const btn = document.getElementById('refund-btn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  btn.textContent = 'Bearbetar...';
+  status.style.display = 'none';
+  status.className = '';
+
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/noshow-refund`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_ANON, Authorization: `Bearer ${SUPA_ANON}` },
+      body: JSON.stringify({ bid, token })
+    });
+    const result = await res.json();
+
+    if (res.ok && result.ok) {
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('done-view').style.display = 'block';
+    } else if (result.already) {
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('done-view').style.display = 'block';
+    } else {
+      status.textContent = result.error || 'Något gick fel. Kontakta hello@spick.se';
+      status.className = 'err';
+      btn.disabled = false;
+      btn.textContent = 'Avboka — full återbetalning';
+    }
+  } catch (e) {
+    status.textContent = 'Nätverksfel — försök igen eller kontakta hello@spick.se';
+    status.className = 'err';
+    btn.disabled = false;
+    btn.textContent = 'Avboka — full återbetalning';
+  }
+}
+
+init();
+</script>
+</body></html>

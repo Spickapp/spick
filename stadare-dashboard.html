@@ -2405,9 +2405,12 @@ async function takePhoto(bookingId, type) {
     const file = input.files[0]; if (!file) return;
     showToast('📤 Laddar upp foto...');
     const path = `bookings/${bookingId}/${type}_${Date.now()}.jpg`;
-    const { data, error } = await SB.storage.from('photos').upload(path, file, {cacheControl:'3600',upsert:true});
+    const resized = await resizeImage(file, 1200);
+    const { data, error } = await SB.storage.from('photos').upload(path, resized, {cacheControl:'3600',upsert:true});
     if (error) { showToast('❌ Uppladdning misslyckades'); return; }
-    const url = SB.storage.from('photos').getPublicUrl(path).data.publicUrl;
+    const { data: signedData, error: signErr } = await SB.storage.from('photos').createSignedUrl(path, 60*60*24*30);
+    if (signErr || !signedData?.signedUrl) { showToast('❌ Kunde inte skapa URL'); return; }
+    const url = signedData.signedUrl;
     const col = type === 'before' ? 'photo_before_url' : 'photo_after_url';
     await R.update('bookings', {[col]:url}, `id=eq.${bookingId}`);
     showToast('✅ Foto sparat!');
