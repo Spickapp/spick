@@ -1060,11 +1060,28 @@ function isDayAvailable(dateStr) {
   const dow = d.getDay(); // 0=sön, 1=mån, ..., 6=lör
 
   if (state.cleanerId) {
-    const hasDay = state.availability.some(a =>
-      (a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)) &&
-      a.cleaner_id === state.cleanerId
-    );
-    if (!hasDay) return false;
+    // Kolla om det finns availability-rader för denna specifika städare
+    var cleanerHasAnyAvail = state.availability.some(a => a.cleaner_id === state.cleanerId);
+
+    if (cleanerHasAnyAvail) {
+      // Städaren HAR availability-data — filtrera på den
+      var hasDay = state.availability.some(a =>
+        (a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)) &&
+        a.cleaner_id === state.cleanerId
+      );
+      if (!hasDay) return false;
+    } else {
+      // Städaren saknar availability-data — fallback till generell availability
+      var anyDayAvail = state.availability.some(a =>
+        a.day_of_week === dow || (dow === 0 && a.day_of_week === 7)
+      );
+      if (!anyDayAvail) {
+        if (dow === 0) return false; // Söndag utan data
+        if (dow >= 1 && dow <= 5) return true; // Mån-fre fallback
+        return false; // Lör utan data
+      }
+    }
+
     const isBlocked = Array.isArray(state.blocked) && state.blocked.some(b =>
       b.cleaner_id === state.cleanerId && b.blocked_date === dateStr
     );
@@ -1108,7 +1125,11 @@ function getAvailableSlots(dateStr, neededHours) {
     a.is_active !== false
   );
   if (state.cleanerId) {
-    dayAvails = dayAvails.filter(a => a.cleaner_id === state.cleanerId);
+    var cleanerHasAnyAvail = state.availability.some(a => a.cleaner_id === state.cleanerId);
+    if (cleanerHasAnyAvail) {
+      dayAvails = dayAvails.filter(a => a.cleaner_id === state.cleanerId);
+    }
+    // Om städaren saknar availability-data behålls generell availability (fallback)
   }
   if (!dayAvails.length) {
     if (dow >= 1 && dow <= 6) {
