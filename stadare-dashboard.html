@@ -191,6 +191,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .btn-accept:hover{background:var(--spick-600)}
 .btn-decline{padding:12px 20px;background:var(--gray-100);color:var(--gray-700);border:1px solid var(--gray-200);border-radius:var(--radius-full);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;min-height:48px}
 .action-btn{padding:12px 16px;border-radius:var(--radius-full);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:none;min-height:48px;transition:background .15s}
+.noshow-btn{padding:.5rem .875rem;background:#FEF3C7;color:#92400E;border:1.5px solid #FCD34D;border-radius:99px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit}
 
 /* ═══ TIMER ═══ */
 .job-timer{background:#eff6ff;color:var(--info);border-radius:var(--radius-md);padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-top:8px}
@@ -1615,23 +1616,31 @@ function expandTimelineJob(jobId) {
   if (!j.checked_in_at && !isDone) {
     actionsHtml = `<div style="margin-top:10px">
       <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px">▶️ Påbörja uppdrag</button>
-      <div style="text-align:center;margin-top:8px"><button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button></div>
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:8px">
+        <button class="noshow-btn" onclick="reportNoShow('${j.id}')">⚠️ Kund ej på plats</button>
+        <button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button>
+      </div>
     </div>`;
   } else if (isActive) {
-    actionsHtml = `<button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:10px;background:#DCFCE7;color:#166534;min-height:48px">Markera klar</button>`;
+    actionsHtml = `<div style="margin-top:10px">
+      <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;background:#DCFCE7;color:#166534;min-height:48px">Markera klar</button>
+      <div style="text-align:center;margin-top:8px"><button class="noshow-btn" onclick="reportNoShow('${j.id}')">⚠️ Kund ej på plats</button></div>
+    </div>`;
   }
 
   expand.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
       <div>
         <div style="font-weight:700;font-size:.95rem">${escHtml(j.service_type||'Hemstädning')}</div>
-        <div style="font-size:.82rem;color:var(--m)">${j.booking_time||'09:00'} · ${j.booking_hours||3}h</div>
+        <div style="font-size:.82rem;color:var(--m)">${(j.booking_time||'09:00').slice(0,5)} · ${j.booking_hours||3}h${j.square_meters ? ' · ' + j.square_meters + ' kvm' : ''}</div>
       </div>
       <div style="font-family:inherit;font-size:1.2rem;font-weight:700;color:var(--g)">${pay.toLocaleString('sv')} kr</div>
     </div>
     <div style="font-size:.85rem">📍 <a href="https://maps.google.com/?q=${encodeURIComponent(j.customer_address||'')}" target="_blank" style="color:var(--g);font-weight:600">${escHtml(j.customer_address||'–')}</a></div>
-    ${j.customer_name?`<div style="font-size:.82rem;color:var(--m);margin-top:2px">👤 ${escHtml(j.customer_name.split(' ')[0])}</div>`:''}
     ${j.key_info?`<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:6px;font-size:.75rem;color:#92400E">🔑 ${escHtml(j.key_info)}</div>`:''}
+    ${j.customer_phone?`<div style="margin-top:.375rem"><a href="tel:${escHtml(j.customer_phone)}" style="color:#0F6E56;text-decoration:none;font-weight:600;font-size:.85rem">📞 ${escHtml(j.customer_phone)}</a></div>`:''}
+    ${j.notes||j.customer_notes?`<div style="font-size:.8rem;margin-top:.375rem;padding:.375rem .625rem;background:#EFF6FF;border-radius:8px;color:#1E40AF">${(j.notes||j.customer_notes||'').includes('🐾')?'🐾 ':'📝 '}${escHtml(j.notes||j.customer_notes)}</div>`:''}
+    ${j.customer_name?`<div style="font-size:.82rem;color:var(--m);margin-top:.25rem">👤 ${escHtml(j.customer_name)}</div>`:''}
     ${actionsHtml}
   `;
   expand.classList.toggle('show', !expand.classList.contains('show') || expand.dataset.jobId !== jobId);
@@ -2195,12 +2204,53 @@ function toggleJobExpand(id, e) {
 
 async function startJob(bookingId) {
   if (!confirm('Påbörja uppdraget?')) return;
+  var job = jobs.find(function(x) { return x.id === bookingId; });
   await R.update('bookings', {
     checked_in_at: new Date().toISOString(),
     status: 'pågår'
   }, `id=eq.${bookingId}`);
   showToast('✅ Uppdrag påbörjat!');
+  try {
+    await fetch(SUPA_URL + '/functions/v1/notify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY},
+      body: JSON.stringify({
+        type: 'job_started',
+        record: {
+          booking_id: bookingId,
+          customer_email: job ? job.customer_email : null,
+          customer_name: job ? job.customer_name : null,
+          cleaner_name: cleaner.full_name,
+          date: job ? job.booking_date : null,
+          time: job ? job.booking_time : null
+        }
+      })
+    });
+  } catch(e) { console.warn('Start-notis:', e.message); }
   loadJobs();
+}
+
+async function reportNoShow(bookingId) {
+  if (!confirm('Är du säker? Vi notifierar kunden och admin att du inte kunde utföra uppdraget.')) return;
+  try {
+    var res = await R.update('bookings', {
+      status: 'no_show',
+      admin_notes: 'Kund ej på plats — rapporterad av städare ' + new Date().toISOString()
+    }, 'id=eq.' + bookingId);
+    if (res.error) throw new Error(res.error.message);
+    try {
+      await fetch(SUPA_URL + '/functions/v1/notify', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY},
+        body: JSON.stringify({type: 'no_show', record: {booking_id: bookingId, cleaner_name: cleaner.full_name}})
+      });
+    } catch(e) { console.warn('No-show notis:', e.message); }
+    showToast('⚠️ No-show rapporterad. Admin kontaktar kunden.');
+    loadJobs();
+  } catch(err) {
+    console.error('reportNoShow:', err);
+    showToast('Kunde inte rapportera — försök igen');
+  }
 }
 
 async function markJobDone(id) {
