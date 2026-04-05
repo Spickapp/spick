@@ -83,6 +83,8 @@ serve(async (req) => {
       await sb.from("bookings").update({
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
+        cleaner_email: cleaner.email || null,
+        cleaner_phone: cleaner.phone || null,
       }).eq("id", booking_id);
 
       // Email to customer

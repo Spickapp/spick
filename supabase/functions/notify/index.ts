@@ -274,17 +274,26 @@ serve(async (req) => {
 
     // ── VÄLKOMMEN STÄDARE ─────────────────────────────────────
     else if (type === "cleaner_approved") {
-      await sendEmail(r.email, `🎉 Välkommen till Spick, ${r.full_name?.split(" ")[0]}!`, wrap(`
+      const fname = (r.full_name || "").split(" ")[0] || "Hej";
+      await sendEmail(r.email, `🎉 Välkommen till Spick, ${fname}!`, wrap(`
         <h2>Du är godkänd som städare! 🎉</h2>
-        <p>Hej ${r.full_name?.split(" ")[0]}! Vi är glada att välkomna dig till Spick-teamet.</p>
+        <p>Hej ${fname}! Vi är glada att välkomna dig till Spick-teamet.</p>
         <div class="card">
           <div class="row"><span class="lbl">Ditt timpris</span><span class="val">${r.hourly_rate || 350} kr/h</span></div>
           <div class="row"><span class="lbl">Din andel</span><span class="val">83% (${Math.round((r.hourly_rate || 350) * 0.83)} kr/h)</span></div>
           <div class="row"><span class="lbl">Spick provision</span><span class="val">17%</span></div>
           <div class="row"><span class="lbl">Betalning</span><span class="val">3–5 bankdagar</span></div>
         </div>
-        <p>Du visas nu på spick.se och kan ta emot bokningar. Logga in med din e-post — du får en engångskod.</p>
+        <h3 style="margin-top:16px">Tre steg för att komma igång:</h3>
+        <div class="card">
+          <div class="row"><span class="lbl">Steg 1</span><span class="val"><a href="https://spick.se/stadare-dashboard.html" style="color:#0F6E56">Logga in</a> — ange din e-post, du får en 6-siffrig kod</span></div>
+          <div class="row"><span class="lbl">Steg 2</span><span class="val"><a href="https://spick.se/stadare-guide.html" style="color:#0F6E56">Läs Appguiden</a> — hur du använder Spick (5 min)</span></div>
+          <div class="row"><span class="lbl">Steg 3</span><span class="val">Fyll i profil, bild, schema och anslut Stripe</span></div>
+        </div>
+        <p>När din profil är komplett börjar du matcha med kunder automatiskt. 🚀</p>
         <a class="btn" href="https://spick.se/stadare-dashboard.html">Gå till min dashboard →</a>
+        <hr style="border:none;border-top:1px solid #E8E8E4;margin:20px 0">
+        <p style="font-size:13px">Frågor? Skriv på <a href="https://wa.me/46760505153" style="color:#0F6E56">WhatsApp</a> eller mejla <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
       `));
     }
 

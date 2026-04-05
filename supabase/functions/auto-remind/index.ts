@@ -166,6 +166,79 @@ ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta
         sent.push(`2h:${b.id}`);
       }
 
+      // ── NUDGE: Glömd check-in (15 min efter starttid) ────────
+      if (hoursLeft <= 0 && hoursLeft > -0.5 && b.cleaner_id && !b.checked_in_at && !alreadySent.includes("checkin_nudge")) {
+        const cEmail = b.cleaner_email || null;
+        const cPhone = b.cleaner_phone || null;
+        const cleanerFirst = (b.cleaner_name || "").split(" ")[0] || "Hej";
+        const custFirst = (b.customer_name || "").split(" ")[0] || "kund";
+
+        if (cPhone) {
+          await sendSms(cPhone,
+            `Spick: Har du glömt checka in? Ditt jobb kl ${b.booking_time || "09:00"} hos ${custFirst} borde ha startat. Öppna appen och tryck "Påbörja uppdrag": spick.se/stadare-dashboard.html`
+          );
+        }
+
+        if (cEmail) {
+          await mail(cEmail,
+            `⚠️ Glömt checka in? Ditt jobb kl ${b.booking_time || "09:00"} har startat`,
+            wrap(`<h2>Har du glömt att checka in? ⏰</h2>
+<p>Hej ${cleanerFirst}! Ditt uppdrag hos ${b.customer_name || "kund"} kl ${b.booking_time || "09:00"} borde ha börjat.</p>
+<div class="warn">⚠️ Tryck "Påbörja uppdrag" i appen — annars vet inte kunden att du är på plats och jobbet registreras inte.</div>
+<a href="https://spick.se/stadare-dashboard.html" class="btn">Öppna appen →</a>`)
+          );
+        }
+
+        await mail(ADMIN,
+          `⚠️ Städare ej incheckad: ${b.cleaner_name || "?"} kl ${b.booking_time || "?"} ${dateStr}`,
+          wrap(`<h2>Städare har inte checkat in</h2>
+<div class="card">
+  <div class="row"><span class="lbl">Städare</span><span class="val">${b.cleaner_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Telefon</span><span class="val">${b.cleaner_phone || "–"}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${b.customer_name || "–"}</span></div>
+  <div class="row"><span class="lbl">Tid</span><span class="val">${b.booking_time || "09:00"} (${Math.round(Math.abs(hoursLeft) * 60)} min sedan)</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address || "–"}</span></div>
+</div>
+<a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>`)
+        );
+
+        await sb.from("bookings").update({ reminders_sent: [...alreadySent, "checkin_nudge"] }).eq("id", b.id);
+        sent.push(`checkin_nudge:${b.id}`);
+      }
+
+      // ── NUDGE: Glömd markera klar (30 min efter estimerad sluttid) ──
+      if (b.checked_in_at && b.status === "pågår" && !b.completed_at && !alreadySent.includes("checkout_nudge")) {
+        const startTime = new Date(`${dateStr}T${(b.booking_time || "09:00")}:00`);
+        const estimatedEnd = new Date(startTime.getTime() + (parseInt(b.booking_hours) || 3) * 3_600_000);
+        const minutesPastEnd = (now.getTime() - estimatedEnd.getTime()) / 60_000;
+
+        if (minutesPastEnd >= 30 && minutesPastEnd < 90) {
+          const cEmail = b.cleaner_email || null;
+          const cPhone = b.cleaner_phone || null;
+          const cleanerFirst = (b.cleaner_name || "").split(" ")[0] || "Hej";
+          const custFirst = (b.customer_name || "").split(" ")[0] || "kund";
+
+          if (cPhone) {
+            await sendSms(cPhone,
+              `Spick: Är du klar hos ${custFirst}? Tryck "Markera klar" i appen så frigörs din betalning: spick.se/stadare-dashboard.html`
+            );
+          }
+
+          if (cEmail) {
+            await mail(cEmail,
+              `✅ Klar med städningen? Glöm inte markera klart`,
+              wrap(`<h2>Allt klart, ${cleanerFirst}? 🧹</h2>
+<p>Ditt uppdrag hos ${b.customer_name || "kund"} borde vara klart nu (${b.booking_hours || 3}h sedan start).</p>
+<div class="warn">💰 Tryck "Markera klar" i appen — din betalning frigörs inte förrän du gör det!</div>
+<a href="https://spick.se/stadare-dashboard.html" class="btn">Öppna appen →</a>`)
+            );
+          }
+
+          await sb.from("bookings").update({ reminders_sent: [...alreadySent, "checkout_nudge"] }).eq("id", b.id);
+          sent.push(`checkout_nudge:${b.id}`);
+        }
+      }
+
       // Admin-varning: ingen städare 6h innan
       if (hoursLeft<=6 && hoursLeft>5 && !b.cleaner_id && !alreadySent.includes("no-cleaner")) {
         await mail(ADMIN,

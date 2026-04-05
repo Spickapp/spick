@@ -32,22 +32,22 @@ function googleTranslateElementInit() {
 <style>
 /* ═══ DESIGN SYSTEM ═══ */
 :root{
-  /* Primär — Spick grön */
-  --spick-50:#f0faf5;--spick-100:#d1f2e1;--spick-200:#a3e4c3;--spick-400:#3cc48a;--spick-500:#1a7d56;--spick-600:#15654a;--spick-700:#104d38;--spick-800:#0b3627;--spick-900:#061e16;
-  /* Neutrala */
-  --gray-50:#fafaf8;--gray-100:#f4f3ef;--gray-200:#e8e6e1;--gray-300:#d3d1c7;--gray-400:#a8a69e;--gray-500:#7d7b74;--gray-600:#5a5955;--gray-700:#3d3d3a;--gray-800:#2c2c2a;--gray-900:#1a1a19;
+  /* Primär — Spick grön (djupare, mer premium) */
+  --spick-50:#eef9f3;--spick-100:#d1f2e1;--spick-200:#a3e4c3;--spick-400:#2dba7a;--spick-500:#0F6E56;--spick-600:#0b5a46;--spick-700:#084435;--spick-800:#0b3627;--spick-900:#061e16;
+  /* Neutrala (varmare toner) */
+  --gray-50:#fafaf9;--gray-100:#f5f4f1;--gray-200:#eae8e4;--gray-300:#d5d3cd;--gray-400:#a8a69e;--gray-500:#7d7b74;--gray-600:#5a5955;--gray-700:#3d3d3a;--gray-800:#2c2c2a;--gray-900:#1a1a19;
   /* Status */
-  --success:#1a7d56;--warning:#d97706;--danger:#dc2626;--info:#2563eb;
+  --success:#0F6E56;--warning:#d97706;--danger:#dc2626;--info:#2563eb;
   /* Bakgrunder */
-  --bg-primary:#ffffff;--bg-secondary:#fafaf8;--bg-app:#f4f3ef;
+  --bg-primary:#ffffff;--bg-secondary:#fafaf9;--bg-app:#f3f2ee;
   /* Spacing */
   --space-xs:4px;--space-sm:8px;--space-md:12px;--space-lg:16px;--space-xl:24px;--space-2xl:32px;--space-3xl:48px;
-  /* Shadows */
-  --shadow-sm:0 1px 2px rgba(0,0,0,.04);--shadow-md:0 2px 8px rgba(0,0,0,.06);--shadow-lg:0 4px 16px rgba(0,0,0,.08);--shadow-card:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.02);
+  /* Shadows (subtilare, mer premium) */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.03);--shadow-md:0 2px 8px rgba(0,0,0,.05);--shadow-lg:0 4px 16px rgba(0,0,0,.07);--shadow-card:0 1px 4px rgba(0,0,0,.04);
   /* Radius */
   --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;--radius-full:9999px;
-  /* Legacy aliases (for inline styles that reference old vars) */
-  --g:#1a7d56;--gm:#15654a;--gr:#f0faf5;--b:#1a1a19;--m:#7d7b74;--bg:#f4f3ef;--w:#fff;--r:#dc2626;--y:#d97706;--border:#e8e6e1;
+  /* Legacy aliases */
+  --g:#0F6E56;--gm:#0b5a46;--gr:#eef9f3;--b:#1a1a19;--m:#7d7b74;--bg:#f3f2ee;--w:#fff;--r:#dc2626;--y:#d97706;--border:#eae8e4;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
@@ -57,13 +57,13 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 
 /* ═══ SCREENS ═══ */
 .screen{display:none}
-#screen-login.active{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,var(--spick-500),var(--spick-800))}
+#screen-login.active{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;background:var(--spick-500)}
 #screen-magic.active{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;background:var(--bg-app)}
 #screen-app.active{display:block;min-height:100vh}
 
 /* ═══ LOGIN ═══ */
 .login-wrap{width:100%;max-width:400px}
-.login-card{background:var(--bg-primary);border-radius:var(--radius-xl);padding:36px;box-shadow:0 24px 80px rgba(0,0,0,.2)}
+.login-card{background:var(--bg-primary);border-radius:var(--radius-xl);padding:40px;box-shadow:0 24px 80px rgba(0,0,0,.2)}
 .login-logo{font-size:1.75rem;color:var(--spick-500);font-weight:700;margin-bottom:4px;letter-spacing:-.5px}
 .login-tagline{color:var(--gray-500);font-size:.85rem;margin-bottom:28px}
 .login-card h2{font-size:1.2rem;font-weight:600;margin-bottom:8px;letter-spacing:-.3px}
@@ -83,17 +83,18 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .magic-email{background:var(--spick-50);color:var(--spick-600);padding:4px 14px;border-radius:var(--radius-full);font-weight:600;display:inline-block;margin:8px 0;font-size:.88rem}
 
 /* ═══ APP SHELL — HEADER ═══ */
-.app-header{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;border-bottom:1px solid rgba(0,0,0,.06)}
+.app-header{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px;border-bottom:1px solid rgba(0,0,0,.04)}
 .header-logo{font-size:1.2rem;color:var(--spick-500);font-weight:700;letter-spacing:-.5px}
 .header-right{display:flex;align-items:center;gap:10px}
-.avatar{width:36px;height:36px;background:var(--spick-100);border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:var(--spick-600);font-weight:600;font-size:.85rem}
+.avatar{width:38px;height:38px;background:var(--spick-500);border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:.82rem}
 .user-name{color:var(--gray-700);font-size:.82rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .btn-logout{background:var(--gray-100);color:var(--gray-600);border:none;padding:6px 14px;border-radius:var(--radius-full);font-size:.78rem;cursor:pointer;font-family:inherit;min-height:44px;display:flex;align-items:center;font-weight:500;transition:background .15s}
 .btn-logout:hover{background:var(--gray-200)}
 
 /* ═══ HERO NEXT JOB CARD ═══ */
-.hero-card{background:var(--bg-primary);color:var(--gray-900);margin:16px 20px 0;border-radius:var(--radius-lg);padding:20px;position:relative;overflow:hidden;display:none;border-left:4px solid var(--spick-400);box-shadow:var(--shadow-card);border-top:1px solid rgba(0,0,0,.04);border-right:1px solid rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.04)}
+.hero-card{background:var(--bg-primary);color:var(--gray-900);margin:16px 20px 0;border-radius:var(--radius-lg);padding:20px;position:relative;overflow:hidden;display:none;border:1px solid rgba(0,0,0,.06);box-shadow:var(--shadow-md)}
 .hero-card.show{display:block}
+.hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--spick-500)}
 .hero-card::after{display:none}
 .hero-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--spick-500);margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:6px}
 .hero-label::before{content:'';width:8px;height:8px;background:var(--spick-400);border-radius:50%;animation:pulse 2s ease infinite}
@@ -131,11 +132,12 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .jobs-teaser .count{background:var(--warning);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);margin-right:10px}
 
 /* ═══ BOTTOM NAV ═══ */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-around;z-index:100;padding:8px 4px env(safe-area-inset-bottom,12px)}
-.nav-btn{flex:1;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--gray-400);border:none;background:none;font-family:inherit;font-size:10px;font-weight:500;transition:color .15s;min-height:48px;min-width:56px;justify-content:center;text-align:center}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid rgba(0,0,0,.04);display:flex;justify-content:space-around;z-index:100;padding:6px 4px env(safe-area-inset-bottom,12px)}
+.nav-btn{flex:1;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--gray-400);border:none;background:none;font-family:inherit;font-size:10px;font-weight:500;transition:color .15s;min-height:48px;min-width:56px;justify-content:center;text-align:center}
 .nav-btn.active{color:var(--spick-500)}
+.nav-btn.active svg{stroke-width:2.5}
 .nav-btn .ni{font-size:1.3rem;line-height:1}
-.nav-btn svg{width:24px;height:24px}
+.nav-btn svg{width:22px;height:22px;transition:stroke-width .15s}
 .ni-wrap{position:relative;display:inline-flex}
 .nbadge{background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:var(--radius-full);position:absolute;top:-4px;right:-8px;min-width:16px;text-align:center}
 
@@ -155,7 +157,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .pref-toggle input{width:16px;height:16px;accent-color:var(--spick-500)}
 
 /* ═══ CARDS ═══ */
-.card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-card);border:1px solid rgba(0,0,0,.04);margin-bottom:12px;transition:transform .15s ease,box-shadow .15s ease}
+.card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);margin-bottom:12px;transition:transform .15s ease}
 .card-title{font-weight:600;font-size:.92rem;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .card-title span{font-size:.75rem;color:var(--gray-500);font-weight:400}
 
@@ -166,8 +168,8 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .goal-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-top:6px}
 
 /* ═══ JOB CARD ═══ */
-.job-card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-card);border:1px solid rgba(0,0,0,.04);margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;border-left:4px solid transparent;transition:all .2s ease}
-.job-card.mine{border-left-color:var(--spick-400)}
+.job-card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;border-left:4px solid transparent;transition:all .2s ease}
+.job-card.mine{border-left-color:var(--spick-500)}
 .job-card.new-job{border-left-color:var(--warning)}
 .job-card.done-job{border-left-color:var(--gray-300);opacity:.65}
 .job-card.flash-green{background:#ecfdf5;transform:scale(.98)}
@@ -178,8 +180,8 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .job-title{font-weight:600;font-size:.9rem;margin-bottom:4px;color:var(--gray-800)}
 .job-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--gray-500);margin-bottom:6px}
 .job-pay{font-size:1rem;font-weight:700;color:var(--spick-500);white-space:nowrap;flex-shrink:0}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:var(--radius-full);font-size:12px;font-weight:600}
-.badge::before{content:'';width:6px;height:6px;border-radius:50%}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:var(--radius-full);font-size:11px;font-weight:600}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%}
 .badge-new{background:#fffbeb;color:var(--warning)}.badge-new::before{background:var(--warning)}
 .badge-pending{background:#fffbeb;color:var(--warning)}.badge-pending::before{background:var(--warning);animation:pulse 2s infinite}
 .badge-ok{background:#ecfdf5;color:var(--success)}.badge-ok::before{background:var(--success)}
@@ -199,8 +201,10 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ═══ EARN TAB ═══ */
-.earn-hero{background:linear-gradient(135deg,var(--spick-500) 0%,var(--spick-700) 100%);color:#fff;border-radius:var(--radius-xl);padding:24px;margin-bottom:16px}
-.earn-amount{font-size:36px;font-weight:700;letter-spacing:-1px;margin:8px 0 4px}
+.earn-hero{background:var(--spick-500);color:#fff;border-radius:var(--radius-xl);padding:28px;margin-bottom:16px;position:relative;overflow:hidden}
+.earn-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+.earn-hero::after{content:'';position:absolute;bottom:-40px;left:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.04)}
+.earn-amount{font-size:38px;font-weight:700;letter-spacing:-1.5px;margin:8px 0 4px}
 .earn-sub{opacity:.7;font-size:13px}
 .earn-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-200);font-size:.88rem;align-items:center}
 .earn-row:last-child{border-bottom:none;font-weight:600}
@@ -319,13 +323,14 @@ body{top:0!important}
 .goog-text-highlight{background:none!important;box-shadow:none!important}
 
 /* ═══ ONBOARDING ═══ */
-.ob-step{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-200);font-size:.88rem;cursor:pointer;min-height:48px;transition:background .1s}
+.ob-step{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-200);font-size:.88rem;cursor:pointer;min-height:48px;transition:background .1s}
 .ob-step:last-child{border:none}
 .ob-step.done{color:var(--spick-500)}
 .ob-step:not(.done):hover{background:var(--gray-50);border-radius:var(--radius-sm)}
 .ob-step a{min-height:44px;display:inline-flex;align-items:center}
 .ob-check{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:2px solid var(--gray-300);display:flex;align-items:center;justify-content:center}
 .ob-step.done .ob-check{background:var(--spick-500);border-color:var(--spick-500)}
+
 .ob-step.done .ob-check svg{display:block}
 .ob-check svg{display:none}
 
@@ -448,16 +453,32 @@ body{top:0!important}
     <div class="tab-content active" id="tab-hem">
 
       <!-- Income Stats Strip -->
-      <div id="home-stats" style="display:none;padding:16px 16px 0;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-          <div style="font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna vecka</div>
-          <div style="font-family:inherit;font-size:1.35rem;font-weight:700;color:var(--g);margin-top:2px" id="home-week-earn">0 kr</div>
-          <div style="font-size:.7rem;color:var(--m);margin-top:2px" id="home-week-jobs">0 uppdrag</div>
+      <!-- Personal Greeting -->
+      <div id="personal-greeting" style="padding:20px 20px 0">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+          <div id="greeting-avatar" style="width:52px;height:52px;border-radius:50%;background:var(--spick-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:1.1rem;flex-shrink:0">?</div>
+          <div>
+            <div id="greeting-text" style="font-size:1.25rem;font-weight:700;color:var(--gray-900);letter-spacing:-.3px">Hej!</div>
+            <div id="greeting-sub" style="font-size:.85rem;color:var(--gray-500);margin-top:2px">Välkommen tillbaka</div>
+          </div>
         </div>
-        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-          <div style="font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna månad</div>
-          <div style="font-family:inherit;font-size:1.35rem;font-weight:700;color:var(--g);margin-top:2px" id="home-month-earn">0 kr</div>
-          <div style="font-size:.7rem;color:var(--m);margin-top:2px" id="home-month-jobs">0 uppdrag</div>
+      </div>
+
+      <div id="home-stats" style="display:none;padding:0 16px;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
+          <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna vecka</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-week-earn">0 kr</div>
+          <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-week-jobs">0 uppdrag</div>
+        </div>
+        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
+          <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna månad</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-month-earn">0 kr</div>
+          <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-month-jobs">0 uppdrag</div>
+        </div>
+        <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
+          <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Snittbetyg</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-rating-display">–</div>
+          <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-rating-count">0 betyg</div>
         </div>
       </div>
 
@@ -496,6 +517,7 @@ body{top:0!important}
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><div class="ob-check"></div><span>Anslut bankkonto via Stripe</span></div>
           <!-- More steps (expandable) -->
           <div id="ob-more" style="display:none">
+            <div class="ob-step" id="ob-guide" onclick="window.open('stadare-guide.html','_blank');markGuideRead()"><div class="ob-check"></div><span>Läs Appguiden — Hur du använder Spick</span></div>
             <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><div class="ob-check"></div><span>Läs Städarhandboken →</span></div>
             <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank');markTestDone()"><div class="ob-check"></div><span>Gör kompetenstestet →</span></div>
             <div class="ob-step" id="ob-8" style="pointer-events:none"><div class="ob-check"></div><span>ID-verifierad</span></div>
@@ -537,6 +559,22 @@ body{top:0!important}
           <span style="font-weight:600;font-size:.88rem" id="teaser-text">nya jobb matchar dig</span>
         </div>
         <span style="color:var(--g);font-weight:600;font-size:.85rem">Visa →</span>
+      </div>
+
+      <!-- Quick Actions -->
+      <div id="quick-actions" style="padding:8px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div onclick="switchTab('kalender')" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
+          <div style="font-size:1.3rem;margin-bottom:4px">📅</div>
+          <div style="font-size:.72rem;color:var(--m);font-weight:500">Schema</div>
+        </div>
+        <div onclick="switchTab('inst');setTimeout(function(){openSubView('sv-profile')},200)" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
+          <div style="font-size:1.3rem;margin-bottom:4px">👤</div>
+          <div style="font-size:.72rem;color:var(--m);font-weight:500">Profil</div>
+        </div>
+        <div onclick="shareProfile()" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
+          <div style="font-size:1.3rem;margin-bottom:4px">🔗</div>
+          <div style="font-size:.72rem;color:var(--m);font-weight:500">Dela profil</div>
+        </div>
       </div>
 
       <!-- My upcoming jobs (confirmed only) -->
@@ -1311,6 +1349,24 @@ async function loadCleanerByEmail(email, authUserId) {
   const initials = (cleaner.full_name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
   document.getElementById('hdr-avatar').textContent = initials;
   document.getElementById('hdr-name').textContent = (cleaner.full_name || '').split(' ')[0];
+  // Greeting
+  var firstName = (cleaner.full_name || '').split(' ')[0] || 'städare';
+  var hour = new Date().getHours();
+  var timeGreet = hour < 10 ? 'God morgon' : hour < 17 ? 'Hej' : 'God kväll';
+  var greetEl = document.getElementById('greeting-text');
+  if (greetEl) greetEl.textContent = timeGreet + ', ' + firstName + '!';
+  var greetAvEl = document.getElementById('greeting-avatar');
+  if (greetAvEl) greetAvEl.textContent = initials;
+  var greetSubEl = document.getElementById('greeting-sub');
+  // Greeting sub-text (job count)
+  function updateGreetingSub() {
+    if (!greetSubEl) return;
+    var todayCount = jobs.filter(function(j){ return j.cleaner_id === cleaner.id && j.status !== 'klar' && new Date(j.scheduled_date||j.booking_date).toDateString() === new Date().toDateString(); }).length;
+    var weekCount = jobs.filter(function(j){ var d = new Date(j.scheduled_date||j.booking_date); var now = new Date(); var weekEnd = new Date(); weekEnd.setDate(now.getDate() + 7); return j.cleaner_id === cleaner.id && j.status !== 'klar' && d >= now && d <= weekEnd; }).length;
+    if (todayCount > 0) greetSubEl.textContent = todayCount + ' jobb idag · ' + weekCount + ' denna vecka';
+    else if (weekCount > 0) greetSubEl.textContent = weekCount + ' jobb denna vecka';
+    else greetSubEl.textContent = 'Inga kommande jobb just nu';
+  }
   document.getElementById('prof-avatar').textContent = initials;
   document.getElementById('prof-name').textContent = cleaner.full_name || '–';
   document.getElementById('prof-sub').textContent = `Städare i ${cleaner.city || 'din stad'}`;
@@ -1396,6 +1452,7 @@ function renderHome() {
   updateHomeStats();
   updateBadge();
   updateOnboarding();
+  if (typeof updateGreetingSub === 'function') updateGreetingSub();
 }
 
 function updateOnboarding() {
@@ -1422,6 +1479,7 @@ function updateOnboarding() {
     'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
     'ob-4': !!(cleaner.availability_schedule || cleaner._scheduleLoaded),
     'ob-5': cleaner.stripe_onboarding_status === 'complete',
+    'ob-guide': !!localStorage.getItem('spick-guide-read'),
     'ob-6': !!localStorage.getItem('spick-handbook-read'),
     'ob-6t': !!(localStorage.getItem('spick_test_score') || cleaner.test_score > 0),
     'ob-8': !!(cleaner.identity_verified),
@@ -1479,6 +1537,11 @@ function markHandbookRead() {
 
 function markTestDone() {
   localStorage.setItem('spick_test_score', '1');
+  updateOnboarding();
+}
+
+function markGuideRead() {
+  localStorage.setItem('spick-guide-read', '1');
   updateOnboarding();
 }
 
@@ -1878,6 +1941,10 @@ function updateHomeStats() {
   document.getElementById('home-week-jobs').textContent = weekJobs.length + ' uppdrag';
   document.getElementById('home-month-earn').textContent = monthEarn.toLocaleString('sv') + ' kr';
   document.getElementById('home-month-jobs').textContent = monthJobs.length + ' uppdrag';
+  var ratingEl = document.getElementById('home-rating-display');
+  if (ratingEl && cleaner.avg_rating) ratingEl.textContent = cleaner.avg_rating + '/5';
+  var ratingCountEl = document.getElementById('home-rating-count');
+  if (ratingCountEl) ratingCountEl.textContent = (cleaner.review_count || 0) + ' betyg';
   wrap.style.display = 'grid';
 }
 
@@ -2151,7 +2218,13 @@ async function acceptJob(id, btnEl) {
     await new Promise(r => setTimeout(r, 200));
   }
 
-  await R.update('bookings', {cleaner_id:cleaner.id,status:'bekräftad',cleaner_name:cleaner.full_name}, `id=eq.${id}`);
+  await R.update('bookings', {
+    cleaner_id: cleaner.id,
+    status: 'bekräftad',
+    cleaner_name: cleaner.full_name,
+    cleaner_email: cleaner._email || cleaner.email || null,
+    cleaner_phone: cleaner.phone || null
+  }, `id=eq.${id}`);
 
   // Race condition check — verify we actually got the job
   const verify = await R.selectSingle('bookings', `select=cleaner_id&id=eq.${id}`);
@@ -2373,6 +2446,8 @@ function initAvatarUpload() {
   if (cleaner.avatar_url) {
     document.getElementById('hdr-avatar').innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     document.getElementById('prof-avatar').innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+    var gAv = document.getElementById('greeting-avatar');
+    if (gAv) gAv.innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
   }
 
   input.onchange = async function() {
