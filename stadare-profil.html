@@ -7,7 +7,8 @@
 <meta name="description" content="Se profil, betyg och boka denna städare direkt via Spick.">
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="Spick">
-<meta property="og:title" content="Städarprofil | Spick">
+<meta property="og:title" content="Boka din städare — Spick">
+<meta property="og:description" content="Hitta och boka ID-verifierade städare i ditt område. Från 200 kr/h med RUT-avdrag. Säker betalning och nöjdhetsgaranti.">
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://spick.se/stadare-profil.html">
@@ -299,6 +300,10 @@ async function loadProfile() {
   var ogDesc = document.querySelector('meta[property="og:description"]');
   if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
   ogDesc.content = 'Boka ' + c.full_name + ' för städning i ' + (c.city || 'Stockholm') + '. Från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT.';
+
+  // Canonical → EF-URL
+  var canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = 'https://urjeijcncsyuletprydy.supabase.co/functions/v1/cleaner-og?' + (c.slug ? 's=' + c.slug : 'id=' + c.id);
 
   // Schema.org
   document.getElementById('schema-json').textContent = JSON.stringify({
