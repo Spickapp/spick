@@ -371,7 +371,7 @@ serve(async (req) => {
 
     params.append("line_items[0][price_data][product_data][name]", productName);
     params.append("line_items[0][price_data][product_data][description]", productDesc);
-    params.append("line_items[0][price_data][product_data][images][]", "https://spick.se/assets/og-image.jpg");
+    params.append("line_items[0][price_data][product_data][images][]", "https://spick.se/assets/og-image.png");
 
     params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
     params.append("billing_address_collection", "auto");

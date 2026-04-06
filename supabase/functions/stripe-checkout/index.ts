@@ -131,7 +131,7 @@ serve(async (req) => {
         : `Städdatum: ${date}. Städare: ${cleaner_name || "Tilldelas"}`
     );
     params.append("line_items[0][price_data][product_data][images][]",
-      "https://spick.se/assets/og-image.jpg");
+      "https://spick.se/assets/og-image.png");
 
     params.append("allow_promotion_codes", "true");
     params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
