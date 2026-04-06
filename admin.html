@@ -857,16 +857,16 @@ const ANON_KEY = SPICK.SUPA_KEY;
 
 // REST helpers — bypass SB.from() to avoid SDK deadlock
 async function _adminHeaders() {
-  let token = ANON_KEY;
-  try {
-    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.access_token) token = parsed.access_token;
-      else if (parsed.currentSession?.access_token) token = parsed.currentSession.access_token;
-      else if (parsed.session?.access_token) token = parsed.session.access_token;
-    }
-  } catch(e) {}
+  let token = _sessionToken || ANON_KEY;
+  if (token === ANON_KEY) {
+    try {
+      var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        token = parsed.access_token || parsed.currentSession?.access_token || parsed.session?.access_token || ANON_KEY;
+      }
+    } catch(e) {}
+  }
   return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
 }
 const AR = {
@@ -898,6 +898,7 @@ const AR = {
 
 // ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
 let ADMIN_EMAIL = null; // resolved from Supabase auth session
+let _sessionToken = null;
 let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
 let currentBookingId = null, currentCleanerId = null;
 
@@ -911,6 +912,7 @@ SB.auth.getSession().then(({ data: { session } }) => {
 // Lyssna på auth-ändringar
 SB.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
+    _sessionToken = session.access_token;
     try {
       const email = session.user.email;
       let isAdmin = false;
