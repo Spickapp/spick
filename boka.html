@@ -324,7 +324,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </div>
           </div>
 
-          <!-- Adress --><div style="margin-top:1.25rem" class="f f-addr"><label>Din adress *</label><input type="text" id="step1-address" placeholder="Kungsgatan 10, Stockholm" autocomplete="off" oninput="addrSearch(this.value); syncAddr(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)" onblur="syncAddr(this.value)" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem"><div id="addr-hint" style="display:none;font-size:.9rem;margin-top:8px;padding:12px 16px;color:#991B1B;background:#FEE2E2;border:1.5px solid #FECACA;border-radius:10px;font-weight:600;line-height:1.5;position:relative;z-index:60"></div><div id="addr-dd" class="addr-suggestions" style="display:none"></div><div id="coverage-msg" style="display:none;margin-top:.75rem"></div></div><!-- Kalender --><div id="cal-section" style="margin-top:1.25rem">
+          <!-- Adress --><div style="margin-top:1.25rem" class="f f-addr"><label>Din adress *</label><input type="text" id="step1-address" placeholder="Gatunamn + nummer, t.ex. Kungsgatan 10A" autocomplete="off" oninput="addrSearch(this.value); syncAddr(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)" onblur="syncAddr(this.value)" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem"><div id="addr-hint" style="display:none;font-size:.9rem;margin-top:8px;padding:12px 16px;color:#991B1B;background:#FEE2E2;border:1.5px solid #FECACA;border-radius:10px;font-weight:600;line-height:1.5;position:relative;z-index:60"></div><div id="addr-dd" class="addr-suggestions" style="display:none"></div><div id="coverage-msg" style="display:none;margin-top:.75rem"></div></div><!-- Kalender --><div id="cal-section" style="margin-top:1.25rem">
             <label style="margin-bottom:.5rem">Välj datum & tid *</label>
             <div class="cal" id="calendar">
               <div class="cal-nav">
@@ -465,7 +465,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 
           <div class="f f-addr" style="margin-bottom:1rem">
             <label>Adress *</label>
-            <input type="text" id="address" placeholder="Kungsgatan 10, Stockholm" autocomplete="off" required oninput="addrSearch(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)">
+            <input type="text" id="address" placeholder="Gatunamn + nummer, t.ex. Kungsgatan 10A" autocomplete="off" required oninput="addrSearch(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)">
             <div id="addr-list" class="addr-suggestions" style="display:none"></div>
           </div>
 
@@ -641,7 +641,11 @@ const SUPA = SPICK.SUPA_URL;
 const KEY = SPICK.SUPA_KEY;
 const H    = {apikey:KEY, Authorization:'Bearer '+KEY};
 const SB   = supabase.createClient(SUPA, KEY);
-function syncAddr(v) { /* sidebar sync placeholder */ }
+function syncAddr(v) {
+  if (state.lat && state.lng) {
+    state.address = v;
+  }
+}
 const MONTHS = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
 const DAYS_SV = ['sön','mån','tis','ons','tor','fre','lör'];
 const COLORS  = ['#0F6E56','#7C3AED','#DC2626','#2563EB','#D97706','#0891B2','#9333EA','#059669'];
@@ -1814,6 +1818,10 @@ let addrTimer;
 async function addrSearch(q) {
   var hint = document.getElementById('addr-hint'); if (hint) hint.style.display = 'none';
   var ae = document.getElementById('step1-address'); if (ae) ae.style.outline = '';
+  if (state.lat && state.lng && q.length > 5) {
+    state.address = q;
+    return;
+  }
   clearTimeout(addrTimer);
   const list = (state.step === 1) ? document.getElementById('addr-dd') : document.getElementById('addr-list');
   if (q.length < 3) { list.style.display='none'; return; }
