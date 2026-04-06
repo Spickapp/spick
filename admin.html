@@ -2264,7 +2264,7 @@ function renderSettings() {
     <div class="stat-row"><span class="lbl">Databas</span><span class="badge green"><span class="dot"></span>${totalBookings} bokningar · ${totalCleaners} städare (${activeCleaners} aktiva)</span></div>`;
 
   // Dynamisk Supabase-check
-  fetch(SPICK.SUPA_URL + '/rest/v1/', { headers: { 'apikey': SPICK.SUPA_KEY } }).then(function(r) {
+  fetch(SPICK.SUPA_URL + '/rest/v1/platform_settings?select=key&limit=1', { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY } }).then(function(r) {
     var el = document.getElementById('sys-supabase');
     if (el) { el.className = 'badge ' + (r.ok ? 'green' : 'red'); el.innerHTML = (r.ok ? '<span class="dot"></span>Aktiv' : '❌ Nere'); }
   }).catch(function() {
