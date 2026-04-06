@@ -943,7 +943,7 @@ async function goStep2() {
     document.getElementById('sqm').focus();
     return;
   }
-  if (!state.address || state.address.length < 5) { var ae=document.getElementById('step1-address'); if(ae){ae.focus();ae.style.outline='2px solid #dc2626';setTimeout(()=>ae.style.outline='',2000);} return; } if (!state.date || !state.time) {
+  if (!state.address || state.address.length < 5 || !/\d/.test(state.address)) { var ae=document.getElementById('step1-address'); if(ae){ae.focus();ae.style.outline='2px solid #dc2626';setTimeout(()=>ae.style.outline='',2000);} var _ahint=document.getElementById('addr-hint'); if(!_ahint){_ahint=document.createElement('div');_ahint.id='addr-hint';_ahint.style.cssText='font-size:.8rem;margin-top:4px;color:#D97706';ae.parentNode.appendChild(_ahint);} _ahint.textContent='\u26a0\ufe0f Ange gatunummer i din adress, t.ex. Bokv\u00e4gen 5';_ahint.style.display='block'; return; } if (!state.date || !state.time) {
     document.getElementById('calendar').scrollIntoView({behavior:'smooth', block:'center'});
     document.getElementById('calendar').style.outline = '2px solid #dc2626';
     setTimeout(() => document.getElementById('calendar').style.outline = '', 2000);
