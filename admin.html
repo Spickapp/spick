@@ -853,33 +853,36 @@ const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY, {
 const ANON_KEY = SPICK.SUPA_KEY;
 
 // REST helpers — bypass SB.from() to avoid SDK deadlock
-function _adminHeaders() {
-  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+async function _adminHeaders() {
+  let token = ANON_KEY;
+  try {
+    const { data: { session } } = await SB.auth.getSession();
+    if (session?.access_token) token = session.access_token;
+  } catch(e) { console.warn('Session error:', e); }
   return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
 }
 const AR = {
   async select(table, query) {
-    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + (query||''), { headers: _adminHeaders() });
+    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + (query||''), { headers: await _adminHeaders() });
     return { data: r.ok ? await r.json() : [], error: r.ok ? null : { message: 'HTTP ' + r.status } };
   },
   async update(table, data, matchQuery) {
     const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + matchQuery, {
-      method: 'PATCH', headers: { ..._adminHeaders(), 'Prefer':'return=minimal' },
+      method: 'PATCH', headers: { ...await _adminHeaders(), 'Prefer':'return=minimal' },
       body: JSON.stringify(data)
     });
     return { error: r.ok ? null : { message: 'HTTP ' + r.status } };
   },
   async insert(table, data) {
     const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table, {
-      method: 'POST', headers: { ..._adminHeaders(), 'Prefer':'return=representation' },
+      method: 'POST', headers: { ...await _adminHeaders(), 'Prefer':'return=representation' },
       body: JSON.stringify(data)
     });
     return { data: r.ok ? await r.json() : null, error: r.ok ? null : { message: 'HTTP ' + r.status } };
   },
   async del(table, matchQuery) {
     const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + matchQuery, {
-      method: 'DELETE', headers: { ..._adminHeaders(), 'Prefer':'return=minimal' }
+      method: 'DELETE', headers: { ...await _adminHeaders(), 'Prefer':'return=minimal' }
     });
     return { error: r.ok ? null : { message: 'HTTP ' + r.status } };
   }
@@ -2089,8 +2092,8 @@ async function activateSub(id) {
 async function runBookingTimeout(btn) {
   if (!confirm('Timeout:a bokningar som väntat > 2h utan svar?\n\nKunder får återbetalning och mejl.')) return;
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
-  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+  let token = ANON_KEY;
+  try { const { data: { session } } = await SB.auth.getSession(); if (session?.access_token) token = session.access_token; } catch(e) { console.warn('Session error:', e); }
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/booking-auto-timeout', {
       method: 'POST',
@@ -3090,8 +3093,8 @@ async function approveApplication(btn, id, name, email, city, services, rate) {
   if (!confirm(`Godkänn ${name}?\n\nEtt konto skapas, profil läggs till i cleaners och välkomstmejl skickas.`)) return;
 
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
-  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+  let token = ANON_KEY;
+  try { const { data: { session } } = await SB.auth.getSession(); if (session?.access_token) token = session.access_token; } catch(e) { console.warn('Session error:', e); }
 
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
@@ -3123,8 +3126,8 @@ async function rejectApplication(btn, id) {
   if (!result.ok) return;
 
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
-  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-  const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
+  let token = ANON_KEY;
+  try { const { data: { session } } = await SB.auth.getSession(); if (session?.access_token) token = session.access_token; } catch(e) { console.warn('Session error:', e); }
 
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
