@@ -1392,7 +1392,7 @@ async function loadAvailableCleaners() {
       cleaners = await rpcRes.json();
     } else {
       // Fallback: hämta alla godkända städare (inget lat/lng)
-      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
+      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,slug,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
       const res = await fetch(url, {headers:H});
       if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
       cleaners = await res.json();
@@ -1565,7 +1565,7 @@ function renderCleaners(cleaners) {
     var expandHTML = '<div class="cleaner-expand">';
     if (cl.bio) expandHTML += '<div class="cleaner-bio">"' + escHtml(cl.bio) + '"</div>';
     expandHTML += '<div class="cleaner-details-grid">' + expandTags.join('') + '</div>';
-    expandHTML += '<a href="stadare-profil.html?id=' + cl.id + '" target="_blank" style="display:block;text-align:center;font-size:.78rem;color:var(--g);margin-bottom:.625rem;text-decoration:underline">Visa fullständig profil</a>';
+    expandHTML += '<a href="/s/' + (cl.slug || cl.id) + '" target="_blank" style="display:block;text-align:center;font-size:.78rem;color:var(--g);margin-bottom:.625rem;text-decoration:underline">Visa fullständig profil</a>';
     expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml((cl.full_name || '').split(' ')[0]) + ' →</button>';
     expandHTML += '</div>';
     var avatarHTML = cl.avatar_url

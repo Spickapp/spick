@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>St??darprofil | Spick</title>
-<meta name="description" content="Se profil, betyg och boka denna st??dare direkt via Spick.">
+<title>Städarprofil | Spick</title>
+<meta name="description" content="Se profil, betyg och boka denna städare direkt via Spick.">
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="Spick">
-<meta property="og:title" content="Boka din st??dare ??? Spick">
-<meta property="og:description" content="Hitta och boka ID-verifierade st??dare i ditt omr??de. Fr??n 200 kr/h med RUT-avdrag. S??ker betalning och n??jdhetsgaranti.">
+<meta property="og:title" content="Städarprofil | Spick">
+<meta property="og:description" content="Hitta och boka ID-verifierade städare i ditt område. Från 200 kr/h med RUT-avdrag. Säker betalning och nöjdhetsgaranti.">
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://spick.se/stadare-profil.html">
@@ -61,7 +61,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 <body>
 
 <div class="top-bar">
-  <a href="/">??? Tillbaka till Spick</a>
+  <a href="/">← Tillbaka till Spick</a>
 </div>
 
 <div class="container">
@@ -71,8 +71,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
 
     <div class="profile-card">
       <div class="avatar" id="p-avatar">?</div>
-      <div class="name" id="p-name">???</div>
-      <div class="city" id="p-city">???</div>
+      <div class="name" id="p-name">–</div>
+      <div class="city" id="p-city">–</div>
       <div class="stars" id="p-stars"></div>
       <div class="rating-text" id="p-rating-text"></div>
       <div class="badge-row" id="p-badges"></div>
@@ -86,7 +86,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
     </div>
 
     <div class="card">
-      <div class="card-title">Tj??nster</div>
+      <div class="card-title">Tjänster</div>
       <div id="p-services"></div>
     </div>
 
@@ -98,15 +98,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-he
     <div class="card qr-section" id="qr-card">
       <div class="card-title">Boka via QR-kod</div>
       <canvas id="qr-canvas"></canvas>
-      <div style="font-size:.78rem;color:var(--m);margin-top:8px">Skanna f??r att boka denna st??dare direkt</div>
+      <div style="font-size:.78rem;color:var(--m);margin-top:8px">Skanna för att boka denna städare direkt</div>
     </div>
 
   </div>
 </div>
 
 <div class="cta-bar" id="cta-bar" style="display:none">
-  <a class="btn-book" id="book-btn" href="boka.html">Boka denna st??dare ???</a>
-  <button class="btn-share" onclick="shareProfile()">???? Kopiera l??nk</button>
+  <a class="btn-book" id="book-btn" href="boka.html">Boka denna städare →</a>
+  <button class="btn-share" onclick="shareProfile()">📋 Kopiera länk</button>
 </div>
 
 <script>
@@ -123,7 +123,7 @@ async function loadProfile() {
   const id = params.get('id') || params.get('focus');
 
   if (!slug && !id) {
-    showError('Ingen st??dare angiven. G?? till <a href="boka.html" style="color:var(--g)">boka.html</a> f??r att hitta en.');
+    showError('Ingen städare angiven. Gå till <a href="boka.html" style="color:var(--g)">boka.html</a> för att hitta en.');
     return;
   }
 
@@ -136,7 +136,7 @@ async function loadProfile() {
   var c = Array.isArray(cleanerArr) && cleanerArr.length > 0 ? cleanerArr[0] : null;
 
   if (!c) {
-    showError('St??daren hittades inte eller ??r inte aktiv.');
+    showError('Städaren hittades inte eller är inte aktiv.');
     return;
   }
   _cleaner = c;
@@ -144,21 +144,21 @@ async function loadProfile() {
   // Populate profile
   var hasRatings = c.avg_rating != null && c.review_count > 0;
   const initial = (c.full_name || '?')[0].toUpperCase();
-  // Steg 4 ??? Avatar med fallback
+  // Steg 4 — Avatar med fallback
   if (c.avatar_url || c.profile_image_url) {
     document.getElementById('p-avatar').innerHTML = '<img src="' + escHtml(c.avatar_url || c.profile_image_url) + '" alt="' + escHtml(c.full_name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
   } else {
     document.getElementById('p-avatar').textContent = initial;
   }
-  document.getElementById('p-name').textContent = c.full_name || 'St??dare';
+  document.getElementById('p-name').textContent = c.full_name || 'Städare';
   var locationText = '';
   if (c.city) {
     locationText = c.city.charAt(0).toUpperCase() + c.city.slice(1).toLowerCase();
     if (c.service_radius_km && c.service_radius_km > 20) {
-      locationText += ' ?? T??cker ' + c.service_radius_km + ' km radie';
+      locationText += ' · Täcker ' + c.service_radius_km + ' km radie';
     }
   } else if (c.service_radius_km) {
-    locationText = 'T??cker ' + c.service_radius_km + ' km radie';
+    locationText = 'Täcker ' + c.service_radius_km + ' km radie';
   } else {
     locationText = 'Sverige';
   }
@@ -166,26 +166,26 @@ async function loadProfile() {
 
   // Badge + rating line
   var badgeParts = [];
-  if (c.identity_verified) badgeParts.push('<span style="color:#065F46;font-weight:600">??? ID-verifierad</span>');
-  if (false) badgeParts.push('<span style="color:#065F46">???? Kompetenstest godk??nt</span>');
+  if (c.identity_verified) badgeParts.push('<span style="color:#065F46;font-weight:600">✓ ID-verifierad</span>');
+  if (false) badgeParts.push('<span style="color:#065F46">📝 Kompetenstest godkänt</span>');
   if (hasRatings) {
-    badgeParts.push('<span style="color:#f59e0b">' + '???'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960">(' + c.review_count + ' omd??men)</span>');
+    badgeParts.push('<span style="color:#f59e0b">' + '★'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960">(' + c.review_count + ' omdömen)</span>');
   } else {
-    badgeParts.push('<span style="color:#6B6960">???? Ny p?? Spick</span>');
+    badgeParts.push('<span style="color:#6B6960">🌟 Ny på Spick</span>');
   }
-  document.getElementById('p-stars').innerHTML = '<div style="font-size:.85rem">' + badgeParts.join(' <span style="color:#D1D5DB">??</span> ') + '</div>';
+  document.getElementById('p-stars').innerHTML = '<div style="font-size:.85rem">' + badgeParts.join(' <span style="color:#D1D5DB">·</span> ') + '</div>';
   document.getElementById('p-rating-text').textContent = '';
 
   // Badges
   var badges = [];
-  if (c.identity_verified) badges.push('<span class="badge badge-blue">???? ID-verifierad</span>');
-  if (c.completed_jobs >= 10) badges.push('<span class="badge badge-green">??? Erfaren</span>');
+  if (c.identity_verified) badges.push('<span class="badge badge-blue">🔐 ID-verifierad</span>');
+  if (c.completed_jobs >= 10) badges.push('<span class="badge badge-green">✅ Erfaren</span>');
   document.getElementById('p-badges').innerHTML = badges.join('');
 
-  // Stats ??? RUT-pris som huvudsiffra
+  // Stats — RUT-pris som huvudsiffra
   var statsHTML = '';
   statsHTML += '<div class="stat"><div class="stat-val" style="color:var(--g)">' + Math.round((c.hourly_rate || 350) * 0.5) + '</div><div class="stat-lbl">kr/h med RUT</div></div>';
-  statsHTML += '<div class="stat"><div class="stat-val">' + (Array.isArray(c.services) ? c.services.length : '???') + '</div><div class="stat-lbl">tj??nster</div></div>';
+  statsHTML += '<div class="stat"><div class="stat-val">' + (Array.isArray(c.services) ? c.services.length : '–') + '</div><div class="stat-lbl">tjänster</div></div>';
   if (c.member_since) {
     var ms2 = new Date(c.member_since);
     var monthNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
@@ -193,7 +193,7 @@ async function loadProfile() {
   }
   document.getElementById('stats-grid').innerHTML = statsHTML;
 
-  // Bio ??? filtrera meningsl??sa svar
+  // Bio — filtrera meningslösa svar
   var firstName = (c.full_name || '').split(' ')[0];
   var bioText = (c.bio || '').trim();
   var hasBio = bioText.length > 10 && bioText.toLowerCase() !== 'ja' && bioText.toLowerCase() !== 'nej' && bioText !== '-';
@@ -201,12 +201,12 @@ async function loadProfile() {
   if (hasBio) {
     document.getElementById('p-bio').textContent = bioText;
   } else {
-    document.getElementById('p-bio').innerHTML = '<span style="color:#6B6960;font-style:italic">Ingen personlig beskrivning ??nnu.</span>';
+    document.getElementById('p-bio').innerHTML = '<span style="color:#6B6960;font-style:italic">Ingen personlig beskrivning ännu.</span>';
   }
   document.getElementById('bio-card').style.display = 'block';
 
   // Services
-  const svcs = Array.isArray(c.services) ? c.services : (c.services || 'Hemst??dning').split(',');
+  const svcs = Array.isArray(c.services) ? c.services : (c.services || 'Hemstädning').split(',');
   document.getElementById('p-services').innerHTML = svcs.map(s => '<span class="service-tag">' + escHtml(s.trim()) + '</span>').join('');
 
   // Info-taggar
@@ -214,17 +214,17 @@ async function loadProfile() {
   if (c.member_since) {
     var ms = new Date(c.member_since);
     var months = ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'];
-    infoTags.push('???? Medlem sedan ' + months[ms.getMonth()] + ' ' + ms.getFullYear());
+    infoTags.push('📅 Medlem sedan ' + months[ms.getMonth()] + ' ' + ms.getFullYear());
   }
   if (c.languages) {
     var langs = Array.isArray(c.languages) ? c.languages.join(', ') : c.languages;
-    if (langs) infoTags.push('???? ' + escHtml(langs));
+    if (langs) infoTags.push('🗣 ' + escHtml(langs));
   }
   if (c.pet_pref && c.pet_pref !== 'no' && c.pet_pref !== false) {
-    infoTags.push('???? Djurv??nlig');
+    infoTags.push('🐾 Djurvänlig');
   }
   if (c.service_radius_km) {
-    infoTags.push('???? T??cker ' + c.service_radius_km + ' km radie');
+    infoTags.push('📍 Täcker ' + c.service_radius_km + ' km radie');
   }
   if (infoTags.length > 0) {
     var infoCard = document.createElement('div');
@@ -239,11 +239,11 @@ async function loadProfile() {
   var trustHTML = '<div class="card">' +
     '<div class="card-title">Trygghetsgaranti</div>' +
     '<div style="display:flex;flex-direction:column;gap:.5rem">' +
-      (c.identity_verified ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">???</span> ID-verifierad av Spick</div>' : '') +
-      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">???</span> N??jdhetsgaranti ??? vi st??dar om gratis</div>' +
-      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">???</span> S??ker betalning via kort eller Klarna</div>' +
-      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">???</span> Gratis avbokning upp till 24 timmar</div>' +
-      (false ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">???</span> Genomg??tt Spicks kompetenstest</div>' : '') +
+      (c.identity_verified ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> ID-verifierad av Spick</div>' : '') +
+      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Nöjdhetsgaranti — vi städar om gratis</div>' +
+      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Säker betalning via kort eller Klarna</div>' +
+      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Gratis avbokning upp till 24 timmar</div>' +
+      (false ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Genomgått Spicks kompetenstest</div>' : '') +
     '</div>' +
   '</div>';
   var reviewsCard = document.getElementById('p-reviews').closest('.card');
@@ -261,16 +261,16 @@ async function loadProfile() {
       var reviewRating = r.rating || r.cleaner_rating;
       return '<div class="review">' +
         '<div class="review-head"><span class="review-name">' + escHtml(r.customer_name || 'Kund') + '</span><span class="review-date">' + date + '</span></div>' +
-        (reviewRating ? '<div class="review-stars">' + '???'.repeat(Math.round(reviewRating)) + '</div>' : '') +
+        (reviewRating ? '<div class="review-stars">' + '⭐'.repeat(Math.round(reviewRating)) + '</div>' : '') +
         (r.comment ? '<div class="review-text">' + escHtml(r.comment) + '</div>' : '') +
         '</div>';
     }).join('');
   } else {
     document.getElementById('p-reviews').innerHTML =
       '<div style="text-align:center;padding:1rem;color:#6B6960">' +
-        '<div style="font-size:1.25rem;margin-bottom:.5rem">???</div>' +
-        '<div style="font-weight:600;margin-bottom:.25rem">Inga omd??men ??nnu</div>' +
-        '<div style="font-size:.82rem">Boka ' + escHtml(firstName) + ' och bli f??rst att l??mna ett omd??me!</div>' +
+        '<div style="font-size:1.25rem;margin-bottom:.5rem">⭐</div>' +
+        '<div style="font-weight:600;margin-bottom:.25rem">Inga omdömen ännu</div>' +
+        '<div style="font-size:.82rem">Boka ' + escHtml(firstName) + ' och bli först att lämna ett omdöme!</div>' +
       '</div>';
   }
 
@@ -285,23 +285,23 @@ async function loadProfile() {
   // Booking CTA
   var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + (c.hourly_rate || 350);
   document.getElementById('book-btn').href = bokaHref;
-  document.getElementById('book-btn').textContent = 'Boka ' + escHtml(firstName) + ' ??? fr??n ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h ???';
+  document.getElementById('book-btn').textContent = 'Boka ' + escHtml(firstName) + ' — från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h →';
   document.getElementById('cta-bar').style.display = 'flex';
 
   // Dynamisk SEO
-  document.title = c.full_name + ' ??? St??dare i ' + (c.city || 'Stockholm') + ' | Spick';
+  document.title = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick';
   var metaDesc = document.querySelector('meta[name="description"]');
   if (metaDesc) {
-    metaDesc.content = 'Boka ' + c.full_name + ' f??r ' + ((Array.isArray(c.services) ? c.services.join(', ') : '') || 'st??dning').toLowerCase() + ' i ' + (c.city || 'Stockholm') + '. ' + (c.hourly_rate || 350) + ' kr/h (' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT).';
+    metaDesc.content = 'Boka ' + c.full_name + ' för ' + ((Array.isArray(c.services) ? c.services.join(', ') : '') || 'städning').toLowerCase() + ' i ' + (c.city || 'Stockholm') + '. ' + (c.hourly_rate || 350) + ' kr/h (' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT).';
   }
   var ogTitle = document.querySelector('meta[property="og:title"]');
   if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
-  ogTitle.content = c.full_name + ' ??? St??dare i ' + (c.city || 'Stockholm') + ' | Spick';
+  ogTitle.content = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick';
   var ogDesc = document.querySelector('meta[property="og:description"]');
   if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
-  ogDesc.content = 'Boka ' + c.full_name + ' f??r st??dning i ' + (c.city || 'Stockholm') + '. Fr??n ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT.';
+  ogDesc.content = 'Boka ' + c.full_name + ' för städning i ' + (c.city || 'Stockholm') + '. Från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT.';
 
-  // Canonical ??? profil-URL
+  // Canonical ✅ profil-URL
   var canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = ''https://spick.se/s/' + (c.slug || c.id);
 
@@ -310,7 +310,7 @@ async function loadProfile() {
     "@context": "https://schema.org",
     "@type": "Person",
     "name": c.full_name,
-    "jobTitle": "St??dare",
+    "jobTitle": "Städare",
     "address": {"@type": "PostalAddress", "addressLocality": c.city || "Stockholm"},
     "worksFor": {"@type": "Organization", "name": "Spick", "url": "https://spick.se"},
     "url": window.location.href
@@ -334,14 +334,14 @@ function shareProfile() {
 
   if (navigator.share) {
     navigator.share({
-      title: c.full_name + ' ??? St??dare p?? Spick',
-      text: 'Boka ' + (c.full_name || '').split(' ')[0] + ' f??r st??dning via Spick ??? fr??n ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT',
+      title: c.full_name + ' — Städare på Spick',
+      text: 'Boka ' + (c.full_name || '').split(' ')[0] + ' för städning via Spick — från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT',
       url: shareUrl
     }).catch(function() {});
   } else {
     navigator.clipboard.writeText(shareUrl).then(function() {
       var btn = document.querySelector('.btn-share');
-      if (btn) { btn.textContent = '??? Kopierad!'; setTimeout(function() { btn.textContent = '???? Kopiera l??nk'; }, 2000); }
+      if (btn) { btn.textContent = '✓ Kopierad!'; setTimeout(function() { btn.textContent = '📋 Kopiera länk'; }, 2000); }
     }).catch(function() {});
   }
 }
