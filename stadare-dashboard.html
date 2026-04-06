@@ -2,16 +2,16 @@
 <html lang="sv">
 <head>
 <script>
-// FLASH GUARD ??? d??lj sidan tills JS har best??mt vilken sk??rm som ska visas
+// FLASH GUARD – dölj sidan tills JS har bestämt vilken skärm som ska visas
 document.documentElement.style.visibility='hidden';
 </script>
 <meta charset="UTF-8">
-  <!-- S??kerhetshuvuden -->
+  <!-- Säkerhetshuvuden -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self)">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>St??dare-portal ??? Spick</title>
+<title>Städare-portal – Spick</title>
 <meta name="robots" content="noindex,nofollow">
   <link rel="canonical" href="https://spick.se/stadare-dashboard.html">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,9 +30,9 @@ function googleTranslateElementInit() {
 <script src="js/patch-min.js"></script>
 <script src="js/supabase.min.js"></script>
 <style>
-/* ????????? DESIGN SYSTEM ????????? */
+/* ═══ DESIGN SYSTEM ═══ */
 :root{
-  /* Prim??r ??? Spick gr??n (djupare, mer premium) */
+  /* Primär — Spick grön (djupare, mer premium) */
   --spick-50:#eef9f3;--spick-100:#d1f2e1;--spick-200:#a3e4c3;--spick-400:#2dba7a;--spick-500:#0F6E56;--spick-600:#0b5a46;--spick-700:#084435;--spick-800:#0b3627;--spick-900:#061e16;
   /* Neutrala (varmare toner) */
   --gray-50:#fafaf9;--gray-100:#f5f4f1;--gray-200:#eae8e4;--gray-300:#d5d3cd;--gray-400:#a8a69e;--gray-500:#7d7b74;--gray-600:#5a5955;--gray-700:#3d3d3a;--gray-800:#2c2c2a;--gray-900:#1a1a19;
@@ -55,13 +55,13 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,s
 input,select,textarea{font-size:16px}
 button:active{transform:scale(.97);transition:transform .1s ease}
 
-/* ????????? SCREENS ????????? */
+/* ═══ SCREENS ═══ */
 .screen{display:none}
 #screen-login.active{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;background:var(--spick-500)}
 #screen-magic.active{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;background:var(--bg-app)}
 #screen-app.active{display:block;min-height:100vh}
 
-/* ????????? LOGIN ????????? */
+/* ═══ LOGIN ═══ */
 .login-wrap{width:100%;max-width:400px}
 .login-card{background:var(--bg-primary);border-radius:var(--radius-xl);padding:40px;box-shadow:0 24px 80px rgba(0,0,0,.2)}
 .login-logo{font-size:1.75rem;color:var(--spick-500);font-weight:700;margin-bottom:4px;letter-spacing:-.5px}
@@ -82,7 +82,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .magic-sub{color:var(--gray-500);font-size:.92rem;line-height:1.7;max-width:360px}
 .magic-email{background:var(--spick-50);color:var(--spick-600);padding:4px 14px;border-radius:var(--radius-full);font-weight:600;display:inline-block;margin:8px 0;font-size:.88rem}
 
-/* ????????? APP SHELL ??? HEADER ????????? */
+/* ═══ APP SHELL — HEADER ═══ */
 .app-header{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px;border-bottom:1px solid rgba(0,0,0,.04)}
 .header-logo{font-size:1.2rem;color:var(--spick-500);font-weight:700;letter-spacing:-.5px}
 .header-right{display:flex;align-items:center;gap:10px}
@@ -91,7 +91,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .btn-logout{background:var(--gray-100);color:var(--gray-600);border:none;padding:6px 14px;border-radius:var(--radius-full);font-size:.78rem;cursor:pointer;font-family:inherit;min-height:44px;display:flex;align-items:center;font-weight:500;transition:background .15s}
 .btn-logout:hover{background:var(--gray-200)}
 
-/* ????????? HERO NEXT JOB CARD ????????? */
+/* ═══ HERO NEXT JOB CARD ═══ */
 .hero-card{background:var(--bg-primary);color:var(--gray-900);margin:16px 20px 0;border-radius:var(--radius-lg);padding:20px;position:relative;overflow:hidden;display:none;border:1px solid rgba(0,0,0,.06);box-shadow:var(--shadow-md)}
 .hero-card.show{display:block}
 .hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--spick-500)}
@@ -109,7 +109,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .hero-cta .btn-nav:hover{background:var(--spick-600)}
 .hero-cta .btn-nav:active{transform:scale(.97)}
 
-/* ????????? TODAY TIMELINE ????????? */
+/* ═══ TODAY TIMELINE ═══ */
 .timeline-strip{padding:16px 20px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .timeline-strip::-webkit-scrollbar{display:none}
 .timeline-inner{display:flex;gap:8px;min-width:min-content;align-items:flex-end;padding-bottom:4px}
@@ -126,12 +126,12 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .tl-expand.show{display:block}
 @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 
-/* ????????? JOBS TEASER ????????? */
+/* ═══ JOBS TEASER ═══ */
 .jobs-teaser{margin:12px 20px 0;background:var(--bg-primary);border-radius:var(--radius-md);padding:14px 16px;box-shadow:var(--shadow-card);border:1px solid rgba(0,0,0,.04);display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:48px;transition:background .15s}
 .jobs-teaser:active{background:var(--gray-50)}
 .jobs-teaser .count{background:var(--warning);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);margin-right:10px}
 
-/* ????????? BOTTOM NAV ????????? */
+/* ═══ BOTTOM NAV ═══ */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid rgba(0,0,0,.04);display:flex;justify-content:space-around;z-index:100;padding:6px 4px env(safe-area-inset-bottom,12px)}
 .nav-btn{flex:1;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--gray-400);border:none;background:none;font-family:inherit;font-size:10px;font-weight:500;transition:color .15s;min-height:48px;min-width:56px;justify-content:center;text-align:center}
 .nav-btn.active{color:var(--spick-500)}
@@ -141,7 +141,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .ni-wrap{position:relative;display:inline-flex}
 .nbadge{background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:var(--radius-full);position:absolute;top:-4px;right:-8px;min-width:16px;text-align:center}
 
-/* ????????? CONTENT ????????? */
+/* ═══ CONTENT ═══ */
 .content{padding:0 0 88px;max-width:640px;margin:0 auto}
 .tab-content{display:none}
 .tab-content.active{display:block;animation:fadeIn .2s ease}
@@ -156,18 +156,18 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .pref-toggle:has(input:checked){background:var(--spick-50);border-color:var(--spick-500)}
 .pref-toggle input{width:16px;height:16px;accent-color:var(--spick-500)}
 
-/* ????????? CARDS ????????? */
+/* ═══ CARDS ═══ */
 .card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);margin-bottom:12px;transition:transform .15s ease}
 .card-title{font-weight:600;font-size:.92rem;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .card-title span{font-size:.75rem;color:var(--gray-500);font-weight:400}
 
-/* ????????? GOAL BAR ????????? */
+/* ═══ GOAL BAR ═══ */
 .goal-bar-wrap{margin:10px 0 4px}
 .goal-bar-track{background:var(--gray-200);border-radius:var(--radius-full);height:6px;overflow:hidden}
 .goal-bar-fill{background:linear-gradient(90deg,var(--spick-500),var(--spick-400));height:100%;border-radius:var(--radius-full);transition:width .6s ease}
 .goal-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-top:6px}
 
-/* ????????? JOB CARD ????????? */
+/* ═══ JOB CARD ═══ */
 .job-card{background:var(--bg-primary);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;border-left:4px solid transparent;transition:all .2s ease}
 .job-card.mine{border-left-color:var(--spick-500)}
 .job-card.new-job{border-left-color:var(--warning)}
@@ -195,12 +195,12 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .action-btn{padding:12px 16px;border-radius:var(--radius-full);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:none;min-height:48px;transition:background .15s}
 .noshow-btn{padding:.5rem .875rem;background:#FEF3C7;color:#92400E;border:1.5px solid #FCD34D;border-radius:99px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit}
 
-/* ????????? TIMER ????????? */
+/* ═══ TIMER ═══ */
 .job-timer{background:#eff6ff;color:var(--info);border-radius:var(--radius-md);padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-top:8px}
 .timer-dot{width:8px;height:8px;background:var(--info);border-radius:50%;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ????????? EARN TAB ????????? */
+/* ═══ EARN TAB ═══ */
 .earn-hero{background:var(--spick-500);color:#fff;border-radius:var(--radius-xl);padding:28px;margin-bottom:16px;position:relative;overflow:hidden}
 .earn-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
 .earn-hero::after{content:'';position:absolute;bottom:-40px;left:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.04)}
@@ -210,7 +210,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .earn-row:last-child{border-bottom:none;font-weight:600}
 .earn-row .lbl{color:var(--gray-500)}
 
-/* ????????? WEEK CHART ????????? */
+/* ═══ WEEK CHART ═══ */
 .week-chart{display:flex;align-items:flex-end;gap:6px;height:64px;margin:14px 0 8px}
 .bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
 .bar{width:100%;background:linear-gradient(180deg,var(--spick-500),var(--spick-400));border-radius:4px 4px 0 0;min-height:2px;transition:height .4s ease}
@@ -218,11 +218,11 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .bar-lbl{font-size:10px;color:var(--gray-500);font-weight:500}
 .bar-val{font-size:10px;color:var(--spick-600);font-weight:600}
 
-/* ????????? MONTHLY BAR CHART ????????? */
+/* ═══ MONTHLY BAR CHART ═══ */
 .month-chart-wrap{margin-top:14px}
 .month-chart-wrap svg{width:100%;height:120px}
 
-/* ????????? CALENDAR ????????? */
+/* ═══ CALENDAR ═══ */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
 .cal-header{font-size:11px;font-weight:600;color:var(--gray-500);padding:8px 0;text-transform:uppercase;letter-spacing:.3px}
 .cal-day{font-size:14px;padding:8px 0;border-radius:var(--radius-sm);cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:center;transition:background .15s;font-weight:500}
@@ -230,7 +230,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .cal-day.has-job{background:var(--spick-50);color:var(--spick-600);font-weight:600}
 .cal-day.other-month{color:var(--gray-300)}
 
-/* ????????? PROFILE / SETTINGS ????????? */
+/* ═══ PROFILE / SETTINGS ═══ */
 .prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--spick-500),var(--spick-700));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;margin:0 auto 12px;overflow:hidden}
 .prof-avatar img{width:100%;height:100%;object-fit:cover}
 .avatar-upload{display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:1.25rem;background:#fff;border-radius:14px;border:1.5px solid #E8E8E4;margin-bottom:1rem}
@@ -259,7 +259,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .toggle::after{content:'';width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .toggle.on::after{transform:translateX(20px)}
 
-/* ????????? SETTINGS SECTIONS ????????? */
+/* ═══ SETTINGS SECTIONS ═══ */
 .settings-section{margin-bottom:16px}
 .settings-section-title{font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;padding:12px 18px 6px;display:flex;align-items:center;gap:8px}
 .settings-link{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--bg-primary);border-bottom:1px solid var(--gray-200);cursor:pointer;min-height:52px;transition:background .1s}
@@ -271,32 +271,32 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .settings-link .sl-text{flex:1;font-size:.88rem;font-weight:500;color:var(--gray-800)}
 .settings-link .sl-arrow{color:var(--gray-400);font-size:.8rem}
 
-/* ????????? EMPTY ????????? */
+/* ═══ EMPTY ═══ */
 .empty{text-align:center;padding:48px 20px;color:var(--gray-500)}
 .empty-icon{font-size:3rem;margin-bottom:12px}
 
-/* ????????? TOAST ????????? */
+/* ═══ TOAST ═══ */
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--gray-900);color:#fff;padding:12px 24px;border-radius:var(--radius-full);font-size:14px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:9999;box-shadow:var(--shadow-lg)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ????????? SOS ????????? */
+/* ═══ SOS ═══ */
 #sos-btn{position:fixed;bottom:80px;right:16px;width:52px;height:52px;background:var(--danger);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px rgba(220,38,38,.35);z-index:150;border:none}
 #sos-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:flex-end}
 #sos-modal.show{display:flex}
 .sos-sheet{background:var(--bg-primary);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:28px 24px 40px;width:100%;max-width:640px;margin:0 auto}
 
-/* ????????? STATUS CHIP ????????? */
+/* ═══ STATUS CHIP ═══ */
 .chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--radius-full);font-size:12px;font-weight:600}
 .chip-live{background:#ecfdf5;color:#065f46}
 .chip-offline{background:var(--gray-100);color:var(--gray-500)}
 
-/* ????????? REAL-TIME DOT ????????? */
+/* ═══ REAL-TIME DOT ═══ */
 .rt-dot{width:8px;height:8px;background:var(--spick-400);border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
 
-/* ????????? RATING STARS ????????? */
+/* ═══ RATING STARS ═══ */
 .stars{color:#f59e0b;font-size:1rem}
 
-/* ????????? SUB-VIEW ????????? */
+/* ═══ SUB-VIEW ═══ */
 .sub-view{display:none;position:fixed;inset:0;background:var(--bg-app);z-index:250;overflow-y:auto;padding-bottom:100px}
 .sub-view.active{display:block}
 .sub-view-header{background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:0 16px;display:flex;align-items:center;gap:12px;height:54px;border-bottom:1px solid rgba(0,0,0,.06);position:sticky;top:0;z-index:10}
@@ -304,13 +304,13 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .sub-view-header h2{font-size:1.05rem;font-weight:600;letter-spacing:-.2px}
 .sub-view-body{padding:16px;max-width:640px;margin:0 auto}
 
-/* ????????? ANIMATIONS ????????? */
+/* ═══ ANIMATIONS ═══ */
 @keyframes flashGreen{0%{background:#ecfdf5;transform:scale(.98)}50%{background:#d1fae5}100%{opacity:0;transform:scale(.95) translateX(100px);height:0;padding:0;margin:0;overflow:hidden}}
 .job-card.accepted-flash{animation:flashGreen .6s ease forwards}
 .jx-expand{display:none;margin-top:8px;transition:all .2s ease}
 .jx-expand.open{display:block}
 
-/* ????????? LANGUAGE BAR ????????? */
+/* ═══ LANGUAGE BAR ═══ */
 .lang-bar{background:var(--spick-800);padding:5px 1rem;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
 .lang-btn{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:3px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7)}
 .lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
@@ -322,7 +322,7 @@ body{top:0!important}
 #goog-gt-tt,.goog-te-balloon-frame{display:none!important}
 .goog-text-highlight{background:none!important;box-shadow:none!important}
 
-/* ????????? ONBOARDING ????????? */
+/* ═══ ONBOARDING ═══ */
 .ob-step{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-200);font-size:.88rem;cursor:pointer;min-height:48px;transition:background .1s}
 .ob-step:last-child{border:none}
 .ob-step.done{color:var(--spick-500)}
@@ -334,7 +334,7 @@ body{top:0!important}
 .ob-step.done .ob-check svg{display:block}
 .ob-check svg{display:none}
 
-/* ????????? TEAM CHIPS ????????? */
+/* ═══ TEAM CHIPS ═══ */
 .tm-chip{padding:8px 16px;border-radius:999px;border:1.5px solid var(--gray-300);background:var(--bg-primary);font-size:14px;color:var(--gray-700);cursor:pointer;transition:all .15s ease;font-family:inherit;min-height:44px}
 .tm-chip.active{border-color:var(--spick-500);background:var(--spick-50);color:var(--spick-500);font-weight:500}
 .svc-chip{padding:.4rem .875rem;border-radius:99px;border:1.5px solid #E8E8E4;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;font-family:inherit;color:#6B6960;transition:all .15s}
@@ -347,7 +347,7 @@ body{top:0!important}
 .tm-input{width:100%;padding:12px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-md);font-size:16px;font-family:inherit;outline:none;background:var(--bg-secondary);transition:border-color .2s,box-shadow .2s}
 .tm-input:focus{border-color:var(--spick-500);box-shadow:0 0 0 3px rgba(26,125,86,.1)}
 
-/* ????????? RESPONSIVE ????????? */
+/* ═══ RESPONSIVE ═══ */
 @media(min-width:768px){
   .content{max-width:900px}
   .bottom-nav{max-width:900px;left:50%;right:auto;transform:translateX(-50%);border-radius:var(--radius-lg) var(--radius-lg) 0 0}
@@ -358,28 +358,28 @@ body{top:0!important}
 </head>
 <body>
 
-<!-- ?????? LOGIN ?????? -->
+<!-- ── LOGIN ── -->
 <div id="screen-login" class="screen">
   <div class="lang-bar" style="position:fixed;top:0;left:0;right:0;z-index:300">
     <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/16x12/se.png" alt="Svenska" width="16" height="12"></button>
-    <span class="lang-sep">??</span>
+    <span class="lang-sep">·</span>
     <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/16x12/gb.png" alt="English" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('uk',this)" title="????????????????????"><img src="https://flagcdn.com/16x12/ua.png" alt="????????????????????" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('ru',this)" title="??????????????"><img src="https://flagcdn.com/16x12/ru.png" alt="??????????????" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/16x12/ua.png" alt="Українська" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/16x12/ru.png" alt="Русский" width="16" height="12"></button>
     <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/16x12/pl.png" alt="Polski" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('th',this)" title="?????????????????????"><img src="https://flagcdn.com/16x12/th.png" alt="?????????????????????" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/16x12/th.png" alt="ภาษาไทย" width="16" height="12"></button>
     <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/16x12/ph.png" alt="Tagalog" width="16" height="12"></button>
     <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/16x12/so.png" alt="Soomaali" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('es',this)" title="Espa??ol"><img src="https://flagcdn.com/16x12/es.png" alt="Espa??ol" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('ar',this)" title="????????"><img src="https://flagcdn.com/16x12/sa.png" alt="????????" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/16x12/es.png" alt="Español" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي"><img src="https://flagcdn.com/16x12/sa.png" alt="عربي" width="16" height="12"></button>
   </div>
   <div id="google_translate_element"></div>
   <div class="login-wrap" style="margin-top:32px">
     <div class="login-card">
       <div class="login-logo">Spick</div>
-      <div class="login-tagline">St??darportalen ?? Logga in f??r att se dina uppdrag</div>
-      <h2>V??lkommen tillbaka ????</h2>
-      <p>Ange din e-post s?? skickar vi en 6-siffrig kod till dig.</p>
+      <div class="login-tagline">Städarportalen · Logga in för att se dina uppdrag</div>
+      <h2>Välkommen tillbaka 👋</h2>
+      <p>Ange din e-post så skickar vi en 6-siffrig kod till dig.</p>
       <div class="inp-grp">
         <label>E-postadress</label>
         <input type="email" id="login-email" placeholder="din@email.se" autocomplete="email">
@@ -388,19 +388,19 @@ body{top:0!important}
         <span>Skicka inloggningskod</span>
       </button>
       <div class="login-err" id="login-err"></div>
-      <div class="login-success" id="login-ok">???? Kolla din inbox!</div>
+      <div class="login-success" id="login-ok">📬 Kolla din inbox!</div>
       <div style="text-align:center;margin-top:20px;font-size:.8rem;color:var(--m)">
-        Inte st??dare ??nnu? <a href="bli-stadare.html" style="color:var(--g);font-weight:600">Ans??k h??r ???</a>
+        Inte städare ännu? <a href="bli-stadare.html" style="color:var(--g);font-weight:600">Ansök här →</a>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ?????? OTP VERIFY ?????? -->
+<!-- ── OTP VERIFY ── -->
 <div id="screen-magic" class="screen">
   <div class="login-wrap">
     <div class="login-card" style="text-align:center">
-      <div class="magic-icon">????</div>
+      <div class="magic-icon">🔐</div>
       <div class="magic-title">Ange din kod</div>
       <div class="magic-sub">Vi har skickat en 6-siffrig kod till<br>
         <span class="magic-email" id="magic-email">din@email.se</span>
@@ -413,27 +413,27 @@ body{top:0!important}
         <span>Verifiera</span>
       </button>
       <div class="login-err" id="otp-err"></div>
-      <button class="btn-full" style="background:transparent;color:var(--g);margin-top:12px;font-size:.88rem" onclick="backToLogin()">??? Tillbaka</button>
+      <button class="btn-full" style="background:transparent;color:var(--g);margin-top:12px;font-size:.88rem" onclick="backToLogin()">← Tillbaka</button>
     </div>
   </div>
 </div>
 
-<!-- ?????? APP ?????? -->
+<!-- ── APP ── -->
 <div id="screen-app" class="screen">
 
   <!-- Language Selector -->
   <div class="lang-bar">
     <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/16x12/se.png" alt="Svenska" width="16" height="12"></button>
-    <span class="lang-sep">??</span>
+    <span class="lang-sep">·</span>
     <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/16x12/gb.png" alt="English" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('uk',this)" title="????????????????????"><img src="https://flagcdn.com/16x12/ua.png" alt="????????????????????" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('ru',this)" title="??????????????"><img src="https://flagcdn.com/16x12/ru.png" alt="??????????????" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/16x12/ua.png" alt="Українська" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/16x12/ru.png" alt="Русский" width="16" height="12"></button>
     <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/16x12/pl.png" alt="Polski" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('th',this)" title="?????????????????????"><img src="https://flagcdn.com/16x12/th.png" alt="?????????????????????" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/16x12/th.png" alt="ภาษาไทย" width="16" height="12"></button>
     <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/16x12/ph.png" alt="Tagalog" width="16" height="12"></button>
     <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/16x12/so.png" alt="Soomaali" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('es',this)" title="Espa??ol"><img src="https://flagcdn.com/16x12/es.png" alt="Espa??ol" width="16" height="12"></button>
-    <button class="lang-btn" onclick="switchLang('ar',this)" title="????????"><img src="https://flagcdn.com/16x12/sa.png" alt="????????" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/16x12/es.png" alt="Español" width="16" height="12"></button>
+    <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي"><img src="https://flagcdn.com/16x12/sa.png" alt="عربي" width="16" height="12"></button>
   </div>
 
   <!-- Header -->
@@ -441,7 +441,7 @@ body{top:0!important}
     <div class="header-logo">Spick</div>
     <div class="header-right">
       <div class="chip chip-live" id="rt-status" style="display:none"><span class="rt-dot"></span> <span>Live</span></div>
-      <div class="user-name" id="hdr-name">???</div>
+      <div class="user-name" id="hdr-name">–</div>
       <div class="avatar" id="hdr-avatar">?</div>
       <button class="btn-logout" onclick="doLogout()">Ut</button>
     </div>
@@ -449,7 +449,7 @@ body{top:0!important}
 
   <div class="content">
 
-    <!-- ????????? TAB: HEM ????????? -->
+    <!-- ═══ TAB: HEM ═══ -->
     <div class="tab-content active" id="tab-hem">
 
       <!-- Income Stats Strip -->
@@ -459,7 +459,7 @@ body{top:0!important}
           <div id="greeting-avatar" style="width:52px;height:52px;border-radius:50%;background:var(--spick-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:1.1rem;flex-shrink:0">?</div>
           <div>
             <div id="greeting-text" style="font-size:1.25rem;font-weight:700;color:var(--gray-900);letter-spacing:-.3px">Hej!</div>
-            <div id="greeting-sub" style="font-size:.85rem;color:var(--gray-500);margin-top:2px">V??lkommen tillbaka</div>
+            <div id="greeting-sub" style="font-size:.85rem;color:var(--gray-500);margin-top:2px">Välkommen tillbaka</div>
           </div>
         </div>
       </div>
@@ -471,59 +471,59 @@ body{top:0!important}
           <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-week-jobs">0 uppdrag</div>
         </div>
         <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
-          <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna m??nad</div>
+          <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna månad</div>
           <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-month-earn">0 kr</div>
           <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-month-jobs">0 uppdrag</div>
         </div>
         <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
           <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Snittbetyg</div>
-          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-rating-display">???</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-rating-display">0 kr</div>
           <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-rating-count">0 betyg</div>
         </div>
       </div>
 
       <!-- Hero: Next Job Card -->
       <div class="hero-card" id="hero-card">
-        <div class="hero-label">N??sta jobb</div>
-        <div class="hero-countdown" id="hero-countdown">???</div>
+        <div class="hero-label">Nästa jobb</div>
+        <div class="hero-countdown" id="hero-countdown">–</div>
         <div class="hero-countdown-sub" id="hero-countdown-sub"></div>
         <div class="hero-details">
-          <div class="hero-detail"><div class="icon">????</div><span id="hero-address">???</span></div>
-          <div class="hero-detail"><div class="icon">????</div><span id="hero-client">???</span></div>
-          <div class="hero-detail"><div class="icon">????</div><span class="hero-pay" id="hero-pay">???</span></div>
+          <div class="hero-detail"><div class="icon">📍</div><span id="hero-address">–</span></div>
+          <div class="hero-detail"><div class="icon">👤</div><span id="hero-client">–</span></div>
+          <div class="hero-detail"><div class="icon">💰</div><span class="hero-pay" id="hero-pay">–</span></div>
         </div>
         <div class="hero-cta">
-          <button class="btn-nav" id="hero-nav-btn" onclick="heroNavigate()">???? Navigera</button>
+          <button class="btn-nav" id="hero-nav-btn" onclick="heroNavigate()">📍 Navigera</button>
         </div>
       </div>
 
       <!-- No-job fallback -->
       <div id="hero-empty" style="display:none;margin:16px;text-align:center;padding:28px 20px;background:var(--w);border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)">
-        <div style="font-size:2.5rem;margin-bottom:10px">??????</div>
+        <div style="font-size:2.5rem;margin-bottom:10px">☀️</div>
         <div style="font-family:inherit;font-size:1.15rem;margin-bottom:6px">Inga jobb idag</div>
-        <div style="color:var(--m);font-size:.85rem;line-height:1.6">Kolla fliken <strong>Jobb</strong> f??r nya matchningar.</div>
+        <div style="color:var(--m);font-size:.85rem;line-height:1.6">Kolla fliken <strong>Jobb</strong> för nya matchningar.</div>
       </div>
 
       <!-- Onboarding Checklist -->
       <div class="card" id="onboarding-checklist" style="display:none;margin:16px;border-radius:16px;padding:20px;background:white;box-shadow:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.04)">
-        <div style="font-family:inherit;font-size:1.1rem;margin-bottom:4px">Kom ig??ng p?? Spick</div>
-        <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">G??r klart alla steg s?? f??r du bokningar snabbare</div>
+        <div style="font-family:inherit;font-size:1.1rem;margin-bottom:4px">Kom igång på Spick</div>
+        <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
         <div id="ob-steps">
           <!-- Priority steps (always visible) -->
           <div class="ob-step" id="ob-1"><div class="ob-check"></div><span>Konto skapat</span></div>
           <div class="ob-step" id="ob-2" onclick="document.getElementById('avatar-section').scrollIntoView({behavior:'smooth',block:'center'})"><div class="ob-check"></div><span>Ladda upp profilbild</span></div>
           <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><div class="ob-check"></div><span>Skriv en personlig beskrivning</span></div>
-          <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><div class="ob-check"></div><span>St??ll in ditt veckoschema</span></div>
+          <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><div class="ob-check"></div><span>Ställ in ditt veckoschema</span></div>
           <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><div class="ob-check"></div><span>Anslut bankkonto via Stripe</span></div>
           <!-- More steps (expandable) -->
           <div id="ob-more" style="display:none">
-            <div class="ob-step" id="ob-guide" onclick="window.open('stadare-guide.html','_blank');markGuideRead()"><div class="ob-check"></div><span>L??s Appguiden ??? Hur du anv??nder Spick</span></div>
-            <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><div class="ob-check"></div><span>L??s St??darhandboken ???</span></div>
-            <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank');markTestDone()"><div class="ob-check"></div><span>G??r kompetenstestet ???</span></div>
+            <div class="ob-step" id="ob-guide" onclick="window.open('stadare-guide.html','_blank');markGuideRead()"><div class="ob-check"></div><span>Läs Appguiden → Hur du använder Spick</span></div>
+            <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><div class="ob-check"></div><span>Läs Städarhandboken →</span></div>
+            <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank');markTestDone()"><div class="ob-check"></div><span>Gör kompetenstestet →</span></div>
             <div class="ob-step" id="ob-8" style="pointer-events:none"><div class="ob-check"></div><span>ID-verifierad</span></div>
             <div class="ob-step" id="ob-fskatt"><div class="ob-check"></div><span id="ob-fskatt-text">F-skatt</span></div>
           </div>
-          <button onclick="document.getElementById('ob-more').style.display=this.dataset.open?'none':'block';this.textContent=this.dataset.open?'Visa fler steg ???':'D??lj';this.dataset.open=this.dataset.open?'':'1'" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit">Visa fler steg ???</button>
+          <button onclick="document.getElementById('ob-more').style.display=this.dataset.open?'none':'block';this.textContent=this.dataset.open?'Visa fler steg →':'Dölj';this.dataset.open=this.dataset.open?'':'1'" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit">Visa fler steg →</button>
         </div>
         <div style="margin-top:12px">
           <div style="height:4px;background:#e8e6e1;border-radius:2px">
@@ -543,10 +543,10 @@ body{top:0!important}
       <!-- Goal card -->
       <div style="padding:14px 16px 0">
         <div class="card" id="goal-card" style="display:none">
-          <div class="card-title">???? M??nadsm??l <span id="goal-pct-label">0%</span></div>
+          <div class="card-title">🎯 Månadsmål <span id="goal-pct-label">0%</span></div>
           <div class="goal-bar-wrap">
             <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar" style="width:0%"></div></div>
-            <div class="goal-labels"><span id="goal-current">0 kr</span><span id="goal-target">M??l: 10 000 kr</span></div>
+            <div class="goal-labels"><span id="goal-current">0 kr</span><span id="goal-target">Mål: 10 000 kr</span></div>
           </div>
           <div style="font-size:.75rem;color:var(--m);margin-top:6px" id="goal-msg"></div>
         </div>
@@ -558,21 +558,21 @@ body{top:0!important}
           <span class="count" id="teaser-count">0</span>
           <span style="font-weight:600;font-size:.88rem" id="teaser-text">nya jobb matchar dig</span>
         </div>
-        <span style="color:var(--g);font-weight:600;font-size:.85rem">Visa ???</span>
+        <span style="color:var(--g);font-weight:600;font-size:.85rem">Visa →</span>
       </div>
 
       <!-- Quick Actions -->
       <div id="quick-actions" style="padding:8px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div onclick="switchTab('kalender')" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
-          <div style="font-size:1.3rem;margin-bottom:4px">????</div>
+          <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Schema</div>
         </div>
         <div onclick="switchTab('inst');setTimeout(function(){openSubView('sv-profile')},200)" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
-          <div style="font-size:1.3rem;margin-bottom:4px">????</div>
+          <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Profil</div>
         </div>
         <div onclick="shareProfile()" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
-          <div style="font-size:1.3rem;margin-bottom:4px">????</div>
+          <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Dela profil</div>
         </div>
       </div>
@@ -583,7 +583,7 @@ body{top:0!important}
       </div>
     </div>
 
-    <!-- ????????? TAB: JOBB (available/matchade jobb) ????????? -->
+    <!-- ═══ TAB: JOBB (available/matchade jobb) ═══ -->
     <div class="tab-content" id="tab-jobb">
       <div class="tab-pad">
         <div style="font-family:inherit;font-size:1.2rem;margin-bottom:4px">Matchade jobb</div>
@@ -598,103 +598,103 @@ body{top:0!important}
       </div>
     </div>
 
-    <!-- ????????? TAB: KALENDER ????????? -->
+    <!-- ═══ TAB: KALENDER ═══ -->
     <div class="tab-content" id="tab-kalender">
       <div class="tab-pad">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <button onclick="calNav(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">???</button>
+          <button onclick="calNav(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">←</button>
           <div style="font-family:inherit;font-size:1.1rem;font-weight:700" id="cal-month-label">April 2026</div>
-          <button onclick="calNav(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">???</button>
+          <button onclick="calNav(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">→</button>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
         <div id="cal-day-detail" style="margin-top:12px"></div>
       </div>
     </div>
 
-    <!-- ????????? TAB: INKOMST ????????? -->
+    <!-- ═══ TAB: INKOMST ═══ -->
     <div class="tab-content" id="tab-inkomst">
       <div class="tab-pad">
         <div class="earn-hero">
-          <div style="font-size:.8rem;opacity:.8">Intj??nat denna m??nad</div>
+          <div style="font-size:.8rem;opacity:.8">Intjänat denna månad</div>
           <div class="earn-amount" id="earn-month">0 kr</div>
-          <div class="earn-sub" id="earn-next-pay">Utbetalas inom 3???5 bankdagar efter genomf??rt uppdrag</div>
+          <div class="earn-sub" id="earn-next-pay">Utbetalas inom 3–5 bankdagar efter genomfört uppdrag</div>
         </div>
 
-        <!-- Provisionsniv?? -->
+        <!-- Provisionsnivå -->
         <div id="commission-widget"></div>
 
         <!-- Veckograf -->
         <div class="card">
-          <div class="card-title">Int??kter per dag (senaste 7 dagarna)</div>
+          <div class="card-title">Intäkter per dag (senaste 7 dagarna)</div>
           <div class="week-chart" id="week-chart">
-            <div class="bar-wrap"><div class="bar empty" style="height:4px"></div><div class="bar-lbl">???</div></div>
+            <div class="bar-wrap"><div class="bar empty" style="height:4px"></div><div class="bar-lbl">–</div></div>
           </div>
         </div>
 
         <!-- Monthly bar chart (inline SVG) -->
         <div class="card">
-          <div class="card-title">Int??kt per m??nad</div>
+          <div class="card-title">Intäkt per månad</div>
           <div class="month-chart-wrap" id="month-chart"></div>
         </div>
 
         <div class="card">
           <div class="card-title">Ekonomi</div>
           <div class="earn-row"><span class="lbl">Ditt timpris</span><span id="earn-rate">350 kr/h</span></div>
-          <div class="earn-row"><span class="lbl">Spicks provision</span><span style="color:var(--r)">???17%</span></div>
+          <div class="earn-row"><span class="lbl">Spicks provision</span><span style="color:var(--r)">–17%</span></div>
           <div class="earn-row"><span class="lbl">Din andel</span><span style="color:var(--g);font-weight:600">83%</span></div>
-          <div class="earn-row"><span class="lbl">Betalningstid</span><span>3???5 bankdagar efter genomf??rt uppdrag</span></div>
-          <div class="earn-row"><span class="lbl">Totalt intj??nat (alla tider)</span><span id="earn-total" style="color:var(--g);font-weight:700">0 kr</span></div>
+          <div class="earn-row"><span class="lbl">Betalningstid</span><span>3–5 bankdagar efter genomfört uppdrag</span></div>
+          <div class="earn-row"><span class="lbl">Totalt intjänat (alla tider)</span><span id="earn-total" style="color:var(--g);font-weight:700">0 kr</span></div>
         </div>
 
         <div class="card">
-          <div class="card-title">Betalda uppdrag denna m??nad</div>
-          <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna m??nad.</div>
+          <div class="card-title">Betalda uppdrag denna månad</div>
+          <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna månad.</div>
         </div>
 
         <!-- Historik alla tider -->
         <div class="card">
-          <div class="card-title">???? Uppdragshistorik <span id="history-count">alla tider</span></div>
+          <div class="card-title">📋 Uppdragshistorik <span id="history-count">alla tider</span></div>
           <div id="history-toggle" style="margin-bottom:10px">
-            <button onclick="loadFullHistory()" class="action-btn" style="width:100%;background:#F3F4F6;color:#374151;padding:.5rem;font-size:.82rem">Ladda fullst??ndig historik ???</button>
+            <button onclick="loadFullHistory()" class="action-btn" style="width:100%;background:#F3F4F6;color:#374151;padding:.5rem;font-size:.82rem">Ladda fullständig historik →</button>
           </div>
           <div id="full-history" style="display:none;max-height:400px;overflow-y:auto"></div>
         </div>
 
         <!-- Mina recensioner -->
         <div class="card" id="my-reviews-card" style="display:none">
-          <div class="card-title">??? Mina senaste recensioner</div>
+          <div class="card-title">⭐ Mina senaste recensioner</div>
           <div id="my-reviews-list" style="font-size:.82rem;color:var(--m)">Laddar...</div>
         </div>
 
         <!-- Inkomstprognos -->
         <div class="card" id="prognos-card" style="display:none">
-          <div class="card-title">???? Inkomstprognos <span id="prognos-period"></span></div>
+          <div class="card-title">📈 Inkomstprognos <span id="prognos-period"></span></div>
           <div id="prognos-content"></div>
         </div>
 
         <div class="card">
-          <div class="card-title">???? Anslut bankkonto</div>
-          <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Anslut ditt bankkonto via Stripe f??r automatiska utbetalningar.</p>
+          <div class="card-title">💳 Anslut bankkonto</div>
+          <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Anslut ditt bankkonto via Stripe för automatiska utbetalningar.</p>
           <div id="connect-status">
-            <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Anslut via Stripe ???</button>
+            <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Anslut via Stripe →</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ????????? TAB: INST??LLNINGAR ????????? -->
+    <!-- ═══ TAB: INSTÄLLNINGAR ═══ -->
     <div class="tab-content" id="tab-inst">
       <div class="tab-pad">
         <!-- Profile summary -->
         <div class="card" style="text-align:center;padding:24px">
           <div class="prof-avatar" id="prof-avatar">?</div>
           <div class="prof-name" id="prof-name">Laddar...</div>
-          <div class="prof-sub" id="prof-sub">Spick-st??dare</div>
+          <div class="prof-sub" id="prof-sub">Spick-städare</div>
           <div style="margin-bottom:8px">
-            <span class="stars" id="prof-stars">???????????????</span>
+            <span class="stars" id="prof-stars">⭐⭐⭐⭐⭐</span>
             <span style="font-size:.8rem;color:var(--m);margin-left:6px" id="prof-rating-txt"></span>
           </div>
-          <span id="prof-status" style="color:var(--g);font-size:.85rem">??? Aktiv</span>
+          <span id="prof-status" style="color:var(--g);font-size:.85rem">✅ Aktiv</span>
           <div id="bankid-badge" style="margin-top:4px"></div>
         </div>
 
@@ -702,33 +702,33 @@ body{top:0!important}
         <div class="settings-section">
           <div class="settings-section-title">Profil</div>
           <div class="settings-link" onclick="openSubView('sv-profile')">
-            <span class="sl-icon">????</span><span class="sl-text">Redigera profil</span><span class="sl-arrow">???</span>
+            <span class="sl-icon">👤</span><span class="sl-text">Redigera profil</span><span class="sl-arrow">›</span>
           </div>
           <div class="settings-link" onclick="shareProfile()">
-            <span class="sl-icon">????</span><span class="sl-text">Dela min profil</span><span class="sl-arrow">???</span>
+            <span class="sl-icon">🔗</span><span class="sl-text">Dela min profil</span><span class="sl-arrow">›</span>
           </div>
         </div>
 
         <div class="settings-section">
           <div class="settings-section-title">Arbete</div>
           <div class="settings-link" onclick="openSubView('sv-schedule')">
-            <span class="sl-icon">????</span><span class="sl-text">Veckoschema</span><span class="sl-arrow">???</span>
+            <span class="sl-icon">📅</span><span class="sl-text">Veckoschema</span><span class="sl-arrow">›</span>
           </div>
           <div class="settings-link" onclick="openSubView('sv-blocked')">
-            <span class="sl-icon">????</span><span class="sl-text">Sp??rrade datum</span><span class="sl-arrow">???</span>
+            <span class="sl-icon">🚫</span><span class="sl-text">Spärrade datum</span><span class="sl-arrow">›</span>
           </div>
           <div class="settings-link" onclick="openSubView('sv-prefs')">
-            <span class="sl-icon">??????</span><span class="sl-text">Arbetspreferenser</span><span class="sl-arrow">???</span>
+            <span class="sl-icon">⚙️</span><span class="sl-text">Arbetspreferenser</span><span class="sl-arrow">›</span>
           </div>
           <div class="settings-link" onclick="openSubView('sv-area')">
-            <span class="sl-icon">????</span><span class="sl-text">Arbetsomr??de</span><span class="sl-arrow">???</span>
+            <span class="sl-icon">📍</span><span class="sl-text">Arbetsområde</span><span class="sl-arrow">›</span>
           </div>
         </div>
 
         <div class="settings-section">
-          <div class="settings-section-title">Tj??nster</div>
+          <div class="settings-section-title">Tjänster</div>
           <div class="card">
-            <div class="card-title">???? Mina tj??nster <a id="prof-services-edit" onclick="openSubView('sv-profile')" style="font-size:.75rem;color:#0F6E56;cursor:pointer;text-decoration:underline;margin-left:.5rem">??ndra</a></div>
+            <div class="card-title">🧹 Mina tjänster <a id="prof-services-edit" onclick="openSubView('sv-profile')" style="font-size:.75rem;color:#0F6E56;cursor:pointer;text-decoration:underline;margin-left:.5rem">Ändra</a></div>
             <div id="prof-services" style="color:var(--m);font-size:.88rem;line-height:1.8">Laddar...</div>
           </div>
         </div>
@@ -736,19 +736,19 @@ body{top:0!important}
         <div class="settings-section">
           <div class="settings-section-title">Recensioner</div>
           <div class="card">
-            <div class="card-title">??? Senaste recensioner</div>
-            <div id="my-reviews" style="color:var(--m);font-size:.85rem">Inga recensioner ??n.</div>
+            <div class="card-title">⭐ Senaste recensioner</div>
+            <div id="my-reviews" style="color:var(--m);font-size:.85rem">Inga recensioner än.</div>
           </div>
         </div>
 
         <div class="settings-section">
-          <div class="settings-section-title">Beh??ver du hj??lp?</div>
+          <div class="settings-section-title">Behöver du hjälp?</div>
           <div class="card" style="text-align:center">
-            <p style="font-size:.88rem;color:var(--m);margin-bottom:14px">Vi svarar snabbt ??? oftast inom minuter.</p>
+            <p style="font-size:.88rem;color:var(--m);margin-bottom:14px">Vi svarar snabbt — oftast inom minuter.</p>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <a href="https://wa.me/46760505153" target="_blank" style="display:block;background:#25D366;color:#fff;padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">???? Skriv p?? WhatsApp</a>
-              <a href="tel:+46760505153" style="display:block;background:var(--gr);color:var(--g);padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">???? Ring 076-050 51 53</a>
-              <a href="mailto:hello@spick.se" style="display:block;background:#f5f5f3;color:var(--b);padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">?????? hello@spick.se</a>
+              <a href="https://wa.me/46760505153" target="_blank" style="display:block;background:#25D366;color:#fff;padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">💬 Skriv på WhatsApp</a>
+              <a href="tel:+46760505153" style="display:block;background:var(--gr);color:var(--g);padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">📞 Ring 076-050 51 53</a>
+              <a href="mailto:hello@spick.se" style="display:block;background:#f5f5f3;color:var(--b);padding:12px;border-radius:12px;font-size:.9rem;font-weight:600;text-decoration:none;min-height:48px;line-height:24px">✉️ hello@spick.se</a>
             </div>
           </div>
         </div>
@@ -760,57 +760,57 @@ body{top:0!important}
 
   </div><!-- /content -->
 
-  <!-- ?????? SUB-VIEWS (settings drill-downs) ?????? -->
+  <!-- ── SUB-VIEWS (settings drill-downs) ── -->
 
   <!-- Profile edit -->
   <div class="sub-view" id="sv-profile">
-    <div class="sub-view-header"><button onclick="closeSubView('sv-profile')">???</button><h2>Redigera profil</h2></div>
+    <div class="sub-view-header"><button onclick="closeSubView('sv-profile')">←</button><h2>Redigera profil</h2></div>
     <div class="sub-view-body">
       <div class="avatar-upload" id="avatar-section">
         <div class="avatar-preview" id="dash-avatar">?</div>
         <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none">
-        <button class="avatar-upload-btn" id="avatar-btn" onclick="document.getElementById('avatar-input').click()">???? Byt profilbild</button>
-        <div class="avatar-status" id="avatar-status">Max 5 MB ?? JPG, PNG eller WebP</div>
+        <button class="avatar-upload-btn" id="avatar-btn" onclick="document.getElementById('avatar-input').click()">📷 Byt profilbild</button>
+        <div class="avatar-status" id="avatar-status">Max 5 MB · JPG, PNG eller WebP</div>
       </div>
       <div class="card">
         <div class="prof-row"><span class="lbl">Namn <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-name" placeholder="Ditt namn" required></div>
-        <div class="prof-row"><span class="lbl">E-post</span><span id="prof-email" style="font-size:.85rem;color:var(--m)">???</span></div>
+        <div class="prof-row"><span class="lbl">E-post</span><span id="prof-email" style="font-size:.85rem;color:var(--m)">–</span></div>
         <div class="prof-row"><span class="lbl">Telefon <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-phone" placeholder="07X-XXX XX XX" required></div>
         <div class="prof-row"><span class="lbl">Stad <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-city" placeholder="Stockholm" required></div>
         <div class="prof-row"><span class="lbl">Timpris</span>
           <div style="display:flex;align-items:center;gap:6px">
             <input class="edit-input" id="edit-rate" type="number" min="250" max="600">
-            <span style="font-size:.82rem;color:var(--m)" title="Efter Spicks plattformsavgift (12???17% beroende p?? niv??)">kr/h ?? du beh??ller <strong style="color:var(--g)" id="edit-keep">??? kr/h</strong></span>
+            <span style="font-size:.82rem;color:var(--m)" title="Efter Spicks plattformsavgift (12–17% beroende på nivå)">kr/h · du behåller <strong style="color:var(--g)" id="edit-keep">– kr/h</strong></span>
           </div>
         </div>
-        <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Ber??tta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
+        <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
         <div style="margin-top:1rem">
-          <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Mina tj??nster</label>
+          <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Mina tjänster</label>
           <div id="profile-services" style="display:flex;flex-wrap:wrap;gap:.5rem">
-            <button type="button" class="svc-chip" data-svc="Hemst??dning" onclick="toggleProfileSvc(this)">???? Hemst??dning</button>
-            <button type="button" class="svc-chip" data-svc="Storst??dning" onclick="toggleProfileSvc(this)">??? Storst??dning</button>
-            <button type="button" class="svc-chip" data-svc="Flyttst??dning" onclick="toggleProfileSvc(this)">???? Flyttst??dning</button>
-            <button type="button" class="svc-chip" data-svc="F??nsterputs" onclick="toggleProfileSvc(this)">???? F??nsterputs</button>
+            <button type="button" class="svc-chip" data-svc="Hemstädning" onclick="toggleProfileSvc(this)">🏠 Hemstädning</button>
+            <button type="button" class="svc-chip" data-svc="Storstädning" onclick="toggleProfileSvc(this)">✨ Storstädning</button>
+            <button type="button" class="svc-chip" data-svc="Flyttstädning" onclick="toggleProfileSvc(this)">📦 Flyttstädning</button>
+            <button type="button" class="svc-chip" data-svc="Fönsterputs" onclick="toggleProfileSvc(this)">🪟 Fönsterputs</button>
           </div>
-          <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">V??lj de tj??nster du erbjuder. Kunder filtreras p?? detta.</div>
+          <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">Välj de tjänster du erbjuder. Kunder filtreras på detta.</div>
         </div>
-        <button class="btn-save" id="btn-save-profile" onclick="saveProfile()">???? Spara ??ndringar</button>
-        <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">??? Profil sparad!</div>
+        <button class="btn-save" id="btn-save-profile" onclick="saveProfile()">💾 Spara ändringar</button>
+        <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">✅ Profil sparad!</div>
       </div>
     </div>
   </div>
 
   <!-- Schedule -->
   <div class="sub-view" id="sv-schedule">
-    <div class="sub-view-header"><button onclick="closeSubView('sv-schedule')">???</button><h2>Veckoschema</h2></div>
+    <div class="sub-view-header"><button onclick="closeSubView('sv-schedule')">←</button><h2>Veckoschema</h2></div>
     <div class="sub-view-body">
       <div class="card">
-        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px;line-height:1.6">V??lj vilka dagar och tider du ??r tillg??nglig. Kunder kan <strong>bara boka</strong> under dessa tider.</p>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px;line-height:1.6">Välj vilka dagar och tider du är tillgänglig. Kunder kan <strong>bara boka</strong> under dessa tider.</p>
         <div id="schedule-grid"></div>
         <div style="font-size:.7rem;color:var(--m);margin-top:8px;background:#F9F9F7;border-radius:8px;padding:8px 10px;line-height:1.6">
-          ???? En 3h-bokning kl 09:00 blockerar automatiskt 09:00???12:00.
+          💡 En 3h-bokning kl 09:00 blockerar automatiskt 09:00–12:00.
         </div>
-        <button onclick="saveSchedule()" style="margin-top:12px;width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">???? Spara schema</button>
+        <button onclick="saveSchedule()" style="margin-top:12px;width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">💾 Spara schema</button>
         <div id="schedule-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
     </div>
@@ -818,14 +818,14 @@ body{top:0!important}
 
   <!-- Blocked dates -->
   <div class="sub-view" id="sv-blocked">
-    <div class="sub-view-header"><button onclick="closeSubView('sv-blocked')">???</button><h2>Sp??rrade datum</h2></div>
+    <div class="sub-view-header"><button onclick="closeSubView('sv-blocked')">←</button><h2>Spärrade datum</h2></div>
     <div class="sub-view-body">
       <div class="card">
-        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px;line-height:1.6">Inga kunder kan boka dessa datum. Befintliga bokningar p??verkas ej.</p>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:12px;line-height:1.6">Inga kunder kan boka dessa datum. Befintliga bokningar påverkas ej.</p>
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <input type="date" id="block-date-input"
             style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.82rem;outline:none;min-height:48px">
-          <button onclick="addBlockedDate()" style="padding:8px 14px;background:var(--r);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem;white-space:nowrap;min-height:48px">+ Sp??rra</button>
+          <button onclick="addBlockedDate()" style="padding:8px 14px;background:var(--r);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem;white-space:nowrap;min-height:48px">+ Spärra</button>
         </div>
         <div id="blocked-dates-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
           <span style="color:var(--m);font-size:.8rem">Laddar...</span>
@@ -836,22 +836,22 @@ body{top:0!important}
 
   <!-- Preferences -->
   <div class="sub-view" id="sv-prefs">
-    <div class="sub-view-header"><button onclick="closeSubView('sv-prefs')">???</button><h2>Arbetspreferenser</h2></div>
+    <div class="sub-view-header"><button onclick="closeSubView('sv-prefs')">←</button><h2>Arbetspreferenser</h2></div>
     <div class="sub-view-body">
       <div class="card">
-        <p style="font-size:.77rem;color:var(--m);margin-bottom:14px;line-height:1.6">St??ll in dina villkor f??r matchning.</p>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:14px;line-height:1.6">Ställ in dina villkor för matchning.</p>
 
         <div style="font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Villkor</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
           <label class="pref-toggle"><input type="checkbox" id="pref-pets"> Husdjur OK</label>
-          <label class="pref-toggle"><input type="checkbox" id="pref-elevator"> Hiss kr??vs</label>
+          <label class="pref-toggle"><input type="checkbox" id="pref-elevator"> Hiss krävs</label>
         </div>
         <div style="background:#F0FDF4;border-radius:10px;padding:14px;margin-bottom:16px;font-size:.85rem;color:#166534;line-height:1.6">
-          <strong>???? Hemst??dning & Storst??dning:</strong> Kunden tillhandah??ller utrustning (dammsugare, mopp, reng??ringsmedel).<br>
-          <strong>???? Flyttst??dning & F??nsterputs:</strong> Du tar med all utrustning och alla produkter.
+          <strong>🏠 Hemstädning & Storstädning:</strong> Kunden tillhandahåller utrustning (dammsugare, mopp, rengöringsmedel).<br>
+          <strong>🪟 Flyttstädning & Fönsterputs:</strong> Du tar med all utrustning och alla produkter.
         </div>
 
-        <button onclick="savePreferences()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">???? Spara preferenser</button>
+        <button onclick="savePreferences()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">💾 Spara preferenser</button>
         <div id="pref-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
     </div>
@@ -859,26 +859,26 @@ body{top:0!important}
 
   <!-- Work area -->
   <div class="sub-view" id="sv-area">
-    <div class="sub-view-header"><button onclick="closeSubView('sv-area')">???</button><h2>Arbetsomr??de</h2></div>
+    <div class="sub-view-header"><button onclick="closeSubView('sv-area')">←</button><h2>Arbetsområde</h2></div>
     <div class="sub-view-body">
       <div class="card">
-        <p style="font-size:.77rem;color:var(--m);margin-bottom:14px;line-height:1.6">Ange var du vill jobba. Du f??r bara jobb inom ditt omr??de.</p>
+        <p style="font-size:.77rem;color:var(--m);margin-bottom:14px;line-height:1.6">Ange var du vill jobba. Du får bara jobb inom ditt område.</p>
         <div style="margin-bottom:14px">
-          <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:4px">Hemadress (utg??ngspunkt)</label>
-          <input type="text" id="pref-address" placeholder="T.ex. Sveav??gen 10, Stockholm" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem;min-height:48px">
+          <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:4px">Hemadress (utgångspunkt)</label>
+          <input type="text" id="pref-address" placeholder="T.ex. Sveavägen 10, Stockholm" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem;min-height:48px">
         </div>
         <div style="margin-bottom:14px">
           <label style="font-size:.75rem;color:var(--m);display:block;margin-bottom:4px">Max resradie: <strong id="radius-val">10</strong> km</label>
           <input type="range" id="pref-radius" min="2" max="150" value="10" oninput="document.getElementById('radius-val').textContent=this.value" style="width:100%">
           <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--m)"><span>2 km</span><span>150 km</span></div>
         </div>
-        <button onclick="saveArea()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">???? Spara arbetsomr??de</button>
+        <button onclick="saveArea()" style="width:100%;background:var(--g);color:#fff;border:none;padding:.7rem;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.875rem;min-height:48px">💾 Spara arbetsområde</button>
         <div id="area-msg" style="font-size:.75rem;margin-top:.5rem;text-align:center;display:none"></div>
       </div>
     </div>
   </div>
 
-    <!-- ????????? TAB: TEAM (only visible for company owners) ????????? -->
+    <!-- ═══ TAB: TEAM (only visible for company owners) ═══ -->
     <div class="tab-content" id="tab-team">
       <div class="tab-pad">
         <div class="card" style="padding:20px" id="team-management-card">
@@ -887,7 +887,7 @@ body{top:0!important}
               <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
               <p style="font-size:.82rem;color:var(--m)" id="team-count">Laddar...</p>
             </div>
-            <button onclick="showAddMemberModal()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ L??gg till</button>
+            <button onclick="showAddMemberModal()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till</button>
           </div>
           <div id="team-list"></div>
         </div>
@@ -903,46 +903,46 @@ body{top:0!important}
   <div id="add-member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeTeamModal()">
     <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <h3 id="team-modal-title" style="font-size:1.1rem;font-weight:700">L??gg till teammedlem</h3>
-        <button onclick="closeTeamModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;padding:4px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:var(--gray-500)">???</button>
+        <h3 id="team-modal-title" style="font-size:1.1rem;font-weight:700">Lägg till teammedlem</h3>
+        <button onclick="closeTeamModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;padding:4px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:var(--gray-500)">✕</button>
       </div>
 
-      <!-- F??lt 1: F??rnamn -->
+      <!-- Fält 1: Förnamn -->
       <div class="tm-form-group">
-        <label>F??rnamn *</label>
+        <label>Förnamn *</label>
         <input type="text" id="team-fname" class="tm-input" placeholder="Anna">
       </div>
 
-      <!-- F??lt 2: Efternamn -->
+      <!-- Fält 2: Efternamn -->
       <div class="tm-form-group">
         <label>Efternamn *</label>
         <input type="text" id="team-lname" class="tm-input" placeholder="Karlsson">
       </div>
 
-      <!-- F??lt 3: Telefon -->
+      <!-- Fält 3: Telefon -->
       <div class="tm-form-group">
         <label>Telefon</label>
         <input type="tel" id="team-phone" class="tm-input" placeholder="070 123 45 67">
       </div>
 
-      <!-- F??lt 4: E-post -->
+      <!-- Fält 4: E-post -->
       <div class="tm-form-group">
         <label>E-post</label>
         <input type="email" id="team-email" class="tm-input" placeholder="anna@email.se">
       </div>
 
-      <!-- F??lt 5: Tj??nster -->
+      <!-- Fält 5: Tjänster -->
       <div class="tm-form-group">
-        <label>Tj??nster *</label>
+        <label>Tjänster *</label>
         <div id="team-services" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
-          <button type="button" class="tm-chip active" data-svc="Hemst??dning" onclick="toggleTeamSvc(this)">Hemst??dning</button>
-          <button type="button" class="tm-chip" data-svc="Storst??dning" onclick="toggleTeamSvc(this)">Storst??dning</button>
-          <button type="button" class="tm-chip" data-svc="Flyttst??dning" onclick="toggleTeamSvc(this)">Flyttst??dning</button>
-          <button type="button" class="tm-chip" data-svc="F??nsterputs" onclick="toggleTeamSvc(this)">F??nsterputs</button>
+          <button type="button" class="tm-chip active" data-svc="Hemstädning" onclick="toggleTeamSvc(this)">Hemstädning</button>
+          <button type="button" class="tm-chip" data-svc="Storstädning" onclick="toggleTeamSvc(this)">Storstädning</button>
+          <button type="button" class="tm-chip" data-svc="Flyttstädning" onclick="toggleTeamSvc(this)">Flyttstädning</button>
+          <button type="button" class="tm-chip" data-svc="Fönsterputs" onclick="toggleTeamSvc(this)">Fönsterputs</button>
         </div>
       </div>
 
-      <!-- F??lt 6: Timpris -->
+      <!-- Fält 6: Timpris -->
       <div class="tm-form-group">
         <label>Timpris <span id="team-rate-val" style="color:var(--spick-500);font-weight:600">350 kr/h</span></label>
         <input type="range" id="team-rate" min="200" max="600" value="350" step="10"
@@ -953,12 +953,12 @@ body{top:0!important}
         </div>
       </div>
 
-      <!-- F??lt 7: Arbetsomr??de -->
+      <!-- Fält 7: Arbetsområde -->
       <div class="tm-form-group">
-        <label>Arbetsomr??de</label>
+        <label>Arbetsområde</label>
         <label style="display:flex;align-items:center;gap:8px;margin-top:4px;cursor:pointer">
           <input type="checkbox" id="team-same-area" checked onchange="toggleTeamArea(this)" style="width:16px;height:16px;accent-color:var(--spick-500)">
-          <span style="font-size:14px">Samma omr??de som mig</span>
+          <span style="font-size:14px">Samma område som mig</span>
         </label>
         <div id="team-area-custom" style="display:none;margin-top:12px">
           <input type="text" id="team-address" class="tm-input" placeholder="Adress, t.ex. Storgatan 1, Solna">
@@ -973,7 +973,7 @@ body{top:0!important}
         </div>
       </div>
 
-      <!-- F??lt 8: Husdjur -->
+      <!-- Fält 8: Husdjur -->
       <div class="tm-form-group">
         <label>Husdjur</label>
         <div id="team-pet-options" style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
@@ -983,25 +983,25 @@ body{top:0!important}
         </div>
       </div>
 
-      <!-- F??lt 9: Bio -->
+      <!-- Fält 9: Bio -->
       <div class="tm-form-group">
-        <label>Kort beskrivning <span style="color:var(--gray-400);font-size:13px">(valfritt, syns f??r kunder)</span></label>
-        <textarea id="team-bio" rows="2" maxlength="120" placeholder="T.ex. Noggrann och p??litlig med 3 ??rs erfarenhet"
+        <label>Kort beskrivning <span style="color:var(--gray-400);font-size:13px">(valfritt, syns för kunder)</span></label>
+        <textarea id="team-bio" rows="2" maxlength="120" placeholder="T.ex. Noggrann och pålitlig med 3 års erfarenhet"
           class="tm-input" style="resize:none"
           oninput="document.getElementById('team-bio-count').textContent=this.value.length+'/120'"></textarea>
         <div id="team-bio-count" style="font-size:11px;color:var(--gray-400);margin-top:4px;text-align:right">0/120</div>
       </div>
 
-      <!-- F??lt 10: Submit -->
+      <!-- Fält 10: Submit -->
       <button id="add-member-btn" class="team-submit-btn" onclick="addTeamMember()"
         style="width:100%;padding:14px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;min-height:52px;transition:background .15s">
-        L??gg till teammedlem
+        Lägg till teammedlem
       </button>
       <p id="add-member-msg" style="font-size:.8rem;margin-top:8px;text-align:center;display:none"></p>
     </div>
   </div>
 
-  <!-- BOTTOM NAV ??? 5 tabs + conditional Team -->
+  <!-- BOTTOM NAV — 5 tabs + conditional Team -->
   <div class="bottom-nav">
     <button class="nav-btn active" id="nav-hem" onclick="switchTab('hem')">
       <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -1032,15 +1032,15 @@ body{top:0!important}
 
 
 <!-- SOS -->
-<div id="sos-btn" title="SOS N??dknapp" style="display:none" onclick="document.getElementById('sos-modal').classList.add('show')">????</div>
+<div id="sos-btn" title="SOS Nödknapp" style="display:none" onclick="document.getElementById('sos-modal').classList.add('show')">🆘</div>
 <div id="sos-modal" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="sos-sheet">
-    <h3 style="font-size:1.1rem;margin-bottom:8px;color:var(--r)">???? N??dl??ge?</h3>
-    <p style="font-size:.85rem;color:var(--m);margin-bottom:20px">Om du k??nner dig otrygg eller har en n??dsituation:</p>
+    <h3 style="font-size:1.1rem;margin-bottom:8px;color:var(--r)">🚨 Nödläge?</h3>
+    <p style="font-size:.85rem;color:var(--m);margin-bottom:20px">Om du känner dig otrygg eller har en nödsituation:</p>
     <div style="display:grid;gap:10px">
-      <button onclick="sosSend('112')" style="padding:.875rem;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem;min-height:48px">???? Ring 112 ??? N??dl??ge</button>
-      <button onclick="sosSend('spick')" style="padding:.875rem;background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem;min-height:48px">???? Notifiera Spick direkt</button>
-      <button onclick="document.getElementById('sos-modal').classList.remove('show')" style="padding:.75rem;background:#F3F4F6;color:#374151;border:none;border-radius:12px;font-size:.9rem;cursor:pointer;min-height:48px">St??ng</button>
+      <button onclick="sosSend('112')" style="padding:.875rem;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem;min-height:48px">📞 Ring 112 – Nödläge</button>
+      <button onclick="sosSend('spick')" style="padding:.875rem;background:#FEE2E2;color:#DC2626;border:2px solid #FECACA;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem;min-height:48px">📩 Notifiera Spick direkt</button>
+      <button onclick="document.getElementById('sos-modal').classList.remove('show')" style="padding:.75rem;background:#F3F4F6;color:#374151;border:none;border-radius:12px;font-size:.9rem;cursor:pointer;min-height:48px">Stäng</button>
     </div>
   </div>
 </div>
@@ -1062,7 +1062,7 @@ const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
 
 
 
-// ?????? REST helpers ??? bypass SB.from() to avoid navigator.locks deadlock ??????
+// ── REST helpers — bypass SB.from() to avoid navigator.locks deadlock ──
 function _authHeaders() {
   const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
   const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
@@ -1110,20 +1110,20 @@ const R = {
 
 let cleaner = null, jobs = [], realtimeCh = null, countdownTimer = null;
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
-const DAYS = ['M??ndag','Tisdag','Onsdag','Torsdag','Fredag','L??rdag','S??ndag'];
+const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const MONTHLY_GOAL = 10000;
 
 // Escape HTML helper
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
 
-// ?????? INIT ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── INIT ────────────────────────────────────────────────────
 function init() {
   showScreen('login');
   const errEl = document.getElementById('login-err');
   if (errEl) errEl.style.display = 'none';
 
   const sessionTimeout = setTimeout(() => {
-    console.warn('getSession timeout ??? visar login');
+    console.warn('getSession timeout – visar login');
     document.documentElement.style.visibility='visible';
   }, 3000);
 
@@ -1152,7 +1152,7 @@ SB.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// ?????? AUTH (OTP) ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── AUTH (OTP) ──────────────────────────────────────────────
 let _otpEmail = '';
 
 async function sendOtpCode() {
@@ -1194,7 +1194,7 @@ async function verifyOtpCode() {
   });
 
   if (error) {
-    showOtpErr('Fel kod ??? f??rs??k igen.');
+    showOtpErr('Fel kod — försök igen.');
     btn.disabled = false; btn.querySelector('span').textContent = 'Verifiera';
     return;
   }
@@ -1218,7 +1218,7 @@ function backToLogin() {
   if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningskod'; }
 }
 
-// ?????? PREFERENSER & ARBETSOMR??DE ??????????????????????????????????????????????????????????????????
+// ── PREFERENSER & ARBETSOMRÅDE ──────────────────────
 async function savePreferences() {
   const msg = document.getElementById('pref-msg');
   msg.textContent = 'Sparar...'; msg.style.display = 'block'; msg.style.color = 'var(--m)';
@@ -1230,10 +1230,10 @@ async function savePreferences() {
 
   const {error} = await R.update('cleaners', updates, `id=eq.${cleaner.id}`);
   if (error) {
-    msg.textContent = '??? Fel: ' + (error.message||'Ok??nt'); msg.style.color = 'var(--r)';
+    msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
     Object.assign(cleaner, updates);
-    msg.textContent = '??? Preferenser sparade!'; msg.style.color = 'var(--g)';
+    msg.textContent = '✅ Preferenser sparade!'; msg.style.color = 'var(--g)';
   }
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
 }
@@ -1247,11 +1247,11 @@ async function saveArea() {
   const radius = parseInt(document.getElementById('pref-radius')?.value) || 10;
   const {error} = await R.update('cleaners', { home_address: homeAddress, service_radius_km: radius }, `id=eq.${cleaner.id}`);
   if (error) {
-    msg.textContent = '??? Fel: ' + (error.message||'Ok??nt'); msg.style.color = 'var(--r)';
+    msg.textContent = '❌ Fel: ' + (error.message||'Okänt'); msg.style.color = 'var(--r)';
   } else {
     cleaner.home_address = homeAddress;
     cleaner.service_radius_km = radius;
-    msg.textContent = '??? Arbetsomr??de sparat!'; msg.style.color = 'var(--g)';
+    msg.textContent = '✅ Arbetsområde sparat!'; msg.style.color = 'var(--g)';
     try {
       await fetch(SUPA_URL + '/functions/v1/geo', {
         method: 'POST',
@@ -1275,16 +1275,16 @@ function loadPreferences() {
   if (document.getElementById('pref-radius')) { document.getElementById('pref-radius').value = cleaner?.service_radius_km || 10; document.getElementById('radius-val').textContent = document.getElementById('pref-radius').value; }
 }
 
-// ?????? DELA PROFIL ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── DELA PROFIL ──────────────────────────────────────
 function shareProfile() {
   if (!cleaner?.id) return;
   const slug = cleaner.slug || cleaner.id;
   const param = cleaner.slug ? 's' : 'id';
   const url = `https://spick.se/s/${slug}`;
   navigator.clipboard.writeText(url).then(() => {
-    showToast('??? L??nk kopierad!');
+    showToast('✅ Länk kopierad!');
   }).catch(() => {
-    prompt('Kopiera din profil-l??nk:', url);
+    prompt('Kopiera din profil-länk:', url);
   });
 }
 
@@ -1295,7 +1295,7 @@ async function doLogout() {
   showScreen('login');
 }
 
-// ?????? LOAD CLEANER ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── LOAD CLEANER ─────────────────────────────────────────────
 async function loadCleanerByEmail(email, authUserId) {
   let data, error;
 
@@ -1305,13 +1305,13 @@ async function loadCleanerByEmail(email, authUserId) {
   }
 
   if (error || !data) {
-    // Fallback: s??k p?? email och l??nka auth_user_id
+    // Fallback: sök på email och länka auth_user_id
     if (email) {
       const emailRes = await R.selectSingle('cleaners', `select=*&email=eq.${encodeURIComponent(email)}&is_approved=eq.true`);
       if (emailRes.data) {
         data = emailRes.data;
         error = null;
-        // L??nka auth_user_id f??r framtida inloggningar
+        // Länka auth_user_id för framtida inloggningar
         if (authUserId) {
           await R.update('cleaners', { auth_user_id: authUserId }, `id=eq.${data.id}`);
         }
@@ -1320,7 +1320,7 @@ async function loadCleanerByEmail(email, authUserId) {
   }
 
   if (error || !data) {
-    showErr('Kontot hittades inte. Kontakta oss: ???? WhatsApp (wa.me/46760505153) eller hello@spick.se');
+    showErr('Kontot hittades inte. Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se');
     const btn = document.getElementById('login-btn');
     if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Skicka inloggningskod'; }
     window.history.replaceState({}, '', window.location.pathname);
@@ -1338,8 +1338,8 @@ async function loadCleanerByEmail(email, authUserId) {
     body: JSON.stringify({ last_active_at: new Date().toISOString() })
   }).catch(function(){});
 
-  if (cleaner.status === 'avst??ngd') {
-    showErr('??? Ditt konto har st??ngts av. Kontakta oss: ???? WhatsApp (wa.me/46760505153) eller hello@spick.se');
+  if (cleaner.status === 'avstängd') {
+    showErr('⛔ Ditt konto har stängts av. Kontakta oss: 💬 WhatsApp (wa.me/46760505153) eller hello@spick.se');
     showScreen('login');
     return;
   }
@@ -1349,9 +1349,9 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('hdr-avatar').textContent = initials;
   document.getElementById('hdr-name').textContent = (cleaner.full_name || '').split(' ')[0];
   // Greeting
-  var firstName = (cleaner.full_name || '').split(' ')[0] || 'st??dare';
+  var firstName = (cleaner.full_name || '').split(' ')[0] || 'städare';
   var hour = new Date().getHours();
-  var timeGreet = hour < 10 ? 'God morgon' : hour < 17 ? 'Hej' : 'God kv??ll';
+  var timeGreet = hour < 10 ? 'God morgon' : hour < 17 ? 'Hej' : 'God kväll';
   var greetEl = document.getElementById('greeting-text');
   if (greetEl) greetEl.textContent = timeGreet + ', ' + firstName + '!';
   var greetAvEl = document.getElementById('greeting-avatar');
@@ -1362,14 +1362,14 @@ async function loadCleanerByEmail(email, authUserId) {
     if (!greetSubEl) return;
     var todayCount = jobs.filter(function(j){ return j.cleaner_id === cleaner.id && j.status !== 'klar' && new Date(j.scheduled_date||j.booking_date).toDateString() === new Date().toDateString(); }).length;
     var weekCount = jobs.filter(function(j){ var d = new Date(j.scheduled_date||j.booking_date); var now = new Date(); var weekEnd = new Date(); weekEnd.setDate(now.getDate() + 7); return j.cleaner_id === cleaner.id && j.status !== 'klar' && d >= now && d <= weekEnd; }).length;
-    if (todayCount > 0) greetSubEl.textContent = todayCount + ' jobb idag ?? ' + weekCount + ' denna vecka';
+    if (todayCount > 0) greetSubEl.textContent = todayCount + ' jobb idag · ' + weekCount + ' denna vecka';
     else if (weekCount > 0) greetSubEl.textContent = weekCount + ' jobb denna vecka';
     else greetSubEl.textContent = 'Inga kommande jobb just nu';
   }
   document.getElementById('prof-avatar').textContent = initials;
-  document.getElementById('prof-name').textContent = cleaner.full_name || '???';
-  document.getElementById('prof-sub').textContent = `St??dare i ${cleaner.city || 'din stad'}`;
-  document.getElementById('prof-email').textContent = cleaner._email || '???';
+  document.getElementById('prof-name').textContent = cleaner.full_name || '–';
+  document.getElementById('prof-sub').textContent = `Städare i ${cleaner.city || 'din stad'}`;
+  document.getElementById('prof-email').textContent = cleaner._email || '–';
   document.getElementById('edit-name').value = cleaner.full_name || '';
   document.getElementById('edit-phone').value = cleaner.phone || '';
   document.getElementById('edit-city').value = cleaner.city || '';
@@ -1378,12 +1378,12 @@ async function loadCleanerByEmail(email, authUserId) {
   updateKeep();
   initAvatarUpload();
   document.getElementById('earn-rate').textContent = (cleaner.hourly_rate || 350) + ' kr/h';
-  const svcText = Array.isArray(cleaner.services) ? cleaner.services.join(', ') : (cleaner.services || '???');
+  const svcText = Array.isArray(cleaner.services) ? cleaner.services.join(', ') : (cleaner.services || '–');
   document.getElementById('prof-services').textContent = svcText;
   initProfileServices(cleaner.services);
   const rating = cleaner.avg_rating;
   if (rating) {
-    const stars = '???'.repeat(Math.round(rating));
+    const stars = '⭐'.repeat(Math.round(rating));
     document.getElementById('prof-stars').textContent = stars;
     document.getElementById('prof-rating-txt').textContent = `${rating}/5 (${cleaner.review_count || 0} betyg)`;
   }
@@ -1394,14 +1394,14 @@ async function loadCleanerByEmail(email, authUserId) {
 
   const statusEl = document.getElementById('prof-status');
   if (statusEl) {
-    if (cleaner.status === 'pausad') { statusEl.innerHTML = '<span style="color:#92400E">??? Pausad</span>'; statusEl.style.color = '#92400E'; }
-    else { statusEl.innerHTML = '??? Aktiv'; statusEl.style.color = 'var(--g)'; }
+    if (cleaner.status === 'pausad') { statusEl.innerHTML = '<span style="color:#92400E">⏸ Pausad</span>'; statusEl.style.color = '#92400E'; }
+    else { statusEl.innerHTML = '✅ Aktiv'; statusEl.style.color = 'var(--g)'; }
   }
   const bankidBadge = document.getElementById('bankid-badge');
   if (bankidBadge) {
     bankidBadge.innerHTML = cleaner.identity_verified
-      ? '<span style="color:#0F6E56;font-size:.8rem">???? ID-verifierad</span>'
-      : '<span style="color:#F59E0B;font-size:.8rem">?????? Ej verifierad ??? <a href="registrera-stadare.html#bankid" style="color:var(--g)">Verifiera nu ???</a></span>';
+      ? '<span style="color:#0F6E56;font-size:.8rem">🔐 ID-verifierad</span>'
+      : '<span style="color:#F59E0B;font-size:.8rem">⚠️ Ej verifierad — <a href="registrera-stadare.html#bankid" style="color:var(--g)">Verifiera nu →</a></span>';
   }
   window._cleanerLoaded=true;
   showTeamTab();
@@ -1411,7 +1411,7 @@ async function loadCleanerByEmail(email, authUserId) {
     const banner = document.createElement('div');
     banner.id = 'paused-banner';
     banner.style.cssText = 'background:#FEF3C7;color:#92400E;padding:12px 20px;font-size:.85rem;font-weight:600;text-align:center;border-bottom:1px solid #FDE68A';
-    banner.innerHTML = '??? Ditt konto ??r pausat ??? du kan inte ta emot nya bokningar. Kontakta <a href="mailto:hello@spick.se" style="color:#92400E;text-decoration:underline">hello@spick.se</a> f??r att aktivera.';
+    banner.innerHTML = '⏸ Ditt konto är pausat – du kan inte ta emot nya bokningar. Kontakta <a href="mailto:hello@spick.se" style="color:#92400E;text-decoration:underline">hello@spick.se</a> för att aktivera.';
     document.querySelector('.app-header')?.after(banner);
   }
 
@@ -1419,7 +1419,7 @@ async function loadCleanerByEmail(email, authUserId) {
   setupRealtime();
 }
 
-// ?????? JOBS ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── JOBS ─────────────────────────────────────────────────────
 async function loadJobs() {
   const [myJobs, cityJobs] = await Promise.all([
     R.select('bookings', `select=*&cleaner_id=eq.${cleaner.id}&payment_status=in.(paid,pending)&order=booking_date.asc`),
@@ -1441,7 +1441,7 @@ async function loadJobs() {
   renderCalendar();
 }
 
-// ?????? HOME TAB RENDERING ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── HOME TAB RENDERING ──────────────────────────────────────
 function renderHome() {
   renderHeroCard();
   renderTimeline();
@@ -1462,12 +1462,12 @@ function updateOnboarding() {
   var fskattText = document.getElementById('ob-fskatt-text');
   if (fskattEl && fskattText) {
     if (cleaner.has_fskatt) {
-      fskattText.textContent = 'F-skatt ???';
+      fskattText.textContent = 'F-skatt ✓';
     } else if (cleaner.fskatt_needs_help) {
-      fskattText.textContent = 'F-skatt ??? vi hj??lper dig ans??ka';
+      fskattText.textContent = 'F-skatt — vi hjälper dig ansöka';
       fskattEl.onclick = function() { window.open('https://www.verksamt.se/starta/registrera-foretag/ansok-om-f-skatt', '_blank'); };
     } else {
-      fskattText.textContent = 'Ans??k om F-skatt';
+      fskattText.textContent = 'Ansök om F-skatt';
       fskattEl.onclick = function() { window.open('https://www.verksamt.se/starta/registrera-foretag/ansok-om-f-skatt', '_blank'); };
     }
   }
@@ -1584,21 +1584,21 @@ function renderHeroCard() {
     const diff = jobTime - new Date();
     if (diff <= 0) {
       document.getElementById('hero-countdown').textContent = 'Nu';
-      document.getElementById('hero-countdown-sub').textContent = 'Dags att b??rja!';
+      document.getElementById('hero-countdown-sub').textContent = 'Dags att börja!';
     } else if (diff < 3600000) {
       document.getElementById('hero-countdown').textContent = 'Om ' + Math.ceil(diff/60000) + ' min';
-      document.getElementById('hero-countdown-sub').textContent = (next.booking_time||'09:00') + ' ?? ' + (next.booking_hours||3) + 'h ' + escHtml(next.service_type||'Hemst??dning');
+      document.getElementById('hero-countdown-sub').textContent = (next.booking_time||'09:00') + ' · ' + (next.booking_hours||3) + 'h ' + escHtml(next.service_type||'Hemstädning');
     } else {
       document.getElementById('hero-countdown').textContent = 'Om ' + Math.round(diff/3600000) + 'h ' + Math.round((diff%3600000)/60000) + 'min';
-      document.getElementById('hero-countdown-sub').textContent = (next.booking_time||'09:00') + ' ?? ' + (next.booking_hours||3) + 'h ' + escHtml(next.service_type||'Hemst??dning');
+      document.getElementById('hero-countdown-sub').textContent = (next.booking_time||'09:00') + ' · ' + (next.booking_hours||3) + 'h ' + escHtml(next.service_type||'Hemstädning');
     }
   }
   updateCountdown();
   if (countdownTimer) clearInterval(countdownTimer);
   countdownTimer = setInterval(updateCountdown, 30000);
 
-  document.getElementById('hero-address').innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(next.customer_address||'')}" target="_blank" style="color:#fff;text-decoration:underline">${escHtml(next.customer_address || '???')}</a>`;
-  document.getElementById('hero-client').textContent = next.customer_name ? next.customer_name.split(' ')[0] : '???';
+  document.getElementById('hero-address').innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(next.customer_address||'')}" target="_blank" style="color:#fff;text-decoration:underline">${escHtml(next.customer_address || '–')}</a>`;
+  document.getElementById('hero-client').textContent = next.customer_name ? next.customer_name.split(' ')[0] : '–';
   document.getElementById('hero-pay').textContent = pay.toLocaleString('sv') + ' kr';
 
   // Store address for navigate button
@@ -1637,7 +1637,7 @@ function renderTimeline() {
     const t = (type||'').toLowerCase();
     if (t.includes('stor')) return 'storstad';
     if (t.includes('flytt')) return 'flytt';
-    if (t.includes('f??nster')) return 'fonster';
+    if (t.includes('fönster')) return 'fonster';
     if (t.includes('kontor')) return 'kontor';
     if (t.includes('hem')) return 'hemstad';
     return 'default';
@@ -1649,7 +1649,7 @@ function renderTimeline() {
     const hours = parseInt(j.booking_hours) || 3;
     const isDone = j.status === 'klar';
     const isActive = j.checked_in_at && !isDone;
-    const statusIcon = isDone ? '???' : isActive ? '????' : '';
+    const statusIcon = isDone ? '✅' : isActive ? '🧹' : '';
 
     html += `<div class="tl-pill ${typeClass(j.service_type)} ${isActive?'active':''}" onclick="expandTimelineJob('${j.id}')" style="${isDone?'opacity:.6':''}">
       <span>${time}</span><span>${hours}h</span>${statusIcon?`<span>${statusIcon}</span>`:''}
@@ -1662,7 +1662,7 @@ function renderTimeline() {
       const nextH = parseInt((nextJ.booking_time||nextJ.scheduled_time||'09:00').split(':')[0]);
       const gap = nextH - endH;
       if (gap > 0) {
-        html += `<div class="tl-gap">??? ${gap*60} min paus</div>`;
+        html += `<div class="tl-gap">☕ ${gap*60} min paus</div>`;
       }
     }
   });
@@ -1682,32 +1682,32 @@ function expandTimelineJob(jobId) {
   let actionsHtml = '';
   if (!j.checked_in_at && !isDone) {
     actionsHtml = `<div style="margin-top:10px">
-      <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px">?????? P??b??rja uppdrag</button>
+      <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px">▶️ Påbörja uppdrag</button>
       <div style="display:flex;justify-content:center;gap:12px;margin-top:8px">
-        <button class="noshow-btn" onclick="reportNoShow('${j.id}')">?????? Kund ej p?? plats</button>
+        <button class="noshow-btn" onclick="reportNoShow('${j.id}')">⚠️ Kund ej på plats</button>
         <button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button>
       </div>
     </div>`;
   } else if (isActive) {
     actionsHtml = `<div style="margin-top:10px">
       <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;background:#DCFCE7;color:#166534;min-height:48px">Markera klar</button>
-      <div style="text-align:center;margin-top:8px"><button class="noshow-btn" onclick="reportNoShow('${j.id}')">?????? Kund ej p?? plats</button></div>
+      <div style="text-align:center;margin-top:8px"><button class="noshow-btn" onclick="reportNoShow('${j.id}')">⚠️ Kund ej på plats</button></div>
     </div>`;
   }
 
   expand.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
       <div>
-        <div style="font-weight:700;font-size:.95rem">${escHtml(j.service_type||'Hemst??dning')}</div>
-        <div style="font-size:.82rem;color:var(--m)">${(j.booking_time||'09:00').slice(0,5)} ?? ${j.booking_hours||3}h${j.square_meters ? ' ?? ' + j.square_meters + ' kvm' : ''}</div>
+        <div style="font-weight:700;font-size:.95rem">${escHtml(j.service_type||'Hemstädning')}</div>
+        <div style="font-size:.82rem;color:var(--m)">${(j.booking_time||'09:00').slice(0,5)} · ${j.booking_hours||3}h${j.square_meters ? ' · ' + j.square_meters + ' kvm' : ''}</div>
       </div>
       <div style="font-family:inherit;font-size:1.2rem;font-weight:700;color:var(--g)">${pay.toLocaleString('sv')} kr</div>
     </div>
-    <div style="font-size:.85rem">???? <a href="https://maps.google.com/?q=${encodeURIComponent(j.customer_address||'')}" target="_blank" style="color:var(--g);font-weight:600">${escHtml(j.customer_address||'???')}</a></div>
-    ${j.key_info?`<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:6px;font-size:.75rem;color:#92400E">???? ${escHtml(j.key_info)}</div>`:''}
-    ${j.customer_phone?(canShowPhone(j)?`<div style="margin-top:.375rem"><a href="tel:${escHtml(j.customer_phone)}" style="color:#0F6E56;text-decoration:none;font-weight:600;font-size:.85rem">???? ${escHtml(j.customer_phone)}</a></div>`:`<div style="margin-top:.375rem;font-size:.8rem;color:#6B6960">???? Kundnummer visas p?? jobbdagen</div>`):''}
-    ${j.notes||j.customer_notes?`<div style="font-size:.8rem;margin-top:.375rem;padding:.375rem .625rem;background:#EFF6FF;border-radius:8px;color:#1E40AF">${(j.notes||j.customer_notes||'').includes('????')?'???? ':'???? '}${escHtml(j.notes||j.customer_notes)}</div>`:''}
-    ${j.customer_name?`<div style="font-size:.82rem;color:var(--m);margin-top:.25rem">???? ${escHtml(j.customer_name)}</div>`:''}
+    <div style="font-size:.85rem">📍 <a href="https://maps.google.com/?q=${encodeURIComponent(j.customer_address||'')}" target="_blank" style="color:var(--g);font-weight:600">${escHtml(j.customer_address||'–')}</a></div>
+    ${j.key_info?`<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:6px;font-size:.75rem;color:#92400E">🔑 ${escHtml(j.key_info)}</div>`:''}
+    ${j.customer_phone?(canShowPhone(j)?`<div style="margin-top:.375rem"><a href="tel:${escHtml(j.customer_phone)}" style="color:#0F6E56;text-decoration:none;font-weight:600;font-size:.85rem">📞 ${escHtml(j.customer_phone)}</a></div>`:`<div style="margin-top:.375rem;font-size:.8rem;color:#6B6960">📞 Kundnummer visas på jobbdagen</div>`):''}
+    ${j.notes||j.customer_notes?`<div style="font-size:.8rem;margin-top:.375rem;padding:.375rem .625rem;background:#EFF6FF;border-radius:8px;color:#1E40AF">${(j.notes||j.customer_notes||'').includes('🐾')?'🐾 ':'📝 '}${escHtml(j.notes||j.customer_notes)}</div>`:''}
+    ${j.customer_name?`<div style="font-size:.82rem;color:var(--m);margin-top:.25rem">👤 ${escHtml(j.customer_name)}</div>`:''}
     ${actionsHtml}
   `;
   expand.classList.toggle('show', !expand.classList.contains('show') || expand.dataset.jobId !== jobId);
@@ -1761,7 +1761,7 @@ function updateBadge() {
   else { badge.style.display = 'none'; }
 }
 
-// ?????? AVAILABLE JOBS TAB ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── AVAILABLE JOBS TAB ──────────────────────────────────────
 function renderAvailableJobs() {
   const skel = document.getElementById('avail-skeleton');
   if (skel) skel.remove();
@@ -1771,24 +1771,34 @@ function renderAvailableJobs() {
   const el = document.getElementById('available-jobs-list');
 
   if (!open.length) {
-    const cityDisplay = (cleaner.city || 'ditt omr??de').charAt(0).toUpperCase() + (cleaner.city || 'ditt omr??de').slice(1).toLowerCase();
-    el.innerHTML = `<div class="empty"><div class="empty-icon">????</div><strong>Inga lediga jobb just nu</strong><p style="margin-top:8px;font-size:.85rem">Nya uppdrag i ${cityDisplay} visas h??r automatiskt.</p></div>`;
+    const cityDisplay = (cleaner.city || 'ditt område').charAt(0).toUpperCase() + (cleaner.city || 'ditt område').slice(1).toLowerCase();
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><strong>Inga lediga jobb just nu</strong><p style="margin-top:8px;font-size:.85rem">Nya uppdrag i ${cityDisplay} visas här automatiskt.</p></div>`;
     return;
   }
 
   el.innerHTML = open.map(j => jobCard(j)).join('');
 }
 
-// ?????? JOB CARD (reused) ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── JOB CARD (reused) ───────────────────────────────────────
+function photoButtonsHtml(j) {
+  if (!(j.service_type||'').toLowerCase().includes('flytt')) return '';
+  var bf = j.photo_before_url;
+  var af = j.photo_after_url;
+  return '<div style="display:flex;gap:6px;margin-top:6px">'
+    + '<button onclick="takePhoto(&#39;' + j.id + '&#39;,&#39;before&#39;)" class="action-btn" style="flex:1;background:' + (bf?'#DCFCE7':'#F3F4F6') + ';color:' + (bf?'#166534':'#374151') + ';font-size:.78rem">' + (bf?'✅':'📸') + ' Före</button>'
+    + '<button onclick="takePhoto(&#39;' + j.id + '&#39;,&#39;after&#39;)" class="action-btn" style="flex:1;background:' + (af?'#DCFCE7':'#F3F4F6') + ';color:' + (af?'#166534':'#374151') + ';font-size:.78rem">' + (af?'✅':'📸') + ' Efter</button>'
+    + '</div><div style="font-size:.65rem;color:var(--m);margin-top:3px;text-align:center">Valfritt — foton hjälper vid eventuell besiktning</div>';
+}
+
 function getMaterialInfo(serviceType) {
   var svc = (serviceType || '').toLowerCase();
   if (svc.includes('flytt')) {
-    return { customer: 'St??daren tar med all utrustning.', cleaner: '?????? DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, alla reng??ringsmedel. L??genheten ??r tom.', isCleanerEquip: true };
+    return { customer: 'Städaren tar med all utrustning.', cleaner: '⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, alla rengöringsmedel. Lägenheten är tom.', isCleanerEquip: true };
   }
-  if (svc.includes('f??nster') || svc.includes('fonster')) {
-    return { customer: 'St??daren tar med utrustning.', cleaner: 'Ta med f??nsterutrustning: squeegee, skrapa, f??nsterl??sning, dukar.', isCleanerEquip: true };
+  if (svc.includes('fönster') || svc.includes('fonster')) {
+    return { customer: 'Städaren tar med utrustning.', cleaner: 'Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, dukar.', isCleanerEquip: true };
   }
-  return { customer: 'Dammsugare, mopp och reng??ringsmedel ska finnas tillg??ngliga.', cleaner: 'Kundens utrustning ??? dammsugare och mopp ska finnas.', isCleanerEquip: false };
+  return { customer: 'Dammsugare, mopp och rengöringsmedel ska finnas tillgängliga.', cleaner: 'Kundens utrustning – dammsugare och mopp ska finnas.', isCleanerEquip: false };
 }
 
 function jobCard(j) {
@@ -1803,7 +1813,7 @@ function jobCard(j) {
   const pay = Math.round(grossPay * keepRate);
   const effectiveRate = Math.round(pay / hours);
   const rateColor = effectiveRate < 200 ? 'var(--r)' : 'var(--g)';
-  const rateWarning = effectiveRate < 200 ? ' ??????' : '';
+  const rateWarning = effectiveRate < 200 ? ' ⚠️' : '';
   const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
   const [mon, day] = dateStr.split(' ');
   const hoursUntil = (d - new Date()) / 3600000;
@@ -1812,27 +1822,27 @@ function jobCard(j) {
   const isPendingConfirmation = isMine && (j.status === 'pending_confirmation');
 
   let badgeHtml = '';
-  if (isPendingConfirmation) badgeHtml = `<span class="badge badge-pending">V??ntar p?? ditt svar</span>`;
-  else if (isOpen) badgeHtml = `<span class="badge badge-new">Ny f??rfr??gan</span>`;
+  if (isPendingConfirmation) badgeHtml = `<span class="badge badge-pending">Väntar på ditt svar</span>`;
+  else if (isOpen) badgeHtml = `<span class="badge badge-new">Ny förfrågan</span>`;
   else if (isDone) badgeHtml = `<span class="badge badge-done">Klar</span>`;
-  else if (isActive) badgeHtml = `<span class="badge badge-inprogress">P??g??r</span>`;
-  else if (isMine) badgeHtml = `<span class="badge badge-ok">Bekr??ftat</span>`;
+  else if (isActive) badgeHtml = `<span class="badge badge-inprogress">Pågår</span>`;
+  else if (isMine) badgeHtml = `<span class="badge badge-ok">Bekräftat</span>`;
 
   let actionsHtml = '';
   if (isPendingConfirmation) {
     actionsHtml = `<div class="job-actions" style="margin-top:8px">
       <button class="btn-accept" onclick="respondToBooking(this,'${j.id}','accept')">Acceptera uppdrag</button>
-      <button class="btn-decline" onclick="respondToBooking(this,'${j.id}','reject')">Avb??j</button>
+      <button class="btn-decline" onclick="respondToBooking(this,'${j.id}','reject')">Avböj</button>
     </div>`;
   } else if (isOpen) {
     actionsHtml = `<div class="job-actions">
-      <button class="btn-accept" onclick="acceptJob('${j.id}',this)">??? Acceptera</button>
-      <button class="btn-decline" onclick="declineJob('${j.id}')">Avb??j</button>
+      <button class="btn-accept" onclick="acceptJob('${j.id}',this)">✓ Acceptera</button>
+      <button class="btn-decline" onclick="declineJob('${j.id}')">Avböj</button>
     </div>`;
   } else if (isMine && !j.checked_in_at && !isDone) {
     actionsHtml = `
       <div style="margin-top:8px">
-        <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px;font-size:.88rem">?????? P??b??rja uppdrag</button>
+        <button onclick="startJob('${j.id}')" class="action-btn" style="width:100%;background:#DBEAFE;color:#1E40AF;min-height:48px;font-size:.88rem">▶️ Påbörja uppdrag</button>
         <div style="text-align:center;margin-top:10px">
           <button onclick="cancelMyJob('${j.id}')" style="background:none;border:none;color:#991B1B;font-size:.75rem;cursor:pointer;padding:6px 12px;font-family:inherit;text-decoration:underline">Avboka uppdrag</button>
         </div>
@@ -1843,65 +1853,65 @@ function jobCard(j) {
     actionsHtml += `
     <div class="job-timer" id="timer-${j.id}">
       <span class="timer-dot"></span>
-      <span>Tid p?? plats: </span><span id="timer-txt-${j.id}" style="font-weight:700">00:00</span>
+      <span>Tid på plats: </span><span id="timer-txt-${j.id}" style="font-weight:700">00:00</span>
     </div>
-    ${(isMine && !isDone && j.checked_in_at && (j.service_type||'').toLowerCase().includes('flytt')) ? '<div style="display:flex;gap:6px;margin-top:6px"><button onclick="takePhoto('' + j.id + '','before')" class="action-btn" style="flex:1;background:' + (j.photo_before_url?'#DCFCE7':'#F3F4F6') + ';color:' + (j.photo_before_url?'#166534':'#374151') + ';font-size:.78rem">' + (j.photo_before_url?'✅':'📸') + ' Före</button><button onclick="takePhoto('' + j.id + '','after')" class="action-btn" style="flex:1;background:' + (j.photo_after_url?'#DCFCE7':'#F3F4F6') + ';color:' + (j.photo_after_url?'#166534':'#374151') + ';font-size:.78rem">' + (j.photo_after_url?'✅':'📸') + ' Efter</button></div><div style="font-size:.65rem;color:var(--m);margin-top:3px;text-align:center">Valfritt — foton hjälper vid eventuell besiktning</div>' : ''}
-    <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;font-size:.82rem">Markera som klar ??? frig??r betalning</button>`;
+    ${photoButtonsHtml(j)}
+    <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;font-size:.82rem">Markera som klar – frigör betalning</button>`;
   }
 
   if (isDone && isMine) {
-    actionsHtml += `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:6px">Klar ??? utbetalning p?? v??g</div>`;
+    actionsHtml += `<div style="text-align:center;padding:.5rem;background:#F0FDF4;border-radius:8px;font-size:.78rem;color:#166534;margin-top:6px">Klar – utbetalning på väg</div>`;
   }
 
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(j.customer_address || '')}`;
   const addrHtml = isMine ? `<div style="font-size:.75rem;margin-top:5px;">
     ${showAddr ?
       `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <a href="${mapsUrl}" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none">???? ${escHtml(j.customer_address || '???')} ???</a>
-        ${j.customer_phone && canShowPhone(j) ? `<a href="tel:${escHtml(j.customer_phone)}" style="background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px;text-decoration:none;font-weight:600">???? Ring kund</a>` : j.customer_phone ? `<span style="font-size:.75rem;color:#6B6960">???? Visas p?? jobbdagen</span>` : ''}
+        <a href="${mapsUrl}" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none">📍 ${escHtml(j.customer_address || '–')} →</a>
+        ${j.customer_phone && canShowPhone(j) ? `<a href="tel:${escHtml(j.customer_phone)}" style="background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px;text-decoration:none;font-weight:600">📞 Ring kund</a>` : j.customer_phone ? `<span style="font-size:.75rem;color:#6B6960">📞 Visas på jobbdagen</span>` : ''}
       </div>` :
-      `<span style="color:var(--m)">???? Omr??de: ${escHtml(j.customer_address || '???')} ${hoursUntil > 24 ? '<span style=\"color:#F59E0B\">???? Adress synlig 24h innan</span>' : ''}</span>`}
-    ${j.key_info && showAddr ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">???? ${escHtml(j.key_info)}</div>` : ''}
-    ${j.customer_notes && j.customer_notes.includes('????') ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">???? Husdjur hemma</div>` : ''}
-    ${j.customer_notes ? `<div style="background:#DBEAFE;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#1E40AF">???? Kundnotering: ${escHtml(j.customer_notes)}</div>` : ''}
-    ${j.allergies ? `<div style="background:#FEE2E2;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#991B1B">?????? Allergi: ${escHtml(j.allergies)}</div>` : ''}
+      `<span style="color:var(--m)">📍 Område: ${escHtml(j.customer_address || '–')} ${hoursUntil > 24 ? '<span style=\"color:#F59E0B\">🔒 Adress synlig 24h innan</span>' : ''}</span>`}
+    ${j.key_info && showAddr ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">🔑 ${escHtml(j.key_info)}</div>` : ''}
+    ${j.customer_notes && j.customer_notes.includes('🐾') ? `<div style="background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#92400E">🐾 Husdjur hemma</div>` : ''}
+    ${j.customer_notes ? `<div style="background:#DBEAFE;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#1E40AF">📝 Kundnotering: ${escHtml(j.customer_notes)}</div>` : ''}
+    ${j.allergies ? `<div style="background:#FEE2E2;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#991B1B">⚠️ Allergi: ${escHtml(j.allergies)}</div>` : ''}
     ${isMine && !isDone ? (function(){
-      var mat = getMaterialInfo(j.service_type || 'Hemst??dning');
+      var mat = getMaterialInfo(j.service_type || 'Hemstädning');
       return mat.isCleanerEquip
         ? '<div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:6px;padding:6px 8px;margin-top:4px;font-size:.72rem;color:#92400E;font-weight:600">' + mat.cleaner + '</div>'
-        : '<div style="background:#F0FDF4;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#166534">???? ' + mat.cleaner + '</div>';
+        : '<div style="background:#F0FDF4;border-radius:6px;padding:4px 8px;margin-top:4px;font-size:.72rem;color:#166534">🔑 ' + mat.cleaner + '</div>';
     })() : ''}
   </div>` : '';
 
   // Checklist link for accepted jobs
   let checklistHtml = '';
   if (isMine && !isDone) {
-    const svc = (j.service_type || 'Hemst??dning').toLowerCase();
+    const svc = (j.service_type || 'Hemstädning').toLowerCase();
     let clType = 'hem';
     if (svc.includes('flytt')) clType = 'flytt';
     else if (svc.includes('stor')) clType = 'stor';
-    else if (svc.includes('f??nster') || svc.includes('fonster')) clType = 'fonster';
-    checklistHtml = `<a href="stadare-checklista.html?type=${clType}" target="_blank" style="display:inline-block;margin-top:6px;font-size:.78rem;color:var(--g);font-weight:600;text-decoration:none">???? ??ppna checklista ???</a>`;
+    else if (svc.includes('fönster') || svc.includes('fonster')) clType = 'fonster';
+    checklistHtml = `<a href="stadare-checklista.html?type=${clType}" target="_blank" style="display:inline-block;margin-top:6px;font-size:.78rem;color:var(--g);font-weight:600;text-decoration:none">📋 Öppna checklista →</a>`;
   }
 
   const hasExpandContent = addrHtml || actionsHtml || checklistHtml;
   const expandId = `jx-${j.id}`;
   const expandToggle = hasExpandContent ? ` onclick="toggleJobExpand('${expandId}',event)"` : '';
-  const expandArrow = hasExpandContent ? `<span class="jx-arrow" style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block">???</span>` : '';
-  // Auto-expand active jobs (p??g??r) and pending confirmation
+  const expandArrow = hasExpandContent ? `<span class="jx-arrow" style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block">▼</span>` : '';
+  // Auto-expand active jobs (pågår) and pending confirmation
   const autoExpand = (isActive || isPendingConfirmation) ? ' style="display:block"' : '';
   const autoArrowStyle = (isActive || isPendingConfirmation) ? ' style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block;transform:rotate(180deg)"' : '';
-  const arrowHtml = hasExpandContent ? `<span class="jx-arrow"${(isActive || isPendingConfirmation) ? autoArrowStyle : ' style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block"'}>???</span>` : '';
+  const arrowHtml = hasExpandContent ? `<span class="jx-arrow"${(isActive || isPendingConfirmation) ? autoArrowStyle : ' style="font-size:.65rem;color:var(--m);margin-left:4px;transition:transform .2s;display:inline-block"'}>▼</span>` : '';
 
   return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}" id="jc-${j.id}"${expandToggle} style="cursor:${hasExpandContent?'pointer':'default'}">
     <div class="job-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
     <div class="job-body">
-      <div class="job-title">${escHtml(j.service_type || 'Hemst??dning')} ${arrowHtml}</div>
+      <div class="job-title">${escHtml(j.service_type || 'Hemstädning')} ${arrowHtml}</div>
       <div class="job-meta">
-        <span>???? ${escHtml(j.booking_time || j.scheduled_time || '09:00')}</span>
-        <span>??? ${parseInt(j.booking_hours) || 3}h</span>
-        <span>???? ${escHtml(j.customer_address || '???')}</span>
-        ${j.customer_name && isMine ? `<span>???? ${escHtml(j.customer_name.split(' ')[0])}</span>` : ''}
+        <span>🕐 ${escHtml(j.booking_time || j.scheduled_time || '09:00')}</span>
+        <span>⏱ ${parseInt(j.booking_hours) || 3}h</span>
+        <span>📍 ${escHtml(j.customer_address || '–')}</span>
+        ${j.customer_name && isMine ? `<span>👤 ${escHtml(j.customer_name.split(' ')[0])}</span>` : ''}
       </div>
       ${badgeHtml}
       <div class="jx-expand" id="${expandId}"${autoExpand}>
@@ -1917,7 +1927,7 @@ function jobCard(j) {
   </div>`;
 }
 
-// ?????? GOAL WIDGET ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── GOAL WIDGET ──────────────────────────────────────────────
 function updateGoal() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const monthJobs = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'klar' && new Date(j.scheduled_date||j.booking_date) >= monthStart);
@@ -1929,14 +1939,14 @@ function updateGoal() {
   document.getElementById('goal-bar').style.width = pct + '%';
   document.getElementById('goal-pct-label').textContent = pct + '%';
   document.getElementById('goal-current').textContent = earned.toLocaleString('sv') + ' kr';
-  document.getElementById('goal-target').textContent = 'M??l: ' + MONTHLY_GOAL.toLocaleString('sv') + ' kr';
-  if (pct >= 100) document.getElementById('goal-msg').textContent = '???? Grattis ??? du har n??tt ditt m??l denna m??nad!';
-  else if (pct >= 75) document.getElementById('goal-msg').textContent = '???? N??stan i m??l! ' + (MONTHLY_GOAL - earned).toLocaleString('sv') + ' kr kvar.';
-  else if (pct > 0) document.getElementById('goal-msg').textContent = `${pct}% av m??nadsm??let uppn??tt.`;
-  else document.getElementById('goal-msg').textContent = 'Acceptera ditt f??rsta uppdrag denna m??nad!';
+  document.getElementById('goal-target').textContent = 'Mål: ' + MONTHLY_GOAL.toLocaleString('sv') + ' kr';
+  if (pct >= 100) document.getElementById('goal-msg').textContent = '🎉 Grattis – du har nått ditt mål denna månad!';
+  else if (pct >= 75) document.getElementById('goal-msg').textContent = '🔥 Nästan i mål! ' + (MONTHLY_GOAL - earned).toLocaleString('sv') + ' kr kvar.';
+  else if (pct > 0) document.getElementById('goal-msg').textContent = `${pct}% av månadsmålet uppnått.`;
+  else document.getElementById('goal-msg').textContent = 'Acceptera ditt första uppdrag denna månad!';
 }
 
-// ?????? HOME STATS CARDS ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── HOME STATS CARDS ────────────────────────────────────────
 function updateHomeStats() {
   const wrap = document.getElementById('home-stats');
   if (!wrap) return;
@@ -1960,7 +1970,7 @@ function updateHomeStats() {
   wrap.style.display = 'grid';
 }
 
-// ?????? CALENDAR TAB ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── CALENDAR TAB ────────────────────────────────────────────
 function renderCalendar() {
   const grid = document.getElementById('cal-grid');
   const label = document.getElementById('cal-month-label');
@@ -1968,7 +1978,7 @@ function renderCalendar() {
   label.textContent = months[calMonth] + ' ' + calYear;
 
   // Header row
-  let html = ['M??n','Tis','Ons','Tor','Fre','L??r','S??n'].map(d => `<div class="cal-header">${d}</div>`).join('');
+  let html = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'].map(d => `<div class="cal-header">${d}</div>`).join('');
 
   const firstDay = new Date(calYear, calMonth, 1);
   let startDow = firstDay.getDay() - 1; // Mon=0
@@ -2032,8 +2042,8 @@ function showCalDay(day) {
     return `<div class="card" style="padding:12px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-weight:600;font-size:.88rem">${escHtml(j.service_type||'Hemst??dning')}</div>
-          <div style="font-size:.78rem;color:var(--m)">${j.booking_time||'09:00'} ?? ${j.booking_hours||3}h ?? ${escHtml(j.customer_address||'')}</div>
+          <div style="font-weight:600;font-size:.88rem">${escHtml(j.service_type||'Hemstädning')}</div>
+          <div style="font-size:.78rem;color:var(--m)">${j.booking_time||'09:00'} · ${j.booking_hours||3}h · ${escHtml(j.customer_address||'')}</div>
         </div>
         <div style="font-family:inherit;color:var(--g);font-weight:700">${pay.toLocaleString('sv')} kr</div>
       </div>
@@ -2041,7 +2051,7 @@ function showCalDay(day) {
   }).join('');
 }
 
-// ?????? EARNINGS TAB ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── EARNINGS TAB ─────────────────────────────────────────────
 function renderEarnings() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -2065,23 +2075,23 @@ function renderEarnings() {
   const pcontent = document.getElementById('prognos-content');
   if (pc && weekDone.length > 0) {
     pc.style.display = 'block';
-    pp.textContent = '(baserat p?? senaste 7 dagarna)';
+    pp.textContent = '(baserat på senaste 7 dagarna)';
     pcontent.innerHTML = `
       <div class="earn-row"><span class="lbl">Senaste 7 dagarna</span><span style="color:var(--g);font-weight:600">${weekAvg.toLocaleString('sv')} kr</span></div>
-      <div class="earn-row"><span class="lbl">Prognostiserad m??nad</span><span style="color:var(--g);font-weight:700;font-size:1.1rem">${projectedMonth.toLocaleString('sv')} kr</span></div>
-      <div class="earn-row"><span class="lbl">Per ??r (prognos)</span><span style="color:var(--g)">${(projectedMonth*12).toLocaleString('sv')} kr</span></div>
+      <div class="earn-row"><span class="lbl">Prognostiserad månad</span><span style="color:var(--g);font-weight:700;font-size:1.1rem">${projectedMonth.toLocaleString('sv')} kr</span></div>
+      <div class="earn-row"><span class="lbl">Per år (prognos)</span><span style="color:var(--g)">${(projectedMonth*12).toLocaleString('sv')} kr</span></div>
     `;
   }
 
-  // M??nadsuppdrag
+  // Månadsuppdrag
   const jobRows = monthDone.length ? monthDone.map(j => {
     const d = new Date(j.scheduled_date||j.booking_date);
     const pay = Math.round((j.total_price||0)*0.83);
     return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.83rem">
-      <span>${escHtml(j.service_type||'St??dning')} ?? ${d.toLocaleDateString('sv-SE',{month:'short',day:'numeric'})}</span>
+      <span>${escHtml(j.service_type||'Städning')} · ${d.toLocaleDateString('sv-SE',{month:'short',day:'numeric'})}</span>
       <span style="color:var(--g);font-weight:600">+${pay.toLocaleString('sv')} kr</span>
     </div>`;
-  }).join('') : '<div style="color:var(--m);padding:8px 0">Inga klarade uppdrag denna m??nad.</div>';
+  }).join('') : '<div style="color:var(--m);padding:8px 0">Inga klarade uppdrag denna månad.</div>';
   document.getElementById('earn-jobs-list').innerHTML = jobRows;
 
   if (typeof renderCommissionWidget === 'function') {
@@ -2141,7 +2151,7 @@ function renderMonthChart(doneJobs) {
   document.getElementById('month-chart').innerHTML = `<svg viewBox="0 0 ${totalW} ${chartH}" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
 }
 
-// ?????? REVIEWS ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── REVIEWS ─────────────────────────────────────────────────
 async function loadFullHistory() {
   const btn = document.getElementById('history-toggle');
   if (btn) btn.innerHTML = '<div style="text-align:center;padding:.5rem;color:var(--m);font-size:.82rem">Laddar...</div>';
@@ -2163,20 +2173,20 @@ async function loadFullHistory() {
 
   el.innerHTML = `
     <div style="background:var(--gr);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem">
-      <strong style="color:var(--g)">Totalt intj??nat alla tider: ${totalAllTime.toLocaleString('sv')} kr</strong>
+      <strong style="color:var(--g)">Totalt intjänat alla tider: ${totalAllTime.toLocaleString('sv')} kr</strong>
     </div>
     ${allJobs.map(j => {
       const d = new Date(j.scheduled_date||j.booking_date);
       const pay = Math.round((j.total_price||0)*0.83);
-      const statusMap = {klar:'???',p??g??r:'????',bekr??ftad:'????',pending:'???',cancelled:'???'};
+      const statusMap = {klar:'✅','pågår':'🧹','bekräftad':'📅',pending:'⏳',cancelled:'❌'};
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem">
         <div>
-          <div style="font-weight:500">${escHtml(j.service_type||'St??dning')}</div>
-          <div style="font-size:.72rem;color:var(--m)">${d.toLocaleDateString('sv-SE',{year:'numeric',month:'short',day:'numeric'})} ?? ${j.booking_hours||3}h</div>
+          <div style="font-weight:500">${escHtml(j.service_type||'Städning')}</div>
+          <div style="font-size:.72rem;color:var(--m)">${d.toLocaleDateString('sv-SE',{year:'numeric',month:'short',day:'numeric'})} · ${j.booking_hours||3}h</div>
         </div>
         <div style="text-align:right">
-          <div style="color:var(--g);font-weight:600">${j.payment_status==='paid'?'+'+pay.toLocaleString('sv')+' kr':'???'}</div>
-          <div style="font-size:.68rem;color:var(--m)">${statusMap[j.status]||j.status||'???'}</div>
+          <div style="color:var(--g);font-weight:600">${j.payment_status==='paid'?'+'+pay.toLocaleString('sv')+' kr':'–'}</div>
+          <div style="font-size:.68rem;color:var(--m)">${statusMap[j.status]||j.status||'–'}</div>
         </div>
       </div>`;
     }).join('')}`;
@@ -2189,13 +2199,13 @@ async function loadMyReviews() {
     <div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <span style="font-size:.85rem;font-weight:600">${escHtml(r.customer_name || 'Anonym')}</span>
-        <span style="color:#F59E0B;font-size:.85rem">${'???'.repeat(Math.min(5,parseInt(r.cleaner_rating)||5))}</span>
+        <span style="color:#F59E0B;font-size:.85rem">${'⭐'.repeat(Math.min(5,parseInt(r.cleaner_rating)||5))}</span>
       </div>
       ${r.comment ? `<div style="font-size:.8rem;color:var(--m);margin-top:4px;line-height:1.5">"${escHtml(r.comment)}"</div>` : ''}
     </div>`).join('');
 }
 
-// ?????? TIMER ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── TIMER ────────────────────────────────────────────────────
 function startTimer(job) {
   const start = new Date(job.checked_in_at);
   const tick = () => {
@@ -2209,19 +2219,19 @@ function startTimer(job) {
   setInterval(tick, 1000);
 }
 
-// ?????? REAL-TIME ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── REAL-TIME ────────────────────────────────────────────────
 function setupRealtime() {
   realtimeCh = SB.channel('bookings-rt')
     .on('postgres_changes', {event:'*',schema:'public',table:'bookings'}, () => {
       loadJobs();
-      showToast('???? Uppdateringar mottagna');
+      showToast('🔄 Uppdateringar mottagna');
     })
     .subscribe(status => {
       document.getElementById('rt-status').style.display = status === 'SUBSCRIBED' ? 'inline-flex' : 'none';
     });
 }
 
-// ?????? ACTIONS ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── ACTIONS ─────────────────────────────────────────────────
 async function acceptJob(id, btnEl) {
   // Flash the card green before removing
   const card = document.getElementById('jc-' + id);
@@ -2232,16 +2242,16 @@ async function acceptJob(id, btnEl) {
 
   await R.update('bookings', {
     cleaner_id: cleaner.id,
-    status: 'bekr??ftad',
+    status: 'bekräftad',
     cleaner_name: cleaner.full_name,
     cleaner_email: cleaner._email || cleaner.email || null,
     cleaner_phone: cleaner.phone || null
   }, `id=eq.${id}`);
 
-  // Race condition check ??? verify we actually got the job
+  // Race condition check — verify we actually got the job
   const verify = await R.selectSingle('bookings', `select=cleaner_id&id=eq.${id}`);
   if (verify.data?.cleaner_id !== cleaner.id) {
-    showToast('?????? N??gon annan tog detta uppdrag');
+    showToast('⚠️ Någon annan tog detta uppdrag');
     loadJobs();
     return;
   }
@@ -2258,7 +2268,7 @@ async function acceptJob(id, btnEl) {
     await new Promise(r => setTimeout(r, 600));
   }
 
-  showToast('??? Uppdrag accepterat!');
+  showToast('✅ Uppdrag accepterat!');
   loadJobs();
 }
 
@@ -2266,19 +2276,19 @@ async function declineJob(id) {
   const declined = JSON.parse(localStorage.getItem('spick_declined_jobs') || '[]');
   declined.push(id);
   localStorage.setItem('spick_declined_jobs', JSON.stringify(declined));
-  showToast('Uppdrag avb??jt');
+  showToast('Uppdrag avböjt');
   loadJobs();
 }
 
 async function cancelMyJob(id) {
-  if (!confirm('Vill du avboka detta uppdrag? Det blir tillg??ngligt f??r andra st??dare.')) return;
+  if (!confirm('Vill du avboka detta uppdrag? Det blir tillgängligt för andra städare.')) return;
   await R.update('bookings', { cleaner_id:null, cleaner_name:null, status:'pending' }, `id=eq.${id}`);
   await fetch(`${SUPA_URL}/functions/v1/notify`, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
     body:JSON.stringify({type:'booking_cancelled',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_email:cleaner._email}})
   }).catch(()=>{});
-  showToast('Uppdrag avbokat ??? admin notifierad');
+  showToast('Uppdrag avbokat – admin notifierad');
   loadJobs();
 }
 
@@ -2294,7 +2304,7 @@ function toggleJobExpand(id, e) {
 
 function canShowPhone(booking) {
   if (booking.checked_in_at) return true;
-  if (booking.status === 'p??g??r' || booking.status === 'klar') return true;
+  if (booking.status === 'pågår' || booking.status === 'klar') return true;
   var today = new Date();
   today.setHours(0, 0, 0, 0);
   var jobDate = new Date(booking.booking_date + 'T00:00:00');
@@ -2362,20 +2372,14 @@ async function verifyGpsAndUpdate(bookingId, type, customerLat, customerLng) {
 
   if (status === 'yellow') {
     var distTxt = distance >= 1000 ? (distance / 1000).toFixed(1) + ' km' : distance + ' m';
-    if (!confirm('Din GPS visar att du är ca ' + distTxt + ' från kundens adress.
-
-Är du på plats hos kunden?')) {
+    if (!confirm('Din GPS visar att du är ca ' + distTxt + ' från kundens adress.\n\nÄr du på plats hos kunden?')) {
       return false;
     }
   }
 
   if (status === 'red') {
     var distTxt2 = distance >= 1000 ? (distance / 1000).toFixed(1) + ' km' : distance + ' m';
-    if (!confirm('⚠️ Din GPS visar att du är ' + distTxt2 + ' från kundens adress.
-
-Om du inte är på plats, checka inte in.
-
-Är du säker på att du är hos kunden?')) {
+    if (!confirm('⚠️ Din GPS visar att du är ' + distTxt2 + ' från kundens adress.\n\nOm du inte är på plats, checka inte in.\n\nÄr du säker på att du är hos kunden?')) {
       return false;
     }
     try {
@@ -2439,11 +2443,11 @@ async function startJob(bookingId) {
 }
 
 async function reportNoShow(bookingId) {
-  if (!confirm('??r du s??ker? Vi notifierar kunden och admin att du inte kunde utf??ra uppdraget.')) return;
+  if (!confirm('Är du säker? Vi notifierar kunden och admin att du inte kunde utföra uppdraget.')) return;
   try {
     var res = await R.update('bookings', {
       status: 'no_show',
-      admin_notes: 'Kund ej p?? plats ??? rapporterad av st??dare ' + new Date().toISOString()
+      admin_notes: 'Kund ej på plats — rapporterad av städare ' + new Date().toISOString()
     }, 'id=eq.' + bookingId);
     if (res.error) throw new Error(res.error.message);
     try {
@@ -2453,11 +2457,11 @@ async function reportNoShow(bookingId) {
         body: JSON.stringify({type: 'no_show', record: {booking_id: bookingId, cleaner_name: cleaner.full_name}})
       });
     } catch(e) { console.warn('No-show notis:', e.message); }
-    showToast('?????? No-show rapporterad. Admin kontaktar kunden.');
+    showToast('⚠️ No-show rapporterad. Admin kontaktar kunden.');
     loadJobs();
   } catch(err) {
     console.error('reportNoShow:', err);
-    showToast('Kunde inte rapportera ??? f??rs??k igen');
+    showToast('Kunde inte rapportera — försök igen');
   }
 }
 
@@ -2484,17 +2488,17 @@ async function markJobDone(id) {
 
 async function respondToBooking(btn, bookingId, action) {
   const confirmMsg = action === 'accept'
-    ? 'Acceptera detta uppdrag? Kunden f??r bekr??ftelsemejl.'
-    : 'Avb??j detta uppdrag? Kunden f??r full ??terbetalning.';
+    ? 'Acceptera detta uppdrag? Kunden får bekräftelsemejl.'
+    : 'Avböj detta uppdrag? Kunden får full återbetalning.';
   if (!confirm(confirmMsg)) return;
 
   let reason = '';
   if (action === 'reject') {
-    reason = prompt('Valfritt: varf??r avb??jer du?') || '';
+    reason = prompt('Valfritt: varför avböjer du?') || '';
   }
 
   const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = '??? Bearbetar...';
+  btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   // Disable sibling button too
   const sibling = btn.parentElement.querySelector(btn.classList.contains('btn-accept') ? '.btn-decline' : '.btn-accept');
   if (sibling) sibling.disabled = true;
@@ -2513,18 +2517,18 @@ async function respondToBooking(btn, bookingId, action) {
     });
     const result = await res.json();
     if (result.success) {
-      showToast(action === 'accept' ? '??? Uppdrag accepterat! Kunden notifierad.' : '??? Uppdrag avb??jt. Kunden f??r ??terbetalning.');
+      showToast(action === 'accept' ? '✅ Uppdrag accepterat! Kunden notifierad.' : '❌ Uppdrag avböjt. Kunden får återbetalning.');
       loadJobs();
     } else {
       if (card) card.style.opacity = '1';
       btn.disabled = false; btn.textContent = origText;
       if (sibling) sibling.disabled = false;
-      showToast('?????? Fel: ' + (result.error || 'Ok??nt fel'));
+      showToast('⚠️ Fel: ' + (result.error || 'Okänt fel'));
     }
   } catch (e) {
     btn.disabled = false; btn.textContent = origText;
     if (sibling) sibling.disabled = false;
-    showToast('?????? N??tverksfel: ' + e.message);
+    showToast('⚠️ Nätverksfel: ' + e.message);
   }
 }
 
@@ -2533,23 +2537,23 @@ async function takePhoto(bookingId, type) {
   input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
   input.onchange = async () => {
     const file = input.files[0]; if (!file) return;
-    showToast('???? Laddar upp foto...');
+    showToast('📤 Laddar upp foto...');
     const path = `bookings/${bookingId}/${type}_${Date.now()}.jpg`;
     const resized = await resizeImage(file, 1200);
     const { data, error } = await SB.storage.from('photos').upload(path, resized, {cacheControl:'3600',upsert:true});
-    if (error) { showToast('??? Uppladdning misslyckades'); return; }
+    if (error) { showToast('❌ Uppladdning misslyckades'); return; }
     const { data: signedData, error: signErr } = await SB.storage.from('photos').createSignedUrl(path, 60*60*24*30);
-    if (signErr || !signedData?.signedUrl) { showToast('??? Kunde inte skapa URL'); return; }
+    if (signErr || !signedData?.signedUrl) { showToast('❌ Kunde inte skapa URL'); return; }
     const url = signedData.signedUrl;
     const col = type === 'before' ? 'photo_before_url' : 'photo_after_url';
     await R.update('bookings', {[col]:url}, `id=eq.${bookingId}`);
-    showToast('??? Foto sparat!');
+    showToast('✅ Foto sparat!');
     loadJobs();
   };
   input.click();
 }
 
-// ?????? PROFILE ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── PROFILE ─────────────────────────────────────────────────
 function updateKeep() {
   const rate = parseInt(document.getElementById('edit-rate').value) || 350;
   const keepRate = (typeof getKeepRate === 'function') ? getKeepRate(cleaner) : 0.83;
@@ -2558,7 +2562,7 @@ function updateKeep() {
 document.getElementById('edit-rate').addEventListener('input', updateKeep);
 document.getElementById('edit-bio').addEventListener('input', function() { document.getElementById('bio-counter').textContent = this.value.length + '/300'; });
 
-// ?????? PROFILBILD ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── PROFILBILD ────────────────────────────────────────────────────────
 function initAvatarUpload() {
   var preview = document.getElementById('dash-avatar');
   var input = document.getElementById('avatar-input');
@@ -2569,13 +2573,13 @@ function initAvatarUpload() {
   // Visa befintlig bild eller initial
   if (cleaner.avatar_url) {
     preview.innerHTML = '<img src="' + cleaner.avatar_url + '?t=' + Date.now() + '" alt="Profilbild">';
-    btn.textContent = '???? Byt profilbild';
+    btn.textContent = '📷 Byt profilbild';
   } else {
     preview.textContent = (cleaner.full_name || '?')[0].toUpperCase();
-    btn.textContent = '???? Ladda upp profilbild';
+    btn.textContent = '📷 Ladda upp profilbild';
   }
 
-  // Visa ??ven i header + profil-avatar
+  // Visa även i header + profil-avatar
   if (cleaner.avatar_url) {
     document.getElementById('hdr-avatar').innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
     document.getElementById('prof-avatar').innerHTML = '<img src="' + cleaner.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover">';
@@ -2587,31 +2591,31 @@ function initAvatarUpload() {
     var file = input.files[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      status.textContent = '??? Bara JPG, PNG eller WebP';
+      status.textContent = '❌ Bara JPG, PNG eller WebP';
       status.style.color = '#DC2626';
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      status.textContent = '??? Bilden ??r f??r stor (max 5 MB)';
+      status.textContent = '❌ Bilden är för stor (max 5 MB)';
       status.style.color = '#DC2626';
       return;
     }
     btn.disabled = true;
-    status.textContent = '??? Bearbetar bild...';
+    status.textContent = '⏳ Bearbetar bild...';
     status.style.color = '#6B6960';
     try {
       var resized = await resizeImage(file, 500);
       var sessionRes = await SB.auth.getSession();
       var userId = sessionRes.data?.session?.user?.id;
       if (!userId) {
-        status.textContent = '??? Du ??r inte inloggad';
+        status.textContent = '❌ Du är inte inloggad';
         status.style.color = '#DC2626';
         btn.disabled = false;
         return;
       }
       preview.innerHTML = '<img src="' + URL.createObjectURL(resized) + '" alt="Preview">';
-      status.textContent = '??? Laddar upp...';
-      // OBS: cleaners UPDATE policy kr??vs i Supabase (auth_user_id = auth.uid())
+      status.textContent = '⏳ Laddar upp...';
+      // OBS: cleaners UPDATE policy krävs i Supabase (auth_user_id = auth.uid())
       var filePath = userId + '/avatar.webp';
       var uploadRes = await SB.storage.from('avatars').upload(filePath, resized, {
         contentType: 'image/webp',
@@ -2628,13 +2632,13 @@ function initAvatarUpload() {
       preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" alt="Profilbild">';
       document.getElementById('hdr-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
       document.getElementById('prof-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover">';
-      status.textContent = '??? Profilbild uppdaterad!';
+      status.textContent = '✅ Profilbild uppdaterad!';
       status.style.color = '#065F46';
-      btn.textContent = '???? Byt profilbild';
+      btn.textContent = '📷 Byt profilbild';
       btn.disabled = false;
     } catch(err) {
       console.error('Avatar upload error:', err);
-      status.textContent = '??? Uppladdning misslyckades: ' + (err.message || 'Ok??nt fel');
+      status.textContent = '❌ Uppladdning misslyckades: ' + (err.message || 'Okänt fel');
       status.style.color = '#DC2626';
       btn.disabled = false;
     }
@@ -2656,12 +2660,12 @@ function resizeImage(file, maxSize) {
         else reject(new Error('Kunde inte konvertera bild'));
       }, 'image/webp', 0.85);
     };
-    img.onerror = function() { reject(new Error('Kunde inte l??sa bilden')); };
+    img.onerror = function() { reject(new Error('Kunde inte läsa bilden')); };
     img.src = URL.createObjectURL(file);
   });
 }
 
-// ?????? TJ??NSTEVAL I PROFIL ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── TJÄNSTEVAL I PROFIL ───────────────────────────────────────────────
 function toggleProfileSvc(btn) {
   btn.classList.toggle('active');
 }
@@ -2703,24 +2707,24 @@ async function saveProfile() {
   if (name.length < 2) { showToast('Ange ditt namn'); return; }
   if (!/^0\d{8,11}$/.test(phone)) { showToast('Ange ett giltigt telefonnummer'); return; }
   if (city.length < 2) { showToast('Ange din stad'); return; }
-  if (rate < 250 || rate > 600) { showToast('Timpris m??ste vara 250???600 kr'); return; }
+  if (rate < 250 || rate > 600) { showToast('Timpris måste vara 250–600 kr'); return; }
 
   const btn = document.getElementById('btn-save-profile');
-  btn.disabled = true; btn.textContent = '??? Sparar...';
+  btn.disabled = true; btn.textContent = '⏳ Sparar...';
 
-  const slug = name.toLowerCase().replace(/[????]/g,'a').replace(/??/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const slug = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug,services}, `id=eq.${cleaner.id}`);
-  btn.disabled = false; btn.textContent = '???? Spara ??ndringar';
-  if (error) { showToast('??? Fel vid sparning'); return; }
+  btn.disabled = false; btn.textContent = '💾 Spara ändringar';
+  if (error) { showToast('❌ Fel vid sparning'); return; }
   Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug,services});
   document.getElementById('prof-name').textContent = name;
   document.getElementById('earn-rate').textContent = rate + ' kr/h';
-  const svcText = services.length > 0 ? services.join(', ') : '???';
+  const svcText = services.length > 0 ? services.join(', ') : '–';
   document.getElementById('prof-services').textContent = svcText;
-  showToast('??? Profil sparad!');
+  showToast('✅ Profil sparad!');
 }
 
-// ?????? SCHEDULE ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── SCHEDULE ─────────────────────────────────────────────────
 const DOW_MAP = [1,2,3,4,5,6,0];
 
 async function buildSchedule() {
@@ -2732,7 +2736,7 @@ async function buildSchedule() {
 
   const grid = document.getElementById('schedule-grid');
   grid.innerHTML = `<div class="sched-day" style="font-size:.72rem;color:var(--m);font-weight:600">
-    <span>Dag</span><span style="text-align:center">B??rjar</span><span style="text-align:center">Slutar</span>
+    <span>Dag</span><span style="text-align:center">Börjar</span><span style="text-align:center">Slutar</span>
   </div>`;
 
   DAYS.forEach((day, i) => {
@@ -2805,23 +2809,23 @@ async function saveSchedule() {
   const {error} = await R.upsert('cleaner_availability', row, 'cleaner_id');
 
   if (error) {
-    msg.textContent = '??? Fel vid sparning: ' + (error.message||'Ok??nt fel');
+    msg.textContent = '❌ Fel vid sparning: ' + (error.message||'Okänt fel');
     msg.style.color = 'var(--r)';
   } else {
-    msg.textContent = '??? Schema sparat ??? bokningar uppdateras direkt!';
+    msg.textContent = '✅ Schema sparat – bokningar uppdateras direkt!';
     msg.style.color = 'var(--g)';
   }
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
 }
 
-// ?????? BLOCKED DATES ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── BLOCKED DATES ──────────────────────────────────────────
 async function loadBlockedDates() {
   const el = document.getElementById('blocked-dates-list');
   if (!el) return;
   const {data} = await R.select('cleaner_blocked_dates', `select=id,blocked_date,reason&cleaner_id=eq.${cleaner.id}&blocked_date=gte.${new Date().toISOString().split('T')[0]}&order=blocked_date.asc`);
 
   if (!data?.length) {
-    el.innerHTML = '<span style="color:var(--m);font-size:.78rem">Inga sp??rrade datum</span>';
+    el.innerHTML = '<span style="color:var(--m);font-size:.78rem">Inga spärrade datum</span>';
     return;
   }
   el.innerHTML = data.map(d => {
@@ -2829,7 +2833,7 @@ async function loadBlockedDates() {
     const label = dt.toLocaleDateString('sv-SE', {weekday:'short',month:'short',day:'numeric'});
     return `<div style="display:flex;align-items:center;gap:5px;background:#FEE2E2;border:1px solid #FECACA;border-radius:20px;padding:3px 10px;font-size:.75rem;color:#DC2626">
       <span>${label}</span>
-      <button onclick="removeBlockedDate('${d.id}')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:.9rem;padding:0;line-height:1;min-width:32px;min-height:32px">??</button>
+      <button onclick="removeBlockedDate('${d.id}')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:.9rem;padding:0;line-height:1;min-width:32px;min-height:32px">×</button>
     </div>`;
   }).join('');
 }
@@ -2837,28 +2841,28 @@ async function loadBlockedDates() {
 async function addBlockedDate() {
   const inp = document.getElementById('block-date-input');
   const dateVal = inp?.value;
-  if (!dateVal) { showToast('V??lj ett datum'); return; }
+  if (!dateVal) { showToast('Välj ett datum'); return; }
   const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: cleaner.id, blocked_date: dateVal });
   if (error && error.code !== '23505') {
-    showToast('??? ' + error.message); return;
+    showToast('❌ ' + error.message); return;
   }
-  showToast('???? ' + dateVal + ' sp??rrat!');
+  showToast('🚫 ' + dateVal + ' spärrat!');
   if (inp) inp.value = '';
   loadBlockedDates();
 }
 
 async function removeBlockedDate(id) {
   await R.del('cleaner_blocked_dates', `id=eq.${id}`);
-  showToast('??? Datum borttaget');
+  showToast('✅ Datum borttaget');
   loadBlockedDates();
 }
 
-// ?????? STRIPE CONNECT ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── STRIPE CONNECT ───────────────────────────────────────────
 async function startStripeConnect() {
-  showToast('??? ??ppnar Stripe...');
+  showToast('⏳ Öppnar Stripe...');
   try {
     const {data:{session}} = await SB.auth.getSession();
-    if (!session?.access_token) { showToast('??? Du m??ste vara inloggad'); return; }
+    if (!session?.access_token) { showToast('❌ Du måste vara inloggad'); return; }
 
     console.log('stripe-connect payload:', {cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name});
 
@@ -2873,15 +2877,15 @@ async function startStripeConnect() {
 
     if (res.ok && body.url) {
       window.open(body.url, '_blank');
-      showToast('??? Stripe ??ppnad i ny flik');
+      showToast('✅ Stripe öppnad i ny flik');
     } else {
-      const errMsg = body.error || body.message || 'Inget svar fr??n Stripe';
+      const errMsg = body.error || body.message || 'Inget svar från Stripe';
       console.error('stripe-connect error:', errMsg);
-      showToast('??? ' + errMsg);
+      showToast('❌ ' + errMsg);
     }
   } catch(e) {
     console.error('startStripeConnect exception:', e);
-    showToast('??? Kunde inte ansluta: ' + e.message);
+    showToast('❌ Kunde inte ansluta: ' + e.message);
   }
 }
 
@@ -2898,20 +2902,20 @@ async function checkConnectStatus() {
       const result = await res.json();
       if (result.onboarded) {
         cleaner.stripe_onboarding_status = 'complete';
-        document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">??? Bankkonto anslutet via Stripe</div>`;
+        document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
       } else {
         cleaner.stripe_onboarding_status = 'pending';
-        document.getElementById('connect-status').innerHTML = `<div style="color:#92400E;background:#FEF3C7;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">?????? Stripe-registrering p??b??rjad men ej klar ??? <a href="#" onclick="startStripeConnect();return false" style="color:var(--g);text-decoration:underline">Slutf??r ???</a></div>`;
+        document.getElementById('connect-status').innerHTML = `<div style="color:#92400E;background:#FEF3C7;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">⚠️ Stripe-registrering påbörjad men ej klar — <a href="#" onclick="startStripeConnect();return false" style="color:var(--g);text-decoration:underline">Slutför →</a></div>`;
       }
       updateOnboarding();
     } else { throw new Error('not ok'); }
   } catch(e) {
     cleaner.stripe_onboarding_status = 'complete';
-    document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">??? Bankkonto anslutet via Stripe</div>`;
+    document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
   }
 }
 
-// ?????? SOS ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── SOS ─────────────────────────────────────────────────────
 function sosSend(type) {
   if (type === '112') { window.location.href = 'tel:112'; return; }
   fetch(`${SUPA_URL}/functions/v1/notify`, {
@@ -2920,10 +2924,10 @@ function sosSend(type) {
     body:JSON.stringify({type:'sos',record:{cleaner_name:cleaner.full_name,email:cleaner._email,city:cleaner.city,time:new Date().toISOString()}})
   });
   document.getElementById('sos-modal').classList.remove('show');
-  showToast('???? Spick har notifierats!');
+  showToast('🚨 Spick har notifierats!');
 }
 
-// ?????? SUB-VIEWS ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── SUB-VIEWS ───────────────────────────────────────────────
 function openSubView(id) {
   document.getElementById(id)?.classList.add('active');
   if (id === 'sv-schedule') buildSchedule();
@@ -2933,10 +2937,10 @@ function closeSubView(id) {
   document.getElementById(id)?.classList.remove('active');
 }
 
-// ?????? UI HELPERS ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── UI HELPERS ───────────────────────────────────────────────
 function showScreen(name) {
   if (name === 'app' && !window._cleanerLoaded) {
-    console.warn('Blockerat: f??rs??k att visa app-sk??rm utan laddad st??dardata');
+    console.warn('Blockerat: försök att visa app-skärm utan laddad städardata');
     return;
   }
   ['login','magic','app'].forEach(s => document.getElementById('screen-'+s).classList.remove('active'));
@@ -2963,13 +2967,13 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ?????? TEAM FUNCTIONS ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── TEAM FUNCTIONS ──────────────────────────────────────────
 let _teamMembers = [];
 
 function showTeamTab() {
   if (!cleaner) return;
   if (!cleaner.is_company_owner && !cleaner.company_id) {
-    // Solo-st??dare ??? visa CTA ist??llet f??r teamhantering
+    // Solo-städare — visa CTA istället för teamhantering
     var teamContent = document.getElementById('tab-team');
     if (teamContent) {
       var existingCTA = document.getElementById('team-solo-cta');
@@ -2977,11 +2981,11 @@ function showTeamTab() {
         var cta = document.createElement('div');
         cta.id = 'team-solo-cta';
         cta.style.cssText = 'text-align:center;padding:2rem 1rem';
-        cta.innerHTML = '<div style="font-size:2rem;margin-bottom:.75rem">????</div>' +
-          '<div style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Har du ett st??df??retag?</div>' +
-          '<p style="font-size:.85rem;color:#6B6960;line-height:1.5;margin-bottom:1rem;max-width:300px;margin-left:auto;margin-right:auto">L??gg till teammedlemmar och hantera bokningar tillsammans. Vi hj??lper dig komma ig??ng!</p>' +
-          '<a href="https://wa.me/46760505153?text=Hej!%20Jag%20vill%20l??gga%20till%20teammedlemmar%20p??%20Spick" target="_blank" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:99px;font-size:.88rem;font-weight:600;text-decoration:none;font-family:inherit">???? Kontakta oss via WhatsApp</a>' +
-          '<div style="font-size:.72rem;color:#6B6960;margin-top:.75rem">Vi hj??lper dig registrera f??retag och l??gga till personal</div>';
+        cta.innerHTML = '<div style="font-size:2rem;margin-bottom:.75rem">👥</div>' +
+          '<div style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Har du ett städföretag?</div>' +
+          '<p style="font-size:.85rem;color:#6B6960;line-height:1.5;margin-bottom:1rem;max-width:300px;margin-left:auto;margin-right:auto">Lägg till teammedlemmar och hantera bokningar tillsammans. Vi hjälper dig komma igång!</p>' +
+          '<a href="https://wa.me/46760505153?text=Hej!%20Jag%20vill%20lägga%20till%20teammedlemmar%20på%20Spick" target="_blank" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:#25D366;color:#fff;border:none;border-radius:99px;font-size:.88rem;font-weight:600;text-decoration:none;font-family:inherit">💬 Kontakta oss via WhatsApp</a>' +
+          '<div style="font-size:.72rem;color:#6B6960;margin-top:.75rem">Vi hjälper dig registrera företag och lägga till personal</div>';
         teamContent.prepend(cta);
       }
     }
@@ -2991,7 +2995,7 @@ function showTeamTab() {
     if (bookCard) bookCard.style.display = 'none';
     return;
   }
-  // F??retags??gare ??? visa teamhantering (nav-knappen redan synlig)
+  // Företagsägare — visa teamhantering (nav-knappen redan synlig)
 }
 
 async function renderTeam() {
@@ -3014,8 +3018,8 @@ async function renderTeam() {
     const isOwner = m.id === cleaner.id;
     const isPaused = m.status === 'inactive' || m.is_active === false;
     const statusDot = isPaused
-      ? '<span style="color:var(--gray-400);font-size:11px">??? Pausad</span>'
-      : '<span style="color:var(--spick-500);font-size:11px">??? Aktiv</span>';
+      ? '<span style="color:var(--gray-400);font-size:11px">● Pausad</span>'
+      : '<span style="color:var(--spick-500);font-size:11px">● Aktiv</span>';
 
     const svcs = (m.services || []).map(s => `<span class="tm-svc-badge">${escHtml(s)}</span>`).join('');
     const petLabel = m.pet_pref === 'allergy' ? '<span style="font-size:11px;color:var(--danger)">Allergisk mot husdjur</span>'
@@ -3025,9 +3029,9 @@ async function renderTeam() {
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="font-weight:600;font-size:.92rem">${escHtml(m.full_name || m.first_name + ' ' + (m.last_name||''))}
-            ${isOwner ? '<span style="font-size:11px;background:var(--spick-50);padding:2px 8px;border-radius:var(--radius-full);color:var(--spick-600);font-weight:600;margin-left:6px">??gare</span>' : ''}</div>
-          <div style="font-size:.78rem;color:var(--gray-500);margin-top:2px">${escHtml(m.email || '')}${m.phone ? ' ?? ' + escHtml(m.phone) : ''}</div>
-          <div style="margin-top:4px">${statusDot} ?? ${m.completed_jobs || 0} uppdrag ?? ${m.hourly_rate || 350} kr/h</div>
+            ${isOwner ? '<span style="font-size:11px;background:var(--spick-50);padding:2px 8px;border-radius:var(--radius-full);color:var(--spick-600);font-weight:600;margin-left:6px">Ägare</span>' : ''}</div>
+          <div style="font-size:.78rem;color:var(--gray-500);margin-top:2px">${escHtml(m.email || '')}${m.phone ? ' · ' + escHtml(m.phone) : ''}</div>
+          <div style="margin-top:4px">${statusDot} · ${m.completed_jobs || 0} uppdrag · ${m.hourly_rate || 350} kr/h</div>
           ${svcs ? '<div style="margin-top:6px">' + svcs + '</div>' : ''}
           ${petLabel ? '<div style="margin-top:4px">' + petLabel + '</div>' : ''}
           ${m.bio ? '<div style="font-size:.78rem;color:var(--gray-500);margin-top:4px;font-style:italic">"' + escHtml(m.bio) + '"</div>' : ''}
@@ -3038,7 +3042,7 @@ async function renderTeam() {
         <button onclick="toggleMemberStatus('${m.id}','${isPaused ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused ? 'Aktivera' : 'Pausa'}</button>
       </div>` : ''}
     </div>`;
-  }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ??nnu. L??gg till via knappen ovan.</p>';
+  }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
 
   // Fetch team bookings
   const memberIds = _teamMembers.map(m => m.id);
@@ -3046,29 +3050,29 @@ async function renderTeam() {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
     const { data: bookings } = await R.select('bookings', `select=id,customer_name,service_type,booking_date,booking_time,status,cleaner_id,cleaner_name,total_price&or=(${idFilter})&order=booking_date.desc&limit=20`);
     const teamBookings = bookings || [];
-    const stMap = {confirmed:'Bekr??ftad',pending_confirmation:'V??ntar',completed:'Klar',klar:'Klar'};
+    const stMap = {confirmed:'Bekräftad',pending_confirmation:'Väntar',completed:'Klar',klar:'Klar'};
     document.getElementById('team-bookings-list').innerHTML = teamBookings.length ? teamBookings.map(b => {
-      const stLabel = stMap[b.status] || b.status || '???';
+      const stLabel = stMap[b.status] || b.status || '–';
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-200);font-size:.85rem">
         <div>
-          <strong>${escHtml(b.customer_name || '???')}</strong> ?? ${escHtml(b.service_type || 'St??dning')}<br>
-          <span style="font-size:.78rem;color:var(--gray-500)">${b.booking_date || '???'} ${b.booking_time || ''} ?? ${escHtml(b.cleaner_name || '???')}</span>
+          <strong>${escHtml(b.customer_name || '–')}</strong> · ${escHtml(b.service_type || 'Städning')}<br>
+          <span style="font-size:.78rem;color:var(--gray-500)">${b.booking_date || '–'} ${b.booking_time || ''} · ${escHtml(b.cleaner_name || '–')}</span>
         </div>
         <div style="text-align:right">
           <span style="font-size:.78rem">${escHtml(stLabel)}</span><br>
           <span style="font-size:.78rem;font-weight:600;color:var(--spick-500)">${b.total_price ? b.total_price + ' kr' : ''}</span>
         </div>
       </div>`;
-    }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar ??nnu.</p>';
+    }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar ännu.</p>';
   }
 }
 
-// ?????? TEAM MODAL ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── TEAM MODAL ──────────────────────────────────────────────
 function showAddMemberModal() {
   resetTeamModal();
-  document.getElementById('team-modal-title').textContent = 'L??gg till teammedlem';
+  document.getElementById('team-modal-title').textContent = 'Lägg till teammedlem';
   const btn = document.getElementById('add-member-btn');
-  btn.textContent = 'L??gg till teammedlem';
+  btn.textContent = 'Lägg till teammedlem';
   btn.onclick = addTeamMember;
   document.getElementById('add-member-modal').style.display = 'flex';
 }
@@ -3097,7 +3101,7 @@ function resetTeamModal() {
   document.getElementById('add-member-msg').style.display = 'none';
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
-  btn.textContent = 'L??gg till teammedlem';
+  btn.textContent = 'Lägg till teammedlem';
   btn.onclick = addTeamMember;
 }
 
@@ -3115,18 +3119,18 @@ function toggleTeamArea(cb) {
   document.getElementById('team-area-custom').style.display = cb.checked ? 'none' : 'block';
 }
 
-// ?????? ADD TEAM MEMBER ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── ADD TEAM MEMBER ─────────────────────────────────────────
 async function addTeamMember() {
   const firstName = document.getElementById('team-fname').value.trim();
   const lastName = document.getElementById('team-lname').value.trim();
   const msgEl = document.getElementById('add-member-msg');
   msgEl.style.display = 'none';
 
-  if (!firstName) { showTeamMsg('F??rnamn kr??vs', true); return; }
-  if (!lastName) { showTeamMsg('Efternamn kr??vs', true); return; }
+  if (!firstName) { showTeamMsg('Förnamn krävs', true); return; }
+  if (!lastName) { showTeamMsg('Efternamn krävs', true); return; }
 
   const services = [...document.querySelectorAll('#team-services .tm-chip.active')].map(b => b.dataset.svc);
-  if (services.length === 0) { showTeamMsg('V??lj minst en tj??nst', true); return; }
+  if (services.length === 0) { showTeamMsg('Välj minst en tjänst', true); return; }
 
   const hourlyRate = parseInt(document.getElementById('team-rate').value || '350');
   const phone = document.getElementById('team-phone').value.trim() || null;
@@ -3134,7 +3138,7 @@ async function addTeamMember() {
   const bio = document.getElementById('team-bio').value.trim() || null;
   const petPref = document.querySelector('#team-pet-options .tm-chip.active')?.dataset?.pet || 'ok';
 
-  // Arbetsomr??de
+  // Arbetsområde
   const sameArea = document.getElementById('team-same-area').checked;
   let homeLat, homeLng, homeAddress, serviceRadius, city;
 
@@ -3146,7 +3150,7 @@ async function addTeamMember() {
     city = cleaner.city;
   } else {
     const customAddress = document.getElementById('team-address').value.trim();
-    if (!customAddress) { showTeamMsg('Ange en adress f??r arbetsomr??det', true); return; }
+    if (!customAddress) { showTeamMsg('Ange en adress för arbetsområdet', true); return; }
     try {
       const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}&countrycodes=se&limit=1&addressdetails=1`);
       const geoData = await geoRes.json();
@@ -3156,15 +3160,15 @@ async function addTeamMember() {
       homeAddress = customAddress;
       city = geoData[0].address?.city || geoData[0].address?.town || geoData[0].address?.municipality || null;
     } catch (e) {
-      showTeamMsg('Fel vid adresss??kning: ' + e.message, true); return;
+      showTeamMsg('Fel vid adresssökning: ' + e.message, true); return;
     }
     serviceRadius = parseInt(document.getElementById('team-radius').value || '30');
   }
 
-  if (!cleaner.company_id) { showTeamMsg('Ditt konto ??r inte kopplat till ett f??retag. Kontakta Spick support.', true); return; }
+  if (!cleaner.company_id) { showTeamMsg('Ditt konto är inte kopplat till ett företag. Kontakta Spick support.', true); return; }
 
   const btn = document.getElementById('add-member-btn');
-  btn.disabled = true; btn.textContent = 'L??gger till...';
+  btn.disabled = true; btn.textContent = 'Lägger till...';
 
   try {
     const { error } = await R.insert('cleaners', {
@@ -3215,11 +3219,11 @@ async function addTeamMember() {
   } catch (e) {
     showTeamMsg('Fel: ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'L??gg till teammedlem';
+    btn.disabled = false; btn.textContent = 'Lägg till teammedlem';
   }
 }
 
-// ?????? EDIT TEAM MEMBER ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── EDIT TEAM MEMBER ────────────────────────────────────────
 function editTeamMember(memberId) {
   const member = _teamMembers.find(m => m.id === memberId);
   if (!member) return;
@@ -3233,12 +3237,12 @@ function editTeamMember(memberId) {
   document.getElementById('team-rate').value = member.hourly_rate || 350;
   document.getElementById('team-rate-val').textContent = (member.hourly_rate || 350) + ' kr/h';
 
-  // Tj??nster
+  // Tjänster
   const memberSvcs = member.services || [];
   document.querySelectorAll('#team-services .tm-chip').forEach(btn => {
     btn.classList.toggle('active', memberSvcs.includes(btn.dataset.svc));
   });
-  // Om inga tj??nster var valda, v??lj Hemst??dning
+  // Om inga tjänster var valda, välj Hemstädning
   if (document.querySelectorAll('#team-services .tm-chip.active').length === 0) {
     document.querySelector('#team-services .tm-chip').classList.add('active');
   }
@@ -3248,7 +3252,7 @@ function editTeamMember(memberId) {
     btn.classList.toggle('active', btn.dataset.pet === (member.pet_pref || 'ok'));
   });
 
-  // Omr??de
+  // Område
   if (member.home_address === cleaner.home_address || !member.home_address) {
     document.getElementById('team-same-area').checked = true;
     document.getElementById('team-area-custom').style.display = 'none';
@@ -3262,7 +3266,7 @@ function editTeamMember(memberId) {
 
   document.getElementById('team-modal-title').textContent = 'Redigera teammedlem';
   const btn = document.getElementById('add-member-btn');
-  btn.textContent = 'Spara ??ndringar';
+  btn.textContent = 'Spara ändringar';
   btn.onclick = () => updateTeamMember(memberId);
 
   document.getElementById('add-member-modal').style.display = 'flex';
@@ -3272,11 +3276,11 @@ async function updateTeamMember(memberId) {
   const firstName = document.getElementById('team-fname').value.trim();
   const lastName = document.getElementById('team-lname').value.trim();
 
-  if (!firstName) { showTeamMsg('F??rnamn kr??vs', true); return; }
-  if (!lastName) { showTeamMsg('Efternamn kr??vs', true); return; }
+  if (!firstName) { showTeamMsg('Förnamn krävs', true); return; }
+  if (!lastName) { showTeamMsg('Efternamn krävs', true); return; }
 
   const services = [...document.querySelectorAll('#team-services .tm-chip.active')].map(b => b.dataset.svc);
-  if (services.length === 0) { showTeamMsg('V??lj minst en tj??nst', true); return; }
+  if (services.length === 0) { showTeamMsg('Välj minst en tjänst', true); return; }
 
   const hourlyRate = parseInt(document.getElementById('team-rate').value || '350');
   const phone = document.getElementById('team-phone').value.trim() || null;
@@ -3295,7 +3299,7 @@ async function updateTeamMember(memberId) {
     city = cleaner.city;
   } else {
     const customAddress = document.getElementById('team-address').value.trim();
-    if (!customAddress) { showTeamMsg('Ange en adress f??r arbetsomr??det', true); return; }
+    if (!customAddress) { showTeamMsg('Ange en adress för arbetsområdet', true); return; }
     try {
       const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}&countrycodes=se&limit=1&addressdetails=1`);
       const geoData = await geoRes.json();
@@ -3305,7 +3309,7 @@ async function updateTeamMember(memberId) {
       homeAddress = customAddress;
       city = geoData[0].address?.city || geoData[0].address?.town || geoData[0].address?.municipality || null;
     } catch (e) {
-      showTeamMsg('Fel vid adresss??kning: ' + e.message, true); return;
+      showTeamMsg('Fel vid adresssökning: ' + e.message, true); return;
     }
     serviceRadius = parseInt(document.getElementById('team-radius').value || '30');
   }
@@ -3333,13 +3337,13 @@ async function updateTeamMember(memberId) {
 
     if (error) throw new Error(error.message || 'Update failed');
 
-    showToast('??ndringar sparade!');
+    showToast('Ändringar sparade!');
     closeTeamModal();
     renderTeam();
   } catch (e) {
     showTeamMsg('Fel: ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Spara ??ndringar';
+    btn.disabled = false; btn.textContent = 'Spara ändringar';
   }
 }
 
