@@ -19,6 +19,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
+    // ── AUTH: Kräv service role key ──────────────────────────
+    const authHeader = req.headers.get("Authorization") || "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    if (!authHeader.includes(serviceKey) && authHeader !== `Bearer ${serviceKey}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...CORS },
+      });
+    }
+
     const { to, message } = await req.json();
 
     if (!to || !message) {

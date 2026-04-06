@@ -30,7 +30,7 @@ import {
   getAvailableCredit,
   calculateBooking,
 } from "../_shared/pricing-engine.ts";
-import { corsHeaders } from "../_shared/email.ts";
+import { corsHeaders, encryptPnr } from "../_shared/email.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -229,7 +229,7 @@ serve(async (req) => {
       square_meters: sqm || null,
       notes: customer_notes || null,
       ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
-      ...(customer_pnr     ? { customer_pnr }      : {}),
+      ...(customer_pnr ? { customer_pnr: await encryptPnr(customer_pnr) } : {}),
       key_type: key_type || 'open',
       key_info: key_info || null,
 

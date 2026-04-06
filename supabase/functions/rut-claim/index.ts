@@ -7,7 +7,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/email.ts";
+import { corsHeaders, decryptPnr } from "../_shared/email.ts";
 
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -170,7 +170,9 @@ serve(async (req) => {
     }
 
     // Kontrollera att vi har ett riktigt personnummer (inte en hash)
-    const pnr = (booking.customer_pnr as string || "").replace(/\D/g, "");
+    const rawPnr = booking.customer_pnr as string || "";
+    const pnr = (rawPnr.length > 15 ? await decryptPnr(rawPnr) : rawPnr).replace(/\D/g, "");
+    booking.customer_pnr = pnr; // Uppdatera med dekrypterat värde för buildRutXml
     if (!pnr || pnr.length < 10 || pnr.startsWith("DEMO")) {
       console.warn("rut-claim: customer_pnr saknas eller är ogiltig — skickar admin-varning");
       await fetch("https://api.resend.com/emails", {

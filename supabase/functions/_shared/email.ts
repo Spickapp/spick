@@ -115,7 +115,7 @@ export async function sendEmail(
  */
 export function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
-  const allowed = ["https://spick.se", "https://www.spick.se", "http://localhost:3000"];
+  const allowed = ["https://spick.se", "https://www.spick.se"];
   const allow = allowed.includes(origin) ? origin : "https://spick.se";
   return {
     "Access-Control-Allow-Origin": allow,
@@ -146,6 +146,54 @@ export function getMaterialInfo(serviceType: string): { customer: string; cleane
     cleaner: "Kundens utrustning — dammsugare och mopp ska finnas på plats.",
     emoji: "🏠"
   };
+}
+
+// ── PNR KRYPTERING (AES-256-GCM) ────────────────────────
+const PNR_KEY = Deno.env.get("PNR_ENCRYPTION_KEY") || "";
+
+export async function encryptPnr(pnr: string): Promise<string> {
+  if (!PNR_KEY || !pnr) return "";
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(PNR_KEY.padEnd(32, "0").slice(0, 32)),
+    "AES-GCM",
+    false,
+    ["encrypt"]
+  );
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(pnr)
+  );
+  const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+export async function decryptPnr(encrypted: string): Promise<string> {
+  if (!PNR_KEY || !encrypted) return "";
+  try {
+    const combined = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(PNR_KEY.padEnd(32, "0").slice(0, 32)),
+      "AES-GCM",
+      false,
+      ["decrypt"]
+    );
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    return "";
+  }
 }
 
 export { FROM, ADMIN };
