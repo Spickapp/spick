@@ -1813,6 +1813,19 @@ async function pickAddr(val, placeId) {
   var _s1 = document.getElementById('step1-address');
   if (_s1) _s1.value = short;
   state.address = short;
+  var addrHint = document.getElementById('addr-hint');
+  if (!addrHint) {
+    addrHint = document.createElement('div');
+    addrHint.id = 'addr-hint';
+    addrHint.style.cssText = 'font-size:.8rem;margin-top:4px;color:#D97706';
+    document.getElementById('address').parentNode.appendChild(addrHint);
+  }
+  if (!/\d/.test(short)) {
+    addrHint.textContent = '\u26a0\ufe0f Gl\u00f6m inte gatunumret! T.ex. Bokv\u00e4gen 5';
+    addrHint.style.display = 'block';
+  } else {
+    addrHint.style.display = 'none';
+  }
   var _al = document.getElementById('addr-list'); if (_al) _al.style.display = 'none';
   var _ad = document.getElementById('addr-dd'); if (_ad) _ad.style.display = 'none';
   // Geocode: hämta lat/lng från place_id
@@ -1913,8 +1926,8 @@ function goStep4() {
   }
   
   // Address minimum length
-  if (fields.address.val && fields.address.val.length < 5) {
-    showFieldError(fields.address.el, 'Ange en fullständig adress med gatunummer');
+  if (fields.address.val && (fields.address.val.length < 5 || !/\d/.test(fields.address.val))) {
+    showFieldError(fields.address.el, 'Ange en fullst\u00e4ndig adress med gatunummer, t.ex. Bokv\u00e4gen 5');
     if (!errors.includes('address')) errors.push('address');
   }
   
