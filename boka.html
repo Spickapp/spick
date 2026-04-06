@@ -1818,9 +1818,16 @@ let addrTimer;
 async function addrSearch(q) {
   var hint = document.getElementById('addr-hint'); if (hint) hint.style.display = 'none';
   var ae = document.getElementById('step1-address'); if (ae) ae.style.outline = '';
-  if (state.lat && state.lng && q.length > 5) {
-    state.address = q;
-    return;
+  // Om adress redan valts: tillåt små redigeringar (lägga till A/B/C) utan ny sökning
+  // Om kunden ändrar mer (>3 tecken skillnad) → nollställ och sök igen
+  if (state.lat && state.lng) {
+    var diff = Math.abs(q.length - (state.address || '').length);
+    if (diff <= 3 && q.length >= (state.address || '').length - 1) {
+      state.address = q;
+      return;
+    }
+    state.lat = null;
+    state.lng = null;
   }
   clearTimeout(addrTimer);
   const list = (state.step === 1) ? document.getElementById('addr-dd') : document.getElementById('addr-list');
