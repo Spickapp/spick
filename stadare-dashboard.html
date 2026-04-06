@@ -1506,6 +1506,46 @@ function updateOnboarding() {
   if (prog) prog.textContent = done + ' av ' + total + ' klart';
   const progBar = document.getElementById('ob-progress-bar');
   if (progBar) progBar.style.width = Math.round((done / total) * 100) + '%';
+
+  // Auto-activate: om status=onboarding och de 4 kärnstegen är klara
+  var coreReady = checks['ob-2'] && checks['ob-3'] && checks['ob-4'] && checks['ob-5'];
+  if (cleaner.status === 'onboarding' && coreReady) {
+    (async function() {
+      try {
+        var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+        var token = raw ? (JSON.parse(raw).access_token || '') : '';
+        if (!token) return;
+        var res = await fetch(SPICK.SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_ANON, Authorization: 'Bearer ' + token, Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'aktiv' })
+        });
+        if (res.ok) {
+          cleaner.status = 'aktiv';
+          showToast('🎉 Din profil är komplett! Du är nu synlig för kunder.');
+          var banner = document.getElementById('onboarding-banner');
+          if (banner) banner.style.display = 'none';
+        }
+      } catch(e) { console.warn('Auto-activate failed:', e); }
+    })();
+  }
+
+  // Onboarding-banner för ofullständig profil
+  var banner = document.getElementById('onboarding-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'onboarding-banner';
+    banner.style.cssText = 'margin:12px 16px 0;padding:12px 16px;background:#FEF3C7;border-radius:12px;font-size:.85rem;color:#92400E;font-weight:500;display:none';
+    var appEl = document.getElementById('app');
+    if (appEl) appEl.insertBefore(banner, appEl.firstChild);
+  }
+  if (cleaner.status === 'onboarding' && !coreReady) {
+    var coreCount = [checks['ob-2'], checks['ob-3'], checks['ob-4'], checks['ob-5']].filter(Boolean).length;
+    banner.textContent = 'Slutför din profil för att börja ta emot bokningar. ' + coreCount + ' av 4 steg klara.';
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 function switchLang(lang, btn) {
