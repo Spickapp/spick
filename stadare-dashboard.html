@@ -1845,11 +1845,7 @@ function jobCard(j) {
       <span class="timer-dot"></span>
       <span>Tid p?? plats: </span><span id="timer-txt-${j.id}" style="font-weight:700">00:00</span>
     </div>
-    <!-- Foto-knappar (avaktiverade tills vidare)
-    <div style="display:flex;gap:6px;margin-top:6px">
-      <button onclick="takePhoto('${j.id}','before')" class="action-btn" style="flex:1;background:${j.photo_before_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_before_url?'#166534':'#374151'}">${j.photo_before_url?'???':'????'} Innan</button>
-      <button onclick="takePhoto('${j.id}','after')" class="action-btn" style="flex:1;background:${j.photo_after_url?'#DCFCE7':'#F3F4F6'};color:${j.photo_after_url?'#166534':'#374151'}">${j.photo_after_url?'???':'????'} Efter</button>
-    </div> -->
+    ${(isMine && !isDone && j.checked_in_at && (j.service_type||'').toLowerCase().includes('flytt')) ? '<div style="display:flex;gap:6px;margin-top:6px"><button onclick="takePhoto('' + j.id + '','before')" class="action-btn" style="flex:1;background:' + (j.photo_before_url?'#DCFCE7':'#F3F4F6') + ';color:' + (j.photo_before_url?'#166534':'#374151') + ';font-size:.78rem">' + (j.photo_before_url?'✅':'📸') + ' Före</button><button onclick="takePhoto('' + j.id + '','after')" class="action-btn" style="flex:1;background:' + (j.photo_after_url?'#DCFCE7':'#F3F4F6') + ';color:' + (j.photo_after_url?'#166534':'#374151') + ';font-size:.78rem">' + (j.photo_after_url?'✅':'📸') + ' Efter</button></div><div style="font-size:.65rem;color:var(--m);margin-top:3px;text-align:center">Valfritt — foton hjälper vid eventuell besiktning</div>' : ''}
     <button onclick="markJobDone('${j.id}')" class="action-btn" style="width:100%;margin-top:6px;background:#DCFCE7;color:#166534;font-size:.82rem">Markera som klar ??? frig??r betalning</button>`;
   }
 
@@ -2305,14 +2301,123 @@ function canShowPhone(booking) {
   return jobDate.getTime() === today.getTime();
 }
 
+// ── GPS VERIFIERING ──────────────────────────────────────────────────────────
+function getGpsPosition() {
+  return new Promise(function(resolve) {
+    if (!navigator.geolocation) {
+      resolve({ lat: null, lng: null, accuracy: null, error: 'Geolocation stöds ej' });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy),
+          error: null
+        });
+      },
+      function(err) {
+        resolve({ lat: null, lng: null, accuracy: null, error: err.message });
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  });
+}
+
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  if (!lat1 || !lng1 || !lat2 || !lng2) return null;
+  var R = 6371000;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+function gpsStatus(distanceM) {
+  if (distanceM === null) return 'unknown';
+  if (distanceM <= 500) return 'green';
+  if (distanceM <= 2000) return 'yellow';
+  return 'red';
+}
+
+async function verifyGpsAndUpdate(bookingId, type, customerLat, customerLng) {
+  var gps = await getGpsPosition();
+  var distance = haversineDistance(gps.lat, gps.lng, customerLat, customerLng);
+  var status = gpsStatus(distance);
+
+  var prefix = type === 'checkin' ? 'checkin' : 'checkout';
+  var updateData = {};
+  updateData[prefix + '_lat'] = gps.lat;
+  updateData[prefix + '_lng'] = gps.lng;
+  updateData[prefix + '_accuracy_m'] = gps.accuracy;
+  updateData[prefix + '_distance_m'] = distance;
+  updateData[prefix + '_gps_status'] = status;
+
+  await R.update('bookings', updateData, 'id=eq.' + bookingId);
+
+  if (type === 'checkout') return true;
+
+  if (status === 'yellow') {
+    var distTxt = distance >= 1000 ? (distance / 1000).toFixed(1) + ' km' : distance + ' m';
+    if (!confirm('Din GPS visar att du är ca ' + distTxt + ' från kundens adress.
+
+Är du på plats hos kunden?')) {
+      return false;
+    }
+  }
+
+  if (status === 'red') {
+    var distTxt2 = distance >= 1000 ? (distance / 1000).toFixed(1) + ' km' : distance + ' m';
+    if (!confirm('⚠️ Din GPS visar att du är ' + distTxt2 + ' från kundens adress.
+
+Om du inte är på plats, checka inte in.
+
+Är du säker på att du är hos kunden?')) {
+      return false;
+    }
+    try {
+      await fetch(SUPA_URL + '/functions/v1/notify', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY},
+        body: JSON.stringify({
+          type: 'uptime_alert',
+          record: {
+            subject: 'GPS-varning: ' + (cleaner.full_name || '?') + ' checkade in ' + distTxt2 + ' från kund',
+            message: 'Bokning: ' + bookingId.slice(0,8) + ', Avstånd: ' + distTxt2 + ', Status: ' + status
+          }
+        })
+      });
+    } catch(e) {}
+  }
+
+  return true;
+}
+
 async function startJob(bookingId) {
-  if (!confirm('P??b??rja uppdraget?')) return;
+  if (!confirm('Påbörja uppdraget?')) return;
+
+  showToast('📍 Hämtar GPS-position...');
+
   var job = jobs.find(function(x) { return x.id === bookingId; });
+  var custLat = job ? (job.customer_lat || null) : null;
+  var custLng = job ? (job.customer_lng || null) : null;
+
+  var proceed = await verifyGpsAndUpdate(bookingId, 'checkin', custLat, custLng);
+  if (!proceed) {
+    showToast('Check-in avbruten');
+    return;
+  }
+
   await R.update('bookings', {
     checked_in_at: new Date().toISOString(),
-    status: 'p??g??r'
-  }, `id=eq.${bookingId}`);
-  showToast('??? Uppdrag p??b??rjat!');
+    status: 'pågår'
+  }, 'id=eq.' + bookingId);
+
+  showToast('✅ Uppdrag påbörjat!');
+
   try {
     await fetch(SUPA_URL + '/functions/v1/notify', {
       method: 'POST',
@@ -2357,14 +2462,23 @@ async function reportNoShow(bookingId) {
 }
 
 async function markJobDone(id) {
-  if (!confirm('Markera st??dningen som klar?')) return;
-  await R.update('bookings', {status:'klar',completed_at:new Date().toISOString()}, `id=eq.${id}`);
-  await fetch(`${SUPA_URL}/functions/v1/notify`, {
+  if (!confirm('Markera städningen som klar?')) return;
+
+  // Logga GPS tyst vid checkout — blockera aldrig
+  var job = jobs.find(function(x) { return x.id === id; });
+  var custLat = job ? (job.customer_lat || null) : null;
+  var custLng = job ? (job.customer_lng || null) : null;
+  verifyGpsAndUpdate(id, 'checkout', custLat, custLng).catch(function(){});
+
+  await R.update('bookings', {status:'klar', completed_at:new Date().toISOString()}, 'id=eq.' + id);
+
+  await fetch(SUPA_URL + '/functions/v1/notify', {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
     body:JSON.stringify({type:'job_completed',record:{booking_id:id,cleaner_name:cleaner.full_name}})
-  }).catch(()=>{});
-  showToast('???? Jobb klart! Kunden notifieras.');
+  }).catch(function(){});
+
+  showToast('🎉 Jobb klart! Kunden notifieras.');
   loadJobs();
 }
 

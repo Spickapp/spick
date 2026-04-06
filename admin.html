@@ -2278,6 +2278,12 @@ function showBookingDetail(id) {
     <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${escHtml(b.phone || '?')}</span></div>
     <div class="stat-row"><span class="lbl">Tj?nst</span><span class="val">${escHtml(b.service_type || b.service || 'Hemst?dning')} ? ${parseInt(b.booking_hours || b.hours) || 3}h</span></div>
     <div class="stat-row"><span class="lbl">Material</span><span class="val">${(b.service_type||'').toLowerCase().includes('flytt') || (b.service_type||'').toLowerCase().includes('f?nster') ? '?? St?darens utrustning' : '?? Kundens utrustning'}</span></div>
+    <div class="stat-row"><span class="lbl">GPS</span><span class="val">${
+  b.checkin_gps_status === 'green' ? '<span style="color:#0F6E56" title="' + (b.checkin_distance_m||0) + 'm">● OK</span>'
+  : b.checkin_gps_status === 'yellow' ? '<span style="color:#D97706" title="' + (b.checkin_distance_m||0) + 'm">● Varning (' + (b.checkin_distance_m||'?') + 'm)</span>'
+  : b.checkin_gps_status === 'red' ? '<span style="color:#DC2626" title="' + (b.checkin_distance_m||0) + 'm">● Avvikelse (' + (b.checkin_distance_m||'?') + 'm)</span>'
+  : '<span style="color:#D5D3CD">○ Ingen GPS</span>'
+}</span></div>
     <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.booking_date || b.date || '?')} kl ${escHtml(b.booking_time || b.time || '?')}</span></div>
     <div class="stat-row"><span class="lbl">Adress</span><span class="val">${escHtml(b.address || '?')}</span></div>
     <div class="stat-row"><span class="lbl">Belopp</span><span class="val text-g">${Math.round(b.total_price||0).toLocaleString('sv')} kr${b.rut ? ' (RUT)' : ''}</span></div>

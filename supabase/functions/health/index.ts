@@ -77,7 +77,37 @@ serve(async (req) => {
     checks.stripe = { ok: false, ms: 0, error: (e as Error).message };
   }
 
-  // 4. Edge runtime
+  // 4. Auto-remind heartbeat
+  try {
+    const t0 = Date.now();
+    const sb2 = createClient(SUPA_URL, SUPA_KEY);
+    const { data } = await sb2.from("platform_settings").select("value").eq("key", "auto_remind_last_run").single();
+    const lastRun = data?.value ? new Date(data.value) : null;
+    const minutesAgo = lastRun ? Math.round((Date.now() - lastRun.getTime()) / 60000) : null;
+    const isHealthy = minutesAgo !== null && minutesAgo < 120;
+    checks["auto_remind"] = {
+      ok: isHealthy,
+      ms: Date.now() - t0,
+      ...(minutesAgo !== null ? { minutes_since_last_run: minutesAgo } : { error: "Aldrig körd" }),
+    };
+    if (!isHealthy) {
+      await fetch(`${SUPA_URL}/functions/v1/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPA_KEY}`, apikey: SUPA_KEY },
+        body: JSON.stringify({
+          type: "uptime_alert",
+          record: {
+            subject: "⚠️ auto-remind har inte körts på " + (minutesAgo || "okänt antal") + " minuter",
+            message: "Senaste körning: " + (lastRun?.toISOString() || "aldrig") + ". Kontrollera GitHub Actions."
+          }
+        })
+      }).catch(() => {});
+    }
+  } catch (e) {
+    checks["auto_remind"] = { ok: false, ms: 0, error: (e as Error).message };
+  }
+
+  // 5. Edge runtime
   checks.runtime = { ok: true, ms: 0 };
 
   const allOk = Object.values(checks).every(c => c.ok);

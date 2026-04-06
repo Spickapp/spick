@@ -4,7 +4,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/email.ts";
+import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -107,7 +107,7 @@ serve(async (req) => {
   <div class="row"><span class="lbl">Städare</span><span class="val">${b.cleaner_name||"Tilldelas"}</span></div>
 </div>
 <div class="info">💡 Se till att städaren kan komma in. Lämna kod eller nyckel vid behov.</div>
-<div style="background:#FEF3C7;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px;color:#92400E">🧹 <strong>Material:</strong> ${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt')) return 'Städaren tar med all utrustning och alla rengöringsmedel. Du behöver inte förbereda något.'; if(s.includes('fönster')||s.includes('fonster')) return 'Städaren tar med all fönsterputsutrustning. Du behöver inte förbereda något.'; return 'Se till att dammsugare, mopp och rengöringsmedel finns tillgängliga för städaren.'; })()}</div>
+<div style="background:#FEF3C7;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px;color:#92400E">${(() => { const mi = getMaterialInfo(b.service_type); return `${mi.emoji} <strong>Material:</strong> ${mi.customer}`; })()}</div>
 <p>Avboka gratis senast kl ${b.booking_time||"09:00"} idag – skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
 <a href="https://spick.se/min-bokning.html?bid=${b.id}" class="btn">Visa min bokning →</a>`));
 
@@ -131,7 +131,7 @@ serve(async (req) => {
 </div>
 <a href="${mapsUrl}" class="btn" style="margin-right:8px">📍 Navigera →</a>
 <a href="https://spick.se/portal" class="btn" style="background:#1C1C1A">Öppna app →</a>
-${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, allrengöring, ugnsrengöring, avkalkningsmedel, fönsterspray, mikrofiberdukar, skrapa, handskar. Lägenheten är tom.</strong></div>'; if(s.includes('fönster')||s.includes('fonster')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, mikrofiberdukar.</strong></div>'; return '<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;color:#166534">🏠 Kundens utrustning — dammsugare och mopp ska finnas på plats.</div>'; })()}`));
+${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰" ? `<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>${mi.cleaner}</strong></div>` : `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;color:#166534">${mi.emoji} ${mi.cleaner}</div>`; })()}`));
         }
 
         // SMS-påminnelse 24h innan (fire-and-forget)
@@ -165,7 +165,7 @@ ${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt'
   ${b.customer_notes?`<div class="row"><span class="lbl">📝 Noteringar</span><span class="val">${b.customer_notes}</span></div>`:""}
 </div>
 ${!b.key_info?'<div class="warn">🔑 Inga nyckelinstruktioner sparade. Kontakta kunden om du inte kan komma in.</div>':""}
-${(function(){ const s=(b.service_type||'').toLowerCase(); if(s.includes('flytt')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>⚠️ DU TAR MED ALL UTRUSTNING: dammsugare, mopp, hinkar, alla rengöringsmedel. Lägenheten är tom.</strong></div>'; if(s.includes('fönster')||s.includes('fonster')) return '<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, mikrofiberdukar.</strong></div>'; return '<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;color:#166534">🏠 Kundens utrustning — dammsugare och mopp ska finnas på plats.</div>'; })()}
+${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰" ? `<div style="background:#FEF3C7;border:2px solid #FCD34D;border-radius:8px;padding:14px;margin:12px 0;font-size:14px;color:#92400E"><strong>${mi.cleaner}</strong></div>` : `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;color:#166534">${mi.emoji} ${mi.cleaner}</div>`; })()}
 <a href="${mapsUrl}" class="btn">📍 Starta navigering →</a>`));
 
         await sb.from("bookings").update({reminders_sent:[...alreadySent,"2h"]}).eq("id",b.id);
@@ -682,47 +682,52 @@ ${b.payment_intent_id ? `<p><strong>Full återbetalning är på väg</strong> �
       }
     }
 
-    // ── GDPR AUTO-CLEANUP (30 dagar) ───────────────────────────
-    // Nollställ GPS-data för bokningar äldre än 30 dagar
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000).toISOString().slice(0, 10);
-    const { data: gpsCleanup } = await sb.from("bookings")
-      .update({
-        checkin_lat: null, checkin_lng: null,
-        checkout_lat: null, checkout_lng: null,
-      })
-      .lt("booking_date", thirtyDaysAgo)
-      .not("checkin_lat", "is", null)
-      .select("id");
-    if (gpsCleanup?.length) sent.push(`gdpr_gps_cleanup:${gpsCleanup.length}`);
+    // ── GDPR CLEANUP: Radera GPS-data och foton >30 dagar ──
+    try {
+      const cleanupCutoff = new Date(now.getTime() - 30 * 86_400_000).toISOString();
 
-    // Radera före-/efterfoton äldre än 30 dagar
-    const { data: photoCleanup } = await sb.from("bookings")
-      .select("id, photo_before_url, photo_after_url")
-      .lt("booking_date", thirtyDaysAgo)
-      .or("photo_before_url.not.is.null,photo_after_url.not.is.null");
+      await sb.from("bookings")
+        .update({
+          checkin_lat: null, checkin_lng: null, checkin_accuracy_m: null,
+          checkout_lat: null, checkout_lng: null, checkout_accuracy_m: null,
+        })
+        .eq("status", "klar")
+        .lt("completed_at", cleanupCutoff)
+        .not("checkin_lat", "is", null);
 
-    for (const b of photoCleanup || []) {
-      const paths: string[] = [];
-      if (b.photo_before_url) {
-        const match = b.photo_before_url.match(/photos\/(.+?)(\?|$)/);
-        if (match) paths.push(match[1]);
+      const { data: photoBookings } = await sb.from("bookings")
+        .select("id, photo_before_url, photo_after_url")
+        .eq("status", "klar")
+        .lt("completed_at", cleanupCutoff)
+        .or("photo_before_url.not.is.null,photo_after_url.not.is.null");
+
+      for (const pb of photoBookings || []) {
+        try {
+          const paths: string[] = [];
+          if (pb.photo_before_url) {
+            const m = pb.photo_before_url.match(/bookings\/[^?]+/);
+            if (m) paths.push(m[0]);
+          }
+          if (pb.photo_after_url) {
+            const m = pb.photo_after_url.match(/bookings\/[^?]+/);
+            if (m) paths.push(m[0]);
+          }
+          if (paths.length) await sb.storage.from("photos").remove(paths);
+          await sb.from("bookings").update({ photo_before_url: null, photo_after_url: null }).eq("id", pb.id);
+        } catch (_) {}
       }
-      if (b.photo_after_url) {
-        const match = b.photo_after_url.match(/photos\/(.+?)(\?|$)/);
-        if (match) paths.push(match[1]);
-      }
-      if (paths.length) {
-        await sb.storage.from("photos").remove(paths);
-      }
-      await sb.from("bookings").update({
-        photo_before_url: null,
-        photo_after_url: null,
-      }).eq("id", b.id);
-    }
-    if (photoCleanup?.length) sent.push(`gdpr_photo_cleanup:${photoCleanup.length}`);
+    } catch (e) { console.warn("GDPR cleanup:", (e as Error).message); }
 
     // ── RATE LIMIT CLEANUP ────────────────────────────────────
     await sb.rpc("cleanup_rate_limits").catch((e) => { console.warn("auto-remind: suppressed error", e); });
+
+    // ── HEALTH HEARTBEAT ──────────────────────────────────────
+    try {
+      await sb.from("platform_settings").upsert({
+        key: "auto_remind_last_run",
+        value: now.toISOString(),
+      }, { onConflict: "key" });
+    } catch (_) {}
 
   } catch(e) {
     console.error("auto-remind fel:", e);
