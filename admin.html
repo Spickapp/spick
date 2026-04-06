@@ -1509,6 +1509,17 @@ async function loadAll() {
     updateBadges();
     renderDashboard();
     renderOnboarding();
+    // Re-render aktiv sida
+    if (typeof page !== 'undefined') {
+      if (page === 'bookings') renderBookings();
+      else if (page === 'pending') renderPending();
+      else if (page === 'cleaners') renderCleaners();
+      else if (page === 'applications') renderApplications();
+      else if (page === 'subscriptions') renderSubscriptions();
+      else if (page === 'customers') renderCustomers();
+      else if (page === 'payouts') renderPayouts();
+      else if (page === 'reviews') renderReviews();
+    }
   } catch(e) {
     console.error('loadAll failed:', e);
     showToast('⚠️ Kunde inte ladda all data. Kolla konsolen.');
