@@ -3654,7 +3654,7 @@ async function renderQualityPanel() {
   // Ladda tickets om inte redan laddade
   if (!window.ticketsData || !Array.isArray(window.ticketsData)) {
     try {
-      var tRes = await fetch(SPICK.SUPA_URL + '/rest/v1/support_tickets?select=*&order=created_at.desc&limit=200&apikey=' + SPICK.SUPA_KEY, {headers:{'apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY}});
+      var tRes = await fetch(SPICK.SUPA_URL + '/rest/v1/support_tickets?select=*&order=created_at.desc&limit=200', {headers:{'apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY}});
       window.ticketsData = tRes.ok ? await tRes.json() : [];
     } catch(e) { window.ticketsData = []; }
   }
@@ -3721,7 +3721,7 @@ async function renderQualityPanel() {
   if (canvas && typeof Chart !== 'undefined') {
     var dist = [0, 0, 0, 0, 0];
     try {
-      var ratingsRes = await fetch(SPICK.SUPA_URL + '/rest/v1/ratings?select=rating&created_at=gte.' + new Date(Date.now() - 90 * 86400000).toISOString() + '&apikey=' + SPICK.SUPA_KEY, {headers:{'apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY}});
+      var ratingsRes = await fetch(SPICK.SUPA_URL + '/rest/v1/ratings?select=rating&created_at=gte.' + new Date(Date.now() - 90 * 86400000).toISOString(), {headers:{'apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY}});
       var ratings = ratingsRes.ok ? await ratingsRes.json() : [];
       ratings.forEach(function(r) {
         var v = Math.round(r.rating);
