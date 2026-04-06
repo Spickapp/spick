@@ -324,7 +324,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </div>
           </div>
 
-          <!-- Adress --><div style="margin-top:1.25rem" class="f f-addr"><label>Din adress *</label><input type="text" id="step1-address" placeholder="Kungsgatan 10, Stockholm" autocomplete="off" oninput="addrSearch(this.value); syncAddr(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)" onblur="syncAddr(this.value)" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem"><div id="addr-dd" class="addr-suggestions" style="display:none"></div><div id="coverage-msg" style="display:none;margin-top:.75rem"></div></div><!-- Kalender --><div id="cal-section" style="margin-top:1.25rem">
+          <!-- Adress --><div style="margin-top:1.25rem" class="f f-addr"><label>Din adress *</label><input type="text" id="step1-address" placeholder="Kungsgatan 10, Stockholm" autocomplete="off" oninput="addrSearch(this.value); syncAddr(this.value)" onfocus="if(this.value.length>2)addrSearch(this.value)" onblur="syncAddr(this.value)" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem"><div id="addr-hint" style="display:none;font-size:.9rem;margin-top:8px;padding:12px 16px;color:#991B1B;background:#FEE2E2;border:1.5px solid #FECACA;border-radius:10px;font-weight:600;line-height:1.5;position:relative;z-index:60"></div><div id="addr-dd" class="addr-suggestions" style="display:none"></div><div id="coverage-msg" style="display:none;margin-top:.75rem"></div></div><!-- Kalender --><div id="cal-section" style="margin-top:1.25rem">
             <label style="margin-bottom:.5rem">Välj datum & tid *</label>
             <div class="cal" id="calendar">
               <div class="cal-nav">
@@ -947,21 +947,15 @@ async function goStep2() {
     var ae = document.getElementById('step1-address');
     var dd = document.getElementById('addr-dd'); if (dd) dd.style.display = 'none';
     var al = document.getElementById('addr-list'); if (al) al.style.display = 'none';
-
     if (ae) {
       ae.style.outline = '2px solid #dc2626';
       ae.scrollIntoView({behavior:'smooth', block:'center'});
     }
-
-    var _ahint = document.getElementById('addr-hint');
-    if (!_ahint) {
-      _ahint = document.createElement('div');
-      _ahint.id = 'addr-hint';
-      ae.insertAdjacentElement('afterend', _ahint);
+    var hint = document.getElementById('addr-hint');
+    if (hint) {
+      hint.innerHTML = '\u26a0\ufe0f <strong>Gatunummer saknas!</strong><br>Ange din fullst\u00e4ndiga adress med gatunummer, t.ex. <em>Bokv\u00e4gen 5, Solna</em>';
+      hint.style.display = 'block';
     }
-    _ahint.style.cssText = 'font-size:.9rem;margin-top:8px;padding:12px 16px;color:#991B1B;background:#FEE2E2;border:1.5px solid #FECACA;border-radius:10px;font-weight:600;line-height:1.5';
-    _ahint.innerHTML = '\u26a0\ufe0f <strong>Gatunummer saknas!</strong><br>Ange din fullst\u00e4ndiga adress med gatunummer, t.ex. <em>Bokv\u00e4gen 5, Solna</em>';
-    _ahint.style.display = 'block';
     return;
   } if (!state.date || !state.time) {
     document.getElementById('calendar').scrollIntoView({behavior:'smooth', block:'center'});
@@ -1803,6 +1797,8 @@ function updateAddons() {
 // Adress-autocomplete (Google Places via Edge Function)
 let addrTimer;
 async function addrSearch(q) {
+  var hint = document.getElementById('addr-hint'); if (hint) hint.style.display = 'none';
+  var ae = document.getElementById('step1-address'); if (ae) ae.style.outline = '';
   clearTimeout(addrTimer);
   const list = (state.step === 1) ? document.getElementById('addr-dd') : document.getElementById('addr-list');
   if (q.length < 3) { list.style.display='none'; return; }
@@ -1833,18 +1829,14 @@ async function pickAddr(val, placeId) {
   var _s1 = document.getElementById('step1-address');
   if (_s1) _s1.value = short;
   state.address = short;
-  var addrHint = document.getElementById('addr-hint');
-  if (!addrHint) {
-    addrHint = document.createElement('div');
-    addrHint.id = 'addr-hint';
-    addrHint.style.cssText = 'font-size:.8rem;margin-top:4px;color:#D97706';
-    document.getElementById('address').parentNode.appendChild(addrHint);
-  }
-  if (!/\d/.test(short)) {
-    addrHint.textContent = '\u26a0\ufe0f Gl\u00f6m inte gatunumret! T.ex. Bokv\u00e4gen 5';
-    addrHint.style.display = 'block';
-  } else {
-    addrHint.style.display = 'none';
+  var hint = document.getElementById('addr-hint');
+  if (hint) {
+    if (!/\d/.test(short)) {
+      hint.innerHTML = '\u26a0\ufe0f Gl\u00f6m inte gatunumret! T.ex. Bokv\u00e4gen 5';
+      hint.style.cssText = 'display:block;font-size:.85rem;margin-top:6px;padding:8px 12px;color:#D97706;background:#FEF3C7;border-radius:8px;position:relative;z-index:60';
+    } else {
+      hint.style.display = 'none';
+    }
   }
   var _al = document.getElementById('addr-list'); if (_al) _al.style.display = 'none';
   var _ad = document.getElementById('addr-dd'); if (_ad) _ad.style.display = 'none';
