@@ -856,9 +856,14 @@ const ANON_KEY = SPICK.SUPA_KEY;
 async function _adminHeaders() {
   let token = ANON_KEY;
   try {
-    const { data: { session } } = await SB.auth.getSession();
-    if (session?.access_token) token = session.access_token;
-  } catch(e) { console.warn('Session error:', e); }
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.access_token) token = parsed.access_token;
+      else if (parsed.currentSession?.access_token) token = parsed.currentSession.access_token;
+      else if (parsed.session?.access_token) token = parsed.session.access_token;
+    }
+  } catch(e) {}
   return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
 }
 const AR = {
@@ -2093,11 +2098,19 @@ async function runBookingTimeout(btn) {
   if (!confirm('Timeout:a bokningar som väntat > 2h utan svar?\n\nKunder får återbetalning och mejl.')) return;
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   let token = ANON_KEY;
-  try { const { data: { session } } = await SB.auth.getSession(); if (session?.access_token) token = session.access_token; } catch(e) { console.warn('Session error:', e); }
+  try {
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.access_token) token = parsed.access_token;
+      else if (parsed.currentSession?.access_token) token = parsed.currentSession.access_token;
+      else if (parsed.session?.access_token) token = parsed.session.access_token;
+    }
+  } catch(e) {}
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/booking-auto-timeout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': ANON_KEY }
     });
     const result = await res.json();
     btn.disabled = false; btn.textContent = '🕐 Hantera timeout';
@@ -3095,18 +3108,14 @@ async function approveApplication(btn, id, name, email, city, services, rate) {
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   let token = ANON_KEY;
   try {
-    const { data: { session } } = await SB.auth.getSession();
-    if (session?.access_token) token = session.access_token;
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.access_token) token = parsed.access_token;
+      else if (parsed.currentSession?.access_token) token = parsed.currentSession.access_token;
+      else if (parsed.session?.access_token) token = parsed.session.access_token;
+    }
   } catch(e) {}
-  if (token === ANON_KEY) {
-    try {
-      const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.access_token) token = parsed.access_token;
-      }
-    } catch(e) {}
-  }
 
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
@@ -3140,18 +3149,14 @@ async function rejectApplication(btn, id) {
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   let token = ANON_KEY;
   try {
-    const { data: { session } } = await SB.auth.getSession();
-    if (session?.access_token) token = session.access_token;
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.access_token) token = parsed.access_token;
+      else if (parsed.currentSession?.access_token) token = parsed.currentSession.access_token;
+      else if (parsed.session?.access_token) token = parsed.session.access_token;
+    }
   } catch(e) {}
-  if (token === ANON_KEY) {
-    try {
-      const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.access_token) token = parsed.access_token;
-      }
-    } catch(e) {}
-  }
 
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
