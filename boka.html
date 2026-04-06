@@ -953,7 +953,8 @@ async function goStep2() {
     }
     var hint = document.getElementById('addr-hint');
     if (hint) {
-      hint.innerHTML = '\u26a0\ufe0f <strong>Gatunummer saknas!</strong><br>Ange din fullst\u00e4ndiga adress med gatunummer, t.ex. <em>Bokv\u00e4gen 5, Solna</em>';
+      var streetName = (state.address || '').split(',')[0].trim();
+      hint.innerHTML = '\u26a0\ufe0f <strong>Gatunummer saknas!</strong><br>Ange t.ex. <strong>' + streetName + ' 5</strong>';
       hint.style.display = 'block';
     }
     return;
@@ -1832,7 +1833,8 @@ async function pickAddr(val, placeId) {
   var hint = document.getElementById('addr-hint');
   if (hint) {
     if (!/\d/.test(short)) {
-      hint.innerHTML = '\u26a0\ufe0f Gl\u00f6m inte gatunumret! T.ex. Bokv\u00e4gen 5';
+      var streetName = short.split(',')[0].trim();
+      hint.innerHTML = '\u26a0\ufe0f Gl\u00f6m inte gatunumret! T.ex. <strong>' + streetName + ' 5</strong>';
       hint.style.cssText = 'display:block;font-size:.85rem;margin-top:6px;padding:8px 12px;color:#D97706;background:#FEF3C7;border-radius:8px;position:relative;z-index:60';
     } else {
       hint.style.display = 'none';
