@@ -3094,12 +3094,24 @@ async function approveApplication(btn, id, name, email, city, services, rate) {
 
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   let token = ANON_KEY;
-  try { const { data: { session } } = await SB.auth.getSession(); if (session?.access_token) token = session.access_token; } catch(e) { console.warn('Session error:', e); }
+  try {
+    const { data: { session } } = await SB.auth.getSession();
+    if (session?.access_token) token = session.access_token;
+  } catch(e) {}
+  if (token === ANON_KEY) {
+    try {
+      const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.access_token) token = parsed.access_token;
+      }
+    } catch(e) {}
+  }
 
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': ANON_KEY },
       body: JSON.stringify({ application_id: id, action: 'approve' })
     });
     const result = await res.json();
@@ -3127,12 +3139,24 @@ async function rejectApplication(btn, id) {
 
   btn.disabled = true; btn.textContent = '⏳ Bearbetar...';
   let token = ANON_KEY;
-  try { const { data: { session } } = await SB.auth.getSession(); if (session?.access_token) token = session.access_token; } catch(e) { console.warn('Session error:', e); }
+  try {
+    const { data: { session } } = await SB.auth.getSession();
+    if (session?.access_token) token = session.access_token;
+  } catch(e) {}
+  if (token === ANON_KEY) {
+    try {
+      const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.access_token) token = parsed.access_token;
+      }
+    } catch(e) {}
+  }
 
   try {
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-approve-cleaner', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': ANON_KEY },
       body: JSON.stringify({ application_id: id, action: 'reject' })
     });
     const result2 = await res.json();
