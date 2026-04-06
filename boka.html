@@ -1059,7 +1059,7 @@ async function loadGlobalAvailability() {
       fetch(`${SUPA}/rest/v1/v_cleaner_availability_int?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {headers:H, signal: controller.signal}),
       fetch(`${SUPA}/rest/v1/cleaner_blocked_dates?blocked_date=gte.${new Date().toISOString().split('T')[0]}&select=cleaner_id,blocked_date`, {headers:H, signal: controller.signal}),
       fetch(`${SUPA}/rest/v1/booking_slots?is_booked=eq.true&select=cleaner_id,date,time,hours&order=date.asc`, {headers:H, signal: controller.signal}),
-      fetch(`${SUPA}/rest/v1/bookings?status=in.(confirmed,pending)&select=booking_date,booking_time,booking_hours&order=booking_date.asc`, {headers:H, signal: controller.signal}).catch(() => ({ok:false}))
+      fetch(`${SUPA}/rest/v1/v_booking_slots?select=booking_date,booking_time,booking_hours`, {headers:H, signal: controller.signal}).catch(() => ({ok:false}))
     ]);
     clearTimeout(timeout);
 

@@ -162,7 +162,7 @@ const statusMap = {
 };
 
 async function load() {
-  let query = SB.from('bookings').select('*');
+  let query = SB.from('v_customer_bookings').select('*');
   if (bid) query = query.eq('id', bid);
   else if (email) query = query.or(`customer_email.eq.${email}`).order('created_at', {ascending:false}).limit(1);
   else {
