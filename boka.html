@@ -312,7 +312,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <div class="f-grid" style="margin-top:1rem">
             <div class="f">
               <label>Bostadsyta (kvm) *</label>
-              <input type="number" id="sqm" min="20" max="250" placeholder="t.ex. 65" oninput="calcHours()">
+              <input type="number" id="sqm" min="20" max="250" placeholder="t.ex. 65" oninput="calcHours()" onblur="if(this.value>=10){var el=document.getElementById('step1-address');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}">
               <div class="field-hint">Vi beräknar tidsåtgången automatiskt</div>
               <div id="price-estimate" style="display:none;background:#F0FDF4;border-radius:10px;padding:12px 16px;margin-top:8px;font-size:.9rem">
                 <span style="color:#2E7D32;font-weight:600">Uppskattat pris: </span>
@@ -854,6 +854,10 @@ function selectService(name, icon, desc, time) {
   });
   document.getElementById('svc-error').style.display = 'none';
   updateSidebar();
+  setTimeout(function() {
+    var sqm = document.getElementById('sqm');
+    if (sqm) sqm.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 300);
 }
 
 function selectFreq(freq, btn) {
@@ -1895,6 +1899,10 @@ async function pickAddr(val, placeId) {
   if (calSec) calSec.style.display = 'block';
   var msg = document.getElementById('coverage-msg');
   if (msg) msg.style.display = 'none';
+  setTimeout(function() {
+    var cal = document.getElementById('cal-section');
+    if (cal) cal.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 400);
 }
 
 document.addEventListener('click', e => {
