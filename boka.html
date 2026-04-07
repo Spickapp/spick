@@ -1006,6 +1006,8 @@ function setCustomerType(type) {
     var sqmLabel = document.getElementById('sqm-label') || document.querySelector('label[for="sqm"]');
     if (!sqmLabel) { document.querySelectorAll('.f label').forEach(function(l) { if (l.textContent.includes('Bostadsyta') || l.textContent.includes('Kontorsyta')) sqmLabel = l; }); }
     if (sqmLabel) sqmLabel.innerHTML = 'Kontorsyta (kvm) *';
+    var sqmEl = document.getElementById('sqm');
+    if (sqmEl) { sqmEl.max = 600; sqmEl.placeholder = 't.ex. 150'; }
     // Om Hemstädning var vald, avmarkera
     if (state.service === 'Hemstädning') {
       state.service = '';
@@ -1026,6 +1028,8 @@ function setCustomerType(type) {
     var sqmLabel2 = null;
     document.querySelectorAll('.f label').forEach(function(l) { if (l.textContent.includes('Kontorsyta') || l.textContent.includes('Bostadsyta')) sqmLabel2 = l; });
     if (sqmLabel2) sqmLabel2.innerHTML = 'Bostadsyta (kvm) *';
+    var sqmEl = document.getElementById('sqm');
+    if (sqmEl) { sqmEl.max = 250; sqmEl.placeholder = 't.ex. 65'; }
     // Om Kontorsstädning var vald, avmarkera
     if (state.service === 'Kontorsstädning') {
       state.service = '';
@@ -1081,7 +1085,8 @@ function calcHours() {
   state.sqm = sqm;
   document.getElementById('sqm').classList.remove('invalid');
   document.getElementById('sqm').classList.remove('invalid');
-  if (sqm > 250) { document.getElementById('sqm').value = 250; state.sqm = 250; return calcHours(); }
+  var maxSqm = state.customerType === 'foretag' ? 600 : 250;
+  if (sqm > maxSqm) { document.getElementById('sqm').value = maxSqm; state.sqm = maxSqm; return calcHours(); }
   if (!sqm) {
     // Rensa kalender-tidslistan om kvm rensas
     document.getElementById('tl-wrap').style.display = 'none';
@@ -1098,7 +1103,16 @@ function calcHours() {
   else h = Math.ceil(sqm / 35);
   if (state.service === 'Storstädning') h = Math.ceil(h * 1.7 * 2) / 2;
   else if (state.service === 'Flyttstädning') h = Math.ceil(h * 2.2 * 2) / 2;
-  else if (state.service === 'Kontorsstädning') h = Math.ceil(h * 1.3 * 2) / 2;
+  else if (state.service === 'Kontorsstädning') {
+    // Kontor: snabbare per kvm (öppna ytor, inga kök/badrum att djuprengöra)
+    if (sqm <= 50) h = 1.5;
+    else if (sqm <= 100) h = 2;
+    else if (sqm <= 150) h = 2.5;
+    else if (sqm <= 200) h = 3;
+    else if (sqm <= 300) h = 4;
+    else if (sqm <= 400) h = 5;
+    else h = Math.ceil(sqm / 80 * 2) / 2;
+  }
   else if (state.service === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
   state.hours = h;
   // Om datum redan valts: re-rendera tidsblocket med ny timåtgång
