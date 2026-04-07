@@ -971,10 +971,12 @@ function setCustomerType(type) {
   if (rutWrap) rutWrap.style.display = type === 'privat' ? 'flex' : 'none';
   if (type === 'foretag') {
     state.useRut = false;
-    updatePrice();
+    if (typeof calcHours === 'function') calcHours();
+    updateSidebar();
   } else {
     state.useRut = true;
-    updatePrice();
+    if (typeof calcHours === 'function') calcHours();
+    updateSidebar();
   }
 
   // Tjänster: anpassa för kundtyp
