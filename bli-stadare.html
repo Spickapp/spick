@@ -20,6 +20,7 @@
 <script src="js/supabase.min.js" defer></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-CP115M45TT');</script>
 <script src="js/config.js"></script>
+<script src="js/i18n-bli-stadare.js" defer></script>
 <script src="js/components.js" defer></script>
 <noscript><style>.calc-wrap,.sticky-cta{display:none!important}</style></noscript>
 
@@ -43,11 +44,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-h
 .lang-btn{background:none;border:none;cursor:pointer;padding:6px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7);min-width:38px;min-height:38px;display:flex;align-items:center;justify-content:center}
 .lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
 .lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
-#google_translate_element{position:absolute;left:-9999px;opacity:0;pointer-events:none}
-.goog-te-banner-frame{display:none!important}
-body{top:0!important}
-#goog-gt-tt,.goog-te-balloon-frame{display:none!important}
-.goog-text-highlight{background:none!important;box-shadow:none!important}
 
 /* ─── HERO ─── */
 .hero{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);color:#fff;padding:4rem 1.5rem 3rem;position:relative;overflow:hidden}
@@ -218,8 +214,6 @@ body{top:0!important}
   <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/24x18/es.png" alt="Español" width="24" height="18"></button>
   <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي"><img src="https://flagcdn.com/24x18/sa.png" alt="عربي" width="24" height="18"></button>
 </div>
-<div id="google_translate_element"></div>
-
 <!-- NAV (injected by components.js) -->
 
 <!-- HERO -->
@@ -475,60 +469,38 @@ body{top:0!important}
 
 <script>
 /* ── LANGUAGE SWITCHER ─────────────── */
+var _svBackup = {};
+var _currentLang = 'sv';
+
 function switchLang(lang, btn) {
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.lang-btn').forEach(function(b) { b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
-  if (lang === 'sv') {
-    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
-    location.reload();
-    return;
-  }
-  document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
-  document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
-  var sel = document.querySelector('.goog-te-combo');
-  if (sel) {
-    sel.value = lang;
-    sel.dispatchEvent(new Event('change'));
-    return;
-  }
-  var tries = 0;
-  var poll = setInterval(function() {
-    var s = document.querySelector('.goog-te-combo');
-    if (s) {
-      clearInterval(poll);
-      s.value = lang;
-      s.dispatchEvent(new Event('change'));
-      return;
-    }
-    tries++;
-    if (tries > 6) {
-      clearInterval(poll);
-      location.reload();
-    }
-  }, 500);
+  if (_currentLang !== 'sv' && _currentLang !== lang) restoreSv();
+  _currentLang = lang;
+  if (lang === 'sv') { restoreSv(); return; }
+  applyLang(lang);
 }
 
-(function() {
-  var match = document.cookie.match(/googtrans=\/sv\/([a-z]{2})/);
-  if (!match) return;
-  var lang = match[1];
-  var attempts = 0;
-  var waitForGT = setInterval(function() {
-    var sel = document.querySelector('.goog-te-combo');
-    if (sel) {
-      clearInterval(waitForGT);
-      sel.value = lang;
-      sel.dispatchEvent(new Event('change'));
-      document.querySelectorAll('.lang-btn').forEach(function(b) {
-        var onclick = b.getAttribute('onclick') || '';
-        b.classList.toggle('on', onclick.includes("'" + lang + "'"));
-      });
-    }
-    attempts++;
-    if (attempts > 30) clearInterval(waitForGT);
-  }, 500);
-})();
+function applyLang(lang) {
+  var t = window.TRANSLATIONS_BLI && window.TRANSLATIONS_BLI[lang];
+  if (!t) return;
+  document.body.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (!_svBackup[key]) _svBackup[key] = el.innerHTML;
+    if (t[key]) el.innerHTML = t[key];
+  });
+  calcEarnings();
+}
+
+function restoreSv() {
+  document.body.removeAttribute('dir');
+  Object.keys(_svBackup).forEach(function(key) {
+    var el = document.querySelector('[data-i18n="' + key + '"]');
+    if (el) el.innerHTML = _svBackup[key];
+  });
+  calcEarnings();
+}
 /* ── INCOME CALCULATOR ───────────────────── */
 function calcEarnings() {
   const rate = parseInt(document.getElementById('c-rate')?.value) || 350;
@@ -580,17 +552,6 @@ function showF(){document.getElementById('fskatt-guide').scrollIntoView({behavio
 
 
 </script>
-<script>
-function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'sv',
-    includedLanguages: 'sv,en,ar,uk,ru,pl,th,tl,so,es',
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
-}
-</script>
-<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 </body>
 </html>
 
