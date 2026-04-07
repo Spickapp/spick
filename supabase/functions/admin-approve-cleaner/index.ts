@@ -216,6 +216,38 @@ serve(async (req) => {
         }
       }
 
+      // 3c. If invited to existing company, link as team member
+      if (app.invited_by_company_id) {
+        try {
+          const { data: company } = await sb.from("companies")
+            .select("id, name")
+            .eq("id", app.invited_by_company_id)
+            .single();
+
+          if (company) {
+            await sb.from("cleaners").update({
+              company_id: company.id,
+              is_company_owner: false,
+            }).eq("id", cleanerId);
+
+            log("info", "admin-approve-cleaner", "Team member linked to company", {
+              cleanerId,
+              companyId: company.id,
+              companyName: company.name,
+            });
+          } else {
+            log("warn", "admin-approve-cleaner", "Invited company not found", {
+              invited_by_company_id: app.invited_by_company_id,
+            });
+          }
+        } catch (e) {
+          log("error", "admin-approve-cleaner", "Team member linking failed", {
+            error: (e as Error).message,
+          });
+          // Don't rollback — cleaner is created, just not linked
+        }
+      }
+
       // 4. Update application status
       await sb.from("cleaner_applications").update({
         status: "approved",
@@ -241,11 +273,13 @@ serve(async (req) => {
       // 6. Send welcome email (trilingual: SV + EN + AR)
       const hr = parseInt(app.hourly_rate) || 350;
       const isCompany = app.is_company && app.company_name;
+      const isTeamMember = !!app.invited_by_company_id;
       const html = wrap(`
         <h2>Välkommen till Spick! 🎉</h2>
         <p>Hej ${esc(name)}!</p>
         <p>Grattis — din ansökan är godkänd! Slutför din profil i dashboarden för att börja ta emot bokningar.</p>
         ${isCompany ? `<p>🏢 <strong>${esc(app.company_name)}</strong> är registrerat. Du kan lägga till teammedlemmar via din dashboard.</p>` : ""}
+        ${isTeamMember ? `<p>👥 Du är kopplad till ett städföretag. Betalningar hanteras via ditt företag — du behöver inte koppla Stripe.</p>` : ""}
         ${app.fskatt_needs_help ? `
 <div style="background:#EDE9FE;border-radius:12px;padding:16px 20px;margin:16px 0;color:#5B21B6">
   <p style="font-size:15px;font-weight:700;margin:0 0 8px">📋 Du behöver F-skatt — vi gör det enkelt!</p>

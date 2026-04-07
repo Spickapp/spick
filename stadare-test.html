@@ -11,7 +11,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <script src="js/config.js"></script>
-<script src="js/supabase.min.js"></script>
 <script src="js/components.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -491,8 +490,6 @@ const questions = document.querySelectorAll('.question');
 const TOTAL = questions.length; // 25
 let current = 0;
 let score = 0;
-const urlParams = new URLSearchParams(window.location.search);
-const teamMemberId = urlParams.get('member');
 let sectionScores = [0, 0, 0, 0]; // del1(10), del2(5), del3(5), del4(5)
 let answered = false;
 
@@ -602,32 +599,6 @@ function showResult() {
     sections: sectionScores,
     date: new Date().toISOString()
   }));
-
-  // Spara till DB om teammedlem
-  if (teamMemberId && score >= 20) {
-    (async function() {
-      try {
-        const sb = window.SPICK?.supabase || supabase.createClient(
-          'https://urjeijcncsyuletprydy.supabase.co',
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MTMxNjYsImV4cCI6MjA1ODM4OTE2Nn0.a0KNSGEjBHFShBQ7GnPas2NxqE1ZKNKeqVXqwBqBsYo'
-        );
-        const { data: cleaner } = await sb.from('cleaners').select('team_onboarding').eq('id', teamMemberId).single();
-        if (cleaner) {
-          const onboarding = cleaner.team_onboarding ? JSON.parse(cleaner.team_onboarding) : {};
-          onboarding.test_passed = true;
-          onboarding.test_score = score;
-          onboarding.test_date = new Date().toISOString();
-          await sb.from('cleaners').update({ team_onboarding: JSON.stringify(onboarding) }).eq('id', teamMemberId);
-        }
-      } catch(e) { console.error('Kunde inte spara testresultat:', e); }
-    })();
-  }
-
-  if (teamMemberId && score >= 20) {
-    document.getElementById('resDetail').textContent = 'Ditt resultat har sparats! Din teamägare ser att du klarat testet.';
-  } else if (teamMemberId && score < 20) {
-    document.getElementById('resDetail').textContent = 'Du behöver minst 20/25 för att bli godkänd. Läs handboken och försök igen!';
-  }
 
   rs.scrollIntoView({ behavior: 'smooth' });
 }

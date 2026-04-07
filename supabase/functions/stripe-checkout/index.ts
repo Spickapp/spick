@@ -42,6 +42,16 @@ serve(async (req) => {
       customer_type, business_name
     } = await req.json();
 
+    // TODO: Om städaren har company_id och inte är is_company_owner,
+    // hämta företagsägarens stripe_account_id istället:
+    // const { data: owner } = await sb.from('cleaners')
+    //   .select('stripe_account_id')
+    //   .eq('company_id', cleaner.company_id)
+    //   .eq('is_company_owner', true)
+    //   .single();
+    // Använd owner.stripe_account_id för denna betalning.
+    // Aktivera detta när Rafaels Stripe Connect är klart.
+
     if (!booking_id || !email || !service) {
       return new Response(JSON.stringify({ error: "Saknade fält: booking_id, email, service krävs" }), {
         status: 400, headers: { "Content-Type": "application/json", ...CORS }

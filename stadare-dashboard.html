@@ -518,7 +518,7 @@ body{top:0!important}
           <div class="ob-step" id="ob-2" onclick="document.getElementById('avatar-section').scrollIntoView({behavior:'smooth',block:'center'})"><div class="ob-check"></div><span>Ladda upp profilbild</span></div>
           <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><div class="ob-check"></div><span>Skriv en personlig beskrivning</span></div>
           <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><div class="ob-check"></div><span>Ställ in ditt veckoschema</span></div>
-          <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><div class="ob-check"></div><span>Anslut bankkonto via Stripe</span></div>
+          <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><div class="ob-check"></div><span id="ob-5-text">Anslut bankkonto via Stripe</span></div>
           <!-- More steps (expandable) -->
           <div id="ob-more" style="display:none">
             <div class="ob-step" id="ob-guide" onclick="window.open('stadare-guide.html','_blank');markGuideRead()"><div class="ob-check"></div><span>Läs Appguiden → Hur du använder Spick</span></div>
@@ -892,7 +892,7 @@ body{top:0!important}
               <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
               <p style="font-size:.82rem;color:var(--m)" id="team-count">Laddar...</p>
             </div>
-            <button onclick="showAddMemberModal()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till</button>
+            <button onclick="showInviteLink()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">📋 Kopiera inbjudningslänk</button>
           </div>
           <div id="team-list"></div>
         </div>
@@ -1363,6 +1363,36 @@ async function loadCleanerByEmail(email, authUserId) {
   var greetAvEl = document.getElementById('greeting-avatar');
   if (greetAvEl) greetAvEl.textContent = initials;
   var greetSubEl = document.getElementById('greeting-sub');
+
+  // Team member detection
+  var _isTeamMember = cleaner.company_id && !cleaner.is_company_owner;
+  if (_isTeamMember) {
+    // Hide Stripe onboarding step
+    var ob5 = document.getElementById('ob-5');
+    if (ob5) ob5.style.display = 'none';
+    // Show company badge
+    (async function() {
+      try {
+        var compRes = await R.selectSingle('companies', 'select=name&id=eq.' + cleaner.company_id);
+        if (compRes.data && compRes.data.name) {
+          var compBadge = document.createElement('div');
+          compBadge.style.cssText = 'font-size:.78rem;color:#3B82F6;font-weight:600;margin-top:2px';
+          compBadge.textContent = '👥 ' + compRes.data.name;
+          if (greetSubEl) greetSubEl.after(compBadge);
+        }
+      } catch(e) {}
+    })();
+    // Income tab info
+    var incomeTab = document.getElementById('tab-inkomst');
+    if (incomeTab) {
+      var payInfo = document.createElement('div');
+      payInfo.style.cssText = 'background:#DBEAFE;border-radius:12px;padding:14px;margin-bottom:16px;font-size:.85rem;color:#1E40AF';
+      payInfo.innerHTML = '💰 Utbetalningar görs till ditt företags Stripe-konto. Kontakta din teamägare för lönefrågor.';
+      var tabPad = incomeTab.querySelector('.tab-pad');
+      if (tabPad) tabPad.prepend(payInfo);
+    }
+  }
+
   // Greeting sub-text (job count)
   function updateGreetingSub() {
     if (!greetSubEl) return;
@@ -1483,7 +1513,7 @@ function updateOnboarding() {
     'ob-2': !!(cleaner.avatar_url),
     'ob-3': !!(cleaner.bio && cleaner.bio.length > 5),
     'ob-4': !!(cleaner.availability_schedule || cleaner._scheduleLoaded),
-    'ob-5': cleaner.stripe_onboarding_status === 'complete',
+    'ob-5': (cleaner.company_id && !cleaner.is_company_owner) ? true : cleaner.stripe_onboarding_status === 'complete',
     'ob-guide': !!localStorage.getItem('spick-guide-read'),
     'ob-6': !!localStorage.getItem('spick-handbook-read'),
     'ob-6t': !!(localStorage.getItem('spick_test_score') || cleaner.test_score > 0),
@@ -3065,12 +3095,10 @@ async function renderTeam() {
 
   document.getElementById('team-list').innerHTML = _teamMembers.length ? _teamMembers.map(m => {
     const isOwner = m.id === cleaner.id;
-    const isPaused = m.status === 'inactive' || (m.is_active === false && m.status !== 'onboarding');
+    const isPaused = m.status === 'inactive' || m.is_active === false;
     const isOnboarding = m.status === 'onboarding';
-    let onbCount = 0;
-    try { const ob = JSON.parse(m.team_onboarding || '{}'); onbCount = [ob.profile_photo, ob.test_passed, ob.handbook_read].filter(Boolean).length; } catch(e) {}
     const statusDot = isOnboarding
-      ? '<span style="color:var(--warning);font-size:11px">🟡 Onboarding ' + onbCount + '/3</span>'
+      ? '<span style="color:var(--warning);font-size:11px">🟡 Onboarding</span>'
       : isPaused
         ? '<span style="color:var(--gray-400);font-size:11px">● Pausad</span>'
         : '<span style="color:var(--spick-500);font-size:11px">✅ Aktiv</span>';
@@ -3093,7 +3121,7 @@ async function renderTeam() {
       </div>
       ${!isOwner ? `<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button onclick="editTeamMember('${m.id}')" style="flex:1;padding:10px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Redigera</button>
-        ${isOnboarding ? `<button onclick="showTeamOnboardingModal(_teamMembers.find(x=>x.id==='${m.id}'))" style="flex:1;padding:10px;background:var(--warning-bg,#fff8e1);color:var(--warning,#f59e0b);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Hantera onboarding</button>` : `<button onclick="toggleMemberStatus('${m.id}','${isPaused ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused ? 'Aktivera' : 'Pausa'}</button>`}
+        <button onclick="toggleMemberStatus('${m.id}','${isPaused || isOnboarding ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused || isOnboarding ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused || isOnboarding ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused || isOnboarding ? 'Aktivera' : 'Pausa'}</button>
       </div>` : ''}
     </div>`;
   }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
@@ -3122,15 +3150,6 @@ async function renderTeam() {
 }
 
 // ── TEAM MODAL ──────────────────────────────────────────────
-function showAddMemberModal() {
-  resetTeamModal();
-  document.getElementById('team-modal-title').textContent = 'Lägg till teammedlem';
-  const btn = document.getElementById('add-member-btn');
-  btn.textContent = 'Lägg till teammedlem';
-  btn.onclick = addTeamMember;
-  document.getElementById('add-member-modal').style.display = 'flex';
-}
-
 function closeTeamModal() {
   document.getElementById('add-member-modal').style.display = 'none';
   resetTeamModal();
@@ -3155,8 +3174,7 @@ function resetTeamModal() {
   document.getElementById('add-member-msg').style.display = 'none';
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
-  btn.textContent = 'Lägg till teammedlem';
-  btn.onclick = addTeamMember;
+  btn.textContent = 'Spara ändringar';
 }
 
 function toggleTeamSvc(btn) {
@@ -3171,111 +3189,6 @@ function setTeamPet(btn) {
 
 function toggleTeamArea(cb) {
   document.getElementById('team-area-custom').style.display = cb.checked ? 'none' : 'block';
-}
-
-// ── ADD TEAM MEMBER ─────────────────────────────────────────
-async function addTeamMember() {
-  const firstName = document.getElementById('team-fname').value.trim();
-  const lastName = document.getElementById('team-lname').value.trim();
-  const msgEl = document.getElementById('add-member-msg');
-  msgEl.style.display = 'none';
-
-  if (!firstName) { showTeamMsg('Förnamn krävs', true); return; }
-  if (!lastName) { showTeamMsg('Efternamn krävs', true); return; }
-
-  const services = [...document.querySelectorAll('#team-services .tm-chip.active')].map(b => b.dataset.svc);
-  if (services.length === 0) { showTeamMsg('Välj minst en tjänst', true); return; }
-
-  const hourlyRate = parseInt(document.getElementById('team-rate').value || '350');
-  const phone = document.getElementById('team-phone').value.trim() || null;
-  const email = document.getElementById('team-email').value.trim() || null;
-  const bio = document.getElementById('team-bio').value.trim() || null;
-  const petPref = document.querySelector('#team-pet-options .tm-chip.active')?.dataset?.pet || 'ok';
-
-  // Arbetsområde
-  const sameArea = document.getElementById('team-same-area').checked;
-  let homeLat, homeLng, homeAddress, serviceRadius, city;
-
-  if (sameArea) {
-    homeLat = cleaner.home_lat;
-    homeLng = cleaner.home_lng;
-    homeAddress = cleaner.home_address;
-    serviceRadius = cleaner.service_radius_km || 30;
-    city = cleaner.city;
-  } else {
-    const customAddress = document.getElementById('team-address').value.trim();
-    if (!customAddress) { showTeamMsg('Ange en adress för arbetsområdet', true); return; }
-    try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}&countrycodes=se&limit=1&addressdetails=1`);
-      const geoData = await geoRes.json();
-      if (!geoData || geoData.length === 0) { showTeamMsg('Kunde inte hitta adressen. Kontrollera stavningen.', true); return; }
-      homeLat = parseFloat(geoData[0].lat);
-      homeLng = parseFloat(geoData[0].lon);
-      homeAddress = customAddress;
-      city = geoData[0].address?.city || geoData[0].address?.town || geoData[0].address?.municipality || null;
-    } catch (e) {
-      showTeamMsg('Fel vid adresssökning: ' + e.message, true); return;
-    }
-    serviceRadius = parseInt(document.getElementById('team-radius').value || '30');
-  }
-
-  if (!cleaner.company_id) { showTeamMsg('Ditt konto är inte kopplat till ett företag. Kontakta Spick support.', true); return; }
-
-  const btn = document.getElementById('add-member-btn');
-  btn.disabled = true; btn.textContent = 'Lägger till...';
-
-  try {
-    const { error } = await R.insert('cleaners', {
-      first_name: firstName,
-      last_name: lastName,
-      full_name: firstName + ' ' + lastName,
-      phone: phone,
-      email: email,
-      services: services,
-      hourly_rate: hourlyRate,
-      home_lat: homeLat,
-      home_lng: homeLng,
-      home_address: homeAddress,
-      service_radius_km: serviceRadius,
-      city: city,
-      pet_pref: petPref,
-      bio: bio,
-      company_id: cleaner.company_id,
-      added_by_owner_id: cleaner.id,
-      is_company_owner: false,
-      is_approved: false,
-      is_active: false,
-      status: 'onboarding',
-      commission_rate: 0.17,
-      experience: 'new',
-      review_count: 0,
-      rating: 0,
-      avg_rating: 0,
-      total_reviews: 0,
-      total_jobs: 0,
-      completed_jobs: 0,
-      total_earned: 0,
-      cancellation_count: 0,
-      cancellation_rate: 0,
-      spark_points: 0,
-      tier: 'new',
-      verified: false,
-      onboarding_completed: false,
-      onboarding_step: 0,
-      profile_completeness: 0,
-      team_onboarding: JSON.stringify({ profile_photo: false, test_passed: false, handbook_read: false })
-    });
-
-    if (error) throw new Error(error.message || 'Insert failed');
-
-    showToast(firstName + ' ' + lastName + ' tillagd i ditt team!');
-    closeTeamModal();
-    renderTeam();
-  } catch (e) {
-    showTeamMsg('Fel: ' + e.message, true);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Lägg till teammedlem';
-  }
 }
 
 // ── EDIT TEAM MEMBER ────────────────────────────────────────
@@ -3417,99 +3330,16 @@ async function toggleMemberStatus(memberId, newStatus) {
   showToast(newStatus === 'inactive' ? 'Teammedlem pausad' : 'Teammedlem aktiverad');
 }
 
-// ── TEAM ONBOARDING ────────────────────────────────────────
-let currentOnboardingData = null;
-
-function showTeamOnboardingModal(member) {
-  const ob = member.team_onboarding ? (typeof member.team_onboarding === 'string' ? JSON.parse(member.team_onboarding) : member.team_onboarding) : {};
-  currentOnboardingData = Object.assign({ profile_photo: false, test_passed: false, handbook_read: false }, ob);
-  const name = escHtml(member.full_name || member.first_name + ' ' + (member.last_name || ''));
-  const allDone = currentOnboardingData.profile_photo && currentOnboardingData.test_passed && currentOnboardingData.handbook_read;
-
-  const testLabel = currentOnboardingData.test_passed
-    ? '✅ Kompetenstest godkänt (' + (currentOnboardingData.test_score || '?') + '/25) — ' + (currentOnboardingData.test_date ? new Date(currentOnboardingData.test_date).toLocaleDateString('sv-SE') : '')
-    : '⬜ Kompetenstest — ej genomfört';
-
-  const handbookLabel = currentOnboardingData.handbook_read
-    ? '✅ Städarhandboken läst — ' + (currentOnboardingData.handbook_date ? new Date(currentOnboardingData.handbook_date).toLocaleDateString('sv-SE') : '')
-    : '⬜ Städarhandboken — ej läst';
-
-  const html = `<div id="team-onboarding-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeTeamOnboardingModal()">
-    <div style="background:#fff;border-radius:var(--radius-lg,16px);padding:24px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto">
-      <h3 style="margin:0 0 16px;font-size:1.05rem">Onboarding: ${name}</h3>
-      <div style="display:flex;flex-direction:column;gap:12px;margin:16px 0">
-        <label style="display:flex;align-items:center;gap:8px">
-          <input type="checkbox" id="to-photo" ${currentOnboardingData.profile_photo ? 'checked' : ''} onchange="toggleOnboardingActivate()" style="width:18px;height:18px;accent-color:#0F6E56">
-          <span>Profilbild uppladdad</span>
-        </label>
-        <div style="padding:8px 12px;background:${currentOnboardingData.test_passed ? '#DCFCE7' : '#FEF3C7'};border-radius:10px;font-size:.85rem">
-          ${testLabel}
-        </div>
-        <div style="padding:8px 12px;background:${currentOnboardingData.handbook_read ? '#DCFCE7' : '#FEF3C7'};border-radius:10px;font-size:.85rem">
-          ${handbookLabel}
-        </div>
-      </div>
-      <p style="font-size:.78rem;color:var(--m,var(--gray-500));margin:16px 0 8px">Skicka länkarna nedan till teammedlemmen:</p>
-      <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0">
-        <button onclick="copyToClipboard('https://spick.se/stadare-test.html?member=${member.id}')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera testlänk</button>
-        <button onclick="copyToClipboard('https://spick.se/stadare-handbok.html?member=${member.id}')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera handbokslänk</button>
-      </div>
-      <button id="to-save-btn" onclick="saveTeamOnboarding('${member.id}')" class="btn bg" style="width:100%;margin-top:12px;min-height:44px">Spara</button>
-      <button id="to-activate-btn" onclick="activateTeamMember('${member.id}')" class="btn bg" style="width:100%;margin-top:8px;min-height:44px;${allDone ? '' : 'display:none'}">✅ Aktivera — alla steg klara</button>
-    </div>
-  </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function closeTeamOnboardingModal() {
-  const m = document.getElementById('team-onboarding-modal');
-  if (m) m.remove();
-  currentOnboardingData = null;
-}
-
-function toggleOnboardingActivate() {
-  const all = document.getElementById('to-photo').checked && currentOnboardingData && currentOnboardingData.test_passed && currentOnboardingData.handbook_read;
-  document.getElementById('to-activate-btn').style.display = all ? '' : 'none';
-}
-
-async function saveTeamOnboarding(memberId) {
-  const ob = currentOnboardingData || {};
-  ob.profile_photo = document.getElementById('to-photo').checked;
-  const { error } = await R.update('cleaners', {
-    team_onboarding: JSON.stringify(ob)
-  }, `id=eq.${memberId}`);
-  if (error) { showToast('Fel: ' + error.message); return; }
-  showToast('Uppdaterat');
-  closeTeamOnboardingModal();
-  renderTeam();
-}
-
-async function activateTeamMember(memberId) {
-  const { error } = await R.update('cleaners', {
-    is_approved: true,
-    is_active: true,
-    status: 'aktiv',
-    onboarding_completed: true
-  }, `id=eq.${memberId}`);
-  if (error) { showToast('Fel: ' + error.message); return; }
-  showToast('Teammedlem aktiverad! Nu bokbar på plattformen.');
-  closeTeamOnboardingModal();
-  renderTeam();
-}
-
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => showToast('Länk kopierad!')).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = text; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    showToast('Länk kopierad!');
+// ── TEAM INVITE ───────────────────────────────────────────
+function showInviteLink() {
+  if (!cleaner.company_id) { showToast('Inget företag kopplat'); return; }
+  var link = 'https://spick.se/registrera-stadare.html?invite=' + cleaner.company_id;
+  navigator.clipboard.writeText(link).then(function() {
+    showToast('Inbjudningslänk kopierad! Skicka den till din teammedlem.');
+  }).catch(function() {
+    prompt('Kopiera denna länk och skicka till din teammedlem:', link);
   });
 }
-
-// TODO: Team-betalning — använd företagsägarens stripe_account_id
-// När städaren har company_id, hämta företagsägaren (is_company_owner=true)
-// och använd dennes stripe_account_id för Stripe Connect-utbetalning.
-// Se supabase/functions/stripe-checkout/index.ts
 
 // Service Worker
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});

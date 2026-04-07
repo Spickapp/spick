@@ -696,6 +696,27 @@ let verifiedData = null;
 let currentStep = 1;
 let bankidSessionId = null;
 let bankidPollTimer = null;
+var _inviteCompanyId = new URLSearchParams(window.location.search).get('invite');
+
+if (_inviteCompanyId) {
+  fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + _inviteCompanyId + '&select=name', {
+    headers: { apikey: SUPA_KEY }
+  }).then(r => r.json()).then(data => {
+    if (data && data[0]) {
+      var banner = document.createElement('div');
+      banner.style.cssText = 'background:#DBEAFE;border:2px solid #3B82F6;border-radius:12px;padding:16px;margin:0 auto 16px;max-width:600px;text-align:center;font-size:.92rem;font-weight:600';
+      banner.innerHTML = '👥 Du bjuds in att gå med i <strong>' + data[0].name + '</strong>';
+      var form = document.querySelector('.reg-container') || document.querySelector('form') || document.querySelector('.container');
+      if (form) form.parentNode.insertBefore(banner, form);
+    }
+  });
+
+  var regTypeSection = document.querySelector('[data-i18n="lblRegTyp"]');
+  if (regTypeSection) {
+    var section = regTypeSection.closest('.field') || regTypeSection.parentElement;
+    if (section) section.style.display = 'none';
+  }
+}
 
 // ── STEP NAVIGATION ──────────────────────────
 function goToStep(n) {
@@ -871,6 +892,10 @@ async function submitRegistration() {
     cleanerData.company_name = document.getElementById('companyName').value.trim();
     cleanerData.org_number = document.getElementById('orgNumber').value.trim();
     cleanerData.team_size = parseInt(document.getElementById('teamSize').value) || 2;
+  }
+
+  if (_inviteCompanyId) {
+    cleanerData.invited_by_company_id = _inviteCompanyId;
   }
 
   try {
