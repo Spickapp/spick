@@ -824,6 +824,7 @@ async function submitRegistration() {
     home_address: address,
     home_lat: parseFloat(document.getElementById('cleaner-lat').value) || null,
     home_lng: parseFloat(document.getElementById('cleaner-lng').value) || null,
+    city: document.getElementById('cleaner-city')?.value || '',
     bio: bio,
     hourly_rate: parseInt(price) || 350,
     services: svcs,
@@ -959,6 +960,15 @@ document.getElementById('priceInput')?.addEventListener('input', function() {
                 document.getElementById('cleaner-lat').value = geo.lat;
                 document.getElementById('cleaner-lng').value = geo.lng;
               }
+              var parts = p.description.replace(/, Sverige$/, '').split(',');
+              var extractedCity = parts.length > 1 ? parts[parts.length - 1].trim() : '';
+              if (!document.getElementById('cleaner-city')) {
+                var ci = document.createElement('input');
+                ci.type = 'hidden';
+                ci.id = 'cleaner-city';
+                document.getElementById('cleaner-address').parentNode.appendChild(ci);
+              }
+              document.getElementById('cleaner-city').value = extractedCity;
             } catch(e) { console.error('Geocode error', e); }
           };
           list.appendChild(div);
