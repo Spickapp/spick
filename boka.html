@@ -977,9 +977,63 @@ function setCustomerType(type) {
     updatePrice();
   }
 
-  // Kontorsstädning: visa/dölj
+  // Tjänster: anpassa för kundtyp
+  var hemBtn = document.querySelector('[data-svc="Hemstädning"]');
   var kontorBtn = document.getElementById('svc-kontor');
-  if (kontorBtn) kontorBtn.style.display = type === 'foretag' ? 'block' : 'none';
+  var storBtn = document.querySelector('[data-svc="Storstädning"]');
+  var flyttBtn = document.querySelector('[data-svc="Flyttstädning"]');
+
+  if (type === 'foretag') {
+    if (hemBtn) hemBtn.style.display = 'none';
+    if (kontorBtn) kontorBtn.style.display = '';
+    // Uppdatera beskrivningar för företag
+    if (storBtn) { var d = storBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Grundlig kontorsstädning · 4–8h'; }
+    if (flyttBtn) { var d = flyttBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Kontorsflytt · 4–10h'; }
+    // Flytta POPULÄRAST till Kontorsstädning
+    var pop = document.querySelector('.svc-btn [style*="POPULÄRAST"], .svc-btn span[style*="absolute"]');
+    if (pop) pop.style.display = 'none';
+    if (kontorBtn && !kontorBtn.querySelector('.pop-badge')) {
+      var badge = document.createElement('span');
+      badge.className = 'pop-badge';
+      badge.style.cssText = 'position:absolute;top:-8px;right:-8px;background:#3B82F6;color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em';
+      badge.textContent = 'POPULÄRAST';
+      kontorBtn.style.position = 'relative';
+      kontorBtn.appendChild(badge);
+    }
+    // Byt KVM-label
+    var sqmLabel = document.getElementById('sqm-label') || document.querySelector('label[for="sqm"]');
+    if (!sqmLabel) { document.querySelectorAll('.f label').forEach(function(l) { if (l.textContent.includes('Bostadsyta') || l.textContent.includes('Kontorsyta')) sqmLabel = l; }); }
+    if (sqmLabel) sqmLabel.innerHTML = 'Kontorsyta (kvm) *';
+    // Om Hemstädning var vald, avmarkera
+    if (state.service === 'Hemstädning') {
+      state.service = '';
+      document.querySelectorAll('.svc-btn').forEach(function(b) { b.classList.remove('selected'); });
+    }
+  } else {
+    if (hemBtn) hemBtn.style.display = '';
+    if (kontorBtn) kontorBtn.style.display = 'none';
+    // Återställ beskrivningar
+    if (storBtn) { var d = storBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Grundlig, hela hemmet · 4–8h'; }
+    if (flyttBtn) { var d = flyttBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Godkänd vid besiktning · 4–10h'; }
+    // Återställ POPULÄRAST till Hemstädning
+    var pop = document.querySelector('.svc-btn [style*="absolute"]');
+    if (pop) pop.style.display = '';
+    var bizPop = document.querySelector('.pop-badge');
+    if (bizPop) bizPop.remove();
+    // Byt KVM-label tillbaka
+    var sqmLabel2 = null;
+    document.querySelectorAll('.f label').forEach(function(l) { if (l.textContent.includes('Kontorsyta') || l.textContent.includes('Bostadsyta')) sqmLabel2 = l; });
+    if (sqmLabel2) sqmLabel2.innerHTML = 'Bostadsyta (kvm) *';
+    // Om Kontorsstädning var vald, avmarkera
+    if (state.service === 'Kontorsstädning') {
+      state.service = '';
+      document.querySelectorAll('.svc-btn').forEach(function(b) { b.classList.remove('selected'); });
+    }
+  }
+
+  // Byt adress-placeholder
+  var addrInput = document.getElementById('step1-address');
+  if (addrInput) addrInput.placeholder = type === 'foretag' ? 'Kontorsadress, t.ex. Kungsgatan 10' : 'Gatunamn + nummer, t.ex. Kungsgatan 10A';
 
   // PNR-fält: visa/dölj (steg 3)
   var pnrWrap = document.getElementById('pnr-wrap');
@@ -1042,6 +1096,7 @@ function calcHours() {
   else h = Math.ceil(sqm / 35);
   if (state.service === 'Storstädning') h = Math.ceil(h * 1.7 * 2) / 2;
   else if (state.service === 'Flyttstädning') h = Math.ceil(h * 2.2 * 2) / 2;
+  else if (state.service === 'Kontorsstädning') h = Math.ceil(h * 1.3 * 2) / 2;
   else if (state.service === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
   state.hours = h;
   // Om datum redan valts: re-rendera tidsblocket med ny timåtgång
@@ -1075,6 +1130,8 @@ function calcHours() {
     const rutEst = Math.round(est * 0.5);
     document.getElementById('price-gross').textContent = est.toLocaleString('sv-SE');
     document.getElementById('price-after-rut').textContent = rutEst.toLocaleString('sv-SE');
+    var rutLine = document.getElementById('price-rut-line');
+    if (rutLine) rutLine.style.display = state.customerType === 'privat' ? '' : 'none';
     peEl.style.display = 'block';
   } else if (peEl) {
     peEl.style.display = 'none';
@@ -2452,6 +2509,10 @@ var serviceDetails = {
   'F\u00f6nsterputs': {
     items: ['F\u00f6nsterglas in- & utsida','F\u00f6nsterkarmar & b\u00e5gar','F\u00f6nsterbr\u00e4dor','Spr\u00f6js (om till\u00e4mpligt)'],
     note: 'Pris baseras p\u00e5 antal f\u00f6nster. Perfekt som till\u00e4gg till hemst\u00e4d.'
+  },
+  'Kontorsstädning': {
+    items: ['Dammsugning & moppning alla golv','Tömning av papperskorgar & sopor','Avtorkning av skrivbord & bord','Kök/pentry — diskbänk, bänkytor, kaffemaskin','Toaletter & badrum','Dammtorkning av fria ytor'],
+    note: 'Perfekt som löpande kontorstädning varje vecka eller varannan vecka.'
   }
 };
 
