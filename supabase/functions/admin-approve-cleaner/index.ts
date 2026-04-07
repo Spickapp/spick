@@ -246,7 +246,21 @@ serve(async (req) => {
         <p>Hej ${esc(name)}!</p>
         <p>Grattis — din ansökan är godkänd! Slutför din profil i dashboarden för att börja ta emot bokningar.</p>
         ${isCompany ? `<p>🏢 <strong>${esc(app.company_name)}</strong> är registrerat. Du kan lägga till teammedlemmar via din dashboard.</p>` : ""}
-        ${app.fskatt_needs_help ? `<p style="background:#EDE9FE;border-radius:12px;padding:12px 16px;font-size:14px;color:#5B21B6">📋 <strong>Nästa steg:</strong> Du behöver F-skattsedel för att ta emot bokningar. Vi hjälper dig — <a href="https://spick.se/bli-stadare.html#fskatt-guide" style="color:#7C3AED;font-weight:600">läs guiden</a> eller ring oss på 076-050 51 53.</p>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-skatt bekräftad — du är redo att ta emot bokningar!</p>` : ""}
+        ${app.fskatt_needs_help ? `
+<div style="background:#EDE9FE;border-radius:12px;padding:16px 20px;margin:16px 0;color:#5B21B6">
+  <p style="font-size:15px;font-weight:700;margin:0 0 8px">📋 Du behöver F-skatt — vi gör det enkelt!</p>
+  <p style="font-size:14px;margin:0 0 12px">Utan F-skatt kan du inte ta emot bokningar. Men det tar bara 10 minuter och är helt gratis. Så här gör du:</p>
+  <ol style="font-size:14px;line-height:1.8;padding-left:20px;margin:0 0 12px">
+    <li>Öppna <a href="https://www.verksamt.se/starta/registrera-foretag" style="color:#7C3AED;font-weight:600">verksamt.se</a> och logga in med BankID</li>
+    <li>Välj "Enskild näringsverksamhet"</li>
+    <li>Under verksamhet, skriv: <strong>Hemstädning och hushållsservice</strong></li>
+    <li>SNI-kod: <strong>81210</strong> (väljs automatiskt)</li>
+    <li>Kryssa i F-skatt (eller FA-skatt om du har en anställning vid sidan av)</li>
+    <li>Skicka in — klart!</li>
+  </ol>
+  <p style="font-size:13px;margin:0 0 8px">Svar från Skatteverket tar 1–5 arbetsdagar. Du kan slutföra din Spick-profil medan du väntar.</p>
+  <p style="font-size:13px;margin:0"><a href="https://spick.se/registrera-firma.html" style="color:#7C3AED;font-weight:600">📖 Vår kompletta steg-för-steg guide →</a> · Behöver du hjälp? Ring 076-050 51 53</p>
+</div>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-skatt bekräftad — du är redo att ta emot bokningar!</p>` : ""}
         ${card([
           ["Timpris", `${hr} kr/h`],
           ["Provision", "17% (du behåller 83%)"],
@@ -269,7 +283,21 @@ serve(async (req) => {
         <h2>Welcome to Spick! 🎉</h2>
         <p>Hi ${esc(name)}!</p>
         <p>Congratulations — your application has been approved! Complete your profile in the dashboard to start receiving bookings.</p>
-        ${app.fskatt_needs_help ? `<p style="background:#EDE9FE;border-radius:12px;padding:12px 16px;font-size:14px;color:#5B21B6">📋 <strong>Next step:</strong> You need an F-tax certificate to receive bookings. We'll help you — <a href="https://spick.se/bli-stadare.html#fskatt-guide" style="color:#7C3AED;font-weight:600">read the guide</a> or call us at 076-050 51 53.</p>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-tax confirmed — you're ready to receive bookings!</p>` : ""}
+        ${app.fskatt_needs_help ? `
+<div style="background:#EDE9FE;border-radius:12px;padding:16px 20px;margin:16px 0;color:#5B21B6">
+  <p style="font-size:15px;font-weight:700;margin:0 0 8px">📋 You need F-tax — we make it easy!</p>
+  <p style="font-size:14px;margin:0 0 12px">Without F-tax you cannot receive bookings. It takes 10 minutes and is free. Here's how:</p>
+  <ol style="font-size:14px;line-height:1.8;padding-left:20px;margin:0 0 12px">
+    <li>Open <a href="https://www.verksamt.se/starta/registrera-foretag" style="color:#7C3AED;font-weight:600">verksamt.se</a> and log in with BankID</li>
+    <li>Choose "Enskild näringsverksamhet" (Sole proprietorship)</li>
+    <li>Under business activity, write: <strong>Hemstädning och hushållsservice</strong></li>
+    <li>SNI code: <strong>81210</strong> (selected automatically)</li>
+    <li>Check F-skatt (or FA-skatt if you have employment on the side)</li>
+    <li>Submit — done!</li>
+  </ol>
+  <p style="font-size:13px;margin:0 0 8px">Response from Skatteverket takes 1–5 business days. You can complete your Spick profile while waiting.</p>
+  <p style="font-size:13px;margin:0"><a href="https://spick.se/registrera-firma.html" style="color:#7C3AED;font-weight:600">📖 Our complete step-by-step guide →</a> · Need help? Call 076-050 51 53</p>
+</div>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-tax confirmed — you're ready to receive bookings!</p>` : ""}
         ${card([
           ["Hourly rate", `${hr} kr/h`],
           ["Commission", "17% (you keep 83%)"],
@@ -293,7 +321,21 @@ serve(async (req) => {
           <h2>مرحباً بك في Spick! 🎉</h2>
           <p>مرحباً ${esc(name)}!</p>
           <p>تهانينا — تمت الموافقة على طلبك. أكمل ملفك الشخصي في لوحة التحكم لبدء استقبال الحجوزات.</p>
-          ${app.fskatt_needs_help ? `<p style="background:#EDE9FE;border-radius:12px;padding:12px 16px;font-size:14px;color:#5B21B6">📋 <strong>الخطوة التالية:</strong> تحتاج شهادة ضريبة F لاستقبال الحجوزات. سنساعدك — <a href="https://spick.se/bli-stadare.html#fskatt-guide" style="color:#7C3AED;font-weight:600">اقرأ الدليل</a> أو اتصل بنا: 076-050 51 53</p>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ تم تأكيد ضريبة F — أنت جاهز لاستقبال الحجوزات!</p>` : ""}
+          ${app.fskatt_needs_help ? `
+<div dir="rtl" style="background:#EDE9FE;border-radius:12px;padding:16px 20px;margin:16px 0;color:#5B21B6;text-align:right">
+  <p style="font-size:15px;font-weight:700;margin:0 0 8px">📋 تحتاج ضريبة F — سنجعل الأمر سهلاً!</p>
+  <p style="font-size:14px;margin:0 0 12px">بدون ضريبة F لا يمكنك استقبال الحجوزات. يستغرق ١٠ دقائق فقط ومجاني تماماً:</p>
+  <ol style="font-size:14px;line-height:1.8;padding-right:20px;margin:0 0 12px">
+    <li>افتح <a href="https://www.verksamt.se/starta/registrera-foretag" style="color:#7C3AED;font-weight:600">verksamt.se</a> وسجل الدخول بـ BankID</li>
+    <li>اختر "Enskild näringsverksamhet"</li>
+    <li>تحت النشاط التجاري، اكتب: <strong>Hemstädning och hushållsservice</strong></li>
+    <li>رمز SNI: <strong>81210</strong> (يتم اختياره تلقائياً)</li>
+    <li>حدد F-skatt (أو FA-skatt إذا كان لديك وظيفة بجانب ذلك)</li>
+    <li>أرسل — انتهى!</li>
+  </ol>
+  <p style="font-size:13px;margin:0 0 8px">الرد من Skatteverket يستغرق ١-٥ أيام عمل. يمكنك إكمال ملفك في Spick أثناء الانتظار.</p>
+  <p style="font-size:13px;margin:0"><a href="https://spick.se/registrera-firma.html" style="color:#7C3AED;font-weight:600">📖 دليلنا الكامل خطوة بخطوة →</a> · تحتاج مساعدة؟ اتصل 076-050 51 53</p>
+</div>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ تم تأكيد ضريبة F — أنت جاهز لاستقبال الحجوزات!</p>` : ""}
           ${card([
             ["سعر الساعة", `${hr} كرونة/ساعة`],
             ["العمولة", "١٧٪ (تحتفظ بـ ٨٣٪)"],
