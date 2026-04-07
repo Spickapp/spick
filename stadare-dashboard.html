@@ -3418,24 +3418,41 @@ async function toggleMemberStatus(memberId, newStatus) {
 }
 
 // ── TEAM ONBOARDING ────────────────────────────────────────
+let currentOnboardingData = null;
+
 function showTeamOnboardingModal(member) {
-  let ob = { profile_photo: false, test_passed: false, handbook_read: false };
-  try { ob = Object.assign(ob, JSON.parse(member.team_onboarding || '{}')); } catch(e) {}
+  const ob = member.team_onboarding ? (typeof member.team_onboarding === 'string' ? JSON.parse(member.team_onboarding) : member.team_onboarding) : {};
+  currentOnboardingData = Object.assign({ profile_photo: false, test_passed: false, handbook_read: false }, ob);
   const name = escHtml(member.full_name || member.first_name + ' ' + (member.last_name || ''));
-  const allDone = ob.profile_photo && ob.test_passed && ob.handbook_read;
+  const allDone = currentOnboardingData.profile_photo && currentOnboardingData.test_passed && currentOnboardingData.handbook_read;
+
+  const testLabel = currentOnboardingData.test_passed
+    ? '✅ Kompetenstest godkänt (' + (currentOnboardingData.test_score || '?') + '/25) — ' + (currentOnboardingData.test_date ? new Date(currentOnboardingData.test_date).toLocaleDateString('sv-SE') : '')
+    : '⬜ Kompetenstest — ej genomfört';
+
+  const handbookLabel = currentOnboardingData.handbook_read
+    ? '✅ Städarhandboken läst — ' + (currentOnboardingData.handbook_date ? new Date(currentOnboardingData.handbook_date).toLocaleDateString('sv-SE') : '')
+    : '⬜ Städarhandboken — ej läst';
 
   const html = `<div id="team-onboarding-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeTeamOnboardingModal()">
     <div style="background:#fff;border-radius:var(--radius-lg,16px);padding:24px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto">
       <h3 style="margin:0 0 16px;font-size:1.05rem">Onboarding: ${name}</h3>
-      <div class="onboarding-checklist" style="display:flex;flex-direction:column;gap:12px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer"><input type="checkbox" id="to-photo" ${ob.profile_photo ? 'checked' : ''} onchange="toggleOnboardingActivate()"> Profilbild uppladdad</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer"><input type="checkbox" id="to-test" ${ob.test_passed ? 'checked' : ''} onchange="toggleOnboardingActivate()"> Kompetenstest godkänt</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer"><input type="checkbox" id="to-handbook" ${ob.handbook_read ? 'checked' : ''} onchange="toggleOnboardingActivate()"> Städarhandboken läst</label>
+      <div style="display:flex;flex-direction:column;gap:12px;margin:16px 0">
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="to-photo" ${currentOnboardingData.profile_photo ? 'checked' : ''} onchange="toggleOnboardingActivate()" style="width:18px;height:18px;accent-color:#0F6E56">
+          <span>Profilbild uppladdad</span>
+        </label>
+        <div style="padding:8px 12px;background:${currentOnboardingData.test_passed ? '#DCFCE7' : '#FEF3C7'};border-radius:10px;font-size:.85rem">
+          ${testLabel}
+        </div>
+        <div style="padding:8px 12px;background:${currentOnboardingData.handbook_read ? '#DCFCE7' : '#FEF3C7'};border-radius:10px;font-size:.85rem">
+          ${handbookLabel}
+        </div>
       </div>
       <p style="font-size:.78rem;color:var(--m,var(--gray-500));margin:16px 0 8px">Skicka länkarna nedan till teammedlemmen:</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0">
-        <button onclick="copyToClipboard('https://spick.se/stadare-test.html')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera länk: Kompetenstest</button>
-        <button onclick="copyToClipboard('https://spick.se/stadare-handbok.html')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera länk: Städarhandboken</button>
+        <button onclick="copyToClipboard('https://spick.se/stadare-test.html?member=${member.id}')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera testlänk</button>
+        <button onclick="copyToClipboard('https://spick.se/stadare-handbok.html?member=${member.id}')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera handbokslänk</button>
       </div>
       <button id="to-save-btn" onclick="saveTeamOnboarding('${member.id}')" class="btn bg" style="width:100%;margin-top:12px;min-height:44px">Spara</button>
       <button id="to-activate-btn" onclick="activateTeamMember('${member.id}')" class="btn bg" style="width:100%;margin-top:8px;min-height:44px;${allDone ? '' : 'display:none'}">✅ Aktivera — alla steg klara</button>
@@ -3447,24 +3464,22 @@ function showTeamOnboardingModal(member) {
 function closeTeamOnboardingModal() {
   const m = document.getElementById('team-onboarding-modal');
   if (m) m.remove();
+  currentOnboardingData = null;
 }
 
 function toggleOnboardingActivate() {
-  const all = document.getElementById('to-photo').checked && document.getElementById('to-test').checked && document.getElementById('to-handbook').checked;
+  const all = document.getElementById('to-photo').checked && currentOnboardingData && currentOnboardingData.test_passed && currentOnboardingData.handbook_read;
   document.getElementById('to-activate-btn').style.display = all ? '' : 'none';
 }
 
 async function saveTeamOnboarding(memberId) {
-  const onboarding = {
-    profile_photo: document.getElementById('to-photo').checked,
-    test_passed: document.getElementById('to-test').checked,
-    handbook_read: document.getElementById('to-handbook').checked
-  };
+  const ob = currentOnboardingData || {};
+  ob.profile_photo = document.getElementById('to-photo').checked;
   const { error } = await R.update('cleaners', {
-    team_onboarding: JSON.stringify(onboarding)
+    team_onboarding: JSON.stringify(ob)
   }, `id=eq.${memberId}`);
   if (error) { showToast('Fel: ' + error.message); return; }
-  showToast('Onboarding uppdaterad');
+  showToast('Uppdaterat');
   closeTeamOnboardingModal();
   renderTeam();
 }

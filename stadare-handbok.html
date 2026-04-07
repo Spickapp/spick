@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <script src="js/config.js"></script>
+<script src="js/supabase.min.js"></script>
 <script src="js/components.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -358,6 +359,50 @@ function googleTranslateElementInit() {
 </div>
 
 <footer></footer>
+
+<div id="handbook-confirm" style="display:none;max-width:680px;margin:32px auto;padding:0 16px">
+  <div style="background:#F0FAF6;border:2px solid #0F6E56;border-radius:16px;padding:24px;text-align:center">
+    <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Har du läst klart?</h3>
+    <p style="font-size:.88rem;color:#6B6960;margin-bottom:16px">Genom att trycka nedan bekräftar du att du läst och förstått Städarhandboken.</p>
+    <button id="handbook-confirm-btn" onclick="confirmHandbook()" style="background:#0F6E56;color:#fff;border:none;padding:14px 32px;border-radius:99px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit">✅ Jag har läst Städarhandboken</button>
+    <p id="handbook-done-msg" style="display:none;color:#0F6E56;font-weight:700;font-size:.95rem;margin-top:12px">✅ Registrerat! Din teamägare kan se att du läst handboken.</p>
+  </div>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const teamMemberId = urlParams.get('member');
+
+if (teamMemberId) {
+  document.getElementById('handbook-confirm').style.display = 'block';
+}
+
+async function confirmHandbook() {
+  if (!teamMemberId) return;
+  const btn = document.getElementById('handbook-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sparar...';
+  try {
+    const sb = window.SPICK?.supabase || supabase.createClient(
+      'https://urjeijcncsyuletprydy.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MTMxNjYsImV4cCI6MjA1ODM4OTE2Nn0.a0KNSGEjBHFShBQ7GnPas2NxqE1ZKNKeqVXqwBqBsYo'
+    );
+    const { data: cleaner } = await sb.from('cleaners').select('team_onboarding').eq('id', teamMemberId).single();
+    if (cleaner) {
+      const onboarding = cleaner.team_onboarding ? JSON.parse(cleaner.team_onboarding) : {};
+      onboarding.handbook_read = true;
+      onboarding.handbook_date = new Date().toISOString();
+      await sb.from('cleaners').update({ team_onboarding: JSON.stringify(onboarding) }).eq('id', teamMemberId);
+    }
+    btn.style.display = 'none';
+    document.getElementById('handbook-done-msg').style.display = 'block';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✅ Jag har läst Städarhandboken';
+    alert('Fel: ' + e.message);
+  }
+}
+</script>
 
 <script>
 function switchLang(lang, btn) {
