@@ -25,7 +25,7 @@
 
 <!-- Schema.org JobPosting -->
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"JobPosting","title":"Städare / Hemstädare","description":"Jobba som självständig städare via Spick. Sätt ditt eget pris, välj dina arbetstider, behåll 83% av intäkterna. Verifierade kunder. Vi hjälper med F-skatt.","datePosted":"2026-03-01","validThrough":"2027-03-01","employmentType":"CONTRACTOR","hiringOrganization":{"@type":"Organization","name":"Spick","sameAs":"https://spick.se","logo":"https://spick.se/assets/og-image.png"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressCountry":"SE"}},"baseSalary":{"@type":"MonetaryAmount","currency":"SEK","value":{"@type":"QuantitativeValue","minValue":290,"maxValue":450,"unitText":"HOUR"}},"qualifications":"F-skattsedel krävs. Erfarenhet av hemstädning meriterande.","applicationContact":{"@type":"ContactAction","url":"https://spick.se/bli-stadare.html"}}
+{"@context":"https://schema.org","@type":"JobPosting","title":"Städare / Hemstädare","description":"Jobba som självständig städare via Spick. Sätt ditt eget pris, välj dina arbetstider, behåll 83% av intäkterna. Verifierade kunder. Vi hjälper med F-skatt.","datePosted":"2026-03-01","validThrough":"2027-03-01","employmentType":"CONTRACTOR","hiringOrganization":{"@type":"Organization","name":"Spick","sameAs":"https://spick.se","logo":"https://spick.se/assets/og-image.png"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressCountry":"SE"}},"baseSalary":{"@type":"MonetaryAmount","currency":"SEK","value":{"@type":"QuantitativeValue","minValue":250,"maxValue":600,"unitText":"HOUR"}},"qualifications":"F-skattsedel krävs. Erfarenhet av hemstädning meriterande.","applicationContact":{"@type":"ContactAction","url":"https://spick.se/bli-stadare.html"}}
 </script>
 <!-- Schema.org FAQPage -->
 <script type="application/ld+json">
@@ -370,18 +370,18 @@ function googleTranslateElementInit() {
     <div class="calc-inner">
       <div class="calc-controls">
         <label>Timpris: <strong id="c-rate-show">350 kr/h</strong></label>
-        <input type="range" class="calc-slider" id="c-rate" min="290" max="450" step="10" value="350" oninput="calcEarnings()">
+        <input type="range" class="calc-slider" id="c-rate" min="250" max="600" step="10" value="350" oninput="calcEarnings()">
         <label>Timmar per vecka: <strong id="c-hours-show">20h</strong></label>
         <input type="range" class="calc-slider" id="c-hours" min="5" max="40" step="1" value="20" oninput="calcEarnings()">
       </div>
       <div class="calc-result">
         <div class="calc-big" id="c-monthly">25 157 kr</div>
         <div class="calc-lbl">per månad efter provision</div>
-        <div style="font-size:.68rem;opacity:.4;margin-top:.25rem">Före skatt (~30%). Spick tar 17% provision.</div>
+        <div style="font-size:.68rem;opacity:.4;margin-top:.25rem">Före skatt & egenavgifter. Spick tar 17% provision.</div>
         <div style="border-top:1px solid rgba(255,255,255,.1);margin-top:1rem;padding-top:1rem">
           <div class="calc-lbl"><strong id="c-weekly" style="color:#fff;font-size:1rem">5 810 kr</strong> <span>per vecka</span></div>
         </div>
-        <div class="calc-detail" id="c-detail">Brutto: 7 000 kr/v · Spicks del: 1 190 kr/v · Du tjänar <strong>291 kr/h</strong><br>Uppskattat efter skatt (~30%): <strong>17 610 kr/mån</strong> på kontot</div>
+        <div class="calc-detail" id="c-detail">Brutto: 7 000 kr/v · Spicks del: 1 190 kr/v · Du tjänar <strong>291 kr/h</strong><br>Egenavgifter (~29%): −7 290 kr/mån<br>Kommunalskatt (~31%): −5 539 kr/mån<br>Uppskattat på kontot: <strong>12 328 kr/mån</strong></div>
       </div>
     </div>
   </div>
@@ -512,6 +512,13 @@ function calcEarnings() {
   const netMonthly = Math.round(netWeekly * 4.33);
   const spickWeekly = Math.round(grossWeekly * commission);
   const netHourly = Math.round(rate * (1 - commission));
+
+  // Enskild firma: egenavgifter ~29% + kommunalskatt ~31%
+  const egenavgifter = Math.round(netMonthly * 0.2897);
+  const taxableIncome = netMonthly - egenavgifter;
+  const kommunalskatt = Math.round(taxableIncome * 0.31);
+  const netAfterTax = netMonthly - egenavgifter - kommunalskatt;
+
   document.getElementById('c-rate-show').textContent = rate + ' kr/h';
   document.getElementById('c-hours-show').textContent = hours + 'h';
   document.getElementById('c-weekly').textContent = netWeekly.toLocaleString('sv-SE') + ' kr';
@@ -521,7 +528,11 @@ function calcEarnings() {
   bigEl.classList.add('bump');
   setTimeout(() => bigEl.classList.remove('bump'), 150);
   const detail = document.getElementById('c-detail');
-  if (detail) detail.innerHTML = 'Brutto: ' + grossWeekly.toLocaleString('sv-SE') + ' kr/v · Spicks del: ' + spickWeekly.toLocaleString('sv-SE') + ' kr/v · Du tjänar <strong>' + netHourly + ' kr/h</strong><br>Uppskattat efter skatt (~30%): <strong>' + Math.round(netMonthly * 0.7).toLocaleString('sv-SE') + ' kr/mån</strong> på kontot';
+  if (detail) detail.innerHTML =
+    'Brutto: ' + grossWeekly.toLocaleString('sv-SE') + ' kr/v \u00b7 Spicks del: ' + spickWeekly.toLocaleString('sv-SE') + ' kr/v \u00b7 Du tj\u00e4nar <strong>' + netHourly + ' kr/h</strong>' +
+    '<br>Egenavgifter (~29%): \u2212' + egenavgifter.toLocaleString('sv-SE') + ' kr/m\u00e5n' +
+    '<br>Kommunalskatt (~31%): \u2212' + kommunalskatt.toLocaleString('sv-SE') + ' kr/m\u00e5n' +
+    '<br>Uppskattat p\u00e5 kontot: <strong>' + netAfterTax.toLocaleString('sv-SE') + ' kr/m\u00e5n</strong>';
 }
 
 /* ── FAQ ─────────────────────────────────── */
