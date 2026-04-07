@@ -702,6 +702,11 @@ function validateStep1() {
     alert('Välj din adress från listan så vi kan hitta kunder nära dig.');
     return;
   }
+  if (!/\d/.test(addr)) {
+    alert('Ange gatunummer i din adress, t.ex. Klippgatan 8A, Solna');
+    document.getElementById('cleaner-address').focus();
+    return;
+  }
   // Validate company fields
   if (_regType === 'foretag') {
     var cn = document.getElementById('companyName').value.trim();
@@ -926,6 +931,21 @@ document.getElementById('priceInput')?.addEventListener('input', function() {
           div.textContent = p.description.replace(/, Sverige$/, '');
           div.onclick = async function() {
             input.value = p.description.replace(/, Sverige$/, '');
+            var short = p.description.replace(/, Sverige$/, '');
+            var hintEl = document.getElementById('addr-hint-reg');
+            if (!hintEl) {
+              hintEl = document.createElement('div');
+              hintEl.id = 'addr-hint-reg';
+              hintEl.style.cssText = 'font-size:.85rem;margin-top:6px;padding:8px 12px;color:#D97706;background:#FEF3C7;border-radius:8px';
+              document.getElementById('cleaner-address').parentNode.appendChild(hintEl);
+            }
+            if (!/\d/.test(short)) {
+              var streetName = short.split(',')[0].trim();
+              hintEl.innerHTML = '\u26a0\ufe0f Gl\u00f6m inte gatunumret! T.ex. <strong>' + streetName + ' 5</strong>';
+              hintEl.style.display = 'block';
+            } else {
+              hintEl.style.display = 'none';
+            }
             list.innerHTML = '';
             try {
               var geoRes = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
