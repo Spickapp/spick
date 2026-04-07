@@ -1881,13 +1881,16 @@ async function addrSearch(q) {
   // Om adress redan valts: tillåt små redigeringar (lägga till A/B/C) utan ny sökning
   // Om kunden ändrar mer (>3 tecken skillnad) → nollställ och sök igen
   if (state.lat && state.lng) {
-    var diff = Math.abs(q.length - (state.address || '').length);
-    if (diff <= 3 && q.length >= (state.address || '').length - 1) {
+    var orig = state._originalAddress || state.address || '';
+    var diff = Math.abs(q.length - orig.length);
+    if (diff <= 3 && q.length >= orig.length - 1) {
       state.address = q;
       return;
     }
+    // Kunden har ändrat adressen väsentligt — nollställ och sök igen
     state.lat = null;
     state.lng = null;
+    state._originalAddress = null;
   }
   clearTimeout(addrTimer);
   const list = (state.step === 1) ? document.getElementById('addr-dd') : document.getElementById('addr-list');
@@ -1919,6 +1922,7 @@ async function pickAddr(val, placeId) {
   var _s1 = document.getElementById('step1-address');
   if (_s1) _s1.value = short;
   state.address = short;
+  state._originalAddress = short;
   var hint = document.getElementById('addr-hint');
   if (hint) {
     if (!/\d/.test(short)) {
