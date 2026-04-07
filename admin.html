@@ -437,6 +437,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <input class="search-input" id="cleaner-search" placeholder="Sök namn, stad, e-post..." oninput="renderCleaners()">
           <select class="filter" id="cleaner-filter" onchange="renderCleaners()">
             <option value="">Alla städer</option>
+            <option value="onboarding">🚀 Onboarding</option>
           </select>
           <button class="btn btn-outline btn-sm" onclick="console.log('Uppdatera clicked');this.textContent='⏳ Laddar...';loadAll().then(()=>{renderCleaners();this.textContent='↻ Uppdatera';console.log('Cleaners refreshed:',data.cleaners.length)}).catch(e=>{this.textContent='↻ Uppdatera';console.error(e)})">↻ Uppdatera</button>
         </div>
@@ -1784,7 +1785,8 @@ function renderCleaners() {
   const f = document.getElementById('cleaner-filter').value;
   let filtered = data.cleaners; // Visa ALLA städare (ej bara godkända)
   if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''} ${c.status||''}`.toLowerCase().includes(q));
-  if (f) filtered = filtered.filter(c => c.city === f);
+  if (f === 'onboarding') filtered = filtered.filter(c => c.status === 'onboarding');
+  else if (f) filtered = filtered.filter(c => c.city === f);
 
   // Populate city filter
   const cities = [...new Set(data.cleaners.map(c => c.city).filter(Boolean))];
@@ -1801,6 +1803,11 @@ function renderCleaners() {
     let statusBadge = '<span class="badge green"><span class="dot"></span> Aktiv</span>';
     if (isSuspended) statusBadge = '<span class="badge red">⛔ Avstängd</span>';
     else if (isPaused) statusBadge = '<span class="badge yellow">⏸ Pausad</span>';
+    else if (c.status === 'onboarding') {
+      var _obSteps = [!!c.avatar_url, !!(c.bio && c.bio.length > 5), !!(c.availability_schedule), c.stripe_onboarding_status === 'complete'];
+      var _obDone = _obSteps.filter(Boolean).length;
+      statusBadge = '<span class="badge" style="background:#DBEAFE;color:#1E40AF">\ud83d\ude80 Onboarding ' + _obDone + '/4</span>';
+    }
     
     const svcsDisplay = Array.isArray(c.services) ? c.services.map(s => escHtml(s)).join(', ') : escHtml(c.services || '–');
     const hasFskatt = c.fskatt_confirmed || c.verified || c.has_fskatt;
@@ -2607,9 +2614,23 @@ function showCleanerDetail(id) {
     <!-- Status-banner -->
     <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
       ${isSuspended ? 'background:#FEE2E2;color:#991B1B' : isPaused ? 'background:#FEF3C7;color:#92400E' : 'background:#D1FAE5;color:#065F46'}">
-      ${isSuspended ? '⛔ Konto avstängt' : isPaused ? '⏸ Konto pausat – inga nya bokningar' : '✅ Konto aktivt'}
+      ${isSuspended ? '⛔ Konto avstängt' : isPaused ? '⏸ Konto pausat – inga nya bokningar' : c.status === 'onboarding' ? '🚀 Onboarding – profilen är inte synlig för kunder ännu' : '✅ Konto aktivt'}
     </div>
-    
+    ${c.status === 'onboarding' ? `
+    <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:.82rem;font-weight:700;color:#1E40AF;margin-bottom:10px">Onboarding-progress</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.82rem">
+        <div>${c.avatar_url ? '✅' : '❌'} Profilbild</div>
+        <div>${c.bio && c.bio.length > 5 ? '✅' : '❌'} Bio</div>
+        <div>${c.availability_schedule ? '✅' : '❌'} Veckoschema</div>
+        <div>${c.stripe_onboarding_status === 'complete' ? '✅' : '❌'} Stripe bankkonto</div>
+      </div>
+      <div style="font-size:.72rem;color:#6B6960;margin-top:8px">
+        Senaste aktivitet: ${c.updated_at ? new Date(c.updated_at).toLocaleString('sv-SE') : 'Aldrig loggat in'}
+        ${c.created_at ? ' · Godkänd: ' + new Date(c.created_at).toLocaleDateString('sv-SE') : ''}
+      </div>
+    </div>` : ''}
+
     <!-- Profilbild -->
     <div style="text-align:center;margin-bottom:1rem">
       <div id="admin-avatar-preview" style="width:80px;height:80px;border-radius:50%;margin:0 auto .5rem;overflow:hidden;background:#E1F5EE;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;border:3px solid #6EE7B7">
