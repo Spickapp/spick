@@ -136,7 +136,7 @@ serve(async (req) => {
         is_approved: true,
         auth_user_id: authUserId,
         tier: "new",
-        commission_rate: 0.17,
+        commission_rate: 17,
         status: "onboarding",
         slug,
 
@@ -185,7 +185,7 @@ serve(async (req) => {
             name: app.company_name,
             org_number: app.org_number || null,
             owner_cleaner_id: cleanerId,
-            commission_rate: 0.17,
+            commission_rate: 17,
           }).select("id").single();
 
           if (compErr || !company) {
