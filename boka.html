@@ -681,16 +681,11 @@ let state = {
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   // Återställ booking state efter refresh
-  try {
-    var saved = sessionStorage.getItem('spick_booking');
-    if (saved) {
-      var s = JSON.parse(saved);
-      if (s.step > 1 && s.service && s.date) {
-        Object.assign(state, s);
-        setStep(s.step);
-      }
-    }
-  } catch(e) {}
+  var saved = sessionStorage.getItem('spick_booking');
+  var savedState = null;
+  if (saved) {
+    try { savedState = JSON.parse(saved); } catch(e) {}
+  }
 
   const p = new URLSearchParams(location.search);
   // Förifyll om städare angetts i URL (bakåtkompabilitet)
@@ -704,6 +699,53 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cleanerName = preCleanerName;
     state.cleanerRate = Math.min(Math.max(preRate, 100), 1000); // Clamp rate 100-1000
   }
+  // Kombinera sparad state med pre-vald städare
+  if (isUUID && savedState && savedState.service && savedState.date) {
+    // Samma flik — sessionStorage har data
+    Object.assign(state, savedState);
+    state.cleanerId = preCleanerId;
+    state.cleanerName = preCleanerName;
+    state.cleanerRate = Math.min(Math.max(preRate, 100), 1000);
+    setTimeout(function() {
+      if (state.service) selectService(state.service, '', '', '');
+      if (state.sqm) { var sq = document.getElementById('sqm'); if (sq) { sq.value = state.sqm; calcHours(); } }
+      if (state.address) {
+        var a1 = document.getElementById('step1-address'); if (a1) a1.value = state.address;
+        var a2 = document.getElementById('address'); if (a2) a2.value = state.address;
+      }
+    }, 100);
+  } else if (isUUID && !savedState) {
+    // Ny flik — kolla localStorage
+    try {
+      var cross = localStorage.getItem('spick_booking_cross');
+      if (cross) {
+        var cs = JSON.parse(cross);
+        if (cs.ts && (Date.now() - cs.ts) < 30 * 60 * 1000 && cs.service && cs.date) {
+          state.service = cs.service;
+          state.sqm = cs.sqm;
+          state.hours = cs.hours;
+          state.address = cs.address;
+          state.lat = cs.lat;
+          state.lng = cs.lng;
+          state.date = cs.date;
+          state.time = cs.time;
+          setTimeout(function() {
+            if (state.service) selectService(state.service, '', '', '');
+            if (state.sqm) { var sq = document.getElementById('sqm'); if (sq) { sq.value = state.sqm; calcHours(); } }
+            if (state.address) {
+              var a1 = document.getElementById('step1-address'); if (a1) a1.value = state.address;
+              var a2 = document.getElementById('address'); if (a2) a2.value = state.address;
+            }
+          }, 100);
+        }
+      }
+    } catch(e) {}
+  } else if (savedState && savedState.step > 1 && savedState.service && savedState.date && !isUUID) {
+    // Vanlig restore (samma flik, ingen pre-vald städare)
+    Object.assign(state, savedState);
+    setStep(savedState.step);
+  }
+
   // Referral-kod från delningslänk
   const refCode = p.get('ref');
   if (refCode && /^[A-Za-z0-9]{4,16}$/.test(refCode)) {
@@ -800,6 +842,16 @@ function setStep(n) {
       time: state.time, hours: state.hours, address: state.address,
       sqm: state.sqm, cleanerId: state.cleanerId,
       cleanerName: state.cleanerName, cleanerRate: state.cleanerRate
+    }));
+  } catch(e) {}
+  try {
+    localStorage.setItem('spick_booking_cross', JSON.stringify({
+      step: n, service: state.service, date: state.date,
+      time: state.time, hours: state.hours, address: state.address,
+      sqm: state.sqm, lat: state.lat, lng: state.lng,
+      cleanerId: state.cleanerId,
+      cleanerName: state.cleanerName, cleanerRate: state.cleanerRate,
+      ts: Date.now()
     }));
   } catch(e) {}
 }
@@ -2151,6 +2203,7 @@ async function doBook() {
     const { url } = await bcRes.json();
     if (url) {
       sessionStorage.removeItem('spick_booking');
+      localStorage.removeItem('spick_booking_cross');
       window.location.href = url;
     } else {
       throw new Error('Ingen checkout-URL');
