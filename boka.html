@@ -1111,7 +1111,7 @@ function calcHours() {
     else if (sqm <= 200) h = 3;
     else if (sqm <= 300) h = 4;
     else if (sqm <= 400) h = 5;
-    else h = Math.ceil(sqm / 80 * 2) / 2;
+    else h = Math.ceil(sqm / 150 * 2) / 2;
   }
   else if (state.service === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
   state.hours = h;
@@ -1137,7 +1137,7 @@ function calcHours() {
   document.getElementById('hours-display').textContent = h + ' timmar';
   let notice = document.getElementById('large-apt-notice');
   if (!notice) { notice = document.createElement('div'); notice.id = 'large-apt-notice'; notice.style.cssText = 'margin-top:.5rem;padding:.5rem .75rem;background:#fff8e6;border:1px solid #f0d060;border-radius:8px;font-size:.85rem;color:#7a6200;display:none;'; document.getElementById('hours-display').parentElement.appendChild(notice); }
-  if (state.sqm >= 150) { notice.textContent = '\u2139\ufe0f Stor bostad \u2013 exakt tid bekr\u00e4ftas efter bokning'; notice.style.display = 'block'; } else { notice.style.display = 'none'; }
+  if (state.sqm >= 150) { notice.textContent = '\u2139\ufe0f ' + (state.customerType === 'foretag' ? 'Stort kontor' : 'Stor bostad') + ' \u2013 exakt tid bekr\u00e4ftas efter bokning'; notice.style.display = 'block'; } else { notice.style.display = 'none'; }
   // Visa prisuppskattning direkt i steg 1
   const peEl = document.getElementById('price-estimate');
   if (peEl && state.sqm && state.service) {
