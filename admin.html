@@ -2455,7 +2455,7 @@ function exportBookingsCSV() {
   if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.email||''} ${b.service_type||b.service||''} ${b.city||''}`.toLowerCase().includes(q));
   if (f) filtered = filtered.filter(b => b.payment_status === f);
   
-  const headers = ['Kund', 'E-post', 'Telefon', 'Tjänst', 'Timmar', 'Datum', 'Tid', 'Stad', 'Adress', 'Belopp', 'RUT', 'Status', 'Städare', 'Betalsätt'];
+  const headers = ['Kund', 'E-post', 'Telefon', 'Tjänst', 'Timmar', 'Datum', 'Tid', 'Stad', 'Adress', 'Belopp', 'RUT', 'Status', 'Städare', 'Betalsätt', 'Kundtyp', 'Företag', 'Org.nr', 'Fakturareferens'];
   const rows = filtered.map(b => [
     b.customer_name || b.name || '',
     b.customer_email || b.email || '',
@@ -2470,7 +2470,11 @@ function exportBookingsCSV() {
     b.rut ? 'Ja' : 'Nej',
     b.payment_status || '',
     b.cleaner_name || '',
-    b.payment_method || ''
+    b.payment_method || '',
+    b.customer_type || 'privat',
+    b.business_name || '',
+    b.business_org_number || '',
+    b.business_reference || ''
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
   
   const csv = [headers.join(','), ...rows].join('\n');

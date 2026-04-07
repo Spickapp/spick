@@ -173,7 +173,8 @@ serve(async (req) => {
       await sendEmail(ADMIN, `🔔 NY BOKNING: ${esc(name)} – ${esc(service)} ${date}`, wrap(`
         <h2>Ny bokning inkommen!</h2>
         <div class="card">
-          <div class="row"><span class="lbl">Kund</span><span class="val">${esc(name)}</span></div>
+          <div class="row"><span class="lbl">Kund</span><span class="val">${esc(name)}${r.customer_type === "foretag" ? " 🏢" : ""}</span></div>
+          ${r.customer_type === "foretag" && r.business_name ? `<div class="row"><span class="lbl">Företag</span><span class="val">${esc(r.business_name)}${r.business_org_number ? " · " + esc(r.business_org_number) : ""}</span></div>` : ""}
           <div class="row"><span class="lbl">Email</span><span class="val">${esc(email)}</span></div>
           <div class="row"><span class="lbl">Telefon</span><span class="val">${phone}</span></div>
           <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(service)}</span></div>
@@ -202,7 +203,8 @@ serve(async (req) => {
           <h2>Du har fått en ny bekräftad bokning! 🎉</h2>
           <p>Hej ${cname.split(" ")[0]}! En kund har bekräftat en bokning hos dig.</p>
           <div class="card">
-            <div class="row"><span class="lbl">Kund</span><span class="val">${esc(r.customer_name || r.name || "–")}</span></div>
+            <div class="row"><span class="lbl">Kund</span><span class="val">${esc(r.customer_name || r.name || "–")}${r.customer_type === "foretag" ? " 🏢" : ""}</span></div>
+            ${r.customer_type === "foretag" && r.business_name ? `<div class="row"><span class="lbl">Företag</span><span class="val">${esc(r.business_name)}</span></div>` : ""}
             <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(service)}</span></div>
             <div class="row"><span class="lbl">Datum/tid</span><span class="val">${date || "–"} ${time ? "kl " + time : ""}</span></div>
             <div class="row"><span class="lbl">Adress</span><span class="val">${esc(address)}</span></div>

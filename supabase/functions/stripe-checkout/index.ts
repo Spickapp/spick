@@ -38,7 +38,8 @@ serve(async (req) => {
     const {
       booking_id, amount, name, email, service, date, hours,
       rut, sqm, address, phone, cleaner_id, cleaner_name,
-      frequency, key_info, customer_notes, referral_code
+      frequency, key_info, customer_notes, referral_code,
+      customer_type, business_name
     } = await req.json();
 
     if (!booking_id || !email || !service) {
@@ -113,6 +114,8 @@ serve(async (req) => {
     if (key_info)        params.append("metadata[key_info]",        key_info.slice(0, 200));
     if (customer_notes)  params.append("metadata[customer_notes]",  customer_notes.slice(0, 300));
     if (referral_code)   params.append("metadata[referral_code]",   referral_code.slice(0, 20));
+    params.append("metadata[customer_type]", customer_type || "privat");
+    if (business_name)   params.append("metadata[business_name]",   business_name.slice(0, 100));
 
     // Betalmetoder: kort + Klarna (inget separat avtal krävs i Sverige)
     params.append("payment_method_types[]", "card");

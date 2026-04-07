@@ -795,6 +795,7 @@ body{top:0!important}
             <button type="button" class="svc-chip" data-svc="Storstädning" onclick="toggleProfileSvc(this)">✨ Storstädning</button>
             <button type="button" class="svc-chip" data-svc="Flyttstädning" onclick="toggleProfileSvc(this)">📦 Flyttstädning</button>
             <button type="button" class="svc-chip" data-svc="Fönsterputs" onclick="toggleProfileSvc(this)">🪟 Fönsterputs</button>
+            <button type="button" class="svc-chip" data-svc="Kontorsstädning" onclick="toggleProfileSvc(this)">🏢 Kontorsstädning</button>
           </div>
           <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">Välj de tjänster du erbjuder. Kunder filtreras på detta.</div>
         </div>
@@ -943,6 +944,7 @@ body{top:0!important}
           <button type="button" class="tm-chip" data-svc="Storstädning" onclick="toggleTeamSvc(this)">Storstädning</button>
           <button type="button" class="tm-chip" data-svc="Flyttstädning" onclick="toggleTeamSvc(this)">Flyttstädning</button>
           <button type="button" class="tm-chip" data-svc="Fönsterputs" onclick="toggleTeamSvc(this)">Fönsterputs</button>
+          <button type="button" class="tm-chip" data-svc="Kontorsstädning" onclick="toggleTeamSvc(this)">Kontorsstädning</button>
         </div>
       </div>
 
@@ -1842,6 +1844,9 @@ function getMaterialInfo(serviceType) {
   if (svc.includes('fönster') || svc.includes('fonster')) {
     return { customer: 'Städaren tar med utrustning.', cleaner: 'Ta med fönsterutrustning: squeegee, skrapa, fönsterlösning, dukar.', isCleanerEquip: true };
   }
+  if (svc.includes('kontor')) {
+    return { customer: 'Städaren tar med standardutrustning för kontorsstädning.', cleaner: 'Kontorsstädning — kunden tillhandahåller dammsugare. Du tar med rengöringsmedel och moppar.', isCleanerEquip: false };
+  }
   return { customer: 'Dammsugare, mopp och rengöringsmedel ska finnas tillgängliga.', cleaner: 'Kundens utrustning – dammsugare och mopp ska finnas.', isCleanerEquip: false };
 }
 
@@ -1950,7 +1955,7 @@ function jobCard(j) {
   return `<div class="job-card ${isMine&&!isDone?'mine':''} ${isOpen?'new-job':''} ${isDone?'done-job':''}" id="jc-${j.id}"${expandToggle} style="cursor:${hasExpandContent?'pointer':'default'}">
     <div class="job-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
     <div class="job-body">
-      <div class="job-title">${escHtml(j.service_type || 'Hemstädning')} ${arrowHtml}</div>
+      <div class="job-title">${escHtml(j.service_type || 'Hemstädning')}${j.customer_type === 'foretag' ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : ''} ${arrowHtml}</div>
       <div class="job-meta">
         <span>🕐 ${escHtml(j.booking_time || j.scheduled_time || '09:00')}</span>
         <span>⏱ ${parseInt(j.booking_hours) || 3}h</span>
