@@ -364,15 +364,41 @@ function switchLang(lang, btn) {
   if (lang === 'sv') {
     document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.spick.se;';
-    if (!document.querySelector('.goog-te-banner-frame')) location.reload();
+    location.reload();
     return;
   }
   document.cookie = 'googtrans=/sv/' + lang + '; path=/;';
   document.cookie = 'googtrans=/sv/' + lang + '; path=/; domain=.spick.se;';
   var sel = document.querySelector('.goog-te-combo');
-  if (sel) { sel.value = lang; sel.dispatchEvent(new Event('change')); }
-  else { location.reload(); }
+  if (sel) {
+    sel.value = lang;
+    sel.dispatchEvent(new Event('change'));
+    return;
+  }
+  location.reload();
 }
+
+(function() {
+  var match = document.cookie.match(/googtrans=\/sv\/([a-z]{2})/);
+  if (!match) return;
+  var lang = match[1];
+  if (lang === 'ar') return; // Arabic hanteras separat
+  var attempts = 0;
+  var waitForGT = setInterval(function() {
+    var sel = document.querySelector('.goog-te-combo');
+    if (sel) {
+      clearInterval(waitForGT);
+      sel.value = lang;
+      sel.dispatchEvent(new Event('change'));
+      document.querySelectorAll('.lang-bar-btn').forEach(function(b) {
+        var onclick = b.getAttribute('onclick') || '';
+        b.classList.toggle('on', onclick.includes("'" + lang + "'"));
+      });
+    }
+    attempts++;
+    if (attempts > 30) clearInterval(waitForGT);
+  }, 500);
+})();
 </script>
 <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
