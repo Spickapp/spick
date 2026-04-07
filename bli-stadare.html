@@ -39,8 +39,8 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-height:1.6;overflow-x:hidden}
 
 /* ─── LANGUAGE SELECTOR ─── */
-.lang-bar{background:var(--gd);padding:5px 1.5rem;display:flex;align-items:center;justify-content:center;gap:6px}
-.lang-btn{background:none;border:none;cursor:pointer;padding:8px 6px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7);min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.lang-bar{background:var(--gd);padding:5px 1rem;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap}
+.lang-btn{background:none;border:none;cursor:pointer;padding:6px 4px;border-radius:6px;transition:all .15s;line-height:1;opacity:.7;filter:saturate(.7);min-width:38px;min-height:38px;display:flex;align-items:center;justify-content:center}
 .lang-btn:hover,.lang-btn.on{opacity:1;background:rgba(255,255,255,.12);filter:saturate(1);transform:scale(1.15)}
 .lang-btn.on{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
 .lang-sep{color:rgba(255,255,255,.2);font-size:.7rem;user-select:none}
@@ -200,17 +200,6 @@ body{top:0!important}
 .fai{margin-top:.3rem;background:var(--gp);color:var(--g);border:none;padding:.25rem .65rem;border-radius:99px;font-size:.68rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
 
 </style>
-<script>
-function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'sv',
-    includedLanguages: 'sv,en,ar,uk,ru,pl,th,tl,so,es',
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
-}
-</script>
-<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico">
@@ -220,7 +209,6 @@ function googleTranslateElementInit() {
 <!-- LANGUAGE SELECTOR -->
 <div class="lang-bar">
   <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/24x18/se.png" alt="Svenska" width="24" height="18"></button>
-  <span class="lang-sep">·</span>
   <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/24x18/gb.png" alt="English" width="24" height="18"></button>
   <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/24x18/ua.png" alt="Українська" width="24" height="18"></button>
   <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/24x18/ru.png" alt="Русский" width="24" height="18"></button>
@@ -505,7 +493,21 @@ function switchLang(lang, btn) {
     sel.dispatchEvent(new Event('change'));
     return;
   }
-  location.reload();
+  var tries = 0;
+  var poll = setInterval(function() {
+    var s = document.querySelector('.goog-te-combo');
+    if (s) {
+      clearInterval(poll);
+      s.value = lang;
+      s.dispatchEvent(new Event('change'));
+      return;
+    }
+    tries++;
+    if (tries > 6) {
+      clearInterval(poll);
+      location.reload();
+    }
+  }, 500);
 }
 
 (function() {
@@ -579,6 +581,17 @@ function showF(){document.getElementById('fskatt-guide').scrollIntoView({behavio
 
 
 </script>
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'sv',
+    includedLanguages: 'sv,en,ar,uk,ru,pl,th,tl,so,es',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 </body>
 </html>
 
