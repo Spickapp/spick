@@ -84,6 +84,7 @@ const NAV_HTML = `
   <a href="${P}hur-det-funkar.html" class="nl">Hur det funkar</a>
   <a href="${P}blogg/" class="nl">Blogg</a>
   <a href="${P}priser.html" class="nl">Priser</a>
+  <a href="${P}foretag.html" class="nl">För företag</a>
   <a href="${P}boka.html" class="nl-btn">Boka städning</a>
 </div>
 <button class="hamburger" onclick="document.getElementById('mobMenu').style.display='flex'" aria-label="Öppna meny">
@@ -97,6 +98,7 @@ const MOB_HTML = `
     <a href="${P}hur-det-funkar.html">Hur det funkar</a>
     <a href="${P}priser.html">Priser</a>
     <a href="${P}tjanster.html">Tjänster</a>
+    <a href="${P}foretag.html">För företag</a>
     <a href="${P}bli-stadare.html">Bli städare</a>
     <a href="${P}boka.html" style="background:var(--g);color:#fff;border-radius:100px;text-align:center;padding:.75rem 1.5rem;border:none;">Boka nu →</a>
   </div>

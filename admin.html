@@ -1592,7 +1592,7 @@ function renderDashboard() {
   const rb = data.bookings.slice(0, 6);
   document.getElementById('dash-recent-bookings').innerHTML = rb.length ? rb.map(b => `
     <div class="stat-row">
-      <span class="lbl">${escHtml(b.customer_name || '–')} · ${escHtml(b.service_type || b.service || 'Städning')}</span>
+      <span class="lbl">${escHtml(b.customer_name || '–')}${b.customer_type === 'foretag' ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢 Företag</span>' : ''} · ${escHtml(b.service_type || b.service || 'Städning')}</span>
       <span>${statusBadge(b.payment_status)}</span>
     </div>`).join('') : '<div class="empty">Inga bokningar än</div>';
 
@@ -1713,7 +1713,7 @@ function renderBookings() {
 
   document.getElementById('bookings-tbody').innerHTML = filtered.length ? filtered.map(b => `
     <tr>
-      <td><strong>${escHtml(b.customer_name || b.name || '–')}</strong><br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.customer_email || b.email || '')}</span></td>
+      <td><strong>${escHtml(b.customer_name || b.name || '–')}</strong>${b.customer_type === 'foretag' ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.customer_email || b.email || '')}</span></td>
       <td>${escHtml(b.service_type || b.service || 'Hemstädning')} · ${parseInt(b.booking_hours || b.hours) || 3}h</td>
       <td>${escHtml(b.booking_date || b.date || '–')}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.booking_time || b.time || '')}</span></td>
       <td>${escHtml(b.city || b.address?.split(',').pop()?.trim() || '–')}</td>
@@ -2316,6 +2316,10 @@ function showBookingDetail(id) {
   document.getElementById('modal-body').innerHTML = `
     <div class="stat-row"><span class="lbl">Kund</span><span class="val">${escHtml(b.customer_name || b.name || '–')} · ${escHtml(b.customer_email || b.email || '')}</span></div>
     <div class="stat-row"><span class="lbl">Telefon</span><span class="val">${escHtml(b.phone || '–')}</span></div>
+    ${b.customer_type === 'foretag' && b.business_name ? `
+    <div class="stat-row"><span class="lbl">Företag</span><span class="val">${escHtml(b.business_name)} · ${escHtml(b.business_org_number || '–')}</span></div>
+    ${b.business_reference ? `<div class="stat-row"><span class="lbl">Referens</span><span class="val">${escHtml(b.business_reference)}</span></div>` : ''}
+    ` : ''}
     <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${escHtml(b.service_type || b.service || 'Hemstädning')} · ${parseInt(b.booking_hours || b.hours) || 3}h</span></div>
     <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.booking_date || b.date || '–')} kl ${escHtml(b.booking_time || b.time || '–')}</span></div>
     <div class="stat-row"><span class="lbl">GPS</span><span class="val">${

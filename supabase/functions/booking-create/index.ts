@@ -76,6 +76,10 @@ serve(async (req) => {
       customer_lng,
       customer_pnr_hash,
       customer_pnr,
+      customer_type,
+      business_name,
+      business_org_number,
+      business_reference,
     } = body;
 
     // Required fields
@@ -163,7 +167,7 @@ serve(async (req) => {
     }
 
     // ── 7. RUT-BERÄKNING ───────────────────────────
-    const useRut = !!rut;
+    const useRut = !!rut && customer_type !== 'foretag';
     const rutDeduction = useRut
       ? Math.round(pricing.customerTotal * 0.5)
       : 0;
@@ -245,6 +249,10 @@ serve(async (req) => {
       net_margin_pct: pricing.netMarginPct,
       stripe_fee_sek: pricing.stripeFee,
       credit_applied_sek: pricing.creditApplied,
+      customer_type: customer_type || 'privat',
+      business_name: business_name || null,
+      business_org_number: business_org_number || null,
+      business_reference: business_reference || null,
     });
 
     if (insertErr) {
