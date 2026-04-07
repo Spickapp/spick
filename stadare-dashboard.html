@@ -3065,10 +3065,15 @@ async function renderTeam() {
 
   document.getElementById('team-list').innerHTML = _teamMembers.length ? _teamMembers.map(m => {
     const isOwner = m.id === cleaner.id;
-    const isPaused = m.status === 'inactive' || m.is_active === false;
-    const statusDot = isPaused
-      ? '<span style="color:var(--gray-400);font-size:11px">● Pausad</span>'
-      : '<span style="color:var(--spick-500);font-size:11px">● Aktiv</span>';
+    const isPaused = m.status === 'inactive' || (m.is_active === false && m.status !== 'onboarding');
+    const isOnboarding = m.status === 'onboarding';
+    let onbCount = 0;
+    try { const ob = JSON.parse(m.team_onboarding || '{}'); onbCount = [ob.profile_photo, ob.test_passed, ob.handbook_read].filter(Boolean).length; } catch(e) {}
+    const statusDot = isOnboarding
+      ? '<span style="color:var(--warning);font-size:11px">🟡 Onboarding ' + onbCount + '/3</span>'
+      : isPaused
+        ? '<span style="color:var(--gray-400);font-size:11px">● Pausad</span>'
+        : '<span style="color:var(--spick-500);font-size:11px">✅ Aktiv</span>';
 
     const svcs = (m.services || []).map(s => `<span class="tm-svc-badge">${escHtml(s)}</span>`).join('');
     const petLabel = m.pet_pref === 'allergy' ? '<span style="font-size:11px;color:var(--danger)">Allergisk mot husdjur</span>'
@@ -3086,9 +3091,9 @@ async function renderTeam() {
           ${m.bio ? '<div style="font-size:.78rem;color:var(--gray-500);margin-top:4px;font-style:italic">"' + escHtml(m.bio) + '"</div>' : ''}
         </div>
       </div>
-      ${!isOwner ? `<div style="display:flex;gap:8px;margin-top:12px">
+      ${!isOwner ? `<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button onclick="editTeamMember('${m.id}')" style="flex:1;padding:10px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Redigera</button>
-        <button onclick="toggleMemberStatus('${m.id}','${isPaused ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused ? 'Aktivera' : 'Pausa'}</button>
+        ${isOnboarding ? `<button onclick="showTeamOnboardingModal(_teamMembers.find(x=>x.id==='${m.id}'))" style="flex:1;padding:10px;background:var(--warning-bg,#fff8e1);color:var(--warning,#f59e0b);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Hantera onboarding</button>` : `<button onclick="toggleMemberStatus('${m.id}','${isPaused ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused ? 'Aktivera' : 'Pausa'}</button>`}
       </div>` : ''}
     </div>`;
   }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
@@ -3238,9 +3243,9 @@ async function addTeamMember() {
       company_id: cleaner.company_id,
       added_by_owner_id: cleaner.id,
       is_company_owner: false,
-      is_approved: true,
-      is_active: true,
-      status: 'aktiv',
+      is_approved: false,
+      is_active: false,
+      status: 'onboarding',
       commission_rate: 0.17,
       experience: 'new',
       review_count: 0,
@@ -3257,7 +3262,8 @@ async function addTeamMember() {
       verified: false,
       onboarding_completed: false,
       onboarding_step: 0,
-      profile_completeness: 0
+      profile_completeness: 0,
+      team_onboarding: JSON.stringify({ profile_photo: false, test_passed: false, handbook_read: false })
     });
 
     if (error) throw new Error(error.message || 'Insert failed');
@@ -3410,6 +3416,85 @@ async function toggleMemberStatus(memberId, newStatus) {
   renderTeam();
   showToast(newStatus === 'inactive' ? 'Teammedlem pausad' : 'Teammedlem aktiverad');
 }
+
+// ── TEAM ONBOARDING ────────────────────────────────────────
+function showTeamOnboardingModal(member) {
+  let ob = { profile_photo: false, test_passed: false, handbook_read: false };
+  try { ob = Object.assign(ob, JSON.parse(member.team_onboarding || '{}')); } catch(e) {}
+  const name = escHtml(member.full_name || member.first_name + ' ' + (member.last_name || ''));
+  const allDone = ob.profile_photo && ob.test_passed && ob.handbook_read;
+
+  const html = `<div id="team-onboarding-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeTeamOnboardingModal()">
+    <div style="background:#fff;border-radius:var(--radius-lg,16px);padding:24px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto">
+      <h3 style="margin:0 0 16px;font-size:1.05rem">Onboarding: ${name}</h3>
+      <div class="onboarding-checklist" style="display:flex;flex-direction:column;gap:12px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer"><input type="checkbox" id="to-photo" ${ob.profile_photo ? 'checked' : ''} onchange="toggleOnboardingActivate()"> Profilbild uppladdad</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer"><input type="checkbox" id="to-test" ${ob.test_passed ? 'checked' : ''} onchange="toggleOnboardingActivate()"> Kompetenstest godkänt</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer"><input type="checkbox" id="to-handbook" ${ob.handbook_read ? 'checked' : ''} onchange="toggleOnboardingActivate()"> Städarhandboken läst</label>
+      </div>
+      <p style="font-size:.78rem;color:var(--m,var(--gray-500));margin:16px 0 8px">Skicka länkarna nedan till teammedlemmen:</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0">
+        <button onclick="copyToClipboard('https://spick.se/stadare-test.html')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera länk: Kompetenstest</button>
+        <button onclick="copyToClipboard('https://spick.se/stadare-handbok.html')" class="btn bo" style="min-height:44px;font-size:13px">📋 Kopiera länk: Städarhandboken</button>
+      </div>
+      <button id="to-save-btn" onclick="saveTeamOnboarding('${member.id}')" class="btn bg" style="width:100%;margin-top:12px;min-height:44px">Spara</button>
+      <button id="to-activate-btn" onclick="activateTeamMember('${member.id}')" class="btn bg" style="width:100%;margin-top:8px;min-height:44px;${allDone ? '' : 'display:none'}">✅ Aktivera — alla steg klara</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeTeamOnboardingModal() {
+  const m = document.getElementById('team-onboarding-modal');
+  if (m) m.remove();
+}
+
+function toggleOnboardingActivate() {
+  const all = document.getElementById('to-photo').checked && document.getElementById('to-test').checked && document.getElementById('to-handbook').checked;
+  document.getElementById('to-activate-btn').style.display = all ? '' : 'none';
+}
+
+async function saveTeamOnboarding(memberId) {
+  const onboarding = {
+    profile_photo: document.getElementById('to-photo').checked,
+    test_passed: document.getElementById('to-test').checked,
+    handbook_read: document.getElementById('to-handbook').checked
+  };
+  const { error } = await R.update('cleaners', {
+    team_onboarding: JSON.stringify(onboarding)
+  }, `id=eq.${memberId}`);
+  if (error) { showToast('Fel: ' + error.message); return; }
+  showToast('Onboarding uppdaterad');
+  closeTeamOnboardingModal();
+  renderTeam();
+}
+
+async function activateTeamMember(memberId) {
+  const { error } = await R.update('cleaners', {
+    is_approved: true,
+    is_active: true,
+    status: 'aktiv',
+    onboarding_completed: true
+  }, `id=eq.${memberId}`);
+  if (error) { showToast('Fel: ' + error.message); return; }
+  showToast('Teammedlem aktiverad! Nu bokbar på plattformen.');
+  closeTeamOnboardingModal();
+  renderTeam();
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('Länk kopierad!')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('Länk kopierad!');
+  });
+}
+
+// TODO: Team-betalning — använd företagsägarens stripe_account_id
+// När städaren har company_id, hämta företagsägaren (is_company_owner=true)
+// och använd dennes stripe_account_id för Stripe Connect-utbetalning.
+// Se supabase/functions/stripe-checkout/index.ts
 
 // Service Worker
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
