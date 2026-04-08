@@ -132,7 +132,7 @@ const FOOTER_HTML = `
     <h4>Städare</h4>
     <ul>
       <li><a href="${P}bli-stadare.html">Bli städare</a></li>
-      <li><a href="${P}kalkyl-stadare.html">Varför Spick?</a></li>
+      <li><a href="${P}bli-stadare.html">Bli städare</a></li>
       <li><a href="${P}uppdragsavtal.html">Uppdragsavtal</a></li>
       <li><a href="${P}tips-for-stadare.html">Tips för städare</a></li>
     </ul>
