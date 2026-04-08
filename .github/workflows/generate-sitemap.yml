@@ -31,9 +31,18 @@ jobs:
             || "$f" == "seo-snippet.html" || "$f" == "sakerhetsplan.html" \
             || "$f" == "marknadsanalys.html" || "$f" == "data-dashboard.html" \
             || "$f" == "intern-kalkyl.html" || "$f" == "kalkyl-stadare.html" \
-            || "$f" == "betygsatt.html" || "$f" == "presentkort-tack.html" ]] && continue
+            || "$f" == "betygsatt.html" || "$f" == "presentkort-tack.html" \
+            || "$f" == "stadare-dashboard.html" || "$f" == "stadare-uppdrag.html" \
+            || "$f" == "min-bokning.html" || "$f" == "mitt-konto.html" \
+            || "$f" == "noshow-refund.html" || "$f" == "swish-return.html" \
+            || "$f" == "spark.html" || "$f" == "prenumerera.html" \
+            || "$f" == "stadare-checklista.html" || "$f" == "stadare-guide.html" \
+            || "$f" == "stadare-handbok.html" || "$f" == "stadare-test.html" \
+            || "$f" == "skatt-utbetalningar.html" || "$f" == "boka-igen.html" \
+            || "$f" == "bankid-klar.html" || "$f" == "ai-support.html" \
+            || "$f" == "google363231d5ff56bd63.html" || "$f" == "stadare.html" ]] && continue
             PAGE="${f%.html}"
-            [[ "$PAGE" == "index" ]] && URL="https://spick.se/" || URL="https://spick.se/$PAGE"
+            [[ "$PAGE" == "index" ]] && URL="https://spick.se/" || URL="https://spick.se/${PAGE}.html"
             # Sätt prioritet baserat på sidtyp
             PRIORITY="0.7"
             case "$PAGE" in
@@ -44,6 +53,15 @@ jobs:
             esac
             echo "  <url><loc>$URL</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>$PRIORITY</priority></url>" >> sitemap.xml
           done
+          # Blogg-sidor
+          for f in blogg/*.html; do
+            [[ "$f" == "blogg/index.html" ]] && continue
+            PAGE="${f%.html}"
+            URL="https://spick.se/${PAGE}.html"
+            echo "  <url><loc>$URL</loc><lastmod>$DATE</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>" >> sitemap.xml
+          done
+          # Bloggindex
+          echo "  <url><loc>https://spick.se/blogg/</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>" >> sitemap.xml
           echo '</urlset>' >> sitemap.xml
           echo "✅ Sitemap: $(grep -c '<url>' sitemap.xml) sidor"
 
