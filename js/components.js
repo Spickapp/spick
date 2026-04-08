@@ -1,4 +1,20 @@
-﻿// ═══════════════════════════════════════════════════════════════
+﻿// Google Analytics 4
+(function(){
+  var s=document.createElement('script');
+  s.async=true;
+  s.src='https://www.googletagmanager.com/gtag/js?id=G-HTKC1TS64C';
+  document.head.appendChild(s);
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments);}
+  window.gtag=gtag;
+  gtag('js',new Date());
+  gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied'});
+  var c=localStorage.getItem('spick-cookie-consent');
+  if(c==='all'){gtag('consent','update',{analytics_storage:'granted',ad_storage:'granted'});}
+  gtag('config','G-HTKC1TS64C');
+})();
+
+// ═══════════════════════════════════════════════════════════════
 // SPICK – Delade komponenter (nav, footer, mobilmeny)
 // Ladda efter config.js: <script src="js/components.js" defer></script>
 // Self-contained: injicerar sin egen CSS – inga externa beroenden
