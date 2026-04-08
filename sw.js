@@ -1,6 +1,6 @@
 ﻿// SPICK SERVICE WORKER v3.0 — Production-grade
 // Stale-While-Revalidate for pages, Cache-First for assets
-const VERSION = '2026-03-30-v10';
+const VERSION = '2026-04-08-v1';
 const CACHE = `spick-${VERSION}`;
 
 const PRECACHE = [
@@ -8,6 +8,8 @@ const PRECACHE = [
   '/priser.html', '/hur-det-funkar.html', '/faq.html',
   '/404.html', '/manifest.json',
   '/js/config.js', '/js/components.js',
+  '/js/i18n-bli-stadare.js',
+  '/bli-stadare.html',
 ];
 
 self.addEventListener('install', e => {
