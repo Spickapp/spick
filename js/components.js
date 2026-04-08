@@ -147,6 +147,8 @@ const FOOTER_HTML = `
     <h4>Städer</h4>
     <ul>
       <li><a href="${P}stockholm.html">Stockholm ✓</a></li>
+      <li><a href="${P}sundbyberg.html">Sundbyberg</a></li>
+      <li><a href="${P}solna.html">Solna</a></li>
       <li><a href="${P}goteborg.html">Göteborg — snart</a></li>
       <li><a href="${P}malmo.html">Malmö — snart</a></li>
       <li><a href="${P}uppsala.html">Uppsala — snart</a></li>
