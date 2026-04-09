@@ -200,6 +200,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .job-timer{background:#eff6ff;color:var(--info);border-radius:var(--radius-md);padding:8px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-top:8px}
 .timer-dot{width:8px;height:8px;background:var(--info);border-radius:50%;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes lpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 
 /* ═══ EARN TAB ═══ */
 .earn-hero{background:var(--spick-500);color:#fff;border-radius:var(--radius-xl);padding:28px;margin-bottom:16px;position:relative;overflow:hidden}
@@ -527,6 +528,9 @@ body{top:0!important}
         </div>
         <div class="hero-cta">
           <button class="btn-nav" id="hero-nav-btn" onclick="heroNavigate()">📍 Navigera</button>
+          <a id="hero-uppdrag-btn" href="#" style="display:none;width:100%;padding:12px;background:#fff;color:var(--spick-500);border:1.5px solid var(--spick-500);border-radius:12px;font-size:.88rem;font-weight:600;text-align:center;text-decoration:none;font-family:inherit;margin-top:8px" onclick="event.preventDefault();window.open('stadare-uppdrag.html?bid='+this.dataset.bid,'_blank')">📋 Öppna uppdrag</a>
+          <button id="hero-klar-btn" style="display:none;width:100%;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px" onclick="heroMarkDone()">✅ Markera jobbet klart</button>
+          <a href="tel:+46760505153" id="hero-help-btn" style="display:none;width:100%;padding:10px;background:transparent;color:var(--gray-600);border:1px solid var(--gray-300);border-radius:12px;font-size:.82rem;font-weight:500;text-align:center;text-decoration:none;font-family:inherit;margin-top:6px">📞 Problem? Ring Spick</a>
         </div>
       </div>
 
@@ -1916,6 +1920,27 @@ function renderHeroCard() {
   heroEmpty.style.display = 'none';
   heroCard.classList.add('show');
 
+  var heroLabel = heroCard.querySelector('.hero-label');
+  var uppdragBtn = document.getElementById('hero-uppdrag-btn');
+  var klarBtn = document.getElementById('hero-klar-btn');
+  var helpBtn = document.getElementById('hero-help-btn');
+
+  if (next.status === 'pågår') {
+    heroLabel.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;background:#22C55E;border-radius:50%;animation:lpulse 1.2s infinite"></span> Pågår nu</span>';
+    heroCard.style.border = '2px solid #22C55E';
+    heroCard.style.background = 'linear-gradient(135deg,#F0FDF4,#DCFCE7)';
+    if (klarBtn) { klarBtn.style.display = 'block'; klarBtn.dataset.bid = next.id; }
+    if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
+    if (helpBtn) helpBtn.style.display = 'block';
+  } else {
+    heroLabel.textContent = 'Nästa jobb';
+    heroCard.style.border = '';
+    heroCard.style.background = '';
+    if (klarBtn) klarBtn.style.display = 'none';
+    if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
+    if (helpBtn) helpBtn.style.display = 'none';
+  }
+
   const [h,m] = (next.booking_time||next.scheduled_time||'09:00').split(':').map(Number);
   const jobTime = new Date(now); jobTime.setHours(h,m,0,0);
   const pay = Math.round((cleaner.hourly_rate||350) * (next.booking_hours||3) * (typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83));
@@ -1953,6 +1978,54 @@ function heroNavigate() {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const url = isIOS ? `maps://maps.apple.com/?daddr=${encodeURIComponent(addr)}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
   window.open(url, '_blank');
+}
+
+async function heroMarkDone() {
+  var btn = document.getElementById('hero-klar-btn');
+  var bid = btn ? btn.dataset.bid : null;
+  if (!bid) return;
+  if (!confirm('Markera jobbet som klart?')) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Sparar...';
+  try {
+    var patchData = { status: 'klar', completed_at: new Date().toISOString() };
+    if (navigator.geolocation) {
+      await new Promise(function(resolve) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            patchData.checkout_lat = pos.coords.latitude;
+            patchData.checkout_lng = pos.coords.longitude;
+            patchData.checkout_gps_status = 'green';
+            resolve();
+          },
+          function() {
+            patchData.checkout_gps_status = 'denied';
+            resolve();
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid, {
+      method: 'PATCH',
+      headers: _authHeaders(),
+      body: JSON.stringify(patchData)
+    });
+    if (res.ok) {
+      btn.textContent = '✅ Klart!';
+      btn.style.background = '#065F46';
+      showToast('🎉 Jobbet markerat som klart!');
+      if (typeof logActivity === 'function') logActivity('job_status_done', { booking_id: bid });
+      setTimeout(function() { loadJobs(); }, 1500);
+    } else {
+      btn.textContent = '❌ Kunde inte spara';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    console.error('heroMarkDone error:', e);
+    btn.textContent = '❌ Fel';
+    btn.disabled = false;
+  }
 }
 
 function renderTimeline() {
