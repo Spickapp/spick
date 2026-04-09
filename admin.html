@@ -236,6 +236,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-section">Administration</div>
       <div class="nav-item" onclick="showPage('team')"><span class="icon">🔑</span>Team & Roller</div>
       <div class="nav-item" onclick="showPage('platform-settings')"><span class="icon">🎛️</span>Plattformsinställningar</div>
+      <div class="nav-item" onclick="showPage('activity')"><span class="icon">🔔</span>Aktivitetsflöde</div>
       <div class="nav-item" onclick="showPage('audit')"><span class="icon">📋</span>Ändringslogg</div>
       <div class="nav-item" onclick="showPage('system-status')"><span class="icon">🖥️</span>Systemstatus</div>
       <div class="nav-section">System</div>
@@ -758,6 +759,37 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="page-sub">Styr bokningsregler, priser, provisioner, kvalitetstr&ouml;sklar och SLA</div>
       </div>
       <div id="platform-settings-container"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+
+    <div class="page" id="page-activity">
+      <div class="page-header">
+        <div class="page-title">Aktivitetsflöde 🔔</div>
+        <div class="page-sub">Realtidsöverblick — vad städare och kunder gör på plattformen</div>
+      </div>
+      <div class="toolbar">
+        <input class="search-input" id="activity-search" placeholder="Sök städare, åtgärd..." oninput="renderActivity()">
+        <select class="filter" id="activity-filter" onchange="renderActivity()">
+          <option value="">Alla</option>
+          <option value="login">Inloggningar</option>
+          <option value="avatar">Profilbild</option>
+          <option value="profile">Profiluppdatering</option>
+          <option value="schedule">Schema</option>
+          <option value="stripe">Stripe</option>
+          <option value="job_status">Jobbstatus</option>
+          <option value="wizard">Onboarding</option>
+        </select>
+        <select class="filter" id="activity-period" onchange="loadActivity()">
+          <option value="1">Senaste 24h</option>
+          <option value="7" selected>Senaste 7 dagar</option>
+          <option value="30">Senaste 30 dagar</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="loadActivity()">↻ Uppdatera</button>
+      </div>
+      <div class="card" style="padding:0">
+        <div id="activity-feed" style="padding:16px">
+          <div style="text-align:center;padding:32px;color:var(--m)">Laddar...</div>
+        </div>
+      </div>
     </div>
 
     <!-- AUDIT -->
@@ -3574,6 +3606,71 @@ async function auditLog(action, resourceType, resourceId, oldValue, newValue, re
   } catch(e) { console.warn('Audit log failed:', e.message); }
 }
 
+var activityData = [];
+async function loadActivity() {
+  var days = parseInt(document.getElementById('activity-period').value) || 7;
+  var since = new Date(Date.now() - days * 86400000).toISOString();
+  var res = await AR.select('activity_log', 'select=*&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.desc&limit=200');
+  activityData = res.data || [];
+  renderActivity();
+}
+
+function renderActivity() {
+  var search = (document.getElementById('activity-search').value || '').toLowerCase();
+  var filter = document.getElementById('activity-filter').value || '';
+  var filtered = activityData;
+  if (filter) filtered = filtered.filter(function(a) { return a.action.includes(filter); });
+  if (search) filtered = filtered.filter(function(a) {
+    return (a.actor_name || '').toLowerCase().includes(search) || (a.action || '').toLowerCase().includes(search);
+  });
+
+  var actionLabels = {
+    'login': { icon: '🔑', label: 'Loggade in', color: '#3B82F6' },
+    'avatar_upload': { icon: '📷', label: 'Laddade upp profilbild', color: '#8B5CF6' },
+    'profile_update': { icon: '✏️', label: 'Uppdaterade profil', color: '#0F6E56' },
+    'schedule_update': { icon: '📅', label: 'Ändrade veckoschema', color: '#0F6E56' },
+    'stripe_connect_start': { icon: '💳', label: 'Startade Stripe-koppling', color: '#6366F1' },
+    'wizard_complete': { icon: '🎉', label: 'Slutförde onboarding — profil live!', color: '#0F6E56' },
+    'job_status_on_way': { icon: '🚗', label: 'På väg till kund', color: '#F59E0B' },
+    'job_status_arrived': { icon: '📍', label: 'Anlänt + GPS-incheckning', color: '#0F6E56' },
+    'job_status_key_access': { icon: '🔑', label: 'Fått tillgång (nyckel)', color: '#6366F1' },
+    'job_status_cleaning': { icon: '🧹', label: 'Städning pågår', color: '#3B82F6' },
+    'job_status_almost_done': { icon: '⏰', label: 'Snart klar', color: '#F59E0B' },
+    'job_status_done': { icon: '✅', label: 'Jobb avslutat + GPS-utcheckning', color: '#0F6E56' }
+  };
+
+  var feed = document.getElementById('activity-feed');
+  if (!filtered.length) {
+    feed.innerHTML = '<div style="text-align:center;padding:40px;color:var(--m)">Ingen aktivitet under denna period</div>';
+    return;
+  }
+
+  var currentDate = '';
+  feed.innerHTML = filtered.map(function(a) {
+    var info = actionLabels[a.action] || { icon: '•', label: a.action, color: '#6B7280' };
+    var time = new Date(a.created_at);
+    var dateStr = time.toLocaleDateString('sv', { weekday: 'long', day: 'numeric', month: 'long' });
+    var timeStr = time.toLocaleTimeString('sv', { hour: '2-digit', minute: '2-digit' });
+    var dateSep = '';
+    if (dateStr !== currentDate) {
+      currentDate = dateStr;
+      dateSep = '<div style="font-size:.78rem;font-weight:600;color:var(--m);padding:16px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">' + escHtml(dateStr) + '</div>';
+    }
+    var meta = '';
+    if (a.metadata) {
+      if (a.metadata.booking_id) meta = ' · Bokning ' + a.metadata.booking_id.substring(0, 8);
+      if (a.metadata.fields) meta = ' · ' + a.metadata.fields.join(', ');
+      if (a.metadata.email) meta = ' · ' + escHtml(a.metadata.email);
+    }
+    return dateSep + '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f5f5f2">'
+      + '<div style="width:32px;height:32px;border-radius:50%;background:' + info.color + '15;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + info.icon + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:.88rem"><strong>' + escHtml(a.actor_name || 'Okänd') + '</strong> ' + escHtml(info.label) + '</div>'
+      + '<div style="font-size:.75rem;color:var(--m)">' + timeStr + meta + '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
 var auditData = [];
 async function loadAuditLog() {
   var days = parseInt(document.getElementById('audit-filter-period').value) || 30;
@@ -3915,6 +4012,7 @@ showPage = function(id) {
   if (id==='team') loadTeam();
   if (id==='platform-settings') loadPlatformSettings();
   if (id==='audit') loadAuditLog();
+  if (id==='activity') loadActivity();
   if (id==='system-status') renderSystemStatus();
 };
 

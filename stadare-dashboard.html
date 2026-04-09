@@ -1138,6 +1138,15 @@ function _authHeaders() {
   const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
   return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
 }
+function logActivity(action, meta) {
+  try {
+    fetch(SUPA_URL + '/rest/v1/activity_log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ actor_type: 'cleaner', actor_id: cleaner ? cleaner.id : null, actor_name: cleaner ? cleaner.full_name : null, action: action, metadata: meta || null })
+    }).catch(function(){});
+  } catch(e) {}
+}
 const R = {
   async select(table, query='') {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, { headers: _authHeaders() });
@@ -1400,6 +1409,7 @@ async function loadCleanerByEmail(email, authUserId) {
 
   cleaner = data;
   cleaner._email = email;
+  logActivity('login', { email: email });
 
   // Uppdatera last_active_at tyst i bakgrunden
   fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
@@ -1689,6 +1699,7 @@ async function wizUploadAvatar() {
     if (updateRes.error) throw new Error(updateRes.error.message);
 
     cleaner.avatar_url = publicUrl;
+    logActivity('avatar_upload', { url: publicUrl });
 
     // Uppdatera alla avatar-visningar
     document.getElementById('hdr-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
@@ -1730,6 +1741,7 @@ function wizComplete() {
       });
       if (res.ok) {
         cleaner.status = 'aktiv';
+        logActivity('wizard_complete', { status: 'aktiv' });
         var banner = document.getElementById('onboarding-banner');
         if (banner) banner.style.display = 'none';
       }
@@ -2961,6 +2973,7 @@ function initAvatarUpload() {
       }).eq('auth_user_id', userId);
       if (updateRes.error) throw new Error(updateRes.error.message);
       cleaner.avatar_url = publicUrl;
+      logActivity('avatar_upload', { url: publicUrl });
       preview.innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" alt="Profilbild">';
       document.getElementById('hdr-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
       document.getElementById('prof-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover">';
@@ -3049,6 +3062,7 @@ async function saveProfile() {
   btn.disabled = false; btn.textContent = '💾 Spara ändringar';
   if (error) { showToast('❌ Fel vid sparning'); return; }
   Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug,services});
+  logActivity('profile_update', { fields: Object.keys({full_name:name,phone,city,hourly_rate:rate,bio,slug,services}) });
   document.getElementById('prof-name').textContent = name;
   document.getElementById('earn-rate').textContent = rate + ' kr/h';
   const svcText = services.length > 0 ? services.join(', ') : '–';
@@ -3146,6 +3160,7 @@ async function saveSchedule() {
   } else {
     msg.textContent = '✅ Schema sparat – bokningar uppdateras direkt!';
     msg.style.color = 'var(--g)';
+    logActivity('schedule_update', null);
   }
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
 }
@@ -3207,6 +3222,7 @@ async function startStripeConnect() {
     if (res.ok && body.url) {
       window.open(body.url, '_blank');
       showToast('✅ Stripe öppnad i ny flik');
+      logActivity('stripe_connect_start', null);
     } else {
       const errMsg = body.error || body.message || 'Inget svar från Stripe';
       console.error('stripe-connect error:', errMsg);

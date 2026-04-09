@@ -255,6 +255,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // Config loaded from js/config.js
 const SUPA_URL = SPICK.SUPA_URL;
 const SUPA_KEY = SPICK.SUPA_KEY;
+function logActivity(action, meta) {
+  try {
+    fetch(SUPA_URL + '/rest/v1/activity_log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ actor_type: 'cleaner', actor_id: null, actor_name: MY_EMAIL || null, action: action, metadata: meta || null })
+    }).catch(function(){});
+  } catch(e) {}
+}
 const params = new URLSearchParams(location.search);
 const BOOKING_ID = params.get('id');
 const MY_EMAIL = sessionStorage.getItem('spick_cleaner')
@@ -381,6 +390,7 @@ async function updateStatus(status) {
   });
 
   completedStatuses.push(status);
+  logActivity('job_status_' + status, { booking_id: BOOKING_ID, db_status: dbStatus });
   const step = STATUS_FLOW.find(s => s.key === status);
   if (step) {
     document.getElementById('currentIcon').textContent = step.icon;
