@@ -1342,7 +1342,7 @@ async function loadCleanerByEmail(email, authUserId) {
   // Uppdatera last_active_at tyst i bakgrunden
   fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
     method: 'PATCH',
-    headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    headers: _authHeaders(),
     body: JSON.stringify({ last_active_at: new Date().toISOString() })
   }).catch(function(){});
 
