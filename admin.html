@@ -376,6 +376,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <option value="pending">Väntande</option>
             <option value="cancelled">Avbokad</option>
             <option value="refunded">Återbetald</option>
+            <option value="" disabled>───</option>
+            <option value="job:pågår">🧹 Jobb pågår</option>
+            <option value="job:klar">✅ Jobb klart</option>
+            <option value="job:pending_confirmation">⏳ Väntar bekräftelse</option>
           </select>
           <button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Uppdatera</button>
           <button class="btn btn-primary btn-sm" onclick="autoAssignAll()">🤖 Auto-tilldela alla</button>
@@ -1690,7 +1694,13 @@ function renderBookings() {
   const f = document.getElementById('booking-filter').value;
   let filtered = data.bookings;
   if (q) filtered = filtered.filter(b => `${b.customer_name||''} ${b.name||''} ${b.address||''} ${b.service_type||b.service||''} ${b.city||''}`.toLowerCase().includes(q));
-  if (f) filtered = filtered.filter(b => b.payment_status === f);
+  if (f) {
+    if (f.startsWith('job:')) {
+      filtered = filtered.filter(b => b.status === f.replace('job:', ''));
+    } else {
+      filtered = filtered.filter(b => b.payment_status === f);
+    }
+  }
 
   // Sortera
   filtered.sort((a, b) => {
@@ -1718,7 +1728,7 @@ function renderBookings() {
       <td>${escHtml(b.booking_date || b.date || '–')}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(b.booking_time || b.time || '')}</span></td>
       <td>${escHtml(b.city || b.address?.split(',').pop()?.trim() || '–')}</td>
       <td class="text-g">${Math.round(b.total_price || 0).toLocaleString('sv')} kr${b.rut ? '<br><span style="font-size:.72rem;color:var(--m)">RUT</span>' : ''}</td>
-      <td>${statusBadge(b.payment_status)}</td>
+      <td>${statusBadge(b.payment_status)}${b.status && b.status !== 'pending' && b.status !== b.payment_status ? '<br><span style="font-size:.7rem">' + (b.status === 'pågår' ? '🧹 Pågår' : b.status === 'klar' ? '✅ Klar' : b.status === 'pending_confirmation' ? '⏳ Väntar' : b.status === 'confirmed' || b.status === 'bekräftad' ? '📅 Bekräftad' : b.status) + '</span>' : ''}</td>
       <td style="font-size:.82rem">${b.cleaner_id ? ('✅ ' + escHtml(b.cleaner_name || 'Tilldelad')) : `<span style="color:var(--r)">⚠️ Ej tilldelad</span> <button onclick="openAssignModal('${escHtml(b.id)}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0F6E56;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:.25rem">Tilldela</button>`}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
