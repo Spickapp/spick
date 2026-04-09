@@ -4,11 +4,11 @@
  * Laddar GA4 + Facebook Pixel med cookie-samtycke.
  * Drop-in: <script src="js/tracking.js"></script> (efter config.js)
  * 
- * GA4: G-CP115M45TT
+ * GA4: G-HTKC1TS64C
  * Facebook Pixel: 874536122252551
  */
 (function() {
-  const GA_ID = 'G-CP115M45TT';
+  const GA_ID = 'G-HTKC1TS64C';
   const FB_PIXEL = '874536122252551';
   const CONSENT_KEY = 'spick_consent';
 
