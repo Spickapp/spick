@@ -2944,14 +2944,11 @@ async function removeBlockedDate(id) {
 async function startStripeConnect() {
   showToast('⏳ Öppnar Stripe...');
   try {
-    const {data:{session}} = await SB.auth.getSession();
-    if (!session?.access_token) { showToast('❌ Du måste vara inloggad'); return; }
-
     console.log('stripe-connect payload:', {cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name});
 
     const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+session.access_token},
+      headers: _authHeaders(),
       body: JSON.stringify({action:'onboard_cleaner', cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name})
     });
 
