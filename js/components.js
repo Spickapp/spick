@@ -8,7 +8,7 @@
   function gtag(){dataLayer.push(arguments);}
   window.gtag=gtag;
   gtag('js',new Date());
-  gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied'});
+  gtag('consent','default',{analytics_storage:'granted',ad_storage:'denied'});
   var c=localStorage.getItem('spick-cookie-consent');
   if(c==='all'){gtag('consent','update',{analytics_storage:'granted',ad_storage:'granted'});}
   gtag('config','G-HTKC1TS64C');
@@ -234,7 +234,7 @@ window.SPICK_COMPONENTS = { NAV_HTML, MOB_HTML, FOOTER_HTML };
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('consent', 'default', {
-  analytics_storage: 'denied',
+  analytics_storage: 'granted',
   ad_storage: 'denied',
   ad_user_data: 'denied',
   ad_personalization: 'denied',
@@ -246,10 +246,10 @@ function _spickLoadTracking() {
   if (!document.getElementById('spick-gtag')) {
     var g = document.createElement('script');
     g.id = 'spick-gtag'; g.async = true;
-    g.src = 'https://www.googletagmanager.com/gtag/js?id=G-CP115M45TT';
+    g.src = 'https://www.googletagmanager.com/gtag/js?id=G-HTKC1TS64C';
     document.head.appendChild(g);
     gtag('js', new Date());
-    gtag('config', 'G-CP115M45TT');
+    gtag('config', 'G-HTKC1TS64C');
   }
   // Facebook Pixel
   if (!window.fbq) {
