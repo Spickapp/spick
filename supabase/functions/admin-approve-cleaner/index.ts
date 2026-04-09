@@ -180,6 +180,25 @@ serve(async (req) => {
         cleanerId = inserted.id;
       }
 
+      // 3a. Create default availability (mån-fre 08-17)
+      try {
+        await sb.from("cleaner_availability").upsert({
+          cleaner_id: cleanerId,
+          day_mon: true,
+          day_tue: true,
+          day_wed: true,
+          day_thu: true,
+          day_fri: true,
+          day_sat: false,
+          day_sun: false,
+          start_time: "08:00",
+          end_time: "17:00",
+          is_active: true,
+        }, { onConflict: "cleaner_id" });
+      } catch (e) {
+        log("warn", "admin-approve-cleaner", "Default availability failed", { error: (e as Error).message });
+      }
+
       // 3b. If company application, create company and link
       if (app.is_company && app.company_name) {
         try {

@@ -335,6 +335,35 @@ body{top:0!important}
 .ob-step.done .ob-check svg{display:block}
 .ob-check svg{display:none}
 
+.wiz-overlay{margin:16px;display:none}
+.wiz-card{background:#fff;border-radius:16px;padding:24px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.04)}
+.wiz-title{font-size:1.15rem;font-weight:700;text-align:center;margin-bottom:2px;color:var(--gray-900)}
+.wiz-sub{font-size:.82rem;text-align:center;color:var(--m);margin-bottom:20px}
+.wiz-prog{display:flex;align-items:center;gap:0;margin-bottom:24px;padding:0 20px}
+.wiz-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:600;flex-shrink:0}
+.wiz-dot.on{background:var(--spick-500);color:#fff}
+.wiz-dot.off{background:var(--gray-100);color:var(--m);border:1.5px solid var(--gray-300)}
+.wiz-dot.done{background:var(--spick-100);color:var(--spick-500)}
+.wiz-line{flex:1;height:2px;background:var(--gray-200);margin:0 -4px;margin-bottom:0}
+.wiz-line.done{background:var(--spick-300)}
+.wiz-step-card{border:1.5px solid var(--spick-500);border-radius:16px;padding:20px;margin-bottom:16px}
+.wiz-step-title{font-size:.95rem;font-weight:600;margin-bottom:4px}
+.wiz-step-sub{font-size:.82rem;color:var(--m);margin-bottom:16px;line-height:1.5}
+.wiz-upload-area{border:1.5px dashed var(--spick-300);border-radius:14px;padding:28px 16px;text-align:center;margin-bottom:14px;background:#F7FDFA;cursor:pointer}
+.wiz-upload-circle{width:64px;height:64px;border-radius:50%;background:var(--spick-100);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.wiz-upload-txt{font-size:.85rem;font-weight:500;color:var(--spick-500);margin-bottom:2px}
+.wiz-upload-hint{font-size:.75rem;color:var(--m)}
+.wiz-btn{display:block;width:100%;padding:12px;background:var(--spick-500);color:#fff;border:none;border-radius:99px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px}
+.wiz-btn:hover{background:var(--spick-700)}
+.wiz-btn:disabled{opacity:.5;cursor:not-allowed}
+.wiz-tips-title{font-size:.82rem;font-weight:600;color:var(--m);margin-bottom:8px;margin-top:20px}
+.wiz-tip{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gray-50);border-radius:10px;margin-bottom:6px;font-size:.82rem;color:var(--gray-700);line-height:1.4}
+.wiz-tip-icon{width:28px;height:28px;border-radius:50%;background:var(--spick-100);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.75rem;color:var(--spick-500)}
+.wiz-success{text-align:center;padding:20px 0}
+.wiz-success-icon{font-size:3rem;margin-bottom:12px}
+.wiz-success-title{font-size:1.2rem;font-weight:700;margin-bottom:4px}
+.wiz-success-sub{font-size:.85rem;color:var(--m);margin-bottom:20px}
+
 /* ═══ TEAM CHIPS ═══ */
 .tm-chip{padding:8px 16px;border-radius:999px;border:1.5px solid var(--gray-300);background:var(--bg-primary);font-size:14px;color:var(--gray-700);cursor:pointer;transition:all .15s ease;font-family:inherit;min-height:44px}
 .tm-chip.active{border-color:var(--spick-500);background:var(--spick-50);color:var(--spick-500);font-weight:500}
@@ -509,31 +538,64 @@ body{top:0!important}
       </div>
 
       <!-- Onboarding Checklist -->
-      <div class="card" id="onboarding-checklist" style="display:none;margin:16px;border-radius:16px;padding:20px;background:white;box-shadow:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.04)">
-        <div style="font-family:inherit;font-size:1.1rem;margin-bottom:4px">Kom igång på Spick</div>
-        <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Gör klart alla steg så får du bokningar snabbare</div>
-        <div id="ob-steps">
-          <!-- Priority steps (always visible) -->
-          <div class="ob-step" id="ob-1"><div class="ob-check"></div><span>Konto skapat</span></div>
-          <div class="ob-step" id="ob-2" onclick="document.getElementById('avatar-section').scrollIntoView({behavior:'smooth',block:'center'})"><div class="ob-check"></div><span>Ladda upp profilbild</span></div>
-          <div class="ob-step" id="ob-3" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-profile'),200)"><div class="ob-check"></div><span>Skriv en personlig beskrivning</span></div>
-          <div class="ob-step" id="ob-4" onclick="switchTab('inst');setTimeout(()=>openSubView('sv-schedule'),200)"><div class="ob-check"></div><span>Ställ in ditt veckoschema</span></div>
-          <div class="ob-step" id="ob-5" onclick="switchTab('inkomst')"><div class="ob-check"></div><span id="ob-5-text">Anslut bankkonto via Stripe</span></div>
-          <!-- More steps (expandable) -->
-          <div id="ob-more" style="display:none">
-            <div class="ob-step" id="ob-guide" onclick="window.open('stadare-guide.html','_blank');markGuideRead()"><div class="ob-check"></div><span>Läs Appguiden → Hur du använder Spick</span></div>
-            <div class="ob-step" id="ob-6" onclick="window.open('stadare-handbok.html','_blank');markHandbookRead()"><div class="ob-check"></div><span>Läs Städarhandboken →</span></div>
-            <div class="ob-step" id="ob-6t" onclick="window.open('stadare-test.html','_blank');markTestDone()"><div class="ob-check"></div><span>Gör kompetenstestet →</span></div>
-            <div class="ob-step" id="ob-8" style="pointer-events:none"><div class="ob-check"></div><span>ID-verifierad</span></div>
-            <div class="ob-step" id="ob-fskatt"><div class="ob-check"></div><span id="ob-fskatt-text">F-skatt</span></div>
+      <div class="card" id="onboarding-checklist" style="display:none"></div>
+
+      <div id="onboarding-wizard" class="wiz-overlay" style="display:none">
+        <div class="wiz-card">
+          <div class="wiz-title" id="wiz-title">Nästan klar!</div>
+          <div class="wiz-sub" id="wiz-sub">2 steg kvar innan din profil är live</div>
+
+          <div class="wiz-prog">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
+              <div class="wiz-dot on" id="wiz-dot-1">1</div>
+              <div style="font-size:.65rem;color:var(--spick-500);font-weight:500" id="wiz-lbl-1">Foto</div>
+            </div>
+            <div class="wiz-line" id="wiz-line-1"></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
+              <div class="wiz-dot off" id="wiz-dot-2">2</div>
+              <div style="font-size:.65rem;color:var(--m)" id="wiz-lbl-2">Stripe</div>
+            </div>
           </div>
-          <button onclick="document.getElementById('ob-more').style.display=this.dataset.open?'none':'block';this.textContent=this.dataset.open?'Visa fler steg →':'Dölj';this.dataset.open=this.dataset.open?'':'1'" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit">Visa fler steg →</button>
-        </div>
-        <div style="margin-top:12px">
-          <div style="height:4px;background:#e8e6e1;border-radius:2px">
-            <div id="ob-progress-bar" style="height:100%;width:0%;background:var(--spick-500);border-radius:2px;transition:width .5s ease"></div>
+
+          <div id="wiz-step-1">
+            <div class="wiz-step-card">
+              <div class="wiz-step-title">Ladda upp en profilbild</div>
+              <div class="wiz-step-sub">Städare med foto får 3x fler bokningar. Kunder vill se vem som kommer hem till dem.</div>
+              <div class="wiz-upload-area" id="wiz-upload-area" onclick="document.getElementById('wiz-avatar-input').click()">
+                <div class="wiz-upload-circle" id="wiz-avatar-preview">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+                <div class="wiz-upload-txt">Tryck för att välja bild</div>
+                <div class="wiz-upload-hint">Tydligt ansiktsfoto, max 5 MB</div>
+              </div>
+              <input type="file" id="wiz-avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+              <div id="wiz-upload-status" style="font-size:.78rem;color:var(--m);text-align:center;margin-bottom:10px"></div>
+              <button class="wiz-btn" id="wiz-upload-btn" onclick="wizUploadAvatar()" disabled>Ladda upp och gå vidare →</button>
+            </div>
           </div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:6px" id="ob-progress">0 av 9 klart</div>
+
+          <div id="wiz-step-2" style="display:none">
+            <div class="wiz-step-card">
+              <div class="wiz-step-title">Anslut bankkonto</div>
+              <div class="wiz-step-sub">Anslut via Stripe så kan du ta emot utbetalningar automatiskt efter varje jobb.</div>
+              <button class="wiz-btn" onclick="startStripeConnect()">Anslut via Stripe →</button>
+              <div id="wiz-stripe-status" style="font-size:.78rem;color:var(--m);text-align:center;margin-top:10px"></div>
+            </div>
+          </div>
+
+          <div id="wiz-step-done" style="display:none">
+            <div class="wiz-success">
+              <div class="wiz-success-icon">🎉</div>
+              <div class="wiz-success-title">Din profil är live!</div>
+              <div class="wiz-success-sub">Du kan nu ta emot bokningar. Vi meddelar dig så fort en kund bokar.</div>
+              <button class="wiz-btn" onclick="closeWizard()">Gå till din dashboard →</button>
+            </div>
+          </div>
+
+          <div class="wiz-tips-title" id="wiz-tips-title">Medan du väntar på bokningar</div>
+          <div class="wiz-tip"><div class="wiz-tip-icon">📅</div>Ditt schema är satt till mån–fre 08–17. Ändra under Mer.</div>
+          <div class="wiz-tip"><div class="wiz-tip-icon">📖</div><span style="cursor:pointer" onclick="window.open('stadare-handbok.html','_blank')">Läs Städarhandboken för bättre omdömen</span></div>
+          <div class="wiz-tip"><div class="wiz-tip-icon">✓</div><span style="cursor:pointer" onclick="window.open('stadare-test.html','_blank')">Gör kompetenstestet och få en badge</span></div>
         </div>
       </div>
 
@@ -1494,8 +1556,197 @@ function renderHome() {
   if (typeof updateGreetingSub === 'function') updateGreetingSub();
 }
 
+// ── ONBOARDING WIZARD ────────────────────────────────────────
+var _wizFile = null;
+
+function initWizard() {
+  var wiz = document.getElementById('onboarding-wizard');
+  if (!wiz) return;
+
+  var hasAvatar = !!(cleaner.avatar_url);
+  var hasStripe = (cleaner.company_id && !cleaner.is_company_owner) ? true : cleaner.stripe_onboarding_status === 'complete';
+
+  if (cleaner.status !== 'onboarding' && cleaner.status !== 'aktiv') {
+    wiz.style.display = 'none';
+    return;
+  }
+  if (hasAvatar && hasStripe) {
+    wiz.style.display = 'none';
+    return;
+  }
+
+  wiz.style.display = 'block';
+
+  var nameFirst = (cleaner.full_name || '').split(' ')[0] || 'städare';
+  document.getElementById('wiz-title').textContent = 'Nästan klar, ' + nameFirst + '!';
+
+  if (hasAvatar) {
+    showWizStep(2);
+  } else {
+    showWizStep(1);
+  }
+
+  var fileInput = document.getElementById('wiz-avatar-input');
+  if (fileInput) {
+    fileInput.onchange = function() {
+      var file = fileInput.files[0];
+      if (!file) return;
+      if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+        document.getElementById('wiz-upload-status').textContent = '❌ Bara JPG, PNG eller WebP';
+        document.getElementById('wiz-upload-status').style.color = '#DC2626';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        document.getElementById('wiz-upload-status').textContent = '❌ Max 5 MB';
+        document.getElementById('wiz-upload-status').style.color = '#DC2626';
+        return;
+      }
+      _wizFile = file;
+      var preview = document.getElementById('wiz-avatar-preview');
+      preview.innerHTML = '<img src="' + URL.createObjectURL(file) + '" alt="Preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      document.getElementById('wiz-upload-btn').disabled = false;
+      document.getElementById('wiz-upload-status').textContent = '';
+    };
+  }
+}
+
+function showWizStep(step) {
+  var s1 = document.getElementById('wiz-step-1');
+  var s2 = document.getElementById('wiz-step-2');
+  var sDone = document.getElementById('wiz-step-done');
+  var tips = document.getElementById('wiz-tips-title');
+  if (!s1 || !s2) return;
+
+  var dot1 = document.getElementById('wiz-dot-1');
+  var dot2 = document.getElementById('wiz-dot-2');
+  var line1 = document.getElementById('wiz-line-1');
+  var sub = document.getElementById('wiz-sub');
+  var tipsEls = document.querySelectorAll('.wiz-tip');
+
+  s1.style.display = step === 1 ? 'block' : 'none';
+  s2.style.display = step === 2 ? 'block' : 'none';
+  sDone.style.display = step === 3 ? 'block' : 'none';
+  if (tips) tips.style.display = step === 3 ? 'none' : 'block';
+  tipsEls.forEach(function(t) { t.style.display = step === 3 ? 'none' : 'flex'; });
+
+  if (step === 1) {
+    dot1.className = 'wiz-dot on';
+    dot2.className = 'wiz-dot off';
+    line1.className = 'wiz-line';
+    sub.textContent = '2 steg kvar innan din profil är live';
+  } else if (step === 2) {
+    dot1.className = 'wiz-dot done';
+    dot1.innerHTML = '<svg width="14" height="14" fill="none" stroke="#0F6E56" stroke-width="2.5" stroke-linecap="round"><polyline points="2 7 5.5 10.5 12 4"/></svg>';
+    dot2.className = 'wiz-dot on';
+    line1.className = 'wiz-line done';
+    sub.textContent = '1 steg kvar!';
+  } else if (step === 3) {
+    dot1.className = 'wiz-dot done';
+    dot1.innerHTML = '<svg width="14" height="14" fill="none" stroke="#0F6E56" stroke-width="2.5" stroke-linecap="round"><polyline points="2 7 5.5 10.5 12 4"/></svg>';
+    dot2.className = 'wiz-dot done';
+    dot2.innerHTML = '<svg width="14" height="14" fill="none" stroke="#0F6E56" stroke-width="2.5" stroke-linecap="round"><polyline points="2 7 5.5 10.5 12 4"/></svg>';
+    line1.className = 'wiz-line done';
+    sub.textContent = '';
+  }
+}
+
+async function wizUploadAvatar() {
+  if (!_wizFile) return;
+  var btn = document.getElementById('wiz-upload-btn');
+  var status = document.getElementById('wiz-upload-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Laddar upp...';
+  status.textContent = '';
+
+  try {
+    var resized = await resizeImage(_wizFile, 500);
+    var userId = cleaner.auth_user_id;
+    if (!userId) {
+      var sessionRes = await SB.auth.getSession();
+      userId = sessionRes.data?.session?.user?.id;
+    }
+    if (!userId) {
+      status.textContent = '❌ Du är inte inloggad';
+      status.style.color = '#DC2626';
+      btn.disabled = false;
+      btn.textContent = 'Ladda upp och gå vidare →';
+      return;
+    }
+
+    var filePath = userId + '/avatar.webp';
+    var uploadRes = await SB.storage.from('avatars').upload(filePath, resized, {
+      contentType: 'image/webp',
+      upsert: true
+    });
+    if (uploadRes.error) throw new Error(uploadRes.error.message);
+
+    var urlRes = SB.storage.from('avatars').getPublicUrl(filePath);
+    var publicUrl = urlRes.data.publicUrl;
+
+    var updateRes = await SB.from('cleaners').update({
+      avatar_url: publicUrl
+    }).eq('auth_user_id', userId);
+    if (updateRes.error) throw new Error(updateRes.error.message);
+
+    cleaner.avatar_url = publicUrl;
+
+    // Uppdatera alla avatar-visningar
+    document.getElementById('hdr-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    if (document.getElementById('prof-avatar')) {
+      document.getElementById('prof-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+    }
+    if (document.getElementById('greeting-avatar')) {
+      document.getElementById('greeting-avatar').innerHTML = '<img src="' + publicUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    }
+    if (document.getElementById('dash-avatar')) {
+      document.getElementById('dash-avatar').innerHTML = '<img src="' + publicUrl + '?t=' + Date.now() + '" alt="Profilbild">';
+    }
+
+    // Gå till steg 2
+    var hasStripe = (cleaner.company_id && !cleaner.is_company_owner) ? true : cleaner.stripe_onboarding_status === 'complete';
+    if (hasStripe) {
+      wizComplete();
+    } else {
+      showWizStep(2);
+    }
+  } catch(err) {
+    console.error('Wizard avatar upload error:', err);
+    status.textContent = '❌ Uppladdning misslyckades: ' + (err.message || 'Okänt fel');
+    status.style.color = '#DC2626';
+    btn.disabled = false;
+    btn.textContent = 'Ladda upp och gå vidare →';
+  }
+}
+
+function wizComplete() {
+  showWizStep(3);
+  // Auto-aktivera profilen
+  (async function() {
+    try {
+      var res = await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
+        method: 'PATCH',
+        headers: _authHeaders(),
+        body: JSON.stringify({ status: 'aktiv' })
+      });
+      if (res.ok) {
+        cleaner.status = 'aktiv';
+        var banner = document.getElementById('onboarding-banner');
+        if (banner) banner.style.display = 'none';
+      }
+    } catch(e) { console.warn('Wizard auto-activate failed:', e); }
+  })();
+}
+
+function closeWizard() {
+  var wiz = document.getElementById('onboarding-wizard');
+  if (wiz) wiz.style.display = 'none';
+  showToast('🎉 Din profil är live! Du kan nu ta emot bokningar.');
+}
+
 function updateOnboarding() {
   if (!cleaner) return;
+  // Visa wizard istället för gammal checklista om onboarding pågår
+  initWizard();
 
   // F-skatt dynamisk text
   var fskattEl = document.getElementById('ob-fskatt');
@@ -1539,16 +1790,14 @@ function updateOnboarding() {
     }
   });
   const box = document.getElementById('onboarding-checklist');
-  if (box) {
-    box.style.display = done >= (total - 1) ? 'none' : 'block';
-  }
+  if (box) box.style.display = 'none';
   const prog = document.getElementById('ob-progress');
   if (prog) prog.textContent = done + ' av ' + total + ' klart';
   const progBar = document.getElementById('ob-progress-bar');
   if (progBar) progBar.style.width = Math.round((done / total) * 100) + '%';
 
   // Auto-activate: om status=onboarding och de 4 kärnstegen är klara
-  var coreReady = checks['ob-2'] && checks['ob-3'] && checks['ob-4'] && checks['ob-5'];
+  var coreReady = checks['ob-2'] && checks['ob-5'];
   if (cleaner.status === 'onboarding' && coreReady) {
     (async function() {
       try {
@@ -2981,6 +3230,8 @@ async function checkConnectStatus() {
       const result = await res.json();
       if (result.onboarded) {
         cleaner.stripe_onboarding_status = 'complete';
+        var wiz = document.getElementById('onboarding-wizard');
+        if (wiz && wiz.style.display !== 'none') wizComplete();
         document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
       } else {
         cleaner.stripe_onboarding_status = 'pending';
