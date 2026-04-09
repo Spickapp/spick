@@ -318,6 +318,27 @@ async function updateStatus(status) {
   var patchData = { status: dbStatus };
   if (status === 'done') patchData.completed_at = new Date().toISOString();
 
+  // Samla GPS vid utcheckning
+  if (status === 'done') {
+    var statusLabel2 = document.getElementById('currentStatusDesc');
+    if (statusLabel2) statusLabel2.textContent = '📍 Registrerar utcheckning...';
+
+    await new Promise(function(resolve) {
+      collectGPS(function(gps) {
+        if (gps) {
+          patchData.checkout_lat = gps.lat;
+          patchData.checkout_lng = gps.lng;
+          patchData.checkout_gps_status = 'green';
+          if (statusLabel2) statusLabel2.textContent = '✅ Utcheckning registrerad';
+        } else {
+          patchData.checkout_gps_status = 'denied';
+          if (statusLabel2) statusLabel2.textContent = '✅ Klar (utan GPS)';
+        }
+        resolve();
+      });
+    });
+  }
+
   // Samla GPS vid ankomst
   if (status === 'arrived') {
     var statusLabel = document.getElementById('currentStatusDesc');
