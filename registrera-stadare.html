@@ -304,12 +304,14 @@ function updateDynamicTexts() {
   if (priceEl) {
     var rate = parseInt(priceEl.value) || 350;
     var net = Math.round(rate * 0.83);
+    var priceDisplayEl = document.getElementById('priceDisplay');
+    if (priceDisplayEl) priceDisplayEl.textContent = rate;
     var hint = document.getElementById('priceHint');
     if (hint) {
       if (_currentLang === 'ar') {
-        hint.textContent = rate + ' كرونة/ساعة — تحتفظ بـ ' + net + ' كرونة/ساعة (83%)';
+        hint.textContent = 'تحتفظ بـ ' + net + ' كرونة/ساعة (83%)';
       } else {
-        hint.textContent = rate + ' kr/h — du behåller ' + net + ' kr/h (83%)';
+        hint.textContent = 'Du behåller ' + net + ' kr/h (83%)';
       }
     }
   }
@@ -573,9 +575,17 @@ function switchLang(lang, btn) {
       <div class="field-row">
         <div class="field">
           <label data-i18n="lblTimpris">Ditt timpris (kr/h)</label>
-          <input type="range" id="priceInput" min="200" max="600" value="350" step="10">
-          <div class="price-range-labels"><span>200 kr/h</span><span>600 kr/h</span></div>
-          <div class="field-hint" id="priceHint" data-i18n-dynamic="priceHint">350 kr/h — du behåller 291 kr/h (83%)</div>
+          <div style="background:#F7F7F5;border:1.5px solid #E8E8E4;border-radius:14px;padding:16px 20px;margin-top:8px">
+            <div style="text-align:center;margin-bottom:12px">
+              <span id="priceDisplay" style="font-size:2rem;font-weight:800;color:#0F6E56;letter-spacing:-1px">350</span>
+              <span style="font-size:1rem;font-weight:600;color:#0F6E56"> kr/h</span>
+            </div>
+            <input type="range" id="priceInput" min="200" max="600" value="350" step="10" style="width:100%;accent-color:#0F6E56">
+            <div class="price-range-labels"><span>200 kr/h</span><span>600 kr/h</span></div>
+            <div style="text-align:center;margin-top:10px;padding:8px 12px;background:#E1F5EE;border-radius:99px;display:inline-block;width:100%">
+              <span style="font-size:.82rem;color:#085041;font-weight:600" id="priceHint" data-i18n-dynamic="priceHint">Du behåller 291 kr/h (83%)</span>
+            </div>
+          </div>
         </div>
         <div class="field">
           <label data-i18n="lblRadie">Hur långt kan du resa till kunder?</label>
@@ -1012,10 +1022,11 @@ document.getElementById('cleaner-radius')?.addEventListener('input', function() 
 document.getElementById('priceInput')?.addEventListener('input', function() {
   var rate = parseInt(this.value) || 350;
   var net = Math.round(rate * 0.83);
+  document.getElementById('priceDisplay').textContent = rate;
   if (_currentLang === 'ar') {
-    document.getElementById('priceHint').textContent = rate + ' كرونة/ساعة — تحتفظ بـ ' + net + ' كرونة/ساعة (83%)';
+    document.getElementById('priceHint').textContent = 'تحتفظ بـ ' + net + ' كرونة/ساعة (83%)';
   } else {
-    document.getElementById('priceHint').textContent = rate + ' kr/h — du behåller ' + net + ' kr/h (83%)';
+    document.getElementById('priceHint').textContent = 'Du behåller ' + net + ' kr/h (83%)';
   }
 });
 
