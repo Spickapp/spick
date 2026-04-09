@@ -566,6 +566,24 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
       await sendEmail(r.to, r.subject || "Svar från Spick", r.html || r.body || "");
     }
 
+    else if (type === "foretag_lead") {
+      await sendEmail(ADMIN, `🏢 Ny företagsförfrågan: ${esc(r.company_name || "okänt företag")}`, wrap(`
+        <h2>Ny företagsförfrågan!</h2>
+        <div class="card">
+          <div class="row"><span class="lbl">Kontaktperson</span><span class="val">${esc(r.contact_name || "–")}</span></div>
+          <div class="row"><span class="lbl">Företag</span><span class="val">${esc(r.company_name || "–")}</span></div>
+          ${r.org_number ? `<div class="row"><span class="lbl">Org.nr</span><span class="val">${esc(r.org_number)}</span></div>` : ""}
+          <div class="row"><span class="lbl">E-post</span><span class="val"><a href="mailto:${esc(r.email)}" style="color:#0F6E56">${esc(r.email || "–")}</a></span></div>
+          <div class="row"><span class="lbl">Telefon</span><span class="val"><a href="tel:${esc(r.phone)}" style="color:#0F6E56">${esc(r.phone || "–")}</a></span></div>
+          <div class="row"><span class="lbl">Typ</span><span class="val">${esc(r.cleaning_type || "–")}</span></div>
+          ${r.area_sqm ? `<div class="row"><span class="lbl">Yta</span><span class="val">${r.area_sqm} m²</span></div>` : ""}
+          <div class="row"><span class="lbl">Frekvens</span><span class="val">${esc(r.frequency || "–")}</span></div>
+          ${r.message ? `<div class="row"><span class="lbl">Meddelande</span><span class="val">${esc(r.message)}</span></div>` : ""}
+        </div>
+        <p><strong>Ring kunden:</strong> <a href="tel:${esc(r.phone)}" style="color:#0F6E56;font-weight:600">${esc(r.phone || "–")}</a></p>
+      `));
+    }
+
     else if (type === "ssl_warning") {
       await sendEmail(ADMIN, "🔒 SSL-certifikat snart utgånget!", wrap(`
         <h2>SSL-varning</h2>
