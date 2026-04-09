@@ -63,6 +63,22 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
 .mob-panel a:last-child{border:none;}
 @media(max-width:1024px){nav{padding:1rem 2rem;}}
 @media(max-width:768px){.nav-links{display:none;}.hamburger{display:flex;}}
+/* NAV LOGIN DROPDOWN */
+.nav-login{position:relative}
+.nav-login-toggle{display:inline-flex;align-items:center;gap:4px;font-size:.9rem;color:#6B6960;
+  background:none;border:none;cursor:pointer;font-family:inherit;padding:0;transition:color .2s}
+.nav-login-toggle:hover{color:#0F6E56}
+.nav-login-toggle svg{width:14px;height:14px;transition:transform .2s}
+.nav-login.open .nav-login-toggle svg{transform:rotate(180deg)}
+.nav-login-menu{display:none;position:absolute;top:calc(100% + 10px);right:0;
+  background:#fff;border:1px solid #E8E8E4;border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.1);padding:6px;min-width:210px;z-index:300}
+.nav-login.open .nav-login-menu{display:block}
+.nav-login-menu a{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  font-size:.88rem;color:#1C1C1A;text-decoration:none;border-radius:8px;
+  font-weight:500;transition:background .15s}
+.nav-login-menu a:hover{background:#E1F5EE}
+.nav-login-menu a svg{width:18px;height:18px;color:#0F6E56;flex-shrink:0}
 /* FOOTER */
 footer{background:#080808;padding:4rem 5rem 2rem;}
 .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem;}
@@ -101,6 +117,13 @@ const NAV_HTML = `
   <a href="${P}blogg/" class="nl">Blogg</a>
   <a href="${P}priser.html" class="nl">Priser</a>
   <a href="${P}foretag.html" class="nl">För företag</a>
+  <div class="nav-login">
+    <button class="nav-login-toggle" onclick="this.parentElement.classList.toggle('open')">Logga in <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg></button>
+    <div class="nav-login-menu">
+      <a href="${P}mitt-konto.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3.75a2 2 0 100 4 2 2 0 000-4zm-3.5 2a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0zM3.25 17.5a6.75 6.75 0 0113.5 0 .75.75 0 01-1.5 0 5.25 5.25 0 00-10.5 0 .75.75 0 01-1.5 0z"/></svg>Mina bokningar</a>
+      <a href="${P}stadare-dashboard.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 3.75A2.75 2.75 0 003.25 6.5v7A2.75 2.75 0 006 16.25h8A2.75 2.75 0 0016.75 13.5v-7A2.75 2.75 0 0014 3.75H6zM4.75 6.5c0-.69.56-1.25 1.25-1.25h8c.69 0 1.25.56 1.25 1.25v7c0 .69-.56 1.25-1.25 1.25H6c-.69 0-1.25-.56-1.25-1.25v-7zm2.25 1a.75.75 0 000 1.5h6a.75.75 0 000-1.5H7zm0 3a.75.75 0 000 1.5h4a.75.75 0 000-1.5H7z" clip-rule="evenodd"/></svg>Städarportalen</a>
+    </div>
+  </div>
   <a href="${P}boka.html" class="nl-btn">Boka städning</a>
 </div>
 <button class="hamburger" onclick="document.getElementById('mobMenu').style.display='flex'" aria-label="Öppna meny">
@@ -116,6 +139,8 @@ const MOB_HTML = `
     <a href="${P}tjanster.html">Tjänster</a>
     <a href="${P}foretag.html">För företag</a>
     <a href="${P}bli-stadare.html">Bli städare</a>
+    <a href="${P}mitt-konto.html">Mina bokningar</a>
+    <a href="${P}stadare-dashboard.html">Städarportalen</a>
     <a href="${P}boka.html" style="background:var(--g);color:#fff;border-radius:100px;text-align:center;padding:.75rem 1.5rem;border:none;">Boka nu →</a>
   </div>
 </div>`;
@@ -137,7 +162,7 @@ const FOOTER_HTML = `
       <li><a href="${P}faq.html">Vanliga frågor</a></li>
       <li><a href="${P}blogg/">Blogg & Guider</a></li>
       <li><a href="${P}kontakt.html">Kontakt</a></li>
-      <li><a href="${P}mitt-konto.html">Mitt konto</a></li>
+      <li><a href="${P}mitt-konto.html">Mina bokningar</a></li>
       <li><a href="${P}presentkort.html">Presentkort</a></li>
       <li><a href="${P}nojdhetsgaranti.html">Nöjdhetsgaranti</a></li>
       <li><a href="${P}sakerhet.html">Säkerhet</a></li>
@@ -148,7 +173,7 @@ const FOOTER_HTML = `
     <h4>Städare</h4>
     <ul>
       <li><a href="${P}bli-stadare.html">Bli städare</a></li>
-      <li><a href="${P}bli-stadare.html">Bli städare</a></li>
+      <li><a href="${P}stadare-dashboard.html">Städarportalen</a></li>
       <li><a href="${P}uppdragsavtal.html">Uppdragsavtal</a></li>
       <li><a href="${P}tips-for-stadare.html">Tips för städare</a></li>
     </ul>
@@ -216,6 +241,11 @@ function injectComponents() {
       link.style.color = 'var(--g, #0F6E56)';
       link.style.fontWeight = '600';
     }
+  });
+  // Stäng login-dropdown vid klick utanför
+  document.addEventListener('click', function(e) {
+    var dd = document.querySelector('.nav-login');
+    if (dd && !dd.contains(e.target)) dd.classList.remove('open');
   });
 }
 // Race-condition-säker initiering:
