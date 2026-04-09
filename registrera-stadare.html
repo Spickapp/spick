@@ -538,6 +538,34 @@ function switchLang(lang, btn) {
       </div>
 
       <div class="field">
+        <label data-i18n="lblSprak">Vilka språk talar du? *</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="langGrid">
+          <button type="button" class="svc-btn on" onclick="toggleLang(this)" data-lang="Svenska">🇸🇪 Svenska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Engelska">🇬🇧 Engelska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Arabiska">🇸🇦 Arabiska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Persiska">🇮🇷 Persiska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Somaliska">🇸🇴 Somaliska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Tigrinja">🇪🇷 Tigrinja</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Ukrainska">🇺🇦 Ukrainska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Polska">🇵🇱 Polska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Spanska">🇪🇸 Spanska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Turkiska">🇹🇷 Turkiska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Franska">🇫🇷 Franska</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-i18n="lblErfarenhet">Hur länge har du städat professionellt?</label>
+        <select id="experienceInput" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:12px;font-family:inherit;font-size:.9rem;background:#fff">
+          <option value="">Välj...</option>
+          <option value="Första gången">Första gången</option>
+          <option value="Under 1 år">Under 1 år</option>
+          <option value="1-3 år">1-3 år</option>
+          <option value="3+ år">3+ år</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label data-i18n="lblTjanster">Vilka tjänster erbjuder du?</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="svcGrid">
           <button type="button" class="svc-btn on" onclick="toggleSvc(this)" data-i18n="svcHem">🏠 Hemstädning</button>
@@ -769,6 +797,7 @@ function validateStep1() {
 
 // ── SERVICE TOGGLE ───────────────────────────
 function toggleSvc(el) { el.classList.toggle('on'); }
+function toggleLang(el) { el.classList.toggle('on'); }
 
 // ── BANKID (REAL EF INTEGRATION) ─────────────
 async function startBankID(method) {
@@ -856,6 +885,8 @@ async function submitRegistration() {
   var svcs = [];
   document.querySelectorAll('.svc-btn.on').forEach(function(b) { svcs.push(b.textContent.trim()); });
 
+  var selectedLangs = document.querySelectorAll('#langGrid .svc-btn.on');
+  if (!selectedLangs.length) { alert('Välj minst ett språk'); return; }
   if (!document.getElementById('chkTerms').checked) { alert('Du måste godkänna uppdragsavtalet och integritetspolicyn'); return; }
   if (!_fskattStatus) { alert('Välj ditt F-skatt-status'); return; }
 
@@ -883,7 +914,9 @@ async function submitRegistration() {
     gdpr_consent: true,
     gdpr_consent_at: new Date().toISOString(),
     fskatt_confirmed: _fskattStatus === 'yes',
-    fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown'
+    fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown',
+    languages: Array.from(document.querySelectorAll('#langGrid .svc-btn.on')).map(function(b) { return b.dataset.lang; }),
+    experience: document.getElementById('experienceInput').value || null
   };
 
   // Company fields
@@ -910,7 +943,7 @@ async function submitRegistration() {
         fetch(SUPA_URL + '/functions/v1/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
-          body: JSON.stringify({ type: 'application', record: { full_name: fullName, first_name: firstName, last_name: lastName, email: email, phone: phone, home_address: address, bio: bio, services: svcs, hourly_rate: parseInt(price) || 350, service_radius_km: parseInt(radius) || 30, fskatt_confirmed: _fskattStatus === 'yes', fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown', is_company: _regType === 'foretag', company_name: _regType === 'foretag' ? document.getElementById('companyName').value.trim() : null, org_number: _regType === 'foretag' ? document.getElementById('orgNumber').value.trim() : null } })
+          body: JSON.stringify({ type: 'application', record: { full_name: fullName, first_name: firstName, last_name: lastName, email: email, phone: phone, home_address: address, bio: bio, services: svcs, hourly_rate: parseInt(price) || 350, service_radius_km: parseInt(radius) || 30, fskatt_confirmed: _fskattStatus === 'yes', fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown', is_company: _regType === 'foretag', company_name: _regType === 'foretag' ? document.getElementById('companyName').value.trim() : null, org_number: _regType === 'foretag' ? document.getElementById('orgNumber').value.trim() : null, languages: Array.from(document.querySelectorAll('#langGrid .svc-btn.on')).map(function(b) { return b.dataset.lang; }), experience: document.getElementById('experienceInput').value || null } })
         });
       } catch (e) { /* non-critical */ }
 

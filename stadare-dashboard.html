@@ -788,6 +788,8 @@ body{top:0!important}
           </div>
         </div>
         <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
+        <div class="prof-row"><span class="lbl">🗣 Språk</span><span id="prof-languages" style="font-size:.85rem;color:var(--m)">–</span></div>
+        <div class="prof-row"><span class="lbl">📋 Erfarenhet</span><span id="prof-experience" style="font-size:.85rem;color:var(--m)">–</span></div>
         <div style="margin-top:1rem">
           <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Mina tjänster</label>
           <div id="profile-services" style="display:flex;flex-wrap:wrap;gap:.5rem">
@@ -1411,6 +1413,8 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('edit-city').value = cleaner.city || '';
   document.getElementById('edit-rate').value = cleaner.hourly_rate || 350;
   document.getElementById('edit-bio').value = cleaner.bio || '';
+  document.getElementById('prof-languages').textContent = Array.isArray(cleaner.languages) && cleaner.languages.length ? cleaner.languages.join(', ') : cleaner.languages || '–';
+  document.getElementById('prof-experience').textContent = cleaner.experience || '–';
   updateKeep();
   initAvatarUpload();
   document.getElementById('earn-rate').textContent = (cleaner.hourly_rate || 350) + ' kr/h';

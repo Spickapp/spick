@@ -131,6 +131,8 @@ serve(async (req) => {
         hourly_rate: parseFloat(String(app.hourly_rate)) || 350,
         services: svcs,
         bio: app.bio || "",
+        languages: Array.isArray(app.languages) ? app.languages : (app.languages ? [app.languages] : []),
+        experience: app.experience || null,
 
         // Auth & status
         is_approved: true,

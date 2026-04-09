@@ -1870,8 +1870,9 @@ function renderApplications() {
           <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(Array.isArray(a.services) ? a.services.join(', ') : a.services || '–')}</p>
           <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.fskatt_confirmed ? '<span style="color:#16a34a">✅ Har</span>' : a.fskatt_needs_help ? '<span style="color:#ca8a04">📝 Vill ha hjälp</span>' : '<span style="color:#ea580c">❓ Okänd</span>'}</p>
           ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${escHtml(a.bio.substring(0,120))}${a.bio.length > 120 ? '...' : ''}"</p>` : ''}
+          ${a.languages && a.languages.length ? `<p style="font-size:.85rem;margin-top:4px"><strong>Språk:</strong> ${escHtml(Array.isArray(a.languages) ? a.languages.join(', ') : a.languages)}</p>` : '<p style="font-size:.85rem;margin-top:4px;color:#D97706">⚠️ Språk ej angivet</p>'}
+          ${a.experience ? `<p style="font-size:.85rem"><strong>Erfarenhet:</strong> ${escHtml(a.experience)}</p>` : '<p style="font-size:.85rem;color:#D97706">⚠️ Erfarenhet ej angiven</p>'}
           ${a.available_days ? `<p style="font-size:.82rem;margin-top:4px"><strong>Tillgängliga dagar:</strong> ${escHtml(a.available_days)}</p>` : ''}
-          ${a.languages ? `<p style="font-size:.82rem"><strong>Språk:</strong> ${escHtml(a.languages)}</p>` : ''}
           <p style="font-size:.75rem;color:#9E9E9A;margin-top:6px">${a.gdpr_consent ? '✅ GDPR' : '❌ GDPR'} · ${a.fskatt_confirmed ? '✅ F-skatt bekräftad' : a.fskatt_needs_help ? '📝 F-skatt: vill ha hjälp' : '❓ F-skatt okänd'} · ${a.marketing_consent ? '✅ Marknadsföring' : '❌ Marknadsföring'}</p>
           <p style="font-size:.75rem;color:var(--m);margin-top:4px">Ansökt: ${new Date(a.created_at).toLocaleString('sv-SE',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
         </div>
