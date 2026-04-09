@@ -540,19 +540,10 @@ function switchLang(lang, btn) {
       <div class="field">
         <label data-i18n="lblSprak">Vilka språk talar du? *</label>
         <p style="font-size:.78rem;color:#9E9E9A;margin-bottom:8px">Välj alla du kan kommunicera med kunder på.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="langGrid">
-          <button type="button" class="svc-btn on" onclick="toggleLang(this)" data-lang="Svenska">Svenska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="English">English</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="العربية">العربية</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="فارسی">فارسی</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Soomaali">Soomaali</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="ትግርኛ">ትግርኛ</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Українська">Українська</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Polski">Polski</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Español">Español</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Română">Română</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Türkçe">Türkçe</button>
-        </div>
+        <div id="langChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px"></div>
+        <select id="langSelect" onchange="addLang(this)" style="width:100%;padding:10px 14px;border:1.5px solid #E8E8E4;border-radius:12px;font-family:inherit;font-size:.9rem;background:#fff;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath d=%27M2 4l4 4 4-4%27 fill=%27none%27 stroke=%27%236B6960%27 stroke-width=%271.5%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 14px center;cursor:pointer">
+          <option value="">+ Lägg till språk...</option>
+        </select>
       </div>
 
       <div class="field">
@@ -576,7 +567,8 @@ function switchLang(lang, btn) {
           <button type="button" class="svc-btn" onclick="toggleSvc(this)" data-i18n="svcKontor">🏢 Kontor</button><span style="font-size:.75rem;color:#9E9E9A;margin-left:4px" data-i18n="rutEj">(RUT gäller ej)</span>
         </div>
       </div>
-      <style>.svc-btn{padding:8px 14px;border:2px solid #E8E8E4;border-radius:99px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}.svc-btn:hover{border-color:var(--gl)}.svc-btn.on{background:var(--gp);border-color:var(--accent);color:var(--accent);font-weight:600}.fskatt-btn{padding:8px 14px;border:2px solid #E8E8E4;border-radius:99px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}.fskatt-btn:hover{border-color:var(--gl)}.fskatt-btn.on{background:#EDE9FE;border-color:#7C3AED;color:#7C3AED;font-weight:600}</style>
+      <style>.svc-btn{padding:8px 14px;border:2px solid #E8E8E4;border-radius:99px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}.svc-btn:hover{border-color:var(--gl)}.svc-btn.on{background:var(--gp);border-color:var(--accent);color:var(--accent);font-weight:600}
+.lang-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#E1F5EE;color:#085041;font-size:13px;font-weight:600;border-radius:99px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}.lang-chip:hover{background:#9FE1CB}.lang-chip .lx{font-size:11px;opacity:.6;margin-left:2px}.lang-chip:hover .lx{opacity:1}.fskatt-btn{padding:8px 14px;border:2px solid #E8E8E4;border-radius:99px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}.fskatt-btn:hover{border-color:var(--gl)}.fskatt-btn.on{background:#EDE9FE;border-color:#7C3AED;color:#7C3AED;font-weight:600}</style>
 
       <div class="field-row">
         <div class="field">
@@ -798,7 +790,42 @@ function validateStep1() {
 
 // ── SERVICE TOGGLE ───────────────────────────
 function toggleSvc(el) { el.classList.toggle('on'); }
-function toggleLang(el) { el.classList.toggle('on'); }
+
+var _allLangs = ['Svenska','English','العربية','Français','Deutsch','فارسی','Suomi','Soomaali','ትግርኛ','Türkçe','Українська','Polski','Español','Română','Bosanski','Hrvatski','Srpski','Nederlands','Italiano','Português','ไทย','中文','हिन्दी','Български','Lietuvių','Latviešu','Eesti'];
+var _selectedLangs = ['Svenska'];
+
+function renderLangs() {
+  var c = document.getElementById('langChips');
+  if (!c) return;
+  c.innerHTML = _selectedLangs.map(function(s) {
+    return '<span class="lang-chip" onclick="removeLang(\'' + s.replace(/'/g, "\\'") + '\')">' + s + ' <span class="lx">✕</span></span>';
+  }).join('');
+  var sel = document.getElementById('langSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">+ Lägg till språk...</option>';
+  _allLangs.forEach(function(l) {
+    if (_selectedLangs.indexOf(l) === -1) {
+      var o = document.createElement('option');
+      o.value = l; o.textContent = l;
+      sel.appendChild(o);
+    }
+  });
+}
+
+function addLang(el) {
+  if (el.value && _selectedLangs.indexOf(el.value) === -1) {
+    _selectedLangs.push(el.value);
+    renderLangs();
+  }
+  el.value = '';
+}
+
+function removeLang(lang) {
+  _selectedLangs = _selectedLangs.filter(function(s) { return s !== lang; });
+  renderLangs();
+}
+
+renderLangs();
 
 // ── BANKID (REAL EF INTEGRATION) ─────────────
 async function startBankID(method) {
@@ -886,8 +913,7 @@ async function submitRegistration() {
   var svcs = [];
   document.querySelectorAll('.svc-btn.on').forEach(function(b) { svcs.push(b.textContent.trim()); });
 
-  var selectedLangs = document.querySelectorAll('#langGrid .svc-btn.on');
-  if (!selectedLangs.length) { alert('Välj minst ett språk'); return; }
+  if (!_selectedLangs.length) { alert('Välj minst ett språk'); return; }
   if (!document.getElementById('chkTerms').checked) { alert('Du måste godkänna uppdragsavtalet och integritetspolicyn'); return; }
   if (!_fskattStatus) { alert('Välj ditt F-skatt-status'); return; }
 
@@ -916,7 +942,7 @@ async function submitRegistration() {
     gdpr_consent_at: new Date().toISOString(),
     fskatt_confirmed: _fskattStatus === 'yes',
     fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown',
-    languages: Array.from(document.querySelectorAll('#langGrid .svc-btn.on')).map(function(b) { return b.dataset.lang; }),
+    languages: _selectedLangs.slice(),
     experience: document.getElementById('experienceInput').value || null
   };
 
@@ -944,7 +970,7 @@ async function submitRegistration() {
         fetch(SUPA_URL + '/functions/v1/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
-          body: JSON.stringify({ type: 'application', record: { full_name: fullName, first_name: firstName, last_name: lastName, email: email, phone: phone, home_address: address, bio: bio, services: svcs, hourly_rate: parseInt(price) || 350, service_radius_km: parseInt(radius) || 30, fskatt_confirmed: _fskattStatus === 'yes', fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown', is_company: _regType === 'foretag', company_name: _regType === 'foretag' ? document.getElementById('companyName').value.trim() : null, org_number: _regType === 'foretag' ? document.getElementById('orgNumber').value.trim() : null, languages: Array.from(document.querySelectorAll('#langGrid .svc-btn.on')).map(function(b) { return b.dataset.lang; }), experience: document.getElementById('experienceInput').value || null } })
+          body: JSON.stringify({ type: 'application', record: { full_name: fullName, first_name: firstName, last_name: lastName, email: email, phone: phone, home_address: address, bio: bio, services: svcs, hourly_rate: parseInt(price) || 350, service_radius_km: parseInt(radius) || 30, fskatt_confirmed: _fskattStatus === 'yes', fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown', is_company: _regType === 'foretag', company_name: _regType === 'foretag' ? document.getElementById('companyName').value.trim() : null, org_number: _regType === 'foretag' ? document.getElementById('orgNumber').value.trim() : null, languages: _selectedLangs.slice(), experience: document.getElementById('experienceInput').value || null } })
         });
       } catch (e) { /* non-critical */ }
 
@@ -1083,10 +1109,9 @@ function setUILang(lang) {
   // Auto-select spoken language based on UI choice
   var langMap = {sv:'Svenska', en:'English', ar:'العربية', pl:'Polski', so:'Soomaali', es:'Español', ro:'Română', uk:'Українська'};
   var mapped = langMap[lang];
-  if (mapped) {
-    document.querySelectorAll('#langGrid .svc-btn').forEach(function(b) {
-      if (b.dataset.lang === mapped && !b.classList.contains('on')) b.classList.add('on');
-    });
+  if (mapped && _selectedLangs.indexOf(mapped) === -1) {
+    _selectedLangs.push(mapped);
+    renderLangs();
   }
 }
 </script>
