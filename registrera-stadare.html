@@ -316,12 +316,17 @@ function updateDynamicTexts() {
     }
   }
   if (radiusEl) {
+    var km = parseInt(radiusEl.value) || 30;
+    var rdEl = document.getElementById('radiusDisplay');
+    if (rdEl) rdEl.textContent = km;
     var rv = document.getElementById('radius-value');
     if (rv) {
+      var hint = km <= 15 ? 'Nära hemma' : km <= 30 ? 'Täcker de flesta stadsdelar' : km <= 60 ? 'Bred radie — fler jobb' : 'Hela regionen';
       if (_currentLang === 'ar') {
-        rv.textContent = radiusEl.value + ' كم نصف قطر';
+        var hintAr = km <= 15 ? 'قريب من المنزل' : km <= 30 ? 'يغطي معظم الأحياء' : km <= 60 ? 'نطاق واسع — المزيد من العمل' : 'المنطقة بأكملها';
+        rv.textContent = hintAr;
       } else {
-        rv.textContent = radiusEl.value + ' km radie';
+        rv.textContent = hint;
       }
     }
   }
@@ -566,7 +571,7 @@ function switchLang(lang, btn) {
           <button type="button" class="svc-btn" onclick="toggleSvc(this)" data-i18n="svcStor">✨ Storstädning</button>
           <button type="button" class="svc-btn" onclick="toggleSvc(this)" data-i18n="svcFlytt">📦 Flyttstädning</button>
           <button type="button" class="svc-btn" onclick="toggleSvc(this)" data-i18n="svcFonster">🪟 Fönsterputs</button>
-          <button type="button" class="svc-btn" onclick="toggleSvc(this)" data-i18n="svcKontor">🏢 Kontor</button><span style="font-size:.75rem;color:#9E9E9A;margin-left:4px" data-i18n="rutEj">(RUT gäller ej)</span>
+          <button type="button" class="svc-btn" onclick="toggleSvc(this)" data-i18n="svcKontor" style="display:inline-flex;flex-direction:column;align-items:center;line-height:1.2">🏢 Kontor<span style="font-size:.65rem;opacity:.6;font-weight:400" data-i18n="rutEj">(RUT gäller ej)</span></button>
         </div>
       </div>
       <style>.svc-btn{padding:8px 14px;border:2px solid #E8E8E4;border-radius:99px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}.svc-btn:hover{border-color:var(--gl)}.svc-btn.on{background:var(--gp);border-color:var(--accent);color:var(--accent);font-weight:600}
@@ -575,23 +580,30 @@ function switchLang(lang, btn) {
       <div class="field-row">
         <div class="field">
           <label data-i18n="lblTimpris">Ditt timpris (kr/h)</label>
-          <div style="background:#F7F7F5;border:1.5px solid #E8E8E4;border-radius:14px;padding:16px 20px;margin-top:8px">
-            <div style="text-align:center;margin-bottom:12px">
-              <span id="priceDisplay" style="font-size:2rem;font-weight:800;color:#0F6E56;letter-spacing:-1px">350</span>
-              <span style="font-size:1rem;font-weight:600;color:#0F6E56"> kr/h</span>
+          <div style="background:#F7F7F5;border:1.5px solid #E8E8E4;border-radius:14px;padding:12px 16px;margin-top:8px">
+            <div style="text-align:center;margin-bottom:8px">
+              <span id="priceDisplay" style="font-size:1.7rem;font-weight:800;color:#0F6E56;letter-spacing:-1px">350</span>
+              <span style="font-size:.9rem;font-weight:600;color:#0F6E56"> kr/h</span>
             </div>
             <input type="range" id="priceInput" min="200" max="600" value="350" step="10" style="width:100%;accent-color:#0F6E56">
             <div class="price-range-labels"><span>200 kr/h</span><span>600 kr/h</span></div>
-            <div style="text-align:center;margin-top:10px;padding:8px 12px;background:#E1F5EE;border-radius:99px;display:inline-block;width:100%">
-              <span style="font-size:.82rem;color:#085041;font-weight:600" id="priceHint" data-i18n-dynamic="priceHint">Du behåller 291 kr/h (83%)</span>
+            <div style="text-align:center;margin-top:8px;padding:6px 10px;background:#E1F5EE;border-radius:99px;display:inline-block;width:100%">
+              <span style="font-size:.78rem;color:#085041;font-weight:600" id="priceHint" data-i18n-dynamic="priceHint">Du behåller 291 kr/h (83%)</span>
             </div>
           </div>
         </div>
         <div class="field">
           <label data-i18n="lblRadie">Hur långt kan du resa till kunder?</label>
-          <div class="radius-slider">
-            <input type="range" id="cleaner-radius" min="10" max="100" value="30" step="5">
-            <span id="radius-value" data-i18n-dynamic="radiusValue">30 km radie</span>
+          <div style="background:#F7F7F5;border:1.5px solid #E8E8E4;border-radius:14px;padding:12px 16px;margin-top:8px">
+            <div style="text-align:center;margin-bottom:8px">
+              <span id="radiusDisplay" style="font-size:1.7rem;font-weight:800;color:#0F6E56;letter-spacing:-1px">30</span>
+              <span style="font-size:.9rem;font-weight:600;color:#0F6E56"> km radie</span>
+            </div>
+            <input type="range" id="cleaner-radius" min="10" max="100" value="30" step="5" style="width:100%;accent-color:#0F6E56">
+            <div class="price-range-labels"><span>10 km</span><span>100 km</span></div>
+            <div style="text-align:center;margin-top:8px;padding:6px 10px;background:#E1F5EE;border-radius:99px;display:inline-block;width:100%">
+              <span style="font-size:.78rem;color:#085041;font-weight:600" id="radius-value" data-i18n-dynamic="radiusValue">Täcker de flesta stadsdelar</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1012,10 +1024,15 @@ async function submitRegistration() {
 
 // ── RADIUS SLIDER ───────────────────────────
 document.getElementById('cleaner-radius')?.addEventListener('input', function() {
+  var km = parseInt(this.value) || 30;
+  var rd = document.getElementById('radiusDisplay');
+  if (rd) rd.textContent = km;
+  var hint = km <= 15 ? 'Nära hemma' : km <= 30 ? 'Täcker de flesta stadsdelar' : km <= 60 ? 'Bred radie — fler jobb' : 'Hela regionen';
   if (_currentLang === 'ar') {
-    document.getElementById('radius-value').textContent = this.value + ' كم نصف قطر';
+    var hintAr = km <= 15 ? 'قريب من المنزل' : km <= 30 ? 'يغطي معظم الأحياء' : km <= 60 ? 'نطاق واسع — المزيد من العمل' : 'المنطقة بأكملها';
+    document.getElementById('radius-value').textContent = hintAr;
   } else {
-    document.getElementById('radius-value').textContent = this.value + ' km radie';
+    document.getElementById('radius-value').textContent = hint;
   }
 });
 
