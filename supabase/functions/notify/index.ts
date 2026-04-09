@@ -38,7 +38,7 @@ p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
 <div class="wrap">
   <div class="header"><div class="logo">Spick</div></div>
   <div class="body">${content}</div>
-  <div class="footer">Spick AB · 559402-4522 · hello@spick.se · spick.se</div>
+  <div class="footer">Spick · 559402-4522 · hello@spick.se · spick.se</div>
 </div></body></html>`;
 }
 
@@ -220,19 +220,67 @@ serve(async (req) => {
     else if (type === "application") {
       // 1. Bekräftelsemejl till städaren
       if (r.email) {
+        const firstName = esc(r.full_name?.split(" ")[0] || r.first_name || "");
+        const svcsStr = Array.isArray(r.languages) && r.languages.length ? r.languages.join(", ") : "";
+        const langsRow = svcsStr ? `<tr><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;color:#9B9B95;font-size:14px">Språk</td><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;font-weight:600;color:#1C1C1A;font-size:14px;text-align:right">${esc(svcsStr)}</td></tr>` : "";
+        const appSvcs = Array.isArray(r.services) ? r.services.join(", ") : (r.services || "–");
         await sendEmail(r.email, `✅ Tack för din ansökan till Spick!`, wrap(`
-          <h2>Välkommen ${r.full_name?.split(" ")[0] || ""}! 🎉</h2>
+          <h2 style="font-family:Georgia,serif;font-size:20px;color:#1C1C1A;margin:0 0 12px">Välkommen ${firstName}! 🎉</h2>
           <p>Vi har tagit emot din ansökan och granskar den inom <strong>24 timmar</strong>.</p>
-          <div class="card">
-            <div class="row"><span class="lbl">Namn</span><span class="val">${esc(r.full_name || "–")}</span></div>
-            <div class="row"><span class="lbl">Adress</span><span class="val">${esc(r.home_address || r.city || "–")}</span></div>
+          <div style="background:#F7F7F5;border-radius:12px;padding:20px;margin:16px 0">
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;color:#9B9B95;font-size:14px">Namn</td><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;font-weight:600;color:#1C1C1A;font-size:14px;text-align:right">${esc(r.full_name || "–")}</td></tr>
+              <tr><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;color:#9B9B95;font-size:14px">Tjänster</td><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;font-weight:600;color:#1C1C1A;font-size:14px;text-align:right">${esc(appSvcs)}</td></tr>
+              <tr><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;color:#9B9B95;font-size:14px">Timpris</td><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;font-weight:600;color:#0F6E56;font-size:14px;text-align:right">${r.hourly_rate || 350} kr/h</td></tr>
+              <tr><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;color:#9B9B95;font-size:14px">Radie</td><td style="padding:8px 0;border-bottom:1px solid #E8E8E4;font-weight:600;color:#1C1C1A;font-size:14px;text-align:right">${r.service_radius_km || 30} km</td></tr>
+              ${langsRow}
+              <tr><td style="padding:8px 0;color:#9B9B95;font-size:14px">Adress</td><td style="padding:8px 0;font-weight:600;color:#1C1C1A;font-size:14px;text-align:right">${esc(r.home_address || r.city || "–")}</td></tr>
+            </table>
           </div>
-          <p><strong>Vad händer nu?</strong></p>
+
+          <h3 style="font-family:Georgia,serif;font-size:16px;margin:20px 0 8px">Vad händer nu?</h3>
+
+          <table style="width:100%;border-collapse:collapse;margin:12px 0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:0 12px 0 0">
+                <div style="width:28px;height:28px;border-radius:50%;background:#0F6E56;color:#fff;font-size:14px;text-align:center;line-height:28px">✓</div>
+                <div style="width:2px;height:24px;background:#0F6E56;margin:4px auto"></div>
+              </td>
+              <td style="padding:4px 0 16px;font-size:14px;color:#1C1C1A"><strong style="color:#0F6E56">Ansökan mottagen</strong><br><span style="color:#9B9B95;font-size:13px">Just nu — vi har fått dina uppgifter</span></td>
+            </tr>
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:0 12px 0 0">
+                <div style="width:28px;height:28px;border-radius:50%;background:#E8E8E4;color:#6B6960;font-size:13px;text-align:center;line-height:28px">📞</div>
+                <div style="width:2px;height:24px;background:#E8E8E4;margin:4px auto"></div>
+              </td>
+              <td style="padding:4px 0 16px;font-size:14px;color:#6B6960">Vi ringer dig inom 24h<br><span style="color:#9B9B95;font-size:13px">Kort samtal för att bekräfta din ansökan</span></td>
+            </tr>
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:0 12px 0 0">
+                <div style="width:28px;height:28px;border-radius:50%;background:#E8E8E4;color:#6B6960;font-size:13px;text-align:center;line-height:28px">📸</div>
+                <div style="width:2px;height:24px;background:#E8E8E4;margin:4px auto"></div>
+              </td>
+              <td style="padding:4px 0 16px;font-size:14px;color:#6B6960">Ladda upp profilbild + koppla Stripe<br><span style="color:#9B9B95;font-size:13px">Tar 2 minuter i din dashboard</span></td>
+            </tr>
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:0 12px 0 0">
+                <div style="width:28px;height:28px;border-radius:50%;background:#E8E8E4;color:#6B6960;font-size:13px;text-align:center;line-height:28px">🟢</div>
+              </td>
+              <td style="padding:4px 0 0;font-size:14px;color:#6B6960">Din profil är live!<br><span style="color:#9B9B95;font-size:13px">Bokningar kan börja komma in</span></td>
+            </tr>
+          </table>
+
+          <div style="background:#FEF3C7;border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;color:#92400E">
+            ⚠️ <strong>Kolla skräpposten!</strong> Mejl från nya avsändare hamnar ofta i skräppost. Lägg till hello@spick.se i dina kontakter.
+          </div>
+
           <p><strong>Under tiden kan du förbereda dig:</strong></p>
           <p>📖 <a href="https://spick.se/stadare-handbok.html" style="color:#0F6E56;font-weight:600">Läs Städarhandboken</a></p>
           <p>📝 <a href="https://spick.se/stadare-test.html" style="color:#0F6E56;font-weight:600">Gör kompetenstestet</a></p>
-          <p>📋 <a href="https://spick.se/stadare-checklista.html" style="color:#0F6E56;font-weight:600">Se checklistor</a></p>
-          <p style="font-size:13px;color:#9B9B95;margin-top:16px">Frågor? Svara på detta mejl eller kontakta hello@spick.se</p>
+
+          <p style="font-size:13px;color:#9B9B95;margin-top:20px">
+            Frågor? Ring oss på <strong style="color:#1C1C1A">076-050 51 53</strong> eller svara på detta mejl.
+          </p>
         `));
       }
 
