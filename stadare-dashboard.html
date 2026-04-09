@@ -2972,10 +2972,9 @@ async function startStripeConnect() {
 async function checkConnectStatus() {
   if (!cleaner.stripe_account_id) return;
   try {
-    const {data:{session}} = await SB.auth.getSession();
     const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
       method:'POST',
-      headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+(session?.access_token||ANON_KEY)},
+      headers:_authHeaders(),
       body:JSON.stringify({action:'check_status',cleaner_id:cleaner.id})
     });
     if (res?.ok) {
