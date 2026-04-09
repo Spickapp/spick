@@ -539,18 +539,19 @@ function switchLang(lang, btn) {
 
       <div class="field">
         <label data-i18n="lblSprak">Vilka språk talar du? *</label>
+        <p style="font-size:.78rem;color:#9E9E9A;margin-bottom:8px">Välj alla du kan kommunicera med kunder på.</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="langGrid">
-          <button type="button" class="svc-btn on" onclick="toggleLang(this)" data-lang="Svenska">🇸🇪 Svenska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Engelska">🇬🇧 Engelska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Arabiska">🇸🇦 Arabiska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Persiska">🇮🇷 Persiska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Somaliska">🇸🇴 Somaliska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Tigrinja">🇪🇷 Tigrinja</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Ukrainska">🇺🇦 Ukrainska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Polska">🇵🇱 Polska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Spanska">🇪🇸 Spanska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Turkiska">🇹🇷 Turkiska</button>
-          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Franska">🇫🇷 Franska</button>
+          <button type="button" class="svc-btn on" onclick="toggleLang(this)" data-lang="Svenska">Svenska</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="English">English</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="العربية">العربية</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="فارسی">فارسی</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Soomaali">Soomaali</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="ትግርኛ">ትግርኛ</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Українська">Українська</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Polski">Polski</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Español">Español</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Română">Română</button>
+          <button type="button" class="svc-btn" onclick="toggleLang(this)" data-lang="Türkçe">Türkçe</button>
         </div>
       </div>
 
@@ -1078,6 +1079,14 @@ function setUILang(lang) {
     info.innerHTML = 'Formuläret är på svenska. <a href="bli-stadare-guide.html" style="color:var(--accent);font-weight:600">Se guiden på ditt språk →</a>';
     var container = document.querySelector('.reg-container');
     container.insertBefore(info, container.firstChild);
+  }
+  // Auto-select spoken language based on UI choice
+  var langMap = {sv:'Svenska', en:'English', ar:'العربية', pl:'Polski', so:'Soomaali', es:'Español', ro:'Română', uk:'Українська'};
+  var mapped = langMap[lang];
+  if (mapped) {
+    document.querySelectorAll('#langGrid .svc-btn').forEach(function(b) {
+      if (b.dataset.lang === mapped && !b.classList.contains('on')) b.classList.add('on');
+    });
   }
 }
 </script>
