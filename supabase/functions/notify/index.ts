@@ -433,7 +433,7 @@ serve(async (req) => {
 <div class="card">
   <p style="margin:0;font-size:14px;color:#6B6960">Betalningen frigörs automatiskt. Är du inte nöjd? Kontakta oss inom 24h så aktiverar vi garantin.</p>
 </div>
-<a href="https://spick.se/betygsatt.html?bid=${r.booking_id || ''}" class="btn">⭐ Betygsätt städningen →</a>
+<a href="https://spick.se/betyg.html?bid=${r.booking_id || ''}" class="btn">⭐ Betygsätt städningen →</a>
 <a href="https://spick.se/garanti.html" style="display:block;text-align:center;margin-top:12px;color:#DC2626;font-size:13px">Inte nöjd? Aktivera garantin →</a>
 `);
       const { data: bk } = await sb.from("bookings").select("customer_email").eq("id", r.booking_id).single();

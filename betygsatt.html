@@ -158,10 +158,9 @@ async function submit() {
 
   // Spara recension
   const { error } = await SB.from('reviews').insert([{
-    booking_id: bid || null,
+    job_id: bid || null,
     cleaner_id: cleanerId,
-    rating,
-    aspects: aspects.join(', '),
+    cleaner_rating: rating,
     comment: document.getElementById('comment').value.trim() || null,
     created_at: new Date().toISOString()
   }]);
