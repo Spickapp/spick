@@ -2333,12 +2333,20 @@ function showBookingDetail(id) {
     ` : ''}
     <div class="stat-row"><span class="lbl">Tjänst</span><span class="val">${escHtml(b.service_type || b.service || 'Hemstädning')} · ${parseInt(b.booking_hours || b.hours) || 3}h</span></div>
     <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.booking_date || b.date || '–')} kl ${escHtml(b.booking_time || b.time || '–')}</span></div>
-    <div class="stat-row"><span class="lbl">GPS</span><span class="val">${
-  b.checkin_gps_status === 'green' ? '<span style="color:#0F6E56" title="' + (b.checkin_distance_m||0) + 'm">● OK</span>'
-  : b.checkin_gps_status === 'yellow' ? '<span style="color:#D97706" title="' + (b.checkin_distance_m||0) + 'm">● Varning (' + (b.checkin_distance_m||'?') + 'm)</span>'
-  : b.checkin_gps_status === 'red' ? '<span style="color:#DC2626" title="' + (b.checkin_distance_m||0) + 'm">● Avvikelse (' + (b.checkin_distance_m||'?') + 'm)</span>'
-  : '<span style="color:#D5D3CD">○ Ingen GPS</span>'
+    <div class="stat-row"><span class="lbl">Incheckning GPS</span><span class="val">${
+  b.checkin_gps_status === 'green' ? '<span style="color:#0F6E56">● OK</span>' + (b.checkin_lat ? ' <span style="font-size:.72rem;color:var(--m)">' + parseFloat(b.checkin_lat).toFixed(4) + ', ' + parseFloat(b.checkin_lng).toFixed(4) + '</span>' : '')
+  : b.checkin_gps_status === 'yellow' ? '<span style="color:#D97706">● Varning (' + (b.checkin_distance_m||'?') + 'm)</span>'
+  : b.checkin_gps_status === 'red' ? '<span style="color:#DC2626">● Avvikelse (' + (b.checkin_distance_m||'?') + 'm)</span>'
+  : b.checkin_gps_status === 'denied' ? '<span style="color:#D97706">● Manuell incheckning (GPS nekad)</span>'
+  : '<span style="color:#D5D3CD">○ Ej incheckad</span>'
 }</span></div>
+    ${b.checkin_time ? '<div class="stat-row"><span class="lbl">Incheckad kl</span><span class="val">' + new Date(b.checkin_time).toLocaleString('sv') + '</span></div>' : ''}
+    <div class="stat-row"><span class="lbl">Utcheckning GPS</span><span class="val">${
+  b.checkout_gps_status === 'green' ? '<span style="color:#0F6E56">● OK</span>' + (b.checkout_lat ? ' <span style="font-size:.72rem;color:var(--m)">' + parseFloat(b.checkout_lat).toFixed(4) + ', ' + parseFloat(b.checkout_lng).toFixed(4) + '</span>' : '')
+  : b.checkout_gps_status === 'denied' ? '<span style="color:#D97706">● Klar utan GPS</span>'
+  : '<span style="color:#D5D3CD">○ Ej utcheckad</span>'
+}</span></div>
+    ${b.completed_at && b.checkin_time ? '<div class="stat-row"><span class="lbl">Arbetad tid</span><span class="val">' + Math.round((new Date(b.completed_at) - new Date(b.checkin_time)) / 60000) + ' min (' + (Math.round((new Date(b.completed_at) - new Date(b.checkin_time)) / 60000) / 60).toFixed(1) + 'h)</span></div>' : ''}
     <div class="stat-row"><span class="lbl">Datum & tid</span><span class="val">${escHtml(b.booking_date || b.date || '?')} kl ${escHtml(b.booking_time || b.time || '?')}</span></div>
     <div class="stat-row"><span class="lbl">Adress</span><span class="val">${escHtml(b.address || '?')}</span></div>
     <div class="stat-row"><span class="lbl">Belopp</span><span class="val text-g">${Math.round(b.total_price||0).toLocaleString('sv')} kr${b.rut ? ' (RUT)' : ''}</span></div>
@@ -2373,7 +2381,6 @@ function showBookingDetail(id) {
       b.status === 'avbokad' ? '<span class="badge red">❌ Avbokad</span>' :
       escHtml(b.status)
     }</span></div>` : ''}
-    ${b.checked_in_at ? `<div class="stat-row"><span class="lbl">Incheckad</span><span class="val">${new Date(b.checked_in_at).toLocaleString('sv')}</span></div>` : ''}
     ${b.completed_at ? `<div class="stat-row"><span class="lbl">Slutförd</span><span class="val">${new Date(b.completed_at).toLocaleString('sv')}</span></div>` : ''}
     ${b.photo_before_url ? `<div class="stat-row"><span class="lbl">Foto innan</span><span class="val"><a href="${b.photo_before_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
     ${b.photo_after_url ? `<div class="stat-row"><span class="lbl">Foto efter</span><span class="val"><a href="${b.photo_after_url}" target="_blank" style="color:var(--g)">📸 Visa →</a></span></div>` : ''}
