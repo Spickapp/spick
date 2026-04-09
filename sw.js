@@ -1,6 +1,6 @@
 ﻿// SPICK SERVICE WORKER v3.0 — Production-grade
 // Stale-While-Revalidate for pages, Cache-First for assets
-const VERSION = '2026-04-08-v4';
+const VERSION = '2026-04-09-v1';
 const CACHE = `spick-${VERSION}`;
 
 const PRECACHE = [

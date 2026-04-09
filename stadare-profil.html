@@ -9,320 +9,484 @@
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="Spick">
 <meta property="og:title" content="Städarprofil | Spick">
-<meta property="og:description" content="Hitta och boka ID-verifierade städare i ditt område. Från 200 kr/h med RUT-avdrag. Säker betalning och nöjdhetsgaranti.">
+<meta property="og:description" content="Hitta och boka ID-verifierade städare. Från 200 kr/h med RUT-avdrag.">
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://spick.se/stadare-profil.html">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
 <script type="application/ld+json" id="schema-json"></script>
 <script src="js/config.js"></script>
+<script src="js/components.js" defer></script>
 <style>
-:root{--g:#0F6E56;--gp:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8;--w:#fff;--border:#E8E8E4;--r:#DC2626}
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--bg:#FAFAF8;--b:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--gold:#D4A853;--r:#DC2626;--shadow-sm:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 16px rgba(0,0,0,.08);--radius:16px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);min-height:100vh}
-.top-bar{background:var(--g);color:#fff;text-align:center;padding:10px 16px;font-size:.82rem}
-.top-bar a{color:#9FE1CB;text-decoration:none}
-.container{max-width:560px;margin:0 auto;padding:24px 16px 80px}
-.profile-card{background:var(--w);border-radius:20px;border:1px solid var(--border);padding:32px 24px;text-align:center;margin-bottom:16px}
-.avatar{width:80px;height:80px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 12px}
-.name{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:4px}
-.city{font-size:.9rem;color:var(--m);margin-bottom:12px}
-.stars{font-size:1.1rem;letter-spacing:2px}
-.rating-text{font-size:.85rem;color:var(--m);margin-top:4px}
-.badge-row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:600}
-.badge-green{background:var(--gp);color:var(--g)}
-.badge-blue{background:#EFF6FF;color:#1D4ED8}
-.badge-purple{background:#F3E8FF;color:#7C3AED}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.stat{background:var(--w);border-radius:14px;border:1px solid var(--border);padding:16px 10px;text-align:center}
-.stat-val{font-size:1.3rem;font-weight:700;color:var(--g)}
-.stat-lbl{font-size:.72rem;color:var(--m);margin-top:2px}
-.card{background:var(--w);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:12px}
-.card-title{font-weight:700;font-size:.95rem;margin-bottom:12px}
-.bio{font-size:.9rem;color:var(--m);line-height:1.7}
-.service-tag{display:inline-block;padding:6px 14px;border-radius:20px;background:#F3F4F6;font-size:.82rem;font-weight:500;margin:3px}
-.review{padding:14px 0;border-bottom:1px solid var(--border)}
-.review:last-child{border-bottom:none}
-.review-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.review-name{font-weight:600;font-size:.88rem}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);line-height:1.6}
+
+/* BREADCRUMB */
+.breadcrumb{max-width:680px;margin:1rem auto;padding:0 1.25rem;font-size:.8rem;color:var(--m)}
+.breadcrumb a{color:var(--g);text-decoration:none}
+.breadcrumb span{margin:0 .35rem}
+
+/* HERO CARD */
+.hero-card{max-width:680px;margin:0 auto 1.5rem;padding:0 1.25rem}
+.hero-inner{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden}
+.hero-gradient{height:100px;background:linear-gradient(135deg,#0F6E56,#1D9E75,#2BB88A);position:relative}
+.hero-gradient::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#fff)}
+.hero-body{padding:0 1.5rem 1.5rem;position:relative;margin-top:-48px}
+
+/* AVATAR */
+.avatar-wrap{position:relative;display:inline-block;margin-bottom:.75rem}
+.avatar{width:96px;height:96px;border-radius:50%;background:var(--gp);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--g);border:4px solid #fff;box-shadow:var(--shadow-sm);position:relative;z-index:2;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.verified-badge{position:absolute;bottom:2px;right:2px;z-index:3;width:28px;height:28px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center;border:3px solid #fff;color:#fff;font-size:.75rem}
+
+/* NAME + INFO */
+.name-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.25rem}
+.name{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
+.top-badge{background:var(--gold);color:#fff;font-size:.65rem;font-weight:700;padding:.2rem .55rem;border-radius:100px;text-transform:uppercase;letter-spacing:.05em;display:none}
+.location{color:var(--m);font-size:.9rem;margin-bottom:.75rem}
+
+/* RATING BAR */
+.rating-bar{display:flex;gap:1.25rem;flex-wrap:wrap;padding:.875rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:1rem}
+.rating-item{text-align:center}
+.rating-value{font-size:1.25rem;font-weight:700;color:var(--b);line-height:1}
+.rating-value .star{color:var(--gold)}
+.rating-label{font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+
+/* BIO */
+.bio{font-size:.95rem;color:#444;margin-bottom:1rem}
+
+/* TAGS */
+.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.25rem}
+.tag{background:var(--gp);color:var(--g);font-size:.8rem;font-weight:600;padding:.35rem .75rem;border-radius:100px}
+.tag-outline{background:transparent;border:1.5px solid var(--border);color:var(--m)}
+
+/* PRICE */
+.price-row{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.25rem}
+.price-main{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--g)}
+.price-unit{font-size:.9rem;color:var(--m)}
+.price-rut{font-size:.8rem;color:var(--m);margin-bottom:1.25rem}
+.price-rut strong{color:var(--b)}
+
+/* CTA */
+.cta-btn{display:block;width:100%;background:var(--g);color:#fff;text-align:center;padding:1rem;border-radius:12px;font-size:1.05rem;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(15,110,86,.25)}
+.cta-btn:hover{background:#0a5a46;transform:translateY(-1px)}
+.cta-sub{text-align:center;font-size:.75rem;color:var(--m);margin-top:.5rem}
+
+/* TRUST STRIP */
+.trust-strip{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;max-width:680px;margin:0 auto 2rem;padding:0 1.25rem}
+.trust-item{display:flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--m)}
+
+/* SECTIONS */
+.section{max-width:680px;margin:0 auto 1.5rem;padding:0 1.25rem}
+.section-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:1.5rem}
+.section-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;margin-bottom:1rem}
+
+/* SERVICES */
+.services-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.service-card{background:var(--bg);border-radius:12px;padding:1rem;text-align:center}
+.service-icon{font-size:1.5rem;margin-bottom:.35rem}
+.service-name{font-weight:600;font-size:.85rem}
+.service-price{font-size:.75rem;color:var(--m);margin-top:.15rem}
+
+/* AVAILABILITY */
+.avail-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.35rem;text-align:center}
+.avail-day{font-size:.7rem;font-weight:600;color:var(--m);padding:.35rem 0}
+.avail-slot{font-size:.65rem;padding:.4rem .15rem;border-radius:8px}
+.avail-open{background:var(--gp);color:var(--g);font-weight:600}
+.avail-closed{background:#f5f5f3;color:#ccc}
+
+/* REVIEWS */
+.review{padding:1rem 0;border-bottom:1px solid var(--border)}
+.review:last-child{border-bottom:none;padding-bottom:0}
+.review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.review-name{font-weight:600;font-size:.9rem}
 .review-date{font-size:.75rem;color:var(--m)}
-.review-stars{font-size:.85rem;letter-spacing:1px;margin-bottom:4px}
-.review-text{font-size:.85rem;color:var(--m);line-height:1.6}
-.cta-bar{position:fixed;bottom:0;left:0;right:0;background:var(--w);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;justify-content:center;z-index:50}
-.btn-book{flex:1;max-width:320px;background:var(--g);color:#fff;border:none;padding:14px;border-radius:14px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;display:block}
-.btn-book:hover{background:#0A5240}
-.btn-share{padding:14px 18px;background:var(--gp);color:var(--g);border:none;border-radius:14px;font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer}
-.qr-section{text-align:center;padding:20px}
+.review-stars{color:var(--gold);font-size:.85rem;margin-bottom:.35rem}
+.review-text{font-size:.9rem;color:#444}
+
+/* SHARE BAR */
+.share-bar{display:flex;gap:.75rem;justify-content:center;margin-top:1rem}
+.share-btn{display:flex;align-items:center;gap:.35rem;padding:.6rem 1rem;border-radius:100px;font-size:.8rem;font-weight:600;border:1.5px solid var(--border);color:var(--b);background:#fff;cursor:pointer;transition:all .15s;font-family:inherit}
+.share-btn:hover{border-color:var(--g);color:var(--g)}
+
+/* SIMILAR CLEANERS */
+.similar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem}
+.similar-card{background:var(--bg);border-radius:12px;padding:1rem;text-align:center;text-decoration:none;color:var(--b);transition:transform .15s}
+.similar-card:hover{transform:translateY(-2px)}
+.similar-avatar{width:48px;height:48px;border-radius:50%;background:var(--gp);display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;font-family:'Playfair Display',serif;font-weight:700;color:var(--g)}
+.similar-name{font-weight:600;font-size:.85rem}
+.similar-area{font-size:.75rem;color:var(--m)}
+.similar-rating{font-size:.8rem;color:var(--gold);margin-top:.25rem}
+
+/* QR */
+.qr-section{text-align:center;padding:4px 0}
 .qr-section canvas{border-radius:12px}
-.loading{text-align:center;padding:60px 20px;color:var(--m);font-size:.95rem}
-.error{text-align:center;padding:60px 20px;color:var(--r)}
+
+/* STICKY CTA */
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:.75rem 1.25rem;border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:99;display:none}
+.sticky-inner{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:.75rem}
+.sticky-info{flex:1}
+.sticky-price{font-weight:700;font-size:1.05rem;color:var(--g)}
+.sticky-rut{font-size:.7rem;color:var(--m)}
+.sticky-btn{background:var(--g);color:#fff;padding:.75rem 1.5rem;border-radius:100px;font-weight:700;font-size:.9rem;text-decoration:none;white-space:nowrap}
+
+/* STATES */
+.loading{text-align:center;padding:80px 20px;color:var(--m);font-size:.95rem}
+.error{text-align:center;padding:80px 20px;color:var(--r)}
+.footer-spacer{height:80px}
+
+@media(max-width:640px){
+  .sticky-cta{display:block}
+  .hero-body{padding:0 1rem 1.25rem}
+  .name{font-size:1.3rem}
+  .rating-bar{gap:.75rem}
+}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.hero-card{animation:fadeUp .5s ease-out}
+.section{animation:fadeUp .5s ease-out backwards}
+.section:nth-child(2){animation-delay:.1s}
+.section:nth-child(3){animation-delay:.15s}
+.section:nth-child(4){animation-delay:.2s}
 </style>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
-  <link rel="icon" href="favicon.ico">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico">
 </head>
 <body>
 
-<div class="top-bar">
-  <a href="/">← Tillbaka till Spick</a>
+<div id="loading" class="loading">Laddar profil...</div>
+<div id="error" class="error" style="display:none"></div>
+
+<div id="content" style="display:none">
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <a href="/">Hem</a><span>›</span>
+  <a href="/stockholm.html" id="bc-city">Stockholm</a><span>›</span>
+  <span id="bc-name">Städare</span>
 </div>
 
-<div class="container">
-  <div id="loading" class="loading">Laddar profil...</div>
-  <div id="error" class="error" style="display:none"></div>
-  <div id="content" style="display:none">
-
-    <div class="profile-card">
-      <div class="avatar" id="p-avatar">?</div>
-      <div class="name" id="p-name">–</div>
-      <div class="city" id="p-city">–</div>
-      <div class="stars" id="p-stars"></div>
-      <div class="rating-text" id="p-rating-text"></div>
-      <div class="badge-row" id="p-badges"></div>
+<!-- HERO CARD -->
+<div class="hero-card">
+  <div class="hero-inner">
+    <div class="hero-gradient"></div>
+    <div class="hero-body">
+      <div class="avatar-wrap">
+        <div class="avatar" id="p-avatar">?</div>
+        <div class="verified-badge" id="p-verified" style="display:none">✓</div>
+      </div>
+      <div class="name-row">
+        <h1 class="name" id="p-name">–</h1>
+        <span class="top-badge" id="p-top-badge">⭐ Toppstädare</span>
+      </div>
+      <div class="location" id="p-city">–</div>
+      <div class="rating-bar" id="p-rating-bar">
+        <div class="rating-item"><div class="rating-value"><span class="star">★</span> <span id="rv-rating">–</span></div><div class="rating-label">Snittbetyg</div></div>
+        <div class="rating-item"><div class="rating-value" id="rv-jobs">–</div><div class="rating-label">Utförda jobb</div></div>
+        <div class="rating-item"><div class="rating-value" id="rv-member">–</div><div class="rating-label">Medlem sedan</div></div>
+      </div>
+      <div class="bio" id="p-bio" style="display:none"></div>
+      <div class="tags" id="p-tags"></div>
+      <div class="price-row">
+        <span class="price-main" id="p-rut-price">–</span>
+        <span class="price-unit">/h med RUT</span>
+      </div>
+      <div class="price-rut">Ordinarie <strong id="p-full-price">–</strong> kr/h — du sparar 50% med RUT-avdrag</div>
+      <div style="margin-top:1.25rem">
+        <a href="boka.html" class="cta-btn" id="book-btn">Boka städare — Välj tid →</a>
+        <div class="cta-sub">Gratis avbokning · RUT-avdrag hanteras automatiskt · Betala tryggt via Stripe</div>
+      </div>
     </div>
-
-    <div class="stats" id="stats-grid"></div>
-
-    <div class="card" id="bio-card" style="display:none">
-      <div class="card-title">Om mig</div>
-      <div class="bio" id="p-bio"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Tjänster</div>
-      <div id="p-services"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Recensioner</div>
-      <div id="p-reviews"></div>
-    </div>
-
-    <div class="card qr-section" id="qr-card">
-      <div class="card-title">Boka via QR-kod</div>
-      <canvas id="qr-canvas"></canvas>
-      <div style="font-size:.78rem;color:var(--m);margin-top:8px">Skanna för att boka denna städare direkt</div>
-    </div>
-
   </div>
 </div>
 
-<div class="cta-bar" id="cta-bar" style="display:none">
-  <a class="btn-book" id="book-btn" href="boka.html">Boka denna städare →</a>
-  <button class="btn-share" onclick="shareProfile()">📋 Kopiera länk</button>
+<!-- TRUST STRIP -->
+<div class="trust-strip" id="p-trust">
+  <div class="trust-item">🛡️ ID-verifierad</div>
+  <div class="trust-item">✅ F-skatt</div>
+  <div class="trust-item">💳 Trygg betalning</div>
+  <div class="trust-item">💰 RUT-avdrag</div>
 </div>
 
+<!-- SERVICES -->
+<div class="section">
+  <div class="section-card">
+    <h2 class="section-title">Tjänster</h2>
+    <div class="services-grid" id="p-services"></div>
+  </div>
+</div>
+
+<!-- AVAILABILITY -->
+<div class="section" id="avail-section" style="display:none">
+  <div class="section-card">
+    <h2 class="section-title">Tillgänglighet denna vecka</h2>
+    <div class="avail-grid" id="p-availability"></div>
+  </div>
+</div>
+
+<!-- REVIEWS -->
+<div class="section">
+  <div class="section-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <h2 class="section-title" style="margin-bottom:0">Recensioner</h2>
+      <span style="font-size:.85rem;color:var(--gold);font-weight:600" id="p-review-summary"></span>
+    </div>
+    <div id="p-reviews"></div>
+  </div>
+</div>
+
+<!-- QR + SHARE -->
+<div class="section">
+  <div class="section-card" style="text-align:center">
+    <h2 class="section-title" id="share-title">Dela profil</h2>
+    <div class="qr-section"><canvas id="qr-canvas"></canvas></div>
+    <div style="font-size:.78rem;color:var(--m);margin:8px 0 12px">Skanna för att boka direkt</div>
+    <div class="share-bar">
+      <button class="share-btn" onclick="shareProfile()">📤 Dela</button>
+      <button class="share-btn" id="copy-btn" onclick="copyLink()">🔗 Kopiera länk</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIMILAR CLEANERS -->
+<div class="section" id="similar-section" style="display:none">
+  <div class="section-card">
+    <h2 class="section-title">Fler städare i närheten</h2>
+    <div class="similar-grid" id="p-similar"></div>
+  </div>
+</div>
+
+<div class="footer-spacer"></div>
+<div id="spick-footer"></div>
+</div>
+
+<!-- STICKY CTA -->
+<div class="sticky-cta" id="sticky-cta">
+  <div class="sticky-inner">
+    <div class="sticky-info">
+      <div class="sticky-price" id="sticky-price">– kr/h med RUT</div>
+      <div class="sticky-rut" id="sticky-name">–</div>
+    </div>
+    <a href="boka.html" class="sticky-btn" id="sticky-btn">Boka nu</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
 const SUPA = SPICK.SUPA_URL;
 const KEY = SPICK.SUPA_KEY;
 const H = {apikey: KEY, Authorization: 'Bearer ' + KEY};
-
 let _cleaner = null;
-function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+var svcIcons = {'Hemstädning':'🏠','Storstädning':'✨','Flyttstädning':'📦','Fönsterputs':'🪟','Kontorsstädning':'🏢'};
 
 async function loadProfile() {
-  const params = new URLSearchParams(location.search);
-  const slug = params.get('s') || params.get('slug');
-  const id = params.get('id') || params.get('focus');
+  var params = new URLSearchParams(location.search);
+  var slug = params.get('s') || params.get('slug');
+  var id = params.get('id') || params.get('focus');
+  if (!slug && !id) { showError('Ingen städare angiven. <a href="boka.html" style="color:var(--g)">Boka städning →</a>'); return; }
 
-  if (!slug && !id) {
-    showError('Ingen städare angiven. Gå till <a href="boka.html" style="color:var(--g)">boka.html</a> för att hitta en.');
-    return;
-  }
+  // 1. Fetch cleaner
+  var url = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,response_rate,home_lat,home_lng&is_approved=eq.true&';
+  if (slug) url += 'slug=eq.' + encodeURIComponent(slug);
+  else url += 'id=eq.' + encodeURIComponent(id);
 
-  var cleanerUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs&is_approved=eq.true&';
-  if (slug) cleanerUrl += 'slug=eq.' + encodeURIComponent(slug);
-  else cleanerUrl += 'id=eq.' + encodeURIComponent(id);
-
-  var cleanerRes = await fetch(cleanerUrl + '&apikey=' + KEY, {headers: H});
-  var cleanerArr = cleanerRes.ok ? await cleanerRes.json() : [];
-  var c = Array.isArray(cleanerArr) && cleanerArr.length > 0 ? cleanerArr[0] : null;
-
-  if (!c) {
-    showError('Städaren hittades inte eller är inte aktiv.');
-    return;
-  }
+  var res = await fetch(url + '&apikey=' + KEY, {headers: H});
+  var arr = res.ok ? await res.json() : [];
+  var c = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+  if (!c) { showError('Städaren hittades inte eller är inte aktiv.'); return; }
   _cleaner = c;
 
-  // Populate profile
-  var hasRatings = c.avg_rating != null && c.review_count > 0;
-  const initial = (c.full_name || '?')[0].toUpperCase();
-  // Steg 4 — Avatar med fallback
-  if (c.avatar_url || c.profile_image_url) {
-    document.getElementById('p-avatar').innerHTML = '<img src="' + escHtml(c.avatar_url || c.profile_image_url) + '" alt="' + escHtml(c.full_name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
-  } else {
-    document.getElementById('p-avatar').textContent = initial;
-  }
-  document.getElementById('p-name').textContent = c.full_name || 'Städare';
-  var locationText = '';
-  if (c.city) {
-    locationText = c.city.charAt(0).toUpperCase() + c.city.slice(1).toLowerCase();
-    if (c.service_radius_km && c.service_radius_km > 20) {
-      locationText += ' · Täcker ' + c.service_radius_km + ' km radie';
-    }
-  } else if (c.service_radius_km) {
-    locationText = 'Täcker ' + c.service_radius_km + ' km radie';
-  } else {
-    locationText = 'Sverige';
-  }
-  document.getElementById('p-city').textContent = locationText;
-
-  // Badge + rating line
-  var badgeParts = [];
-  if (c.identity_verified) badgeParts.push('<span style="color:#065F46;font-weight:600">✓ ID-verifierad</span>');
-  if (false) badgeParts.push('<span style="color:#065F46">📝 Kompetenstest godkänt</span>');
-  if (hasRatings) {
-    badgeParts.push('<span style="color:#f59e0b">' + '★'.repeat(Math.round(c.avg_rating)) + '</span> ' + c.avg_rating.toFixed(1) + ' <span style="color:#6B6960">(' + c.review_count + ' omdömen)</span>');
-  } else {
-    badgeParts.push('<span style="color:#6B6960">🌟 Ny på Spick</span>');
-  }
-  document.getElementById('p-stars').innerHTML = '<div style="font-size:.85rem">' + badgeParts.join(' <span style="color:#D1D5DB">·</span> ') + '</div>';
-  document.getElementById('p-rating-text').textContent = '';
-
-  // Badges
-  var badges = [];
-  if (c.identity_verified) badges.push('<span class="badge badge-blue">🔐 ID-verifierad</span>');
-  if (c.completed_jobs >= 10) badges.push('<span class="badge badge-green">✅ Erfaren</span>');
-  document.getElementById('p-badges').innerHTML = badges.join('');
-
-  // Stats — RUT-pris som huvudsiffra
-  var statsHTML = '';
-  statsHTML += '<div class="stat"><div class="stat-val" style="color:var(--g)">' + Math.round((c.hourly_rate || 350) * 0.5) + '</div><div class="stat-lbl">kr/h med RUT</div></div>';
-  statsHTML += '<div class="stat"><div class="stat-val">' + (Array.isArray(c.services) ? c.services.length : '–') + '</div><div class="stat-lbl">tjänster</div></div>';
-  if (c.member_since) {
-    var ms2 = new Date(c.member_since);
-    var monthNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
-    statsHTML += '<div class="stat"><div class="stat-val" style="font-size:1rem">' + monthNames[ms2.getMonth()] + ' ' + ms2.getFullYear() + '</div><div class="stat-lbl">medlem sedan</div></div>';
-  }
-  document.getElementById('stats-grid').innerHTML = statsHTML;
-
-  // Bio — filtrera meningslösa svar
   var firstName = (c.full_name || '').split(' ')[0];
-  var bioText = (c.bio || '').trim();
-  var hasBio = bioText.length > 10 && bioText.toLowerCase() !== 'ja' && bioText.toLowerCase() !== 'nej' && bioText !== '-';
-  document.getElementById('bio-card').querySelector('.card-title').textContent = 'Om ' + escHtml(firstName);
-  if (hasBio) {
-    document.getElementById('p-bio').textContent = bioText;
+  var rate = c.hourly_rate || 350;
+  var rutPrice = Math.round(rate * 0.5);
+  var hasRatings = c.avg_rating != null && c.review_count > 0;
+  var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate;
+
+  // Avatar
+  var avatarEl = document.getElementById('p-avatar');
+  if (c.avatar_url) {
+    avatarEl.innerHTML = '<img src="' + escHtml(c.avatar_url) + '" alt="' + escHtml(c.full_name || '') + '">';
   } else {
-    document.getElementById('p-bio').innerHTML = '<span style="color:#6B6960;font-style:italic">Ingen personlig beskrivning ännu.</span>';
+    avatarEl.textContent = (c.full_name || '?')[0].toUpperCase();
   }
-  document.getElementById('bio-card').style.display = 'block';
 
-  // Services
-  const svcs = Array.isArray(c.services) ? c.services : (c.services || 'Hemstädning').split(',');
-  document.getElementById('p-services').innerHTML = svcs.map(s => '<span class="service-tag">' + escHtml(s.trim()) + '</span>').join('');
+  // Verified badge
+  if (c.identity_verified) document.getElementById('p-verified').style.display = 'flex';
 
-  // Info-taggar
-  var infoTags = [];
+  // Name + top badge
+  document.getElementById('p-name').textContent = c.full_name || 'Städare';
+  if ((c.avg_rating >= 4.8 && c.completed_jobs >= 10) || c.completed_jobs >= 20) {
+    document.getElementById('p-top-badge').style.display = 'inline-block';
+  }
+
+  // Location
+  var loc = c.city ? c.city.charAt(0).toUpperCase() + c.city.slice(1).toLowerCase() : 'Stockholm';
+  if (c.service_radius_km) loc += ' · ' + c.service_radius_km + ' km radie';
+  document.getElementById('p-city').textContent = '📍 ' + loc;
+
+  // Breadcrumb
+  document.getElementById('bc-name').textContent = c.full_name || 'Städare';
+  if (c.city) {
+    var bcCity = document.getElementById('bc-city');
+    bcCity.textContent = c.city.charAt(0).toUpperCase() + c.city.slice(1);
+    bcCity.href = '/' + c.city.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/\s+/g,'-') + '.html';
+  }
+
+  // Rating bar
+  document.getElementById('rv-rating').textContent = hasRatings ? c.avg_rating.toFixed(1) : 'Ny';
+  document.getElementById('rv-jobs').textContent = c.completed_jobs || '0';
   if (c.member_since) {
     var ms = new Date(c.member_since);
-    var months = ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'];
-    infoTags.push('📅 Medlem sedan ' + months[ms.getMonth()] + ' ' + ms.getFullYear());
+    var mNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+    document.getElementById('rv-member').textContent = mNames[ms.getMonth()] + ' ' + ms.getFullYear();
   }
+
+  // Bio
+  var bioText = (c.bio || '').trim();
+  if (bioText.length > 10 && bioText.toLowerCase() !== 'ja' && bioText !== '-') {
+    document.getElementById('p-bio').textContent = bioText;
+    document.getElementById('p-bio').style.display = 'block';
+  }
+
+  // Tags (services + extras)
+  var svcs = Array.isArray(c.services) ? c.services : (c.services || 'Hemstädning').split(',');
+  var tagsHTML = svcs.map(function(s) {
+    s = s.trim();
+    return '<span class="tag">' + (svcIcons[s] || '🧹') + ' ' + escHtml(s) + '</span>';
+  }).join('');
   if (c.languages) {
-    var langs = Array.isArray(c.languages) ? c.languages.join(', ') : c.languages;
-    if (langs) infoTags.push('🗣 ' + escHtml(langs));
+    var langs = Array.isArray(c.languages) ? c.languages : [c.languages];
+    langs.forEach(function(l) { tagsHTML += '<span class="tag tag-outline">🗣 ' + escHtml(l) + '</span>'; });
   }
-  if (c.pet_pref && c.pet_pref !== 'no' && c.pet_pref !== false) {
-    infoTags.push('🐾 Djurvänlig');
-  }
-  if (c.service_radius_km) {
-    infoTags.push('📍 Täcker ' + c.service_radius_km + ' km radie');
-  }
-  if (infoTags.length > 0) {
-    var infoCard = document.createElement('div');
-    infoCard.className = 'card';
-    infoCard.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:.5rem">' + infoTags.map(function(tag) {
-      return '<span style="font-size:.8rem;padding:.35rem .75rem;border-radius:99px;background:var(--bg);color:#6B6960;border:1px solid #E8E8E4">' + tag + '</span>';
-    }).join('') + '</div>';
-    document.getElementById('p-services').closest('.card').after(infoCard);
-  }
+  if (c.pet_pref && c.pet_pref !== 'no') tagsHTML += '<span class="tag tag-outline">🐾 Djurvänlig</span>';
+  document.getElementById('p-tags').innerHTML = tagsHTML;
 
-  // Trygghetsgaranti
-  var trustHTML = '<div class="card">' +
-    '<div class="card-title">Trygghetsgaranti</div>' +
-    '<div style="display:flex;flex-direction:column;gap:.5rem">' +
-      (c.identity_verified ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> ID-verifierad av Spick</div>' : '') +
-      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Nöjdhetsgaranti — vi städar om gratis</div>' +
-      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Säker betalning via kort eller Klarna</div>' +
-      '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Gratis avbokning upp till 24 timmar</div>' +
-      (false ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem"><span style="color:#065F46">✓</span> Genomgått Spicks kompetenstest</div>' : '') +
-    '</div>' +
-  '</div>';
-  var reviewsCard = document.getElementById('p-reviews').closest('.card');
-  reviewsCard.insertAdjacentHTML('beforebegin', trustHTML);
+  // Price
+  document.getElementById('p-rut-price').textContent = rutPrice + ' kr';
+  document.getElementById('p-full-price').textContent = rate;
 
-  // Reviews
+  // CTA
+  document.getElementById('book-btn').href = bokaHref;
+  document.getElementById('book-btn').textContent = 'Boka ' + escHtml(firstName) + ' — Välj tid →';
+
+  // Sticky CTA
+  document.getElementById('sticky-price').textContent = rutPrice + ' kr/h med RUT';
+  document.getElementById('sticky-name').textContent = firstName + (hasRatings ? ' · ★ ' + c.avg_rating.toFixed(1) : ' · Ny på Spick');
+  document.getElementById('sticky-btn').href = bokaHref;
+
+  // Services grid
+  var svcHTML = svcs.map(function(s) {
+    s = s.trim();
+    return '<div class="service-card"><div class="service-icon">' + (svcIcons[s] || '🧹') + '</div><div class="service-name">' + escHtml(s) + '</div><div class="service-price">från ' + rutPrice + ' kr/h m. RUT</div></div>';
+  }).join('');
+  document.getElementById('p-services').innerHTML = svcHTML;
+
+  // 2. Fetch availability
+  try {
+    var availRes = await fetch(SUPA + '/rest/v1/cleaner_availability?cleaner_id=eq.' + c.id + '&is_active=eq.true&order=day_of_week.asc&apikey=' + KEY, {headers: H});
+    var avail = availRes.ok ? await availRes.json() : [];
+    if (avail && avail.length > 0) {
+      var dayNames = ['Sön','Mån','Tis','Ons','Tor','Fre','Lör'];
+      var dayMap = {};
+      avail.forEach(function(a) { dayMap[a.day_of_week] = a.start_time.slice(0,5) + '-' + a.end_time.slice(0,5); });
+      var gridHTML = '';
+      // Header row: Mån-Sön (1-6, 0)
+      [1,2,3,4,5,6,0].forEach(function(d) { gridHTML += '<div class="avail-day">' + dayNames[d] + '</div>'; });
+      [1,2,3,4,5,6,0].forEach(function(d) {
+        if (dayMap[d]) gridHTML += '<div class="avail-slot avail-open">' + dayMap[d] + '</div>';
+        else gridHTML += '<div class="avail-slot avail-closed">—</div>';
+      });
+      document.getElementById('p-availability').innerHTML = gridHTML;
+      document.getElementById('avail-section').style.display = 'block';
+    }
+  } catch(e) {}
+
+  // 3. Fetch reviews
   var reviewsUrl = SUPA + '/rest/v1/reviews?select=rating,cleaner_rating,comment,created_at,customer_name&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
   var reviewsRes = await fetch(reviewsUrl + '&apikey=' + KEY, {headers: H});
   var reviews = reviewsRes.ok ? await reviewsRes.json() : [];
   if (!Array.isArray(reviews)) reviews = [];
 
-  if (reviews && reviews.length) {
+  if (hasRatings) {
+    document.getElementById('p-review-summary').textContent = '★ ' + c.avg_rating.toFixed(1) + ' (' + c.review_count + ' omdömen)';
+  }
+
+  if (reviews.length) {
     document.getElementById('p-reviews').innerHTML = reviews.map(function(r) {
-      const date = new Date(r.created_at).toLocaleDateString('sv-SE', { year: 'numeric', month: 'short', day: 'numeric' });
-      var reviewRating = r.rating || r.cleaner_rating;
-      return '<div class="review">' +
-        '<div class="review-head"><span class="review-name">' + escHtml(r.customer_name || 'Kund') + '</span><span class="review-date">' + date + '</span></div>' +
-        (reviewRating ? '<div class="review-stars">' + '⭐'.repeat(Math.round(reviewRating)) + '</div>' : '') +
+      var date = new Date(r.created_at).toLocaleDateString('sv-SE', {year:'numeric',month:'short',day:'numeric'});
+      var rating = r.rating || r.cleaner_rating;
+      return '<div class="review"><div class="review-header"><span class="review-name">' + escHtml(r.customer_name || 'Kund') + '</span><span class="review-date">' + date + '</span></div>' +
+        (rating ? '<div class="review-stars">' + '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating)) + '</div>' : '') +
         (r.comment ? '<div class="review-text">' + escHtml(r.comment) + '</div>' : '') +
         '</div>';
     }).join('');
   } else {
-    document.getElementById('p-reviews').innerHTML =
-      '<div style="text-align:center;padding:1rem;color:#6B6960">' +
-        '<div style="font-size:1.25rem;margin-bottom:.5rem">⭐</div>' +
-        '<div style="font-weight:600;margin-bottom:.25rem">Inga omdömen ännu</div>' +
-        '<div style="font-size:.82rem">Boka ' + escHtml(firstName) + ' och bli först att lämna ett omdöme!</div>' +
-      '</div>';
+    document.getElementById('p-reviews').innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--m)"><div style="font-size:1.5rem;margin-bottom:.5rem">⭐</div><div style="font-weight:600;margin-bottom:.25rem">Inga omdömen ännu</div><div style="font-size:.85rem">Boka ' + escHtml(firstName) + ' och bli först att lämna ett omdöme!</div></div>';
   }
 
-  // QR code
+  // 4. QR code
   try {
-    const bookUrl = 'https://spick.se/boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + (c.hourly_rate || 350);
-    new QRCode(document.getElementById('qr-canvas'), {
-      text: bookUrl, width: 160, height: 160, colorDark: '#0F6E56', colorLight: '#ffffff'
-    });
-  } catch(e) { document.getElementById('qr-card').style.display = 'none'; }
+    var qr = qrcode(0, 'M');
+    qr.addData('https://spick.se/boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate);
+    qr.make();
+    document.getElementById('qr-canvas').outerHTML = qr.createImgTag(4, 8);
+  } catch(e) {}
+  document.getElementById('share-title').textContent = 'Dela ' + escHtml(firstName) + 's profil';
 
-  // Booking CTA
-  var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + (c.hourly_rate || 350);
-  document.getElementById('book-btn').href = bokaHref;
-  document.getElementById('book-btn').textContent = 'Boka ' + escHtml(firstName) + ' — från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h →';
-  document.getElementById('cta-bar').style.display = 'flex';
+  // 5. Similar cleaners (nearby, same city)
+  try {
+    var simUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,avg_rating&is_approved=eq.true&id=neq.' + c.id + '&limit=3&apikey=' + KEY;
+    if (c.city) simUrl += '&city=ilike.' + encodeURIComponent(c.city);
+    var simRes = await fetch(simUrl, {headers: H});
+    var sims = simRes.ok ? await simRes.json() : [];
+    if (sims && sims.length > 0) {
+      document.getElementById('p-similar').innerHTML = sims.map(function(s) {
+        var initial = (s.full_name || '?')[0].toUpperCase();
+        var href = '/stadare-profil.html?s=' + encodeURIComponent(s.slug || s.id);
+        return '<a href="' + href + '" class="similar-card"><div class="similar-avatar">' + initial + '</div><div class="similar-name">' + escHtml(s.full_name || 'Städare') + '</div><div class="similar-area">' + escHtml(s.city || 'Stockholm') + '</div>' + (s.avg_rating ? '<div class="similar-rating">★ ' + Number(s.avg_rating).toFixed(1) + '</div>' : '') + '</a>';
+      }).join('');
+      document.getElementById('similar-section').style.display = 'block';
+    }
+  } catch(e) {}
 
-  // Dynamisk SEO
-  document.title = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick';
+  // SEO — dynamisk
+  document.title = c.full_name + ' — Hemstädning i ' + (c.city || 'Stockholm') + ' | Spick';
   var metaDesc = document.querySelector('meta[name="description"]');
-  if (metaDesc) {
-    metaDesc.content = 'Boka ' + c.full_name + ' för ' + ((Array.isArray(c.services) ? c.services.join(', ') : '') || 'städning').toLowerCase() + ' i ' + (c.city || 'Stockholm') + '. ' + (c.hourly_rate || 350) + ' kr/h (' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT).';
-  }
-  var ogTitle = document.querySelector('meta[property="og:title"]');
-  if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
-  ogTitle.content = c.full_name + ' — Städare i ' + (c.city || 'Stockholm') + ' | Spick';
-  var ogDesc = document.querySelector('meta[property="og:description"]');
-  if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
-  ogDesc.content = 'Boka ' + c.full_name + ' för städning i ' + (c.city || 'Stockholm') + '. Från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT.';
-
-  // Canonical ✅ profil-URL
+  if (metaDesc) metaDesc.content = 'Boka ' + c.full_name + ' för städning i ' + (c.city || 'Stockholm') + '. ' + rate + ' kr/h (' + rutPrice + ' kr/h med RUT). ID-verifierad.';
+  var ogT = document.querySelector('meta[property="og:title"]');
+  if (ogT) ogT.content = document.title;
+  var ogD = document.querySelector('meta[property="og:description"]');
+  if (ogD) ogD.content = 'Boka ' + firstName + ' för städning. Från ' + rutPrice + ' kr/h med RUT.';
   var canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = 'https://spick.se/s/' + (c.slug || c.id);
 
-  // Schema.org
   document.getElementById('schema-json').textContent = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "Person",
-    "name": c.full_name,
-    "jobTitle": "Städare",
-    "address": {"@type": "PostalAddress", "addressLocality": c.city || "Stockholm"},
-    "worksFor": {"@type": "Organization", "name": "Spick", "url": "https://spick.se"},
-    "url": window.location.href
+    "@context":"https://schema.org","@type":"LocalBusiness",
+    "name": c.full_name + " — Städare via Spick",
+    "description": "Professionell städning i " + (c.city || "Stockholm") + ". ID-verifierad.",
+    "url": "https://spick.se/s/" + (c.slug || c.id),
+    "areaServed": c.city || "Stockholm",
+    "geo": c.home_lat ? {"@type":"GeoCoordinates","latitude":String(c.home_lat),"longitude":String(c.home_lng)} : undefined,
+    "priceRange": rate + " kr/h (" + rutPrice + " kr/h med RUT)",
+    "parentOrganization": {"@type":"Organization","name":"Spick","url":"https://spick.se"}
   });
 
-  // Done
+  // Done — show content
   document.getElementById('loading').style.display = 'none';
   document.getElementById('content').style.display = 'block';
+
+  // Sticky CTA observer
+  var heroCard = document.querySelector('.hero-card');
+  var stickyCta = document.getElementById('sticky-cta');
+  if (heroCard && stickyCta && window.IntersectionObserver) {
+    new IntersectionObserver(function(entries) {
+      stickyCta.style.display = entries[0].isIntersecting ? 'none' : 'block';
+    }, {threshold: 0}).observe(heroCard);
+  }
 }
 
 function showError(msg) {
@@ -332,26 +496,22 @@ function showError(msg) {
 }
 
 function shareProfile() {
-  var c = _cleaner;
-  if (!c) return;
+  var c = _cleaner; if (!c) return;
   var shareUrl = 'https://spick.se/s/' + (c.slug || c.id);
-
   if (navigator.share) {
-    navigator.share({
-      title: c.full_name + ' — Städare på Spick',
-      text: 'Boka ' + (c.full_name || '').split(' ')[0] + ' för städning via Spick — från ' + Math.round((c.hourly_rate || 350) * 0.5) + ' kr/h med RUT',
-      url: shareUrl
-    }).catch(function() {});
-  } else {
-    navigator.clipboard.writeText(shareUrl).then(function() {
-      var btn = document.querySelector('.btn-share');
-      if (btn) { btn.textContent = '✓ Kopierad!'; setTimeout(function() { btn.textContent = '📋 Kopiera länk'; }, 2000); }
-    }).catch(function() {});
-  }
+    navigator.share({title: c.full_name + ' — Städare på Spick', text: 'Boka ' + (c.full_name||'').split(' ')[0] + ' för städning via Spick', url: shareUrl}).catch(function(){});
+  } else { copyLink(); }
+}
+function copyLink() {
+  var c = _cleaner; if (!c) return;
+  var shareUrl = 'https://spick.se/s/' + (c.slug || c.id);
+  navigator.clipboard.writeText(shareUrl).then(function() {
+    var btn = document.getElementById('copy-btn');
+    if (btn) { btn.textContent = '✓ Kopierad!'; setTimeout(function(){btn.textContent='🔗 Kopiera länk';},2000); }
+  }).catch(function(){});
 }
 
 loadProfile();
 </script>
 </body>
 </html>
-
