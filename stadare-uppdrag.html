@@ -310,11 +310,53 @@ async function updateStatus(status) {
     })
   });
 
+  // Mappa statusvärden så min-bokning.html förstår dem
+  var dbStatus = status;
+  if (status === 'cleaning') dbStatus = 'pågår';
+  if (status === 'done') dbStatus = 'klar';
+
+  var patchData = { status: dbStatus };
+  if (status === 'done') patchData.completed_at = new Date().toISOString();
+
+  // Samla GPS vid ankomst
+  if (status === 'arrived') {
+    var statusLabel = document.getElementById('currentStatusDesc');
+    if (statusLabel) statusLabel.textContent = '📍 Hämtar GPS-position...';
+
+    await new Promise(function(resolve) {
+      collectGPS(function(gps) {
+        if (gps) {
+          patchData.checkin_lat = gps.lat;
+          patchData.checkin_lng = gps.lng;
+          patchData.checkin_time = new Date().toISOString();
+          patchData.checkin_gps_status = 'green';
+          if (statusLabel) statusLabel.textContent = '✅ GPS registrerad';
+        } else if (_gpsAttempts >= 2) {
+          patchData.checkin_time = new Date().toISOString();
+          patchData.checkin_gps_status = 'denied';
+          if (statusLabel) statusLabel.textContent = '⚠️ Incheckad utan GPS';
+        } else {
+          if (statusLabel) statusLabel.textContent = '⚠️ GPS blockerad — tillåt plats i webbläsaren och tryck "Anlänt" igen';
+          resolve();
+          return;
+        }
+        resolve();
+      });
+    });
+
+    // Om GPS misslyckades första gången och vi inte nått 2 försök, avbryt
+    if (!patchData.checkin_time && _gpsAttempts < 2) {
+      // Rulla inte vidare — låt användaren försöka igen
+      renderStatusBtns();
+      return;
+    }
+  }
+
   // Uppdatera bokning
   await fetch(`${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}`, {
     method: 'PATCH',
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ status, ...(status === 'done' ? { completed_at: new Date().toISOString() } : {}) })
+    body: JSON.stringify(patchData)
   });
 
   completedStatuses.push(status);
@@ -332,7 +374,7 @@ async function updateStatus(status) {
     on_way: '🚗 Jag är nu på väg till dig! Beräknad ankomst ca 20–30 min.',
     arrived: '📍 Jag har anlänt till adressen!',
     key_access: '🔑 Jag har fått tillgång och börjar städa nu.',
-    cleaning: '🧹 Städningen pågår!',
+    cleaning: '🧹 Städningen pågår! Jag är incheckad på plats.',
     almost_done: '⏰ Jag är snart klar!',
     done: '✨ Städningen är klar! Hoppas du är nöjd. Ha en fin dag!'
   };
@@ -606,49 +648,22 @@ function cookieChoice(accept) {
   }
 }
 
-// GPS incheckning
-function doCheckin() {
-  const btn = document.getElementById('checkin-btn');
-  const status = document.getElementById('checkin-status');
-  if(!navigator.geolocation) {
-    status.textContent = '⚠ GPS ej tillgängligt på denna enhet';
-    status.style.display = 'block'; status.style.color = '#dc2626';
+var _gpsAttempts = 0;
+
+function collectGPS(callback) {
+  if (!navigator.geolocation) {
+    callback(null);
     return;
   }
-  btn.textContent = '⏳ Hämtar position...';
-  btn.disabled = true;
   navigator.geolocation.getCurrentPosition(
-    pos => {
-      const {latitude:lat, longitude:lng} = pos.coords;
-      const bid = new URLSearchParams(location.search).get('bid') || new URLSearchParams(location.search).get('id');
-      const KEY = SPICK.SUPA_KEY;
-if(bid) {
-        fetch(SPICK.SUPA_URL+'/rest/v1/bookings?id=eq.'+bid, {
-          method:'PATCH',
-          headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},
-          body: JSON.stringify({
-            status:'pågår',
-            checkin_time: new Date().toISOString(),
-            checkin_lat: lat,
-            checkin_lng: lng
-          })
-        });
-      }
-      btn.textContent = '✅ Incheckad!';
-      btn.style.background = '#16a34a';
-      status.textContent = `✅ Incheckad ${new Date().toLocaleTimeString('sv-SE')} · ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      status.style.color = '#166534';
-      status.style.display = 'block';
-      document.getElementById('checkin-block').style.borderColor = '#16a34a';
+    function(pos) {
+      callback({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     },
-    err => {
-      btn.textContent = '📍 Checka in nu';
-      btn.disabled = false;
-      status.textContent = '⚠ Kunde inte hämta GPS – tillåt platsåtkomst i webbläsaren';
-      status.style.color = '#dc2626';
-      status.style.display = 'block';
+    function(err) {
+      _gpsAttempts++;
+      callback(null);
     },
-    {enableHighAccuracy:true, timeout:10000}
+    { enableHighAccuracy: true, timeout: 10000 }
   );
 }
 
