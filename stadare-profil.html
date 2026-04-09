@@ -387,17 +387,24 @@ async function loadProfile() {
 
   // 2. Fetch availability
   try {
-    var availRes = await fetch(SUPA + '/rest/v1/cleaner_availability?cleaner_id=eq.' + c.id + '&is_active=eq.true&order=day_of_week.asc&apikey=' + KEY, {headers: H});
-    var avail = availRes.ok ? await availRes.json() : [];
-    if (avail && avail.length > 0) {
-      var dayNames = ['Sön','Mån','Tis','Ons','Tor','Fre','Lör'];
-      var dayMap = {};
-      avail.forEach(function(a) { dayMap[a.day_of_week] = a.start_time.slice(0,5) + '-' + a.end_time.slice(0,5); });
+    var availRes = await fetch(SUPA + '/rest/v1/cleaner_availability?select=day_mon,day_tue,day_wed,day_thu,day_fri,day_sat,day_sun,start_time,end_time,is_active&cleaner_id=eq.' + c.id + '&is_active=eq.true&limit=1&apikey=' + KEY, {headers: H});
+    var availArr = availRes.ok ? await availRes.json() : [];
+    if (availArr && availArr.length > 0) {
+      var a = availArr[0];
+      var days = [
+        {name:'Mån', on:a.day_mon},
+        {name:'Tis', on:a.day_tue},
+        {name:'Ons', on:a.day_wed},
+        {name:'Tor', on:a.day_thu},
+        {name:'Fre', on:a.day_fri},
+        {name:'Lör', on:a.day_sat},
+        {name:'Sön', on:a.day_sun}
+      ];
+      var time = (a.start_time||'08:00').slice(0,5) + '-' + (a.end_time||'17:00').slice(0,5);
       var gridHTML = '';
-      // Header row: Mån-Sön (1-6, 0)
-      [1,2,3,4,5,6,0].forEach(function(d) { gridHTML += '<div class="avail-day">' + dayNames[d] + '</div>'; });
-      [1,2,3,4,5,6,0].forEach(function(d) {
-        if (dayMap[d]) gridHTML += '<div class="avail-slot avail-open">' + dayMap[d] + '</div>';
+      days.forEach(function(d) { gridHTML += '<div class="avail-day">' + d.name + '</div>'; });
+      days.forEach(function(d) {
+        if (d.on) gridHTML += '<div class="avail-slot avail-open">' + time + '</div>';
         else gridHTML += '<div class="avail-slot avail-closed">—</div>';
       });
       document.getElementById('p-availability').innerHTML = gridHTML;
@@ -406,7 +413,7 @@ async function loadProfile() {
   } catch(e) {}
 
   // 3. Fetch reviews
-  var reviewsUrl = SUPA + '/rest/v1/reviews?select=rating,cleaner_rating,comment,created_at,customer_name&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
+  var reviewsUrl = SUPA + '/rest/v1/reviews?select=cleaner_rating,comment,created_at&cleaner_id=eq.' + c.id + '&order=created_at.desc&limit=10';
   var reviewsRes = await fetch(reviewsUrl + '&apikey=' + KEY, {headers: H});
   var reviews = reviewsRes.ok ? await reviewsRes.json() : [];
   if (!Array.isArray(reviews)) reviews = [];
@@ -418,8 +425,8 @@ async function loadProfile() {
   if (reviews.length) {
     document.getElementById('p-reviews').innerHTML = reviews.map(function(r) {
       var date = new Date(r.created_at).toLocaleDateString('sv-SE', {year:'numeric',month:'short',day:'numeric'});
-      var rating = r.rating || r.cleaner_rating;
-      return '<div class="review"><div class="review-header"><span class="review-name">' + escHtml(r.customer_name || 'Kund') + '</span><span class="review-date">' + date + '</span></div>' +
+      var rating = r.cleaner_rating;
+      return '<div class="review"><div class="review-header"><span class="review-name">Kund</span><span class="review-date">' + date + '</span></div>' +
         (rating ? '<div class="review-stars">' + '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating)) + '</div>' : '') +
         (r.comment ? '<div class="review-text">' + escHtml(r.comment) + '</div>' : '') +
         '</div>';
