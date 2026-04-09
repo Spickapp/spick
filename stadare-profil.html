@@ -290,7 +290,7 @@ async function loadProfile() {
   if (!slug && !id) { showError('Ingen städare angiven. <a href="boka.html" style="color:var(--g)">Boka städning →</a>'); return; }
 
   // 1. Fetch cleaner
-  var url = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,response_rate,lat,lng&is_approved=eq.true&';
+  var url = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,home_lat,home_lng&is_approved=eq.true&';
   if (slug) url += 'slug=eq.' + encodeURIComponent(slug);
   else url += 'id=eq.' + encodeURIComponent(id);
 
@@ -470,7 +470,7 @@ async function loadProfile() {
     "description": "Professionell städning i " + (c.city || "Stockholm") + ". ID-verifierad.",
     "url": "https://spick.se/s/" + (c.slug || c.id),
     "areaServed": c.city || "Stockholm",
-    "geo": c.lat ? {"@type":"GeoCoordinates","latitude":String(c.lat),"longitude":String(c.lng)} : undefined,
+    "geo": c.home_lat ? {"@type":"GeoCoordinates","latitude":String(c.home_lat),"longitude":String(c.home_lng)} : undefined,
     "priceRange": rate + " kr/h (" + rutPrice + " kr/h med RUT)",
     "parentOrganization": {"@type":"Organization","name":"Spick","url":"https://spick.se"}
   });
