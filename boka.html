@@ -1728,21 +1728,29 @@ async function loadAvailableCleaners() {
 
   // Visa prisintervall
   if (cleaners.length) {
-    const rates = cleaners.map(cl => cl.hourly_rate || 350);
-    const minR = Math.min(...rates), maxR = Math.max(...rates);
+    // Beräkna prisrange med per-tjänst-priser
+    var displayRates = cleaners.map(function(cl) {
+      var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+      if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
+      return sp ? sp.price : (cl.hourly_rate || 350);
+    });
+    var hasPerSqm = cleaners.some(function(cl) {
+      var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+      return sp && sp.price_type === 'per_sqm';
+    });
+    const minR = Math.min(...displayRates), maxR = Math.max(...displayRates);
     const minRut = Math.round(minR*0.5), maxRut = Math.round(maxR*0.5);
     const rangeEl = document.getElementById('cleaner-price-range');
     var rutSuffix = state.customerType === 'privat';
+    var priceUnit = hasPerSqm ? 'kr' : 'kr/h';
     if (rangeEl) rangeEl.textContent = minR === maxR
-      ? `${minR} kr/h` + (rutSuffix ? ` · med RUT: ${minRut} kr/h` : '')
-      : `${minR}–${maxR} kr/h` + (rutSuffix ? ` · med RUT: ${minRut}–${maxRut} kr/h` : '');
-    // Hint under kvm-fältet på steg 1
+      ? minR.toLocaleString('sv') + ' ' + priceUnit + (rutSuffix ? ' · med RUT: ' + minRut.toLocaleString('sv') + ' ' + priceUnit : '')
+      : minR.toLocaleString('sv') + '–' + maxR.toLocaleString('sv') + ' ' + priceUnit + (rutSuffix ? ' · med RUT: ' + minRut.toLocaleString('sv') + '–' + maxRut.toLocaleString('sv') + ' ' + priceUnit : '');
     const hintEl = document.getElementById('step1-price-hint');
-    if (hintEl) hintEl.textContent = rutSuffix ? `Städare från ${minR} kr/h (${minRut} kr/h med RUT)` : `Städare från ${minR} kr/h`;
-    // Prisintervall i sammanfattningspanelen (innan val)
+    if (hintEl) hintEl.textContent = rutSuffix ? 'Från ' + minRut.toLocaleString('sv') + ' ' + priceUnit + ' med RUT' : 'Från ' + minR.toLocaleString('sv') + ' ' + priceUnit;
     const prt = document.getElementById('price-range-text');
     const prh = document.getElementById('price-range-hint');
-    if (prt) prt.textContent = `${minR}–${maxR} kr/h` + (rutSuffix ? ` · med RUT: ${minRut}–${maxRut} kr/h` : '');
+    if (prt) prt.textContent = rangeEl ? rangeEl.textContent : '';
     if (prh) prh.style.display = 'block';
   }
     // Hämta per-tjänst-priser
@@ -1856,8 +1864,18 @@ function renderCleaners(cleaners) {
         </div>
       </div>
       <div class="cleaner-badges">
-        <div class="cleaner-price">${rate} ${isPricePerSqm ? 'kr/kvm' : 'kr/h'}</div>
-        ${state.customerType === 'privat' ? `<div class="cleaner-rut">= ${rutRate} ${isPricePerSqm ? 'kr/kvm' : 'kr/h'} med RUT</div>` : ''}
+        ${(() => {
+          if (isPricePerSqm && state.sqm) {
+            var total = rate * state.sqm;
+            var totalRut = Math.round(total * 0.5);
+            return state.customerType === 'privat'
+              ? '<div class="cleaner-price">' + totalRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt efter RUT (' + total.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rutRate + ' kr/kvm × ' + state.sqm + ' kvm</div>'
+              : '<div class="cleaner-price">' + total.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/kvm × ' + state.sqm + ' kvm)</div>';
+          }
+          return state.customerType === 'privat'
+            ? '<div class="cleaner-price">' + rutRate + ' kr/h</div><div class="cleaner-rut">inkl. RUT-avdrag</div>'
+            : '<div class="cleaner-price">' + rate + ' kr/h</div>';
+        })()}
         ${cl.bankid_verified ? '<div class="badge-bankid">✓ Verifierad</div>' : ''}
         ${hasRatings && cl.avg_rating >= 4.8 && cl.review_count >= 3 ? '<div class="badge-gold">⭐ Toppvald</div>' : ''}
       </div>
