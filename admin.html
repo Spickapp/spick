@@ -2666,7 +2666,7 @@ function showCleanerDetail(id) {
   const isActive = c.is_approved;
   const isSuspended = c.status === 'avstängd';
   
-  document.getElementById('cleaner-modal-title').textContent = c.full_name || 'Städare';
+  document.getElementById('cleaner-modal-title').textContent = (c.full_name || 'Städare') + (c.is_company_owner ? ' 🏢' : c.company_id ? ' 👥' : '');
   var profileUrl = 'https://spick.se/s/' + (c.slug || c.id);
   document.getElementById('cleaner-modal-body').innerHTML = `
     <!-- Status-banner -->
@@ -2687,6 +2687,17 @@ function showCleanerDetail(id) {
         Senaste aktivitet: ${c.updated_at ? new Date(c.updated_at).toLocaleString('sv-SE') : 'Aldrig loggat in'}
         ${c.created_at ? ' · Godkänd: ' + new Date(c.created_at).toLocaleDateString('sv-SE') : ''}
       </div>
+    </div>` : ''}
+
+    <!-- Företag / Team -->
+    ${c.company_id ? `
+    <div id="admin-company-section" style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:.82rem;font-weight:700;color:#1E40AF">🏢 ${c.is_company_owner ? 'Företagsägare' : 'Teammedlem'}</div>
+      </div>
+      <div id="admin-company-details" style="font-size:.85rem;color:#1E40AF">Laddar företagsinfo...</div>
+      ${c.is_company_owner ? '<div id="admin-team-members" style="margin-top:12px;font-size:.85rem">Laddar teammedlemmar...</div>' : ''}
+      ${c.is_company_owner ? '<div id="admin-team-bookings-summary" style="margin-top:12px;font-size:.85rem"></div>' : ''}
     </div>` : ''}
 
     <!-- Profilbild -->
@@ -2865,6 +2876,71 @@ function showCleanerDetail(id) {
       <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">HISTORIK</label>
       <div id="cleaner-history-list" style="font-size:.85rem;color:var(--m)">Laddar historik...</div>
     </div>`;
+
+  // Hämta företagsdata om company_id finns
+  if (c.company_id) {
+    AR.select('companies', 'select=*&id=eq.' + c.company_id).then(function(res) {
+      var co = res.data && res.data[0];
+      var el = document.getElementById('admin-company-details');
+      if (!el || !co) { if (el) el.textContent = 'Företag ej hittat'; return; }
+      el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Företagsnamn</span><br><strong>' + escHtml(co.name || '–') + '</strong></div>' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Org.nr</span><br><strong>' + escHtml(co.org_number || '–') + '</strong></div>' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Stripe</span><br><strong>' + (co.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet') + '</strong></div>' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Provision</span><br><strong>' + (co.commission_rate != null ? (co.commission_rate < 1 ? Math.round(co.commission_rate * 100) : co.commission_rate) + '%' : '17%') + '</strong></div>' +
+        '</div>';
+
+      // Teammedlemmar (bara för ägare)
+      if (c.is_company_owner) {
+        var members = (data.cleaners || []).filter(function(m) { return m.company_id === c.company_id && m.id !== c.id; });
+        var tmEl = document.getElementById('admin-team-members');
+        if (tmEl) {
+          tmEl.innerHTML = '<div style="font-size:.72rem;color:#6B7280;font-weight:600;margin-bottom:8px">TEAMMEDLEMMAR (' + members.length + ')</div>' +
+            (members.length ? members.map(function(m) {
+              var mJobs = (data.bookings || []).filter(function(b) { return b.cleaner_id === m.id && b.payment_status === 'paid'; });
+              var mStatus = m.is_active ? '🟢 Aktiv' : m.status === 'onboarding' ? '🟡 Onboarding' : '⚪ Pausad';
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #DBEAFE">' +
+                '<div>' +
+                  '<div style="font-weight:600;font-size:.85rem">' + escHtml(m.full_name || '–') + ' <span style="font-size:.7rem;color:#6B7280">' + mStatus + '</span></div>' +
+                  '<div style="font-size:.75rem;color:#6B7280">' + escHtml(m.email || '') + (m.phone ? ' · ' + escHtml(m.phone) : '') + '</div>' +
+                  '<div style="font-size:.75rem;color:#6B7280">' + (m.hourly_rate || 350) + ' kr/h · ' + mJobs.length + ' uppdrag · ⭐ ' + (m.avg_rating ? parseFloat(m.avg_rating).toFixed(1) : '–') + '</div>' +
+                  (Array.isArray(m.services) && m.services.length ? '<div style="font-size:.7rem;margin-top:3px">' + m.services.map(function(s) { return '<span style="background:#DBEAFE;color:#1E40AF;padding:1px 6px;border-radius:6px;font-size:.68rem;margin-right:3px">' + escHtml(s) + '</span>'; }).join('') + '</div>' : '') +
+                '</div>' +
+                '<button onclick="showCleanerDetail(\'' + m.id + '\')" style="font-size:.75rem;padding:6px 10px;border:1px solid #BFDBFE;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;color:#1E40AF">Visa</button>' +
+              '</div>';
+            }).join('') : '<div style="color:#6B7280;font-size:.82rem;padding:8px 0">Inga teammedlemmar registrerade ännu</div>');
+        }
+
+        // Sammanfattning av företagets bokningar
+        var allMemberIds = [c.id].concat(members.map(function(m) { return m.id; }));
+        var companyBookings = (data.bookings || []).filter(function(b) { return allMemberIds.indexOf(b.cleaner_id) !== -1 && b.payment_status === 'paid'; });
+        var companyEarned = companyBookings.reduce(function(s, b) { return s + Math.round((b.total_price || 0) * 0.83); }, 0);
+        var summEl = document.getElementById('admin-team-bookings-summary');
+        if (summEl) {
+          summEl.innerHTML = '<div style="font-size:.72rem;color:#6B7280;font-weight:600;margin-bottom:6px">FÖRETAGETS TOTALT</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">' +
+            '<div style="text-align:center;background:#fff;border-radius:8px;padding:8px;border:1px solid #DBEAFE"><div style="font-weight:700;color:#1E40AF">' + companyBookings.length + '</div><div style="font-size:.7rem;color:#6B7280">bokningar</div></div>' +
+            '<div style="text-align:center;background:#fff;border-radius:8px;padding:8px;border:1px solid #DBEAFE"><div style="font-weight:700;color:#1E40AF">' + companyEarned.toLocaleString('sv') + ' kr</div><div style="font-size:.7rem;color:#6B7280">intjänat</div></div>' +
+            '<div style="text-align:center;background:#fff;border-radius:8px;padding:8px;border:1px solid #DBEAFE"><div style="font-weight:700;color:#1E40AF">' + (members.length + 1) + '</div><div style="font-size:.7rem;color:#6B7280">i teamet</div></div>' +
+            '</div>';
+        }
+      }
+    }).catch(function(e) { console.warn('Company fetch:', e); });
+
+    // Om teammedlem — visa länk till ägaren
+    if (c.company_id && !c.is_company_owner) {
+      var owner = (data.cleaners || []).find(function(m) { return m.company_id === c.company_id && m.is_company_owner; });
+      var el = document.getElementById('admin-company-details');
+      if (el) {
+        AR.select('companies', 'select=name&id=eq.' + c.company_id).then(function(res) {
+          var co = res.data && res.data[0];
+          el.innerHTML = '<div style="font-size:.85rem">Tillhör <strong>' + escHtml(co ? co.name : '–') + '</strong>' +
+            (owner ? ' · Ägare: <a href="#" onclick="event.preventDefault();showCleanerDetail(\'' + owner.id + '\')" style="color:#1E40AF;text-decoration:underline">' + escHtml(owner.full_name) + '</a>' : '') +
+            '</div>';
+        });
+      }
+    }
+  }
 
   // Hämta städarens schema asynkront
   AR.select('cleaner_availability', 'select=*&cleaner_id=eq.' + id).then(({data: avail, error: avErr}) => {
