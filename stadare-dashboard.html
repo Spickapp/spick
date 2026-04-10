@@ -3504,6 +3504,97 @@ async function renderTeam() {
 }
 
 // ── TEAM MODAL ──────────────────────────────────────────────
+async function addTeamMember() {
+  var btn = document.getElementById('add-member-btn');
+  var msgEl = document.getElementById('add-member-msg');
+
+  var fname = document.getElementById('team-fname').value.trim();
+  var lname = document.getElementById('team-lname').value.trim();
+  var phone = document.getElementById('team-phone').value.trim();
+  var email = document.getElementById('team-email').value.trim();
+  var rate = parseInt(document.getElementById('team-rate').value) || 350;
+  var bio = document.getElementById('team-bio').value.trim();
+
+  // Tjänster
+  var svcs = [];
+  document.querySelectorAll('#team-services .tm-chip.active').forEach(function(b) {
+    svcs.push(b.dataset.svc);
+  });
+
+  // Husdjur
+  var petEl = document.querySelector('#team-pet-options .tm-chip.active');
+  var petPref = petEl ? petEl.dataset.pet : 'ok';
+
+  // Arbetsområde
+  var sameArea = document.getElementById('team-same-area').checked;
+  var address = sameArea ? cleaner.home_address : document.getElementById('team-address').value.trim();
+  var radius = sameArea ? cleaner.service_radius_km : parseInt(document.getElementById('team-radius').value) || 30;
+  var city = sameArea ? cleaner.city : '';
+
+  // Validering
+  if (!fname) { showTeamMsg('Förnamn krävs', true); return; }
+  if (!email) { showTeamMsg('E-post krävs', true); return; }
+  if (svcs.length === 0) { showTeamMsg('Välj minst en tjänst', true); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Skickar...';
+
+  try {
+    var appData = {
+      first_name: fname,
+      last_name: lname,
+      full_name: fname + (lname ? ' ' + lname : ''),
+      email: email,
+      phone: phone,
+      hourly_rate: rate,
+      bio: bio,
+      services: svcs,
+      city: city || cleaner.city || '',
+      service_radius_km: radius,
+      status: 'pending',
+      invited_by_company_id: cleaner.company_id,
+      fskatt_confirmed: true,
+      gdpr_consent: true,
+      gdpr_consent_at: new Date().toISOString(),
+      marketing_consent: false
+    };
+
+    var res = await fetch(SUPA_URL + '/rest/v1/cleaner_applications', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=representation'}),
+      body: JSON.stringify(appData)
+    });
+
+    if (!res.ok) {
+      var err = await res.json().catch(function() { return {}; });
+      throw new Error(err.message || 'HTTP ' + res.status);
+    }
+
+    btn.textContent = '✅ Ansökan skickad!';
+    btn.style.background = '#065F46';
+    showTeamMsg(fname + ' är tillagd. Spick-admin godkänner inom 24h, sedan får ' + fname + ' ett välkomstmejl.', false);
+
+    // Logga aktivitet
+    if (typeof logActivity === 'function') {
+      logActivity('team_member_added', { member_name: fname + ' ' + lname, member_email: email });
+    }
+
+    // Reset efter 3 sekunder
+    setTimeout(function() {
+      closeTeamModal();
+      btn.disabled = false;
+      btn.textContent = 'Lägg till teammedlem';
+      btn.style.background = '';
+    }, 3000);
+
+  } catch(e) {
+    console.error('addTeamMember error:', e);
+    btn.disabled = false;
+    btn.textContent = 'Lägg till teammedlem';
+    showTeamMsg('Kunde inte lägga till: ' + e.message, true);
+  }
+}
+
 function closeTeamModal() {
   document.getElementById('add-member-modal').style.display = 'none';
   resetTeamModal();
