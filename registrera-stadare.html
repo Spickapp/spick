@@ -741,6 +741,10 @@ let currentStep = 1;
 let bankidSessionId = null;
 let bankidPollTimer = null;
 var _inviteCompanyId = new URLSearchParams(window.location.search).get('invite');
+var _urlType = new URLSearchParams(window.location.search).get('type');
+if (_urlType === 'foretag') {
+  setRegType('foretag');
+}
 
 if (_inviteCompanyId) {
   fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + _inviteCompanyId + '&select=name', {
