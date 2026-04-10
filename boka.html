@@ -1762,6 +1762,27 @@ async function loadAvailableCleaners() {
       });
     } catch(e) { console.warn('Service prices fetch:', e); }
 
+    // Uppdatera prisrange med per-tjänst-priser
+    if (cleaners.length) {
+      var displayRates = cleaners.map(function(cl) {
+        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+        if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
+        return sp ? sp.price : (cl.hourly_rate || 350);
+      });
+      var hasPerSqm = cleaners.some(function(cl) {
+        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+        return sp && sp.price_type === 'per_sqm';
+      });
+      var minR = Math.min.apply(null, displayRates), maxR = Math.max.apply(null, displayRates);
+      var minRut = Math.round(minR * 0.5), maxRut = Math.round(maxR * 0.5);
+      var unit = hasPerSqm ? 'kr' : 'kr/h';
+      var rutSuffix = state.customerType === 'privat';
+      var rangeEl = document.getElementById('cleaner-price-range');
+      if (rangeEl) rangeEl.textContent = (rutSuffix ? minRut.toLocaleString('sv') + ' ' + unit + ' efter RUT' : minR.toLocaleString('sv') + ' ' + unit) + (rutSuffix ? ' · ' + minR.toLocaleString('sv') + ' ' + unit + ' före RUT' : '');
+      var prt = document.getElementById('price-range-text');
+      if (prt) prt.textContent = rangeEl ? rangeEl.textContent : '';
+    }
+
     state.availableCleaners = cleaners;
     renderCleaners(cleaners);
   } catch(e) {
