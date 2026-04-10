@@ -3431,8 +3431,11 @@ async function loadPricing() {
     var priceType = existing ? existing.price_type : 'hourly';
     var price = existing ? existing.price : '';
     var rutPrice = price ? Math.round(price * 0.5) : '';
-    return '<div style="background:var(--w);border-radius:12px;padding:14px;border:1px solid rgba(0,0,0,.06)">' +
-      '<div style="font-weight:600;font-size:.88rem;margin-bottom:8px">' + escHtml(svc) + '</div>' +
+    var statusText = existing
+      ? '<span style="color:#065F46;font-size:.72rem">✅ Sparat pris</span>'
+      : '<span style="color:#92400E;font-size:.72rem">⚠️ Inget pris satt — använder standardpris ' + (cleaner.hourly_rate || 350) + ' kr/h</span>';
+    return '<div style="background:var(--w);border-radius:12px;padding:14px;border:1px solid ' + (existing ? '#D1FAE5' : '#FEF3C7') + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600;font-size:.88rem">' + escHtml(svc) + '</span>' + statusText + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
         '<div>' +
           '<label style="font-size:.72rem;color:var(--m)">Pristyp</label>' +
@@ -3443,7 +3446,7 @@ async function loadPricing() {
         '</div>' +
         '<div>' +
           '<label style="font-size:.72rem;color:var(--m)">Pris (före RUT)</label>' +
-          '<input type="number" data-svc="' + escHtml(svc) + '" data-field="price" value="' + price + '" placeholder="' + (cleaner.hourly_rate || 350) + '" min="100" max="2000" style="width:100%;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit" oninput="updateRutPreview(this)">' +
+          '<input type="number" data-svc="' + escHtml(svc) + '" data-field="price" value="' + price + '" placeholder="Rek: ' + (cleaner.hourly_rate || 350) + '" min="100" max="2000" style="width:100%;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit" oninput="updateRutPreview(this)">' +
         '</div>' +
       '</div>' +
       '<div data-svc="' + escHtml(svc) + '" data-field="rut-preview" style="font-size:.75rem;color:var(--spick-500);margin-top:6px;font-weight:500">' +
