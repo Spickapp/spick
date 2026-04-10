@@ -1646,7 +1646,7 @@ async function loadAvailableCleaners() {
       cleaners = await rpcRes.json();
     } else {
       // Fallback: hämta alla godkända städare (inget lat/lng)
-      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref`;
+      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,completed_jobs,has_fskatt`;
       const res = await fetch(url, {headers:H});
       if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
       cleaners = await res.json();
@@ -1694,6 +1694,8 @@ async function loadAvailableCleaners() {
         return myStart < bEnd && myEnd > bStart;
       }).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !takenNow.includes(c.id));
+    // Filtrera bort teammedlemmar (har company_id men är inte ägare)
+    cleaners = cleaners.filter(c => !c.company_id || c.is_company_owner);
     // Sortera: betyg → antal uppdrag → pris (lokal fallback)
     cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
 
@@ -1829,7 +1831,7 @@ function renderCleaners(cleaners) {
     card.innerHTML = `
       ${avatarHTML}
       <div class="cleaner-info">
-        <div class="cleaner-name">${cl.full_name||'Städare'}</div>
+        <div class="cleaner-name">${cl.full_name||'Städare'}${cl.company_name && cl.is_company_owner ? ` <span style="font-size:.75rem;color:#6B7280;font-weight:400">· ${escHtml(cl.company_name)}</span>` : ''}</div>
         <div class="cleaner-meta">
           ${hasRatings
             ? `<span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating))}</span>
