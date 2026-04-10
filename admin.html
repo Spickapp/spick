@@ -2683,6 +2683,35 @@ function toggleTeamRows(companyId, btn) {
   }
 }
 
+async function saveAdminPrices(cleanerId) {
+  var inputs = document.querySelectorAll('input[data-cid="' + cleanerId + '"]');
+  var btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Sparar...';
+  try {
+    for (var i = 0; i < inputs.length; i++) {
+      var svc = inputs[i].dataset.svc;
+      var price = parseInt(inputs[i].value);
+      var typeSelect = document.querySelector('select[data-svc="' + svc + '"][data-cid="' + cleanerId + '"]');
+      var priceType = typeSelect ? typeSelect.value : 'hourly';
+      if (price > 0) {
+        await AR.upsert('cleaner_service_prices', {
+          cleaner_id: cleanerId,
+          service_type: svc,
+          price_type: priceType,
+          price: price
+        });
+      }
+    }
+    btn.textContent = '✅ Sparat!';
+    setTimeout(function() { btn.textContent = '💾 Spara priser'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    console.error('Save prices:', e);
+    btn.textContent = '❌ Fel';
+    btn.disabled = false;
+  }
+}
+
 function showCleanerDetail(id) {
   const c = data.cleaners.find(x => x.id === id);
   if (!c) return;
@@ -2980,18 +3009,23 @@ function showCleanerDetail(id) {
     var prices = res.data || [];
     var el = document.getElementById('admin-service-prices');
     if (!el) return;
-    if (prices.length === 0) {
-      el.innerHTML = '<span style="color:var(--m)">Inga tjänstpriser satta — använder standardpris ' + (c.hourly_rate || 350) + ' kr/h</span>';
-      return;
-    }
-    el.innerHTML = '<div style="display:grid;gap:6px">' + prices.map(function(p) {
-      var rutPrice = Math.round(p.price * 0.5);
-      var unit = p.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--gr);border-radius:8px">' +
-        '<span style="font-weight:500">' + escHtml(p.service_type) + '</span>' +
-        '<span><strong>' + p.price + ' ' + unit + '</strong> <span style="color:var(--spick-500);font-size:.78rem">(' + rutPrice + ' ' + unit + ' efter RUT)</span></span>' +
+    var svcs = Array.isArray(c.services) ? c.services : ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning'];
+    el.innerHTML = '<div style="display:grid;gap:8px">' + svcs.map(function(svc) {
+      var existing = prices.find(function(p) { return p.service_type === svc; });
+      var priceType = existing ? existing.price_type : 'hourly';
+      var price = existing ? existing.price : '';
+      return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 10px;background:var(--gr);border-radius:8px">' +
+        '<span style="font-weight:500;font-size:.82rem">' + escHtml(svc) + '</span>' +
+        '<select data-svc="' + escHtml(svc) + '" data-cid="' + id + '" style="padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit">' +
+          '<option value="hourly"' + (priceType === 'hourly' ? ' selected' : '') + '>kr/h</option>' +
+          '<option value="per_sqm"' + (priceType === 'per_sqm' ? ' selected' : '') + '>kr/kvm</option>' +
+        '</select>' +
+        '<input type="number" data-svc="' + escHtml(svc) + '" data-cid="' + id + '" value="' + price + '" placeholder="' + (c.hourly_rate || 350) + '" min="50" max="2000" style="width:80px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;font-family:inherit;text-align:right">' +
       '</div>';
-    }).join('') + '</div>';
+    }).join('') +
+    '<button onclick="saveAdminPrices(\'' + id + '\')" style="margin-top:8px;padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">💾 Spara priser</button>' +
+    '<span id="admin-price-msg" style="font-size:.75rem;margin-left:8px"></span>' +
+    '</div>';
   }).catch(function(e) { console.warn('Service prices:', e); });
 
   // Hämta städarens schema asynkront
