@@ -2345,10 +2345,18 @@ function jobCard(j) {
 }
 
 // ── GOAL WIDGET ──────────────────────────────────────────────
+function jobEarning(j) {
+  if (cleaner.company_id && !cleaner.is_company_owner) {
+    return Math.round((cleaner.hourly_rate || 350) * (parseInt(j.booking_hours) || 3));
+  }
+  var keepRate = typeof getKeepRate === 'function' ? getKeepRate(cleaner) : 0.83;
+  return Math.round((j.total_price || 0) * keepRate);
+}
+
 function updateGoal() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const monthJobs = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'klar' && new Date(j.scheduled_date||j.booking_date) >= monthStart);
-  const earned = monthJobs.reduce((s, j) => s + Math.round((j.total_price||0) * 0.83), 0);
+  const earned = monthJobs.reduce((s, j) => s + jobEarning(j), 0);
   const pct = Math.min(100, Math.round((earned / MONTHLY_GOAL) * 100));
   const card = document.getElementById('goal-card');
   if ((cleaner.total_jobs || 0) === 0) { card.style.display = 'none'; return; }
@@ -2474,10 +2482,16 @@ function renderEarnings() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const myDone = jobs.filter(j => j.cleaner_id === cleaner.id && j.payment_status === 'paid');
   const monthDone = myDone.filter(j => new Date(j.scheduled_date||j.booking_date) >= monthStart);
-  const monthEarn = monthDone.reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
-  const totalEarn = myDone.reduce((s,j) => s + Math.round((j.total_price||0)*0.83), 0);
-  document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
-  document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr';
+  const monthEarn = monthDone.reduce((s,j) => s + jobEarning(j), 0);
+  const totalEarn = myDone.reduce((s,j) => s + jobEarning(j), 0);
+  if (cleaner.company_id && !cleaner.is_company_owner) {
+    var suffix = ' (uppskattad)';
+    document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr' + suffix;
+    document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr' + suffix;
+  } else {
+    document.getElementById('earn-month').textContent = monthEarn.toLocaleString('sv') + ' kr';
+    document.getElementById('earn-total').textContent = totalEarn.toLocaleString('sv') + ' kr';
+  }
 
   // Inkomstprognos
   const weekDone = myDone.filter(j => {
@@ -2485,7 +2499,7 @@ function renderEarnings() {
     const wd = new Date(); wd.setDate(wd.getDate()-7);
     return jd >= wd;
   });
-  const weekAvg = weekDone.reduce((s,j)=>s+Math.round((j.total_price||0)*.83),0);
+  const weekAvg = weekDone.reduce((s,j)=>s+jobEarning(j),0);
   const projectedMonth = weekAvg * 4;
   const pc = document.getElementById('prognos-card');
   const pp = document.getElementById('prognos-period');
@@ -2527,7 +2541,7 @@ function renderWeekChart(doneJobs) {
   doneJobs.forEach(j => {
     const jd = new Date(j.scheduled_date||j.booking_date);
     const match = days.find(d => d.date.toDateString() === jd.toDateString());
-    if (match) match.earn += Math.round((j.total_price||0)*0.83);
+    if (match) match.earn += jobEarning(j);
   });
   const maxEarn = Math.max(...days.map(d => d.earn), 1);
   document.getElementById('week-chart').innerHTML = days.map(d => `
@@ -2549,7 +2563,7 @@ function renderMonthChart(doneJobs) {
   doneJobs.forEach(j => {
     const jd = new Date(j.scheduled_date||j.booking_date);
     const match = months.find(m => m.month.getMonth() === jd.getMonth() && m.month.getFullYear() === jd.getFullYear());
-    if (match) match.earn += Math.round((j.total_price||0)*0.83);
+    if (match) match.earn += jobEarning(j);
   });
   const maxE = Math.max(...months.map(m => m.earn), 1);
   const barW = 36, gap = 16, chartH = 100, padBottom = 20, padTop = 16;
