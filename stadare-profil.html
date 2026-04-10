@@ -370,7 +370,8 @@ async function loadProfile() {
 
   // Location
   var loc = c.city ? c.city.charAt(0).toUpperCase() + c.city.slice(1).toLowerCase() : 'Stockholm';
-  if (c.service_radius_km) loc += ' · ' + c.service_radius_km + ' km radie';
+  if (!_isCompany && c.service_radius_km) loc += ' · ' + c.service_radius_km + ' km radie';
+  if (_isCompany) loc = 'Stockholmsområdet';
   document.getElementById('p-city').textContent = '📍 ' + loc;
 
   // Breadcrumb
