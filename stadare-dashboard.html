@@ -793,6 +793,9 @@ body{top:0!important}
           <div class="settings-link" onclick="openSubView('sv-area')">
             <span class="sl-icon">📍</span><span class="sl-text">Arbetsområde</span><span class="sl-arrow">›</span>
           </div>
+          <div class="settings-link" onclick="openSubView('sv-pricing')">
+            <span class="sl-icon">💰</span><span class="sl-text">Prissättning per tjänst</span><span class="sl-arrow">›</span>
+          </div>
         </div>
 
         <div class="settings-section">
@@ -1072,6 +1075,16 @@ body{top:0!important}
         Lägg till teammedlem
       </button>
       <p id="add-member-msg" style="font-size:.8rem;margin-top:8px;text-align:center;display:none"></p>
+    </div>
+  </div>
+
+  <div class="sub-view" id="sv-pricing">
+    <div class="sub-view-header"><button onclick="closeSubView('sv-pricing')">←</button><h2>Prissättning per tjänst</h2></div>
+    <div class="sub-view-body">
+      <p style="font-size:.85rem;color:var(--m);margin-bottom:16px">Sätt pris per tjänst. Kunder ser priset efter RUT-avdrag (50%). Lämna tomt för att använda ditt standardpris.</p>
+      <div id="pricing-list" style="display:grid;gap:12px">Laddar...</div>
+      <button onclick="savePricing()" id="pricing-save-btn" style="width:100%;padding:14px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:16px;min-height:52px">💾 Spara priser</button>
+      <div id="pricing-msg" style="font-size:.82rem;text-align:center;margin-top:8px;display:none"></div>
     </div>
   </div>
 
@@ -3365,6 +3378,7 @@ function openSubView(id) {
   document.getElementById(id)?.classList.add('active');
   if (id === 'sv-schedule') buildSchedule();
   if (id === 'sv-blocked') loadBlockedDates();
+  if (id === 'sv-pricing') loadPricing();
 }
 function closeSubView(id) {
   document.getElementById(id)?.classList.remove('active');
@@ -3398,6 +3412,90 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── PRICING ─────────────────────────────────────────────────
+var _servicePrices = [];
+var _allServices = ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning'];
+
+async function loadPricing() {
+  if (!cleaner) return;
+  try {
+    var res = await R.select('cleaner_service_prices', 'select=*&cleaner_id=eq.' + cleaner.id);
+    _servicePrices = res.data || [];
+  } catch(e) { _servicePrices = []; }
+
+  var svcs = Array.isArray(cleaner.services) ? cleaner.services : _allServices;
+  var html = svcs.map(function(svc) {
+    var existing = _servicePrices.find(function(p) { return p.service_type === svc; });
+    var priceType = existing ? existing.price_type : 'hourly';
+    var price = existing ? existing.price : '';
+    var rutPrice = price ? Math.round(price * 0.5) : '';
+    return '<div style="background:var(--w);border-radius:12px;padding:14px;border:1px solid rgba(0,0,0,.06)">' +
+      '<div style="font-weight:600;font-size:.88rem;margin-bottom:8px">' + escHtml(svc) + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div>' +
+          '<label style="font-size:.72rem;color:var(--m)">Pristyp</label>' +
+          '<select data-svc="' + escHtml(svc) + '" data-field="type" style="width:100%;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit" onchange="updateRutPreview(this)">' +
+            '<option value="hourly"' + (priceType === 'hourly' ? ' selected' : '') + '>Kr/timme</option>' +
+            '<option value="per_sqm"' + (priceType === 'per_sqm' ? ' selected' : '') + '>Kr/kvm</option>' +
+          '</select>' +
+        '</div>' +
+        '<div>' +
+          '<label style="font-size:.72rem;color:var(--m)">Pris (före RUT)</label>' +
+          '<input type="number" data-svc="' + escHtml(svc) + '" data-field="price" value="' + price + '" placeholder="' + (cleaner.hourly_rate || 350) + '" min="100" max="2000" style="width:100%;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit" oninput="updateRutPreview(this)">' +
+        '</div>' +
+      '</div>' +
+      '<div data-svc="' + escHtml(svc) + '" data-field="rut-preview" style="font-size:.75rem;color:var(--spick-500);margin-top:6px;font-weight:500">' +
+        (rutPrice ? 'Kund betalar: ' + rutPrice + (priceType === 'per_sqm' ? ' kr/kvm' : ' kr/h') + ' efter RUT' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('pricing-list').innerHTML = html;
+}
+
+function updateRutPreview(el) {
+  var svc = el.dataset.svc;
+  var priceInput = document.querySelector('input[data-svc="' + svc + '"][data-field="price"]');
+  var typeSelect = document.querySelector('select[data-svc="' + svc + '"][data-field="type"]');
+  var preview = document.querySelector('div[data-svc="' + svc + '"][data-field="rut-preview"]');
+  if (!priceInput || !typeSelect || !preview) return;
+  var val = parseInt(priceInput.value);
+  if (val > 0) {
+    var unit = typeSelect.value === 'per_sqm' ? 'kr/kvm' : 'kr/h';
+    preview.textContent = 'Kund betalar: ' + Math.round(val * 0.5) + ' ' + unit + ' efter RUT';
+  } else {
+    preview.textContent = '';
+  }
+}
+
+async function savePricing() {
+  var btn = document.getElementById('pricing-save-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Sparar...';
+  try {
+    var inputs = document.querySelectorAll('#pricing-list input[data-field="price"]');
+    for (var i = 0; i < inputs.length; i++) {
+      var svc = inputs[i].dataset.svc;
+      var price = parseInt(inputs[i].value);
+      var typeSelect = document.querySelector('select[data-svc="' + svc + '"][data-field="type"]');
+      var priceType = typeSelect ? typeSelect.value : 'hourly';
+      if (price > 0) {
+        await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
+          method: 'POST',
+          headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates'}),
+          body: JSON.stringify({ cleaner_id: cleaner.id, service_type: svc, price_type: priceType, price: price })
+        });
+      }
+    }
+    btn.textContent = '✅ Sparat!';
+    btn.style.background = '#065F46';
+    showToast('Priser uppdaterade!');
+    setTimeout(function() { btn.textContent = '💾 Spara priser'; btn.style.background = ''; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.textContent = '❌ Kunde inte spara';
+    btn.disabled = false;
+  }
 }
 
 // ── TEAM FUNCTIONS ──────────────────────────────────────────

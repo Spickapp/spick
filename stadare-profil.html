@@ -427,9 +427,20 @@ async function loadProfile() {
   document.getElementById('sticky-btn').href = bokaHref;
 
   // Services grid
+  // Hämta per-tjänst-priser
+  var _svcPrices = [];
+  try {
+    var svcPriceRes = await fetch(SUPA + '/rest/v1/cleaner_service_prices?select=service_type,price_type,price&cleaner_id=eq.' + c.id + '&apikey=' + KEY, {headers: H});
+    _svcPrices = svcPriceRes.ok ? await svcPriceRes.json() : [];
+  } catch(e) {}
+
   var svcHTML = svcs.map(function(s) {
     s = s.trim();
-    return '<div class="service-card"><div class="service-icon">' + (svcIcons[s] || '🧹') + '</div><div class="service-name">' + escHtml(s) + '</div><div class="service-price">från ' + rutPrice + ' kr/h m. RUT</div></div>';
+    var sp = _svcPrices.find(function(p) { return p.service_type === s; });
+    var svcRate = sp ? sp.price : rate;
+    var svcRut = Math.round(svcRate * 0.5);
+    var unit = sp && sp.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h';
+    return '<div class="service-card"><div class="service-icon">' + (svcIcons[s] || '🧹') + '</div><div class="service-name">' + escHtml(s) + '</div><div class="service-price">från ' + svcRut + ' ' + unit + ' m. RUT</div></div>';
   }).join('');
   document.getElementById('p-services').innerHTML = svcHTML;
 

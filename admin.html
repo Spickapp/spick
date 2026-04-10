@@ -2792,7 +2792,13 @@ function showCleanerDetail(id) {
     </div>
     
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-    
+
+    <!-- Per-tjänst-prissättning -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:8px">PRISSÄTTNING PER TJÄNST</label>
+      <div id="admin-service-prices" style="font-size:.85rem;color:var(--m)">Laddar priser...</div>
+    </div>
+
     <!-- Statistik -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
       <div style="text-align:center;background:var(--gr);border-radius:10px;padding:10px">
@@ -2968,6 +2974,25 @@ function showCleanerDetail(id) {
       }
     }
   }
+
+  // Hämta per-tjänst-priser
+  AR.select('cleaner_service_prices', 'select=*&cleaner_id=eq.' + id).then(function(res) {
+    var prices = res.data || [];
+    var el = document.getElementById('admin-service-prices');
+    if (!el) return;
+    if (prices.length === 0) {
+      el.innerHTML = '<span style="color:var(--m)">Inga tjänstpriser satta — använder standardpris ' + (c.hourly_rate || 350) + ' kr/h</span>';
+      return;
+    }
+    el.innerHTML = '<div style="display:grid;gap:6px">' + prices.map(function(p) {
+      var rutPrice = Math.round(p.price * 0.5);
+      var unit = p.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--gr);border-radius:8px">' +
+        '<span style="font-weight:500">' + escHtml(p.service_type) + '</span>' +
+        '<span><strong>' + p.price + ' ' + unit + '</strong> <span style="color:var(--spick-500);font-size:.78rem">(' + rutPrice + ' ' + unit + ' efter RUT)</span></span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }).catch(function(e) { console.warn('Service prices:', e); });
 
   // Hämta städarens schema asynkront
   AR.select('cleaner_availability', 'select=*&cleaner_id=eq.' + id).then(({data: avail, error: avErr}) => {
