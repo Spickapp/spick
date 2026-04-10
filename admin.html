@@ -1837,6 +1837,21 @@ function renderCleaners() {
     cities.forEach(city => { const o = document.createElement('option'); o.value = o.textContent = city; citySelect.appendChild(o); });
   }
 
+  // Gruppera: solo först, sen företag (ägare + members)
+  var solo = filtered.filter(function(c) { return !c.company_id; });
+  var owners = filtered.filter(function(c) { return c.company_id && c.is_company_owner; });
+  var members = filtered.filter(function(c) { return c.company_id && !c.is_company_owner; });
+  // Bygg sorterad lista: solo, sen varje ägare följd av sina members
+  var grouped = solo.slice();
+  owners.forEach(function(o) {
+    grouped.push(o);
+    members.filter(function(m) { return m.company_id === o.company_id; }).forEach(function(m) { grouped.push(m); });
+  });
+  // Orphan team members (ägare ej i filtered)
+  var usedIds = new Set(owners.map(function(o) { return o.company_id; }));
+  members.filter(function(m) { return !usedIds.has(m.company_id); }).forEach(function(m) { grouped.push(m); });
+  filtered = grouped;
+
   document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => {
     const cleaner_jobs = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').length;
     const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*0.83),0);
@@ -1856,14 +1871,16 @@ function renderCleaners() {
     const fskattNeedsHelp = c.fskatt_needs_help;
     const stripeOk = c.stripe_onboarding_status === 'complete';
 
-    return `<tr style="${isSuspended ? 'opacity:.6' : ''}">
+    var isTeamMember = c.company_id && !c.is_company_owner;
+    var teamCount = c.is_company_owner ? data.cleaners.filter(function(m) { return m.company_id === c.company_id && m.id !== c.id; }).length : 0;
+    return `<tr style="${isSuspended ? 'opacity:.6' : ''}${isTeamMember ? ';display:none' : ''}" ${isTeamMember ? 'class="team-member-row" data-company="' + c.company_id + '"' : ''} ${c.is_company_owner ? 'data-owner-company="' + c.company_id + '"' : ''}>
       <td>
         <div style="display:flex;align-items:center;gap:10px">
           <input type="checkbox" onchange="toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer">
           ${c.avatar_url
             ? '<div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0"><img src="' + c.avatar_url + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover"></div>'
             : '<div style="width:36px;height:36px;border-radius:50%;background:' + (isSuspended ? '#6B7280' : isPaused ? '#F59E0B' : '#0F6E5620') + ';color:' + (isSuspended || isPaused ? '#fff' : '#0F6E56') + ';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0">' + (c.full_name||'?').charAt(0).toUpperCase() + '</div>'}
-          <div><strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : c.company_id ? ' <span style="background:#EFF6FF;color:#3B82F6;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:500">👥</span>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span>${c.is_company_owner && c.company_id ? '<br><span style="font-size:.72rem;color:#1E40AF;font-weight:600">🏢 ' + escHtml((data.cleaners._companyNames||{})[c.company_id]||'') + '</span>' : ''}</div>
+          <div>${isTeamMember ? '<span style="color:#BFDBFE;margin-right:4px">└─</span>' : ''}<strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢 Företagsägare</span>' : c.company_id ? ' <span style="background:#EFF6FF;color:#3B82F6;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:500">👥 Teammedlem</span>' : ''}${c.is_company_owner && teamCount > 0 ? ' <button onclick="event.stopPropagation();toggleTeamRows(\'' + c.company_id + '\',this)" style="background:#DBEAFE;color:#1E40AF;border:none;border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;margin-left:4px" title="Visa/dölj teammedlemmar">▶ ' + teamCount + ' st</button>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
         </div>
       </td>
       <td>${c.city ? '<div style="font-weight:600">' + escHtml(c.city) + '</div>' : ''}${c.home_address ? '<div style="font-size:.72rem;color:#6B6960">' + escHtml(c.home_address) + '</div>' : ''}${!c.city && !c.home_address ? '–' : ''}</td>
@@ -2656,6 +2673,16 @@ async function markBookingDone(id) {
 }
 
 // ── CLEANER DETAIL ────────────────────────────────────
+function toggleTeamRows(companyId, btn) {
+  var rows = document.querySelectorAll('.team-member-row[data-company="' + companyId + '"]');
+  var showing = rows.length > 0 && rows[0].style.display !== 'none';
+  rows.forEach(function(r) { r.style.display = showing ? 'none' : ''; });
+  if (btn) {
+    var count = rows.length;
+    btn.innerHTML = (showing ? '▶ ' : '▼ ') + count + ' st';
+  }
+}
+
 function showCleanerDetail(id) {
   const c = data.cleaners.find(x => x.id === id);
   if (!c) return;
