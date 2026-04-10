@@ -1745,6 +1745,15 @@ async function loadAvailableCleaners() {
     if (prt) prt.textContent = `${minR}–${maxR} kr/h` + (rutSuffix ? ` · med RUT: ${minRut}–${maxRut} kr/h` : '');
     if (prh) prh.style.display = 'block';
   }
+    // Hämta per-tjänst-priser
+    try {
+      var priceRes = await fetch(SUPA + '/rest/v1/cleaner_service_prices?select=cleaner_id,service_type,price_type,price', {headers: H});
+      var allPrices = priceRes.ok ? await priceRes.json() : [];
+      cleaners.forEach(function(cl) {
+        cl._servicePrices = allPrices.filter(function(p) { return p.cleaner_id === cl.id; });
+      });
+    } catch(e) { console.warn('Service prices fetch:', e); }
+
     state.availableCleaners = cleaners;
     renderCleaners(cleaners);
   } catch(e) {
@@ -1803,8 +1812,10 @@ function renderCleaners(cleaners) {
     try {
     const ini = (cl.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const col = COLORS[(cl.full_name||'').charCodeAt(0) % COLORS.length];
-    const rate = cl.hourly_rate || 350;
-    const rutRate = Math.round(rate * 0.5);
+    var svcPrice = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+    var isPricePerSqm = svcPrice && svcPrice.price_type === 'per_sqm';
+    var rate = svcPrice ? svcPrice.price : (cl.hourly_rate || 350);
+    var rutRate = Math.round(rate * 0.5);
     const hasRatings = cl.avg_rating != null && cl.review_count > 0;
     const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : typeof cl.services === 'string' ? cl.services.split(',').slice(0,3).map(s=>s.trim()).filter(Boolean) : [];
     const card = document.createElement('div');
@@ -1845,8 +1856,8 @@ function renderCleaners(cleaners) {
         </div>
       </div>
       <div class="cleaner-badges">
-        <div class="cleaner-price">${rate} kr/h</div>
-        ${state.customerType === 'privat' ? `<div class="cleaner-rut">= ${rutRate} kr/h med RUT</div>` : ''}
+        <div class="cleaner-price">${rate} ${isPricePerSqm ? 'kr/kvm' : 'kr/h'}</div>
+        ${state.customerType === 'privat' ? `<div class="cleaner-rut">= ${rutRate} ${isPricePerSqm ? 'kr/kvm' : 'kr/h'} med RUT</div>` : ''}
         ${cl.bankid_verified ? '<div class="badge-bankid">✓ Verifierad</div>' : ''}
         ${hasRatings && cl.avg_rating >= 4.8 && cl.review_count >= 3 ? '<div class="badge-gold">⭐ Toppvald</div>' : ''}
       </div>
