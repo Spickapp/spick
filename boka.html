@@ -646,7 +646,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
         <div class="sum-row"><span class="lbl">Tid</span><span class="val" id="s-time">–</span></div>
         <div class="sum-row"><span class="lbl">Timmar</span><span class="val" id="s-hours">–</span></div>
         <div class="sum-divider"></div>
-        <div class="sum-row"><span class="lbl">Timpris</span><span class="val" id="s-rate">–</span></div>
+        <div class="sum-row"><span class="lbl" id="s-rate-label">Timpris</span><span class="val" id="s-rate">–</span></div>
         <div class="sum-row"><span class="lbl">Brutto</span><span class="val" id="s-gross">–</span></div>
         <div class="sum-row" id="s-rut-row"><span class="lbl" style="color:var(--g)">RUT-avdrag 50%</span><span class="val" style="color:var(--g)" id="s-rut">–</span></div>
         <div class="sum-divider"></div>
@@ -2027,7 +2027,10 @@ async function findFirstAvailable() {
 function selectCleaner(cl, cardEl) {
   state.cleanerId   = cl.id;
   state.cleanerName = cl.full_name;
-  state.cleanerRate = cl.hourly_rate || 350;
+  // Per-tjänst-pris
+  var _sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+  state._isPricePerSqm = _sp && _sp.price_type === 'per_sqm';
+  state.cleanerRate = _sp ? _sp.price : (cl.hourly_rate || 350);
   // Dölj range-hint, visa städarens faktiska pris
   const prh = document.getElementById('price-range-hint');
   if (prh) prh.style.display = 'none';
@@ -2338,7 +2341,8 @@ function goStep4() {
 
 function buildConfirmSummary() {
   const discountFactor = 1 - (state.frequencyDiscount || 0);
-  const gross = Math.round(state.cleanerRate * state.hours * discountFactor);
+  var isPSqm = state._isPricePerSqm;
+  const gross = isPSqm ? Math.round(state.cleanerRate * (state.sqm || 0) * discountFactor) : Math.round(state.cleanerRate * state.hours * discountFactor);
   const rut   = useRut ? Math.round(gross * 0.5) : 0;
   const total = gross - rut;
   document.getElementById('confirm-summary').innerHTML = `
@@ -2406,7 +2410,8 @@ async function doBook() {
   }
   
   btn.innerHTML = '<div class="spinner"></div> Skapar bokning...';
-  const gross = Math.round(state.cleanerRate * state.hours);
+  var isPSqm = state._isPricePerSqm;
+  const gross = isPSqm ? Math.round(state.cleanerRate * (state.sqm || 0)) : Math.round(state.cleanerRate * state.hours);
   const rut   = useRut ? Math.round(gross * 0.5) : 0;
   const total = gross - rut;
   try {
@@ -2494,14 +2499,16 @@ function updateSidebar() {
   placeholder.style.display='none';
   details.style.display='block';
   const rate  = state.cleanerRate;
-  const gross = Math.round(rate * state.hours);
+  var isPSqm = state._isPricePerSqm;
+  const gross = isPSqm ? Math.round(rate * (state.sqm || 0)) : Math.round(rate * state.hours);
   const rut   = useRut ? Math.round(gross * 0.5) : 0;
   const total = gross - rut;
   document.getElementById('s-svc').textContent     = state.service;
   document.getElementById('s-date').textContent    = state.date ? formatDate(state.date) : '–';
   document.getElementById('s-time').textContent    = state.time ? 'kl. '+state.time : '–';
   document.getElementById('s-hours').textContent   = state.hours + ' h';
-  document.getElementById('s-rate').textContent    = rate + ' kr/h';
+  document.getElementById('s-rate-label').textContent = isPSqm ? 'Pris' : 'Timpris';
+  document.getElementById('s-rate').textContent    = isPSqm ? rate + ' kr/kvm × ' + (state.sqm || 0) + ' kvm' : rate + ' kr/h';
   document.getElementById('s-gross').textContent   = gross.toLocaleString('sv-SE') + ' kr';
   document.getElementById('s-rut').textContent     = '−' + rut.toLocaleString('sv-SE') + ' kr';
   document.getElementById('s-rut-row').style.display = useRut && state.customerType !== 'foretag' ? 'flex' : 'none';
