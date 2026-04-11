@@ -113,7 +113,7 @@ serve(async (req) => {
   const ALLOWED_TYPES = ["booking","new_booking_cleaner","application","application_confirmation","cleaner_approved",
     "reminder","review_request","uptime_alert","checkin","sos_alert","job_completed",
     "cleaner_accepted","booking_cancelled","garanti_reklamation","referral_invite",
-    "contact","manual_reply","ssl_warning","custom","waitlist"];
+    "contact","manual_reply","ssl_warning","custom","waitlist","chat_message"];
   
   if (!ALLOWED_TYPES.includes(type)) {
     return new Response(JSON.stringify({ error: "Invalid type" }), {
@@ -590,7 +590,7 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
       const preview = esc(r.message_preview || "");
       const bookingUrl = r.booking_url || "https://spick.se";
       await sendEmail(to, subject, wrap(`
-        <h2>💬 Nytt meddelande från ${cleanerName}</h2>
+        <h2>Nytt meddelande från ${cleanerName}</h2>
         <p>Hej ${custName}!</p>
         <div class="card">
           <p style="font-style:italic;color:#1C1C1A">"${preview}"</p>
