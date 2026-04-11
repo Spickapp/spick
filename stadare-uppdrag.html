@@ -265,7 +265,7 @@ function logActivity(action, meta) {
   } catch(e) {}
 }
 const params = new URLSearchParams(location.search);
-const BOOKING_ID = params.get('id');
+const BOOKING_ID = params.get('bid') || params.get('id');
 const MY_EMAIL = sessionStorage.getItem('spick_cleaner')
   ? JSON.parse(sessionStorage.getItem('spick_cleaner')).email : '';
 const MY_ALIAS = sessionStorage.getItem('spick_cleaner')
@@ -422,64 +422,65 @@ const METHOD_NAMES = {
 };
 
 async function loadKeyInfo() {
-  if (!BOOKING_ID) return;
-  const res = await fetch(
-    `${SUPA_URL}/rest/v1/key_methods?booking_id=eq.${BOOKING_ID}&select=*&limit=1`,
-    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
-  ).then(r => r.json()).catch(() => []);
+  if (!BOOKING_ID || !booking) return;
 
-  if (!res?.length) return;
-  keyData = res[0];
+  var keyType = booking.key_type || null;
+  var keyInfo = booking.key_info || null;
 
-  const method = METHOD_NAMES[keyData.method] || { icon:'🔑', name:keyData.method, fields:[] };
+  if (!keyInfo && !keyType) return;
+
   document.getElementById('keyLocked').style.display = 'none';
-  const info = document.getElementById('keyInfo');
+  var info = document.getElementById('keyInfo');
   info.style.display = 'block';
 
-  const codeFields = ['lockbox_code', 'digital_lock_code'];
-  const hasCode = codeFields.some(f => keyData[f]);
-  const codeValue = keyData.lockbox_code || keyData.digital_lock_code || null;
+  var METHOD_ICONS = {
+    code: { icon: '🔢', name: 'Portkod/larmkod' },
+    key: { icon: '🔑', name: 'Nyckeln delas ut' },
+    open: { icon: '🚪', name: 'Dörren är olåst' },
+    intercom: { icon: '📞', name: 'Porttelefon' }
+  };
+  var method = METHOD_ICONS[keyType] || { icon: '🔑', name: keyType || 'Tillträde' };
 
-  info.innerHTML = `
-    <div class="key-method-display">
-      <div class="method-icon">${method.icon}</div>
-      <h4>${method.name}</h4>
-      ${method.fields.map(f => keyData[f.key] ? `
-        <div class="key-detail-row">
-          <div class="key-label">${f.label}</div>
-          <div class="key-val">${keyData[f.key]}</div>
-        </div>
-      ` : '').join('')}
-      ${hasCode ? `
-        <div class="key-code-big">
-          <div class="code">${codeValue}</div>
-          <p>Kod – tryck för att kopiera</p>
-        </div>
-        <button class="copy-code-btn" onclick="navigator.clipboard.writeText('${codeValue}');this.textContent='✅ Kopierad!'">
-          📋 Kopiera kod
-        </button>
-      ` : ''}
-      ${keyData.special_instructions ? `
-        <div style="background:#fff8e1;border-radius:10px;padding:12px;margin-top:10px;font-size:13px;color:#e65100">
-          💬 <strong>Extra instruktioner:</strong><br>${keyData.special_instructions}
-        </div>
-      ` : ''}
-    </div>
-    <div class="warning-box">
-      <span>⚠️</span>
-      <span>Dela <strong>aldrig</strong> denna information med någon annan. Nyckelinfo raderas automatiskt 2h efter avslutat uppdrag.</span>
-    </div>
-    <button class="confirm-btn" onclick="confirmKeyAccess()">
-      🔑 Bekräfta – Jag har fått tillgång
-    </button>
-  `;
+  var isCode = keyType === 'code';
+  var codeValue = isCode && keyInfo ? keyInfo.replace('Portkod: ', '') : null;
+
+  info.innerHTML =
+    '<div class="key-method-display">' +
+      '<div class="method-icon">' + method.icon + '</div>' +
+      '<h4>' + method.name + '</h4>' +
+      '<div class="key-detail-row">' +
+        '<div class="key-label">Info</div>' +
+        '<div class="key-val">' + (keyInfo || 'Ingen info angiven') + '</div>' +
+      '</div>' +
+      (codeValue ?
+        '<div class="key-code-big">' +
+          '<div class="code">' + codeValue + '</div>' +
+          '<p>Kod – tryck för att kopiera</p>' +
+        '</div>' +
+        '<button class="copy-code-btn" onclick="navigator.clipboard.writeText(\'' + codeValue + '\');this.textContent=\'✅ Kopierad!\'">'+
+          '📋 Kopiera kod' +
+        '</button>'
+      : '') +
+      (booking.customer_notes ?
+        '<div style="background:#fff8e1;border-radius:10px;padding:12px;margin-top:10px;font-size:13px;color:#e65100">' +
+          '💬 <strong>Kundnoteringar:</strong><br>' + booking.customer_notes +
+        '</div>'
+      : '') +
+    '</div>' +
+    '<div class="warning-box">' +
+      '<span>⚠️</span>' +
+      '<span>Dela <strong>aldrig</strong> denna information med någon annan.</span>' +
+    '</div>' +
+    '<button class="confirm-btn" onclick="confirmKeyAccess()">' +
+      '🔑 Bekräfta – Jag har fått tillgång' +
+    '</button>';
 }
 
 async function confirmKeyAccess() {
-  await fetch(`${SUPA_URL}/rest/v1/key_methods?booking_id=eq.${BOOKING_ID}`, {
+  await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + BOOKING_ID, {
     method: 'PATCH',
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ key_confirmed: true, confirmed_at: new Date().toISOString() })
+    headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ key_confirmed: true, key_confirmed_at: new Date().toISOString() })
   });
   await updateStatus('key_access');
   document.querySelector('.confirm-btn').textContent = '✅ Tillgång bekräftad!';
@@ -524,6 +525,16 @@ function handleDocPhoto(input) {
     const type = currentPhotoSlot.startsWith('before') ? 'before' : 'after';
     slot.innerHTML = `<img loading="lazy" src="${e.target.result}" alt="Foto"><div style="position:absolute;top:6px;left:6px;background:${type === 'before' ? '#ff9800' : '#0F6E56'};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px">${type === 'before' ? 'INNAN' : 'EFTER'}</div>`;
     sendMessage(`📷 ${type === 'before' ? 'Foto taget INNAN städning' : 'Foto taget EFTER städning'} – Dokumentation sparad`, 'photo');
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleChatPhoto(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    sendMessage('📷 [Foto skickat]', 'photo');
   };
   reader.readAsDataURL(file);
 }
@@ -593,16 +604,25 @@ async function loadBooking() {
   ).then(r => r.json()).catch(() => []);
   if (!res?.length) return;
   booking = res[0];
-  document.getElementById('headerTitle').textContent = booking.service || 'Uppdrag';
-  document.getElementById('headerSub').textContent = booking.date + ' · ' + booking.city;
-  document.getElementById('u-service').textContent = booking.service || '–';
-  document.getElementById('u-date').textContent = booking.date || '–';
-  document.getElementById('u-time').textContent = booking.time || '–';
-  document.getElementById('u-address').textContent = `${booking.address}, ${booking.city}`;
-  document.getElementById('u-hours').textContent = (booking.hours || 3) + ' timmar';
-  const pay = Math.round((Number(booking.price) || 350 * 3) * 0.83);
+  var svc = booking.service_type || booking.service || 'Hemstädning';
+  var date = booking.booking_date || booking.date || '–';
+  var time = booking.booking_time || booking.time || '–';
+  var addr = booking.customer_address || booking.address || '–';
+  var city = booking.city || '–';
+  var hours = booking.booking_hours || booking.hours || 3;
+  var price = booking.total_price || booking.price || 0;
+  var commissionRate = booking.commission_rate || 0.17;
+  var pay = Math.round(Number(price) * (1 - commissionRate));
+
+  document.getElementById('headerTitle').textContent = svc;
+  document.getElementById('headerSub').textContent = date + ' · ' + city;
+  document.getElementById('u-service').textContent = svc;
+  document.getElementById('u-date').textContent = date;
+  document.getElementById('u-time').textContent = 'kl ' + time;
+  document.getElementById('u-address').textContent = addr + (city !== '–' ? ', ' + city : '');
+  document.getElementById('u-hours').textContent = hours + ' timmar';
   document.getElementById('u-pay').textContent = pay + ' kr';
-  renderChecklist(booking.service || 'Hemstädning');
+  renderChecklist(svc);
 
   // Hämta statuslogg
   const logs = await fetch(
