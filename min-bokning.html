@@ -98,6 +98,16 @@ footer a:hover{color:#1D9E75;}
 @media(max-width:768px){.nav-links{display:none;}.hamburger{display:flex;}}
 @media(max-width:640px){footer{padding:3rem 1.5rem 2rem;}}
 /* === END === */
+.chat-section{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.chat-messages{max-height:320px;overflow-y:auto;padding:8px 0;display:flex;flex-direction:column;gap:6px}
+.chat-msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:.85rem;line-height:1.5}
+.chat-msg.cleaner{background:#F0FDF4;border-bottom-left-radius:4px;align-self:flex-start}
+.chat-msg.customer{background:#1C1C1A;color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.chat-msg.system{background:#F5F5F0;color:#888;font-size:.78rem;text-align:center;align-self:center;border-radius:10px}
+.chat-msg-meta{font-size:.68rem;color:#bbb;margin-top:2px}
+.chat-input-wrap{display:flex;gap:8px;margin-top:12px}
+.chat-input-wrap textarea{flex:1;border:1.5px solid #E8E8E4;border-radius:10px;padding:10px 12px;font-size:.85rem;font-family:inherit;resize:none;max-height:60px}
+.chat-input-wrap button{background:#0F6E56;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.85rem;white-space:nowrap}
 </style>
 <!-- Google Analytics -->
 <script src="js/config.js"></script>
@@ -326,6 +336,20 @@ ${cleaner ? `
   </div>
 </div>
 
+${isPaid ? `
+<div class="chat-section">
+  <p style="font-size:.8rem;color:var(--m);margin-bottom:12px;font-weight:600">💬 CHATT MED STÄDAREN</p>
+  <div class="chat-messages" id="chat-messages">
+    <div style="text-align:center;color:#ccc;font-size:.82rem;padding:16px">Laddar meddelanden...</div>
+  </div>
+  <div class="chat-input-wrap">
+    <textarea id="chat-input" placeholder="Skriv till din städare..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();customerSendMsg()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,60)+'px'"></textarea>
+    <button onclick="customerSendMsg()">Skicka</button>
+  </div>
+</div>` : ''}
+
 ${isPaid && !isPast ? `
 <div style="display:flex;flex-direction:column;gap:8px">
   <a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" style="padding:.625rem 1.25rem;border:1.5px solid #E8E8E4;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;color:#1C1C1A;text-decoration:none;text-align:center">📅 Boka om</a>
@@ -339,6 +363,67 @@ ${!isPast && isPaid && !['cancelled','avbokad','klar'].includes(b.status) ? `
   </div>` : ''}
 ${isPast && isPaid && !b.review_requested ? `<a href="betygsatt.html?bid=${b.id}" class="btn btn-primary" style="margin-top:8px">⭐ Betygsätt städningen →</a>` : ''}
   `;
+
+  // Starta chatt-polling
+  setTimeout(loadChatMessages, 500);
+  clearInterval(_chatPoll);
+  _chatPoll = setInterval(loadChatMessages, 5000);
+}
+
+var _chatPoll = null;
+
+async function loadChatMessages() {
+  var bid = new URLSearchParams(location.search).get('bid');
+  if (!bid) return;
+  try {
+    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/messages?booking_id=eq.' + bid + '&order=created_at.asc&select=*', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY }
+    });
+    var msgs = res.ok ? await res.json() : [];
+    var el = document.getElementById('chat-messages');
+    if (!el) return;
+    if (!msgs.length) {
+      el.innerHTML = '<div style="text-align:center;color:#ccc;font-size:.82rem;padding:16px">Inga meddelanden ännu. Skriv till din städare!</div>';
+      return;
+    }
+    el.innerHTML = msgs.map(function(m) {
+      var role = m.is_automated || m.from_role === 'spick' ? 'system' : m.from_role === 'cleaner' ? 'cleaner' : 'customer';
+      var time = new Date(m.created_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+      var sender = role === 'cleaner' ? (m.from_alias || 'Städaren') : role === 'system' ? 'Spick' : 'Du';
+      return '<div class="chat-msg ' + role + '">' +
+        (role !== 'customer' ? '<div style="font-size:.7rem;font-weight:600;color:#0F6E56;margin-bottom:2px">' + sender + '</div>' : '') +
+        m.message.replace(/\n/g, '<br>') +
+        '<div class="chat-msg-meta">' + time + '</div>' +
+      '</div>';
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  } catch(e) { console.warn('Chat load:', e); }
+}
+
+async function customerSendMsg() {
+  var input = document.getElementById('chat-input');
+  var text = input.value.trim();
+  if (!text) return;
+  var bid = new URLSearchParams(location.search).get('bid');
+  if (!bid) return;
+  input.value = '';
+  input.style.height = 'auto';
+  try {
+    await fetch(SPICK.SUPA_URL + '/rest/v1/messages', {
+      method: 'POST',
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        booking_id: bid,
+        from_email: null,
+        to_email: null,
+        from_role: 'customer',
+        from_alias: 'Kunden',
+        message: text,
+        message_type: 'text'
+      })
+    });
+    loadChatMessages();
+  } catch(e) { console.warn('Chat send:', e); }
 }
 
 function showEmpty() {
