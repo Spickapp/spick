@@ -455,7 +455,7 @@ async function loadAvailableCleanersForReassignment(booking) {
 
   // Fetch available cleaners
   try {
-    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/v_cleaners_for_booking?is_approved=eq.true&select=id,full_name,avg_rating,review_count,city,hourly_rate,bio,avatar_url,services,home_lat,home_lng&order=avg_rating.desc', {
+    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,city,hourly_rate,bio,avatar_url,services,home_lat,home_lng&order=avg_rating.desc', {
       headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY }
     });
     var cleaners = res.ok ? await res.json() : [];
