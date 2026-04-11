@@ -170,6 +170,7 @@ const statusMap = {
   expired: ['cancelled','⏰ Bokning utgången'],
   cancelled: ['cancelled','❌ Avbokad'],
   refunded: ['cancelled','↩️ Återbetald'],
+  awaiting_reassignment_status: ['pending','🔄 Väntar på nytt städarval'],
 };
 
 async function load() {
@@ -207,6 +208,15 @@ async function load() {
   }
 
   renderBooking(b, cleaner);
+
+  // ── REASSIGNMENT FLOW ──
+  if (b.status === 'awaiting_reassignment') {
+    loadAvailableCleanersForReassignment(b);
+  }
+  // Handle ?action=refund from email link
+  if (params.get('action') === 'refund' && b.status === 'awaiting_reassignment') {
+    requestRefund(b);
+  }
   window._booking = b;
   // Visa åtgärdsknappar
   const actBtns = document.getElementById('action-btns');
@@ -425,6 +435,125 @@ async function customerSendMsg() {
     loadChatMessages();
   } catch(e) { console.warn('Chat send:', e); }
 }
+
+
+// ── REASSIGNMENT UI ────────────────────────────────────
+async function loadAvailableCleanersForReassignment(booking) {
+  var contentEl = document.getElementById('content');
+  
+  // Add reassignment banner + container at the top of content
+  var banner = document.createElement('div');
+  banner.id = 'reassign-section';
+  banner.innerHTML = '<div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:2px solid #F59E0B;border-radius:16px;padding:24px;margin-bottom:16px">' +
+    '<div style="font-size:1.5rem;margin-bottom:8px">⚠️</div>' +
+    '<h2 style="font-family:Playfair Display,serif;font-size:1.2rem;color:#92400E;margin-bottom:8px">Din städare kunde inte ta uppdraget</h2>' +
+    '<p style="color:#92400E;font-size:.88rem;margin-bottom:16px">Välj en ny städare nedan, eller begär återbetalning.</p>' +
+    '<div id="reassign-cleaners" style="margin-bottom:16px"><div style="text-align:center;padding:20px"><div class="spin"></div><p style="font-size:.82rem;color:#92400E;margin-top:8px">Letar efter tillgängliga städare...</p></div></div>' +
+    '<div style="text-align:center;margin-top:12px"><button onclick="requestRefund(window._booking)" style="padding:10px 24px;background:transparent;color:#DC2626;border:1.5px solid #FECACA;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Jag vill ha återbetalning istället</button></div>' +
+    '</div>';
+  contentEl.insertBefore(banner, contentEl.firstChild);
+
+  // Fetch available cleaners
+  try {
+    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/v_cleaners_for_booking?is_approved=eq.true&select=id,full_name,avg_rating,review_count,city,hourly_rate,bio,avatar_url,services,home_lat,home_lng&order=avg_rating.desc', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY }
+    });
+    var cleaners = res.ok ? await res.json() : [];
+    // Filter out cleaners without the right service
+    var svc = booking.service || 'Hemstädning';
+    cleaners = cleaners.filter(function(cl) {
+      return !cl.services || cl.services.some(function(s) {
+        return s.toLowerCase().includes(svc.toLowerCase().slice(0,4));
+      });
+    });
+    renderReassignCleaners(cleaners, booking);
+  } catch(e) {
+    console.error('Load cleaners:', e);
+    document.getElementById('reassign-cleaners').innerHTML = '<p style="color:#DC2626;font-size:.88rem">Kunde inte ladda städare. Kontakta hello@spick.se</p>';
+  }
+}
+
+function renderReassignCleaners(cleaners, booking) {
+  var el = document.getElementById('reassign-cleaners');
+  if (!cleaners.length) {
+    el.innerHTML = '<p style="color:#92400E;font-size:.88rem">Inga andra städare tillgängliga just nu. Du kan begära återbetalning eller kontakta oss.</p>';
+    return;
+  }
+  el.innerHTML = cleaners.map(function(cl) {
+    var initials = (cl.full_name || '?').split(' ').map(function(w){return w[0]}).join('').slice(0,2);
+    var rating = cl.avg_rating ? parseFloat(cl.avg_rating).toFixed(1) : 'Ny';
+    var rateDisplay = cl.hourly_rate ? Math.round(cl.hourly_rate * 0.5) + ' kr/h efter RUT' : '';
+    return '<div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;border:1.5px solid #E8E8E4;display:flex;align-items:center;gap:14px">' +
+      '<div style="width:48px;height:48px;border-radius:50%;background:#0F6E56;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0">' +
+        (cl.avatar_url ? '<img src="' + cl.avatar_url + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover">' : initials) +
+      '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:700;color:#1C1C1A">' + escHtml(cl.full_name) + '</div>' +
+        '<div style="font-size:.78rem;color:#6B6960">⭐ ' + rating + (cl.review_count ? ' (' + cl.review_count + ')' : '') + ' · ' + escHtml(cl.city || '') + '</div>' +
+        (rateDisplay ? '<div style="font-size:.78rem;color:#0F6E56;font-weight:600;margin-top:2px">' + rateDisplay + '</div>' : '') +
+      '</div>' +
+      '<button onclick="reassignToLeaner(\'' + cl.id + '\',\'' + escHtml(cl.full_name).replace(/'/g, '') + '\')" style="padding:10px 18px;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Välj</button>' +
+    '</div>';
+  }).join('');
+}
+
+async function reassignToLeaner(cleanerId, cleanerName) {
+  if (!confirm('Vill du boka ' + cleanerName + ' som din nya städare?')) return;
+  var booking = window._booking;
+  if (!booking) return;
+  try {
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/booking-reassign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({
+        booking_id: booking.id,
+        new_cleaner_id: cleanerId,
+        customer_email: booking.email || booking.customer_email
+      })
+    });
+    var result = await res.json();
+    if (res.ok && result.success) {
+      var section = document.getElementById('reassign-section');
+      if (section) section.innerHTML = '<div style="background:#F0FDF4;border:2px solid #22C55E;border-radius:16px;padding:24px;text-align:center">' +
+        '<div style="font-size:2rem;margin-bottom:8px">✅</div>' +
+        '<h2 style="font-family:Playfair Display,serif;font-size:1.2rem;color:#065F46;margin-bottom:8px">' + (result.message || 'Ny städare tilldelad!') + '</h2>' +
+        '<p style="color:#065F46;font-size:.88rem">Sidan uppdateras om 3 sekunder...</p></div>';
+      setTimeout(function() { location.reload(); }, 3000);
+    } else {
+      alert(result.error || 'Något gick fel. Försök igen.');
+    }
+  } catch(e) {
+    console.error('Reassign error:', e);
+    alert('Kunde inte byta städare. Kontakta hello@spick.se');
+  }
+}
+
+async function requestRefund(booking) {
+  if (!booking) return;
+  if (!confirm('Vill du ha återbetalning? Bokningen avbokas.')) return;
+  try {
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/booking-reassign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({
+        booking_id: booking.id,
+        customer_email: booking.email || booking.customer_email,
+        action: 'refund'
+      })
+    });
+    var result = await res.json();
+    if (res.ok && result.success) {
+      alert(result.message || 'Återbetalning påbörjad.');
+      location.reload();
+    } else {
+      alert(result.error || 'Något gick fel.');
+    }
+  } catch(e) {
+    alert('Fel vid återbetalning. Kontakta hello@spick.se');
+  }
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function showEmpty() {
   document.getElementById('content').innerHTML = `
