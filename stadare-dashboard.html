@@ -3491,9 +3491,15 @@ async function savePricing() {
       var typeSelect = document.querySelector('select[data-svc="' + svc + '"][data-field="type"]');
       var priceType = typeSelect ? typeSelect.value : 'hourly';
       if (price > 0) {
+        // Ta bort befintligt pris först
+        await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + cleaner.id + '&service_type=eq.' + encodeURIComponent(svc), {
+          method: 'DELETE',
+          headers: _authHeaders()
+        });
+        // Skapa nytt
         var res = await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
           method: 'POST',
-          headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates'}),
+          headers: Object.assign({}, _authHeaders(), {'Prefer': 'return=minimal'}),
           body: JSON.stringify({ cleaner_id: cleaner.id, service_type: svc, price_type: priceType, price: price })
         });
         if (!res.ok) {
