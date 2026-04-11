@@ -220,6 +220,7 @@ async function load() {
   }
   window._booking = b;
   if (b.status === 'awaiting_reassignment') { hideIrrelevantSections(); }
+  if (b.payment_status === 'refunded' || b.status === 'cancelled') { hideForRefunded(b); }
   // Visa åtgärdsknappar
   const actBtns = document.getElementById('action-btns');
   const cancelBtn = document.getElementById('cancel-action-btn');
@@ -441,6 +442,29 @@ async function customerSendMsg() {
 
 
 // ── REASSIGNMENT UI ────────────────────────────────────
+function hideForRefunded(b) {
+  setTimeout(function() {
+    document.querySelectorAll('.progress-steps, .chat-section, .maps-btn, .timeline').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.card').forEach(function(card) {
+      if (card.textContent.includes('STATUS') || card.textContent.includes('CHATT') || card.textContent.includes('Vi tilldelar')) card.style.display = 'none';
+    });
+    document.querySelectorAll('button, a').forEach(function(el) {
+      if (el.textContent.includes('Avboka') || el.textContent.includes('Betygsätt') || el.textContent.includes('Boka om')) el.style.display = 'none';
+    });
+    document.querySelectorAll('p').forEach(function(p) {
+      if (p.textContent.includes('Vi tilldelar')) p.parentElement.style.display = 'none';
+    });
+    var content = document.getElementById('content');
+    var banner = document.createElement('div');
+    banner.style.cssText = 'background:#F0FDF4;border:2px solid #22C55E;border-radius:16px;padding:24px;margin-bottom:16px;text-align:center';
+    banner.innerHTML = '<div style="font-size:2rem;margin-bottom:8px">\u2705</div>' +
+      '<h2 style="font-family:Playfair Display,serif;font-size:1.2rem;color:#065F46;margin-bottom:8px">\u00c5terbetalning bekr\u00e4ftad</h2>' +
+      '<p style="color:#065F46;font-size:.88rem;margin-bottom:16px">Pengarna syns p\u00e5 ditt konto inom 3\u20135 bankdagar.</p>' +
+      '<a href="boka.html" style="display:inline-block;background:#0F6E56;color:#fff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:.95rem">Boka ny st\u00e4dning \u2192</a>';
+    content.insertBefore(banner, content.firstChild);
+  }, 100);
+}
+
 function hideIrrelevantSections() {
   // Wait for render, then hide progress steps, chat, betygsätt, status timeline
   setTimeout(function() {
