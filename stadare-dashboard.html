@@ -1945,6 +1945,22 @@ function renderHeroCard() {
     if (klarBtn) { klarBtn.style.display = 'block'; klarBtn.dataset.bid = next.id; }
     if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
     if (helpBtn) helpBtn.style.display = 'block';
+  } else if (next.status === 'pending_confirmation') {
+    heroLabel.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;background:#F59E0B;border-radius:50%;animation:lpulse 1.2s infinite"></span> Nytt uppdrag \u2014 svara inom 90 min</span>';
+    heroCard.style.border = '2px solid #F59E0B';
+    heroCard.style.background = 'linear-gradient(135deg,#FFFBEB,#FEF3C7)';
+    if (klarBtn) klarBtn.style.display = 'none';
+    if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
+    if (helpBtn) helpBtn.style.display = 'none';
+    var heroActions = document.getElementById('hero-actions');
+    if (!heroActions) {
+      heroActions = document.createElement('div');
+      heroActions.id = 'hero-actions';
+      heroActions.style.cssText = 'display:flex;gap:8px;margin-top:12px';
+      uppdragBtn.parentNode.insertBefore(heroActions, uppdragBtn);
+    }
+    heroActions.innerHTML = '<button class="btn-accept" style="flex:1" onclick="respondToBooking(this,\'' + next.id + '\',\'accept\')">\u2713 Acceptera uppdrag</button><button style="flex:1;padding:12px;background:#FEE2E2;color:#DC2626;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit" onclick="respondToBooking(this,\'' + next.id + '\',\'reject\')">\u2715 Avb\u00f6j</button>';
+    heroActions.style.display = 'flex';
   } else {
     heroLabel.textContent = 'Nästa jobb';
     heroCard.style.border = '';
@@ -1952,6 +1968,8 @@ function renderHeroCard() {
     if (klarBtn) klarBtn.style.display = 'none';
     if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
     if (helpBtn) helpBtn.style.display = 'none';
+    var heroActions = document.getElementById('hero-actions');
+    if (heroActions) heroActions.style.display = 'none';
   }
 
   const [h,m] = (next.booking_time||next.scheduled_time||'09:00').split(':').map(Number);
@@ -2165,7 +2183,7 @@ function renderMyUpcomingJobs() {
 
   const today = new Date().toDateString();
   // Exclude today's jobs (shown in timeline)
-  const upcoming = myConfirmed.filter(j => new Date(j.scheduled_date||j.booking_date).toDateString() !== today);
+  const upcoming = myConfirmed.filter(j => j.status === 'pending_confirmation' || new Date(j.scheduled_date||j.booking_date).toDateString() !== today);
   const el = document.getElementById('my-jobs-list');
 
   if (!upcoming.length) {
