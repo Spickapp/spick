@@ -483,7 +483,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <div id="addr-list" class="addr-suggestions" style="display:none"></div>
           </div>
 
-          <!-- RUT-toggle -->
+          <!-- RUT-toggle (döljs för företag) -->
           <div class="rut-toggle" id="rut-toggle" onclick="toggleRut()">
             <div class="toggle-knob" id="rut-knob"><div class="knob"></div></div>
             <div class="rut-text">
@@ -1048,6 +1048,12 @@ function setCustomerType(type) {
   if (pnrWrap && type === 'foretag') pnrWrap.style.display = 'none';
   if (pnrWrap && type === 'privat') pnrWrap.style.display = '';
 
+  // RUT-toggle: dölj för företag
+  var rutToggle = document.getElementById('rut-toggle');
+  if (rutToggle) rutToggle.style.display = type === 'foretag' ? 'none' : '';
+  if (type === 'foretag') { useRut = false; state.useRut = false; }
+  if (type === 'privat' && !useRut) { useRut = true; state.useRut = true; }
+
   // Företagsfält: visa/dölj (steg 3)
   var bizFields = document.getElementById('business-fields');
   if (bizFields) bizFields.style.display = type === 'foretag' ? 'block' : 'none';
@@ -1055,6 +1061,10 @@ function setCustomerType(type) {
   // RUT-prisrad: visa/dölj
   var rutLine = document.getElementById('price-rut-line');
   if (rutLine) rutLine.style.display = type === 'privat' ? '' : 'none';
+
+  // Sidebar RUT-rad: visa/dölj
+  var sRutRow = document.getElementById('s-rut-row');
+  if (sRutRow) sRutRow.style.display = type === 'privat' && useRut ? 'flex' : 'none';
 
   // Uppdatera prisvisning
   updateSidebar();
@@ -2344,11 +2354,12 @@ function buildConfirmSummary() {
       🧹 <strong>Material:</strong> ${getMaterialText(state.service)}
     </div>
     <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)">
-      ${useRut ? '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--m);margin-bottom:.25rem"><span>Pris före RUT</span><span>' + gross.toLocaleString('sv-SE') + ' kr</span></div><div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--g);margin-bottom:.5rem"><span>RUT-avdrag (50%)</span><span>−' + rut.toLocaleString('sv-SE') + ' kr</span></div>' : ''}
+      ${useRut && state.customerType !== 'foretag' ? '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--m);margin-bottom:.25rem"><span>Pris före RUT</span><span>' + gross.toLocaleString('sv-SE') + ' kr</span></div><div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--g);margin-bottom:.5rem"><span>RUT-avdrag (50%)</span><span>−' + rut.toLocaleString('sv-SE') + ' kr</span></div>' : ''}
       <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1rem">
         <span>Du betalar</span>
         <span style="color:var(--g);font-size:1.15rem">${total.toLocaleString('sv-SE')} kr</span>
       </div>
+      ${state.customerType === 'foretag' ? '<div style="font-size:.78rem;color:var(--m)">Exkl. moms</div>' : (useRut ? '<div style="font-size:.78rem;color:#0F6E56">Inkl. 50% RUT-avdrag</div>' : '')}
     </div>`;
 }
 
@@ -2493,9 +2504,9 @@ function updateSidebar() {
   document.getElementById('s-rate').textContent    = rate + ' kr/h';
   document.getElementById('s-gross').textContent   = gross.toLocaleString('sv-SE') + ' kr';
   document.getElementById('s-rut').textContent     = '−' + rut.toLocaleString('sv-SE') + ' kr';
-  document.getElementById('s-rut-row').style.display = useRut ? 'flex' : 'none';
+  document.getElementById('s-rut-row').style.display = useRut && state.customerType !== 'foretag' ? 'flex' : 'none';
   document.getElementById('s-total').textContent   = total.toLocaleString('sv-SE') + ' kr';
-  document.getElementById('s-rut-note').textContent = useRut ? 'Inkl. 50% RUT-avdrag' : '';
+  document.getElementById('s-rut-note').textContent = state.customerType === 'foretag' ? 'Exkl. moms' : (useRut ? 'Inkl. 50% RUT-avdrag' : '');
   if (state.cleanerName) {
     cleanerBlk.style.display = 'block';
     const ini = state.cleanerName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
