@@ -143,9 +143,33 @@ serve(async (req) => {
     // ── 5. BERÄKNA PRIS — PRICING ENGINE ───────────
     const settings = await loadSettings(supabase);
 
-    // Använd städarens eget timpris istället för plattformens standardpris
-    if (cleaner.hourly_rate && cleaner.hourly_rate > 0) {
-      settings.basePricePerHour = cleaner.hourly_rate;
+    // Kolla per-tjänst-pris
+    let usePerSqm = false;
+    let perSqmRate = 0;
+    try {
+      const { data: svcPrices } = await supabase
+        .from("cleaner_service_prices")
+        .select("price, price_type")
+        .eq("cleaner_id", cleaner.id)
+        .eq("service_type", service)
+        .limit(1);
+      if (svcPrices && svcPrices.length > 0) {
+        if (svcPrices[0].price_type === "per_sqm" && sqm) {
+          usePerSqm = true;
+          perSqmRate = svcPrices[0].price;
+          // Override: total = rate × kvm, dividerat på timmar för att prismotor fungerar
+          settings.basePricePerHour = Math.round((perSqmRate * sqm) / validHours);
+        } else {
+          settings.basePricePerHour = svcPrices[0].price;
+        }
+      } else if (cleaner.hourly_rate && cleaner.hourly_rate > 0) {
+        settings.basePricePerHour = cleaner.hourly_rate;
+      }
+    } catch (e) {
+      console.warn("Service price lookup:", e);
+      if (cleaner.hourly_rate && cleaner.hourly_rate > 0) {
+        settings.basePricePerHour = cleaner.hourly_rate;
+      }
     }
 
     const pricing = calculateBooking(settings, {
