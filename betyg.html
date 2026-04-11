@@ -47,6 +47,14 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
 .star{font-size:3rem;cursor:pointer;transition:transform .15s;filter:grayscale(1);opacity:.4;}
 .star:hover,.star.active{filter:none;opacity:1;transform:scale(1.15);}
 .selected-label{font-size:1rem;font-weight:600;color:var(--g);min-height:1.5rem;margin-bottom:1.5rem;}
+.detail-ratings{text-align:left;margin-bottom:1.5rem}
+.detail-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid var(--grd)}
+.detail-row:last-child{border:none}
+.detail-label{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:500;color:var(--t)}
+.detail-stars{display:flex;gap:4px}
+.detail-star{font-size:1.4rem;cursor:pointer;filter:grayscale(1);opacity:.3;transition:all .15s}
+.detail-star:hover,.detail-star.active{filter:none;opacity:1;transform:scale(1.1)}
+.section-label{font-size:.78rem;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;text-align:left}
 .comment-box{width:100%;padding:.875rem 1rem;border:1.5px solid var(--grd);border-radius:12px;font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;resize:none;transition:border-color .2s;min-height:100px;margin-bottom:1.5rem;}
 .comment-box:focus{border-color:var(--g);}
 .submit-btn{width:100%;padding:1rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
@@ -75,6 +83,7 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
   <a href="index.html" class="logo">Spick</a>
   <h1>Hur gick städningen?</h1>
   <p class="sub" id="sub">Betygsätt din städare – det tar bara 30 sekunder och hjälper andra att välja rätt.</p>
+  <div class="section-label">Totalbetyg</div>
   <div class="stars" id="stars">
     <span class="star" data-v="1" onclick="setRating(1)">⭐</span>
     <span class="star" data-v="2" onclick="setRating(2)">⭐</span>
@@ -83,6 +92,41 @@ h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:
     <span class="star" data-v="5" onclick="setRating(5)">⭐</span>
   </div>
   <div class="selected-label" id="lbl"></div>
+
+  <div class="section-label">Detaljer (valfritt)</div>
+  <div class="detail-ratings">
+    <div class="detail-row">
+      <div class="detail-label">🧹 Städkvalitet</div>
+      <div class="detail-stars" id="ds-quality">
+        <span class="detail-star" onclick="setDetail('quality',1)">⭐</span>
+        <span class="detail-star" onclick="setDetail('quality',2)">⭐</span>
+        <span class="detail-star" onclick="setDetail('quality',3)">⭐</span>
+        <span class="detail-star" onclick="setDetail('quality',4)">⭐</span>
+        <span class="detail-star" onclick="setDetail('quality',5)">⭐</span>
+      </div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">🕐 Punktlighet</div>
+      <div class="detail-stars" id="ds-punctuality">
+        <span class="detail-star" onclick="setDetail('punctuality',1)">⭐</span>
+        <span class="detail-star" onclick="setDetail('punctuality',2)">⭐</span>
+        <span class="detail-star" onclick="setDetail('punctuality',3)">⭐</span>
+        <span class="detail-star" onclick="setDetail('punctuality',4)">⭐</span>
+        <span class="detail-star" onclick="setDetail('punctuality',5)">⭐</span>
+      </div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">😊 Bemötande</div>
+      <div class="detail-stars" id="ds-friendliness">
+        <span class="detail-star" onclick="setDetail('friendliness',1)">⭐</span>
+        <span class="detail-star" onclick="setDetail('friendliness',2)">⭐</span>
+        <span class="detail-star" onclick="setDetail('friendliness',3)">⭐</span>
+        <span class="detail-star" onclick="setDetail('friendliness',4)">⭐</span>
+        <span class="detail-star" onclick="setDetail('friendliness',5)">⭐</span>
+      </div>
+    </div>
+  </div>
+
   <textarea class="comment-box" id="cmt" placeholder="Berätta gärna mer – vad var bra eller vad kan förbättras? (valfritt)"></textarea>
   <button class="submit-btn" id="btn" onclick="submit()" disabled>Skicka betyg</button>
 </div>
@@ -106,6 +150,15 @@ var preRating = parseInt(p.get('rating')) || 0;
 if (preRating < 1 || preRating > 5) preRating = 0;
 var LABELS = ['', '😞 Dåligt', '😐 Okej', '🙂 Bra', '😊 Mycket bra', '🤩 Fantastiskt!'];
 var chosen = preRating || 0;
+var details = { quality: 0, punctuality: 0, friendliness: 0 };
+
+function setDetail(cat, n) {
+  details[cat] = n;
+  var container = document.getElementById('ds-' + cat);
+  container.querySelectorAll('.detail-star').forEach(function(s, i) {
+    s.classList.toggle('active', i < n);
+  });
+}
 
 if (cname) document.getElementById('sub').textContent = 'Betygsätt ' + cname + ' – det tar bara 30 sekunder.';
 if (preRating) setRating(preRating);
@@ -117,6 +170,13 @@ function setRating(n) {
   });
   document.getElementById('lbl').textContent = LABELS[n] || '';
   document.getElementById('btn').disabled = false;
+
+  // Auto-fill detaljer om kunden ger 5 stjärnor
+  if (n >= 4) {
+    ['quality','punctuality','friendliness'].forEach(function(cat) {
+      if (!details[cat]) setDetail(cat, n);
+    });
+  }
 }
 
 async function submit() {
@@ -147,7 +207,10 @@ async function submit() {
       cleaner_id: booking ? booking.cleaner_id : null,
       job_id: bid || null,
       rating: ratingVal,
-      comment: commentVal || null
+      comment: commentVal || null,
+      quality_rating: details.quality || null,
+      punctuality_rating: details.punctuality || null,
+      friendliness_rating: details.friendliness || null
     };
 
     var insertRes = await fetch(SUPA + '/rest/v1/ratings?apikey=' + KEY, {
