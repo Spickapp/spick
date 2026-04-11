@@ -3491,11 +3491,16 @@ async function savePricing() {
       var typeSelect = document.querySelector('select[data-svc="' + svc + '"][data-field="type"]');
       var priceType = typeSelect ? typeSelect.value : 'hourly';
       if (price > 0) {
-        await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
+        var res = await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
           method: 'POST',
           headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates'}),
           body: JSON.stringify({ cleaner_id: cleaner.id, service_type: svc, price_type: priceType, price: price })
         });
+        if (!res.ok) {
+          var errBody = await res.text();
+          console.error('Spara pris fel:', res.status, errBody);
+          throw new Error('Kunde inte spara ' + svc + ': ' + res.status);
+        }
       }
     }
     btn.textContent = '✅ Sparat!';
