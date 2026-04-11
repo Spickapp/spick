@@ -484,10 +484,10 @@ async function loadAvailableCleanersForReassignment(booking) {
     // Filter out cleaners without the right service
     var svc = booking.service || 'Hemstädning';
     // Filter out cleaners the customer already had (rejected)
-    var rejectedName = (booking.cleaner_name || booking.rejection_reason || '').toLowerCase();
+    var rejectedId = (booking.admin_notes || '').includes('rejected_by:') ? booking.admin_notes.split('rejected_by:')[1].split(/[^a-f0-9-]/)[0] : null;
     cleaners = cleaners.filter(function(cl) {
       // Exclude the cleaner who just rejected
-      if (rejectedName && cl.full_name && cl.full_name.toLowerCase().includes(rejectedName.split(' ')[0])) return false;
+      if (rejectedId && cl.id === rejectedId) return false;
       return true;
     });
     cleaners = cleaners.filter(function(cl) {

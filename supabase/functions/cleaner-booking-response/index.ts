@@ -128,6 +128,7 @@ serve(async (req) => {
         status: "awaiting_reassignment",
         rejected_at: new Date().toISOString(),
         rejection_reason: reason || null,
+        admin_notes: `rejected_by:${cleaner.id}`,
         cleaner_id: null,
         cleaner_name: null,
       }).eq("id", booking_id);
