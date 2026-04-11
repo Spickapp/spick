@@ -579,6 +579,45 @@ async function sendMessage(text, type = 'text') {
     })
   });
   loadMessages();
+
+  // Notifiera kunden via mejl
+  if (type !== 'system' && booking) {
+    fetch(SUPA_URL + '/rest/v1/messages', {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        booking_id: BOOKING_ID,
+        from_email: 'system',
+        from_role: 'spick',
+        from_alias: 'Spick',
+        message: '📩 Meddelande skickat till kunden via e-post',
+        message_type: 'system',
+        is_automated: true
+      })
+    }).catch(function() {});
+
+    // Skicka notis-mejl till kund
+    var custEmail = booking.customer_email;
+    var custName = (booking.customer_name || '').split(' ')[0] || 'Hej';
+    var cleanerName = booking.cleaner_name || 'Din städare';
+    if (custEmail) {
+      fetch(SUPA_URL + '/functions/v1/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SUPA_KEY },
+        body: JSON.stringify({
+          type: 'chat_message',
+          to: custEmail,
+          subject: '💬 Nytt meddelande från ' + cleanerName,
+          data: {
+            customer_name: custName,
+            cleaner_name: cleanerName,
+            message_preview: text.substring(0, 100),
+            booking_url: 'https://spick.se/min-bokning.html?bid=' + BOOKING_ID
+          }
+        })
+      }).catch(function() {});
+    }
+  }
 }
 
 async function sendMsg() {
