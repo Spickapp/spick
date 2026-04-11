@@ -1945,6 +1945,8 @@ function renderHeroCard() {
     if (klarBtn) { klarBtn.style.display = 'block'; klarBtn.dataset.bid = next.id; }
     if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
     if (helpBtn) helpBtn.style.display = 'block';
+    var detailsDiv2 = document.getElementById('hero-details');
+    if (detailsDiv2) detailsDiv2.style.display = 'none';
   } else if (next.status === 'pending_confirmation') {
     heroLabel.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;background:#F59E0B;border-radius:50%;animation:lpulse 1.2s infinite"></span> Nytt uppdrag</span>';
     heroCard.style.border = '2px solid #F59E0B';
@@ -1961,6 +1963,30 @@ function renderHeroCard() {
       var btnRow = heroCard.querySelector('.hero-buttons');
       if (btnRow) btnRow.after(heroActions); else heroCard.appendChild(heroActions);
     }
+    
+    // ── Job details for decision-making ──
+    var detailsDiv = document.getElementById('hero-details');
+    if (!detailsDiv) {
+      detailsDiv = document.createElement('div');
+      detailsDiv.id = 'hero-details';
+      heroActions.parentNode.insertBefore(detailsDiv, heroActions);
+    }
+    var freqLabel = {once:'Engångsstädning',weekly:'Varje vecka',biweekly:'Varannan vecka',monthly:'En gång i månaden'}[next.frequency||'once'] || 'Engångsstädning';
+    var sqmText = next.square_meters ? next.square_meters + ' kvm' : '';
+    var keyText = next.key_info ? next.key_info : 'Ej angivet';
+    var noteText = next.notes || next.customer_notes || '';
+    var custName = next.customer_name || '';
+    var hrs = next.booking_hours || 2;
+    detailsDiv.style.cssText = 'background:rgba(255,255,255,.7);border-radius:12px;padding:14px 16px;margin-top:14px;font-size:13px;line-height:1.7;color:#1C1C1A';
+    detailsDiv.innerHTML = '<div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#0F6E56">Uppdragsdetaljer</div>' +
+      (custName ? '<div>👤 <strong>' + custName.split(' ')[0] + '</strong></div>' : '') +
+      '<div>🏠 ' + escHtml(next.service_type||'Hemstädning') + ' · ' + hrs + ' timmar' + (sqmText ? ' · ' + sqmText : '') + '</div>' +
+      '<div>📅 ' + (next.booking_date||'') + ' kl ' + (next.booking_time||'').slice(0,5) + '</div>' +
+      '<div>📍 ' + escHtml(next.customer_address||'Ej angiven') + '</div>' +
+      '<div>🔑 ' + escHtml(keyText) + '</div>' +
+      '<div>🔄 ' + freqLabel + '</div>' +
+      (noteText ? '<div style="margin-top:6px;padding:8px 10px;background:#EFF6FF;border-radius:8px;color:#1E40AF;font-size:12px">' + (noteText.includes('🐾')?'':'📝 ') + escHtml(noteText) + '</div>' : '');
+
     heroActions.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-top:16px';
     heroActions.innerHTML = '<button onclick="respondToBooking(this,\'' + next.id + '\',\'accept\')" style="width:100%;padding:16px;background:#0F6E56;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;min-height:54px;letter-spacing:.3px">\u2713 Acceptera uppdrag</button>' +
       '<button onclick="respondToBooking(this,\'' + next.id + '\',\'reject\')" style="width:100%;padding:12px;background:transparent;color:#92400E;border:1.5px solid #FDE68A;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Nej tack \u2014 avb\u00f6j</button>' +
@@ -1976,6 +2002,8 @@ function renderHeroCard() {
     if (navBtn) navBtn.style.display = '';
     var heroActions = document.getElementById('hero-actions');
     if (heroActions) heroActions.style.display = 'none';
+    var detailsDiv = document.getElementById('hero-details');
+    if (detailsDiv) detailsDiv.style.display = 'none';
   }
 
   const [h,m] = (next.booking_time||next.scheduled_time||'09:00').split(':').map(Number);
