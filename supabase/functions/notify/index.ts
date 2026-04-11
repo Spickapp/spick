@@ -113,7 +113,7 @@ serve(async (req) => {
   const ALLOWED_TYPES = ["booking","new_booking_cleaner","application","application_confirmation","cleaner_approved",
     "reminder","review_request","uptime_alert","checkin","sos_alert","job_completed",
     "cleaner_accepted","booking_cancelled","garanti_reklamation","referral_invite",
-    "contact","manual_reply","ssl_warning","custom","waitlist","chat_message"];
+    "contact","manual_reply","ssl_warning","custom","waitlist","chat_message","job_started","cleaner_cancelled"];
   
   if (!ALLOWED_TYPES.includes(type)) {
     return new Response(JSON.stringify({ error: "Invalid type" }), {
@@ -581,6 +581,47 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
           ${r.message ? `<div class="row"><span class="lbl">Meddelande</span><span class="val">${esc(r.message)}</span></div>` : ""}
         </div>
         <p><strong>Ring kunden:</strong> <a href="tel:${esc(r.phone)}" style="color:#0F6E56;font-weight:600">${esc(r.phone || "–")}</a></p>
+      `));
+    }
+
+    else if (type === "job_started") {
+      const custName = esc(r.customer_name || "Hej").split(" ")[0];
+      const cleanerName = esc(r.cleaner_name || "Din städare");
+      const custEmail = r.customer_email;
+      if (custEmail) {
+        await sendEmail(custEmail, "Din städare är på plats!", wrap(`
+          <h2>${cleanerName} har börjat städa!</h2>
+          <p>Hej ${custName}! Din städare har checkat in och påbörjat städningen.</p>
+          <div class="card">
+            <div class="row"><span class="lbl">Datum</span><span class="val">${esc(r.date || "")}</span></div>
+            <div class="row"><span class="lbl">Tid</span><span class="val">${esc(r.time || "")}</span></div>
+          </div>
+          <a href="https://spick.se/min-bokning.html?bid=${esc(r.booking_id || "")}" class="btn">Se din bokning</a>
+        `));
+      }
+    }
+
+    else if (type === "cleaner_cancelled") {
+      const custEmail = r.customer_email;
+      const custName = esc(r.customer_name || "Hej").split(" ")[0];
+      const cleanerName = esc(r.cleaner_name || "din städare");
+      if (custEmail) {
+        await sendEmail(custEmail, "Din städare har avbokat — vi hittar en ny!", wrap(`
+          <h2>Tyvärr har ${cleanerName} behövt avboka</h2>
+          <p>Hej ${custName}, vi letar redan efter en ny städare åt dig och återkommer så snart som möjligt.</p>
+          <p>Om vi inte hittar en ersättare återbetalas du automatiskt.</p>
+          <a href="https://spick.se/min-bokning.html?bid=${esc(r.booking_id || "")}" class="btn">Se din bokning</a>
+          <p style="font-size:13px;margin-top:12px">Frågor? <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
+        `));
+      }
+      await sendEmail(ADMIN, "Städare avbokade: " + cleanerName, wrap(`
+        <h2>Städare avbokade ett uppdrag</h2>
+        <div class="card">
+          <div class="row"><span class="lbl">Städare</span><span class="val">${cleanerName}</span></div>
+          <div class="row"><span class="lbl">Kund</span><span class="val">${esc(r.customer_name || "")}</span></div>
+          <div class="row"><span class="lbl">Bokning</span><span class="val">${esc(r.booking_id || "")}</span></div>
+        </div>
+        <a href="https://spick.se/admin.html" class="btn">Tilldela ny städare</a>
       `));
     }
 

@@ -2727,11 +2727,18 @@ async function declineJob(id) {
 async function cancelMyJob(id) {
   if (!confirm('Vill du avboka detta uppdrag? Det blir tillgängligt för andra städare.')) return;
   await R.update('bookings', { cleaner_id:null, cleaner_name:null, status:'pending' }, `id=eq.${id}`);
-  await fetch(`${SUPA_URL}/functions/v1/notify`, {
+  var cancelledJob = jobs.find(function(j) { return j.id === id; });
+  await fetch(SUPA_URL + '/functions/v1/notify', {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},
-    body:JSON.stringify({type:'booking_cancelled',record:{booking_id:id,cleaner_name:cleaner.full_name,cleaner_email:cleaner._email}})
-  }).catch(()=>{});
+    body:JSON.stringify({type:'cleaner_cancelled',record:{
+      booking_id: id,
+      cleaner_name: cleaner.full_name,
+      cleaner_email: cleaner._email,
+      customer_email: cancelledJob ? cancelledJob.customer_email : null,
+      customer_name: cancelledJob ? cancelledJob.customer_name : null
+    }})
+  }).catch(function(){});
   showToast('Uppdrag avbokat – admin notifierad');
   loadJobs();
 }
