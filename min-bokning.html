@@ -165,6 +165,7 @@ const email = params.get('email');
 
 const statusMap = {
   paid: ['paid','✅ Bekräftad och betald'],
+  awaiting_reassignment: ['pending','🔄 Din städare avböjde — välj ny nedan'],
   pending: ['pending','⏳ Väntar på betalning'],
   failed: ['cancelled','❌ Betalning misslyckades'],
   expired: ['cancelled','⏰ Bokning utgången'],
@@ -218,6 +219,7 @@ async function load() {
     requestRefund(b);
   }
   window._booking = b;
+  if (b.status === 'awaiting_reassignment') { hideIrrelevantSections(); }
   // Visa åtgärdsknappar
   const actBtns = document.getElementById('action-btns');
   const cancelBtn = document.getElementById('cancel-action-btn');
@@ -245,7 +247,8 @@ function getMaterialText(serviceType) {
 }
 
 function renderBooking(b, cleaner) {
-  const [statusClass, statusText] = statusMap[b.payment_status] || ['pending','Okänd status'];
+  let [statusClass, statusText] = statusMap[b.payment_status] || ['pending','Okänd status'];
+  if (b.status === 'awaiting_reassignment') { statusClass = 'pending'; statusText = '🔄 Din städare avböjde — välj ny nedan'; }
   const isPaid = b.payment_status === 'paid';
   const fname = (b.customer_name || b.name || '').split(' ')[0];
   const date = new Date(b.date);
@@ -438,6 +441,25 @@ async function customerSendMsg() {
 
 
 // ── REASSIGNMENT UI ────────────────────────────────────
+function hideIrrelevantSections() {
+  // Wait for render, then hide progress steps, chat, betygsätt, status timeline
+  setTimeout(function() {
+    document.querySelectorAll('.progress-steps, .chat-section, .maps-btn, .timeline').forEach(function(el) { el.style.display = 'none'; });
+    // Hide parent cards of chat and status
+    document.querySelectorAll('.card').forEach(function(card) {
+      if (card.textContent.includes('STATUS') || card.textContent.includes('CHATT')) card.style.display = 'none';
+    });
+    // Hide action buttons (avboka, betygsätt, etc)
+    document.querySelectorAll('button, a.btn').forEach(function(el) {
+      if (el.textContent.includes('Avboka') || el.textContent.includes('Betygsätt') || el.textContent.includes('Boka om')) el.style.display = 'none';
+    });
+    // Hide "Vi tilldelar en städare" text
+    document.querySelectorAll('p').forEach(function(p) {
+      if (p.textContent.includes('Vi tilldelar')) p.parentElement.style.display = 'none';
+    });
+  }, 100);
+}
+
 async function loadAvailableCleanersForReassignment(booking) {
   var contentEl = document.getElementById('content');
   
@@ -461,6 +483,13 @@ async function loadAvailableCleanersForReassignment(booking) {
     var cleaners = res.ok ? await res.json() : [];
     // Filter out cleaners without the right service
     var svc = booking.service || 'Hemstädning';
+    // Filter out cleaners the customer already had (rejected)
+    var rejectedName = (booking.cleaner_name || booking.rejection_reason || '').toLowerCase();
+    cleaners = cleaners.filter(function(cl) {
+      // Exclude the cleaner who just rejected
+      if (rejectedName && cl.full_name && cl.full_name.toLowerCase().includes(rejectedName.split(' ')[0])) return false;
+      return true;
+    });
     cleaners = cleaners.filter(function(cl) {
       return !cl.services || cl.services.some(function(s) {
         return s.toLowerCase().includes(svc.toLowerCase().slice(0,4));
