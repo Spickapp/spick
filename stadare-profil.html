@@ -385,6 +385,35 @@ async function loadProfile() {
 
   // Rating bar
   document.getElementById('rv-rating').textContent = hasRatings ? c.avg_rating.toFixed(1) : 'Ny';
+
+  // Hämta detaljbetyg-snitt
+  try {
+    var detailRes = await fetch(SUPA + '/rest/v1/ratings?select=quality_rating,punctuality_rating,friendliness_rating&cleaner_id=eq.' + c.id, {headers: H});
+    var detailData = detailRes.ok ? await detailRes.json() : [];
+    if (detailData.length > 0) {
+      var qArr = detailData.filter(function(d) { return d.quality_rating; });
+      var pArr = detailData.filter(function(d) { return d.punctuality_rating; });
+      var fArr = detailData.filter(function(d) { return d.friendliness_rating; });
+      var qAvg = qArr.length ? (qArr.reduce(function(s,d) { return s + d.quality_rating; }, 0) / qArr.length).toFixed(1) : null;
+      var pAvg = pArr.length ? (pArr.reduce(function(s,d) { return s + d.punctuality_rating; }, 0) / pArr.length).toFixed(1) : null;
+      var fAvg = fArr.length ? (fArr.reduce(function(s,d) { return s + d.friendliness_rating; }, 0) / fArr.length).toFixed(1) : null;
+      if (qAvg || pAvg || fAvg) {
+        var detailEl = document.getElementById('detail-ratings');
+        if (!detailEl) {
+          detailEl = document.createElement('div');
+          detailEl.id = 'detail-ratings';
+          detailEl.style.cssText = 'margin-top:12px;display:grid;gap:6px';
+          var rvSection = document.getElementById('rv-rating');
+          if (rvSection) rvSection.closest('.card, div').appendChild(detailEl);
+        }
+        detailEl.innerHTML =
+          (qAvg ? '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:.85rem"><span style="color:#6B6960">🧹 Städkvalitet</span><span style="font-weight:600">' + qAvg + '</span></div>' : '') +
+          (pAvg ? '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:.85rem;border-top:1px solid #F5F5F0"><span style="color:#6B6960">🕐 Punktlighet</span><span style="font-weight:600">' + pAvg + '</span></div>' : '') +
+          (fAvg ? '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:.85rem;border-top:1px solid #F5F5F0"><span style="color:#6B6960">😊 Bemötande</span><span style="font-weight:600">' + fAvg + '</span></div>' : '');
+      }
+    }
+  } catch(e) { console.warn('Detail ratings:', e); }
+
   document.getElementById('rv-jobs').textContent = c.completed_jobs || '0';
   if (c.member_since) {
     var ms = new Date(c.member_since);
