@@ -65,7 +65,7 @@ serve(async (req) => {
       return json({ error: "Du har inte tillgång till denna bokning" }, 403, CORS);
     }
 
-    if (booking.status !== "pending_confirmation" && booking.status !== "bekräftad" && booking.status !== "pending") {
+    if (booking.status !== "pending_confirmation" && booking.status !== "bekräftad" && booking.status !== "pending" && booking.status !== "awaiting_reassignment") {
       return json({ error: `Bokning har redan status: ${booking.status}` }, 409, CORS);
     }
 
@@ -123,73 +123,61 @@ serve(async (req) => {
     // REJECT
     // ════════════════════════════════════════════════════════
     if (action === "reject") {
+      // ── Set awaiting_reassignment — give customer 24h to pick new cleaner ──
       await sb.from("bookings").update({
-        status: "rejected_by_cleaner",
+        status: "awaiting_reassignment",
         rejected_at: new Date().toISOString(),
         rejection_reason: reason || null,
         cleaner_id: null,
         cleaner_name: null,
       }).eq("id", booking_id);
 
-      // Stripe refund
-      let refundStatus = "skipped";
-      const paymentIntentId = booking.payment_intent_id || booking.stripe_payment_intent_id;
-      if (paymentIntentId && STRIPE_KEY) {
-        try {
-          const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
-            method: "POST",
-            headers: {
-              Authorization: `Basic ${btoa(STRIPE_KEY + ":")}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: `payment_intent=${paymentIntentId}`,
-          });
-          if (refundRes.ok) {
-            refundStatus = "initiated";
-            log("info", "cleaner-booking-response", "Refund initiated", { paymentIntentId });
-          } else {
-            const errText = await refundRes.text();
-            refundStatus = "failed";
-            log("error", "cleaner-booking-response", "Refund failed", { paymentIntentId, error: errText });
-          }
-        } catch (e) {
-          refundStatus = "error";
-          log("error", "cleaner-booking-response", "Refund exception", { error: (e as Error).message });
-        }
-      }
+      // ── NO immediate refund — customer gets 24h to rebook ──
+      // Auto-refund handled by auto-remind after 24h if still awaiting_reassignment
 
-      // Update payment status if refund was initiated
-      if (refundStatus === "initiated") {
-        await sb.from("bookings").update({ payment_status: "refunded" }).eq("id", booking_id);
-      }
+      const rebookUrl = `https://spick.se/min-bokning.html?bid=${booking_id}`;
+      const refundUrl = `https://spick.se/min-bokning.html?bid=${booking_id}&action=refund`;
 
-      // Email to customer
+      // Email to customer — choose new cleaner or get refund
       if (customerEmail) {
         const html = wrap(`
-          <h2>Uppdatering om din bokning</h2>
+          <h2>Din städare kunde tyvärr inte ta uppdraget</h2>
           <p>Hej ${esc(customerName)},</p>
-          <p>Tyvärr kunde städaren inte ta detta uppdrag. Vi beklagar besväret.</p>
-          ${paymentIntentId ? `<p><strong>Full återbetalning är på väg</strong> — du ser pengarna på ditt konto inom 3–5 bankdagar.</p>` : ""}
-          <p>Du är välkommen att boka en annan städare på <a href="https://spick.se/boka.html" class="btn">spick.se/boka</a>.</p>
+          <p>Tyvärr kunde <strong>${esc(cleaner.full_name)}</strong> inte ta din ${esc(serviceType).toLowerCase()} den ${formatDate(bookingDate)}. Vi beklagar!</p>
+          <p><strong>Du har två alternativ:</strong></p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">
+            <tr>
+              <td style="padding:8px">
+                <a href="${rebookUrl}" style="display:block;background:#0F6E56;color:#fff;padding:16px 24px;border-radius:12px;text-decoration:none;text-align:center;font-weight:700;font-size:16px">Välj en ny städare →</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px">
+                <a href="${refundUrl}" style="display:block;background:#fff;color:#DC2626;padding:14px 24px;border-radius:12px;text-decoration:none;text-align:center;font-weight:600;font-size:14px;border:1.5px solid #FECACA">Jag vill ha återbetalning</a>
+              </td>
+            </tr>
+          </table>
+          <p style="font-size:13px;color:#6B6960">Om du inte agerar inom 24 timmar återbetalas du automatiskt.</p>
           <p>Frågor? Kontakta oss på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a>.</p>
         `);
-        await sendEmail(customerEmail, "Uppdatering om din bokning hos Spick", html);
+        await sendEmail(customerEmail, `Din städare kunde inte ta uppdraget — välj ny`, html);
       }
 
       // Email to admin
       await sendEmail(ADMIN, `⚠️ Bokning avböjd av ${cleaner.full_name}`, wrap(`
-        <h2>⚠️ Bokning avböjd</h2>
+        <h2>⚠️ Bokning avböjd — väntar på kundens val</h2>
         <p><strong>${esc(cleaner.full_name)}</strong> har avböjt bokning <code>${esc(booking_id.slice(0, 8))}</code>.</p>
         ${card([
           ["Kund", `${esc(customerName)} (${esc(customerEmail)})`],
           ["Datum", formatDate(bookingDate)],
           ["Anledning", esc(reason || "Ingen angiven")],
-          ["Återbetalning", refundStatus],
+          ["Status", "Väntar på kundens val (24h)"],
         ])}
+        <p>Kunden har fått mejl med alternativ att välja ny städare eller begära återbetalning. Auto-refund efter 24h.</p>
       `));
 
-      log("info", "cleaner-booking-response", "Booking rejected", { booking_id, cleaner_id: cleaner.id, refundStatus });
-      return json({ success: true, message: "Bokning avböjd. Kunden har fått mejl och återbetalning.", refund: refundStatus }, 200, CORS);
+      log("info", "cleaner-booking-response", "Booking rejected — awaiting reassignment", { booking_id, cleaner_id: cleaner.id });
+      return json({ success: true, message: "Bokning avböjd. Kunden har fått mejl med alternativ." }, 200, CORS);
     }
 
     return json({ error: "Ogiltig action" }, 400, CORS);
