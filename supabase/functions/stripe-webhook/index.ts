@@ -651,8 +651,7 @@ serve(async (req) => {
 
     if (eventId) {
       await sb.from("processed_webhook_events")
-        .insert({ event_id: eventId, event_type: event.type as string })
-        .catch(e => console.warn("Idempotency insert failed:", e));
+        .insert({ event_id: eventId, event_type: event.type as string });
     }
 
   } catch (e) {
