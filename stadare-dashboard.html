@@ -2028,7 +2028,8 @@ function renderHeroCard() {
   if (countdownTimer) clearInterval(countdownTimer);
   countdownTimer = setInterval(updateCountdown, 30000);
 
-  document.getElementById('hero-address').innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(next.customer_address||'')}" target="_blank" style="color:#fff;text-decoration:underline">${escHtml(next.customer_address || '–')}</a>`;
+  var addrColor = next.status === 'pending_confirmation' ? '#0F6E56' : '#fff';
+  document.getElementById('hero-address').innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(next.customer_address||'')}" target="_blank" style="color:${addrColor};text-decoration:underline;font-weight:600">${escHtml(next.customer_address || '–')}</a>`;
   document.getElementById('hero-client').textContent = next.customer_name ? next.customer_name.split(' ')[0] : '–';
   document.getElementById('hero-pay').textContent = pay.toLocaleString('sv') + ' kr';
 
