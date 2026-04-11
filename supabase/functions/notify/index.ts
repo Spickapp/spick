@@ -584,6 +584,22 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
       `));
     }
 
+    else if (type === "chat_message") {
+      const custName = esc(r.customer_name || "Hej");
+      const cleanerName = esc(r.cleaner_name || "Din städare");
+      const preview = esc(r.message_preview || "");
+      const bookingUrl = r.booking_url || "https://spick.se";
+      await sendEmail(to, subject, wrap(`
+        <h2>💬 Nytt meddelande från ${cleanerName}</h2>
+        <p>Hej ${custName}!</p>
+        <div class="card">
+          <p style="font-style:italic;color:#1C1C1A">"${preview}"</p>
+        </div>
+        <p>Svara direkt i din bokningsvy:</p>
+        <a href="${bookingUrl}" class="btn">Öppna chatten →</a>
+      `));
+    }
+
     else if (type === "ssl_warning") {
       await sendEmail(ADMIN, "🔒 SSL-certifikat snart utgånget!", wrap(`
         <h2>SSL-varning</h2>
