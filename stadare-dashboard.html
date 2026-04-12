@@ -972,6 +972,29 @@ body{top:0!important}
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets bokningar</h4>
           <div id="team-bookings-list"><p style="color:var(--m);font-size:.85rem">Laddar...</p></div>
         </div>
+
+        <div class="card" style="padding:20px;margin-top:12px" id="team-stats-card">
+          <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets statistik</h4>
+          <div id="team-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">Totalt intäkter</div>
+              <div style="font-size:1.1rem;font-weight:700;color:var(--g)" id="team-total-earn">0 kr</div>
+            </div>
+            <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">Bokningar</div>
+              <div style="font-size:1.1rem;font-weight:700;color:var(--g)" id="team-total-jobs">0</div>
+            </div>
+            <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">Snittbetyg</div>
+              <div style="font-size:1.1rem;font-weight:700;color:var(--g)" id="team-avg-rating">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:20px;margin-top:12px" id="team-reviews-card">
+          <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets recensioner</h4>
+          <div id="team-reviews-list"><p style="color:var(--m);font-size:.85rem">Laddar...</p></div>
+        </div>
       </div>
     </div>
 
@@ -3751,6 +3774,46 @@ async function renderTeam() {
         </div>
       </div>`;
     }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar ännu.</p>';
+
+    // Team stats
+    var totalEarn = teamBookings.filter(b => b.status === 'klar' || b.status === 'completed').reduce((s,b) => s + (b.total_price || 0), 0);
+    var totalJobs = teamBookings.filter(b => b.status === 'klar' || b.status === 'completed').length;
+    document.getElementById('team-total-earn').textContent = Math.round(totalEarn).toLocaleString('sv') + ' kr';
+    document.getElementById('team-total-jobs').textContent = totalJobs;
+  }
+
+  // Fetch team reviews
+  if (memberIds.length > 0) {
+    var reviewFilter = memberIds.map(function(id) { return 'cleaner_id.eq.' + id; }).join(',');
+    var reviewRes = await R.select('reviews', 'select=id,cleaner_id,cleaner_rating,comment,created_at,service_type&or=(' + reviewFilter + ')&order=created_at.desc&limit=20');
+    var teamReviews = reviewRes.data || [];
+
+    // Avg rating
+    if (teamReviews.length > 0) {
+      var avgRating = teamReviews.reduce(function(s,r) { return s + (r.cleaner_rating || 0); }, 0) / teamReviews.length;
+      document.getElementById('team-avg-rating').textContent = avgRating.toFixed(1) + ' \u2b50';
+    }
+
+    // Render reviews
+    var memberMap = {};
+    _teamMembers.forEach(function(m) { memberMap[m.id] = m.full_name || m.first_name || ''; });
+
+    document.getElementById('team-reviews-list').innerHTML = teamReviews.length ? teamReviews.map(function(r) {
+      var stars = '';
+      for (var i = 0; i < 5; i++) stars += i < Math.round(r.cleaner_rating || 0) ? '\u2b50' : '\u2606';
+      var memberName = memberMap[r.cleaner_id] || '';
+      var date = r.created_at ? new Date(r.created_at).toLocaleDateString('sv-SE') : '';
+      var svcType = r.service_type || '';
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<div><span style="font-size:.85rem;font-weight:600">' + escHtml(memberName) + '</span>' +
+          (svcType ? '<span style="font-size:.75rem;color:var(--m);margin-left:8px">' + escHtml(svcType) + '</span>' : '') + '</div>' +
+          '<span style="font-size:.78rem;color:var(--m)">' + date + '</span>' +
+        '</div>' +
+        '<div style="margin-top:4px;font-size:.85rem">' + stars + '</div>' +
+        (r.comment ? '<div style="font-size:.82rem;color:var(--gray-600);margin-top:6px;font-style:italic">"' + escHtml(r.comment) + '"</div>' : '') +
+      '</div>';
+    }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga recensioner \u00e4nnu.</p>';
   }
 }
 
