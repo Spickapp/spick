@@ -95,10 +95,10 @@ serve(async (req) => {
     if (cleaner_id) {
       const { data, error } = await supabase
         .from("cleaners")
-        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone, hourly_rate")
+        .select("id, full_name, avg_rating, completed_jobs, home_lat, home_lng, phone, hourly_rate")
         .eq("id", cleaner_id)
         .eq("is_approved", true)
-        .eq("status", "aktiv")
+        .eq("is_active", true)
         .single();
 
       if (error || !data) {
@@ -110,9 +110,9 @@ serve(async (req) => {
       // Alla aktiva städare, sorterade på rating
       const { data } = await supabase
         .from("cleaners")
-        .select("id, full_name, avg_rating, total_jobs, home_lat, home_lng, phone, hourly_rate")
+        .select("id, full_name, avg_rating, completed_jobs, home_lat, home_lng, phone, hourly_rate")
         .eq("is_approved", true)
-        .eq("status", "aktiv")
+        .eq("is_active", true)
         .order("avg_rating", { ascending: false })
         .limit(1);
 
