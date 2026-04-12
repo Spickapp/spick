@@ -957,6 +957,29 @@ body{top:0!important}
     <!-- ═══ TAB: TEAM (only visible for company owners) ═══ -->
     <div class="tab-content" id="tab-team">
       <div class="tab-pad">
+        <div class="card" style="padding:20px;margin-bottom:12px" id="team-company-profile">
+          <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Företagsprofil</h4>
+          <div id="company-profile-view">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <div id="company-avatar" style="width:48px;height:48px;border-radius:12px;background:var(--spick-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem"></div>
+              <div>
+                <div id="company-display-name" style="font-weight:700;font-size:1rem"></div>
+                <div id="company-org-nr" style="font-size:.78rem;color:var(--m)"></div>
+              </div>
+            </div>
+            <div id="company-bio-display" style="font-size:.85rem;color:var(--gray-600);margin-bottom:12px"></div>
+            <button onclick="editCompanyProfile()" style="padding:8px 16px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Redigera företagsprofil</button>
+          </div>
+          <div id="company-profile-edit" style="display:none">
+            <div class="tm-form-group"><label>Företagsnamn</label><input type="text" id="cp-name" class="tm-input"></div>
+            <div class="tm-form-group"><label>Beskrivning (visas för kunder)</label><textarea id="cp-bio" class="tm-input" rows="3" maxlength="200" style="resize:none"></textarea></div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button onclick="saveCompanyProfile()" style="padding:10px 20px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Spara</button>
+              <button onclick="cancelCompanyEdit()" style="padding:10px 20px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
+            </div>
+          </div>
+        </div>
+
         <div class="card" style="padding:20px" id="team-management-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <div>
@@ -3730,6 +3753,8 @@ async function renderTeam() {
   const { data: company } = await R.selectSingle('companies', `select=*&id=eq.${cleaner.company_id}`);
   if (company) {
     document.getElementById('team-company-name').textContent = (company.name || 'Ditt team');
+    window._companyData = company;
+    renderCompanyProfile(company);
   }
 
   // Fetch team members with all fields
@@ -3799,9 +3824,11 @@ async function renderTeam() {
           '<button onclick="ownerRejectBooking(\'' + b.id + '\',\'' + b.cleaner_id + '\')" style="flex:1;padding:8px;background:#FEE2E2;color:#DC2626;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Avb\u00f6j</button>' +
           '</div>';
       } else if (isConfirmed) {
-        actions = '<div style="display:flex;gap:6px;margin-top:8px">' +
+        actions = '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' +
+          '<button onclick="showReassignPicker(\'' + b.id + '\',\'' + (b.cleaner_id||'') + '\')" style="padding:6px 12px;background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">\u21c4 Omf\u00f6rdela</button>' +
           '<button onclick="ownerCancelBooking(\'' + b.id + '\')" style="padding:6px 12px;background:transparent;color:#DC2626;border:1px solid #FECACA;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Avboka</button>' +
-          '</div>';
+          '</div>' +
+          '<div id="reassign-' + b.id + '" style="display:none;margin-top:6px"></div>';
       }
       return '<div style="background:var(--w);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
@@ -3996,6 +4023,89 @@ function resetTeamModal() {
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
   btn.textContent = 'Spara ändringar';
+}
+
+function renderCompanyProfile(company) {
+  if (!company) return;
+  var avatar = document.getElementById('company-avatar');
+  if (avatar) avatar.textContent = (company.name||'?').charAt(0).toUpperCase();
+  var nameEl = document.getElementById('company-display-name');
+  if (nameEl) nameEl.textContent = company.name || '';
+  var orgEl = document.getElementById('company-org-nr');
+  if (orgEl) orgEl.textContent = company.org_number ? 'Org.nr: ' + company.org_number : '';
+  var bioEl = document.getElementById('company-bio-display');
+  if (bioEl) bioEl.textContent = company.description || 'Ingen beskrivning ännu.';
+}
+
+function editCompanyProfile() {
+  document.getElementById('company-profile-view').style.display = 'none';
+  document.getElementById('company-profile-edit').style.display = 'block';
+  var company = window._companyData || {};
+  document.getElementById('cp-name').value = company.name || '';
+  document.getElementById('cp-bio').value = company.description || '';
+}
+
+function cancelCompanyEdit() {
+  document.getElementById('company-profile-view').style.display = 'block';
+  document.getElementById('company-profile-edit').style.display = 'none';
+}
+
+async function saveCompanyProfile() {
+  var name = document.getElementById('cp-name').value.trim();
+  var bio = document.getElementById('cp-bio').value.trim();
+  if (!name) { alert('F\u00f6retagsnamn kr\u00e4vs'); return; }
+  try {
+    await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ name: name, description: bio })
+    });
+    window._companyData = Object.assign(window._companyData || {}, { name: name, description: bio });
+    renderCompanyProfile(window._companyData);
+    cancelCompanyEdit();
+    showToast('F\u00f6retagsprofil sparad!');
+  } catch(e) { alert('Fel: ' + e.message); }
+}
+
+function showReassignPicker(bookingId, currentCleanerId) {
+  var el = document.getElementById('reassign-' + bookingId);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  var options = (_teamMembers || []).filter(function(m) {
+    return m.id !== currentCleanerId && m.status === 'aktiv' && m.is_approved;
+  }).map(function(m) {
+    return '<button onclick="ownerReassignBooking(\'' + bookingId + '\',\'' + m.id + '\',\'' + (m.full_name||'').replace(/'/g,'') + '\')" style="display:block;width:100%;text-align:left;padding:8px 12px;background:var(--w);border:1px solid var(--gray-200);border-radius:8px;margin-bottom:4px;cursor:pointer;font-family:inherit;font-size:.82rem"><strong>' + escHtml(m.full_name||'') + '</strong><span style="color:var(--m);margin-left:8px">' + (m.hourly_rate||350) + ' kr/h</span></button>';
+  });
+  if (options.length === 0) {
+    el.innerHTML = '<p style="font-size:.78rem;color:var(--m);padding:4px">Inga andra aktiva teammedlemmar.</p>';
+  } else {
+    el.innerHTML = '<div style="font-size:.78rem;font-weight:600;color:var(--m);margin-bottom:4px">V\u00e4lj ny st\u00e4dare:</div>' + options.join('');
+  }
+  el.style.display = 'block';
+}
+
+async function ownerReassignBooking(bookingId, newCleanerId, newCleanerName) {
+  if (!confirm('Omf\u00f6rdela till ' + newCleanerName + '?')) return;
+  try {
+    var member = _teamMembers.find(function(m) { return m.id === newCleanerId; });
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bookingId, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
+      body: JSON.stringify({
+        cleaner_id: newCleanerId,
+        cleaner_name: member ? member.full_name : newCleanerName,
+        cleaner_email: member ? member.email : null,
+        cleaner_phone: member ? member.phone : null
+      })
+    });
+    if (res.ok) {
+      showToast('\u2705 Omf\u00f6rdelad till ' + newCleanerName);
+      renderTeam();
+    } else {
+      var err = await res.json().catch(function() { return {}; });
+      alert('Fel: ' + (err.message || 'Kunde inte omf\u00f6rdela'));
+    }
+  } catch(e) { alert('Fel: ' + e.message); }
 }
 
 async function ownerAcceptBooking(bookingId, cleanerId) {
