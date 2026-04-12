@@ -1154,14 +1154,8 @@ function calcHours() {
   // Visa prisuppskattning direkt i steg 1
   const peEl = document.getElementById('price-estimate');
   if (peEl && state.sqm && state.service) {
-    const estRate = 450;
-    const est = Math.round(state.hours * estRate);
-    const rutEst = Math.floor(est * 0.5);
-    document.getElementById('price-gross').textContent = est.toLocaleString('sv-SE');
-    document.getElementById('price-after-rut').textContent = rutEst.toLocaleString('sv-SE');
-    var rutLine = document.getElementById('price-rut-line');
-    if (rutLine) rutLine.style.display = state.customerType === 'privat' ? '' : 'none';
-    peEl.style.display = 'block';
+    // Prisuppskattning borttagen - visas i steg 2 med faktiska priser
+    peEl.style.display = 'none';
   } else if (peEl) {
     peEl.style.display = 'none';
   }
@@ -1917,7 +1911,12 @@ function renderCleaners(cleaners) {
           if (isPricePerSqm && state.sqm) {
             var total = rate * state.sqm;
             var totalRut = Math.floor(total * 0.5);
+            if (isPricePerSqm) {
             return state.customerType === 'privat'
+              ? '<div class="cleaner-price">' + rutRate + ' kr/kvm</div><div class="cleaner-rut">efter RUT (' + rate + ' kr/kvm före)</div>'
+              : '<div class="cleaner-price">' + rate + ' kr/kvm</div>';
+          }
+          return state.customerType === 'privat'
               ? '<div class="cleaner-price">' + totalRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt efter RUT (' + total.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rutRate + ' kr/kvm × ' + state.sqm + ' kvm</div>'
               : '<div class="cleaner-price">' + total.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/kvm × ' + state.sqm + ' kvm)</div>';
           }
