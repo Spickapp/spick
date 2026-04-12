@@ -773,7 +773,52 @@ if (_inviteCompanyId) {
 }
 
 // ── STEP NAVIGATION ──────────────────────────
+function adaptStep2ForOwner() {
+  var isOwner = document.getElementById('ownerOnly') && document.getElementById('ownerOnly').checked;
+  if (!isOwner) return;
+
+  // Change heading
+  var h2 = document.querySelector('#step2 h2');
+  if (h2) h2.innerHTML = '\ud83c\udfe2 Ditt f\u00f6retag';
+  var desc = document.querySelector('#step2 .desc');
+  if (desc) desc.textContent = 'Ber\u00e4tta om ert f\u00f6retag och vilka tj\u00e4nster ni erbjuder.';
+
+  // Change bio label
+  var bioLabel = document.querySelector('label[data-i18n="lblBio"]');
+  if (bioLabel) bioLabel.textContent = 'Kort om ert f\u00f6retag (visas p\u00e5 er profil)';
+  var bioInput = document.getElementById('bio');
+  if (bioInput) bioInput.placeholder = 'T.ex. "Professionellt st\u00e4df\u00f6retag med 5 \u00e5rs erfarenhet i Stockholm"';
+
+  // Change language label
+  var langLabel = document.querySelector('label[data-i18n="lblSprak"]');
+  if (langLabel) langLabel.textContent = 'Vilka spr\u00e5k talar ert team? *';
+
+  // Change services label
+  var svcLabel = document.querySelector('label[data-i18n="lblTjanster"]');
+  if (svcLabel) svcLabel.textContent = 'Vilka tj\u00e4nster erbjuder ert f\u00f6retag?';
+
+  // Hide experience
+  var expLabel = document.querySelector('label[data-i18n="lblErfarenhet"]');
+  if (expLabel) expLabel.closest('.field').style.display = 'none';
+
+  // Hide timpris + radie (field-row)
+  var priceLabel = document.querySelector('label[data-i18n="lblTimpris"]');
+  if (priceLabel) priceLabel.closest('.field-row').style.display = 'none';
+
+  // Hide F-skatt help box (purple box)
+  document.querySelectorAll('#step2 div').forEach(function(el) {
+    if (el.style.background && el.style.background.includes('EDE9FE')) el.style.display = 'none';
+  });
+
+  // Hide F-skatt question and auto-set to yes
+  var fskattQ = document.querySelector('label[data-i18n="fskattQuestion"]');
+  if (fskattQ) fskattQ.closest('.form-group').style.display = 'none';
+  // Auto-set fskatt
+  if (typeof setFskattStatus === 'function') setFskattStatus('yes');
+}
+
 function goToStep(n) {
+  if (n === 2) adaptStep2ForOwner();
   [1,2,3,4].forEach(function(i) {
     document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
     var dot = document.getElementById('dot' + i);
