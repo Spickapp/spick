@@ -295,10 +295,11 @@ serve(async (req) => {
       const hr = parseInt(app.hourly_rate) || 350;
       const isCompany = app.is_company && app.company_name;
       const isTeamMember = !!app.invited_by_company_id;
+      const isOwnerOnly = !!(app.owner_only && isCompany);
       const html = wrap(`
         <h2>Välkommen till Spick! 🎉</h2>
         <p>Hej ${esc(name)}!</p>
-        <p>Grattis — din ansökan är godkänd! Slutför din profil i dashboarden för att börja ta emot bokningar.</p>
+        <p>${isOwnerOnly ? `Grattis — <strong>${esc(app.company_name)}</strong> är godkänt! Logga in på din dashboard för att lägga till teammedlemmar och börja ta emot bokningar.` : `Grattis — din ansökan är godkänd! Slutför din profil i dashboarden för att börja ta emot bokningar.`}</p>
         ${isCompany ? `<p>🏢 <strong>${esc(app.company_name)}</strong> är registrerat. Du kan lägga till teammedlemmar via din dashboard.</p>` : ""}
         ${isTeamMember ? `<p>👥 Du är kopplad till ett städföretag. Betalningar hanteras via ditt företag — du behöver inte koppla Stripe.</p>` : ""}
         ${app.fskatt_needs_help ? `

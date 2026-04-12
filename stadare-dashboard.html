@@ -1587,6 +1587,11 @@ async function loadCleanerByEmail(email, authUserId) {
   showTeamTab();
   showScreen('app');
 
+  // Company owners default to team tab
+  if (cleaner.is_company_owner) {
+    switchTab('team');
+  }
+
   if (cleaner.status === 'pausad') {
     const banner = document.createElement('div');
     banner.id = 'paused-banner';
