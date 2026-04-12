@@ -1092,7 +1092,25 @@ body{top:0!important}
         <div id="team-bio-count" style="font-size:11px;color:var(--gray-400);margin-top:4px;text-align:right">0/120</div>
       </div>
 
-      <!-- Fält 10: Submit -->
+      <!-- Fält 10: Schema -->
+      <div class="tm-form-group" id="team-schedule-section">
+        <label>Arbetsschema</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px" id="team-days">
+          <button type="button" class="tm-chip active" data-day="day_mon" onclick="this.classList.toggle('active')">Mån</button>
+          <button type="button" class="tm-chip active" data-day="day_tue" onclick="this.classList.toggle('active')">Tis</button>
+          <button type="button" class="tm-chip active" data-day="day_wed" onclick="this.classList.toggle('active')">Ons</button>
+          <button type="button" class="tm-chip active" data-day="day_thu" onclick="this.classList.toggle('active')">Tor</button>
+          <button type="button" class="tm-chip active" data-day="day_fri" onclick="this.classList.toggle('active')">Fre</button>
+          <button type="button" class="tm-chip" data-day="day_sat" onclick="this.classList.toggle('active')">Lör</button>
+          <button type="button" class="tm-chip" data-day="day_sun" onclick="this.classList.toggle('active')">Sön</button>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px">
+          <div style="flex:1"><label style="font-size:12px;color:var(--gray-500)">Starttid</label><select id="team-start-time" class="tm-input" style="padding:8px 12px"><option value="07:00">07:00</option><option value="08:00" selected>08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option><option value="12:00">12:00</option></select></div>
+          <div style="flex:1"><label style="font-size:12px;color:var(--gray-500)">Sluttid</label><select id="team-end-time" class="tm-input" style="padding:8px 12px"><option value="15:00">15:00</option><option value="16:00">16:00</option><option value="17:00" selected>17:00</option><option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00">20:00</option><option value="21:00">21:00</option></select></div>
+        </div>
+      </div>
+
+      <!-- Fält 11: Submit -->
       <button id="add-member-btn" class="team-submit-btn" onclick="addTeamMember()"
         style="width:100%;padding:14px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;min-height:52px;transition:background .15s">
         Lägg till teammedlem
@@ -3931,9 +3949,38 @@ function resetTeamModal() {
   document.querySelectorAll('#team-services .tm-chip').forEach((b, i) => b.classList.toggle('active', i === 0));
   document.querySelectorAll('#team-pet-options .tm-chip').forEach((b, i) => b.classList.toggle('active', i === 0));
   document.getElementById('add-member-msg').style.display = 'none';
+  document.querySelectorAll('#team-days .tm-chip').forEach(function(b,i){b.classList.toggle('active',i<5)});
+  if(document.getElementById('team-start-time'))document.getElementById('team-start-time').value='08:00';
+  if(document.getElementById('team-end-time'))document.getElementById('team-end-time').value='17:00';
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
   btn.textContent = 'Spara ändringar';
+}
+
+async function loadTeamMemberSchedule(cid) {
+  try {
+    var r = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid + '&limit=1', { headers: _authHeaders() });
+    var d = r.ok ? await r.json() : [];
+    var a = d[0] || {};
+    document.querySelectorAll('#team-days .tm-chip').forEach(function(b) { b.classList.toggle('active', a[b.dataset.day] !== false); });
+    if (a.start_time) document.getElementById('team-start-time').value = a.start_time.slice(0,5);
+    if (a.end_time) document.getElementById('team-end-time').value = a.end_time.slice(0,5);
+  } catch(e) { console.warn('Load schedule:', e); }
+}
+
+async function saveTeamMemberSchedule(cid) {
+  var days = {};
+  document.querySelectorAll('#team-days .tm-chip').forEach(function(b) { days[b.dataset.day] = b.classList.contains('active'); });
+  var p = Object.assign({}, days, { cleaner_id: cid, start_time: document.getElementById('team-start-time').value, end_time: document.getElementById('team-end-time').value });
+  try {
+    var cr = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid + '&limit=1', { headers: _authHeaders() });
+    var ex = cr.ok ? await cr.json() : [];
+    if (ex.length > 0) {
+      await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid, { method: 'PATCH', headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}), body: JSON.stringify(p) });
+    } else {
+      await fetch(SUPA_URL + '/rest/v1/cleaner_availability', { method: 'POST', headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}), body: JSON.stringify(p) });
+    }
+  } catch(e) { console.warn('Save schedule:', e); }
 }
 
 function toggleTeamSvc(btn) {
@@ -3997,6 +4044,7 @@ function editTeamMember(memberId) {
   btn.onclick = () => updateTeamMember(memberId);
 
   document.getElementById('add-member-modal').style.display = 'flex';
+  loadTeamMemberSchedule(memberId);
 }
 
 async function updateTeamMember(memberId) {
@@ -4064,6 +4112,7 @@ async function updateTeamMember(memberId) {
 
     if (error) throw new Error(error.message || 'Update failed');
 
+    await saveTeamMemberSchedule(memberId);
     showToast('Ändringar sparade!');
     closeTeamModal();
     renderTeam();
