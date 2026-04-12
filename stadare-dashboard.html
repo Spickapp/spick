@@ -1180,7 +1180,7 @@ body{top:0!important}
           <span style="font-size:14px">Samma område som mig</span>
         </label>
         <div id="team-area-custom" style="display:none;margin-top:12px">
-          <input type="text" id="team-address" class="tm-input" placeholder="Adress, t.ex. Storgatan 1, Solna">
+          <div style="position:relative"><input type="text" id="team-address" class="tm-input" placeholder="Adress, t.ex. Storgatan 1, Solna" autocomplete="off" oninput="tmAddrSearch(this.value)" onfocus="if(this.value.length>2)tmAddrSearch(this.value)"><div id="tm-addr-list" style="display:none;position:absolute;left:0;right:0;background:#fff;border:1.5px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;max-height:200px;overflow-y:auto"></div></div>
           <div style="margin-top:10px">
             <label style="font-size:13px">Radie: <span id="team-radius-val" style="font-weight:500">30 km</span></label>
             <input type="range" id="team-radius" min="5" max="100" value="30" step="5" style="width:100%;margin-top:4px"
@@ -4629,6 +4629,49 @@ function setTeamPet(btn) {
   btn.classList.add('active');
 }
 
+// Team member address autocomplete
+var _tmAddrTimer, _tmLat = null, _tmLng = null;
+
+function tmAddrSearch(q) {
+  _tmLat = null; _tmLng = null;
+  clearTimeout(_tmAddrTimer);
+  var list = document.getElementById('tm-addr-list');
+  if (q.length < 3) { list.style.display = 'none'; return; }
+  _tmAddrTimer = setTimeout(async function() {
+    try {
+      var res = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+        body: JSON.stringify({ query: q, country: 'se', types: 'address' })
+      });
+      var data = await res.json();
+      var preds = data.predictions || [];
+      if (!preds.length) { list.style.display = 'none'; return; }
+      list.innerHTML = preds.map(function(p) {
+        var dd = (p.description || '').replace(/, Sverige$/, '');
+        return '<div onclick="tmPickAddr(this.textContent,\'' + (p.place_id || '') + '\')" style="padding:10px 14px;cursor:pointer;font-size:.85rem;border-bottom:1px solid #f0f0f0">' + escHtml(dd) + '</div>';
+      }).join('');
+      list.style.display = 'block';
+    } catch(e) { list.style.display = 'none'; }
+  }, 300);
+}
+
+async function tmPickAddr(val, pid) {
+  document.getElementById('team-address').value = val;
+  document.getElementById('tm-addr-list').style.display = 'none';
+  if (pid) {
+    try {
+      var rr = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+        body: JSON.stringify({ place_id: pid })
+      });
+      var gg = await rr.json();
+      if (gg.lat && gg.lng) { _tmLat = gg.lat; _tmLng = gg.lng; }
+    } catch(e) {}
+  }
+}
+
 function toggleTeamArea(cb) {
   document.getElementById('team-area-custom').style.display = cb.checked ? 'none' : 'block';
 }
@@ -4712,13 +4755,35 @@ async function updateTeamMember(memberId) {
     const customAddress = document.getElementById('team-address').value.trim();
     if (!customAddress) { showTeamMsg('Ange en adress för arbetsområdet', true); return; }
     try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(customAddress)}&countrycodes=se&limit=1&addressdetails=1`);
-      const geoData = await geoRes.json();
-      if (!geoData || geoData.length === 0) { showTeamMsg('Kunde inte hitta adressen.', true); return; }
-      homeLat = parseFloat(geoData[0].lat);
-      homeLng = parseFloat(geoData[0].lon);
+      if (_tmLat && _tmLng) {
+      homeLat = _tmLat;
+      homeLng = _tmLng;
       homeAddress = customAddress;
-      city = geoData[0].address?.city || geoData[0].address?.town || geoData[0].address?.municipality || null;
+      city = customAddress.split(',').pop()?.trim() || null;
+    } else {
+      // Fallback: try places-autocomplete geocoding
+      try {
+        var geoR = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+          body: JSON.stringify({ query: customAddress, country: 'se', types: 'address' })
+        });
+        var geoD = await geoR.json();
+        var pred = (geoD.predictions || [])[0];
+        if (!pred) { showTeamMsg('Kunde inte hitta adressen.', true); return; }
+        var detR = await fetch(SUPA_URL + '/functions/v1/places-autocomplete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+          body: JSON.stringify({ place_id: pred.place_id })
+        });
+        var detD = await detR.json();
+        if (!detD.lat || !detD.lng) { showTeamMsg('Kunde inte hitta adressen.', true); return; }
+        homeLat = detD.lat;
+        homeLng = detD.lng;
+        homeAddress = customAddress;
+        city = customAddress.split(',').pop()?.trim() || null;
+      } catch(e) { showTeamMsg('Kunde inte hitta adressen: ' + e.message, true); return; }
+    }
     } catch (e) {
       showTeamMsg('Fel vid adresssökning: ' + e.message, true); return;
     }

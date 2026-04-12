@@ -494,7 +494,9 @@ function switchLang(lang, btn) {
 
       <div class="field">
         <label data-i18n="lblAdress">Var bor du? *</label>
-        <input type="text" id="cleaner-address" placeholder="Skriv din adress..." autocomplete="off" required>
+      <div style="position:relative">
+        <input type="text" id="cleaner-address" placeholder="Skriv din adress..." oninput="regAddrSearch(this.value)" onfocus="if(this.value.length>
+        <div id="reg-addr-list" style="display:none;position:absolute;left:0;right:0;background:#fff;border:1.5px solid #E8E8E4;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;max-height:200px;overflow-y:auto"></div>2)regAddrSearch(this.value)" autocomplete="off" required>
         <div id="cleaner-addr-results"></div>
         <input type="hidden" id="cleaner-lat">
         <input type="hidden" id="cleaner-lng">
@@ -834,6 +836,61 @@ function goToStep(n) {
 }
 
 // ── STEP 1 VALIDATION ────────────────────────
+// Address autocomplete (Google Places)
+var _regAddrTimer, _regLat = null, _regLng = null;
+var SUPA_URL_REG = 'https://urjeijcncsyuletprydy.supabase.co';
+var SUPA_KEY_REG = document.querySelector('meta[name=supabase-key]')?.content || (typeof SPICK !== 'undefined' ? SPICK.SUPA_KEY : '');
+
+function regAddrSearch(q) {
+  _regLat = null; _regLng = null;
+  clearTimeout(_regAddrTimer);
+  var list = document.getElementById('reg-addr-list');
+  if (!list || q.length < 3) { if (list) list.style.display = 'none'; return; }
+  _regAddrTimer = setTimeout(async function() {
+    try {
+      var key = SUPA_KEY_REG || document.getElementById('cleaner-address')?.dataset?.key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1NjMyMjYsImV4cCI6MjA1ODEzOTIyNn0.a5yVJnEJYJCBCKug3YbB2I0gzSaN5oIOEjckO69wXNA';
+      var res = await fetch(SUPA_URL_REG + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: key, Authorization: 'Bearer ' + key },
+        body: JSON.stringify({ query: q, country: 'se', types: 'address' })
+      });
+      var data = await res.json();
+      var preds = data.predictions || [];
+      if (!preds.length) { list.style.display = 'none'; return; }
+      list.innerHTML = preds.map(function(p) {
+        var d = (p.description || '').replace(/, Sverige$/, '');
+        return '<div onclick="regPickAddr(this.textContent,\'' + (p.place_id || '') + '\')" style="padding:10px 14px;cursor:pointer;font-size:.85rem;border-bottom:1px solid #f0f0f0">' + d + '</div>';
+      }).join('');
+      list.style.display = 'block';
+    } catch(e) { if (list) list.style.display = 'none'; }
+  }, 300);
+}
+
+async function regPickAddr(val, pid) {
+  document.getElementById('cleaner-address').value = val;
+  var list = document.getElementById('reg-addr-list');
+  if (list) list.style.display = 'none';
+  if (pid) {
+    try {
+      var key = SUPA_KEY_REG || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1NjMyMjYsImV4cCI6MjA1ODEzOTIyNn0.a5yVJnEJYJCBCKug3YbB2I0gzSaN5oIOEjckO69wXNA';
+      var r = await fetch(SUPA_URL_REG + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: key, Authorization: 'Bearer ' + key },
+        body: JSON.stringify({ place_id: pid })
+      });
+      var g = await r.json();
+      if (g.lat && g.lng) { _regLat = g.lat; _regLng = g.lng; }
+    } catch(e) {}
+  }
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#cleaner-address') && !e.target.closest('#reg-addr-list')) {
+    var l = document.getElementById('reg-addr-list');
+    if (l) l.style.display = 'none';
+  }
+});
+
 function validateStep1() {
   var fn = document.getElementById('firstNameInput').value.trim();
   var ln = document.getElementById('lastNameInput').value.trim();
@@ -1005,6 +1062,8 @@ async function submitRegistration() {
     first_name: firstName,
     last_name: lastName,
     home_address: address,
+    home_lat: _regLat,
+    home_lng: _regLng,
     home_lat: parseFloat(document.getElementById('cleaner-lat').value) || null,
     home_lng: parseFloat(document.getElementById('cleaner-lng').value) || null,
     city: document.getElementById('cleaner-city')?.value || '',
