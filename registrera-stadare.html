@@ -528,6 +528,12 @@ function switchLang(lang, btn) {
           </div>
         </div>
       </div>
+        <div style="background:#F0FAF6;border-radius:10px;padding:14px 16px;margin-top:8px;display:flex;align-items:flex-start;gap:10px">
+          <input type="checkbox" id="ownerOnly" style="width:18px;height:18px;accent-color:#0F6E56;margin-top:2px;flex-shrink:0">
+          <label for="ownerOnly" style="font-size:.85rem;color:#1C1C1A;line-height:1.5;cursor:pointer">
+            <strong>Jag städar inte själv</strong> — jag är ägare/ansvarig och vill hantera mitt team via Spick.
+          </label>
+        </div>
     </div>
     <button class="btn-primary" onclick="validateStep1()" data-i18n="btnNasta">Nästa steg →</button>
   </div>
@@ -979,6 +985,7 @@ async function submitRegistration() {
     cleanerData.company_name = document.getElementById('companyName').value.trim();
     cleanerData.org_number = document.getElementById('orgNumber').value.trim();
     cleanerData.team_size = parseInt(document.getElementById('teamSize').value) || 2;
+    cleanerData.owner_only = document.getElementById('ownerOnly').checked;
   }
 
   if (_inviteCompanyId) {
