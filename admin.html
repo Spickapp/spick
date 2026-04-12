@@ -3011,7 +3011,9 @@ function showCleanerDetail(id) {
       var el = document.getElementById('admin-company-details');
       if (!el || !co) { if (el) el.textContent = 'Företag ej hittat'; return; }
       el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-        '<div><span style="font-size:.72rem;color:#6B7280">Företagsnamn</span><br><strong>' + escHtml(co.name || '–') + '</strong></div>' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Företagsnamn</span><br><strong>' + escHtml(co.name || '-') + '</strong></div>' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Visningsnamn</span><br><strong>' + escHtml(co.display_name || '(samma som bolagsnamn)') + '</strong></div>' +
+        '<div style="display:none"><span>ignore</span><br><strong>' + escHtml(co.name || '–') + '</strong></div>' +
         '<div><span style="font-size:.72rem;color:#6B7280">Org.nr</span><br><strong>' + escHtml(co.org_number || '–') + '</strong></div>' +
         '<div><span style="font-size:.72rem;color:#6B7280">Stripe</span><br><strong>' + (co.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet') + '</strong></div>' +
         '<div><span style="font-size:.72rem;color:#6B7280">Provision</span><br><strong>' + (co.commission_rate != null ? (co.commission_rate < 1 ? Math.round(co.commission_rate * 100) : co.commission_rate) + '%' : '17%') + '</strong></div>' +

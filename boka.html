@@ -1651,7 +1651,7 @@ async function loadAvailableCleaners() {
       cleaners = await rpcRes.json();
     } else {
       // Fallback: hämta alla godkända städare (inget lat/lng)
-      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,completed_jobs,has_fskatt,owner_only`;
+      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,company_display_name,completed_jobs,has_fskatt,owner_only`;
       const res = await fetch(url, {headers:H});
       if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
       cleaners = await res.json();
@@ -1885,7 +1885,7 @@ function renderCleaners(cleaners) {
     if (cl.bio) expandHTML += '<div class="cleaner-bio">"' + escHtml(cl.bio) + '"</div>';
     expandHTML += '<div class="cleaner-details-grid">' + expandTags.join('') + '</div>';
     expandHTML += '<a href="stadare-profil.html?id=' + cl.id + '" target="_blank" style="display:block;text-align:center;font-size:.78rem;color:var(--g);margin-bottom:.625rem;text-decoration:underline">Visa fullständig profil</a>';
-    expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml(cl.company_name ? cl.company_name.split(' ')[0] : (cl.full_name || '').split(' ')[0]) + ' →</button>';
+    expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml((cl.company_display_name || cl.company_name) ? (cl.company_display_name || cl.company_name).split(' ')[0] : (cl.full_name || '').split(' ')[0]) + ' →</button>';
     expandHTML += '</div>';
     var avatarHTML = cl.avatar_url
       ? '<div class="cleaner-av" style="padding:0;overflow:hidden"><img src="' + cl.avatar_url + '" alt="' + escHtml(cl.full_name||'') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
@@ -1893,7 +1893,7 @@ function renderCleaners(cleaners) {
     card.innerHTML = `
       ${avatarHTML}
       <div class="cleaner-info">
-        <div class="cleaner-name">${cl.company_name ? escHtml(cl.company_name) : (cl.full_name||'Städare')}</div>
+        <div class="cleaner-name">${(cl.company_display_name || cl.company_name) ? escHtml(cl.company_display_name || cl.company_name) : (cl.full_name||'Städare')}</div>
         <div class="cleaner-meta">
           ${hasRatings
             ? `<span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating))}</span>

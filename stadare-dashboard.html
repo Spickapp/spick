@@ -990,6 +990,7 @@ body{top:0!important}
           </div>
           <div id="company-profile-edit" style="display:none">
             <div class="tm-form-group"><label>Företagsnamn</label><input type="text" id="cp-name" class="tm-input"></div>
+            <div class="tm-form-group"><label>Visningsnamn (valfritt)</label><input type="text" id="cp-display-name" class="tm-input" placeholder="T.ex. GoClean, Rafa Städ..."></div>
             <div class="tm-form-group"><label>Beskrivning (visas för kunder)</label><textarea id="cp-bio" class="tm-input" rows="3" maxlength="200" style="resize:none"></textarea></div>
             <div style="display:flex;gap:8px;margin-top:12px">
               <button onclick="saveCompanyProfile()" style="padding:10px 20px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Spara</button>
@@ -4457,7 +4458,7 @@ function renderCompanyProfile(company) {
   var avatar = document.getElementById('company-avatar');
   if (avatar) avatar.textContent = (company.name||'?').charAt(0).toUpperCase();
   var nameEl = document.getElementById('company-display-name');
-  if (nameEl) nameEl.textContent = company.name || '';
+  if (nameEl) nameEl.textContent = company.display_name || company.name || '';
   var orgEl = document.getElementById('company-org-nr');
   if (orgEl) orgEl.textContent = company.org_number ? 'Org.nr: ' + company.org_number : '';
   var bioEl = document.getElementById('company-bio-display');
@@ -4470,6 +4471,7 @@ function editCompanyProfile() {
   var company = window._companyData || {};
   document.getElementById('cp-name').value = company.name || '';
   document.getElementById('cp-bio').value = company.description || '';
+  document.getElementById('cp-display-name').value = company.display_name || '';
 }
 
 function cancelCompanyEdit() {
@@ -4485,9 +4487,10 @@ async function saveCompanyProfile() {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
       method: 'PATCH',
       headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
-      body: JSON.stringify({ name: name, description: bio })
+      body: JSON.stringify({ name: name, description: bio, display_name: displayName, display_name: document.getElementById('cp-display-name').value.trim() || null })
     });
-    window._companyData = Object.assign(window._companyData || {}, { name: name, description: bio });
+    var displayName = document.getElementById('cp-display-name').value.trim() || null;
+    window._companyData = Object.assign(window._companyData || {}, { name: name, description: bio, display_name: displayName });
     renderCompanyProfile(window._companyData);
     cancelCompanyEdit();
     showToast('F\u00f6retagsprofil sparad!');
