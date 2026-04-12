@@ -81,6 +81,7 @@ PAGES = [
         "must_visible": "#screen-login",          # DETTA hade fångat den vita sidan
         "must_not_blank": True,
         "max_console_errors": 2,
+        "extra_wait": 5000,   # Vänta på getSession timeout (3s)
     },
     {
         "url": f"{SITE}/boka.html",
