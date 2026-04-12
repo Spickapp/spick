@@ -1,7 +1,162 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<script>if(top!==self){top.location=self.location}</script>
+<script>if(top!==self){top.location=self.location}
+// ═══ VD-RAPPORTER ═══════════════════════════════════════════════
+async function loadReports() {
+  if (!window._isCompanyOwner) return;
+  var weeks = parseInt(document.getElementById('report-period')?.value || '4');
+  var since = new Date();
+  since.setDate(since.getDate() - weeks * 7);
+  var sinceStr = since.toISOString().split('T')[0];
+
+  try {
+    // Hämta alla betalda/klara bokningar för företaget
+    var companyCleanerIds = (window._teamCleaners || []).map(function(c) { return c.id; });
+    if (companyCleanerIds.length === 0) return;
+
+    var url = SUPA + '/rest/v1/bookings?select=id,cleaner_id,cleaner_name,service_type,total_price,booking_date,booking_hours,rut_amount,commission_pct,spick_gross_sek' +
+      '&cleaner_id=in.(' + companyCleanerIds.join(',') + ')' +
+      '&payment_status=eq.paid' +
+      '&booking_date=gte.' + sinceStr +
+      '&order=booking_date.asc';
+
+    var res = await fetch(url, { headers: H });
+    var bookings = await res.json();
+    if (!Array.isArray(bookings)) return;
+
+    renderWeeklyChart(bookings, weeks);
+    renderPerCleaner(bookings);
+    renderPerService(bookings);
+  } catch (e) {
+    console.warn('loadReports error:', e);
+  }
+}
+
+function getWeekNumber(dateStr) {
+  var d = new Date(dateStr);
+  var start = new Date(d.getFullYear(), 0, 1);
+  var diff = (d - start + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000) / 86400000;
+  return 'v' + Math.ceil((diff + start.getDay() + 1) / 7);
+}
+
+function renderWeeklyChart(bookings, weekCount) {
+  var byWeek = {};
+  bookings.forEach(function(b) {
+    var w = getWeekNumber(b.booking_date);
+    byWeek[w] = (byWeek[w] || 0) + (b.total_price || 0);
+  });
+
+  var weeks = Object.keys(byWeek).slice(-weekCount);
+  var maxVal = Math.max.apply(null, weeks.map(function(w) { return byWeek[w]; }).concat([1]));
+  var container = document.getElementById('report-weekly-chart');
+  if (!container) return;
+
+  container.innerHTML = weeks.map(function(w) {
+    var val = byWeek[w] || 0;
+    var h = Math.max(4, Math.round((val / maxVal) * 100));
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">' +
+      '<div style="font-size:.68rem;font-weight:600;color:var(--gray-700)">' + val.toLocaleString('sv') + ' kr</div>' +
+      '<div style="width:100%;max-width:40px;height:' + h + 'px;background:var(--g);border-radius:4px 4px 0 0;transition:height .3s"></div>' +
+      '<div style="font-size:.65rem;color:var(--m)">' + w + '</div>' +
+      '</div>';
+  }).join('');
+
+  if (weeks.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--m);font-size:.82rem;padding:20px">Inga bokningar under perioden</div>';
+  }
+}
+
+function renderPerCleaner(bookings) {
+  var byCleaner = {};
+  bookings.forEach(function(b) {
+    var name = b.cleaner_name || 'Okänd';
+    if (!byCleaner[name]) byCleaner[name] = { revenue: 0, jobs: 0, hours: 0 };
+    byCleaner[name].revenue += (b.total_price || 0);
+    byCleaner[name].jobs += 1;
+    byCleaner[name].hours += (b.booking_hours || 0);
+  });
+
+  var sorted = Object.keys(byCleaner).sort(function(a, b) { return byCleaner[b].revenue - byCleaner[a].revenue; });
+  var maxRev = sorted.length > 0 ? byCleaner[sorted[0]].revenue : 1;
+  var container = document.getElementById('report-per-cleaner');
+  if (!container) return;
+
+  container.innerHTML = sorted.map(function(name) {
+    var d = byCleaner[name];
+    var pct = Math.round((d.revenue / maxRev) * 100);
+    return '<div style="margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+        '<span style="font-weight:600">' + name + '</span>' +
+        '<span style="color:var(--g);font-weight:700">' + d.revenue.toLocaleString('sv') + ' kr</span>' +
+      '</div>' +
+      '<div style="background:var(--gray-100);border-radius:4px;height:8px;overflow:hidden">' +
+        '<div style="width:' + pct + '%;height:100%;background:var(--g);border-radius:4px;transition:width .3s"></div>' +
+      '</div>' +
+      '<div style="font-size:.72rem;color:var(--m);margin-top:2px">' + d.jobs + ' jobb · ' + d.hours + ' timmar</div>' +
+      '</div>';
+  }).join('');
+
+  if (sorted.length === 0) {
+    container.innerHTML = '<div style="color:var(--m)">Inga data</div>';
+  }
+}
+
+function renderPerService(bookings) {
+  var byService = {};
+  bookings.forEach(function(b) {
+    var svc = b.service_type || 'Övrigt';
+    if (!byService[svc]) byService[svc] = { revenue: 0, jobs: 0 };
+    byService[svc].revenue += (b.total_price || 0);
+    byService[svc].jobs += 1;
+  });
+
+  var sorted = Object.keys(byService).sort(function(a, b) { return byService[b].revenue - byService[a].revenue; });
+  var totalRev = sorted.reduce(function(s, k) { return s + byService[k].revenue; }, 0) || 1;
+  var colors = ['#0F6E56', '#10B981', '#6EE7B7', '#A7F3D0', '#D1FAE5'];
+  var container = document.getElementById('report-per-service');
+  if (!container) return;
+
+  // Stacked bar
+  var barHTML = '<div style="display:flex;height:24px;border-radius:6px;overflow:hidden;margin-bottom:10px">';
+  sorted.forEach(function(svc, i) {
+    var pct = Math.round((byService[svc].revenue / totalRev) * 100);
+    barHTML += '<div style="width:' + pct + '%;background:' + (colors[i % colors.length]) + ';min-width:' + (pct > 5 ? '0' : '8px') + '" title="' + svc + ': ' + pct + '%"></div>';
+  });
+  barHTML += '</div>';
+
+  // Legend
+  var legendHTML = sorted.map(function(svc, i) {
+    var d = byService[svc];
+    var pct = Math.round((d.revenue / totalRev) * 100);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">' +
+      '<div style="width:10px;height:10px;border-radius:2px;background:' + (colors[i % colors.length]) + ';flex-shrink:0"></div>' +
+      '<span style="flex:1">' + svc + '</span>' +
+      '<span style="font-weight:600">' + d.revenue.toLocaleString('sv') + ' kr</span>' +
+      '<span style="color:var(--m);font-size:.75rem;min-width:40px;text-align:right">' + pct + '%</span>' +
+      '</div>';
+  }).join('');
+
+  container.innerHTML = barHTML + legendHTML;
+
+  if (sorted.length === 0) {
+    container.innerHTML = '<div style="color:var(--m)">Inga data</div>';
+  }
+}
+
+// Auto-load reports when team tab opens
+var _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
+if (_origSwitchTab) {
+  switchTab = function(tab) {
+    _origSwitchTab(tab);
+    if (tab === 'team') setTimeout(loadReports, 300);
+  };
+}
+// Also load on initial team load
+setTimeout(function() { if (window._isCompanyOwner) loadReports(); }, 2000);
+
+
+</script>
 <script>
 // FLASH GUARD – dölj sidan tills JS har bestämt vilken skärm som ska visas
 document.documentElement.style.visibility='hidden';
@@ -4883,164 +5038,8 @@ function showInviteLink() {
   });
 }
 
-// Service Worker
-if ('serviceWorker' in navigator) </script>
-<script src="js/feedback.js" defer>
-
-// ═══ VD-RAPPORTER ═══════════════════════════════════════════════
-async function loadReports() {
-  if (!window._isCompanyOwner) return;
-  var weeks = parseInt(document.getElementById('report-period')?.value || '4');
-  var since = new Date();
-  since.setDate(since.getDate() - weeks * 7);
-  var sinceStr = since.toISOString().split('T')[0];
-
-  try {
-    // Hämta alla betalda/klara bokningar för företaget
-    var companyCleanerIds = (window._teamCleaners || []).map(function(c) { return c.id; });
-    if (companyCleanerIds.length === 0) return;
-
-    var url = SUPA + '/rest/v1/bookings?select=id,cleaner_id,cleaner_name,service_type,total_price,booking_date,booking_hours,rut_amount,commission_pct,spick_gross_sek' +
-      '&cleaner_id=in.(' + companyCleanerIds.join(',') + ')' +
-      '&payment_status=eq.paid' +
-      '&booking_date=gte.' + sinceStr +
-      '&order=booking_date.asc';
-
-    var res = await fetch(url, { headers: H });
-    var bookings = await res.json();
-    if (!Array.isArray(bookings)) return;
-
-    renderWeeklyChart(bookings, weeks);
-    renderPerCleaner(bookings);
-    renderPerService(bookings);
-  } catch (e) {
-    console.warn('loadReports error:', e);
-  }
-}
-
-function getWeekNumber(dateStr) {
-  var d = new Date(dateStr);
-  var start = new Date(d.getFullYear(), 0, 1);
-  var diff = (d - start + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000) / 86400000;
-  return 'v' + Math.ceil((diff + start.getDay() + 1) / 7);
-}
-
-function renderWeeklyChart(bookings, weekCount) {
-  var byWeek = {};
-  bookings.forEach(function(b) {
-    var w = getWeekNumber(b.booking_date);
-    byWeek[w] = (byWeek[w] || 0) + (b.total_price || 0);
-  });
-
-  var weeks = Object.keys(byWeek).slice(-weekCount);
-  var maxVal = Math.max.apply(null, weeks.map(function(w) { return byWeek[w]; }).concat([1]));
-  var container = document.getElementById('report-weekly-chart');
-  if (!container) return;
-
-  container.innerHTML = weeks.map(function(w) {
-    var val = byWeek[w] || 0;
-    var h = Math.max(4, Math.round((val / maxVal) * 100));
-    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">' +
-      '<div style="font-size:.68rem;font-weight:600;color:var(--gray-700)">' + val.toLocaleString('sv') + ' kr</div>' +
-      '<div style="width:100%;max-width:40px;height:' + h + 'px;background:var(--g);border-radius:4px 4px 0 0;transition:height .3s"></div>' +
-      '<div style="font-size:.65rem;color:var(--m)">' + w + '</div>' +
-      '</div>';
-  }).join('');
-
-  if (weeks.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--m);font-size:.82rem;padding:20px">Inga bokningar under perioden</div>';
-  }
-}
-
-function renderPerCleaner(bookings) {
-  var byCleaner = {};
-  bookings.forEach(function(b) {
-    var name = b.cleaner_name || 'Okänd';
-    if (!byCleaner[name]) byCleaner[name] = { revenue: 0, jobs: 0, hours: 0 };
-    byCleaner[name].revenue += (b.total_price || 0);
-    byCleaner[name].jobs += 1;
-    byCleaner[name].hours += (b.booking_hours || 0);
-  });
-
-  var sorted = Object.keys(byCleaner).sort(function(a, b) { return byCleaner[b].revenue - byCleaner[a].revenue; });
-  var maxRev = sorted.length > 0 ? byCleaner[sorted[0]].revenue : 1;
-  var container = document.getElementById('report-per-cleaner');
-  if (!container) return;
-
-  container.innerHTML = sorted.map(function(name) {
-    var d = byCleaner[name];
-    var pct = Math.round((d.revenue / maxRev) * 100);
-    return '<div style="margin-bottom:10px">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
-        '<span style="font-weight:600">' + name + '</span>' +
-        '<span style="color:var(--g);font-weight:700">' + d.revenue.toLocaleString('sv') + ' kr</span>' +
-      '</div>' +
-      '<div style="background:var(--gray-100);border-radius:4px;height:8px;overflow:hidden">' +
-        '<div style="width:' + pct + '%;height:100%;background:var(--g);border-radius:4px;transition:width .3s"></div>' +
-      '</div>' +
-      '<div style="font-size:.72rem;color:var(--m);margin-top:2px">' + d.jobs + ' jobb · ' + d.hours + ' timmar</div>' +
-      '</div>';
-  }).join('');
-
-  if (sorted.length === 0) {
-    container.innerHTML = '<div style="color:var(--m)">Inga data</div>';
-  }
-}
-
-function renderPerService(bookings) {
-  var byService = {};
-  bookings.forEach(function(b) {
-    var svc = b.service_type || 'Övrigt';
-    if (!byService[svc]) byService[svc] = { revenue: 0, jobs: 0 };
-    byService[svc].revenue += (b.total_price || 0);
-    byService[svc].jobs += 1;
-  });
-
-  var sorted = Object.keys(byService).sort(function(a, b) { return byService[b].revenue - byService[a].revenue; });
-  var totalRev = sorted.reduce(function(s, k) { return s + byService[k].revenue; }, 0) || 1;
-  var colors = ['#0F6E56', '#10B981', '#6EE7B7', '#A7F3D0', '#D1FAE5'];
-  var container = document.getElementById('report-per-service');
-  if (!container) return;
-
-  // Stacked bar
-  var barHTML = '<div style="display:flex;height:24px;border-radius:6px;overflow:hidden;margin-bottom:10px">';
-  sorted.forEach(function(svc, i) {
-    var pct = Math.round((byService[svc].revenue / totalRev) * 100);
-    barHTML += '<div style="width:' + pct + '%;background:' + (colors[i % colors.length]) + ';min-width:' + (pct > 5 ? '0' : '8px') + '" title="' + svc + ': ' + pct + '%"></div>';
-  });
-  barHTML += '</div>';
-
-  // Legend
-  var legendHTML = sorted.map(function(svc, i) {
-    var d = byService[svc];
-    var pct = Math.round((d.revenue / totalRev) * 100);
-    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">' +
-      '<div style="width:10px;height:10px;border-radius:2px;background:' + (colors[i % colors.length]) + ';flex-shrink:0"></div>' +
-      '<span style="flex:1">' + svc + '</span>' +
-      '<span style="font-weight:600">' + d.revenue.toLocaleString('sv') + ' kr</span>' +
-      '<span style="color:var(--m);font-size:.75rem;min-width:40px;text-align:right">' + pct + '%</span>' +
-      '</div>';
-  }).join('');
-
-  container.innerHTML = barHTML + legendHTML;
-
-  if (sorted.length === 0) {
-    container.innerHTML = '<div style="color:var(--m)">Inga data</div>';
-  }
-}
-
-// Auto-load reports when team tab opens
-var _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
-if (_origSwitchTab) {
-  switchTab = function(tab) {
-    _origSwitchTab(tab);
-    if (tab === 'team') setTimeout(loadReports, 300);
-  };
-}
-// Also load on initial team load
-setTimeout(function() { if (window._isCompanyOwner) loadReports(); }, 2000);
-
 </script>
+<script src="js/feedback.js" defer></script>
 </body>
 </html>
 
