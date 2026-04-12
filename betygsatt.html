@@ -151,9 +151,11 @@ async function submit() {
 
   // Hämta bokning för cleaner_id
   let cleanerId = null;
+  let serviceType = null;
   if (bid) {
-    const { data } = await SB.from('booking_confirmation').select('cleaner_id').eq('id', bid);
+    const { data } = await SB.from('booking_confirmation').select('cleaner_id,service_type').eq('id', bid);
     cleanerId = data?.[0]?.cleaner_id || null;
+    serviceType = data?.[0]?.service_type || null;
   }
 
   // Spara recension
