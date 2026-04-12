@@ -1454,7 +1454,7 @@ body{top:0!important}
       <span>Inkomst</span>
     </button>
     <button class="nav-btn" id="nav-team" onclick="switchTab('team')">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       <span>Team</span>
     </button>
     <button class="nav-btn" id="nav-inst" onclick="switchTab('inst')">
@@ -1965,12 +1965,12 @@ async function loadCleanerByEmail(email, authUserId) {
     // Show team-focused welcome
     var greetSub = document.getElementById('greeting-sub');
     if (greetSub) greetSub.textContent = 'Hantera ditt team och bokningar';
-    // Hide nav tabs not relevant for owner
+    // Customize nav labels for VD
     var navJobb = document.getElementById('nav-jobb');
     var navKalender = document.getElementById('nav-kalender');
     var navInkomst = document.getElementById('nav-inkomst');
-    if (navJobb) navJobb.style.display = 'none';
-    if (navKalender) navKalender.style.display = 'none';
+    if (navJobb) navJobb.querySelector('span').textContent = 'Bokningar';
+    if (navInkomst) navInkomst.querySelector('span').textContent = 'Rapporter';
   }
   hidePersonalSettings();
 
@@ -3895,6 +3895,29 @@ function showScreen(name) {
 }
 
 function switchTab(tab) {
+  // VD nav redirect: jobb/kalender → team sections, inkomst → team reports
+  if (window._isCompanyOwner) {
+    if (tab === 'jobb') {
+      tab = 'team';
+      setTimeout(function() {
+        var el = document.getElementById('team-bookings-card');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else if (tab === 'kalender') {
+      tab = 'team';
+      setTimeout(function() {
+        var el = document.getElementById('team-calendar-card');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } else if (tab === 'inkomst') {
+      tab = 'team';
+      setTimeout(function() {
+        var el = document.getElementById('team-reports-card');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        loadReports();
+      }, 100);
+    }
+  }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+tab)?.classList.add('active');
