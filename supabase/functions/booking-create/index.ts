@@ -193,7 +193,7 @@ serve(async (req) => {
     // ── 7. RUT-BERÄKNING ───────────────────────────
     const useRut = !!rut && customer_type !== 'foretag';
     const rutDeduction = useRut
-      ? Math.round(pricing.customerTotal * 0.5)
+      ? Math.floor(pricing.customerTotal * 0.5)
       : 0;
     const netPrice = pricing.customerTotal - rutDeduction;
 

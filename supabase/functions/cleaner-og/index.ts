@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
     const c = data
     const firstName = (c.full_name || '').split(' ')[0]
-    const rutPrice = Math.round((c.hourly_rate || 350) * 0.5)
+    const rutPrice = Math.floor((c.hourly_rate || 350) * 0.5)
     const profileUrl = 'https://spick.se/stadare-profil.html?' + (c.slug ? 's=' + c.slug : 'id=' + c.id)
 
     // Tjänster som text

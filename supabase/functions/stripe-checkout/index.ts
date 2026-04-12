@@ -90,7 +90,7 @@ serve(async (req) => {
     const basePrice = PRICE_PER_HOUR[service] || 349;
     const validHours = Math.max(2, Math.min(12, Number(hours) || 3));
     const grossAmount = basePrice * validHours;
-    const finalAmount = rut ? Math.round(grossAmount * 0.5) : grossAmount;
+    const finalAmount = rut ? Math.floor(grossAmount * 0.5) : grossAmount;
     
     // Sanity check: vägra orimliga belopp
     if (finalAmount < 300 || finalAmount > 30000) {

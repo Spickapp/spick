@@ -23,7 +23,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 // ── Bygg Skatteverket XML-payload ─────────────────────────────────────────
 function buildRutXml(booking: Record<string, unknown>): string {
   const bruttoBelopp = Number(booking.total_price) * 2; // kundpris * 2 = brutto (50% RUT)
-  const rutBelopp    = Math.round(bruttoBelopp * 0.5);  // 50% RUT-avdrag
+  const rutBelopp    = Math.floor(bruttoBelopp * 0.5);  // 50% RUT-avdrag
   const arbetskostnad = Math.round(bruttoBelopp * 0.7); // ~70% arbetskostnad av brutto
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -92,7 +92,7 @@ async function sendRutConfirmation(booking: Record<string, unknown>, claimId: st
   const email = booking.customer_email as string;
   const name  = ((booking.customer_name || "Kund") as string).split(" ")[0];
   const bruttoBelopp = Number(booking.total_price) * 2;
-  const rutBelopp    = Math.round(bruttoBelopp * 0.5);
+  const rutBelopp    = Math.floor(bruttoBelopp * 0.5);
 
   if (!email) return;
 

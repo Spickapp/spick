@@ -848,7 +848,7 @@ function setStep(n) {
       var rate = state.cleanerRate || 350;
       var hrs = state.hours || 3;
       var gross = rate * hrs;
-      document.getElementById('s3-price').textContent = gross + ' kr' + (state.customerType === 'privat' && document.getElementById('rut-knob')?.classList.contains('on') ? ' (RUT: ' + Math.round(gross * 0.5) + ' kr)' : '');
+      document.getElementById('s3-price').textContent = gross + ' kr' + (state.customerType === 'privat' && document.getElementById('rut-knob')?.classList.contains('on') ? ' (RUT: ' + Math.floor(gross * 0.5) + ' kr)' : '');
     }
   }
 
@@ -1156,7 +1156,7 @@ function calcHours() {
   if (peEl && state.sqm && state.service) {
     const estRate = 450;
     const est = Math.round(state.hours * estRate);
-    const rutEst = Math.round(est * 0.5);
+    const rutEst = Math.floor(est * 0.5);
     document.getElementById('price-gross').textContent = est.toLocaleString('sv-SE');
     document.getElementById('price-after-rut').textContent = rutEst.toLocaleString('sv-SE');
     var rutLine = document.getElementById('price-rut-line');
@@ -1767,7 +1767,7 @@ async function loadAvailableCleaners() {
       return sp && sp.price_type === 'per_sqm';
     });
     const minR = Math.min(...displayRates), maxR = Math.max(...displayRates);
-    const minRut = Math.round(minR*0.5), maxRut = Math.round(maxR*0.5);
+    const minRut = Math.floor(minR* 0.5), maxRut = Math.floor(maxR* 0.5);
     const rangeEl = document.getElementById('cleaner-price-range');
     var rutSuffix = state.customerType === 'privat';
     var priceUnit = hasPerSqm ? 'kr' : 'kr/h';
@@ -1802,7 +1802,7 @@ async function loadAvailableCleaners() {
         return sp && sp.price_type === 'per_sqm';
       });
       var minR = Math.min.apply(null, displayRates), maxR = Math.max.apply(null, displayRates);
-      var minRut = Math.round(minR * 0.5), maxRut = Math.round(maxR * 0.5);
+      var minRut = Math.floor(minR * 0.5), maxRut = Math.floor(maxR * 0.5);
       var unit = hasPerSqm ? 'kr' : 'kr/h';
       var rutSuffix = state.customerType === 'privat';
       var rangeEl = document.getElementById('cleaner-price-range');
@@ -1872,7 +1872,7 @@ function renderCleaners(cleaners) {
     var svcPrice = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
     var isPricePerSqm = svcPrice && svcPrice.price_type === 'per_sqm';
     var rate = svcPrice ? svcPrice.price : (cl.hourly_rate || 350);
-    var rutRate = Math.round(rate * 0.5);
+    var rutRate = Math.floor(rate * 0.5);
     const hasRatings = cl.avg_rating != null && cl.review_count > 0;
     const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : typeof cl.services === 'string' ? cl.services.split(',').slice(0,3).map(s=>s.trim()).filter(Boolean) : [];
     const card = document.createElement('div');
@@ -1891,7 +1891,7 @@ function renderCleaners(cleaners) {
     if (cl.bio) expandHTML += '<div class="cleaner-bio">"' + escHtml(cl.bio) + '"</div>';
     expandHTML += '<div class="cleaner-details-grid">' + expandTags.join('') + '</div>';
     expandHTML += '<a href="stadare-profil.html?id=' + cl.id + '" target="_blank" style="display:block;text-align:center;font-size:.78rem;color:var(--g);margin-bottom:.625rem;text-decoration:underline">Visa fullständig profil</a>';
-    expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml((cl.full_name || '').split(' ')[0]) + ' →</button>';
+    expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml(cl.company_name ? cl.company_name.split(' ')[0] : (cl.full_name || '').split(' ')[0]) + ' →</button>';
     expandHTML += '</div>';
     var avatarHTML = cl.avatar_url
       ? '<div class="cleaner-av" style="padding:0;overflow:hidden"><img src="' + cl.avatar_url + '" alt="' + escHtml(cl.full_name||'') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
@@ -1899,7 +1899,7 @@ function renderCleaners(cleaners) {
     card.innerHTML = `
       ${avatarHTML}
       <div class="cleaner-info">
-        <div class="cleaner-name">${cl.full_name||'Städare'}${cl.company_name ? ` <span style="font-size:.75rem;color:#6B7280;font-weight:400">· ${escHtml(cl.company_name)}</span>` : ''}</div>
+        <div class="cleaner-name">${cl.company_name ? escHtml(cl.company_name) : (cl.full_name||'Städare')}</div>
         <div class="cleaner-meta">
           ${hasRatings
             ? `<span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating))}</span>
@@ -1916,7 +1916,7 @@ function renderCleaners(cleaners) {
         ${(() => {
           if (isPricePerSqm && state.sqm) {
             var total = rate * state.sqm;
-            var totalRut = Math.round(total * 0.5);
+            var totalRut = Math.floor(total * 0.5);
             return state.customerType === 'privat'
               ? '<div class="cleaner-price">' + totalRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt efter RUT (' + total.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rutRate + ' kr/kvm × ' + state.sqm + ' kvm</div>'
               : '<div class="cleaner-price">' + total.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/kvm × ' + state.sqm + ' kvm)</div>';
@@ -2361,7 +2361,7 @@ function buildConfirmSummary() {
   const discountFactor = 1 - (state.frequencyDiscount || 0);
   var isPSqm = state._isPricePerSqm;
   const gross = isPSqm ? Math.round(state.cleanerRate * (state.sqm || 0) * discountFactor) : Math.round(state.cleanerRate * state.hours * discountFactor);
-  const rut   = useRut ? Math.round(gross * 0.5) : 0;
+  const rut   = useRut ? Math.floor(gross * 0.5) : 0;
   const total = gross - rut;
   document.getElementById('confirm-summary').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .875rem;font-size:.875rem">
@@ -2430,7 +2430,7 @@ async function doBook() {
   btn.innerHTML = '<div class="spinner"></div> Skapar bokning...';
   var isPSqm = state._isPricePerSqm;
   const gross = isPSqm ? Math.round(state.cleanerRate * (state.sqm || 0)) : Math.round(state.cleanerRate * state.hours);
-  const rut   = useRut ? Math.round(gross * 0.5) : 0;
+  const rut   = useRut ? Math.floor(gross * 0.5) : 0;
   const total = gross - rut;
   try {
     // PNR skickas i klartext till booking-create EF (krypteras server-side).
@@ -2519,7 +2519,7 @@ function updateSidebar() {
   const rate  = state.cleanerRate;
   var isPSqm = state._isPricePerSqm;
   const gross = isPSqm ? Math.round(rate * (state.sqm || 0)) : Math.round(rate * state.hours);
-  const rut   = useRut ? Math.round(gross * 0.5) : 0;
+  const rut   = useRut ? Math.floor(gross * 0.5) : 0;
   const total = gross - rut;
   document.getElementById('s-svc').textContent     = state.service;
   document.getElementById('s-date').textContent    = state.date ? formatDate(state.date) : '–';
