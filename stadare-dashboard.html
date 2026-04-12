@@ -1084,7 +1084,7 @@ body{top:0!important}
       <div class="tm-form-group"><label>Kundens namn *</label><input type="text" id="mb-name" class="tm-input" placeholder="Anna Svensson"></div>
       <div class="tm-form-group"><label>Kundens e-post *</label><input type="email" id="mb-email" class="tm-input" placeholder="anna@example.com"></div>
       <div class="tm-form-group"><label>Kundens telefon</label><input type="tel" id="mb-phone" class="tm-input" placeholder="070 123 45 67"></div>
-      <div class="tm-form-group"><label>Adress *</label><input type="text" id="mb-address" class="tm-input" placeholder="Storgatan 1, 111 22 Stockholm"></div>
+      <div class="tm-form-group" style="position:relative"><label>Adress *</label><input type="text" id="mb-address" class="tm-input" placeholder="Storgatan 1, Stockholm" autocomplete="off" oninput="mbAddrSearch(this.value)" onfocus="if(this.value.length>2)mbAddrSearch(this.value)"><div id="mb-addr-list" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1.5px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;max-height:200px;overflow-y:auto"></div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="tm-form-group"><label>Datum *</label><input type="date" id="mb-date" class="tm-input"></div>
         <div class="tm-form-group"><label>Tid *</label><input type="time" id="mb-time" class="tm-input" value="09:00"></div>
@@ -4184,8 +4184,61 @@ function hidePersonalSettings() {
 
 // ── TEAM CALENDAR ─────────────────────────────────────
 // ── MANUAL BOOKING ────────────────────────────────────
+// Manual booking address autocomplete (Google Places)
+var _mbAddrTimer, _mbLat = null, _mbLng = null;
+
+function mbAddrSearch(q) {
+  _mbLat = null; _mbLng = null;
+  clearTimeout(_mbAddrTimer);
+  var list = document.getElementById("mb-addr-list");
+  if (q.length < 3) { list.style.display = "none"; return; }
+  _mbAddrTimer = setTimeout(async function() {
+    try {
+      var res = await fetch(SUPA_URL + "/functions/v1/places-autocomplete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SPICK.SUPA_KEY, Authorization: "Bearer " + SPICK.SUPA_KEY },
+        body: JSON.stringify({ query: q, country: "se", types: "address" })
+      });
+      var data = await res.json();
+      var preds = data.predictions || [];
+      if (!preds.length) { list.style.display = "none"; return; }
+      list.innerHTML = preds.map(function(p) {
+        var d = (p.description || "").replace(/, Sverige$/, "");
+        var safe = d.replace(/'/g, "\\'");
+        var pid = (p.place_id || "").replace(/'/g, "");
+        return '<div onclick="mbPickAddr(\'' + safe + '\',\'' + pid + \'\')" style="padding:10px 14px;cursor:pointer;font-size:.85rem;border-bottom:1px solid #f0f0f0" onmouseover="this.style.background=\'#f7f7f5\'" onmouseout="this.style.background=\'\'">' + escHtml(d) + '</div>';
+      }).join("");
+      list.style.display = "block";
+    } catch(e) { list.style.display = "none"; }
+  }, 300);
+}
+
+async function mbPickAddr(val, pid) {
+  document.getElementById("mb-address").value = val;
+  document.getElementById("mb-addr-list").style.display = "none";
+  if (pid) {
+    try {
+      var r = await fetch(SUPA_URL + "/functions/v1/places-autocomplete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SPICK.SUPA_KEY, Authorization: "Bearer " + SPICK.SUPA_KEY },
+        body: JSON.stringify({ place_id: pid })
+      });
+      var g = await r.json();
+      if (g.lat && g.lng) { _mbLat = g.lat; _mbLng = g.lng; }
+    } catch(e) { console.warn("Geo:", e); }
+  }
+}
+
+document.addEventListener("click", function(e) {
+  if (!e.target.closest("#mb-address") && !e.target.closest("#mb-addr-list")) {
+    var l = document.getElementById("mb-addr-list");
+    if (l) l.style.display = "none";
+  }
+});
+
 function openManualBooking() {
   // Set default date to today
+  _mbLat = null; _mbLng = null;
   document.getElementById('mb-date').value = new Date().toISOString().slice(0,10);
   // Populate cleaner dropdown
   var sel = document.getElementById('mb-cleaner');
@@ -4241,6 +4294,8 @@ async function submitManualBooking() {
         email: email,
         phone: phone || null,
         address: address,
+        lat: _mbLat,
+        lng: _mbLng,
         date: date,
         time: time || '09:00',
         hours: hours,
