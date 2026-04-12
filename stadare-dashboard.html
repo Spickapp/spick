@@ -779,6 +779,24 @@ body{top:0!important}
           </div>
         </div>
 
+        <div class="settings-section" id="settings-company-section" style="display:none">
+          <div class="settings-section-title">Företag</div>
+          <div class="settings-link" onclick="switchTab('team')">
+            <span class="sl-icon">🏢</span><span class="sl-text">Team-hantering</span><span class="sl-arrow">›</span>
+          </div>
+          <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:.88rem;font-weight:600">Jag städar inte själv</div>
+              <div style="font-size:.75rem;color:var(--m)">Döljer personliga städar-vyer</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:44px;height:24px">
+              <input type="checkbox" id="toggle-owner-only" onchange="toggleOwnerOnly(this.checked)" style="opacity:0;width:0;height:0">
+              <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span>
+              <span id="toggle-owner-dot" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s"></span>
+            </label>
+          </div>
+        </div>
+
         <div class="settings-section">
           <div class="settings-section-title">Arbete</div>
           <div class="settings-link" onclick="openSubView('sv-schedule')">
@@ -998,7 +1016,7 @@ body{top:0!important}
 
         <div class="card" style="padding:20px;margin-top:12px" id="team-stats-card">
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets statistik</h4>
-          <div id="team-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div id="team-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
             <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
               <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">Totalt intäkter</div>
               <div style="font-size:1.1rem;font-weight:700;color:var(--g)" id="team-total-earn">0 kr</div>
@@ -1011,6 +1029,19 @@ body{top:0!important}
               <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">Snittbetyg</div>
               <div style="font-size:1.1rem;font-weight:700;color:var(--g)" id="team-avg-rating">-</div>
             </div>
+          </div>
+          <div id="team-value-metrics" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">RUT hanterat</div>
+              <div style="font-size:1rem;font-weight:700;color:#7C3AED" id="team-rut-total">0 kr</div>
+            </div>
+            <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:.7rem;color:var(--m);text-transform:uppercase">Tid sparad (est.)</div>
+              <div style="font-size:1rem;font-weight:700;color:#0F6E56" id="team-time-saved">0h</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:10px;background:#F0FAF6;border-radius:8px;text-align:center">
+            <div style="font-size:.75rem;color:#065F46">\u2705 Spick hanterar bokning, betalning, RUT och kundkommunikation \u2014 <strong>du fokuserar p\u00e5 st\u00e4dningen</strong></div>
           </div>
         </div>
 
@@ -1657,6 +1688,17 @@ async function loadCleanerByEmail(email, authUserId) {
   }
 
   // Owner-only: hide personal cleaning UI
+  // Show company settings for company owners
+  if (cleaner.is_company_owner) {
+    var compSec = document.getElementById('settings-company-section');
+    if (compSec) compSec.style.display = 'block';
+    var toggle = document.getElementById('toggle-owner-only');
+    if (toggle) {
+      toggle.checked = !!cleaner.owner_only;
+      updateToggleStyle(toggle.checked);
+    }
+  }
+
   if (cleaner.owner_only) {
     var heroEl = document.getElementById('hero-card');
     var heroEmptyEl = document.getElementById('hero-empty');
@@ -1678,6 +1720,7 @@ async function loadCleanerByEmail(email, authUserId) {
     if (navJobb) navJobb.style.display = 'none';
     if (navKalender) navKalender.style.display = 'none';
   }
+  hidePersonalSettings();
 
   if (cleaner.status === 'pausad') {
     const banner = document.createElement('div');
@@ -3866,6 +3909,12 @@ async function renderTeam() {
     var totalJobs = teamBookings.filter(b => b.status === 'klar' || b.status === 'completed').length;
     document.getElementById('team-total-earn').textContent = Math.round(totalEarn).toLocaleString('sv') + ' kr';
     document.getElementById('team-total-jobs').textContent = totalJobs;
+    // Value metrics
+    var rutTotal = teamBookings.filter(function(b) { return b.total_price; }).reduce(function(s,b) { return s + (b.total_price * 0.5); }, 0);
+    document.getElementById('team-rut-total').textContent = Math.round(rutTotal).toLocaleString('sv') + ' kr';
+    // Estimated time saved: 15 min per booking (admin, invoicing, scheduling)
+    var timeSaved = Math.round(totalJobs * 0.25 * 10) / 10;
+    document.getElementById('team-time-saved').textContent = timeSaved + 'h';
   }
 
   // Fetch team reviews
@@ -4023,6 +4072,47 @@ function resetTeamModal() {
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
   btn.textContent = 'Spara ändringar';
+}
+
+async function toggleOwnerOnly(isOwner) {
+  updateToggleStyle(isOwner);
+  try {
+    await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ owner_only: isOwner })
+    });
+    cleaner.owner_only = isOwner;
+    showToast(isOwner ? 'Personliga st\u00e4dar-vyer dolda' : 'Personliga st\u00e4dar-vyer synliga');
+    // Reload to apply UI changes
+    setTimeout(function() { location.reload(); }, 1000);
+  } catch(e) { alert('Fel: ' + e.message); }
+}
+
+function updateToggleStyle(isOn) {
+  var dot = document.getElementById('toggle-owner-dot');
+  var input = document.getElementById('toggle-owner-only');
+  if (!dot || !input) return;
+  var track = input.parentElement.querySelector('span:first-of-type');
+  if (isOn) {
+    dot.style.transform = 'translateX(20px)';
+    if (track) track.style.background = '#0F6E56';
+  } else {
+    dot.style.transform = 'translateX(0)';
+    if (track) track.style.background = '#ccc';
+  }
+}
+
+// 4. Hide personal settings for owner_only
+function hidePersonalSettings() {
+  if (!cleaner || !cleaner.owner_only) return;
+  // Hide schedule, blocked dates, preferences, area, pricing
+  document.querySelectorAll('.settings-link').forEach(function(el) {
+    var text = el.textContent || '';
+    if (text.includes('Veckoschema') || text.includes('Sp\u00e4rrade') || text.includes('Arbetspreferenser') || text.includes('Arbetsomr') || text.includes('Priss\u00e4ttning')) {
+      el.style.display = 'none';
+    }
+  });
 }
 
 function renderCompanyProfile(company) {
