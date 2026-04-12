@@ -2773,7 +2773,7 @@ async function loadFullHistory() {
   const btn = document.getElementById('history-toggle');
   if (btn) btn.innerHTML = '<div style="text-align:center;padding:.5rem;color:var(--m);font-size:.82rem">Laddar...</div>';
 
-  const { data: allJobs } = await R.select('bookings', `select=id,service_type,booking_date,scheduled_date,total_price,status,payment_status,customer_name,booking_hours,completed_at&cleaner_id=eq.${cleaner.id}&order=booking_date.desc&limit=200`);
+  const { data: allJobs } = await R.select('bookings', `select=id,service_type,booking_date,scheduled_date,total_price,status,payment_status,customer_name,booking_hours,completed_at&cleaner_id=eq.${cleaner.id}&order=booking_date.desc&limit=500`);
 
   const el = document.getElementById('full-history');
   const countEl = document.getElementById('history-count');
@@ -3776,22 +3776,63 @@ async function renderTeam() {
   const memberIds = _teamMembers.map(m => m.id);
   if (memberIds.length > 0) {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
-    const { data: bookings } = await R.select('bookings', `select=id,customer_name,service_type,booking_date,booking_time,status,cleaner_id,cleaner_name,total_price&or=(${idFilter})&order=booking_date.desc&limit=20`);
+    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,service_type,booking_date,booking_time,booking_hours,status,cleaner_id,cleaner_name,total_price,customer_address&or=(${idFilter})&order=booking_date.desc&limit=20`);
     const teamBookings = bookings || [];
-    const stMap = {confirmed:'Bekräftad',pending_confirmation:'Väntar',completed:'Klar',klar:'Klar'};
-    document.getElementById('team-bookings-list').innerHTML = teamBookings.length ? teamBookings.map(b => {
-      const stLabel = stMap[b.status] || b.status || '–';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-200);font-size:.85rem">
-        <div>
-          <strong>${escHtml(b.customer_name || '–')}</strong> · ${escHtml(b.service_type || 'Städning')}<br>
-          <span style="font-size:.78rem;color:var(--gray-500)">${b.booking_date || '–'} ${b.booking_time || ''} · ${escHtml(b.cleaner_name || '–')}</span>
-        </div>
-        <div style="text-align:right">
-          <span style="font-size:.78rem">${escHtml(stLabel)}</span><br>
-          <span style="font-size:.78rem;font-weight:600;color:var(--spick-500)">${b.total_price ? b.total_price + ' kr' : ''}</span>
-        </div>
-      </div>`;
-    }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar ännu.</p>';
+    const stMap = {confirmed:'Bekräftad',pending_confirmation:'Väntar på svar',completed:'Klar',klar:'Klar','pågår':'Pågår',cancelled:'Avbokad',awaiting_reassignment:'Väntar på omtilldelning'};
+    const stColors = {confirmed:'#065F46',pending_confirmation:'#92400E',completed:'#065F46',klar:'#065F46','pågår':'#1E40AF',cancelled:'#DC2626',awaiting_reassignment:'#92400E'};
+
+    // Split: today + upcoming + past
+    var today = new Date().toISOString().slice(0,10);
+    var todayBookings = teamBookings.filter(function(b) { return b.booking_date === today; });
+    var upcomingBookings = teamBookings.filter(function(b) { return b.booking_date > today; });
+    var pastBookings = teamBookings.filter(function(b) { return b.booking_date < today; }).slice(0,5);
+
+    function renderTeamBookingCard(b) {
+      var stLabel = stMap[b.status] || b.status || '\u2013';
+      var stColor = stColors[b.status] || 'var(--m)';
+      var isPending = b.status === 'pending_confirmation';
+      var isConfirmed = b.status === 'confirmed' || b.status === 'bekr\u00e4ftad';
+      var actions = '';
+      if (isPending) {
+        actions = '<div style="display:flex;gap:6px;margin-top:8px">' +
+          '<button onclick="ownerAcceptBooking(\'' + b.id + '\',\'' + b.cleaner_id + '\')" style="flex:1;padding:8px;background:#0F6E56;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">\u2713 Acceptera</button>' +
+          '<button onclick="ownerRejectBooking(\'' + b.id + '\',\'' + b.cleaner_id + '\')" style="flex:1;padding:8px;background:#FEE2E2;color:#DC2626;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Avb\u00f6j</button>' +
+          '</div>';
+      } else if (isConfirmed) {
+        actions = '<div style="display:flex;gap:6px;margin-top:8px">' +
+          '<button onclick="ownerCancelBooking(\'' + b.id + '\')" style="padding:6px 12px;background:transparent;color:#DC2626;border:1px solid #FECACA;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Avboka</button>' +
+          '</div>';
+      }
+      return '<div style="background:var(--w);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+          '<div>' +
+            '<strong style="font-size:.88rem">' + escHtml(b.customer_name || '\u2013') + '</strong>' +
+            '<div style="font-size:.78rem;color:var(--m);margin-top:2px">' + escHtml(b.service_type || 'St\u00e4dning') + ' \u00b7 ' + (b.booking_time || '').slice(0,5) + '</div>' +
+            '<div style="font-size:.78rem;color:var(--m)">' + escHtml(b.cleaner_name || 'Ej tilldelad') + '</div>' +
+          '</div>' +
+          '<div style="text-align:right">' +
+            '<span style="font-size:.72rem;font-weight:600;color:' + stColor + ';background:' + stColor + '15;padding:2px 8px;border-radius:99px">' + escHtml(stLabel) + '</span>' +
+            (b.total_price ? '<div style="font-size:.85rem;font-weight:700;color:var(--g);margin-top:4px">' + b.total_price + ' kr</div>' : '') +
+          '</div>' +
+        '</div>' +
+        actions +
+      '</div>';
+    }
+
+    var html = '';
+    if (todayBookings.length > 0) {
+      html += '<div style="font-size:.78rem;font-weight:700;color:var(--m);text-transform:uppercase;margin-bottom:8px">Idag</div>';
+      html += todayBookings.map(renderTeamBookingCard).join('');
+    }
+    if (upcomingBookings.length > 0) {
+      html += '<div style="font-size:.78rem;font-weight:700;color:var(--m);text-transform:uppercase;margin:12px 0 8px">Kommande</div>';
+      html += upcomingBookings.map(renderTeamBookingCard).join('');
+    }
+    if (pastBookings.length > 0) {
+      html += '<div style="font-size:.78rem;font-weight:700;color:var(--m);text-transform:uppercase;margin:12px 0 8px">Tidigare</div>';
+      html += pastBookings.map(renderTeamBookingCard).join('');
+    }
+    document.getElementById('team-bookings-list').innerHTML = html || '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar \u00e4nnu.</p>';
 
     // Team stats
     var totalEarn = teamBookings.filter(b => b.status === 'klar' || b.status === 'completed').reduce((s,b) => s + (b.total_price || 0), 0);
@@ -3955,6 +3996,63 @@ function resetTeamModal() {
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
   btn.textContent = 'Spara ändringar';
+}
+
+async function ownerAcceptBooking(bookingId, cleanerId) {
+  if (!confirm('Acceptera denna bokning?')) return;
+  try {
+    var token = (await SB.auth.getSession()).data.session?.access_token;
+    var res = await fetch(SUPA_URL + '/functions/v1/cleaner-booking-response', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
+      body: JSON.stringify({ booking_id: bookingId, action: 'accept' })
+    });
+    var result = await res.json();
+    if (res.ok && result.success) {
+      showToast('\u2705 Bokning accepterad!');
+      renderTeam();
+    } else {
+      alert(result.error || 'N\u00e5got gick fel');
+    }
+  } catch(e) { alert('Fel: ' + e.message); }
+}
+
+async function ownerRejectBooking(bookingId, cleanerId) {
+  var reason = prompt('Anledning till avb\u00f6jning (valfritt):');
+  if (reason === null) return;
+  try {
+    var token = (await SB.auth.getSession()).data.session?.access_token;
+    var res = await fetch(SUPA_URL + '/functions/v1/cleaner-booking-response', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
+      body: JSON.stringify({ booking_id: bookingId, action: 'reject', reason: reason || '' })
+    });
+    var result = await res.json();
+    if (res.ok && result.success) {
+      showToast('Bokning avb\u00f6jd');
+      renderTeam();
+    } else {
+      alert(result.error || 'N\u00e5got gick fel');
+    }
+  } catch(e) { alert('Fel: ' + e.message); }
+}
+
+async function ownerCancelBooking(bookingId) {
+  if (!confirm('\u00c4r du s\u00e4ker p\u00e5 att du vill avboka?')) return;
+  try {
+    var res = await fetch(SUPA_URL + '/functions/v1/booking-cancel-v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ booking_id: bookingId, customer_email: 'admin@spick.se' })
+    });
+    var result = await res.json();
+    if (res.ok && result.success) {
+      showToast('Bokning avbokad');
+      renderTeam();
+    } else {
+      alert(result.error || 'N\u00e5got gick fel');
+    }
+  } catch(e) { alert('Fel: ' + e.message); }
 }
 
 async function loadTeamMemberSchedule(cid) {
