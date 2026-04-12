@@ -716,7 +716,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const p = new URLSearchParams(location.search);
   // Förifyll om städare angetts i URL (bakåtkompabilitet)
-  const preCleanerId   = p.get('id');
+  const preCleanerId   = p.get('id') || p.get('cleaner_id');
+  var preCompanyId = p.get('company') || null;
   const preCleanerName = p.get('name') ? decodeURIComponent(p.get('name')) : '';
   const preRate        = +(p.get('rate') || 350);
   // Validera UUID-format (skydda mot SQL-injection via Supabase REST)
@@ -1656,7 +1657,7 @@ async function loadAvailableCleaners() {
       cleaners = await rpcRes.json();
     } else {
       // Fallback: hämta alla godkända städare (inget lat/lng)
-      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,completed_jobs,has_fskatt`;
+      let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,completed_jobs,has_fskatt,owner_only`;
       const res = await fetch(url, {headers:H});
       if (!res.ok) throw new Error(`Kunde inte hämta städare (HTTP ${res.status})`);
       cleaners = await res.json();
@@ -1704,8 +1705,25 @@ async function loadAvailableCleaners() {
         return myStart < bEnd && myEnd > bStart;
       }).map(b => b.cleaner_id) : [];
     cleaners = cleaners.filter(c => !takenNow.includes(c.id));
-    // Filtrera bort teammedlemmar (har company_id men är inte ägare)
-    cleaners = cleaners.filter(c => !c.company_id || c.is_company_owner);
+    // Company-filter
+    if (preCompanyId) {
+      cleaners = cleaners.filter(c => c.company_id === preCompanyId && !c.owner_only);
+    } else {
+      cleaners = cleaners.filter(c => !c.owner_only);
+    }
+    // Visa company-filter banner om aktivt
+    if (preCompanyId && cleaners.length > 0) {
+      var compName = cleaners[0].company_name || 'Företaget';
+      var filterBanner = document.getElementById('company-filter-banner');
+      if (!filterBanner) {
+        filterBanner = document.createElement('div');
+        filterBanner.id = 'company-filter-banner';
+        filterBanner.style.cssText = 'padding:10px 16px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-size:.85rem';
+        var listEl = document.getElementById('cleaner-list');
+        if (listEl) listEl.parentElement.insertBefore(filterBanner, listEl);
+      }
+      filterBanner.innerHTML = '<span><strong>' + escHtml(compName) + '</strong> \u2014 ' + cleaners.length + ' st\u00e4dare</span><a href="boka.html" style="color:#1E40AF;font-size:.78rem;font-weight:600">Visa alla st\u00e4dare \u2192</a>';
+    }
     // Sortera: betyg → antal uppdrag → pris (lokal fallback)
     cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
 
@@ -1881,7 +1899,7 @@ function renderCleaners(cleaners) {
     card.innerHTML = `
       ${avatarHTML}
       <div class="cleaner-info">
-        <div class="cleaner-name">${cl.full_name||'Städare'}${cl.company_name && cl.is_company_owner ? ` <span style="font-size:.75rem;color:#6B7280;font-weight:400">· ${escHtml(cl.company_name)}</span>` : ''}</div>
+        <div class="cleaner-name">${cl.full_name||'Städare'}${cl.company_name ? ` <span style="font-size:.75rem;color:#6B7280;font-weight:400">· ${escHtml(cl.company_name)}</span>` : ''}</div>
         <div class="cleaner-meta">
           ${hasRatings
             ? `<span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating))}</span>
