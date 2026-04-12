@@ -2047,7 +2047,7 @@ function selectCleaner(cl, cardEl) {
   // Per-tjänst-pris
   var _sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
   state._isPricePerSqm = _sp && _sp.price_type === 'per_sqm';
-  if (state._isPricePerSqm && state.sqm) { state.cleanerRate = Math.round((_sp.price * state.sqm) / (state.hours || 2)); } else { state.cleanerRate = _sp ? _sp.price : (cl.hourly_rate || 350); }
+  state.cleanerRate = _sp ? _sp.price : (cl.hourly_rate || 350);
   // Dölj range-hint, visa städarens faktiska pris
   const prh = document.getElementById('price-range-hint');
   if (prh) prh.style.display = 'none';
