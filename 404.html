@@ -8,6 +8,18 @@ if (location.pathname.startsWith('/s/')) {
   var slug = location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
   if (slug) { location.replace('/stadare-profil.html?s=' + encodeURIComponent(slug)); }
 }
+// Routing: /f/company-slug → foretag.html?slug=company-slug
+// Routing: /f/company-slug/cleaner-slug → foretag.html?slug=company-slug&cleaner=cleaner-slug
+if (location.pathname.startsWith('/f/')) {
+  var parts = location.pathname.replace(/^\/f\//, '').replace(/\/$/, '').split('/');
+  var compSlug = parts[0];
+  var cleanerSlug = parts[1] || '';
+  if (compSlug) {
+    var url = '/foretag.html?slug=' + encodeURIComponent(compSlug);
+    if (cleanerSlug) url += '&cleaner=' + encodeURIComponent(cleanerSlug);
+    location.replace(url);
+  }
+}
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
