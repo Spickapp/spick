@@ -1592,6 +1592,29 @@ async function loadCleanerByEmail(email, authUserId) {
     switchTab('team');
   }
 
+  // Owner-only: hide personal cleaning UI
+  if (cleaner.owner_only) {
+    var heroEl = document.getElementById('hero-card');
+    var heroEmptyEl = document.getElementById('hero-empty');
+    var statsEl = document.getElementById('home-stats');
+    var scheduleEl = document.getElementById('today-schedule');
+    var myJobsEl = document.getElementById('my-jobs-list');
+    if (heroEl) heroEl.style.display = 'none';
+    if (heroEmptyEl) heroEmptyEl.style.display = 'none';
+    if (statsEl) statsEl.style.display = 'none';
+    if (scheduleEl) scheduleEl.style.display = 'none';
+    if (myJobsEl) myJobsEl.style.display = 'none';
+    // Show team-focused welcome
+    var greetSub = document.getElementById('greeting-sub');
+    if (greetSub) greetSub.textContent = 'Hantera ditt team och bokningar';
+    // Hide nav tabs not relevant for owner
+    var navJobb = document.getElementById('nav-jobb');
+    var navKalender = document.getElementById('nav-kalender');
+    var navInkomst = document.getElementById('nav-inkomst');
+    if (navJobb) navJobb.style.display = 'none';
+    if (navKalender) navKalender.style.display = 'none';
+  }
+
   if (cleaner.status === 'pausad') {
     const banner = document.createElement('div');
     banner.id = 'paused-banner';
