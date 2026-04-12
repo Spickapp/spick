@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>RUT-export – Spick Admin</title>
+<meta name="robots" content="noindex">
+<script src="js/config.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--g:#0F6E56;--t:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--bg:#F7F7F5}
+body{font-family:'DM Sans','Segoe UI',Arial,sans-serif;color:var(--t);background:var(--bg);min-height:100vh;padding:20px}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-family:Georgia,serif;font-size:1.5rem;margin-bottom:4px;color:var(--g)}
+.subtitle{color:var(--m);font-size:.85rem;margin-bottom:20px}
+.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.filters select,.filters input{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit}
+.btn{padding:10px 20px;border:none;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-primary{background:var(--g);color:#fff}
+.btn-secondary{background:#E5E7EB;color:#374151}
+.btn-danger{background:#FEE2E2;color:#DC2626}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--bg);padding:10px 8px;text-align:left;font-size:.75rem;text-transform:uppercase;color:var(--m);font-weight:600}
+td{padding:10px 8px;border-bottom:1px solid var(--border)}
+td input[type=checkbox]{width:18px;height:18px;cursor:pointer}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.summary-box{background:var(--bg);border-radius:10px;padding:14px;text-align:center}
+.summary-box .val{font-size:1.2rem;font-weight:700;color:var(--g)}
+.summary-box .lbl{font-size:.72rem;color:var(--m);text-transform:uppercase}
+.info{background:#DBEAFE;border-radius:10px;padding:14px;font-size:.82rem;color:#1E40AF;margin-bottom:16px;line-height:1.6}
+.warn{background:#FEF3C7;border-radius:10px;padding:14px;font-size:.82rem;color:#92400E;margin-bottom:16px;line-height:1.6}
+.loading{text-align:center;padding:40px;color:var(--m)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RUT-export till Skatteverket</h1>
+  <p class="subtitle">Generera XML-fil (HUS) för begäran om utbetalning — Skatteverket V6-format</p>
+
+  <div class="info">
+    <strong>Så funkar det:</strong> Välj betalda bokningar med RUT-avdrag → Kontrollera uppgifter → Ladda ner XML-fil → 
+    Ladda upp på <a href="https://www7.skatteverket.se/portal/rotrut/begar-utbetalning/fil" target="_blank" style="color:#1E40AF;font-weight:600">Skatteverkets e-tjänst</a>
+  </div>
+
+  <div class="card">
+    <div class="filters">
+      <div>
+        <label style="font-size:.78rem;color:var(--m)">Från</label><br>
+        <input type="date" id="date-from">
+      </div>
+      <div>
+        <label style="font-size:.78rem;color:var(--m)">Till</label><br>
+        <input type="date" id="date-to">
+      </div>
+      <button class="btn btn-primary" onclick="loadBookings()">Hämta bokningar</button>
+      <button class="btn btn-secondary" onclick="selectAll()">Välj alla</button>
+      <button class="btn btn-secondary" onclick="deselectAll()">Avmarkera alla</button>
+    </div>
+
+    <div id="summary" class="summary" style="display:none">
+      <div class="summary-box"><div class="val" id="sum-count">0</div><div class="lbl">Valda bokningar</div></div>
+      <div class="summary-box"><div class="val" id="sum-rut">0 kr</div><div class="lbl">Totalt RUT-belopp</div></div>
+      <div class="summary-box"><div class="val" id="sum-hours">0</div><div class="lbl">Totalt timmar</div></div>
+      <div class="summary-box"><div class="val" id="sum-customers">0</div><div class="lbl">Unika kunder</div></div>
+    </div>
+
+    <div id="content"><div class="loading">Välj datumintervall och klicka "Hämta bokningar"</div></div>
+  </div>
+
+  <div id="export-section" style="display:none">
+    <div class="warn" id="warnings"></div>
+    <div style="display:flex;gap:12px">
+      <button class="btn btn-primary" onclick="generateXML()" style="font-size:1rem;padding:14px 28px">📥 Ladda ner RUT XML-fil</button>
+      <button class="btn btn-secondary" onclick="previewXML()">Förhandsgranska XML</button>
+    </div>
+    <pre id="xml-preview" style="display:none;margin-top:16px;background:#1C1C1A;color:#A7F3D0;padding:16px;border-radius:10px;font-size:.78rem;overflow-x:auto;max-height:400px"></pre>
+  </div>
+</div>
+
+<script>
+const SUPA = SPICK.SUPA_URL;
+const KEY = SPICK.SUPA_KEY;
+const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
+const ORG_NR = '559402-4522'; // Haghighi Consulting AB
+
+let allBookings = [];
+
+// Default: current month
+(function() {
+  var now = new Date();
+  var first = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('date-from').value = first.toISOString().split('T')[0];
+  document.getElementById('date-to').value = now.toISOString().split('T')[0];
+})();
+
+async function loadBookings() {
+  var from = document.getElementById('date-from').value;
+  var to = document.getElementById('date-to').value;
+  if (!from || !to) { alert('Välj datumintervall'); return; }
+
+  document.getElementById('content').innerHTML = '<div class="loading">Laddar...</div>';
+
+  try {
+    var url = SUPA + '/rest/v1/bookings?select=id,customer_name,customer_email,customer_phone,customer_address,customer_pnr,customer_pnr_hash,service_type,booking_date,booking_time,booking_hours,total_price,rut_amount,payment_status,status,confirmed_at,completed_at' +
+      '&payment_status=eq.paid' +
+      '&rut_amount=gt.0' +
+      '&booking_date=gte.' + from +
+      '&booking_date=lte.' + to +
+      '&order=booking_date.asc';
+
+    var res = await fetch(url, { headers: H });
+    var bookings = await res.json();
+
+    if (!Array.isArray(bookings) || !bookings.length) {
+      document.getElementById('content').innerHTML = '<div class="loading">Inga betalda RUT-bokningar i valt intervall.</div>';
+      document.getElementById('export-section').style.display = 'none';
+      return;
+    }
+
+    allBookings = bookings;
+    renderTable(bookings);
+  } catch (e) {
+    document.getElementById('content').innerHTML = '<div class="loading" style="color:#DC2626">Fel: ' + e.message + '</div>';
+  }
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(n) { return (n||0).toLocaleString('sv-SE'); }
+
+function renderTable(bookings) {
+  var html = '<table><thead><tr>' +
+    '<th><input type="checkbox" onchange="toggleAll(this.checked)" checked></th>' +
+    '<th>Datum</th><th>Kund</th><th>Personnr</th><th>Tjänst</th><th>Timmar</th><th>RUT-belopp</th><th>Status</th>' +
+    '</tr></thead><tbody>';
+
+  bookings.forEach(function(b, i) {
+    var hasPnr = b.customer_pnr || b.customer_pnr_hash;
+    var pnrDisplay = b.customer_pnr ? b.customer_pnr.replace(/(\d{8})(\d{4})/, '$1-$2') : (b.customer_pnr_hash ? '(krypterat)' : '<span style="color:#DC2626;font-weight:600">SAKNAS</span>');
+    
+    html += '<tr>' +
+      '<td><input type="checkbox" class="booking-cb" data-idx="' + i + '" checked onchange="updateSummary()"></td>' +
+      '<td>' + (b.booking_date || '–') + '</td>' +
+      '<td>' + esc(b.customer_name) + '</td>' +
+      '<td>' + pnrDisplay + '</td>' +
+      '<td>' + esc(b.service_type || 'Hemstädning') + '</td>' +
+      '<td>' + (b.booking_hours || 3) + '</td>' +
+      '<td style="font-weight:600;color:var(--g)">' + fmt(b.rut_amount) + ' kr</td>' +
+      '<td>' + (b.status === 'klar' || b.status === 'completed' ? '✅ Klar' : '📅 Bokad') + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('content').innerHTML = html;
+  document.getElementById('export-section').style.display = 'block';
+  updateSummary();
+}
+
+function getSelectedBookings() {
+  var cbs = document.querySelectorAll('.booking-cb:checked');
+  return Array.from(cbs).map(function(cb) { return allBookings[parseInt(cb.dataset.idx)]; });
+}
+
+function updateSummary() {
+  var selected = getSelectedBookings();
+  var totalRut = selected.reduce(function(s, b) { return s + (b.rut_amount || 0); }, 0);
+  var totalHours = selected.reduce(function(s, b) { return s + (b.booking_hours || 3); }, 0);
+  var customers = new Set(selected.map(function(b) { return b.customer_email; }));
+
+  document.getElementById('sum-count').textContent = selected.length;
+  document.getElementById('sum-rut').textContent = fmt(totalRut) + ' kr';
+  document.getElementById('sum-hours').textContent = totalHours;
+  document.getElementById('sum-customers').textContent = customers.size;
+  document.getElementById('summary').style.display = 'grid';
+
+  // Warnings
+  var warnings = [];
+  selected.forEach(function(b) {
+    if (!b.customer_pnr && !b.customer_pnr_hash) {
+      warnings.push('⚠️ ' + (b.customer_name || 'Okänd') + ' (bokning ' + (b.id||'').slice(0,8) + ') saknar personnummer — kan inte inkluderas i XML');
+    }
+  });
+  var warnEl = document.getElementById('warnings');
+  if (warnings.length) {
+    warnEl.innerHTML = warnings.join('<br>');
+    warnEl.style.display = 'block';
+  } else {
+    warnEl.style.display = 'none';
+  }
+}
+
+function selectAll() { document.querySelectorAll('.booking-cb').forEach(function(cb) { cb.checked = true; }); updateSummary(); }
+function deselectAll() { document.querySelectorAll('.booking-cb').forEach(function(cb) { cb.checked = false; }); updateSummary(); }
+function toggleAll(checked) { document.querySelectorAll('.booking-cb').forEach(function(cb) { cb.checked = checked; }); updateSummary(); }
+
+function mapServiceToRutType(serviceType) {
+  var s = (serviceType || '').toLowerCase();
+  if (s.includes('flytt')) return 'PIGG_FLYTT';
+  if (s.includes('fönster')) return 'STADARBETE';
+  if (s.includes('kontor')) return 'STADARBETE';
+  if (s.includes('trädgård')) return 'TRADGARD';
+  return 'STADARBETE'; // Default: städarbete
+}
+
+function buildXML() {
+  var selected = getSelectedBookings().filter(function(b) { return b.customer_pnr; });
+  if (!selected.length) {
+    alert('Inga bokningar med personnummer att exportera.');
+    return null;
+  }
+
+  var seqNr = 'SPICK' + new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<Begaran xmlns="http://xmls.skatteverket.se/se/skatteverket/ht/begaran/6.0">\n';
+  xml += '  <Dittnamn>' + seqNr + '</Dittnamn>\n';
+
+  selected.forEach(function(b) {
+    var pnr = (b.customer_pnr || '').replace(/[^0-9]/g, '');
+    if (pnr.length === 12) pnr = pnr.slice(2); // 199006291133 → 9006291133
+    if (pnr.length === 11) pnr = pnr.replace('-', ''); // 900629-1133 → 9006291133
+    
+    var hours = Math.min(999, Math.max(1, b.booking_hours || 3));
+    var rutAmount = b.rut_amount || 0;
+    var totalPrice = (b.total_price || 0) + rutAmount; // Pris före RUT
+    var materialCost = 0;
+    var otherCost = 0;
+    var rutType = mapServiceToRutType(b.service_type);
+    
+    // Betalningsdatum = confirmed_at eller booking_date
+    var payDate = '';
+    if (b.confirmed_at) {
+      payDate = b.confirmed_at.split('T')[0];
+    } else {
+      payDate = b.booking_date;
+    }
+
+    xml += '  <Arende>\n';
+    xml += '    <Kopare>\n';
+    xml += '      <Personnummer>' + pnr + '</Personnummer>\n';
+    xml += '    </Kopare>\n';
+    xml += '    <Rutarbete>\n';
+    xml += '      <' + rutType + '>\n';
+    xml += '        <AntalTimmar>' + hours + '</AntalTimmar>\n';
+    xml += '        <MaterialKostnad>' + materialCost + '</MaterialKostnad>\n';
+    xml += '        <OvrigKostnad>' + otherCost + '</OvrigKostnad>\n';
+    xml += '        <BegartBelopp>' + rutAmount + '</BegartBelopp>\n';
+    xml += '        <Betalningsdatum>' + payDate + '</Betalningsdatum>\n';
+    xml += '      </' + rutType + '>\n';
+    xml += '    </Rutarbete>\n';
+    xml += '  </Arende>\n';
+  });
+
+  xml += '</Begaran>';
+  return xml;
+}
+
+function generateXML() {
+  var xml = buildXML();
+  if (!xml) return;
+
+  var blob = new Blob([xml], { type: 'application/xml' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'RUT_' + new Date().toISOString().slice(0,10) + '.xml';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function previewXML() {
+  var xml = buildXML();
+  if (!xml) return;
+  var pre = document.getElementById('xml-preview');
+  pre.textContent = xml;
+  pre.style.display = pre.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+</body>
+</html>
