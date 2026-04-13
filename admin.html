@@ -528,7 +528,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <select id="si-month-filter" onchange="renderSelfInvoices()" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit">
             <option value="">Alla månader</option>
           </select>
-          <button class="btn btn-primary btn-sm" id="si-generate-btn" onclick="adminGenerateInvoices()">Generera för förra månaden</button>
+          <button class="btn btn-primary btn-sm" id="si-generate-btn" onclick="adminGenerateInvoices()">Generera fakturor</button>
           <button class="btn btn-sm" onclick="exportSelfInvoicesCSV()" style="background:#f5f5f3;border:1px solid #ddd;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Exportera CSV</button>
         </div>
       </div>
@@ -4360,9 +4360,14 @@ async function adminGenerateInvoices() {
   var btn = document.getElementById('si-generate-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Genererar...'; }
   try {
-    var now = new Date();
-    var prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    var monthStr = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
+    var filterMonth = document.getElementById('si-month-filter')?.value || '';
+    var monthStr;
+    if (filterMonth) {
+      monthStr = filterMonth;
+    } else {
+      var now = new Date();
+      monthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    }
     var resp = await fetch(SPICK.SUPA_URL + '/functions/v1/generate-self-invoice', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
@@ -4375,7 +4380,7 @@ async function adminGenerateInvoices() {
   } catch(e) {
     showToast('Fel: ' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Generera för förra månaden'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Generera fakturor'; }
   }
 }
 
