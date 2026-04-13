@@ -1361,18 +1361,20 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <button type="button" class="tm-chip" data-svc="Flyttstädning" onclick="toggleTeamSvc(this)">Flyttstädning</button>
           <button type="button" class="tm-chip" data-svc="Fönsterputs" onclick="toggleTeamSvc(this)">Fönsterputs</button>
           <button type="button" class="tm-chip" data-svc="Kontorsstädning" onclick="toggleTeamSvc(this)">Kontorsstädning</button>
+          <button type="button" class="tm-chip" data-svc="Trappstädning" onclick="toggleTeamSvc(this)">Trappstädning</button>
+          <button type="button" class="tm-chip" data-svc="Skolstädning" onclick="toggleTeamSvc(this)">Skolstädning</button>
+          <button type="button" class="tm-chip" data-svc="Vårdstädning" onclick="toggleTeamSvc(this)">Vårdstädning</button>
+          <button type="button" class="tm-chip" data-svc="Hotell &amp; restaurang" onclick="toggleTeamSvc(this)">Hotell &amp; restaurang</button>
         </div>
       </div>
 
-      <!-- Fält 6: Timpris -->
+      <!-- Fält 6: Priser per tjänst -->
       <div class="tm-form-group">
-        <label>Timpris <span id="team-rate-val" style="color:var(--spick-500);font-weight:600">350 kr/h</span></label>
-        <input type="range" id="team-rate" min="200" max="600" value="350" step="10"
-          oninput="document.getElementById('team-rate-val').textContent=this.value+' kr/h'"
-          style="width:100%">
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--gray-400);margin-top:4px">
-          <span>200 kr/h</span><span>600 kr/h</span>
+        <label>Priser per tjänst</label>
+        <div id="team-svc-prices" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <div style="font-size:.75rem;color:var(--gray-400);font-style:italic">Välj tjänster ovan för att sätta priser</div>
         </div>
+        <input type="hidden" id="team-rate" value="350">
       </div>
 
       <!-- Fält 7: Arbetsområde -->
@@ -4318,6 +4320,29 @@ async function addTeamMember() {
     btn.style.background = '#065F46';
     showTeamMsg(fname + ' är tillagd. Spick-admin godkänner inom 24h, sedan får ' + fname + ' ett välkomstmejl.', false);
 
+    // Spara per-tjänst-priser i application metadata
+    try {
+      var appRows = await res.json();
+      var appId = appRows && appRows[0] ? appRows[0].id : null;
+      if (appId) {
+        var svcPriceData = [];
+        document.querySelectorAll('#team-svc-prices [data-price-svc]').forEach(function(el) {
+          var svcName = el.dataset.priceSvc;
+          var price = parseInt(el.querySelector('input[type=number]').value) || 350;
+          var priceType = el.querySelector('select').value || 'hourly';
+          svcPriceData.push({ service_type: svcName, price: price, price_type: priceType });
+        });
+        if (svcPriceData.length) {
+          // Spara i application notes för admin att se
+          await fetch(SUPA_URL + '/rest/v1/cleaner_applications?id=eq.' + appId, {
+            method: 'PATCH',
+            headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
+            body: JSON.stringify({ notes: 'Priser: ' + svcPriceData.map(function(p) { return p.service_type + ': ' + p.price + ' ' + (p.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h'); }).join(', ') })
+          });
+        }
+      }
+    } catch(pe) { console.warn('Price save note:', pe); }
+
     // Logga aktivitet
     if (typeof logActivity === 'function') {
       logActivity('team_member_added', { member_name: fname + ' ' + lname, member_email: email });
@@ -4348,6 +4373,8 @@ function resetTeamModal() {
   document.getElementById('team-fname').value = '';
   document.getElementById('team-lname').value = '';
   document.getElementById('team-phone').value = '';
+  var pc = document.getElementById('team-svc-prices');
+  if (pc) pc.innerHTML = '<div style="font-size:.75rem;color:var(--gray-400);font-style:italic">V\u00e4lj tj\u00e4nster ovan f\u00f6r att s\u00e4tta priser</div>';
   document.getElementById('team-email').value = '';
   document.getElementById('team-bio').value = '';
   document.getElementById('team-bio-count').textContent = '0/120';
@@ -4850,7 +4877,49 @@ async function saveTeamMemberSchedule(cid) {
 
 function toggleTeamSvc(btn) {
   btn.classList.toggle('active');
-  if (document.querySelectorAll('#team-services .tm-chip.active').length === 0) btn.classList.add('active');
+  updateTeamSvcPrices();
+}
+
+function updateTeamSvcPrices() {
+  var container = document.getElementById('team-svc-prices');
+  if (!container) return;
+  var selected = [];
+  document.querySelectorAll('#team-services .tm-chip.active').forEach(function(b) {
+    selected.push(b.dataset.svc);
+  });
+  if (!selected.length) {
+    container.innerHTML = '<div style="font-size:.75rem;color:var(--gray-400);font-style:italic">V\u00e4lj tj\u00e4nster ovan f\u00f6r att s\u00e4tta priser</div>';
+    document.getElementById('team-rate').value = 350;
+    return;
+  }
+  var html = '';
+  selected.forEach(function(svc) {
+    var existing = container.querySelector('[data-price-svc="' + svc + '"]');
+    var val = existing ? existing.querySelector('input[type=number]').value : '350';
+    var type = existing ? existing.querySelector('select').value : 'hourly';
+    html += '<div data-price-svc="' + svc + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px">';
+    html += '<span style="flex:1;font-size:.82rem;font-weight:500">' + svc + '</span>';
+    html += '<input type="number" min="100" max="1000" step="10" value="' + val + '" style="width:70px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:.82rem;text-align:right" onchange="recalcTeamRate()">';
+    html += '<select style="padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:.75rem;background:#fff" onchange="recalcTeamRate()">';
+    html += '<option value="hourly"' + (type === 'hourly' ? ' selected' : '') + '>kr/h</option>';
+    html += '<option value="per_sqm"' + (type === 'per_sqm' ? ' selected' : '') + '>kr/kvm</option>';
+    html += '</select>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+  recalcTeamRate();
+}
+
+function recalcTeamRate() {
+  var prices = document.querySelectorAll('#team-svc-prices [data-price-svc] input[type=number]');
+  if (!prices.length) return;
+  var sum = 0, count = 0;
+  prices.forEach(function(p) {
+    var v = parseInt(p.value) || 350;
+    var sel = p.parentElement.querySelector('select');
+    if (sel && sel.value === 'hourly') { sum += v; count++; }
+  });
+  document.getElementById('team-rate').value = count > 0 ? Math.round(sum / count) : 350;
 }
 
 function setTeamPet(btn) {
@@ -4917,6 +4986,8 @@ function editTeamMember(memberId) {
   document.getElementById('team-bio').value = member.bio || '';
   document.getElementById('team-bio-count').textContent = (member.bio || '').length + '/120';
   document.getElementById('team-rate').value = member.hourly_rate || 350;
+    // Trigger price fields regeneration for edit mode
+    setTimeout(function() { updateTeamSvcPrices(); }, 100);
   document.getElementById('team-rate-val').textContent = (member.hourly_rate || 350) + ' kr/h';
 
   // Tjänster
