@@ -815,99 +815,108 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
     <!-- ═══ TAB: JOBB (available/matchade jobb) ═══ -->
     <div class="tab-content" id="tab-jobb">
       <div class="tab-pad">
-        <div style="font-family:inherit;font-size:1.2rem;margin-bottom:4px">Matchade jobb</div>
-        <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Nya uppdrag som matchar din profil</div>
-        <div id="available-jobs-list">
-          <div id="avail-skeleton">
-            <div class="sk" style="height:90px"></div>
-            <div class="sk" style="height:90px"></div>
-            <div class="sk" style="height:90px;opacity:.6"></div>
+        <div id="solo-jobb-content">
+          <div style="font-family:inherit;font-size:1.2rem;margin-bottom:4px">Matchade jobb</div>
+          <div style="color:var(--m);font-size:.82rem;margin-bottom:14px">Nya uppdrag som matchar din profil</div>
+          <div id="available-jobs-list">
+            <div id="avail-skeleton">
+              <div class="sk" style="height:90px"></div>
+              <div class="sk" style="height:90px"></div>
+              <div class="sk" style="height:90px;opacity:.6"></div>
+            </div>
           </div>
         </div>
+        <div id="vd-jobb-content" style="display:none"></div>
       </div>
     </div>
 
     <!-- ═══ TAB: KALENDER ═══ -->
     <div class="tab-content" id="tab-kalender">
       <div class="tab-pad">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <button onclick="calNav(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">←</button>
-          <div style="font-family:inherit;font-size:1.1rem;font-weight:700" id="cal-month-label">April 2026</div>
-          <button onclick="calNav(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">→</button>
+        <div id="solo-kalender-content">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <button onclick="calNav(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">←</button>
+            <div style="font-family:inherit;font-size:1.1rem;font-weight:700" id="cal-month-label">April 2026</div>
+            <button onclick="calNav(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">→</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div id="cal-day-detail" style="margin-top:12px"></div>
         </div>
-        <div class="cal-grid" id="cal-grid"></div>
-        <div id="cal-day-detail" style="margin-top:12px"></div>
+        <div id="vd-kalender-content" style="display:none"></div>
       </div>
     </div>
 
     <!-- ═══ TAB: INKOMST ═══ -->
     <div class="tab-content" id="tab-inkomst">
       <div class="tab-pad">
-        <div class="earn-hero">
-          <div style="font-size:.8rem;opacity:.8">Intjänat denna månad</div>
-          <div class="earn-amount" id="earn-month">0 kr</div>
-          <div class="earn-sub" id="earn-next-pay">Utbetalas inom 3–5 bankdagar efter genomfört uppdrag</div>
-        </div>
+        <div id="solo-inkomst-content">
+          <div class="earn-hero">
+            <div style="font-size:.8rem;opacity:.8">Intjänat denna månad</div>
+            <div class="earn-amount" id="earn-month">0 kr</div>
+            <div class="earn-sub" id="earn-next-pay">Utbetalas inom 3–5 bankdagar efter genomfört uppdrag</div>
+          </div>
 
-        <!-- Provisionsnivå -->
-        <div id="commission-widget"></div>
+          <!-- Provisionsnivå -->
+          <div id="commission-widget"></div>
 
-        <!-- Veckograf -->
-        <div class="card">
-          <div class="card-title">Intäkter per dag (senaste 7 dagarna)</div>
-          <div class="week-chart" id="week-chart">
-            <div class="bar-wrap"><div class="bar empty" style="height:4px"></div><div class="bar-lbl">–</div></div>
+          <!-- Veckograf -->
+          <div class="card">
+            <div class="card-title">Intäkter per dag (senaste 7 dagarna)</div>
+            <div class="week-chart" id="week-chart">
+              <div class="bar-wrap"><div class="bar empty" style="height:4px"></div><div class="bar-lbl">–</div></div>
+            </div>
+          </div>
+
+          <!-- Monthly bar chart (inline SVG) -->
+          <div class="card">
+            <div class="card-title">Intäkt per månad</div>
+            <div class="month-chart-wrap" id="month-chart"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Ekonomi</div>
+            <div class="earn-row"><span class="lbl">Ditt timpris</span><span id="earn-rate">350 kr/h</span></div>
+            <div class="earn-row"><span class="lbl">Spicks provision</span><span style="color:var(--r)">–17%</span></div>
+            <div class="earn-row"><span class="lbl">Din andel</span><span style="color:var(--g);font-weight:600">83%</span></div>
+            <div class="earn-row"><span class="lbl">Betalningstid</span><span>3–5 bankdagar efter genomfört uppdrag</span></div>
+            <div class="earn-row"><span class="lbl">Totalt intjänat (alla tider)</span><span id="earn-total" style="color:var(--g);font-weight:700">0 kr</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Betalda uppdrag denna månad</div>
+            <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna månad.</div>
+          </div>
+
+          <!-- Historik alla tider -->
+          <div class="card">
+            <div class="card-title">📋 Uppdragshistorik <span id="history-count">alla tider</span></div>
+            <div id="history-toggle" style="margin-bottom:10px">
+              <button onclick="loadFullHistory()" class="action-btn" style="width:100%;background:#F3F4F6;color:#374151;padding:.5rem;font-size:.82rem">Ladda fullständig historik →</button>
+            </div>
+            <div id="full-history" style="display:none;max-height:400px;overflow-y:auto"></div>
+          </div>
+
+          <!-- Mina recensioner -->
+          <div class="card" id="my-reviews-card" style="display:none">
+            <div class="card-title">⭐ Mina senaste recensioner</div>
+            <div id="my-reviews-list" style="font-size:.82rem;color:var(--m)">Laddar...</div>
+          </div>
+
+          <!-- Inkomstprognos -->
+          <div class="card" id="prognos-card" style="display:none">
+            <div class="card-title">📈 Inkomstprognos <span id="prognos-period"></span></div>
+            <div id="prognos-content"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">💳 Anslut bankkonto</div>
+            <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Anslut ditt bankkonto via Stripe för automatiska utbetalningar.</p>
+            <div id="connect-status">
+              <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Anslut via Stripe →</button>
+            </div>
           </div>
         </div>
-
-        <!-- Monthly bar chart (inline SVG) -->
-        <div class="card">
-          <div class="card-title">Intäkt per månad</div>
-          <div class="month-chart-wrap" id="month-chart"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Ekonomi</div>
-          <div class="earn-row"><span class="lbl">Ditt timpris</span><span id="earn-rate">350 kr/h</span></div>
-          <div class="earn-row"><span class="lbl">Spicks provision</span><span style="color:var(--r)">–17%</span></div>
-          <div class="earn-row"><span class="lbl">Din andel</span><span style="color:var(--g);font-weight:600">83%</span></div>
-          <div class="earn-row"><span class="lbl">Betalningstid</span><span>3–5 bankdagar efter genomfört uppdrag</span></div>
-          <div class="earn-row"><span class="lbl">Totalt intjänat (alla tider)</span><span id="earn-total" style="color:var(--g);font-weight:700">0 kr</span></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Betalda uppdrag denna månad</div>
-          <div id="earn-jobs-list" style="font-size:.85rem;color:var(--m)">Inga uppdrag klara denna månad.</div>
-        </div>
-
-        <!-- Historik alla tider -->
-        <div class="card">
-          <div class="card-title">📋 Uppdragshistorik <span id="history-count">alla tider</span></div>
-          <div id="history-toggle" style="margin-bottom:10px">
-            <button onclick="loadFullHistory()" class="action-btn" style="width:100%;background:#F3F4F6;color:#374151;padding:.5rem;font-size:.82rem">Ladda fullständig historik →</button>
-          </div>
-          <div id="full-history" style="display:none;max-height:400px;overflow-y:auto"></div>
-        </div>
-
-        <!-- Mina recensioner -->
-        <div class="card" id="my-reviews-card" style="display:none">
-          <div class="card-title">⭐ Mina senaste recensioner</div>
-          <div id="my-reviews-list" style="font-size:.82rem;color:var(--m)">Laddar...</div>
-        </div>
-
-        <!-- Inkomstprognos -->
-        <div class="card" id="prognos-card" style="display:none">
-          <div class="card-title">📈 Inkomstprognos <span id="prognos-period"></span></div>
-          <div id="prognos-content"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">💳 Anslut bankkonto</div>
-          <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Anslut ditt bankkonto via Stripe för automatiska utbetalningar.</p>
-          <div id="connect-status">
-            <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Anslut via Stripe →</button>
-          </div>
-        </div>
+        <div id="vd-foretag-content" style="display:none"></div>
       </div>
     </div>
 
@@ -940,7 +949,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
 
         <div class="settings-section" id="settings-company-section" style="display:none">
           <div class="settings-section-title">Företag</div>
-          <div class="settings-link" onclick="switchTab('team')">
+          <div class="settings-link" id="settings-team-link" onclick="switchTab('team')">
             <span class="sl-icon">🏢</span><span class="sl-text">Team-hantering</span><span class="sl-arrow">›</span>
           </div>
           <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -958,6 +967,9 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
 
         <div class="settings-section">
           <div class="settings-section-title">Arbete</div>
+          <div class="settings-link" onclick="openSubView('sv-pricing')">
+            <span class="sl-icon">💰</span><span class="sl-text">Prissättning per tjänst</span><span class="sl-arrow">›</span>
+          </div>
           <div class="settings-link" onclick="openSubView('sv-schedule')">
             <span class="sl-icon">📅</span><span class="sl-text">Veckoschema</span><span class="sl-arrow">›</span>
           </div>
@@ -969,9 +981,6 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           </div>
           <div class="settings-link" onclick="openSubView('sv-area')">
             <span class="sl-icon">📍</span><span class="sl-text">Arbetsområde</span><span class="sl-arrow">›</span>
-          </div>
-          <div class="settings-link" onclick="openSubView('sv-pricing')">
-            <span class="sl-icon">💰</span><span class="sl-text">Prissättning per tjänst</span><span class="sl-arrow">›</span>
           </div>
         </div>
 
@@ -1159,7 +1168,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         </div>
 
         <!-- Betygsvisning toggle -->
-        <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+        <div id="rating-toggle-card" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
               <div style="font-weight:600;font-size:.88rem">Betygsvisning</div>
@@ -1174,7 +1183,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         </div>
 
         <!-- Prismodell toggle -->
-        <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+        <div id="pricing-toggle-card" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
               <div style="font-weight:600;font-size:.88rem">Prismodell</div>
@@ -1504,8 +1513,8 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
       <span>Team</span>
     </button>
     <button class="nav-btn" id="nav-inst" onclick="switchTab('inst')">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-      <span>Mer</span>
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Jag</span>
     </button>
   </div>
 </div><!-- /screen-app -->
@@ -1980,6 +1989,7 @@ async function loadCleanerByEmail(email, authUserId) {
   window._companyId = cleaner.company_id || null;
   window._isCompanyOwner = !!cleaner.is_company_owner;
   showTeamTab();
+  if (window._isCompanyOwner) setupVDNavigation();
   showScreen('app');
 
   // Company owners default to team tab
@@ -3945,37 +3955,39 @@ function showScreen(name) {
 }
 
 function switchTab(tab) {
-  // VD nav redirect: jobb/kalender → team sections, inkomst → team reports
-  if (window._isCompanyOwner) {
-    if (tab === 'jobb') {
-      tab = 'team';
-      setTimeout(function() {
-        var el = document.getElementById('team-bookings-card');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    } else if (tab === 'kalender') {
-      tab = 'team';
-      setTimeout(function() {
-        var el = document.getElementById('team-calendar-card');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    } else if (tab === 'inkomst') {
-      tab = 'team';
-      setTimeout(function() {
-        var el = document.getElementById('team-reports-card');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        loadReports();
-      }, 100);
-    }
-  }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+tab)?.classList.add('active');
   document.getElementById('nav-'+tab)?.classList.add('active');
+
   if (tab === 'hem') renderHome();
-  if (tab === 'jobb') renderAvailableJobs();
-  if (tab === 'kalender') renderCalendar();
-  if (tab === 'inkomst') { renderEarnings(); setTimeout(loadMyReviews, 200); }
+
+  if (tab === 'jobb') {
+    if (window._isCompanyOwner) {
+      renderTeam();
+    } else {
+      renderAvailableJobs();
+    }
+  }
+
+  if (tab === 'kalender') {
+    if (window._isCompanyOwner) {
+      renderTeam();
+    } else {
+      renderCalendar();
+    }
+  }
+
+  if (tab === 'inkomst') {
+    if (window._isCompanyOwner) {
+      renderTeam();
+      loadReports();
+    } else {
+      renderEarnings();
+      setTimeout(loadMyReviews, 200);
+    }
+  }
+
   if (tab === 'team') renderTeam();
 }
 
@@ -4112,6 +4124,57 @@ function showTeamTab() {
     return;
   }
   // Företagsägare — visa teamhantering (nav-knappen redan synlig)
+}
+
+// ── VD NAVIGATION SETUP (called once when company owner detected) ──
+function setupVDNavigation() {
+  // 1. Update nav labels for VD
+  var jobbSpan = document.querySelector('#nav-jobb > span');
+  var inkomstSpan = document.querySelector('#nav-inkomst > span');
+  if (jobbSpan) jobbSpan.textContent = 'Bokningar';
+  if (inkomstSpan) inkomstSpan.textContent = 'Företag';
+
+  // 2. Hide solo content, show VD containers
+  var soloJobb = document.getElementById('solo-jobb-content');
+  var soloKal = document.getElementById('solo-kalender-content');
+  var soloInk = document.getElementById('solo-inkomst-content');
+  if (soloJobb) soloJobb.style.display = 'none';
+  if (soloKal) soloKal.style.display = 'none';
+  if (soloInk) soloInk.style.display = 'none';
+
+  var vdJobb = document.getElementById('vd-jobb-content');
+  var vdKal = document.getElementById('vd-kalender-content');
+  var vdForetag = document.getElementById('vd-foretag-content');
+  if (vdJobb) vdJobb.style.display = '';
+  if (vdKal) vdKal.style.display = '';
+  if (vdForetag) vdForetag.style.display = '';
+
+  // 3. Reparent cards from team tab to their new homes
+  // Bokningar → tab-jobb
+  var bookingsCard = document.getElementById('team-bookings-card');
+  if (bookingsCard && vdJobb) vdJobb.appendChild(bookingsCard);
+
+  // Kalender → tab-kalender
+  var calendarCard = document.getElementById('team-calendar-card');
+  if (calendarCard && vdKal) vdKal.appendChild(calendarCard);
+
+  // Företag → tab-inkomst (company profile, toggles, prices, reports)
+  var companyProfile = document.getElementById('team-company-profile');
+  var ratingToggle = document.getElementById('rating-toggle-card');
+  var pricingToggle = document.getElementById('pricing-toggle-card');
+  var pricesSection = document.getElementById('company-prices-section');
+  var reportsCard = document.getElementById('team-reports-card');
+  if (vdForetag) {
+    if (companyProfile) vdForetag.appendChild(companyProfile);
+    if (ratingToggle) vdForetag.appendChild(ratingToggle);
+    if (pricingToggle) vdForetag.appendChild(pricingToggle);
+    if (pricesSection) vdForetag.appendChild(pricesSection);
+    if (reportsCard) vdForetag.appendChild(reportsCard);
+  }
+
+  // 4. Hide Team-hantering link in settings (redundant now)
+  var teamLink = document.getElementById('settings-team-link');
+  if (teamLink) teamLink.style.display = 'none';
 }
 
 async function renderTeam() {
