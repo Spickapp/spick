@@ -101,12 +101,11 @@ async function init() {
     var avgRating = reviews.length ? reviews.reduce(function(s, r) { return s + (r.cleaner_rating || 0); }, 0) / reviews.length : 0;
     var nameMap = {}; members.forEach(function(m) { nameMap[m.id] = m.full_name || m.first_name || ''; });
 
-    document.title = (co.display_name || co.name || 'Företag') + ' — Spick';
+    document.title = (co.name || 'Företag') + ' — Spick';
     document.getElementById('header-book-btn').href = 'boka.html?company=' + co.id;
 
     var h = '<div class="hero"><div class="hero-avatar">' + (co.name || '?').charAt(0) + '</div>';
-    var displayName = co.display_name || co.name;
-    h += '<h1>' + esc(displayName) + '</h1>';
+    h += '<h1>' + esc(co.name) + '</h1>';
     if (co.org_number) h += '<div class="org">Org.nr: ' + esc(co.org_number) + '</div>';
     if (co.description) h += '<div class="desc">' + esc(co.description) + '</div>';
     h += '<div class="stats">';
@@ -172,7 +171,7 @@ async function init() {
       h += '</div></div>';
     }
 
-    h += '<div class="cta" id="boka"><h2>Boka ' + esc(co.display_name || co.name) + '</h2>';
+    h += '<div class="cta" id="boka"><h2>Boka ' + esc(co.name) + '</h2>';
     h += '<p>Professionell städning med säker betalning och RUT-avdrag</p>';
     h += '<a href="boka.html?company=' + co.id + '" class="btn">Boka städning →</a>';
     h += '<div class="trust"><span>🔒 Säker betalning</span><span>🏠 RUT-avdrag 50%</span><span>✅ Verifierade städare</span></div></div>';
