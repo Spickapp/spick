@@ -227,8 +227,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       
       <div class="nav-section">Ekonomi</div>
       <div class="nav-item" onclick="showPage('payouts')"><span class="icon">💸</span>Utbetalningar</div>
-      
-      
+      <div class="nav-item" onclick="showPage('self-invoices')"><span class="icon">📄</span>Självfakturor</div>
+
+
       <div class="nav-section">Support & Kvalitet</div>
       <div class="nav-item" onclick="showPage('support')"><span class="icon">🎫</span>Supportärenden <span class="badge-count" id="badge-support">0</span></div>
       <div class="nav-item" onclick="showPage('quality')"><span class="icon">⚡</span>Kvalitet & Risk</div>
@@ -267,6 +268,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <button class="mobile-nav-btn" onclick="mobileNav('bookings',this)">📅 Bokningar</button>
       <button class="mobile-nav-btn" onclick="mobileNav('customers',this)">👥 Kunder</button>
       <button class="mobile-nav-btn" onclick="mobileNav('payouts',this)">💸 Utbetalningar</button>
+      <button class="mobile-nav-btn" onclick="mobileNav('self-invoices',this)">📄 Fakturor</button>
       <button class="mobile-nav-btn" onclick="mobileNav('onboarding',this)">🚀 Onboarding</button>
       <button class="mobile-nav-btn" onclick="mobileNav('settings',this)">⚙️</button>
     </div>
@@ -510,6 +512,37 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <table>
             <thead><tr><th>Städare</th><th>Månad</th><th>Uppdrag</th><th>Brutto</th><th>Provision 17%</th><th>Netto till städare</th><th>Status</th><th></th></tr></thead>
             <tbody id="payouts-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SELF-INVOICES -->
+    <div class="page" id="page-self-invoices">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Självfakturor 📄</div>
+          <div class="page-sub">Månadsvis bokföringsunderlag för städare med F-skatt</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="si-month-filter" onchange="renderSelfInvoices()" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit">
+            <option value="">Alla månader</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="si-generate-btn" onclick="adminGenerateInvoices()">Generera för förra månaden</button>
+          <button class="btn btn-sm" onclick="exportSelfInvoicesCSV()" style="background:#f5f5f3;border:1px solid #ddd;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Exportera CSV</button>
+        </div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi"><div class="kpi-val" id="si-total-count">–</div><div class="kpi-lbl">Fakturor totalt</div></div>
+        <div class="kpi"><div class="kpi-val" id="si-total-gross">–</div><div class="kpi-lbl">Total brutto</div></div>
+        <div class="kpi"><div class="kpi-val" id="si-total-commission">–</div><div class="kpi-lbl">Total provision</div></div>
+        <div class="kpi"><div class="kpi-val" id="si-total-net">–</div><div class="kpi-lbl">Total netto</div></div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fakturanr</th><th>Städare</th><th>Period</th><th>Brutto</th><th>Provision</th><th>Netto</th><th>Status</th><th></th></tr></thead>
+            <tbody id="si-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1362,6 +1395,7 @@ function showPage(id) {
   if (id === 'reviews') renderReviews();
   if (id === 'settings') renderSettings();
   if (id === 'inbox') setTimeout(loadInbox, 100);
+  if (id === 'self-invoices') loadSelfInvoices();
 }
 
 // ── LOAD ALL DATA ─────────────────────────────────────
@@ -4252,6 +4286,120 @@ showPage = function(id) {
   if (id==='activity') loadActivity();
   if (id==='system-status') renderSystemStatus();
 };
+
+// ─── Självfakturor ───────────────────────────────────────────
+
+let _selfInvoices = [];
+
+async function loadSelfInvoices() {
+  try {
+    var res = await AR.select('self_invoices', 'select=*&order=period_start.desc,seller_name.asc&limit=500');
+    _selfInvoices = res.data || [];
+    populateSiMonthFilter();
+    renderSelfInvoices();
+  } catch(e) {
+    console.error('loadSelfInvoices error:', e);
+  }
+}
+
+function populateSiMonthFilter() {
+  var sel = document.getElementById('si-month-filter');
+  if (!sel) return;
+  var months = new Set();
+  _selfInvoices.forEach(function(inv) {
+    var m = inv.period_start ? inv.period_start.substring(0, 7) : '';
+    if (m) months.add(m);
+  });
+  var opts = '<option value="">Alla månader</option>';
+  Array.from(months).sort().reverse().forEach(function(m) {
+    opts += '<option value="' + m + '">' + m + '</option>';
+  });
+  sel.innerHTML = opts;
+}
+
+function renderSelfInvoices() {
+  var filterMonth = document.getElementById('si-month-filter')?.value || '';
+  var invoices = _selfInvoices;
+  if (filterMonth) {
+    invoices = invoices.filter(function(inv) { return inv.period_start && inv.period_start.startsWith(filterMonth); });
+  }
+
+  // KPIs
+  var tGross = 0, tComm = 0, tNet = 0;
+  invoices.forEach(function(inv) { tGross += Number(inv.total_gross)||0; tComm += Number(inv.total_commission)||0; tNet += Number(inv.total_net)||0; });
+  document.getElementById('si-total-count').textContent = invoices.length;
+  document.getElementById('si-total-gross').textContent = tGross.toLocaleString('sv-SE') + ' kr';
+  document.getElementById('si-total-commission').textContent = tComm.toLocaleString('sv-SE') + ' kr';
+  document.getElementById('si-total-net').textContent = tNet.toLocaleString('sv-SE') + ' kr';
+
+  var tbody = document.getElementById('si-tbody');
+  if (!tbody) return;
+  if (!invoices.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#888">Inga fakturor hittades</td></tr>'; return; }
+
+  var statusColors = { draft:'#666', sent:'#2563eb', accepted:'#166534', disputed:'#dc2626' };
+  var statusLabels = { draft:'Utkast', sent:'Skickad', accepted:'Godkänd', disputed:'Invändning' };
+
+  tbody.innerHTML = invoices.map(function(inv) {
+    var sc = statusColors[inv.status] || '#666';
+    var sl = statusLabels[inv.status] || inv.status;
+    return '<tr>' +
+      '<td><strong>' + escHtml(inv.invoice_number) + '</strong></td>' +
+      '<td>' + escHtml(inv.seller_name || '') + (inv.seller_org_number ? '<br><span style="font-size:11px;color:#888">' + escHtml(inv.seller_org_number) + '</span>' : '') + '</td>' +
+      '<td>' + escHtml(inv.period_start) + ' – ' + escHtml(inv.period_end) + '</td>' +
+      '<td style="text-align:right">' + Number(inv.total_gross).toLocaleString('sv-SE') + '</td>' +
+      '<td style="text-align:right">' + Number(inv.total_commission).toLocaleString('sv-SE') + '</td>' +
+      '<td style="text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + '</td>' +
+      '<td><span style="background:' + sc + '18;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + sl + '</span></td>' +
+      '<td style="white-space:nowrap">' +
+        (inv.pdf_url ? '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:#0F6E56;font-weight:600;text-decoration:none;font-size:12px">Visa</a>' : '') +
+      '</td></tr>';
+  }).join('');
+}
+
+async function adminGenerateInvoices() {
+  var btn = document.getElementById('si-generate-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Genererar...'; }
+  try {
+    var now = new Date();
+    var prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var monthStr = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
+    var resp = await fetch(SUPA_URL + '/functions/v1/generate-self-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+      body: JSON.stringify({ month: monthStr })
+    });
+    var result = await resp.json();
+    if (result.error) { showToast('Fel: ' + result.error); return; }
+    showToast(result.generated + ' faktura(or) genererade för ' + monthStr);
+    loadSelfInvoices();
+  } catch(e) {
+    showToast('Fel: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Generera för förra månaden'; }
+  }
+}
+
+function exportSelfInvoicesCSV() {
+  var filterMonth = document.getElementById('si-month-filter')?.value || '';
+  var invoices = _selfInvoices;
+  if (filterMonth) invoices = invoices.filter(function(inv) { return inv.period_start && inv.period_start.startsWith(filterMonth); });
+  if (!invoices.length) { showToast('Inga fakturor att exportera'); return; }
+
+  var rows = [['Fakturanr','Städare','Org.nr','Period start','Period slut','Brutto','Provision','Netto','Moms','Totalt med moms','Status'].join(';')];
+  invoices.forEach(function(inv) {
+    rows.push([
+      inv.invoice_number, inv.seller_name||'', inv.seller_org_number||'',
+      inv.period_start, inv.period_end,
+      inv.total_gross, inv.total_commission, inv.total_net, inv.vat_amount, inv.total_with_vat,
+      inv.status
+    ].join(';'));
+  });
+  var blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'självfakturor' + (filterMonth ? '-' + filterMonth : '') + '.csv';
+  a.click();
+}
 
 </script>
 <script src="js/feedback.js" defer></script>

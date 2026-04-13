@@ -1001,6 +1001,15 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         </div>
 
         <div class="settings-section">
+          <div class="settings-section-title">Fakturor</div>
+          <div class="card" id="my-invoices-card">
+            <div class="card-title">Mina självfakturor</div>
+            <p style="color:var(--m);font-size:.82rem;margin-bottom:12px">Självfakturor genereras månadsvis som bokföringsunderlag.</p>
+            <div id="my-invoices-list" style="font-size:.85rem;color:var(--m)">Laddar...</div>
+          </div>
+        </div>
+
+        <div class="settings-section">
           <div class="settings-section-title">Behöver du hjälp?</div>
           <div class="card" style="text-align:center">
             <p style="font-size:.88rem;color:var(--m);margin-bottom:14px">Vi svarar snabbt — oftast inom minuter.</p>
@@ -1055,6 +1064,17 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
             <button type="button" class="svc-chip" data-svc="Kontorsstädning" onclick="toggleProfileSvc(this)">🏢 Kontorsstädning</button>
           </div>
           <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">Välj de tjänster du erbjuder. Kunder filtreras på detta.</div>
+        </div>
+        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee">
+          <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Affärsuppgifter (självfakturering)</label>
+          <div style="font-size:.72rem;color:#6B6960;margin-bottom:.75rem">Fyll i för att få korrekta självfakturor som bokföringsunderlag.</div>
+          <div class="prof-field"><label>Firmanamn</label><input type="text" id="edit-business-name" placeholder="T.ex. Anna Andersson Städ"></div>
+          <div class="prof-field"><label>Org.nummer</label><input type="text" id="edit-org-number" placeholder="XXXXXX-XXXX"></div>
+          <div class="prof-field"><label>Faktureringsadress</label><input type="text" id="edit-business-address" placeholder="Gatuadress, Postnr Stad"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;color:#555;margin-top:8px">
+            <input type="checkbox" id="edit-vat-registered" style="width:18px;height:18px;accent-color:#0F6E56">
+            Jag är momsregistrerad
+          </label>
         </div>
         <button class="btn-save" id="btn-save-profile" onclick="saveProfile()">💾 Spara ändringar</button>
         <div id="profile-save-msg" style="font-size:.75rem;color:var(--g);text-align:center;margin-top:6px;display:none">✅ Profil sparad!</div>
@@ -1222,6 +1242,18 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <div id="salary-report-content">
             <div style="text-align:center;color:var(--m);padding:20px;font-size:.85rem">Välj månad för att visa löneunderlag</div>
           </div>
+        </div>
+
+        <!-- Självfakturor (VD) -->
+        <div id="vd-invoices-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:600;font-size:.92rem">Självfakturor</div>
+              <div style="font-size:.72rem;color:var(--m);margin-top:2px">Generera bokföringsunderlag för städare med F-skatt</div>
+            </div>
+            <button id="generate-invoices-btn" onclick="generateInvoices()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Generera för förra månaden</button>
+          </div>
+          <div id="vd-invoices-list" style="font-size:.85rem;color:var(--m)">Laddar...</div>
         </div>
 
         <div class="card" style="padding:20px" id="team-management-card">
@@ -2019,6 +2051,10 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('edit-city').value = cleaner.city || '';
   document.getElementById('edit-rate').value = cleaner.hourly_rate || 350;
   document.getElementById('edit-bio').value = cleaner.bio || '';
+  document.getElementById('edit-business-name').value = cleaner.business_name || '';
+  document.getElementById('edit-org-number').value = cleaner.org_number || '';
+  document.getElementById('edit-business-address').value = cleaner.business_address || '';
+  document.getElementById('edit-vat-registered').checked = !!cleaner.vat_registered;
   document.getElementById('prof-languages').textContent = Array.isArray(cleaner.languages) && cleaner.languages.length ? cleaner.languages.join(', ') : cleaner.languages || '–';
   document.getElementById('prof-experience').textContent = cleaner.experience || '–';
   updateKeep();
@@ -3798,8 +3834,13 @@ async function saveProfile() {
   const btn = document.getElementById('btn-save-profile');
   btn.disabled = true; btn.textContent = '⏳ Sparar...';
 
+  const businessName = document.getElementById('edit-business-name').value.trim();
+  const orgNumber = document.getElementById('edit-org-number').value.trim();
+  const businessAddress = document.getElementById('edit-business-address').value.trim();
+  const vatRegistered = document.getElementById('edit-vat-registered').checked;
+
   const slug = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug,services}, `id=eq.${cleaner.id}`);
+  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug,services,business_name:businessName||null,org_number:orgNumber||null,business_address:businessAddress||null,vat_registered:vatRegistered}, `id=eq.${cleaner.id}`);
   btn.disabled = false; btn.textContent = '💾 Spara ändringar';
   if (error) { showToast('❌ Fel vid sparning'); return; }
   Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug,services});
@@ -4067,11 +4108,14 @@ function switchTab(tab) {
       loadReports();
       loadCompanyPrices();
       loadSalaryReport();
+      loadVdInvoices();
     } else {
       renderEarnings();
       setTimeout(loadMyReviews, 200);
     }
   }
+
+  if (tab === 'inst') { loadMyInvoices(); }
 
   if (tab === 'team') { renderTeam(); if (typeof loadTasks === 'function') loadTasks(); }
 }
@@ -6151,6 +6195,119 @@ async function createTask() {
   if (btn) { btn.disabled = false; btn.textContent = 'Skapa uppgift'; }
 }
 
+
+// ─── Självfakturor ───────────────────────────────────────────
+
+async function loadMyInvoices() {
+  var el = document.getElementById('my-invoices-list');
+  if (!el || !cleaner) return;
+  try {
+    var res = await R.select('self_invoices', 'select=*&cleaner_id=eq.' + cleaner.id + '&order=period_start.desc&limit=50');
+    var invoices = res.data || [];
+    if (!invoices.length) { el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--m)">Inga fakturor ännu.</div>'; return; }
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">';
+    html += '<thead><tr style="background:#f5f5f3;text-align:left"><th style="padding:8px">Fakturanr</th><th style="padding:8px">Period</th><th style="padding:8px;text-align:right">Netto</th><th style="padding:8px">Status</th><th style="padding:8px"></th></tr></thead><tbody>';
+    invoices.forEach(function(inv) {
+      var statusColors = { draft:'#666', sent:'#2563eb', accepted:'#166534', disputed:'#dc2626' };
+      var statusLabels = { draft:'Utkast', sent:'Skickad', accepted:'Godkänd', disputed:'Invändning' };
+      var sc = statusColors[inv.status] || '#666';
+      var sl = statusLabels[inv.status] || inv.status;
+      html += '<tr style="border-bottom:1px solid #eee">';
+      html += '<td style="padding:8px;font-weight:600">' + escHtml(inv.invoice_number) + '</td>';
+      html += '<td style="padding:8px">' + escHtml(inv.period_start) + ' – ' + escHtml(inv.period_end) + '</td>';
+      html += '<td style="padding:8px;text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + ' kr</td>';
+      html += '<td style="padding:8px"><span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600">' + sl + '</span></td>';
+      html += '<td style="padding:8px;text-align:right;white-space:nowrap">';
+      if (inv.pdf_url) html += '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;margin-right:8px">Visa</a>';
+      if (inv.status === 'draft' || inv.status === 'sent') {
+        html += '<button onclick="acceptInvoice(\'' + inv.id + '\')" style="background:#dcfce7;color:#166534;border:none;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;margin-right:4px">Godkänn</button>';
+        html += '<button onclick="disputeInvoice(\'' + inv.id + '\')" style="background:#fee2e2;color:#991b1b;border:none;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer">Invändning</button>';
+      }
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch(e) {
+    console.error('loadMyInvoices error:', e);
+    el.innerHTML = '<div style="color:#dc2626">Kunde inte ladda fakturor.</div>';
+  }
+}
+
+async function acceptInvoice(id) {
+  if (!confirm('Godkänn denna självfaktura?')) return;
+  try {
+    await R.update('self_invoices', { status: 'accepted', accepted_at: new Date().toISOString() }, 'id=eq.' + id);
+    showToast('Faktura godkänd');
+    loadMyInvoices();
+  } catch(e) { showToast('Fel: ' + e.message); }
+}
+
+async function disputeInvoice(id) {
+  var reason = prompt('Ange anledning till invändning:');
+  if (!reason) return;
+  try {
+    await R.update('self_invoices', { status: 'disputed', disputed_at: new Date().toISOString(), dispute_reason: reason }, 'id=eq.' + id);
+    showToast('Invändning registrerad');
+    loadMyInvoices();
+  } catch(e) { showToast('Fel: ' + e.message); }
+}
+
+async function generateInvoices() {
+  var btn = document.getElementById('generate-invoices-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Genererar...'; }
+  try {
+    var now = new Date();
+    var prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var monthStr = prevMonth.getFullYear() + '-' + String(prevMonth.getMonth() + 1).padStart(2, '0');
+    var resp = await fetch(SUPA_URL + '/functions/v1/generate-self-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
+      body: JSON.stringify({ month: monthStr })
+    });
+    var result = await resp.json();
+    if (result.error) { showToast('Fel: ' + result.error); return; }
+    showToast(result.generated + ' faktura(or) genererade för ' + monthStr);
+    loadVdInvoices();
+  } catch(e) {
+    showToast('Fel: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Generera för förra månaden'; }
+  }
+}
+
+async function loadVdInvoices() {
+  var el = document.getElementById('vd-invoices-list');
+  if (!el) return;
+  try {
+    var res = await R.select('self_invoices', 'select=*&order=period_start.desc,seller_name.asc&limit=100');
+    var invoices = res.data || [];
+    if (!invoices.length) { el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--m)">Inga fakturor genererade ännu.</div>'; return; }
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">';
+    html += '<thead><tr style="background:#f5f5f3;text-align:left"><th style="padding:8px">Fakturanr</th><th style="padding:8px">Städare</th><th style="padding:8px">Period</th><th style="padding:8px;text-align:right">Brutto</th><th style="padding:8px;text-align:right">Provision</th><th style="padding:8px;text-align:right">Netto</th><th style="padding:8px">Status</th><th style="padding:8px"></th></tr></thead><tbody>';
+    invoices.forEach(function(inv) {
+      var statusColors = { draft:'#666', sent:'#2563eb', accepted:'#166534', disputed:'#dc2626' };
+      var statusLabels = { draft:'Utkast', sent:'Skickad', accepted:'Godkänd', disputed:'Invändning' };
+      var sc = statusColors[inv.status] || '#666';
+      var sl = statusLabels[inv.status] || inv.status;
+      html += '<tr style="border-bottom:1px solid #eee">';
+      html += '<td style="padding:8px;font-weight:600">' + escHtml(inv.invoice_number) + '</td>';
+      html += '<td style="padding:8px">' + escHtml(inv.seller_name || '') + '</td>';
+      html += '<td style="padding:8px">' + escHtml(inv.period_start) + ' – ' + escHtml(inv.period_end) + '</td>';
+      html += '<td style="padding:8px;text-align:right">' + Number(inv.total_gross).toLocaleString('sv-SE') + '</td>';
+      html += '<td style="padding:8px;text-align:right">' + Number(inv.total_commission).toLocaleString('sv-SE') + '</td>';
+      html += '<td style="padding:8px;text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + '</td>';
+      html += '<td style="padding:8px"><span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600">' + sl + '</span></td>';
+      html += '<td style="padding:8px">';
+      if (inv.pdf_url) html += '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;font-size:.8rem">Visa</a>';
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch(e) {
+    console.error('loadVdInvoices error:', e);
+    el.innerHTML = '<div style="color:#dc2626">Kunde inte ladda fakturor.</div>';
+  }
+}
 
 </script>
 </body>

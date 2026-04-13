@@ -651,6 +651,32 @@ function switchLang(lang, btn) {
           </div>
         </div>
 
+        <!-- Affärsuppgifter för självfakturering -->
+        <div id="businessFields" style="margin-top:16px;padding:16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px">
+          <div style="font-size:.85rem;font-weight:700;color:#333;margin-bottom:4px">Affärsuppgifter (för självfakturering)</div>
+          <div style="font-size:.75rem;color:#666;margin-bottom:12px;line-height:1.5">Fyll i om du har F-skatt. Spick utfärdar självfakturor som bokföringsunderlag.</div>
+          <div class="field">
+            <label>Firmanamn / Företagsnamn</label>
+            <input type="text" id="businessName" placeholder="T.ex. Anna Andersson Städ">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Organisationsnummer</label>
+              <input type="text" id="businessOrgNumber" placeholder="XXXXXX-XXXX" pattern="\d{6}-\d{4}">
+              <div class="field-hint">Format: 800101-1234</div>
+            </div>
+            <div class="field">
+              <label>Faktureringsadress</label>
+              <input type="text" id="businessAddress" placeholder="Gatuadress, Postnr Stad">
+            </div>
+          </div>
+          <label class="check-row" style="background:transparent;padding:8px 0">
+            <input type="checkbox" id="chkVatRegistered">
+            <span style="font-size:.82rem;color:#555">Jag är momsregistrerad</span>
+          </label>
+          <div style="font-size:.72rem;color:#888;margin-top:4px;line-height:1.5">Genom att registrera dig godkänner du att Spick utfärdar självfakturor å dina vägnar enligt ML 11 kap.</div>
+        </div>
+
         <label class="check-row" style="background:transparent;padding:8px 12px">
           <input type="checkbox" id="chkMarketing">
           <span style="color:#888" data-i18n="chkMarketingLabel">Jag vill få tips om nya uppdrag och nyheter från Spick (valfritt).</span>
@@ -1089,6 +1115,15 @@ async function submitRegistration() {
     cleanerData.team_size = parseInt(document.getElementById('teamSize').value) || 2;
     cleanerData.owner_only = document.getElementById('ownerOnly').checked;
   }
+
+  // Business fields for self-billing
+  var bName = document.getElementById('businessName').value.trim();
+  var bOrg = document.getElementById('businessOrgNumber').value.trim();
+  var bAddr = document.getElementById('businessAddress').value.trim();
+  if (bName) cleanerData.business_name = bName;
+  if (bOrg) cleanerData.business_org_number = bOrg;
+  if (bAddr) cleanerData.business_address = bAddr;
+  cleanerData.vat_registered = document.getElementById('chkVatRegistered').checked;
 
   if (_inviteCompanyId) {
     cleanerData.invited_by_company_id = _inviteCompanyId;
