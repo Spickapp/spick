@@ -42,16 +42,6 @@ serve(async (req) => {
       customer_type, business_name
     } = await req.json();
 
-    // TODO: Om städaren har company_id och inte är is_company_owner,
-    // hämta företagsägarens stripe_account_id istället:
-    // const { data: owner } = await sb.from('cleaners')
-    //   .select('stripe_account_id')
-    //   .eq('company_id', cleaner.company_id)
-    //   .eq('is_company_owner', true)
-    //   .single();
-    // Använd owner.stripe_account_id för denna betalning.
-    // Aktivera detta när Rafaels Stripe Connect är klart.
-
     if (!booking_id || !email || !service) {
       return new Response(JSON.stringify({ error: "Saknade fält: booking_id, email, service krävs" }), {
         status: 400, headers: { "Content-Type": "application/json", ...CORS }
@@ -79,16 +69,99 @@ serve(async (req) => {
       });
     }
 
-    // ── SERVER-SIDE PRISBERÄKNING (klient-amount ignoreras) ──────
-    const PRICE_PER_HOUR: Record<string, number> = {
-      "Hemstädning": 349,
-      "Storstädning": 449,
-      "Flyttstädning": 499,
-      "Fönsterputs": 399,
-      "Kontorsstädning": 399,
-    };
-    const basePrice = PRICE_PER_HOUR[service] || 349;
+    // ── STRIPE CONNECT: Hämta mottagarens konto ──────────────────
+    let destinationAccountId: string | null = null;
+    let commissionRate = 0.17; // Default 17% privat
+    // deno-lint-ignore no-explicit-any
+    let cleanerData: any = null;
+
+    if (cleaner_id) {
+      const { data } = await sb
+        .from("cleaners")
+        .select("stripe_account_id, stripe_onboarding_status, company_id, is_company_owner, hourly_rate")
+        .eq("id", cleaner_id)
+        .single();
+      cleanerData = data;
+
+      if (cleanerData) {
+        commissionRate = customer_type === "foretag" ? 0.12 : 0.17;
+
+        if (cleanerData.company_id) {
+          // Städare tillhör företag → pengar till företagsägaren
+          const { data: owner } = await sb
+            .from("cleaners")
+            .select("stripe_account_id, stripe_onboarding_status")
+            .eq("company_id", cleanerData.company_id)
+            .eq("is_company_owner", true)
+            .single();
+
+          if (owner?.stripe_account_id && owner.stripe_onboarding_status === "complete") {
+            destinationAccountId = owner.stripe_account_id;
+          }
+        } else {
+          // Solo-städare → pengar direkt
+          if (cleanerData.stripe_account_id && cleanerData.stripe_onboarding_status === "complete") {
+            destinationAccountId = cleanerData.stripe_account_id;
+          }
+        }
+      }
+    }
+    console.log("[SPICK] Stripe Connect:", { cleaner_id, destinationAccountId, commissionRate });
+
+    // ── SERVER-SIDE PRISBERÄKNING med dynamiska priser ───────────
     const validHours = Math.max(2, Math.min(12, Number(hours) || 3));
+    const primaryService = service.split(" + ")[0].trim();
+    let basePrice = 349; // fallback
+
+    if (cleanerData) {
+      let resolved = false;
+
+      if (cleanerData.company_id) {
+        const { data: company } = await sb
+          .from("companies")
+          .select("use_company_pricing")
+          .eq("id", cleanerData.company_id)
+          .single();
+
+        if (company?.use_company_pricing === true) {
+          // Lager 1: Företagspris
+          const { data: compPrice } = await sb
+            .from("company_service_prices")
+            .select("price")
+            .eq("company_id", cleanerData.company_id)
+            .eq("service_type", primaryService)
+            .single();
+          if (compPrice?.price) { basePrice = compPrice.price; resolved = true; }
+        }
+      }
+
+      if (!resolved) {
+        // Lager 2: Individpris
+        const { data: svcPrice } = await sb
+          .from("cleaner_service_prices")
+          .select("price")
+          .eq("cleaner_id", cleaner_id)
+          .eq("service_type", primaryService)
+          .single();
+
+        if (svcPrice?.price) {
+          basePrice = svcPrice.price;
+        } else if (cleanerData.company_id) {
+          // Fallback: företagspris
+          const { data: compPrice } = await sb
+            .from("company_service_prices")
+            .select("price")
+            .eq("company_id", cleanerData.company_id)
+            .eq("service_type", primaryService)
+            .single();
+          if (compPrice?.price) basePrice = compPrice.price;
+        } else if (cleanerData.hourly_rate) {
+          basePrice = cleanerData.hourly_rate;
+        }
+      }
+    }
+    console.log("[SPICK] Price:", { primaryService, basePrice, hours: validHours });
+
     const grossAmount = basePrice * validHours;
     const finalAmount = rut ? Math.floor(grossAmount * 0.5) : grossAmount;
     
@@ -152,6 +225,20 @@ serve(async (req) => {
     if (phone) params.append("payment_method_options[klarna][setup_future_usage]", "none");
     params.append("billing_address_collection", "auto");
 
+    // ── STRIPE CONNECT: Destination charge ──────────────────────
+    if (destinationAccountId) {
+      const applicationFee = Math.round(amountOre * commissionRate);
+      params.append("payment_intent_data[transfer_data][destination]", destinationAccountId);
+      params.append("payment_intent_data[application_fee_amount]", String(applicationFee));
+      console.log("[SPICK] Destination charge:", {
+        destination: destinationAccountId,
+        applicationFee: applicationFee / 100 + " SEK",
+        cleanerGets: (amountOre - applicationFee) / 100 + " SEK",
+      });
+    } else {
+      console.log("[SPICK] No connected account — funds stay on platform");
+    }
+
     const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
@@ -173,6 +260,21 @@ serve(async (req) => {
       }), {
         status: 500, headers: { "Content-Type": "application/json", ...CORS }
       });
+    }
+
+    // ── Logga provision i commission_log ────────────────────────
+    if (destinationAccountId && session.id) {
+      const commissionSek = Math.round(finalAmount * commissionRate);
+      const netSek = finalAmount - commissionSek;
+      await sb.from("commission_log").insert({
+        booking_id,
+        cleaner_id,
+        gross_amount: finalAmount,
+        commission_pct: commissionRate * 100,
+        commission_amt: commissionSek,
+        net_amount: netSek,
+        level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
+      }).catch((e: Error) => console.warn("Commission log error:", e));
     }
 
     return new Response(JSON.stringify({ url: session.url, session_id: session.id }), {
