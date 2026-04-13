@@ -1197,6 +1197,23 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <button id="save-company-prices-btn" onclick="saveCompanyPrices()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer">Spara priser</button>
         </div>
 
+        <!-- Löneunderlag -->
+        <div id="salary-report-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:600;font-size:.92rem">Löneunderlag</div>
+              <div style="font-size:.72rem;color:var(--m);margin-top:2px">Summering per städare och månad</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="salary-month" onchange="loadSalaryReport()" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:.82rem;font-family:inherit;background:var(--w)"></select>
+              <button onclick="exportSalaryCSV()" style="padding:6px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Exportera CSV</button>
+            </div>
+          </div>
+          <div id="salary-report-content">
+            <div style="text-align:center;color:var(--m);padding:20px;font-size:.85rem">Välj månad för att visa löneunderlag</div>
+          </div>
+        </div>
+
         <div class="card" style="padding:20px" id="team-management-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <div>
@@ -3973,6 +3990,7 @@ function switchTab(tab) {
       renderTeam();
       loadReports();
       loadCompanyPrices();
+      loadSalaryReport();
     } else {
       renderEarnings();
       setTimeout(loadMyReviews, 200);
@@ -4154,12 +4172,14 @@ function setupVDNavigation() {
   var ratingToggle = document.getElementById('rating-toggle-card');
   var pricingToggle = document.getElementById('pricing-toggle-card');
   var pricesSection = document.getElementById('company-prices-section');
+  var salarySection = document.getElementById('salary-report-section');
   var reportsCard = document.getElementById('team-reports-card');
   if (vdForetag) {
     if (companyProfile) vdForetag.appendChild(companyProfile);
     if (ratingToggle) vdForetag.appendChild(ratingToggle);
     if (pricingToggle) vdForetag.appendChild(pricingToggle);
     if (pricesSection) vdForetag.appendChild(pricesSection);
+    if (salarySection) vdForetag.appendChild(salarySection);
     if (reportsCard) vdForetag.appendChild(reportsCard);
   }
 
@@ -5561,6 +5581,188 @@ async function saveCompanyPrices() {
     showToast('Kunde inte spara: ' + e.message);
   }
   if (btn) { btn.disabled = false; btn.textContent = 'Spara priser'; }
+}
+
+// ═══ LÖNEUNDERLAG ═══════════════════════════════════════════════
+var _salaryMonthsPopulated = false;
+var _svMonths = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+
+async function loadSalaryReport() {
+  var sel = document.getElementById('salary-month');
+  var wrap = document.getElementById('salary-report-content');
+  if (!sel || !wrap) return;
+
+  // Populate dropdown once
+  if (!_salaryMonthsPopulated) {
+    var now = new Date();
+    var opts = '';
+    for (var i = 0; i < 6; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      var val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      opts += '<option value="' + val + '">' + _svMonths[d.getMonth()] + ' ' + d.getFullYear() + '</option>';
+    }
+    sel.innerHTML = opts;
+    _salaryMonthsPopulated = true;
+  }
+
+  var monthVal = sel.value;
+  if (!monthVal) return;
+  var parts = monthVal.split('-');
+  var year = parseInt(parts[0]);
+  var month = parseInt(parts[1]);
+  var startDate = monthVal + '-01';
+  var lastDay = new Date(year, month, 0).getDate();
+  var endDate = monthVal + '-' + String(lastDay).padStart(2, '0');
+
+  wrap.innerHTML = '<div style="text-align:center;color:var(--m);padding:20px;font-size:.85rem">Laddar...</div>';
+
+  // Use cached team members or fetch
+  var members = _teamMembers && _teamMembers.length ? _teamMembers : [];
+  if (!members.length && window._companyId) {
+    try {
+      var mRes = await fetch(SUPA_URL + '/rest/v1/cleaners?select=id,full_name,hourly_rate&company_id=eq.' + window._companyId, { headers: _authHeaders() });
+      members = await mRes.json();
+      if (!Array.isArray(members)) members = [];
+    } catch(e) { members = []; }
+  }
+  if (!members.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">👥</div><p style="font-size:.85rem;margin:0">Inga teammedlemmar</p></div>';
+    window._salaryData = null;
+    return;
+  }
+
+  var ids = members.map(function(m) { return m.id; });
+  var idFilter = ids.join(',');
+
+  // Fetch bookings + commission_log in parallel
+  var bookings = [], commissions = [];
+  try {
+    var bUrl = SUPA_URL + '/rest/v1/bookings?select=id,cleaner_id,booking_hours,total_price,payment_status,booking_date,service_type,status,customer_name'
+      + '&cleaner_id=in.(' + idFilter + ')&booking_date=gte.' + startDate + '&booking_date=lte.' + endDate + '&payment_status=eq.paid';
+    var cUrl = SUPA_URL + '/rest/v1/commission_log?select=booking_id,cleaner_id,gross_amount,net_amount,commission_amt,commission_pct'
+      + '&cleaner_id=in.(' + idFilter + ')';
+    var results = await Promise.all([
+      fetch(bUrl, { headers: _authHeaders() }).then(function(r) { return r.json(); }),
+      fetch(cUrl, { headers: _authHeaders() }).then(function(r) { return r.json(); })
+    ]);
+    bookings = Array.isArray(results[0]) ? results[0] : [];
+    commissions = Array.isArray(results[1]) ? results[1] : [];
+  } catch(e) { console.warn('[SPICK] salary fetch error:', e); }
+
+  // Index commissions by booking_id
+  var commMap = {};
+  commissions.forEach(function(c) { commMap[c.booking_id] = c; });
+
+  // Group by cleaner
+  var byCleanerId = {};
+  ids.forEach(function(id) { byCleanerId[id] = []; });
+  bookings.forEach(function(b) {
+    if (byCleanerId[b.cleaner_id]) byCleanerId[b.cleaner_id].push(b);
+  });
+
+  // Build per-cleaner summaries
+  var memberMap = {};
+  members.forEach(function(m) { memberMap[m.id] = m; });
+
+  var salaryRows = [];
+  var totJobs = 0, totHours = 0, totGross = 0, totComm = 0, totNet = 0;
+
+  ids.forEach(function(id) {
+    var m = memberMap[id] || {};
+    var bs = byCleanerId[id] || [];
+    var jobs = bs.length;
+    var hours = bs.reduce(function(s, b) { return s + (parseFloat(b.booking_hours) || 0); }, 0);
+    var gross = bs.reduce(function(s, b) { return s + (parseFloat(b.total_price) || 0); }, 0);
+    var comm = 0;
+    bs.forEach(function(b) {
+      var cl = commMap[b.id];
+      comm += cl ? (parseFloat(cl.commission_amt) || 0) : Math.round(((parseFloat(b.total_price) || 0) * 0.12) * 100) / 100;
+    });
+    var net = gross - comm;
+    var commPct = gross > 0 ? Math.round((comm / gross) * 100) : 12;
+
+    salaryRows.push({ id: id, name: m.full_name || 'Okänd', jobs: jobs, hours: hours, gross: gross, comm: comm, commPct: commPct, net: net, bookings: bs });
+    totJobs += jobs; totHours += hours; totGross += gross; totComm += comm; totNet += net;
+  });
+
+  // Sort: most revenue first
+  salaryRows.sort(function(a, b) { return b.gross - a.gross; });
+
+  // Cache for CSV export
+  window._salaryData = { month: monthVal, monthLabel: _svMonths[month - 1] + ' ' + year, rows: salaryRows, totJobs: totJobs, totHours: totHours, totGross: totGross, totComm: totComm, totNet: totNet };
+
+  // Render
+  if (!bookings.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">📄</div><p style="font-size:.85rem;margin:0">Inga betalda bokningar denna månad</p></div>';
+    return;
+  }
+
+  function fmtKr(n) { return Math.round(n).toLocaleString('sv-SE') + ' kr'; }
+
+  var html = '';
+  salaryRows.forEach(function(row) {
+    var detailId = 'salary-detail-' + row.id;
+    html += '<div style="background:var(--w);border:1px solid var(--gray-200);border-radius:10px;padding:14px;margin-bottom:10px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+    html += '<span style="font-weight:600;font-size:.92rem">' + escHtml(row.name) + '</span>';
+    html += '<span style="font-size:.78rem;color:var(--m)">' + row.jobs + ' jobb</span>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:var(--m)">Arbetstimmar</span><span style="font-variant-numeric:tabular-nums">' + row.hours.toFixed(1) + 'h</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:var(--m)">Bruttointäkt</span><span style="font-variant-numeric:tabular-nums">' + fmtKr(row.gross) + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:#92400E">Spick-provision</span><span style="font-variant-numeric:tabular-nums;color:#92400E">-' + fmtKr(row.comm) + ' (' + row.commPct + '%)</span></div>';
+    html += '<div style="border-top:1px solid var(--gray-200);margin:6px 0"></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:.88rem;font-weight:700;padding:3px 0"><span style="color:var(--g)">Netto till företaget</span><span style="font-variant-numeric:tabular-nums;color:var(--g)">' + fmtKr(row.net) + '</span></div>';
+
+    if (row.bookings.length) {
+      html += '<button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.nextElementSibling.style.display===\'none\'?\'▶ Visa detaljer\':\'▼ Dölj detaljer\'" style="margin-top:8px;background:none;border:none;color:var(--spick-500);font-size:.78rem;font-weight:600;cursor:pointer;padding:4px 0;font-family:inherit">▶ Visa detaljer</button>';
+      html += '<div style="display:none;margin-top:8px">';
+      html += '<table style="width:100%;font-size:.78rem;border-collapse:collapse">';
+      html += '<tr style="color:var(--m);text-align:left"><th style="padding:4px 6px;font-weight:500">Datum</th><th style="padding:4px 6px;font-weight:500">Tjänst</th><th style="padding:4px 6px;font-weight:500">Kund</th><th style="padding:4px 6px;font-weight:500;text-align:right">Timmar</th><th style="padding:4px 6px;font-weight:500;text-align:right">Belopp</th></tr>';
+      row.bookings.sort(function(a, b) { return a.booking_date < b.booking_date ? -1 : 1; });
+      row.bookings.forEach(function(b) {
+        html += '<tr style="border-top:1px solid var(--gray-100)">';
+        html += '<td style="padding:4px 6px;white-space:nowrap">' + (b.booking_date || '').slice(5) + '</td>';
+        html += '<td style="padding:4px 6px">' + escHtml(b.service_type || '') + '</td>';
+        html += '<td style="padding:4px 6px">' + escHtml(b.customer_name || '') + '</td>';
+        html += '<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums">' + (parseFloat(b.booking_hours) || 0) + 'h</td>';
+        html += '<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums">' + fmtKr(parseFloat(b.total_price) || 0) + '</td>';
+        html += '</tr>';
+      });
+      html += '</table></div>';
+    }
+    html += '</div>';
+  });
+
+  // Total row
+  html += '<div style="background:#F0FDF4;border:1.5px solid var(--g);border-radius:10px;padding:14px;margin-top:4px">';
+  html += '<div style="font-weight:700;font-size:.92rem;margin-bottom:6px">TOTALT ' + (_svMonths[month - 1] || '').toUpperCase() + ' ' + year + '</div>';
+  html += '<div style="font-size:.84rem;color:var(--gray-600)">' + totJobs + ' jobb · ' + totHours.toFixed(1) + 'h · ' + fmtKr(totGross) + ' brutto</div>';
+  html += '<div style="font-size:.84rem;color:var(--gray-600);margin-top:2px">Provision: -' + fmtKr(totComm) + ' · <strong style="color:var(--g)">Netto: ' + fmtKr(totNet) + '</strong></div>';
+  html += '</div>';
+
+  wrap.innerHTML = html;
+}
+
+function exportSalaryCSV() {
+  var d = window._salaryData;
+  if (!d || !d.rows) { showToast('Ladda löneunderlag först'); return; }
+
+  var csv = 'Städare;Antal jobb;Timmar;Bruttointäkt;Provision (%);Provision (kr);Netto\n';
+  d.rows.forEach(function(r) {
+    csv += '"' + (r.name || '').replace(/"/g, '""') + '";' + r.jobs + ';' + r.hours.toFixed(1) + ';' + Math.round(r.gross) + ';' + r.commPct + ';' + Math.round(r.comm) + ';' + Math.round(r.net) + '\n';
+  });
+  csv += '"TOTALT";' + d.totJobs + ';' + d.totHours.toFixed(1) + ';' + Math.round(d.totGross) + ';;' + Math.round(d.totComm) + ';' + Math.round(d.totNet) + '\n';
+
+  var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'loneunderlag-' + d.month + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV exporterad');
 }
 
 
