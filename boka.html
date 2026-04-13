@@ -742,13 +742,14 @@ document.addEventListener('DOMContentLoaded', () => {
   state.services = [];
   window.companyAllowChoice = true; // default
   if (window.preCompanyId) {
-    fetch(SUPA + '/rest/v1/companies?select=id,name,display_name,allow_customer_choice,description,show_individual_ratings&id=eq.' + window.preCompanyId, {headers: H})
+    fetch(SUPA + '/rest/v1/companies?select=id,name,display_name,allow_customer_choice,description,show_individual_ratings,use_company_pricing&id=eq.' + window.preCompanyId, {headers: H})
       .then(r => r.json())
       .then(rows => {
         if (rows && rows.length > 0) {
           window.companyData = rows[0];
           window.companyAllowChoice = rows[0].allow_customer_choice !== false;
           window.companyShowIndividualRatings = rows[0].show_individual_ratings !== false;
+          window.companyUseCompanyPricing = rows[0].use_company_pricing === true;
           // Fetch company-level prices
           fetch(SUPA + '/rest/v1/company_service_prices?company_id=eq.' + window.preCompanyId, {headers: H})
             .then(function(r){return r.json()})
@@ -1824,20 +1825,32 @@ async function loadAvailableCleaners() {
     // Beräkna prisrange med per-tjänst-priser
     var displayRates = cleaners.map(function(cl) {
       var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
-        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
-        // Lager 2 fallback: company price
-        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+        var sp = null;
+        // Lager 1: Om use_company_pricing = true, ALLTID företagspris
+        if (window.companyUseCompanyPricing && window.companyPrices && window.companyPrices[_primarySvc]) {
           sp = window.companyPrices[_primarySvc];
+        } else {
+          // Lager 2: Individpris först, sedan företagspris som fallback
+          sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+          if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+            sp = window.companyPrices[_primarySvc];
+          }
         }
       if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
       return sp ? sp.price : (cl.hourly_rate || 350);
     });
     var hasPerSqm = cleaners.some(function(cl) {
       var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
-        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
-        // Lager 2 fallback: company price
-        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+        var sp = null;
+        // Lager 1: Om use_company_pricing = true, ALLTID företagspris
+        if (window.companyUseCompanyPricing && window.companyPrices && window.companyPrices[_primarySvc]) {
           sp = window.companyPrices[_primarySvc];
+        } else {
+          // Lager 2: Individpris först, sedan företagspris som fallback
+          sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+          if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+            sp = window.companyPrices[_primarySvc];
+          }
         }
       return sp && sp.price_type === 'per_sqm';
     });
@@ -1869,20 +1882,32 @@ async function loadAvailableCleaners() {
     if (cleaners.length) {
       var displayRates = cleaners.map(function(cl) {
         var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
-        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
-        // Lager 2 fallback: company price
-        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+        var sp = null;
+        // Lager 1: Om use_company_pricing = true, ALLTID företagspris
+        if (window.companyUseCompanyPricing && window.companyPrices && window.companyPrices[_primarySvc]) {
           sp = window.companyPrices[_primarySvc];
+        } else {
+          // Lager 2: Individpris först, sedan företagspris som fallback
+          sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+          if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+            sp = window.companyPrices[_primarySvc];
+          }
         }
         if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
         return sp ? sp.price : (cl.hourly_rate || 350);
       });
       var hasPerSqm = cleaners.some(function(cl) {
         var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
-        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
-        // Lager 2 fallback: company price
-        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+        var sp = null;
+        // Lager 1: Om use_company_pricing = true, ALLTID företagspris
+        if (window.companyUseCompanyPricing && window.companyPrices && window.companyPrices[_primarySvc]) {
           sp = window.companyPrices[_primarySvc];
+        } else {
+          // Lager 2: Individpris först, sedan företagspris som fallback
+          sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+          if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+            sp = window.companyPrices[_primarySvc];
+          }
         }
         return sp && sp.price_type === 'per_sqm';
       });
