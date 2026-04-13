@@ -377,7 +377,7 @@ serve(async (req) => {
 
     // ── 12. STRIPE CHECKOUT ────────────────────────
     // Sanity check: vägra orimliga belopp (undantag: kredit-betald)
-    if (stripeAmount > 0 && stripeAmount < 300) {
+    if (stripeAmount > 0 && stripeAmount < 50) {
       console.error("[SPICK] Price sanity failed:", { stripeAmount, netPrice, basePrice: pricing.basePricePerHour, validHours });
       await supabase.from("bookings").delete().eq("id", bookingId);
       return json(400, { error: "Ogiltigt belopp — kontrollera prisinställningar" });
