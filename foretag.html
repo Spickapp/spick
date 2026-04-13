@@ -6,66 +6,183 @@
 <title>Företag på Spick</title>
 <meta name="description" content="Boka professionell städning via Spick — verifierade städare, säker betalning, RUT-avdrag.">
 <link rel="icon" href="favicon.ico">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="canonical" id="canonical-link">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--g:#0F6E56;--gl:#1A8A6E;--bg:#FAFAF8;--w:#fff;--m:#6B6960;--border:#E8E8E4;--radius:16px}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:#1C1C1A;-webkit-font-smoothing:antialiased}
-.header{background:var(--g);padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-.header a{color:#fff;text-decoration:none;font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700}
-.header .btn-book{background:#fff;color:var(--g);padding:8px 20px;border-radius:99px;font-weight:600;font-size:.85rem;text-decoration:none}
-.container{max-width:800px;margin:0 auto;padding:24px 20px}
-.hero{text-align:center;padding:40px 20px 32px}
-.hero-avatar{width:80px;height:80px;border-radius:20px;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 16px;font-family:'Playfair Display',serif}
-.hero h1{font-family:'Playfair Display',serif;font-size:1.8rem;color:#1C1C1A;margin-bottom:4px}
-.hero .org{font-size:.85rem;color:var(--m)}
-.hero .desc{font-size:.95rem;color:#4A4A44;margin-top:12px;line-height:1.6;max-width:500px;margin-left:auto;margin-right:auto}
-.stats{display:flex;justify-content:center;gap:24px;margin-top:20px;flex-wrap:wrap}
-.stat{text-align:center}
-.stat .num{font-size:1.3rem;font-weight:700;color:var(--g)}
-.stat .lbl{font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em}
-.section{margin-top:32px}
-.section-title{font-family:'Playfair Display',serif;font-size:1.15rem;margin-bottom:16px}
-.card{background:var(--w);border-radius:var(--radius);padding:20px;border:1px solid var(--border);margin-bottom:12px}
-.member{display:flex;align-items:center;gap:14px}
-.member-avatar{width:48px;height:48px;border-radius:50%;background:#E1F5EE;color:var(--g);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0}
-.member-name{font-weight:600;font-size:.95rem}
-.member-meta{font-size:.78rem;color:var(--m);margin-top:2px}
-.member-services{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.member-services span{background:#E1F5EE;color:var(--g);font-size:.7rem;padding:2px 8px;border-radius:99px;font-weight:500}
-.review{padding:16px 0;border-bottom:1px solid var(--border)}
-.review:last-child{border-bottom:none}
-.review-header{display:flex;justify-content:space-between;align-items:center}
-.review-name{font-weight:600;font-size:.88rem}
-.review-date{font-size:.75rem;color:var(--m)}
-.review-stars{color:#F59E0B;font-size:.9rem;margin-top:4px}
-.review-text{font-size:.85rem;color:#4A4A44;margin-top:6px;line-height:1.5;font-style:italic}
-.cta{text-align:center;padding:40px 20px;margin-top:24px}
-.cta h2{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:8px}
-.cta p{font-size:.88rem;color:var(--m);margin-bottom:20px}
-.cta .btn{display:inline-block;background:var(--g);color:#fff;padding:14px 40px;border-radius:99px;font-weight:600;font-size:1rem;text-decoration:none;transition:background .2s}
-.cta .btn:hover{background:var(--gl)}
-.trust{display:flex;justify-content:center;gap:20px;margin-top:16px;flex-wrap:wrap}
-.trust span{font-size:.78rem;color:var(--m)}
-.footer{text-align:center;padding:24px;font-size:.75rem;color:var(--m);border-top:1px solid var(--border);margin-top:32px}
-.loading{text-align:center;padding:80px 20px;color:var(--m);font-size:.9rem}
-.not-found{text-align:center;padding:80px 20px}
+:root{--g:#0F6E56;--g2:#1D9E75;--g3:#E1F5EE;--bg:#FAFAF8;--w:#fff;--t:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--shadow:0 2px 12px rgba(0,0,0,.06);--radius:16px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased}
+
+/* ── NAV ── */
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{color:var(--g);text-decoration:none;font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700}
+.nav-cta{background:var(--g);color:#fff;padding:9px 22px;border-radius:99px;font-weight:600;font-size:.82rem;text-decoration:none;transition:all .2s}
+.nav-cta:hover{background:var(--g2);transform:translateY(-1px)}
+
+/* ── HERO ── */
+.hero{position:relative;overflow:hidden;background:linear-gradient(165deg,#073D30 0%,#0F6E56 40%,#1D9E75 100%);padding:48px 24px 44px;color:#fff}
+.hero::before{content:'';position:absolute;top:-60%;right:-20%;width:80%;height:200%;background:radial-gradient(circle,rgba(255,255,255,.04) 0%,transparent 70%);pointer-events:none}
+.hero-inner{max-width:720px;margin:0 auto;position:relative}
+.hero-top{display:flex;align-items:center;gap:18px;margin-bottom:20px}
+.hero-avatar{width:72px;height:72px;border-radius:18px;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;font-family:'Playfair Display',serif;flex-shrink:0;border:2px solid rgba(255,255,255,.15);backdrop-filter:blur(8px)}
+.hero-avatar img{width:100%;height:100%;object-fit:cover;border-radius:16px}
+.hero-info h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+.hero-info .tagline{font-size:.88rem;opacity:.8;margin-top:4px}
+.hero-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.hero-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);padding:5px 12px;border-radius:8px;font-size:.72rem;font-weight:600;letter-spacing:.02em;backdrop-filter:blur(4px)}
+.hero-desc{font-size:.92rem;line-height:1.7;opacity:.88;max-width:540px;margin-bottom:24px}
+.hero-stats{display:flex;gap:28px;flex-wrap:wrap}
+.hero-stat-val{font-size:1.5rem;font-weight:700;line-height:1}
+.hero-stat-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin-top:3px}
+.hero-cta-wrap{margin-top:28px;display:flex;gap:12px;flex-wrap:wrap}
+.hero-btn{display:inline-block;background:#fff;color:var(--g);padding:14px 36px;border-radius:12px;font-weight:700;font-size:.95rem;text-decoration:none;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.hero-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.hero-btn-sec{display:inline-flex;align-items:center;gap:6px;color:#fff;font-size:.85rem;font-weight:500;text-decoration:none;padding:14px 20px;border:1.5px solid rgba(255,255,255,.25);border-radius:12px;transition:all .2s}
+.hero-btn-sec:hover{background:rgba(255,255,255,.08)}
+
+/* ── CONTAINER ── */
+.container{max-width:720px;margin:0 auto;padding:24px 20px 120px}
+
+/* ── SECTIONS ── */
+.section{margin-bottom:20px;animation:fadeUp .4s ease both}
+.section:nth-child(2){animation-delay:.05s}
+.section:nth-child(3){animation-delay:.1s}
+.section:nth-child(4){animation-delay:.15s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.section-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;color:var(--t)}
+.section-link{font-size:.78rem;color:var(--g);font-weight:600;text-decoration:none}
+.card{background:var(--w);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}
+
+/* ── SERVICES ── */
+.svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.svc-card{background:var(--w);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .2s;cursor:pointer;text-decoration:none;display:block;color:var(--t)}
+.svc-card:hover{border-color:var(--g);box-shadow:0 4px 16px rgba(15,110,86,.08);transform:translateY(-2px)}
+.svc-icon{font-size:1.2rem;margin-bottom:8px}
+.svc-name{font-weight:600;font-size:.88rem;margin-bottom:4px}
+.svc-price{color:var(--g);font-weight:700;font-size:1rem}
+.svc-rut{font-size:.7rem;color:var(--m);margin-top:1px}
+.svc-cta{display:inline-block;margin-top:8px;font-size:.75rem;color:var(--g);font-weight:600}
+
+/* ── TEAM ── */
+.team-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.team-scroll::-webkit-scrollbar{height:4px}
+.team-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.team-card{min-width:160px;max-width:180px;background:var(--w);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;scroll-snap-align:start;transition:all .2s;flex-shrink:0;text-decoration:none;color:var(--t);display:block}
+.team-card:hover{border-color:var(--g);box-shadow:0 4px 16px rgba(15,110,86,.08);transform:translateY(-2px)}
+.team-av{width:56px;height:56px;border-radius:50%;background:var(--g3);color:var(--g);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;margin:0 auto 10px;overflow:hidden}
+.team-av img{width:100%;height:100%;object-fit:cover}
+.team-name{font-weight:600;font-size:.9rem}
+.team-stars{color:#F59E0B;font-size:.78rem;margin-top:3px}
+.team-meta{font-size:.72rem;color:var(--m);margin-top:2px}
+.team-svcs{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:6px}
+.team-svc{background:var(--g3);color:var(--g);font-size:.62rem;padding:2px 7px;border-radius:99px;font-weight:500}
+.team-book{display:block;margin-top:10px;padding:8px;background:var(--g3);color:var(--g);border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;transition:background .2s}
+.team-book:hover{background:#C2EDDD}
+
+/* ── FEATURED CLEANER ── */
+.featured{border:2px solid var(--g);border-radius:var(--radius);background:var(--w);padding:20px;margin-bottom:20px;position:relative}
+.featured-badge{position:absolute;top:14px;right:14px;background:var(--g);color:#fff;font-size:.68rem;padding:4px 12px;border-radius:99px;font-weight:600}
+.featured-main{display:flex;gap:16px;align-items:center;margin-bottom:14px}
+.featured-av{width:64px;height:64px;border-radius:50%;background:var(--g3);color:var(--g);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;flex-shrink:0;overflow:hidden}
+.featured-av img{width:100%;height:100%;object-fit:cover}
+.featured-name{font-weight:700;font-size:1.05rem}
+.featured-meta{font-size:.82rem;color:var(--m);margin-top:2px}
+.featured-bio{font-size:.85rem;color:#4A4A44;font-style:italic;margin-top:6px;line-height:1.5}
+.featured-btn{display:block;text-align:center;padding:13px;background:var(--g);color:#fff;border-radius:12px;font-weight:600;font-size:.92rem;text-decoration:none;margin-top:14px;transition:all .2s}
+.featured-btn:hover{background:var(--g2)}
+
+/* ── TRUST ── */
+.trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.trust-item{background:var(--w);border:1px solid var(--border);border-radius:12px;padding:16px 12px;text-align:center}
+.trust-check{width:28px;height:28px;border-radius:50%;background:var(--g3);color:var(--g);display:flex;align-items:center;justify-content:center;font-size:.85rem;margin:0 auto 8px;font-weight:700}
+.trust-label{font-size:.78rem;color:var(--t);font-weight:500;line-height:1.3}
+
+/* ── REVIEWS ── */
+.review{padding:16px 20px;border-bottom:1px solid #F2F2EE}
+.review:last-child{border:none}
+.review-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.review-who{font-weight:600;font-size:.88rem}
+.review-date{font-size:.72rem;color:var(--m)}
+.review-stars{color:#F59E0B;font-size:.82rem;letter-spacing:1px}
+.review-text{font-size:.85rem;color:#4A4A44;line-height:1.6;margin-top:4px}
+
+/* ── AREAS ── */
+.area-tags{display:flex;flex-wrap:wrap;gap:6px}
+.area-tag{background:var(--w);border:1px solid var(--border);padding:6px 14px;border-radius:99px;font-size:.8rem;color:var(--t);font-weight:500;transition:all .2s}
+.area-tag:hover{border-color:var(--g);color:var(--g)}
+
+/* ── FAQ ── */
+.faq-item{padding:14px 20px;border-bottom:1px solid #F2F2EE;cursor:pointer;transition:background .15s}
+.faq-item:hover{background:#FCFCFA}
+.faq-item:last-child{border:none}
+.faq-q{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:.88rem}
+.faq-arrow{font-size:.9rem;color:var(--m);transition:transform .2s}
+.faq-item.open .faq-arrow{transform:rotate(45deg)}
+.faq-a{font-size:.85rem;color:#4A4A44;line-height:1.6;margin-top:10px;display:none}
+.faq-item.open .faq-a{display:block}
+
+/* ── STICKY CTA ── */
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:12px 20px;z-index:40;transform:translateY(100%);transition:transform .3s ease}
+.sticky-cta.visible{transform:translateY(0)}
+.sticky-inner{max-width:720px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sticky-info{font-size:.82rem;color:var(--m)}
+.sticky-info strong{color:var(--t);font-size:.88rem}
+.sticky-btn{background:var(--g);color:#fff;padding:13px 32px;border-radius:12px;font-weight:700;font-size:.92rem;text-decoration:none;white-space:nowrap;transition:all .2s}
+.sticky-btn:hover{background:var(--g2)}
+
+/* ── FOOTER ── */
+.footer{text-align:center;padding:20px;font-size:.75rem;color:var(--m);border-top:1px solid var(--border)}
+.footer a{color:var(--g);font-weight:600;text-decoration:none}
+
+/* ── STATES ── */
+.loading{text-align:center;padding:100px 20px;color:var(--m);font-size:.9rem}
+.not-found{text-align:center;padding:100px 20px}
 .not-found h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:8px}
-@media(max-width:600px){.hero h1{font-size:1.4rem}.stats{gap:16px}}
+
+/* ── MOBILE ── */
+@media(max-width:600px){
+  .hero{padding:36px 20px 32px}
+  .hero-info h1{font-size:1.4rem}
+  .hero-stats{gap:16px}
+  .hero-stat-val{font-size:1.2rem}
+  .hero-cta-wrap{flex-direction:column}
+  .hero-btn,.hero-btn-sec{text-align:center}
+  .svc-grid{grid-template-columns:1fr}
+  .trust-grid{grid-template-columns:1fr 1fr}
+  .team-card{min-width:140px}
+  .sticky-info{display:none}
+}
 </style>
 </head>
 <body>
-<div class="header">
-  <a href="index.html">Spick</a>
-  <a href="#boka" class="btn-book" id="header-book-btn">Boka städning →</a>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Spick</a>
+  <a href="#boka" class="nav-cta" id="header-book-btn">Boka städning</a>
+</nav>
+
+<div id="content"><div class="loading">Laddar företagsprofil...</div></div>
+
+<!-- Sticky CTA (visas vid scroll) -->
+<div class="sticky-cta" id="sticky-cta">
+  <div class="sticky-inner">
+    <div class="sticky-info"><strong id="sticky-name"></strong> · Professionell städning</div>
+    <a href="#boka" class="sticky-btn" id="sticky-book-btn">Boka nu</a>
+  </div>
 </div>
-<div id="content"><div class="loading">🏢 Laddar företagsprofil...</div></div>
+
 <script src="js/config.js"></script>
 <script>
 var SU = SPICK.SUPA_URL, SK = SPICK.SUPA_KEY;
 var H = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+var svcIcons = {
+  'Hemstädning': '🏠', 'Storstädning': '✨', 'Flyttstädning': '📦',
+  'Fönsterputs': '🪟', 'Kontorsstädning': '🏢', 'Trappstädning': '🏢'
+};
 
 async function init() {
   var p = new URLSearchParams(window.location.search);
@@ -85,10 +202,21 @@ async function init() {
     var co = cos[0];
     if (!co) { document.getElementById('content').innerHTML = '<div class="not-found"><h2>Företaget hittades inte</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--g);font-weight:600">← Boka städning</a></div>'; return; }
 
-    var mr = await fetch(SU + '/rest/v1/cleaners?select=id,full_name,first_name,bio,avatar_url,services,hourly_rate,avg_rating,review_count,completed_jobs,status,owner_only&company_id=eq.' + co.id + '&is_approved=eq.true', { headers: H });
+    // Hämta teammedlemmar
+    var mr = await fetch(SU + '/rest/v1/cleaners?select=id,full_name,first_name,bio,avatar_url,services,hourly_rate,avg_rating,review_count,completed_jobs,status,owner_only,city&company_id=eq.' + co.id + '&is_approved=eq.true', { headers: H });
     var members = await mr.json() || [];
     var active = members.filter(function(m) { return !m.owner_only && m.status !== 'pausad'; });
 
+    // Hämta tjänstpriser
+    var activIds = active.map(function(m){ return m.id; });
+    var svcPrices = [];
+    if (activIds.length) {
+      var spf = activIds.map(function(id){ return 'cleaner_id.eq.' + id; }).join(',');
+      var spr = await fetch(SU + '/rest/v1/cleaner_service_prices?select=cleaner_id,service_type,price,price_type&or=(' + spf + ')', { headers: H });
+      svcPrices = await spr.json() || [];
+    }
+
+    // Hämta recensioner
     var ids = members.map(function(m) { return m.id; });
     var reviews = [];
     if (ids.length) {
@@ -100,115 +228,246 @@ async function init() {
     var totalJobs = members.reduce(function(s, m) { return s + (m.completed_jobs || 0); }, 0);
     var avgRating = reviews.length ? reviews.reduce(function(s, r) { return s + (r.cleaner_rating || 0); }, 0) / reviews.length : 0;
     var nameMap = {}; members.forEach(function(m) { nameMap[m.id] = m.full_name || m.first_name || ''; });
+    var displayName = co.display_name || co.name;
+    var bookUrl = 'boka.html?company=' + co.id;
 
-    document.title = (co.name || 'Företag') + ' — Spick';
-    document.getElementById('header-book-btn').href = 'boka.html?company=' + co.id;
+    // Bygg unika tjänster med lägsta pris
+    var svcMap = {};
+    svcPrices.forEach(function(sp) {
+      var key = sp.service_type;
+      if (!svcMap[key] || sp.price < svcMap[key].price) svcMap[key] = sp;
+    });
+    // Fallback: lägg till tjänster från städarprofiler
+    active.forEach(function(m) {
+      if (Array.isArray(m.services)) {
+        m.services.forEach(function(s) {
+          if (!svcMap[s]) svcMap[s] = { service_type: s, price: m.hourly_rate || 350, price_type: 'hourly' };
+        });
+      }
+    });
+    var uniqueServices = Object.values(svcMap);
 
-    var h = '<div class="hero"><div class="hero-avatar">' + (co.name || '?').charAt(0) + '</div>';
-    h += '<h1>' + esc(co.name) + '</h1>';
-    if (co.org_number) h += '<div class="org">Org.nr: ' + esc(co.org_number) + '</div>';
-    if (co.description) h += '<div class="desc">' + esc(co.description) + '</div>';
-    h += '<div class="stats">';
-    if (avgRating > 0) h += '<div class="stat"><div class="num">⭐ ' + avgRating.toFixed(1) + '</div><div class="lbl">Snittbetyg</div></div>';
-    h += '<div class="stat"><div class="num">' + totalJobs + '</div><div class="lbl">Utförda jobb</div></div>';
-    h += '<div class="stat"><div class="num">' + active.length + '</div><div class="lbl">Städare</div></div>';
-    h += '</div></div><div class="container">';
+    // Samla städer
+    var cities = [];
+    active.forEach(function(m) { if (m.city && cities.indexOf(m.city) === -1) cities.push(m.city); });
 
-    // If specific cleaner is requested, show them first
-    var featuredCleaner = null;
+    // Update page
+    document.title = displayName + ' — Professionell städning | Spick';
+    document.getElementById('header-book-btn').href = bookUrl;
+    document.getElementById('sticky-book-btn').href = bookUrl;
+    document.getElementById('sticky-name').textContent = displayName;
+    var canon = document.getElementById('canonical-link');
+    if (canon) canon.href = 'https://spick.se/f/' + (co.slug || co.id);
+
+    // ── BUILD HTML ──
+    var h = '';
+
+    // ── HERO ──
+    var avatarInitial = (displayName || '?').charAt(0);
+    h += '<div class="hero"><div class="hero-inner">';
+    h += '<div class="hero-top">';
+    h += '<div class="hero-avatar">' + avatarInitial + '</div>';
+    h += '<div class="hero-info"><h1>' + esc(displayName) + '</h1>';
+    if (co.org_number) h += '<div class="tagline">Org.nr ' + esc(co.org_number) + '</div>';
+    h += '<div class="hero-badges">';
+    h += '<span class="hero-badge">✓ F-skattsedel</span>';
+    h += '<span class="hero-badge">✓ RUT-avdrag</span>';
+    if (totalJobs >= 10) h += '<span class="hero-badge">✓ ' + totalJobs + '+ jobb</span>';
+    h += '</div></div></div>';
+
+    if (co.description) h += '<div class="hero-desc">' + esc(co.description) + '</div>';
+
+    h += '<div class="hero-stats">';
+    if (avgRating > 0) h += '<div><div class="hero-stat-val">' + avgRating.toFixed(1) + '</div><div class="hero-stat-lbl">Snittbetyg</div></div>';
+    h += '<div><div class="hero-stat-val">' + totalJobs + '</div><div class="hero-stat-lbl">Utförda jobb</div></div>';
+    h += '<div><div class="hero-stat-val">' + active.length + '</div><div class="hero-stat-lbl">Städare</div></div>';
+    if (reviews.length) h += '<div><div class="hero-stat-val">' + reviews.length + '</div><div class="hero-stat-lbl">Recensioner</div></div>';
+    h += '</div>';
+
+    h += '<div class="hero-cta-wrap">';
+    h += '<a href="' + bookUrl + '" class="hero-btn">Boka städning →</a>';
+    h += '<a href="tel:+46760505153" class="hero-btn-sec"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Ring oss</a>';
+    h += '</div>';
+    h += '</div></div>';
+
+    h += '<div class="container">';
+
+    // ── FEATURED CLEANER (nästlad URL) ──
     if (cleanerSlug) {
-      featuredCleaner = active.find(function(m) {
+      var featuredCleaner = active.find(function(m) {
         var mSlug = (m.full_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         return mSlug === cleanerSlug || m.id === cleanerSlug;
       });
       if (featuredCleaner) {
         var fStars = '', fRat = parseFloat(featuredCleaner.avg_rating) || 0;
-        for (var i = 0; i < 5; i++) fStars += i < Math.round(fRat) ? '\u2b50' : '\u2606';
+        for (var i = 0; i < 5; i++) fStars += i < Math.round(fRat) ? '★' : '☆';
         var fSvcs = Array.isArray(featuredCleaner.services) ? featuredCleaner.services : [];
-        h += '<div class="container"><div class="section"><div class="section-title">Boka direkt</div>';
-        h += '<div class="card" style="border:2px solid var(--g);position:relative">';
-        h += '<div style="position:absolute;top:12px;right:12px;background:var(--g);color:#fff;font-size:.7rem;padding:3px 10px;border-radius:99px;font-weight:600">Rekommenderad</div>';
-        h += '<div class="member" style="margin-bottom:12px">';
-        h += featuredCleaner.avatar_url ? '<img src="' + featuredCleaner.avatar_url + '" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0">' : '<div class="member-avatar" style="width:56px;height:56px;font-size:1.2rem">' + (featuredCleaner.full_name || '?').charAt(0).toUpperCase() + '</div>';
-        h += '<div><div class="member-name" style="font-size:1.05rem">' + esc(featuredCleaner.full_name) + '</div>';
-        h += '<div class="member-meta">' + fStars + ' \u00b7 ' + (featuredCleaner.completed_jobs || 0) + ' utf\u00f6rda jobb</div>';
-        if (featuredCleaner.bio) h += '<div class="member-meta" style="margin-top:4px;font-style:italic">"' + esc(featuredCleaner.bio) + '"</div>';
-        if (fSvcs.length) { h += '<div class="member-services">'; fSvcs.forEach(function(s) { h += '<span>' + esc(s) + '</span>'; }); h += '</div>'; }
+        h += '<div class="featured">';
+        h += '<div class="featured-badge">Rekommenderad</div>';
+        h += '<div class="featured-main">';
+        h += featuredCleaner.avatar_url ? '<div class="featured-av"><img src="' + featuredCleaner.avatar_url + '" alt="' + esc(featuredCleaner.full_name) + '"></div>' : '<div class="featured-av">' + (featuredCleaner.full_name || '?').charAt(0).toUpperCase() + '</div>';
+        h += '<div><div class="featured-name">' + esc(featuredCleaner.full_name) + '</div>';
+        h += '<div class="featured-meta">' + fStars + ' · ' + (featuredCleaner.completed_jobs || 0) + ' utförda jobb</div>';
+        if (featuredCleaner.bio) h += '<div class="featured-bio">"' + esc(featuredCleaner.bio) + '"</div>';
         h += '</div></div>';
-        h += '<a href="boka.html?company=' + co.id + '&cleaner_id=' + featuredCleaner.id + '" class="btn" style="display:block;text-align:center;margin-top:8px;padding:12px;border-radius:12px">Boka ' + esc((featuredCleaner.full_name || '').split(' ')[0]) + ' \u2192</a>';
-        h += '</div></div></div>';
+        if (fSvcs.length) { h += '<div class="team-svcs" style="justify-content:flex-start;margin-bottom:10px">'; fSvcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
+        h += '<a href="' + bookUrl + '&cleaner_id=' + featuredCleaner.id + '" class="featured-btn">Boka ' + esc((featuredCleaner.full_name || '').split(' ')[0]) + ' →</a>';
+        h += '</div>';
       }
     }
 
-    if (active.length) {
-      h += '<div class="section"><div class="section-title">Vårt team</div>';
-      active.forEach(function(m) {
-        var stars = '', rat = parseFloat(m.avg_rating) || 0;
-        for (var i = 0; i < 5; i++) stars += i < Math.round(rat) ? '⭐' : '☆';
-        var svcs = Array.isArray(m.services) ? m.services : [];
-        h += '<div class="card"><div class="member">';
-        h += m.avatar_url ? '<img src="' + m.avatar_url + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0">' : '<div class="member-avatar">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
-        h += '<div><div class="member-name">' + esc(m.full_name) + '</div>';
-        h += '<div class="member-meta">' + stars + ' · ' + (m.completed_jobs || 0) + ' utförda jobb</div>';
-        if (m.bio) h += '<div class="member-meta" style="margin-top:4px;font-style:italic">"' + esc(m.bio) + '"</div>';
-        if (svcs.length) { h += '<div class="member-services">'; svcs.forEach(function(s) { h += '<span>' + esc(s) + '</span>'; }); h += '</div>'; }
-        h += '<a href="boka.html?company=' + co.id + '&cleaner_id=' + m.id + '" style="display:block;text-align:center;margin-top:10px;padding:8px;background:#E1F5EE;color:var(--g);border-radius:10px;font-size:.82rem;font-weight:600;text-decoration:none">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' \u2192</a>';
-        h += '</div></div></div>';
+    // ── TJÄNSTER ──
+    if (uniqueServices.length) {
+      h += '<div class="section"><div class="section-head"><div class="section-title">Tjänster & priser</div></div>';
+      h += '<div class="svc-grid">';
+      uniqueServices.forEach(function(svc) {
+        var icon = svcIcons[svc.service_type] || '🧹';
+        var isPerSqm = svc.price_type === 'per_sqm';
+        var rutPrice = Math.floor(svc.price * 0.5);
+        h += '<a href="' + bookUrl + '" class="svc-card">';
+        h += '<div class="svc-icon">' + icon + '</div>';
+        h += '<div class="svc-name">' + esc(svc.service_type) + '</div>';
+        if (isPerSqm) {
+          h += '<div class="svc-price">' + rutPrice + ' kr/kvm</div>';
+          h += '<div class="svc-rut">efter RUT (' + svc.price + ' kr/kvm före)</div>';
+        } else {
+          h += '<div class="svc-price">från ' + rutPrice + ' kr/h</div>';
+          h += '<div class="svc-rut">efter RUT-avdrag</div>';
+        }
+        h += '<div class="svc-cta">Boka →</div>';
+        h += '</a>';
       });
-      h += '</div>';
+      h += '</div></div>';
     }
 
+    // ── TEAM ──
+    if (active.length) {
+      h += '<div class="section"><div class="section-head"><div class="section-title">Vårt team</div><span style="font-size:.78rem;color:var(--m)">' + active.length + ' städare</span></div>';
+      h += '<div class="team-scroll">';
+      active.forEach(function(m) {
+        var stars = '', rat = parseFloat(m.avg_rating) || 0;
+        for (var i = 0; i < 5; i++) stars += i < Math.round(rat) ? '★' : '☆';
+        var svcs = Array.isArray(m.services) ? m.services.slice(0, 2) : [];
+        h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-card">';
+        h += m.avatar_url ? '<div class="team-av"><img src="' + m.avatar_url + '" alt="' + esc(m.full_name) + '"></div>' : '<div class="team-av">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
+        h += '<div class="team-name">' + esc(m.full_name) + '</div>';
+        if (rat > 0) h += '<div class="team-stars">' + stars + ' ' + rat.toFixed(1) + '</div>';
+        else h += '<div class="team-meta">Ny på Spick</div>';
+        h += '<div class="team-meta">' + (m.completed_jobs || 0) + ' jobb</div>';
+        if (svcs.length) { h += '<div class="team-svcs">'; svcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
+        h += '<div class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</div>';
+        h += '</a>';
+      });
+      h += '</div></div>';
+    }
+
+    // ── TRUST ──
+    h += '<div class="section"><div class="section-head"><div class="section-title">Varför välja oss</div></div>';
+    h += '<div class="trust-grid">';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">ID-verifierade städare</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Godkänd för F-skatt</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">RUT-avdrag direkt</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Säker kortbetalning</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Nöjd-kund-garanti</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Klarna tillgängligt</div></div>';
+    h += '</div></div>';
+
+    // ── RECENSIONER ──
     if (reviews.length) {
-      h += '<div class="section"><div class="section-title">Kundrecensioner</div><div class="card">';
-      reviews.forEach(function(r) {
-        var stars = ''; for (var i = 0; i < 5; i++) stars += i < Math.round(r.cleaner_rating || 0) ? '⭐' : '☆';
+      h += '<div class="section"><div class="section-head"><div class="section-title">Kundrecensioner</div><span style="font-size:.78rem;color:var(--m)">' + reviews.length + ' omdömen</span></div>';
+      h += '<div class="card">';
+      reviews.slice(0, 6).forEach(function(r) {
+        var stars = ''; for (var i = 0; i < 5; i++) stars += i < Math.round(r.cleaner_rating || 0) ? '★' : '☆';
         var date = r.created_at ? new Date(r.created_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-        h += '<div class="review"><div class="review-header"><div class="review-name">' + esc(nameMap[r.cleaner_id] || '') + (r.service_type ? ' · ' + esc(r.service_type) : '') + '</div><div class="review-date">' + date + '</div></div>';
+        var cleanerName = nameMap[r.cleaner_id] || '';
+        h += '<div class="review">';
+        h += '<div class="review-top"><div class="review-who">' + esc(cleanerName) + (r.service_type ? ' · ' + esc(r.service_type) : '') + '</div><div class="review-date">' + date + '</div></div>';
         h += '<div class="review-stars">' + stars + '</div>';
-        if (r.comment) h += '<div class="review-text">"' + esc(r.comment) + '"</div>';
+        if (r.comment) h += '<div class="review-text">' + esc(r.comment) + '</div>';
         h += '</div>';
       });
       h += '</div></div>';
     }
 
-    h += '<div class="cta" id="boka"><h2>Boka ' + esc(co.name) + '</h2>';
-    h += '<p>Professionell städning med säker betalning och RUT-avdrag</p>';
-    h += '<a href="boka.html?company=' + co.id + '" class="btn">Boka städning →</a>';
-    h += '<div class="trust"><span>🔒 Säker betalning</span><span>🏠 RUT-avdrag 50%</span><span>✅ Verifierade städare</span></div></div>';
+    // ── OMRÅDEN ──
+    if (cities.length) {
+      h += '<div class="section"><div class="section-head"><div class="section-title">Våra områden</div></div>';
+      h += '<div class="area-tags">';
+      cities.forEach(function(c) { h += '<span class="area-tag">' + esc(c) + '</span>'; });
+      h += '</div></div>';
+    }
+
+    // ── FAQ ──
+    h += '<div class="section"><div class="section-head"><div class="section-title">Vanliga frågor</div></div>';
+    h += '<div class="card">';
+    var faqs = [
+      { q: 'Vad ingår i en hemstädning?', a: 'Dammsugning, moppning, badrum, kök, avtorkning av ytor och tömning av papperskorgar. Alla städare följer en digital checklista.' },
+      { q: 'Hur fungerar RUT-avdraget?', a: 'Du betalar halva priset direkt vid bokning. Vi ansöker om RUT-avdraget hos Skatteverket åt dig. Max 75 000 kr per person och år.' },
+      { q: 'Kan jag välja städare?', a: 'Ja! Du ser alla tillgängliga städare med betyg och profil, och väljer den du föredrar.' },
+      { q: 'Vad kostar det?', a: 'Priserna sätts av varje städare. Du ser alltid priset inklusive RUT-avdrag innan du bokar — inga dolda avgifter.' },
+      { q: 'Hur bokar jag?', a: 'Klicka "Boka städning", välj tjänst, datum och tid. Vi matchar dig med tillgängliga städare. Betala tryggt med kort eller Klarna.' },
+      { q: 'Vad händer om jag inte är nöjd?', a: 'Vi har nöjd-kund-garanti. Kontakta oss inom 24 timmar så löser vi det — kostnadsfritt.' }
+    ];
+    faqs.forEach(function(f) {
+      h += '<div class="faq-item" onclick="this.classList.toggle(\'open\')">';
+      h += '<div class="faq-q"><span>' + f.q + '</span><span class="faq-arrow">+</span></div>';
+      h += '<div class="faq-a">' + f.a + '</div></div>';
+    });
+    h += '</div></div>';
+
+    // ── CTA BOTTOM ──
+    h += '<div id="boka" style="text-align:center;padding:40px 0 20px">';
+    h += '<div style="font-family:\'Playfair Display\',serif;font-size:1.3rem;font-weight:600;margin-bottom:6px">Redo att boka?</div>';
+    h += '<div style="font-size:.88rem;color:var(--m);margin-bottom:20px">Professionell städning med säker betalning och RUT-avdrag</div>';
+    h += '<a href="' + bookUrl + '" style="display:inline-block;background:var(--g);color:#fff;padding:15px 44px;border-radius:12px;font-weight:700;font-size:1rem;text-decoration:none;transition:all .2s">';
+    h += 'Boka ' + esc(displayName) + ' →</a>';
     h += '</div>';
-    h += '<div class="footer">Powered by <a href="index.html" style="color:var(--g);font-weight:600;text-decoration:none">Spick</a> · hello@spick.se</div>';
+
+    h += '</div>'; // container
+
+    h += '<div class="footer">Drivs av <a href="index.html">Spick</a> — Sveriges städplattform · <a href="mailto:hello@spick.se">hello@spick.se</a></div>';
 
     document.getElementById('content').innerHTML = h;
 
-    // SEO: Dynamic meta tags
-    var metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.content = (co.name || '') + ' — Professionell st\u00e4dning med verifierade st\u00e4dare. Boka via Spick med s\u00e4ker betalning och RUT-avdrag.';
+    // ── STICKY CTA (visa efter scroll) ──
+    var stickyCta = document.getElementById('sticky-cta');
+    var heroEl = document.querySelector('.hero');
+    if (heroEl && stickyCta) {
+      var obs = new IntersectionObserver(function(entries) {
+        stickyCta.classList.toggle('visible', !entries[0].isIntersecting);
+      }, { threshold: 0 });
+      obs.observe(heroEl);
+    }
 
-    // SEO: JSON-LD structured data (LocalBusiness)
+    // ── SEO: Dynamic meta ──
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.content = displayName + ' — Professionell städning med verifierade städare. Boka via Spick med säker betalning och RUT-avdrag.';
+
+    // ── SEO: JSON-LD ──
     var jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
       'name': co.name,
-      'description': co.description || 'Professionell st\u00e4dning',
+      'description': co.description || 'Professionell städning',
       'url': 'https://spick.se/f/' + (co.slug || co.id),
       'telephone': '+46760505153',
       'address': { '@type': 'PostalAddress', 'addressCountry': 'SE' },
-      'priceRange': '$',
+      'priceRange': '$$',
       'image': 'https://spick.se/images/spick-og.png'
     };
     if (avgRating > 0) {
-      jsonLd.aggregateRating = {
-        '@type': 'AggregateRating',
-        'ratingValue': avgRating.toFixed(1),
-        'reviewCount': reviews.length,
-        'bestRating': '5',
-        'worstRating': '1'
-      };
+      jsonLd.aggregateRating = { '@type': 'AggregateRating', 'ratingValue': avgRating.toFixed(1), 'reviewCount': reviews.length, 'bestRating': '5', 'worstRating': '1' };
+    }
+    if (reviews.length) {
+      jsonLd.review = reviews.slice(0, 3).map(function(r) {
+        return { '@type': 'Review', 'reviewRating': { '@type': 'Rating', 'ratingValue': r.cleaner_rating }, 'reviewBody': r.comment || '', 'datePublished': r.created_at ? r.created_at.split('T')[0] : '' };
+      });
     }
     var ldScript = document.createElement('script');
     ldScript.type = 'application/ld+json';
     ldScript.textContent = JSON.stringify(jsonLd);
     document.head.appendChild(ldScript);
+
   } catch (e) {
     document.getElementById('content').innerHTML = '<div class="not-found"><h2>Något gick fel</h2><p style="color:var(--m)">' + (e.message || '') + '</p></div>';
   }
