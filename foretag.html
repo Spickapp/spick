@@ -10,117 +10,142 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--g:#0F6E56;--g2:#1D9E75;--g3:#E1F5EE;--bg:#FAFAF8;--w:#fff;--t:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--shadow:0 2px 12px rgba(0,0,0,.06);--radius:16px}
+:root{--accent:#0F6E56;--accent2:#1D9E75;--accent3:#E1F5EE;--bg:#FAFAF8;--w:#fff;--t:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--shadow:0 2px 12px rgba(0,0,0,.06);--radius:16px}
 body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased}
 
 /* ── NAV ── */
 .nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
-.nav-logo{color:var(--g);text-decoration:none;font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700}
-.nav-cta{background:var(--g);color:#fff;padding:9px 22px;border-radius:99px;font-weight:600;font-size:.82rem;text-decoration:none;transition:all .2s}
-.nav-cta:hover{background:var(--g2);transform:translateY(-1px)}
+.nav-logo{color:var(--accent);text-decoration:none;font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700}
+.nav-cta{background:var(--accent);color:#fff;padding:9px 22px;border-radius:99px;font-weight:600;font-size:.82rem;text-decoration:none;transition:all .2s}
+.nav-cta:hover{background:var(--accent2);transform:translateY(-1px)}
 
 /* ── HERO ── */
-.hero{position:relative;overflow:hidden;background:linear-gradient(165deg,#073D30 0%,#0F6E56 40%,#1D9E75 100%);padding:48px 24px 44px;color:#fff}
-.hero::before{content:'';position:absolute;top:-60%;right:-20%;width:80%;height:200%;background:radial-gradient(circle,rgba(255,255,255,.04) 0%,transparent 70%);pointer-events:none}
-.hero-inner{max-width:720px;margin:0 auto;position:relative}
+.hero{position:relative;overflow:hidden;padding:48px 24px 44px;color:#fff}
+.hero-bg{position:absolute;inset:0;background:linear-gradient(165deg,color-mix(in srgb,var(--accent) 80%,#000) 0%,var(--accent) 40%,var(--accent2) 100%);z-index:0}
+.hero-pattern{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:20px 20px;z-index:1}
+.hero-glow{position:absolute;top:-40%;right:-15%;width:70%;height:180%;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 65%);z-index:1;pointer-events:none}
+.hero-inner{max-width:720px;margin:0 auto;position:relative;z-index:2}
 .hero-top{display:flex;align-items:center;gap:18px;margin-bottom:20px}
-.hero-avatar{width:72px;height:72px;border-radius:18px;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;font-family:'Playfair Display',serif;flex-shrink:0;border:2px solid rgba(255,255,255,.15);backdrop-filter:blur(8px)}
+.hero-avatar{width:72px;height:72px;border-radius:18px;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;font-family:'Playfair Display',serif;flex-shrink:0;border:2px solid rgba(255,255,255,.18);backdrop-filter:blur(8px)}
 .hero-avatar img{width:100%;height:100%;object-fit:cover;border-radius:16px}
 .hero-info h1{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;line-height:1.15;letter-spacing:-.01em}
-.hero-info .tagline{font-size:.88rem;opacity:.8;margin-top:4px}
+.hero-tagline{font-size:.88rem;opacity:.75;margin-top:4px}
+.hero-avail{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:.78rem;font-weight:600;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:5px 14px;border-radius:99px}
+.hero-avail .pulse{width:8px;height:8px;border-radius:50%;background:#4ADE80;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,.6)}70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
 .hero-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.hero-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);padding:5px 12px;border-radius:8px;font-size:.72rem;font-weight:600;letter-spacing:.02em;backdrop-filter:blur(4px)}
-.hero-desc{font-size:.92rem;line-height:1.7;opacity:.88;max-width:540px;margin-bottom:24px}
-.hero-stats{display:flex;gap:28px;flex-wrap:wrap}
-.hero-stat-val{font-size:1.5rem;font-weight:700;line-height:1}
-.hero-stat-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin-top:3px}
+.hero-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);padding:5px 12px;border-radius:8px;font-size:.72rem;font-weight:600;letter-spacing:.02em}
+.hero-desc{font-size:.92rem;line-height:1.7;opacity:.88;max-width:540px;margin:16px 0 24px}
+.hero-stats{display:flex;gap:32px;flex-wrap:wrap}
+.hero-stat-val{font-size:1.6rem;font-weight:700;line-height:1}
+.hero-stat-lbl{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;opacity:.55;margin-top:3px}
 .hero-cta-wrap{margin-top:28px;display:flex;gap:12px;flex-wrap:wrap}
-.hero-btn{display:inline-block;background:#fff;color:var(--g);padding:14px 36px;border-radius:12px;font-weight:700;font-size:.95rem;text-decoration:none;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.hero-btn{display:inline-block;background:#fff;color:var(--accent);padding:14px 36px;border-radius:12px;font-weight:700;font-size:.95rem;text-decoration:none;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.15)}
 .hero-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .hero-btn-sec{display:inline-flex;align-items:center;gap:6px;color:#fff;font-size:.85rem;font-weight:500;text-decoration:none;padding:14px 20px;border:1.5px solid rgba(255,255,255,.25);border-radius:12px;transition:all .2s}
 .hero-btn-sec:hover{background:rgba(255,255,255,.08)}
+
+/* ── SOCIAL PROOF BAR ── */
+.proof-bar{background:var(--w);border-bottom:1px solid var(--border);padding:14px 24px;text-align:center;font-size:.85rem;color:var(--t)}
+.proof-bar strong{color:var(--accent);font-weight:700}
+.proof-bar .count{font-size:1.1rem;font-weight:700;color:var(--accent)}
 
 /* ── CONTAINER ── */
 .container{max-width:720px;margin:0 auto;padding:24px 20px 120px}
 
 /* ── SECTIONS ── */
-.section{margin-bottom:20px;animation:fadeUp .4s ease both}
+.section{margin-bottom:24px;animation:fadeUp .4s ease both}
 .section:nth-child(2){animation-delay:.05s}
 .section:nth-child(3){animation-delay:.1s}
 .section:nth-child(4){animation-delay:.15s}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .section-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;color:var(--t)}
-.section-link{font-size:.78rem;color:var(--g);font-weight:600;text-decoration:none}
+.section-sub{font-size:.78rem;color:var(--m)}
 .card{background:var(--w);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}
 
 /* ── SERVICES ── */
-.svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.svc-card{background:var(--w);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .2s;cursor:pointer;text-decoration:none;display:block;color:var(--t)}
-.svc-card:hover{border-color:var(--g);box-shadow:0 4px 16px rgba(15,110,86,.08);transform:translateY(-2px)}
-.svc-icon{font-size:1.2rem;margin-bottom:8px}
-.svc-name{font-weight:600;font-size:.88rem;margin-bottom:4px}
-.svc-price{color:var(--g);font-weight:700;font-size:1rem}
+.svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.svc-card{background:var(--w);border:1px solid var(--border);border-radius:14px;padding:20px 16px;transition:all .25s;cursor:pointer;text-decoration:none;display:block;color:var(--t);position:relative}
+.svc-card:hover{border-color:var(--accent);box-shadow:0 8px 24px rgba(15,110,86,.1);transform:translateY(-3px)}
+.svc-card.popular{border-color:var(--accent);border-width:1.5px}
+.svc-popular-badge{position:absolute;top:10px;right:10px;background:var(--accent);color:#fff;font-size:.62rem;padding:3px 8px;border-radius:6px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.svc-icon{font-size:1.4rem;margin-bottom:10px}
+.svc-name{font-weight:700;font-size:.92rem;margin-bottom:2px}
+.svc-desc{font-size:.75rem;color:var(--m);line-height:1.4;margin-bottom:10px;min-height:32px}
+.svc-price{color:var(--accent);font-weight:700;font-size:1.15rem}
 .svc-rut{font-size:.7rem;color:var(--m);margin-top:1px}
-.svc-cta{display:inline-block;margin-top:8px;font-size:.75rem;color:var(--g);font-weight:600}
+.svc-cta{display:inline-block;margin-top:10px;font-size:.78rem;color:var(--accent);font-weight:600;padding:6px 16px;background:var(--accent3);border-radius:8px;transition:background .2s}
+.svc-card:hover .svc-cta{background:#C2EDDD}
 
 /* ── TEAM ── */
 .team-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
 .team-scroll::-webkit-scrollbar{height:4px}
 .team-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-.team-card{min-width:160px;max-width:180px;background:var(--w);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;scroll-snap-align:start;transition:all .2s;flex-shrink:0;text-decoration:none;color:var(--t);display:block}
-.team-card:hover{border-color:var(--g);box-shadow:0 4px 16px rgba(15,110,86,.08);transform:translateY(-2px)}
-.team-av{width:56px;height:56px;border-radius:50%;background:var(--g3);color:var(--g);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;margin:0 auto 10px;overflow:hidden}
+.team-card{min-width:175px;max-width:200px;background:var(--w);border:1px solid var(--border);border-radius:16px;padding:20px 16px;text-align:center;scroll-snap-align:start;transition:all .25s;flex-shrink:0;text-decoration:none;color:var(--t);display:block}
+.team-card:hover{border-color:var(--accent);box-shadow:0 8px 24px rgba(15,110,86,.1);transform:translateY(-3px)}
+.team-av{width:64px;height:64px;border-radius:50%;background:var(--accent3);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;margin:0 auto 10px;overflow:hidden;border:2px solid var(--border);transition:border-color .2s}
+.team-card:hover .team-av{border-color:var(--accent)}
 .team-av img{width:100%;height:100%;object-fit:cover}
-.team-name{font-weight:600;font-size:.9rem}
-.team-stars{color:#F59E0B;font-size:.78rem;margin-top:3px}
+.team-name{font-weight:700;font-size:.92rem}
+.team-stars{color:#F59E0B;font-size:.78rem;margin-top:4px}
 .team-meta{font-size:.72rem;color:var(--m);margin-top:2px}
-.team-svcs{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:6px}
-.team-svc{background:var(--g3);color:var(--g);font-size:.62rem;padding:2px 7px;border-radius:99px;font-weight:500}
-.team-book{display:block;margin-top:10px;padding:8px;background:var(--g3);color:var(--g);border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;transition:background .2s}
-.team-book:hover{background:#C2EDDD}
+.team-bio{font-size:.72rem;color:var(--m);margin-top:6px;line-height:1.4;font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.team-svcs{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:8px}
+.team-svc{background:var(--accent3);color:var(--accent);font-size:.62rem;padding:2px 8px;border-radius:99px;font-weight:600}
+.team-book{display:block;margin-top:12px;padding:10px;background:var(--accent);color:#fff;border-radius:10px;font-size:.82rem;font-weight:600;text-decoration:none;transition:all .2s}
+.team-book:hover{background:var(--accent2)}
 
 /* ── FEATURED CLEANER ── */
-.featured{border:2px solid var(--g);border-radius:var(--radius);background:var(--w);padding:20px;margin-bottom:20px;position:relative}
-.featured-badge{position:absolute;top:14px;right:14px;background:var(--g);color:#fff;font-size:.68rem;padding:4px 12px;border-radius:99px;font-weight:600}
+.featured{border:2px solid var(--accent);border-radius:var(--radius);background:var(--w);padding:22px;margin-bottom:24px;position:relative}
+.featured-badge{position:absolute;top:14px;right:14px;background:var(--accent);color:#fff;font-size:.68rem;padding:4px 12px;border-radius:99px;font-weight:600}
 .featured-main{display:flex;gap:16px;align-items:center;margin-bottom:14px}
-.featured-av{width:64px;height:64px;border-radius:50%;background:var(--g3);color:var(--g);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;flex-shrink:0;overflow:hidden}
+.featured-av{width:64px;height:64px;border-radius:50%;background:var(--accent3);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;flex-shrink:0;overflow:hidden}
 .featured-av img{width:100%;height:100%;object-fit:cover}
 .featured-name{font-weight:700;font-size:1.05rem}
 .featured-meta{font-size:.82rem;color:var(--m);margin-top:2px}
 .featured-bio{font-size:.85rem;color:#4A4A44;font-style:italic;margin-top:6px;line-height:1.5}
-.featured-btn{display:block;text-align:center;padding:13px;background:var(--g);color:#fff;border-radius:12px;font-weight:600;font-size:.92rem;text-decoration:none;margin-top:14px;transition:all .2s}
-.featured-btn:hover{background:var(--g2)}
+.featured-btn{display:block;text-align:center;padding:13px;background:var(--accent);color:#fff;border-radius:12px;font-weight:600;font-size:.92rem;text-decoration:none;margin-top:14px;transition:all .2s}
+.featured-btn:hover{background:var(--accent2)}
 
 /* ── TRUST ── */
 .trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.trust-item{background:var(--w);border:1px solid var(--border);border-radius:12px;padding:16px 12px;text-align:center}
-.trust-check{width:28px;height:28px;border-radius:50%;background:var(--g3);color:var(--g);display:flex;align-items:center;justify-content:center;font-size:.85rem;margin:0 auto 8px;font-weight:700}
+.trust-item{background:var(--w);border:1px solid var(--border);border-radius:12px;padding:18px 12px;text-align:center;transition:all .2s}
+.trust-item:hover{border-color:var(--accent);transform:translateY(-1px)}
+.trust-check{width:32px;height:32px;border-radius:50%;background:var(--accent3);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.9rem;margin:0 auto 8px;font-weight:700}
 .trust-label{font-size:.78rem;color:var(--t);font-weight:500;line-height:1.3}
 
 /* ── REVIEWS ── */
-.review{padding:16px 20px;border-bottom:1px solid #F2F2EE}
+.review{padding:18px 20px;border-bottom:1px solid #F2F2EE}
 .review:last-child{border:none}
 .review-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .review-who{font-weight:600;font-size:.88rem}
 .review-date{font-size:.72rem;color:var(--m)}
-.review-stars{color:#F59E0B;font-size:.82rem;letter-spacing:1px}
-.review-text{font-size:.85rem;color:#4A4A44;line-height:1.6;margin-top:4px}
+.review-stars{color:#F59E0B;font-size:.85rem;letter-spacing:1px}
+.review-text{font-size:.85rem;color:#4A4A44;line-height:1.65;margin-top:6px}
+.review-svc{display:inline-block;background:#F5F5F0;padding:2px 8px;border-radius:6px;font-size:.7rem;color:var(--m);margin-top:6px}
 
 /* ── AREAS ── */
 .area-tags{display:flex;flex-wrap:wrap;gap:6px}
-.area-tag{background:var(--w);border:1px solid var(--border);padding:6px 14px;border-radius:99px;font-size:.8rem;color:var(--t);font-weight:500;transition:all .2s}
-.area-tag:hover{border-color:var(--g);color:var(--g)}
+.area-tag{background:var(--w);border:1px solid var(--border);padding:8px 16px;border-radius:99px;font-size:.82rem;color:var(--t);font-weight:500;transition:all .2s}
+.area-tag:hover{border-color:var(--accent);color:var(--accent);background:var(--accent3)}
 
 /* ── FAQ ── */
-.faq-item{padding:14px 20px;border-bottom:1px solid #F2F2EE;cursor:pointer;transition:background .15s}
+.faq-item{padding:16px 20px;border-bottom:1px solid #F2F2EE;cursor:pointer;transition:background .15s}
 .faq-item:hover{background:#FCFCFA}
 .faq-item:last-child{border:none}
 .faq-q{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:.88rem}
-.faq-arrow{font-size:.9rem;color:var(--m);transition:transform .2s}
+.faq-arrow{font-size:1.1rem;color:var(--m);transition:transform .25s;font-weight:300}
 .faq-item.open .faq-arrow{transform:rotate(45deg)}
-.faq-a{font-size:.85rem;color:#4A4A44;line-height:1.6;margin-top:10px;display:none}
+.faq-a{font-size:.85rem;color:#4A4A44;line-height:1.65;margin-top:10px;display:none;padding-right:24px}
 .faq-item.open .faq-a{display:block}
+
+/* ── BOTTOM CTA ── */
+.bottom-cta{text-align:center;padding:48px 20px 20px}
+.bottom-cta h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;margin-bottom:6px}
+.bottom-cta p{font-size:.88rem;color:var(--m);margin-bottom:24px}
+.bottom-cta-btn{display:inline-block;background:var(--accent);color:#fff;padding:16px 48px;border-radius:12px;font-weight:700;font-size:1rem;text-decoration:none;transition:all .25s;box-shadow:0 4px 16px rgba(15,110,86,.2)}
+.bottom-cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(15,110,86,.3)}
 
 /* ── STICKY CTA ── */
 .sticky-cta{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:12px 20px;z-index:40;transform:translateY(100%);transition:transform .3s ease}
@@ -128,12 +153,19 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .sticky-inner{max-width:720px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sticky-info{font-size:.82rem;color:var(--m)}
 .sticky-info strong{color:var(--t);font-size:.88rem}
-.sticky-btn{background:var(--g);color:#fff;padding:13px 32px;border-radius:12px;font-weight:700;font-size:.92rem;text-decoration:none;white-space:nowrap;transition:all .2s}
-.sticky-btn:hover{background:var(--g2)}
+.sticky-btn{background:var(--accent);color:#fff;padding:13px 32px;border-radius:12px;font-weight:700;font-size:.92rem;text-decoration:none;white-space:nowrap;transition:all .2s}
+.sticky-btn:hover{background:var(--accent2)}
+
+/* ── RECRUIT FOOTER ── */
+.recruit{background:var(--t);color:#fff;padding:32px 24px;text-align:center}
+.recruit h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;margin-bottom:6px}
+.recruit p{font-size:.85rem;opacity:.7;margin-bottom:16px}
+.recruit-btn{display:inline-block;background:var(--accent);color:#fff;padding:12px 28px;border-radius:10px;font-weight:600;font-size:.88rem;text-decoration:none;transition:all .2s}
+.recruit-btn:hover{background:var(--accent2)}
 
 /* ── FOOTER ── */
-.footer{text-align:center;padding:20px;font-size:.75rem;color:var(--m);border-top:1px solid var(--border)}
-.footer a{color:var(--g);font-weight:600;text-decoration:none}
+.footer{text-align:center;padding:16px;font-size:.72rem;color:var(--m)}
+.footer a{color:var(--accent);font-weight:600;text-decoration:none}
 
 /* ── STATES ── */
 .loading{text-align:center;padding:100px 20px;color:var(--m);font-size:.9rem}
@@ -143,15 +175,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 /* ── MOBILE ── */
 @media(max-width:600px){
   .hero{padding:36px 20px 32px}
-  .hero-info h1{font-size:1.4rem}
-  .hero-stats{gap:16px}
-  .hero-stat-val{font-size:1.2rem}
+  .hero-info h1{font-size:1.35rem}
+  .hero-stats{gap:20px}
+  .hero-stat-val{font-size:1.3rem}
   .hero-cta-wrap{flex-direction:column}
-  .hero-btn,.hero-btn-sec{text-align:center}
+  .hero-btn,.hero-btn-sec{text-align:center;justify-content:center}
   .svc-grid{grid-template-columns:1fr}
   .trust-grid{grid-template-columns:1fr 1fr}
-  .team-card{min-width:140px}
+  .team-card{min-width:150px}
   .sticky-info{display:none}
+  .proof-bar{font-size:.8rem}
 }
 </style>
 </head>
@@ -164,7 +197,6 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 
 <div id="content"><div class="loading">Laddar företagsprofil...</div></div>
 
-<!-- Sticky CTA (visas vid scroll) -->
 <div class="sticky-cta" id="sticky-cta">
   <div class="sticky-inner">
     <div class="sticky-info"><strong id="sticky-name"></strong> · Professionell städning</div>
@@ -179,10 +211,48 @@ var H = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
+// ── DYNAMIC ACCENT COLOR from company name ──
+function nameToColor(name) {
+  var hash = 0;
+  for (var i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  var h = Math.abs(hash) % 360;
+  // Avoid reds (0-30, 330-360) and yellows (45-65) — keep professional
+  if (h < 30) h += 120;
+  if (h > 330) h -= 120;
+  if (h > 45 && h < 65) h += 80;
+  return {
+    main: 'hsl(' + h + ', 55%, 32%)',
+    light: 'hsl(' + h + ', 55%, 42%)',
+    bg: 'hsl(' + h + ', 45%, 95%)',
+    accent3: 'hsl(' + h + ', 40%, 93%)'
+  };
+}
+
 var svcIcons = {
   'Hemstädning': '🏠', 'Storstädning': '✨', 'Flyttstädning': '📦',
-  'Fönsterputs': '🪟', 'Kontorsstädning': '🏢', 'Trappstädning': '🏢'
+  'Fönsterputs': '🪟', 'Kontorsstädning': '🏢', 'Trappstädning': '🪜'
 };
+var svcDescs = {
+  'Hemstädning': 'Regelbunden städning av ditt hem — dammsugning, moppning, kök och badrum.',
+  'Storstädning': 'Grundlig genomgång av hela bostaden — perfekt inför högtider eller flytt.',
+  'Flyttstädning': 'Komplett städning enligt mäklarstandard — redo för besiktning.',
+  'Fönsterputs': 'Kristallklara fönster in- och utvändigt, inklusive karmar.',
+  'Kontorsstädning': 'Professionell kontorsmiljö — golv, ytor, kök och toaletter.',
+  'Trappstädning': 'Rena trapphus och gemensamma utrymmen.'
+};
+var dayMap = ['day_sun','day_mon','day_tue','day_wed','day_thu','day_fri','day_sat'];
+
+function animateCounter(el, target) {
+  if (!el || target <= 0) return;
+  var dur = 1200, start = performance.now();
+  function step(now) {
+    var t = Math.min((now - start) / dur, 1);
+    t = 1 - Math.pow(1 - t, 3); // easeOutCubic
+    el.textContent = Math.round(target * t);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
 async function init() {
   var p = new URLSearchParams(window.location.search);
@@ -191,7 +261,7 @@ async function init() {
   var slug = p.get('slug') || p.get('s');
 
   if (!cid && !slug) {
-    document.getElementById('content').innerHTML = '<div class="not-found"><h2>Inget företag angivet</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--g);font-weight:600">← Boka städning</a></div>';
+    document.getElementById('content').innerHTML = '<div class="not-found"><h2>Inget företag angivet</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--accent);font-weight:600">← Boka städning</a></div>';
     return;
   }
 
@@ -200,7 +270,13 @@ async function init() {
     var cr = await fetch(SU + '/rest/v1/companies?select=*&' + q, { headers: H });
     var cos = await cr.json();
     var co = cos[0];
-    if (!co) { document.getElementById('content').innerHTML = '<div class="not-found"><h2>Företaget hittades inte</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--g);font-weight:600">← Boka städning</a></div>'; return; }
+    if (!co) { document.getElementById('content').innerHTML = '<div class="not-found"><h2>Företaget hittades inte</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--accent);font-weight:600">← Boka städning</a></div>'; return; }
+
+    // ── 1. DYNAMIC ACCENT COLOR ──
+    var colors = nameToColor(co.name);
+    document.documentElement.style.setProperty('--accent', colors.main);
+    document.documentElement.style.setProperty('--accent2', colors.light);
+    document.documentElement.style.setProperty('--accent3', colors.bg);
 
     // Hämta teammedlemmar
     var mr = await fetch(SU + '/rest/v1/cleaners?select=id,full_name,first_name,bio,avatar_url,services,hourly_rate,avg_rating,review_count,completed_jobs,status,owner_only,city&company_id=eq.' + co.id + '&is_approved=eq.true', { headers: H });
@@ -225,6 +301,35 @@ async function init() {
       reviews = await rr.json() || [];
     }
 
+    // ── 3. TILLGÄNGLIGHET IDAG ──
+    var availableToday = false;
+    if (activIds.length) {
+      try {
+        var todayCol = dayMap[new Date().getDay()];
+        var avf = activIds.map(function(id){ return 'cleaner_id.eq.' + id; }).join(',');
+        var avr = await fetch(SU + '/rest/v1/cleaner_availability?select=cleaner_id,' + todayCol + '&or=(' + avf + ')&' + todayCol + '=eq.true&limit=1', { headers: H });
+        var avData = await avr.json();
+        availableToday = Array.isArray(avData) && avData.length > 0;
+      } catch(e) {}
+    }
+
+    // ── 4. POPULÄRASTE TJÄNSTEN ──
+    var popularService = null;
+    if (activIds.length) {
+      try {
+        var bkf = activIds.map(function(id){ return 'cleaner_id.eq.' + id; }).join(',');
+        var bkr = await fetch(SU + '/rest/v1/bookings?select=service_type&or=(' + bkf + ')&payment_status=eq.paid&limit=100', { headers: H });
+        var bks = await bkr.json() || [];
+        if (bks.length) {
+          var svcCount = {};
+          bks.forEach(function(b) { svcCount[b.service_type] = (svcCount[b.service_type] || 0) + 1; });
+          var maxCount = 0;
+          Object.keys(svcCount).forEach(function(k) { if (svcCount[k] > maxCount) { maxCount = svcCount[k]; popularService = k; } });
+          if (maxCount < 2) popularService = null; // Minst 2 bokningar för badge
+        }
+      } catch(e) {}
+    }
+
     var totalJobs = members.reduce(function(s, m) { return s + (m.completed_jobs || 0); }, 0);
     var avgRating = reviews.length ? reviews.reduce(function(s, r) { return s + (r.cleaner_rating || 0); }, 0) / reviews.length : 0;
     var nameMap = {}; members.forEach(function(m) { nameMap[m.id] = m.full_name || m.first_name || ''; });
@@ -237,7 +342,6 @@ async function init() {
       var key = sp.service_type;
       if (!svcMap[key] || sp.price < svcMap[key].price) svcMap[key] = sp;
     });
-    // Fallback: lägg till tjänster från städarprofiler
     active.forEach(function(m) {
       if (Array.isArray(m.services)) {
         m.services.forEach(function(s) {
@@ -247,7 +351,6 @@ async function init() {
     });
     var uniqueServices = Object.values(svcMap);
 
-    // Samla städer
     var cities = [];
     active.forEach(function(m) { if (m.city && cities.indexOf(m.city) === -1) cities.push(m.city); });
 
@@ -263,36 +366,45 @@ async function init() {
     var h = '';
 
     // ── HERO ──
-    var avatarInitial = (displayName || '?').charAt(0);
-    h += '<div class="hero"><div class="hero-inner">';
+    h += '<div class="hero"><div class="hero-bg"></div><div class="hero-pattern"></div><div class="hero-glow"></div><div class="hero-inner">';
     h += '<div class="hero-top">';
-    h += '<div class="hero-avatar">' + avatarInitial + '</div>';
+    h += '<div class="hero-avatar">' + (displayName || '?').charAt(0) + '</div>';
     h += '<div class="hero-info"><h1>' + esc(displayName) + '</h1>';
-    if (co.org_number) h += '<div class="tagline">Org.nr ' + esc(co.org_number) + '</div>';
+    if (co.org_number) h += '<div class="hero-tagline">Org.nr ' + esc(co.org_number) + '</div>';
+
+    // ── 3. TILLGÄNGLIG IDAG ──
+    if (availableToday) h += '<div class="hero-avail"><span class="pulse"></span>Tillgänglig idag</div>';
+
     h += '<div class="hero-badges">';
     h += '<span class="hero-badge">✓ F-skattsedel</span>';
     h += '<span class="hero-badge">✓ RUT-avdrag</span>';
-    if (totalJobs >= 10) h += '<span class="hero-badge">✓ ' + totalJobs + '+ jobb</span>';
+    if (totalJobs >= 10) h += '<span class="hero-badge">✓ ' + totalJobs + '+ jobb utförda</span>';
     h += '</div></div></div>';
 
     if (co.description) h += '<div class="hero-desc">' + esc(co.description) + '</div>';
 
+    // ── 2. ANIMERADE SIFFROR ──
     h += '<div class="hero-stats">';
     if (avgRating > 0) h += '<div><div class="hero-stat-val">' + avgRating.toFixed(1) + '</div><div class="hero-stat-lbl">Snittbetyg</div></div>';
-    h += '<div><div class="hero-stat-val">' + totalJobs + '</div><div class="hero-stat-lbl">Utförda jobb</div></div>';
-    h += '<div><div class="hero-stat-val">' + active.length + '</div><div class="hero-stat-lbl">Städare</div></div>';
-    if (reviews.length) h += '<div><div class="hero-stat-val">' + reviews.length + '</div><div class="hero-stat-lbl">Recensioner</div></div>';
+    h += '<div><div class="hero-stat-val animated-counter" data-target="' + totalJobs + '">0</div><div class="hero-stat-lbl">Utförda jobb</div></div>';
+    h += '<div><div class="hero-stat-val animated-counter" data-target="' + active.length + '">0</div><div class="hero-stat-lbl">Städare</div></div>';
+    if (reviews.length) h += '<div><div class="hero-stat-val animated-counter" data-target="' + reviews.length + '">0</div><div class="hero-stat-lbl">Recensioner</div></div>';
     h += '</div>';
 
     h += '<div class="hero-cta-wrap">';
     h += '<a href="' + bookUrl + '" class="hero-btn">Boka städning →</a>';
-    h += '<a href="tel:+46760505153" class="hero-btn-sec"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Ring oss</a>';
+    h += '<a href="tel:+46760505153" class="hero-btn-sec"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Ring oss</a>';
     h += '</div>';
     h += '</div></div>';
 
+    // ── 6. SOCIAL PROOF BAR ──
+    if (totalJobs > 0) {
+      h += '<div class="proof-bar"><span class="count animated-counter" data-target="' + totalJobs + '">0</span> hem har städats via <strong>' + esc(displayName) + '</strong> på Spick</div>';
+    }
+
     h += '<div class="container">';
 
-    // ── FEATURED CLEANER (nästlad URL) ──
+    // ── FEATURED CLEANER ──
     if (cleanerSlug) {
       var featuredCleaner = active.find(function(m) {
         var mSlug = (m.full_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -310,23 +422,27 @@ async function init() {
         h += '<div class="featured-meta">' + fStars + ' · ' + (featuredCleaner.completed_jobs || 0) + ' utförda jobb</div>';
         if (featuredCleaner.bio) h += '<div class="featured-bio">"' + esc(featuredCleaner.bio) + '"</div>';
         h += '</div></div>';
-        if (fSvcs.length) { h += '<div class="team-svcs" style="justify-content:flex-start;margin-bottom:10px">'; fSvcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
+        if (fSvcs.length) { h += '<div class="team-svcs" style="justify-content:flex-start;margin-bottom:12px">'; fSvcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
         h += '<a href="' + bookUrl + '&cleaner_id=' + featuredCleaner.id + '" class="featured-btn">Boka ' + esc((featuredCleaner.full_name || '').split(' ')[0]) + ' →</a>';
         h += '</div>';
       }
     }
 
-    // ── TJÄNSTER ──
+    // ── 4. TJÄNSTER ──
     if (uniqueServices.length) {
-      h += '<div class="section"><div class="section-head"><div class="section-title">Tjänster & priser</div></div>';
+      h += '<div class="section"><div class="section-head"><div class="section-title">Tjänster & priser</div><div class="section-sub">Alla priser efter RUT-avdrag</div></div>';
       h += '<div class="svc-grid">';
       uniqueServices.forEach(function(svc) {
         var icon = svcIcons[svc.service_type] || '🧹';
+        var desc = svcDescs[svc.service_type] || 'Professionell tjänst med kvalitetsgaranti.';
         var isPerSqm = svc.price_type === 'per_sqm';
         var rutPrice = Math.floor(svc.price * 0.5);
-        h += '<a href="' + bookUrl + '" class="svc-card">';
+        var isPopular = svc.service_type === popularService;
+        h += '<a href="' + bookUrl + '" class="svc-card' + (isPopular ? ' popular' : '') + '">';
+        if (isPopular) h += '<div class="svc-popular-badge">Populär</div>';
         h += '<div class="svc-icon">' + icon + '</div>';
         h += '<div class="svc-name">' + esc(svc.service_type) + '</div>';
+        h += '<div class="svc-desc">' + desc + '</div>';
         if (isPerSqm) {
           h += '<div class="svc-price">' + rutPrice + ' kr/kvm</div>';
           h += '<div class="svc-rut">efter RUT (' + svc.price + ' kr/kvm före)</div>';
@@ -340,23 +456,24 @@ async function init() {
       h += '</div></div>';
     }
 
-    // ── TEAM ──
+    // ── 5. TEAM ──
     if (active.length) {
-      h += '<div class="section"><div class="section-head"><div class="section-title">Vårt team</div><span style="font-size:.78rem;color:var(--m)">' + active.length + ' städare</span></div>';
+      h += '<div class="section"><div class="section-head"><div class="section-title">Möt vårt team</div><div class="section-sub">' + active.length + ' städare</div></div>';
       h += '<div class="team-scroll">';
       active.forEach(function(m) {
         var stars = '', rat = parseFloat(m.avg_rating) || 0;
         for (var i = 0; i < 5; i++) stars += i < Math.round(rat) ? '★' : '☆';
         var svcs = Array.isArray(m.services) ? m.services.slice(0, 2) : [];
-        h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-card">';
+        h += '<div class="team-card">';
         h += m.avatar_url ? '<div class="team-av"><img src="' + m.avatar_url + '" alt="' + esc(m.full_name) + '"></div>' : '<div class="team-av">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
         h += '<div class="team-name">' + esc(m.full_name) + '</div>';
         if (rat > 0) h += '<div class="team-stars">' + stars + ' ' + rat.toFixed(1) + '</div>';
         else h += '<div class="team-meta">Ny på Spick</div>';
         h += '<div class="team-meta">' + (m.completed_jobs || 0) + ' jobb</div>';
+        if (m.bio) h += '<div class="team-bio">"' + esc(m.bio) + '"</div>';
         if (svcs.length) { h += '<div class="team-svcs">'; svcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
-        h += '<div class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</div>';
-        h += '</a>';
+        h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</a>';
+        h += '</div>';
       });
       h += '</div></div>';
     }
@@ -364,26 +481,26 @@ async function init() {
     // ── TRUST ──
     h += '<div class="section"><div class="section-head"><div class="section-title">Varför välja oss</div></div>';
     h += '<div class="trust-grid">';
-    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">ID-verifierade städare</div></div>';
-    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Godkänd för F-skatt</div></div>';
-    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">RUT-avdrag direkt</div></div>';
-    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Säker kortbetalning</div></div>';
-    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Nöjd-kund-garanti</div></div>';
-    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Klarna tillgängligt</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">ID-verifierade<br>städare</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Godkänd för<br>F-skatt</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">RUT-avdrag<br>direkt</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Säker kort-<br>betalning</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Nöjd-kund-<br>garanti</div></div>';
+    h += '<div class="trust-item"><div class="trust-check">✓</div><div class="trust-label">Klarna<br>tillgängligt</div></div>';
     h += '</div></div>';
 
     // ── RECENSIONER ──
     if (reviews.length) {
-      h += '<div class="section"><div class="section-head"><div class="section-title">Kundrecensioner</div><span style="font-size:.78rem;color:var(--m)">' + reviews.length + ' omdömen</span></div>';
+      h += '<div class="section"><div class="section-head"><div class="section-title">Kundrecensioner</div><div class="section-sub">' + reviews.length + ' omdömen</div></div>';
       h += '<div class="card">';
       reviews.slice(0, 6).forEach(function(r) {
         var stars = ''; for (var i = 0; i < 5; i++) stars += i < Math.round(r.cleaner_rating || 0) ? '★' : '☆';
         var date = r.created_at ? new Date(r.created_at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-        var cleanerName = nameMap[r.cleaner_id] || '';
         h += '<div class="review">';
-        h += '<div class="review-top"><div class="review-who">' + esc(cleanerName) + (r.service_type ? ' · ' + esc(r.service_type) : '') + '</div><div class="review-date">' + date + '</div></div>';
+        h += '<div class="review-top"><div class="review-who">' + esc(nameMap[r.cleaner_id] || '') + '</div><div class="review-date">' + date + '</div></div>';
         h += '<div class="review-stars">' + stars + '</div>';
         if (r.comment) h += '<div class="review-text">' + esc(r.comment) + '</div>';
+        if (r.service_type) h += '<span class="review-svc">' + esc(r.service_type) + '</span>';
         h += '</div>';
       });
       h += '</div></div>';
@@ -401,7 +518,7 @@ async function init() {
     h += '<div class="section"><div class="section-head"><div class="section-title">Vanliga frågor</div></div>';
     h += '<div class="card">';
     var faqs = [
-      { q: 'Vad ingår i en hemstädning?', a: 'Dammsugning, moppning, badrum, kök, avtorkning av ytor och tömning av papperskorgar. Alla städare följer en digital checklista.' },
+      { q: 'Vad ingår i en hemstädning?', a: 'Dammsugning, moppning, badrum, kök, avtorkning av ytor och tömning av papperskorgar. Alla städare följer en digital checklista för att säkerställa kvaliteten.' },
       { q: 'Hur fungerar RUT-avdraget?', a: 'Du betalar halva priset direkt vid bokning. Vi ansöker om RUT-avdraget hos Skatteverket åt dig. Max 75 000 kr per person och år.' },
       { q: 'Kan jag välja städare?', a: 'Ja! Du ser alla tillgängliga städare med betyg och profil, och väljer den du föredrar.' },
       { q: 'Vad kostar det?', a: 'Priserna sätts av varje städare. Du ser alltid priset inklusive RUT-avdrag innan du bokar — inga dolda avgifter.' },
@@ -415,21 +532,27 @@ async function init() {
     });
     h += '</div></div>';
 
-    // ── CTA BOTTOM ──
-    h += '<div id="boka" style="text-align:center;padding:40px 0 20px">';
-    h += '<div style="font-family:\'Playfair Display\',serif;font-size:1.3rem;font-weight:600;margin-bottom:6px">Redo att boka?</div>';
-    h += '<div style="font-size:.88rem;color:var(--m);margin-bottom:20px">Professionell städning med säker betalning och RUT-avdrag</div>';
-    h += '<a href="' + bookUrl + '" style="display:inline-block;background:var(--g);color:#fff;padding:15px 44px;border-radius:12px;font-weight:700;font-size:1rem;text-decoration:none;transition:all .2s">';
-    h += 'Boka ' + esc(displayName) + ' →</a>';
-    h += '</div>';
+    // ── BOTTOM CTA ──
+    h += '<div class="bottom-cta" id="boka"><h2>Redo att boka ' + esc(displayName) + '?</h2>';
+    h += '<p>Professionell städning med säker betalning och RUT-avdrag</p>';
+    h += '<a href="' + bookUrl + '" class="bottom-cta-btn">Boka städning →</a></div>';
 
     h += '</div>'; // container
 
-    h += '<div class="footer">Drivs av <a href="index.html">Spick</a> — Sveriges städplattform · <a href="mailto:hello@spick.se">hello@spick.se</a></div>';
+    // ── 7. RECRUIT FOOTER ──
+    h += '<div class="recruit"><h3>Har du ett städföretag?</h3><p>Få din egen professionella sida, bokningssystem och kundflöde — helt gratis.</p>';
+    h += '<a href="registrera-stadare.html" class="recruit-btn">Registrera ditt företag →</a></div>';
+
+    h += '<div class="footer">Drivs av <a href="index.html">Spick</a> — Sveriges städplattform</div>';
 
     document.getElementById('content').innerHTML = h;
 
-    // ── STICKY CTA (visa efter scroll) ──
+    // ── 2. ANIMATE COUNTERS ──
+    document.querySelectorAll('.animated-counter').forEach(function(el) {
+      animateCounter(el, parseInt(el.dataset.target) || 0);
+    });
+
+    // ── STICKY CTA ──
     var stickyCta = document.getElementById('sticky-cta');
     var heroEl = document.querySelector('.hero');
     if (heroEl && stickyCta) {
