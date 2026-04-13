@@ -347,6 +347,34 @@ serve(async (req) => {
       });
     } catch (_) {} // Non-critical
 
+    // ── 11b. STRIPE CONNECT: Hämta mottagarens konto ──
+    let destinationAccountId: string | null = null;
+    let commissionRate = customer_type === "foretag" ? 0.12 : 0.17;
+
+    {
+      const { data: cleanerConnect } = await supabase
+        .from("cleaners")
+        .select("stripe_account_id, stripe_onboarding_status, company_id, is_company_owner")
+        .eq("id", cleaner.id)
+        .single();
+
+      if (cleanerConnect?.company_id && !cleanerConnect.is_company_owner) {
+        // Städare tillhör företag → pengar till företagsägaren
+        const { data: owner } = await supabase
+          .from("cleaners")
+          .select("stripe_account_id, stripe_onboarding_status")
+          .eq("company_id", cleanerConnect.company_id)
+          .eq("is_company_owner", true)
+          .single();
+        if (owner?.stripe_account_id && owner.stripe_onboarding_status === "complete") {
+          destinationAccountId = owner.stripe_account_id;
+        }
+      } else if (cleanerConnect?.stripe_account_id && cleanerConnect.stripe_onboarding_status === "complete") {
+        destinationAccountId = cleanerConnect.stripe_account_id;
+      }
+    }
+    console.log("[SPICK] Connect:", { cleanerId: cleaner.id, destinationAccountId, commissionRate });
+
     // ── 12. STRIPE CHECKOUT ────────────────────────
     if (stripeAmount <= 0) {
       // Helt kredit-betald bokning — bekräfta direkt
@@ -408,6 +436,16 @@ serve(async (req) => {
     params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
     params.append("billing_address_collection", "auto");
 
+    // ── STRIPE CONNECT: Destination charge ──────────
+    if (destinationAccountId) {
+      const applicationFee = Math.round(amountOre * commissionRate);
+      params.append("payment_intent_data[transfer_data][destination]", destinationAccountId);
+      params.append("payment_intent_data[application_fee_amount]", String(applicationFee));
+      console.log("[SPICK] Destination charge:", { destination: destinationAccountId, fee: applicationFee / 100 + " SEK" });
+    } else {
+      console.log("[SPICK] No connected account — funds stay on platform");
+    }
+
     const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
@@ -436,6 +474,20 @@ serve(async (req) => {
         payment_intent_id: session.payment_intent,
       })
       .eq("id", bookingId);
+
+    // ── Logga provision i commission_log ────────────
+    if (destinationAccountId) {
+      const commSek = Math.round(stripeAmount * commissionRate);
+      await supabase.from("commission_log").insert({
+        booking_id: bookingId,
+        cleaner_id: cleaner.id,
+        gross_amount: stripeAmount,
+        commission_pct: commissionRate * 100,
+        commission_amt: commSek,
+        net_amount: stripeAmount - commSek,
+        level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
+      }).catch((e: Error) => console.warn("Commission log error:", e));
+    }
 
     // ── 13. RETURN ─────────────────────────────────
     return json(200, {
