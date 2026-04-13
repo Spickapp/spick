@@ -88,7 +88,7 @@ p{{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}}
 </style></head><body><div class="wrap">
 <div class="header"><div class="logo">Spick</div></div>
 <div class="body">{content}</div>
-<div class="footer">Spick AB · 559402-4522 · hello@spick.se · <a href="https://spick.se">spick.se</a><br>
+<div class="footer">Spick · 559402-4522 · hello@spick.se · <a href="https://spick.se">spick.se</a><br>
 <a href="https://spick.se/integritetspolicy.html" style="color:#9E9E9A">Integritetspolicy</a> · 
 <a href="https://spick.se/avtal.html" style="color:#9E9E9A">Villkor</a></div>
 </div></body></html>"""

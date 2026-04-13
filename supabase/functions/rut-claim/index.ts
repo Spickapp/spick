@@ -13,7 +13,7 @@ const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SKV_API_URL          = Deno.env.get("SKV_API_URL") || "https://api.skatteverket.se/rot-rut/v1";
 const SKV_API_KEY          = Deno.env.get("SKV_API_KEY") ?? "";  // Skatteverket API-nyckel
-const SPICK_ORG_NR         = "5594024522";                    // Spick AB org.nr
+const SPICK_ORG_NR         = "5594024522";                    // Haghighi Consulting AB org.nr
 const RESEND_API_KEY       = Deno.env.get("RESEND_API_KEY")!;
 const FROM                 = "Spick <hello@spick.se>";
 const ADMIN                = "hello@spick.se";
@@ -30,7 +30,7 @@ function buildRutXml(booking: Record<string, unknown>): string {
 <Ansokan xmlns="http://www.skatteverket.se/schema/rot-rut/v1">
   <Utforare>
     <OrganisationsNummer>${SPICK_ORG_NR}</OrganisationsNummer>
-    <Foretagsnamn>Spick AB</Foretagsnamn>
+    <Foretagsnamn>Haghighi Consulting AB</Foretagsnamn>
   </Utforare>
   <Kop>
     <KundPersonNummer>${(booking.customer_pnr as string || "").replace(/\D/g, "")}</KundPersonNummer>
@@ -125,7 +125,7 @@ p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
     <p style="font-size:13px;color:#9B9B95">Skatteverket hanterar RUT-ansökan och betalar ut ${rutBelopp.toLocaleString("sv")} kr direkt till Spick. Processen tar normalt 1–5 bankdagar.</p>
     <a class="btn" href="https://spick.se/min-bokning.html">Följ din bokning →</a>
   </div>
-  <div class="footer">Spick AB · 559402-4522 · hello@spick.se · spick.se</div>
+  <div class="footer">Spick · 559402-4522 · hello@spick.se · spick.se</div>
 </div></body></html>`;
 
   await fetch("https://api.resend.com/emails", {

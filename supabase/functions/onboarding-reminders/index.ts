@@ -22,7 +22,7 @@ function wrap(content: string): string {
   return `<div style="font-family:'DM Sans',Helvetica,sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E8E8E4">
     <div style="background:#0F6E56;padding:20px;text-align:center"><span style="font-family:serif;font-size:1.3rem;font-weight:700;color:#fff">Spick</span></div>
     <div style="padding:28px 24px">${content}</div>
-    <div style="background:#F7F7F5;padding:16px 24px;text-align:center;font-size:12px;color:#6B6960">Spick AB · hello@spick.se</div>
+    <div style="background:#F7F7F5;padding:16px 24px;text-align:center;font-size:12px;color:#6B6960">Spick · hello@spick.se</div>
   </div>`;
 }
 

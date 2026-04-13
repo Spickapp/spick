@@ -66,7 +66,7 @@ p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
 <div class="wrap">
   <div class="header"><div class="logo">Spick</div></div>
   <div class="body">${content}</div>
-  <div class="footer">Spick AB · 559402-4522 · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a></div>
+  <div class="footer">Spick · 559402-4522 · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a></div>
 </div></body></html>`;
 }
 

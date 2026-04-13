@@ -81,7 +81,7 @@ p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
   <div class="header"><div class="logo">Spick</div></div>
   <div class="body">${content}</div>
   <div class="footer">
-    Spick AB · 559402-4522 · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a><br>
+    Spick · 559402-4522 · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a><br>
     <a href="https://spick.se/integritetspolicy.html" style="color:#9E9E9A">Integritetspolicy</a> · 
     <a href="https://spick.se/garanti.html" style="color:#9E9E9A">Nöjdhetsgaranti</a>
   </div>

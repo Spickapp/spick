@@ -27,7 +27,7 @@ const AUTO_REPLIES: Record<string, { subject: string; body: string }> = {
 <p>Vi har tagit emot ditt meddelande och återkommer inom <strong>2 timmar</strong>.</p>
 <p>Vill du boka direkt? Det går snabbast via:</p>
 <a href="https://spick.se/boka.html" style="background:#0F6E56;color:white;padding:12px 24px;border-radius:24px;text-decoration:none;display:inline-block;margin:8px 0">Boka städning nu →</a>
-<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p>
+<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick · hello@spick.se · spick.se</p>
 </div>`,
   },
   fråga: {
@@ -37,7 +37,7 @@ const AUTO_REPLIES: Record<string, { subject: string; body: string }> = {
 <p>Vi har tagit emot ditt meddelande och svarar normalt inom <strong>2 timmar</strong> på vardagar.</p>
 <p>Hittar du svaret på din fråga i vår FAQ?</p>
 <a href="https://spick.se/faq.html" style="background:#0F6E56;color:white;padding:12px 24px;border-radius:24px;text-decoration:none;display:inline-block;margin:8px 0">Se vanliga frågor →</a>
-<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p>
+<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick · hello@spick.se · spick.se</p>
 </div>`,
   },
   klago: {
@@ -46,7 +46,7 @@ const AUTO_REPLIES: Record<string, { subject: string; body: string }> = {
 <h2 style="color:#0F6E56">Tack för att du hör av dig</h2>
 <p>Vi är ledsna att du inte är nöjd och tar detta på största allvar. En av oss återkommer till dig <strong>inom 1 timme</strong>.</p>
 <p>Vi erbjuder alltid <strong>gratis omstädning</strong> om städningen inte levde upp till förväntningarna.</p>
-<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p>
+<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick · hello@spick.se · spick.se</p>
 </div>`,
   },
   avboka: {
@@ -57,7 +57,7 @@ const AUTO_REPLIES: Record<string, { subject: string; body: string }> = {
 <p>Kom ihåg: Avbokning är gratis upp till 24h innan städning.</p>
 <p>Vill du boka om till ett annat datum?</p>
 <a href="https://spick.se/boka.html" style="background:#0F6E56;color:white;padding:12px 24px;border-radius:24px;text-decoration:none;display:inline-block;margin:8px 0">Boka nytt datum →</a>
-<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p>
+<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick · hello@spick.se · spick.se</p>
 </div>`,
   },
   ansökan: {
@@ -67,7 +67,7 @@ const AUTO_REPLIES: Record<string, { subject: string; body: string }> = {
 <p>Vi har tagit emot ditt meddelande. Det snabbaste sättet att ansöka är via vårt formulär:</p>
 <a href="https://spick.se/rekrytera.html" style="background:#0F6E56;color:white;padding:12px 24px;border-radius:24px;text-decoration:none;display:inline-block;margin:8px 0">Ansök som städare →</a>
 <p>Vi granskar alla ansökningar och hör av oss inom <strong>2 arbetsdagar</strong>.</p>
-<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick AB · hello@spick.se · spick.se</p>
+<p style="color:#6B6960;font-size:13px;margin-top:24px">Spick · hello@spick.se · spick.se</p>
 </div>`,
   },
 };

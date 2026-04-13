@@ -66,7 +66,7 @@ th{{background:#F7F7F5;font-weight:600;color:#6B6960}}
 </style></head><body><div class="wrap">
 <div class="header"><div class="logo">Spick</div><div class="sub">Veckorapport {WEEK_START} – {WEEK_END}</div></div>
 <div class="body">{content}</div>
-<div class="footer">Spick AB · hello@spick.se · <a href="https://spick.se/admin.html">Admin →</a></div>
+<div class="footer">Spick · hello@spick.se · <a href="https://spick.se/admin.html">Admin →</a></div>
 </div></body></html>"""
 
 # ── Hämta data ─────────────────────────────────────────────────

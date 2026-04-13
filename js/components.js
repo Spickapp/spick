@@ -187,17 +187,17 @@ const FOOTER_HTML = `
   <div>
     <h4>Städer</h4>
     <ul>
-      <li><a href="${P}stockholm.html">Stockholm ✓</a></li>
+      <li><a href="${P}stockholm.html">Stockholm</a></li>
       <li><a href="${P}sundbyberg.html">Sundbyberg</a></li>
       <li><a href="${P}solna.html">Solna</a></li>
-      <li><a href="${P}goteborg.html">Göteborg — snart</a></li>
-      <li><a href="${P}malmo.html">Malmö — snart</a></li>
-      <li><a href="${P}uppsala.html">Uppsala — snart</a></li>
+      <li><a href="${P}nacka.html">Nacka</a></li>
+      <li><a href="${P}taby.html">Täby</a></li>
+      <li><a href="${P}huddinge.html">Huddinge</a></li>
     </ul>
   </div>
 </div>
 <div class="footer-bottom">
-  <p>© ${new Date().getFullYear()} Spick AB · org.nr 559402-4522
+  <p>© ${new Date().getFullYear()} Spick · org.nr 559402-4522
   <div style="display:flex;gap:16px;margin-top:12px;justify-content:center">
     <a href="https://instagram.com/spick.se" target="_blank" rel="noopener" style="color:rgba(255,255,255,.5);font-size:.8rem;text-decoration:none" title="Instagram">📸 Instagram</a>
     <a href="https://facebook.com/spick.se" target="_blank" rel="noopener" style="color:rgba(255,255,255,.5);font-size:.8rem;text-decoration:none" title="Facebook">👍 Facebook</a>

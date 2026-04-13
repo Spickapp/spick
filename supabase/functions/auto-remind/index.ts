@@ -33,7 +33,7 @@ p{color:#6B6960;line-height:1.7;font-size:14px;margin:0 0 10px}
 </style></head><body><div class="w">
 <div class="h"><div class="logo">Spick</div></div>
 <div class="b">${html}</div>
-<div class="f">Spick AB · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a></div>
+<div class="f">Spick · hello@spick.se · <a href="https://spick.se" style="color:#0F6E56">spick.se</a></div>
 </div></body></html>`;
 }
 
