@@ -1221,7 +1221,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
 
         <div class="card" style="padding:20px;margin-top:12px" id="team-bookings-card">
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets bokningar</h4>
-          <div id="team-bookings-list"><p style="color:var(--m);font-size:.85rem">Laddar...</p></div>
+          <div id="team-bookings-list"><div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">📋</div><p style="font-size:.85rem;margin:0">Inga bokningar ännu</p></div></div>
         </div>
 
         <div class="card" style="padding:20px;margin-top:12px" id="team-calendar-card">
@@ -2023,12 +2023,6 @@ async function loadCleanerByEmail(email, authUserId) {
     // Show team-focused welcome
     var greetSub = document.getElementById('greeting-sub');
     if (greetSub) greetSub.textContent = 'Hantera ditt team och bokningar';
-    // Customize nav labels for VD
-    var navJobb = document.getElementById('nav-jobb');
-    var navKalender = document.getElementById('nav-kalender');
-    var navInkomst = document.getElementById('nav-inkomst');
-    if (navJobb) navJobb.querySelector('span').textContent = 'Bokningar';
-    if (navInkomst) navInkomst.querySelector('span').textContent = 'Rapporter';
   }
   hidePersonalSettings();
 
@@ -4312,6 +4306,9 @@ async function renderTeam() {
     // Estimated time saved: 15 min per booking (admin, invoicing, scheduling)
     var timeSaved = Math.round(totalJobs * 0.25 * 10) / 10;
     document.getElementById('team-time-saved').textContent = timeSaved + 'h';
+  } else {
+    // No members — show empty states
+    document.getElementById('team-bookings-list').innerHTML = '<div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">📋</div><p style="font-size:.85rem;margin:0">Inga bokningar ännu</p></div>';
   }
 
   // Fetch team reviews
@@ -4527,13 +4524,8 @@ function updateToggleStyle(isOn) {
 
 // 4. Hide personal settings for owner_only
 function hidePersonalSettings() {
-  if (!cleaner || !cleaner.owner_only) return;
-  document.querySelectorAll('.settings-link').forEach(function(el) {
-    var text = el.textContent || '';
-    if (text.includes('Veckoschema') || text.includes('rrade') || text.includes('Arbetspreferenser') || text.includes('Arbetsomr') || text.includes('ttning per tj')) {
-      el.style.display = 'none';
-    }
-  });
+  // VD with owner_only still needs Arbete settings for team management
+  // No links hidden — all settings remain accessible
 }
 
 // ── TEAM CALENDAR ─────────────────────────────────────
@@ -5486,20 +5478,24 @@ async function loadPricingModel() {
   } catch(e) {}
 }
 async function loadCompanyPrices() {
-  if (!window._companyId) return;
+  console.log('loadCompanyPrices called, companyId:', window._companyId);
+  if (!window._companyId) { renderCompanyPrices([]); return; }
   try {
     var res = await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&order=service_type', { headers: _authHeaders() });
-    var prices = await res.json() || [];
+    var prices = await res.json();
+    if (!Array.isArray(prices)) prices = [];
+    console.log('loadCompanyPrices got', prices.length, 'prices');
     renderCompanyPrices(prices);
-  } catch(e) { console.warn('loadCompanyPrices error:', e); }
+  } catch(e) { console.warn('loadCompanyPrices error:', e); renderCompanyPrices([]); }
 }
 
 function renderCompanyPrices(prices) {
   var wrap = document.getElementById('company-prices-list');
+  console.log('renderCompanyPrices, wrap found:', !!wrap, 'cleaner.services:', cleaner ? cleaner.services : 'no cleaner');
   if (!wrap) return;
-  
+
   // Get company services from owner's profile
-  var ownerSvcs = cleaner.services || [];
+  var ownerSvcs = (cleaner && Array.isArray(cleaner.services)) ? cleaner.services : [];
   var allSvcs = ['Hemst\u00e4dning','Storst\u00e4dning','Flyttst\u00e4dning','F\u00f6nsterputs','Kontorsst\u00e4dning','Trappst\u00e4dning','Skolst\u00e4dning','V\u00e5rdst\u00e4dning','Hotell & restaurang'];
   var svcs = ownerSvcs.length ? ownerSvcs : allSvcs;
   
