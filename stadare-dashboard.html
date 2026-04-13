@@ -1156,43 +1156,47 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
               <button onclick="cancelCompanyEdit()" style="padding:10px 20px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
             </div>
           </div>
-        
-        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
+        </div>
+
+        <!-- Betygsvisning toggle -->
+        <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
               <div style="font-weight:600;font-size:.88rem">Betygsvisning</div>
               <div style="font-size:.75rem;color:var(--m);margin-top:2px" id="rating-toggle-desc">Varje städares betyg syns för kunder</div>
             </div>
-    <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px" id="company-prices-section">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div>
-          <div style="font-weight:600;font-size:.92rem">Företagspriser</div>
-          <div style="font-size:.72rem;color:var(--m);margin-top:2px">Standardpriser för alla städare (kan överskrivas per person)</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);margin-bottom:12px">
-        <div>
-          <div style="font-weight:600;font-size:.85rem">Prismodell</div>
-          <div style="font-size:.72rem;color:var(--m);margin-top:2px" id="pricing-model-desc">Städare sätter egna priser</div>
-        </div>
-        <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
-          <input type="checkbox" id="toggle-company-pricing" onchange="togglePricingModel(this.checked)" style="opacity:0;width:0;height:0">
-          <span style="position:absolute;inset:0;background:#ccc;border-radius:24px;transition:.2s"></span>
-          <span style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)" id="pricing-model-knob"></span>
-        </label>
-      </div>
-      <div id="company-prices-list" style="margin-bottom:12px">
-        <div style="font-size:.75rem;color:var(--gray-400)">Laddar priser...</div>
-      </div>
-      <button id="save-company-prices-btn" onclick="saveCompanyPrices()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer">Spara priser</button>
-    </div>
             <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
               <input type="checkbox" id="toggle-individual-ratings" checked onchange="toggleIndividualRatings(this.checked)" style="opacity:0;width:0;height:0">
               <span style="position:absolute;inset:0;background:#ccc;border-radius:24px;transition:.2s"></span>
               <span style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)" id="rating-toggle-knob"></span>
             </label>
           </div>
-        </div></div>
+        </div>
+
+        <!-- Prismodell toggle -->
+        <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Prismodell</div>
+              <div style="font-size:.75rem;color:var(--m);margin-top:2px" id="pricing-model-desc">Städare sätter egna priser</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+              <input type="checkbox" id="toggle-company-pricing" onchange="togglePricingModel(this.checked)" style="opacity:0;width:0;height:0">
+              <span style="position:absolute;inset:0;background:#ccc;border-radius:24px;transition:.2s"></span>
+              <span style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)" id="pricing-model-knob"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Företagspriser -->
+        <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px" id="company-prices-section">
+          <div style="margin-bottom:12px">
+            <div style="font-weight:600;font-size:.92rem">Företagspriser</div>
+            <div style="font-size:.72rem;color:var(--m);margin-top:2px">Standardpriser för alla städare (kan överskrivas per person)</div>
+          </div>
+          <div id="company-prices-list" style="margin-bottom:12px"></div>
+          <button id="save-company-prices-btn" onclick="saveCompanyPrices()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer">Spara priser</button>
+        </div>
 
         <div class="card" style="padding:20px" id="team-management-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -1973,6 +1977,8 @@ async function loadCleanerByEmail(email, authUserId) {
       : '';
   }
   window._cleanerLoaded=true;
+  window._companyId = cleaner.company_id || null;
+  window._isCompanyOwner = !!cleaner.is_company_owner;
   showTeamTab();
   showScreen('app');
 
@@ -4119,6 +4125,13 @@ async function renderTeam() {
     renderCompanyProfile(company);
   }
 
+  // Load VD controls after company data is available
+  if (window._isCompanyOwner && window._companyId) {
+    loadRatingToggle();
+    loadPricingModel();
+    loadCompanyPrices();
+  }
+
   // Fetch team members with all fields
   const { data: members } = await R.select('cleaners', `select=*&company_id=eq.${cleaner.company_id}&order=first_name.asc`);
   _teamMembers = members || [];
@@ -5346,9 +5359,9 @@ async function toggleIndividualRatings(checked) {
   }
   
   try {
-    await fetch(SUPA + '/rest/v1/companies?id=eq.' + window._companyId, {
+    await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId, {
       method: 'PATCH',
-      headers: Object.assign({}, H, { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      headers: Object.assign({}, _authHeaders(), { Prefer: 'return=minimal' }),
       body: JSON.stringify({ show_individual_ratings: checked })
     });
     showToast(checked ? 'Individuella betyg visas' : 'Bara f\u00f6retagsbetyg visas');
@@ -5359,7 +5372,7 @@ async function toggleIndividualRatings(checked) {
 async function loadRatingToggle() {
   if (!window._companyId) return;
   try {
-    var res = await fetch(SUPA + '/rest/v1/companies?id=eq.' + window._companyId + '&select=show_individual_ratings', { headers: H });
+    var res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId + '&select=show_individual_ratings', { headers: _authHeaders() });
     var rows = await res.json();
     if (rows && rows[0]) {
       var checked = rows[0].show_individual_ratings !== false;
@@ -5369,8 +5382,6 @@ async function loadRatingToggle() {
     }
   } catch(e) {}
 }
-setTimeout(function() { if (window._isCompanyOwner) loadRatingToggle(); }, 1500);
-
 // ═══ FÖRETAGSPRISER (LAGER 1) ═══
 async function togglePricingModel(useCompany) {
   if (!window._companyId) return;
@@ -5411,8 +5422,6 @@ async function loadPricingModel() {
     }
   } catch(e) {}
 }
-setTimeout(function() { if (window._isCompanyOwner) loadPricingModel(); }, 1600);
-
 async function loadCompanyPrices() {
   if (!window._companyId) return;
   try {
@@ -5486,8 +5495,6 @@ async function saveCompanyPrices() {
   }
   if (btn) { btn.disabled = false; btn.textContent = 'Spara priser'; }
 }
-
-setTimeout(function() { if (window._isCompanyOwner) loadCompanyPrices(); }, 1800);
 
 
 </script>
