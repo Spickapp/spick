@@ -4363,9 +4363,9 @@ async function adminGenerateInvoices() {
     var now = new Date();
     var prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     var monthStr = prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
-    var resp = await fetch(SUPA_URL + '/functions/v1/generate-self-invoice', {
+    var resp = await fetch(SPICK.SUPA_URL + '/functions/v1/generate-self-invoice', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
       body: JSON.stringify({ month: monthStr })
     });
     var result = await resp.json();
