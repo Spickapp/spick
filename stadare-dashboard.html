@@ -538,6 +538,9 @@ body{top:0!important}
   .content{max-width:900px}
   .bottom-nav{max-width:900px;left:50%;right:auto;transform:translateX(-50%);border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 }
+
+input:checked + span{background:var(--g)!important}
+input:checked + span + #rating-toggle-knob{left:22px!important}
 </style>
 <script src="js/config.js"></script>
 <script src="js/commission.js"></script>
@@ -1152,7 +1155,20 @@ body{top:0!important}
               <button onclick="cancelCompanyEdit()" style="padding:10px 20px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
             </div>
           </div>
-        </div>
+        
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Betygsvisning</div>
+              <div style="font-size:.75rem;color:var(--m);margin-top:2px" id="rating-toggle-desc">Varje städares betyg syns för kunder</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+              <input type="checkbox" id="toggle-individual-ratings" checked onchange="toggleIndividualRatings(this.checked)" style="opacity:0;width:0;height:0">
+              <span style="position:absolute;inset:0;background:#ccc;border-radius:24px;transition:.2s"></span>
+              <span style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)" id="rating-toggle-knob"></span>
+            </label>
+          </div>
+        </div></div>
 
         <div class="card" style="padding:20px" id="team-management-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -5215,6 +5231,50 @@ markJobDone = async function(id) {
   }
   if (_origMarkJobDone) _origMarkJobDone(id);
 };
+
+
+// ═══ RATING TOGGLE ═══
+async function toggleIndividualRatings(checked) {
+  if (!window._companyId) return;
+  var desc = document.getElementById('rating-toggle-desc');
+  var knob = document.getElementById('rating-toggle-knob');
+  var track = knob ? knob.previousElementSibling : null;
+  
+  if (checked) {
+    if (desc) desc.textContent = 'Varje st\u00e4dares betyg syns f\u00f6r kunder';
+    if (knob) knob.style.left = '22px';
+    if (track) track.style.background = 'var(--g)';
+  } else {
+    if (desc) desc.textContent = 'Bara f\u00f6retagets totalbetyg syns f\u00f6r kunder';
+    if (knob) knob.style.left = '2px';
+    if (track) track.style.background = '#ccc';
+  }
+  
+  try {
+    await fetch(SUPA + '/rest/v1/companies?id=eq.' + window._companyId, {
+      method: 'PATCH',
+      headers: Object.assign({}, H, { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      body: JSON.stringify({ show_individual_ratings: checked })
+    });
+    showToast(checked ? 'Individuella betyg visas' : 'Bara f\u00f6retagsbetyg visas');
+  } catch(e) { console.warn('Rating toggle error:', e); }
+}
+
+// Load rating toggle state
+async function loadRatingToggle() {
+  if (!window._companyId) return;
+  try {
+    var res = await fetch(SUPA + '/rest/v1/companies?id=eq.' + window._companyId + '&select=show_individual_ratings', { headers: H });
+    var rows = await res.json();
+    if (rows && rows[0]) {
+      var checked = rows[0].show_individual_ratings !== false;
+      var el = document.getElementById('toggle-individual-ratings');
+      if (el) el.checked = checked;
+      toggleIndividualRatings(checked);
+    }
+  } catch(e) {}
+}
+setTimeout(function() { if (window._isCompanyOwner) loadRatingToggle(); }, 1500);
 
 </script>
 </body>

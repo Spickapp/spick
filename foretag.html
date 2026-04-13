@@ -467,9 +467,9 @@ async function init() {
         h += '<div class="team-card">';
         h += m.avatar_url ? '<div class="team-av"><img src="' + m.avatar_url + '" alt="' + esc(m.full_name) + '"></div>' : '<div class="team-av">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
         h += '<div class="team-name">' + esc(m.full_name) + '</div>';
-        if (rat > 0) h += '<div class="team-stars">' + stars + ' ' + rat.toFixed(1) + '</div>';
+        if (rat > 0 && co.show_individual_ratings !== false) h += '<div class="team-stars">' + stars + ' ' + rat.toFixed(1) + '</div>';
         else h += '<div class="team-meta">Ny på Spick</div>';
-        h += '<div class="team-meta">' + (m.completed_jobs || 0) + ' jobb</div>';
+        h += '<div class="team-meta">' + (co.show_individual_ratings !== false ? (m.completed_jobs || 0) + ' jobb' : '') + '</div>';
         if (m.bio) h += '<div class="team-bio">"' + esc(m.bio) + '"</div>';
         if (svcs.length) { h += '<div class="team-svcs">'; svcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
         h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</a>';
