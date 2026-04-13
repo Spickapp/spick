@@ -1308,7 +1308,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
 
         <div class="card" style="padding:20px;margin-top:12px" id="team-reviews-card">
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets recensioner</h4>
-          <div id="team-reviews-list"><p style="color:var(--m);font-size:.85rem">Laddar...</p></div>
+          <div id="team-reviews-list"><div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">⭐</div><p style="font-size:.85rem;margin:0">Inga recensioner ännu</p></div></div>
         </div>
       </div>
     </div>
@@ -1992,9 +1992,9 @@ async function loadCleanerByEmail(email, authUserId) {
   if (window._isCompanyOwner) setupVDNavigation();
   showScreen('app');
 
-  // Company owners default to team tab
+  // VD: preload company prices (no auto-redirect)
   if (cleaner.is_company_owner) {
-    switchTab('team');
+    loadCompanyPrices();
   }
 
   // Owner-only: hide personal cleaning UI
@@ -4343,6 +4343,9 @@ async function renderTeam() {
         (r.comment ? '<div style="font-size:.82rem;color:var(--gray-600);margin-top:6px;font-style:italic">"' + escHtml(r.comment) + '"</div>' : '') +
       '</div>';
     }).join('') : '<p style="color:var(--gray-500);font-size:.85rem">Inga recensioner ännu.</p>';
+  } else {
+    // No members — show empty state for reviews
+    document.getElementById('team-reviews-list').innerHTML = '<div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">⭐</div><p style="font-size:.85rem;margin:0">Inga recensioner ännu</p></div>';
   }
 }
 
