@@ -10,6 +10,7 @@ import { corsHeaders } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const RUT_OMBUD = true;
 
 serve(async (req) => {
   const CORS = corsHeaders(req);
@@ -215,9 +216,10 @@ function buildReceiptHtml(d: ReceiptData): string {
         <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
       </div>
       <div class="rut-box">
-        <strong>🏦 RUT-avdrag</strong><br>
-        Spick ans&ouml;ker automatiskt om ditt RUT-avdrag hos Skatteverket.<br>
-        Du beh&ouml;ver inte g&ouml;ra n&aring;got &mdash; avdraget hanteras av oss.
+        <strong>&#x1F3E6; RUT-AVDRAG</strong><br>
+        ${RUT_OMBUD
+          ? `Spick har beg&auml;rt utbetalning fr&aring;n Skatteverket f&ouml;r RUT-avdraget (${fmtSEK(d.rutAmount)} kr) &aring; kundens v&auml;gnar. Avdraget belastar kundens prelimin&auml;ra skatt.`
+          : `Kunden ansvarar sj&auml;lv f&ouml;r att s&ouml;ka RUT-avdrag hos Skatteverket. Detta kvitto utg&ouml;r underlag f&ouml;r ans&ouml;kan. Maximalt avdrag: 75&nbsp;000 kr/&aring;r.`}
       </div>`;
   } else {
     pricingHtml = `
