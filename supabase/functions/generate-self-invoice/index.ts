@@ -26,6 +26,8 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json();
 
+    console.log("[SELF-INVOICE] Request:", { month: body.month, cleaner_id: body.cleaner_id, period_start: body.period_start, period_end: body.period_end });
+
     // --- Determine mode: single cleaner or all cleaners for a month ---
     let cleanerIds: string[] = [];
     let periodStart: string;
@@ -126,6 +128,8 @@ async function generateInvoiceForCleaner(
     (inv.booking_ids || []).forEach((id: string) => alreadyInvoiced.add(id));
   });
 
+  console.log("[SELF-INVOICE] Querying bookings for cleaner:", cleanerId, "period:", periodStart, "–", periodEnd);
+
   const { data: bookings, error: bErr } = await supabase
     .from("bookings")
     .select("id, booking_date, service_type, booking_hours, total_price, status")
@@ -135,7 +139,12 @@ async function generateInvoiceForCleaner(
     .lte("booking_date", periodEnd)
     .order("booking_date", { ascending: true });
 
-  if (bErr) throw new Error("Kunde inte hämta bokningar: " + bErr.message);
+  if (bErr) {
+    console.log("[SELF-INVOICE] Booking query error:", bErr.message);
+    throw new Error("Kunde inte hämta bokningar: " + bErr.message);
+  }
+
+  console.log("[SELF-INVOICE] Bookings found:", bookings?.length, bookings?.map((b: { id: string }) => b.id));
 
   // Filter out already invoiced bookings
   const billableBookings = (bookings || []).filter(
@@ -143,6 +152,7 @@ async function generateInvoiceForCleaner(
   );
 
   if (billableBookings.length === 0) {
+    console.log("[SELF-INVOICE] No billable bookings for cleaner:", cleanerId);
     return { cleaner_id: cleanerId, invoice_id: "", invoice_number: "", pdf_url: "", skipped: true };
   }
 
@@ -206,6 +216,7 @@ async function generateInvoiceForCleaner(
   const { data: invNumData, error: invNumErr } = await supabase.rpc("generate_invoice_number");
   if (invNumErr) throw new Error("Kunde inte generera fakturanummer: " + invNumErr.message);
   const invoiceNumber = invNumData as string;
+  console.log("[SELF-INVOICE] Invoice created:", invoiceNumber, "for cleaner:", cleanerId);
 
   // 7. Build seller info
   const sellerName = cleaner.business_name || `${cleaner.first_name} ${cleaner.last_name}`;
@@ -238,7 +249,7 @@ async function generateInvoiceForCleaner(
   const { error: uploadErr } = await supabase.storage
     .from("invoices")
     .upload(fileName, new TextEncoder().encode(html), {
-      contentType: "text/html",
+      contentType: "text/html; charset=utf-8",
       upsert: true,
     });
   if (uploadErr) throw new Error("Kunde inte ladda upp faktura: " + uploadErr.message);
