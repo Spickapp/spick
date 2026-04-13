@@ -151,7 +151,7 @@ serve(async (req) => {
         .from("cleaner_service_prices")
         .select("price, price_type")
         .eq("cleaner_id", cleaner.id)
-        .eq("service_type", service)
+        .eq("service_type", service.split(" + ")[0].trim())
         .limit(1);
       if (svcPrices && svcPrices.length > 0) {
         if (svcPrices[0].price_type === "per_sqm" && sqm) {

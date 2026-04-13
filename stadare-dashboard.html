@@ -5070,13 +5070,32 @@ function showInviteLink() {
 async function loadChecklist(bookingId, serviceType, companyId) {
   try {
     // Hämta mall: företagsspecifik först, sedan global
-    var url = SUPA + '/rest/v1/service_checklists?service_type=eq.' + encodeURIComponent(serviceType) + '&order=company_id.desc.nullslast&limit=2';
+    var _svcParts = serviceType.split(' + ').map(function(s){return s.trim()});
+    var _svcFilter = _svcParts.length > 1 
+      ? 'service_type=in.(' + _svcParts.map(function(s){return encodeURIComponent('"'+s+'"')}).join(',') + ')'
+      : 'service_type=eq.' + encodeURIComponent(serviceType);
+    var url = SUPA + '/rest/v1/service_checklists?' + _svcFilter + '&order=company_id.desc.nullslast&limit=2';
     var res = await fetch(url, { headers: H });
     var checklists = await res.json();
     if (!Array.isArray(checklists) || !checklists.length) return null;
 
     // Prefer company-specific, fallback to global (company_id = null)
-    var template = checklists.find(function(c) { return c.company_id === companyId; }) || checklists.find(function(c) { return !c.company_id; });
+    var template = null;
+    if (_svcParts.length > 1 && checklists.length > 1) {
+      // Merge items from all matching checklists
+      var mergedItems = [];
+      _svcParts.forEach(function(svcName) {
+        var match = checklists.find(function(c) { return c.service_type === svcName && c.company_id === companyId; }) 
+                 || checklists.find(function(c) { return c.service_type === svcName && !c.company_id; });
+        if (match && match.items) {
+          mergedItems.push({ key: 'header_' + svcName, label: '— ' + svcName + ' —', isHeader: true });
+          match.items.forEach(function(item) { mergedItems.push(item); });
+        }
+      });
+      template = { id: checklists[0].id, items: mergedItems };
+    } else {
+      template = checklists.find(function(c) { return c.company_id === companyId; }) || checklists.find(function(c) { return !c.company_id; });
+    }
     if (!template) return null;
 
     // Kolla om det redan finns en booking_checklist
