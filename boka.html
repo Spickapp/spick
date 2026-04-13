@@ -727,6 +727,13 @@ document.addEventListener('DOMContentLoaded', () => {
           window.companyData = rows[0];
           window.companyAllowChoice = rows[0].allow_customer_choice !== false;
           console.log('[SPICK] Company allow_customer_choice:', window.companyAllowChoice);
+          // Update heading and title for company bookings
+          var compName = rows[0].display_name || rows[0].name || '';
+          if (compName) {
+            var h1 = document.getElementById('page-h1');
+            if (h1) h1.textContent = 'Boka via ' + compName;
+            document.title = 'Boka städning via ' + compName + ' | Spick';
+          }
         }
       })
       .catch(e => console.warn('[SPICK] Company fetch failed:', e));
