@@ -1371,6 +1371,20 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets recensioner</h4>
           <div id="team-reviews-list"><div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">⭐</div><p style="font-size:.85rem;margin:0">Inga recensioner ännu</p></div></div>
         </div>
+
+        <!-- Behörigheter (VD) -->
+        <div class="card" style="padding:20px;margin-top:12px" id="team-permissions-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h4 style="font-size:.95rem;font-weight:700;margin:0">Behörigheter för teammedlemmar</h4>
+          </div>
+          <p style="color:var(--m);font-size:.78rem;margin-bottom:16px;line-height:1.5">Styr vad dina städare ser i sin dashboard. Gäller alla om inte individuellt överskridna.</p>
+          <div id="company-permissions-toggles"></div>
+          <button onclick="saveCompanyPermissions()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer;font-family:inherit;margin-top:12px">Spara standardbehörigheter</button>
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200,#eee)">
+            <h4 style="font-size:.88rem;font-weight:700;margin-bottom:10px">Per-städare överskridning</h4>
+            <div id="per-cleaner-permissions"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1698,6 +1712,129 @@ const R = {
 
 let cleaner = null, jobs = [], realtimeCh = null, countdownTimer = null;
 let _cleanerLoadStarted = false;
+
+// ─── Rollbaserad behörighetsmotor ────────────────────────────
+const ROLE_DEFAULTS = {
+  employee: {
+    home: true, bookings: true, calendar: true, tasks: true,
+    reviews: true, profile: 'limited', pricing: false,
+    earnings: false, stripe: false, invoices: false,
+    company: false, team: false
+  },
+  owner: {
+    home: true, bookings: true, calendar: true, tasks: true,
+    reviews: true, profile: true, pricing: true,
+    earnings: true, stripe: true, invoices: true,
+    company: true, team: true
+  },
+  solo: {
+    home: true, bookings: true, calendar: true, tasks: true,
+    reviews: true, profile: true, pricing: true,
+    earnings: true, stripe: true, invoices: true,
+    company: false, team: false
+  }
+};
+
+const PERMISSION_LABELS = {
+  home: { label: 'Hem (nästa jobb, check-in)', locked: true },
+  bookings: { label: 'Bokningar', locked: true },
+  calendar: { label: 'Kalender', locked: true },
+  tasks: { label: 'Uppgifter', locked: false },
+  reviews: { label: 'Recensioner (egna)', locked: false },
+  pricing: { label: 'Prissättning', locked: false },
+  earnings: { label: 'Intäkter & statistik', locked: false },
+  stripe: { label: 'Bankkonto (Stripe Connect)', locked: false },
+  invoices: { label: 'Självfakturor', locked: false },
+  profile: { label: 'Profil (fullständig)', locked: false }
+};
+
+window._userRole = 'solo';
+window._permissions = {};
+window._companyConfig = null;
+
+function getEffectivePermissions(cl, companyConfig) {
+  var role = cl.is_company_owner ? 'owner'
+           : cl.company_id ? 'employee'
+           : 'solo';
+  var defaults = Object.assign({}, ROLE_DEFAULTS[role]);
+  if (role === 'employee' && companyConfig && companyConfig.employee) {
+    Object.assign(defaults, companyConfig.employee);
+  }
+  if (cl.dashboard_permissions) {
+    Object.assign(defaults, cl.dashboard_permissions);
+  }
+  return { role: role, permissions: defaults };
+}
+
+function applyPermissions(p) {
+  // Nav tabs — map nav button IDs to permission keys
+  var navMap = {
+    'nav-inkomst': 'earnings',
+    'nav-team': 'team'
+  };
+  for (var navId in navMap) {
+    var btn = document.getElementById(navId);
+    if (btn && !p[navMap[navId]]) btn.style.display = 'none';
+  }
+
+  // Sections within Inkomst tab (solo view)
+  var soloInkomst = document.getElementById('solo-inkomst-content');
+  if (soloInkomst && !p.earnings) soloInkomst.style.display = 'none';
+
+  // Stripe Connect card (inside solo-inkomst-content)
+  var connectCard = document.getElementById('connect-status');
+  if (connectCard && !p.stripe) {
+    var stripeCard = connectCard.closest('.card');
+    if (stripeCard) stripeCard.style.display = 'none';
+  }
+
+  // Invoices card in Jag tab
+  var invoicesCard = document.getElementById('my-invoices-card');
+  if (invoicesCard && !p.invoices) invoicesCard.style.display = 'none';
+
+  // Reviews card in Jag tab
+  if (!p.reviews) {
+    var revCard = document.getElementById('my-reviews-card');
+    if (revCard) revCard.style.display = 'none';
+    var revSection = document.querySelector('#tab-inst .settings-section-title');
+    // Hide the reviews settings section
+    document.querySelectorAll('#tab-inst .settings-section').forEach(function(sec) {
+      var title = sec.querySelector('.settings-section-title');
+      if (title && title.textContent.trim() === 'Recensioner') sec.style.display = 'none';
+    });
+  }
+
+  // Settings links in Jag tab — pricing sub-view
+  if (!p.pricing) {
+    document.querySelectorAll('#tab-inst .settings-link').forEach(function(link) {
+      if (link.textContent.includes('Prissättning')) link.style.display = 'none';
+    });
+  }
+
+  // Limited profile — hide rate, radius, services editing
+  if (p.profile === 'limited') {
+    document.querySelectorAll('#tab-inst .settings-section').forEach(function(sec) {
+      var title = sec.querySelector('.settings-section-title');
+      if (title && (title.textContent.trim() === 'Arbete' || title.textContent.trim() === 'Tjänster')) {
+        sec.style.display = 'none';
+      }
+    });
+  }
+
+  // Home tab earnings cards — hide if no earnings permission
+  if (!p.earnings) {
+    var weekEarn = document.getElementById('home-week-earn');
+    if (weekEarn) { var card = weekEarn.closest('.stat-card'); if (card) card.style.display = 'none'; }
+    var monthEarn = document.getElementById('home-month-earn');
+    if (monthEarn) { var card2 = monthEarn.closest('.stat-card'); if (card2) card2.style.display = 'none'; }
+    var prognosCard = document.getElementById('prognos-card');
+    if (prognosCard) prognosCard.style.display = 'none';
+  }
+
+  // If active tab got hidden, switch to Hem
+  var activeNav = document.querySelector('.nav-btn.active');
+  if (activeNav && activeNav.style.display === 'none') switchTab('hem');
+}
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
 const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const MONTHLY_GOAL = 10000;
@@ -2090,6 +2227,21 @@ async function loadCleanerByEmail(email, authUserId) {
   window._isCompanyOwner = !!cleaner.is_company_owner;
   showTeamTab();
   if (window._isCompanyOwner) setupVDNavigation();
+
+  // ── Rollbaserad behörighetshantering ──
+  var companyConfig = null;
+  if (cleaner.company_id) {
+    try {
+      var ccRes = await R.selectSingle('companies', 'select=dashboard_config&id=eq.' + cleaner.company_id);
+      companyConfig = ccRes.data?.dashboard_config || null;
+    } catch(e) {}
+  }
+  window._companyConfig = companyConfig;
+  var permResult = getEffectivePermissions(cleaner, companyConfig);
+  window._userRole = permResult.role;
+  window._permissions = permResult.permissions;
+  applyPermissions(permResult.permissions);
+
   showScreen('app');
 
   // VD: preload all team data (no auto-redirect, stay on Hem)
@@ -4331,6 +4483,11 @@ async function renderTeam() {
   // Fetch team members with all fields
   const { data: members } = await R.select('cleaners', `select=*&company_id=eq.${cleaner.company_id}&order=first_name.asc`);
   _teamMembers = members || [];
+  window._teamMembers = _teamMembers;
+
+  // Render VD permissions UI
+  renderCompanyPermissions(window._companyConfig);
+  renderPerCleanerPermissions(_teamMembers);
 
   const nonOwner = _teamMembers.filter(m => m.id !== cleaner.id);
   document.getElementById('team-count').textContent = nonOwner.length + ' teammedlem' + (nonOwner.length !== 1 ? 'mar' : '');
@@ -6195,6 +6352,116 @@ async function createTask() {
   if (btn) { btn.disabled = false; btn.textContent = 'Skapa uppgift'; }
 }
 
+
+// ─── VD Behörighetshantering ─────────────────────────────────
+
+function renderCompanyPermissions(config) {
+  var current = (config && config.employee) ? config.employee : ROLE_DEFAULTS.employee;
+  var container = document.getElementById('company-permissions-toggles');
+  if (!container) return;
+  var html = '';
+  for (var key in PERMISSION_LABELS) {
+    var meta = PERMISSION_LABELS[key];
+    var isChecked = key === 'profile' ? current[key] === true : !!current[key];
+    html += '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:' + (meta.locked ? 'default' : 'pointer') + '">'
+      + '<input type="checkbox" data-perm="' + key + '" ' + (isChecked ? 'checked' : '') + ' ' + (meta.locked ? 'disabled checked' : '')
+      + ' style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0">'
+      + '<span style="font-size:.88rem;' + (meta.locked ? 'color:var(--m)' : '') + '">' + meta.label + '</span>'
+      + (meta.locked ? '<span style="font-size:.7rem;color:var(--m)">(alltid på)</span>' : '')
+      + '</label>';
+  }
+  container.innerHTML = html;
+}
+
+async function saveCompanyPermissions() {
+  var toggles = document.querySelectorAll('#company-permissions-toggles input[data-perm]');
+  var config = { home: true, bookings: true, calendar: true };
+  toggles.forEach(function(t) {
+    if (['home','bookings','calendar'].includes(t.dataset.perm)) return;
+    if (t.dataset.perm === 'profile') {
+      config[t.dataset.perm] = t.checked ? true : 'limited';
+    } else {
+      config[t.dataset.perm] = t.checked;
+    }
+  });
+  var res = await R.update('companies', { dashboard_config: { employee: config } }, 'id=eq.' + window._companyId);
+  if (res.error) { showToast('Kunde inte spara: ' + (res.error.message || res.error)); return; }
+  window._companyConfig = { employee: config };
+  showToast('Behörigheter sparade');
+}
+
+function renderPerCleanerPermissions(members) {
+  var container = document.getElementById('per-cleaner-permissions');
+  if (!container) return;
+  var filtered = (members || []).filter(function(m) { return !m.is_company_owner; });
+  if (!filtered.length) { container.innerHTML = '<p style="color:var(--m);font-size:.82rem">Inga teammedlemmar att konfigurera.</p>'; return; }
+  container.innerHTML = filtered.map(function(m) {
+    var hasOverride = !!m.dashboard_permissions;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9fafb;border-radius:8px;margin-bottom:6px">'
+      + '<div><strong style="font-size:.85rem">' + escHtml(m.full_name || m.first_name || 'Okänd') + '</strong>'
+      + '<span style="color:var(--m);font-size:.75rem;margin-left:6px">' + (hasOverride ? '(Anpassad)' : '(Standard)') + '</span></div>'
+      + '<button onclick="openCleanerPermissions(\'' + m.id + '\')" style="background:none;border:1px solid var(--gray-200,#ddd);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit">'
+      + (hasOverride ? 'Redigera' : 'Anpassa') + '</button></div>';
+  }).join('');
+}
+
+function openCleanerPermissions(cleanerId) {
+  var member = (window._teamMembers || []).find(function(m) { return m.id === cleanerId; });
+  if (!member) return;
+  var current = member.dashboard_permissions || (window._companyConfig && window._companyConfig.employee) || ROLE_DEFAULTS.employee;
+  var name = escHtml(member.full_name || member.first_name || 'Städare');
+
+  var togglesHtml = '';
+  for (var key in PERMISSION_LABELS) {
+    var meta = PERMISSION_LABELS[key];
+    var isChecked = key === 'profile' ? current[key] === true : !!current[key];
+    togglesHtml += '<label style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:' + (meta.locked ? 'default' : 'pointer') + '">'
+      + '<input type="checkbox" data-perm="' + key + '" ' + (isChecked ? 'checked' : '') + ' ' + (meta.locked ? 'disabled checked' : '')
+      + ' style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0">'
+      + '<span style="font-size:.85rem">' + meta.label + '</span></label>';
+  }
+
+  var html = '<div id="cleaner-perm-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)this.remove()">'
+    + '<div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;position:relative">'
+    + '<button onclick="document.getElementById(\'cleaner-perm-modal\').remove()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--m)">✕</button>'
+    + '<h3 style="font-size:1rem;font-weight:700;margin-bottom:4px">Behörigheter — ' + name + '</h3>'
+    + '<p style="color:var(--m);font-size:.78rem;margin-bottom:16px">Överskrid företagsstandard för denna städare.</p>'
+    + '<div id="cleaner-perm-toggles">' + togglesHtml + '</div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px">'
+    + '<button onclick="saveCleanerPermissions(\'' + cleanerId + '\')" style="flex:1;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer;font-family:inherit">Spara</button>'
+    + '<button onclick="resetCleanerPermissions(\'' + cleanerId + '\')" style="flex:1;padding:10px;background:none;border:1px solid var(--gray-200,#ddd);border-radius:8px;font-size:.85rem;cursor:pointer;font-family:inherit">Återställ till standard</button>'
+    + '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveCleanerPermissions(cleanerId) {
+  var toggles = document.querySelectorAll('#cleaner-perm-toggles input[data-perm]');
+  var perms = { home: true, bookings: true, calendar: true };
+  toggles.forEach(function(t) {
+    if (['home','bookings','calendar'].includes(t.dataset.perm)) return;
+    perms[t.dataset.perm] = t.dataset.perm === 'profile' ? (t.checked ? true : 'limited') : t.checked;
+  });
+  var res = await R.update('cleaners', { dashboard_permissions: perms }, 'id=eq.' + cleanerId);
+  if (res.error) { showToast('Kunde inte spara'); return; }
+  var modal = document.getElementById('cleaner-perm-modal');
+  if (modal) modal.remove();
+  showToast('Behörigheter sparade');
+  // Update local data
+  var member = (window._teamMembers || []).find(function(m) { return m.id === cleanerId; });
+  if (member) member.dashboard_permissions = perms;
+  renderPerCleanerPermissions(window._teamMembers);
+}
+
+async function resetCleanerPermissions(cleanerId) {
+  var res = await R.update('cleaners', { dashboard_permissions: null }, 'id=eq.' + cleanerId);
+  if (res.error) { showToast('Kunde inte återställa'); return; }
+  var modal = document.getElementById('cleaner-perm-modal');
+  if (modal) modal.remove();
+  showToast('Återställt till standard');
+  var member = (window._teamMembers || []).find(function(m) { return m.id === cleanerId; });
+  if (member) member.dashboard_permissions = null;
+  renderPerCleanerPermissions(window._teamMembers);
+}
 
 // ─── Självfakturor ───────────────────────────────────────────
 
