@@ -1,12 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
-// SPICK – Kundkvitto (Customer Receipt PDF)
-// Genererar kvitto-PDF vid betalning. Privat = RUT-info, Företag = org.nr
+// SPICK – Kundkvitto (Customer Receipt HTML)
+// Genererar kvitto vid betalning. Privat = RUT-info, Företag = org.nr
 // Anropas av stripe-webhook efter checkout.session.completed
 // ═══════════════════════════════════════════════════════════════
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 import { corsHeaders } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -62,7 +61,7 @@ serve(async (req) => {
     const isRut = !isCompany && !!booking.rut_amount && booking.rut_amount > 0;
 
     // 4. Build receipt data
-    const receiptData: ReceiptData = {
+    const d: ReceiptData = {
       receiptNumber,
       receiptDate: new Date().toISOString().split("T")[0],
       bookingDate: booking.booking_date || "",
@@ -91,14 +90,14 @@ serve(async (req) => {
       await supabase.storage.createBucket("receipts", { public: true });
     }
 
-    // 6. Generate PDF
-    const pdfBytes = await generateReceiptPdf(receiptData);
-    const pdfFileName = `${receiptNumber}.pdf`;
+    // 6. Generate HTML receipt
+    const html = buildReceiptHtml(d);
+    const fileName = `${receiptNumber}.html`;
 
     const { error: uploadErr } = await supabase.storage
       .from("receipts")
-      .upload(pdfFileName, pdfBytes, {
-        contentType: "application/pdf",
+      .upload(fileName, new TextEncoder().encode(html), {
+        contentType: "text/html; charset=utf-8",
         upsert: true,
       });
 
@@ -107,9 +106,9 @@ serve(async (req) => {
       return json(500, { error: "Kunde inte ladda upp kvitto: " + uploadErr.message });
     }
 
-    const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(pdfFileName);
+    const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(fileName);
     const receiptUrl = urlData.publicUrl;
-    console.log("[RECEIPT] PDF uploaded:", receiptUrl);
+    console.log("[RECEIPT] HTML uploaded:", receiptUrl);
 
     // 7. Update booking with receipt info
     await supabase.from("bookings").update({
@@ -153,7 +152,7 @@ interface ReceiptData {
   bookingId: string;
 }
 
-// ─── Service name translation ───────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────
 
 function translateService(type: string): string {
   const map: Record<string, string> = {
@@ -166,298 +165,185 @@ function translateService(type: string): string {
   return map[(type || "").toLowerCase()] || type || "Städning";
 }
 
-// ─── ASCII fallback for Helvetica ───────────────────────────
-
-function ascii(s: string): string {
-  return (s || "")
-    .replace(/å/g, "a").replace(/Å/g, "A")
-    .replace(/ä/g, "a").replace(/Ä/g, "A")
-    .replace(/ö/g, "o").replace(/Ö/g, "O")
-    .replace(/é/g, "e").replace(/É/g, "E")
-    .replace(/ü/g, "u").replace(/Ü/g, "U")
-    .replace(/—/g, "-").replace(/–/g, "-")
-    .replace(/•/g, "*");
+function esc(s: string): string {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// ─── PDF Generator ──────────────────────────────────────────
+function fmt(n: number): string {
+  return n.toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-async function generateReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
-  const doc = await PDFDocument.create();
+// ─── HTML Receipt Builder ───────────────────────────────────
 
-  // Try Inter font, fallback to Helvetica
-  let font: Awaited<ReturnType<typeof doc.embedFont>>;
-  let fontBold: Awaited<ReturnType<typeof doc.embedFont>>;
-  let useFallback = false;
+function buildReceiptHtml(d: ReceiptData): string {
+  const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
 
-  // Try multiple CDNs for Inter font (supports å, ä, ö)
-  const fontSources = [
-    {
-      regular: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf",
-      bold: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf",
-      name: "jsdelivr",
-    },
-    {
-      regular: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hjQ.ttf",
-      bold: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hjQ.ttf",
-      name: "gstatic",
-    },
-  ];
-
-  for (const src of fontSources) {
-    try {
-      const [fontResp, boldResp] = await Promise.all([
-        fetch(src.regular, { signal: AbortSignal.timeout(8000) }),
-        fetch(src.bold, { signal: AbortSignal.timeout(8000) }),
-      ]);
-      if (fontResp.ok && boldResp.ok) {
-        const [fontBytes, boldBytes] = await Promise.all([
-          fontResp.arrayBuffer(),
-          boldResp.arrayBuffer(),
-        ]);
-        font = await doc.embedFont(fontBytes);
-        fontBold = await doc.embedFont(boldBytes);
-        console.log(`[RECEIPT] Inter font loaded from ${src.name}`);
-        break;
-      }
-    } catch (e) {
-      console.warn(`[RECEIPT] Font fetch failed (${src.name}):`, (e as Error).message);
-    }
-  }
-
-  if (!font) {
-    font = await doc.embedFont(StandardFonts.Helvetica);
-    fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-    useFallback = true;
-    console.log("[RECEIPT] Using Helvetica fallback");
-  }
-
-  const t = useFallback ? ascii : (s: string) => s;
-  const fmt = (n: number) => n.toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const page = doc.addPage([595.28, 841.89]); // A4
-  const { width, height } = page.getSize();
-  const margin = 50;
-  let y = height - margin;
-
-  const GREEN = rgb(15 / 255, 110 / 255, 86 / 255);
-  const BLACK = rgb(0.1, 0.1, 0.1);
-  const GRAY = rgb(0.4, 0.4, 0.4);
-  const WHITE = rgb(1, 1, 1);
-  const LIGHT_BG = rgb(0.97, 0.97, 0.96);
-  const RUT_BG = rgb(0.88, 0.96, 0.93);
-
-  function text(s: string, x: number, yP: number, opts: { f?: typeof font; sz?: number; c?: typeof BLACK } = {}) {
-    page.drawText(s, { x, y: yP, size: opts.sz || 10, font: opts.f || font, color: opts.c || BLACK });
-  }
-
-  function textR(s: string, xRight: number, yP: number, opts: { f?: typeof font; sz?: number; c?: typeof BLACK } = {}) {
-    const f2 = opts.f || font;
-    const w = f2.widthOfTextAtSize(s, opts.sz || 10);
-    text(s, xRight - w, yP, opts);
-  }
-
-  function line(x1: number, yP: number, x2: number, th = 1, c = GREEN) {
-    page.drawLine({ start: { x: x1, y: yP }, end: { x: x2, y: yP }, thickness: th, color: c });
-  }
-
-  // ═══ HEADER ═══
-  text("Spick", margin, y, { f: fontBold, sz: 26, c: GREEN });
-  text("KVITTO", margin + 100, y + 2, { f: fontBold, sz: 18, c: BLACK });
-
-  const metaX = width - margin;
-  textR(`Kvittonr: ${d.receiptNumber}`, metaX, y, { f: fontBold, sz: 10 });
-  textR(`Datum: ${d.receiptDate}`, metaX, y - 14, { sz: 9, c: GRAY });
-
-  y -= 35;
-  line(margin, y, width - margin, 2);
-  y -= 25;
-
-  // ═══ FROM / TO ═══
-  const colW = (width - margin * 2 - 30) / 2;
-
-  // From: Spick
-  text(t("FRÅN"), margin, y, { f: fontBold, sz: 8, c: GREEN });
-  y -= 14;
-  text("Haghighi Consulting AB", margin, y, { f: fontBold, sz: 10 });
-  y -= 13;
-  text("Bifirma: Spick", margin, y, { sz: 9, c: GRAY });
-  y -= 13;
-  text("Org.nr: 559402-4522", margin, y, { sz: 9, c: GRAY });
-  y -= 13;
-  text("hello@spick.se", margin, y, { sz: 9, c: GRAY });
-
-  // To: Customer
-  const toX = margin + colW + 30;
-  let toY = y + 53;
-  text("TILL", toX, toY, { f: fontBold, sz: 8, c: GREEN });
-  toY -= 14;
-
-  if (d.isCompany && d.companyName) {
-    text(t(d.companyName), toX, toY, { f: fontBold, sz: 10 });
-    toY -= 13;
-    if (d.companyOrg) {
-      text(`Org.nr: ${d.companyOrg}`, toX, toY, { sz: 9, c: GRAY });
-      toY -= 13;
-    }
-    if (d.companyRef) {
-      text(`Ref: ${t(d.companyRef)}`, toX, toY, { sz: 9, c: GRAY });
-      toY -= 13;
-    }
-    text(t(d.customerName), toX, toY, { sz: 9, c: GRAY });
-  } else {
-    text(t(d.customerName), toX, toY, { f: fontBold, sz: 10 });
-    toY -= 13;
-    text(d.customerEmail, toX, toY, { sz: 9, c: GRAY });
-  }
-
-  y -= 30;
-  line(margin, y, width - margin, 0.5, GRAY);
-  y -= 25;
-
-  // ═══ BOOKING DETAILS TABLE ═══
-  text(t("BOKNINGSDETALJER"), margin, y, { f: fontBold, sz: 9, c: GREEN });
-  y -= 18;
-
-  // Table header
-  const tblLeft = margin;
-  const tblRight = width - margin;
-  page.drawRectangle({ x: tblLeft, y: y - 4, width: tblRight - tblLeft, height: 20, color: GREEN });
-
-  const detailCols = [
-    { label: t("Tjänst"), x: tblLeft + 6, right: false },
-    { label: "Datum", x: tblLeft + 170, right: false },
-    { label: "Tid", x: tblLeft + 270, right: false },
-    { label: "Timmar", x: tblLeft + 340, right: true },
-    { label: "Adress", x: tblLeft + 360, right: false },
-  ];
-
-  detailCols.forEach(col => {
-    text(col.label, col.x, y, { f: fontBold, sz: 8, c: WHITE });
-  });
-  y -= 22;
-
-  // Table row
-  page.drawRectangle({ x: tblLeft, y: y - 4, width: tblRight - tblLeft, height: 18, color: LIGHT_BG });
-  text(t(d.service), tblLeft + 6, y, { sz: 9 });
-  text(d.bookingDate, tblLeft + 170, y, { sz: 9 });
-  text(d.bookingTime, tblLeft + 270, y, { sz: 9 });
-  textR(String(d.hours), tblLeft + 355, y, { sz: 9 });
-  // Address might be long — truncate to fit
-  const addrMax = 28;
-  const addrTrunc = d.address.length > addrMax ? d.address.substring(0, addrMax) + "..." : d.address;
-  text(t(addrTrunc), tblLeft + 360, y, { sz: 8, c: GRAY });
-
-  y -= 28;
-
-  if (d.cleanerName) {
-    text(t(`Städare: ${d.cleanerName}`), margin, y, { sz: 9, c: GRAY });
-    y -= 18;
-  }
-
-  line(margin, y, width - margin, 0.5, GRAY);
-  y -= 25;
-
-  // ═══ PRICING SECTION ═══
-  text("BETALNING", margin, y, { f: fontBold, sz: 9, c: GREEN });
-  y -= 20;
-
-  const lblX = margin + 10;
-  const valX = width - margin - 10;
+  // Pricing section differs for company vs private
+  let pricingHtml = "";
 
   if (d.isCompany) {
-    // ── COMPANY RECEIPT ──
-    const exVat = Math.round(d.totalPrice * 0.8); // 20% VAT on 25% = price / 1.25
+    const exVat = Math.round(d.totalPrice * 0.8);
     const vat = d.totalPrice - exVat;
-
-    page.drawRectangle({ x: margin, y: y - 8, width: tblRight - tblLeft, height: 80, color: LIGHT_BG, borderColor: rgb(0.9, 0.9, 0.88), borderWidth: 1 });
-
-    text(t("Tjänstepris exkl. moms:"), lblX, y, { sz: 10 });
-    textR(`${fmt(exVat)} kr`, valX, y, { sz: 10 });
-    y -= 18;
-    text("Moms (25%):", lblX, y, { sz: 10 });
-    textR(`${fmt(vat)} kr`, valX, y, { sz: 10 });
-    y -= 18;
-    line(lblX, y + 4, valX, 0.5, GRAY);
-    y -= 6;
-    text("Totalt inkl. moms:", lblX, y, { f: fontBold, sz: 11 });
-    textR(`${fmt(d.totalPrice)} kr`, valX, y, { f: fontBold, sz: 11 });
-    y -= 20;
-    const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
-    text(t(`Betalningsmetod: ${pm}`), lblX, y, { sz: 9, c: GRAY });
-
-    y -= 30;
-
-    if (d.companyRef) {
-      page.drawRectangle({ x: margin, y: y - 8, width: tblRight - tblLeft, height: 24, color: rgb(0.93, 0.96, 1) });
-      page.drawRectangle({ x: margin, y: y - 8, width: 3, height: 24, color: GREEN });
-      text(`Fakturareferens: ${t(d.companyRef)}`, margin + 12, y, { sz: 9 });
-      y -= 30;
-    }
+    pricingHtml = `
+      <div class="card">
+        <div class="row"><span class="lbl">Tjänstepris exkl. moms</span><span class="val">${fmt(exVat)} kr</span></div>
+        <div class="row"><span class="lbl">Moms (25%)</span><span class="val">${fmt(vat)} kr</span></div>
+        <div class="row total"><span class="lbl">Totalt inkl. moms</span><span class="val">${fmt(d.totalPrice)} kr</span></div>
+        <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
+      </div>
+      ${d.companyRef ? `<div class="ref-box"><strong>Fakturareferens:</strong> ${esc(d.companyRef)}</div>` : ""}`;
+  } else if (d.isRut) {
+    pricingHtml = `
+      <div class="card">
+        <div class="row"><span class="lbl">Tjänstepris</span><span class="val">${fmt(d.totalPrice)} kr</span></div>
+        <div class="row rut"><span class="lbl">RUT-avdrag (50%)</span><span class="val">−${fmt(d.rutAmount)} kr</span></div>
+        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmt(d.amountPaid)} kr</span></div>
+        <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
+      </div>
+      <div class="rut-box">
+        <strong>🏦 RUT-avdrag</strong><br>
+        Spick ansöker automatiskt om ditt RUT-avdrag hos Skatteverket.<br>
+        Du behöver inte göra något — avdraget hanteras av oss.
+      </div>`;
   } else {
-    // ── PRIVATE RECEIPT ──
-    const boxH = d.isRut ? 110 : 70;
-    page.drawRectangle({ x: margin, y: y - boxH + 55, width: tblRight - tblLeft, height: boxH, color: LIGHT_BG, borderColor: rgb(0.9, 0.9, 0.88), borderWidth: 1 });
-
-    text(t("Tjänstepris:"), lblX, y, { sz: 10 });
-    textR(`${fmt(d.totalPrice)} kr`, valX, y, { sz: 10 });
-    y -= 18;
-
-    if (d.isRut) {
-      text("RUT-avdrag (50%):", lblX, y, { sz: 10, c: GREEN });
-      textR(`-${fmt(d.rutAmount)} kr`, valX, y, { sz: 10, c: GREEN });
-      y -= 18;
-      line(lblX, y + 4, valX, 0.5, GRAY);
-      y -= 6;
-      text(t("Du betalar:"), lblX, y, { f: fontBold, sz: 12 });
-      textR(`${fmt(d.amountPaid)} kr`, valX, y, { f: fontBold, sz: 12, c: GREEN });
-      y -= 20;
-      const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
-      text(t(`Betalningsmetod: ${pm}`), lblX, y, { sz: 9, c: GRAY });
-      y -= 25;
-    } else {
-      line(lblX, y + 4, valX, 0.5, GRAY);
-      y -= 6;
-      text(t("Du betalar:"), lblX, y, { f: fontBold, sz: 12 });
-      textR(`${fmt(d.amountPaid)} kr`, valX, y, { f: fontBold, sz: 12, c: GREEN });
-      y -= 20;
-      const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
-      text(t(`Betalningsmetod: ${pm}`), lblX, y, { sz: 9, c: GRAY });
-      y -= 25;
-    }
-
-    // RUT info box
-    if (d.isRut) {
-      const rutBoxH = 52;
-      page.drawRectangle({ x: margin, y: y - rutBoxH + 18, width: tblRight - tblLeft, height: rutBoxH, color: RUT_BG, borderColor: GREEN, borderWidth: 0.5 });
-      text("RUT-avdrag", margin + 12, y, { f: fontBold, sz: 10, c: GREEN });
-      y -= 14;
-      text(t("Spick ansöker automatiskt om ditt RUT-avdrag hos Skatteverket."), margin + 12, y, { sz: 9, c: BLACK });
-      y -= 13;
-      text(t("Du behöver inte göra något — avdraget hanteras av oss."), margin + 12, y, { sz: 9, c: BLACK });
-      y -= 25;
-    }
+    pricingHtml = `
+      <div class="card">
+        <div class="row"><span class="lbl">Tjänstepris</span><span class="val">${fmt(d.totalPrice)} kr</span></div>
+        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmt(d.amountPaid)} kr</span></div>
+        <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
+      </div>`;
   }
 
-  y -= 10;
-  line(margin, y, width - margin, 0.5, GRAY);
-  y -= 20;
+  // Customer "TO" section
+  let toHtml = "";
+  if (d.isCompany && d.companyName) {
+    toHtml = `
+      <strong>${esc(d.companyName)}</strong><br>
+      ${d.companyOrg ? `Org.nr: ${esc(d.companyOrg)}<br>` : ""}
+      ${d.companyRef ? `Ref: ${esc(d.companyRef)}<br>` : ""}
+      ${esc(d.customerName)}`;
+  } else {
+    toHtml = `
+      <strong>${esc(d.customerName)}</strong><br>
+      ${esc(d.customerEmail)}`;
+  }
 
-  // ═══ GUARANTEE ═══
-  page.drawRectangle({ x: margin, y: y - 22, width: tblRight - tblLeft, height: 36, color: LIGHT_BG });
-  text(t("Nöjdhetsgaranti"), margin + 12, y, { f: fontBold, sz: 10, c: GREEN });
-  y -= 14;
-  text(t("Inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta hello@spick.se inom 24h."), margin + 12, y, { sz: 9, c: GRAY });
+  return `<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kvitto ${esc(d.receiptNumber)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color:#1a1a19; background:#fff; padding:40px; max-width:800px; margin:0 auto; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; padding-bottom:24px; border-bottom:3px solid #0F6E56; }
+  .header-left { display:flex; align-items:baseline; gap:16px; }
+  .header-left h1 { font-size:28px; font-weight:700; color:#0F6E56; letter-spacing:1px; }
+  .header-left .title { font-size:20px; font-weight:700; color:#1a1a19; }
+  .header .meta { text-align:right; font-size:14px; color:#555; }
+  .header .meta strong { color:#1a1a19; }
+  .parties { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-bottom:32px; }
+  .party { padding:20px; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; }
+  .party h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#0F6E56; margin-bottom:12px; font-weight:600; }
+  .party p { font-size:14px; line-height:1.6; color:#333; }
+  .section-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#0F6E56; font-weight:600; margin-bottom:12px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:24px; font-size:13px; }
+  thead th { background:#0F6E56; color:#fff; padding:10px 12px; text-align:left; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
+  thead th:first-child { border-radius:6px 0 0 0; }
+  thead th:last-child { border-radius:0 6px 0 0; }
+  thead th.right { text-align:right; }
+  tbody td { padding:10px 12px; border-bottom:1px solid #e5e7eb; }
+  tbody tr { background:#f9fafb; }
+  .card { background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; padding:4px 0; margin-bottom:20px; }
+  .row { display:flex; justify-content:space-between; padding:10px 20px; border-bottom:1px solid #e5e7eb; font-size:14px; }
+  .row:last-child { border:none; }
+  .row .lbl { color:#666; }
+  .row .val { font-weight:600; color:#1a1a19; }
+  .row.total { border-top:2px solid #0F6E56; padding-top:14px; }
+  .row.total .lbl { font-weight:700; font-size:16px; color:#1a1a19; }
+  .row.total .val { font-size:16px; }
+  .row.rut .lbl { color:#0F6E56; }
+  .row.rut .val { color:#0F6E56; }
+  .val.green { color:#0F6E56; }
+  .rut-box { background:#E1F5EE; border-radius:8px; padding:16px 20px; margin:16px 0; font-size:14px; color:#0F6E56; line-height:1.6; border-left:4px solid #0F6E56; }
+  .ref-box { background:#eff6ff; border-radius:8px; padding:12px 20px; margin:16px 0; font-size:14px; color:#333; border-left:4px solid #0F6E56; }
+  .guarantee { background:#f9fafb; border-radius:8px; padding:16px 20px; margin:24px 0; }
+  .guarantee strong { color:#0F6E56; }
+  .guarantee p { font-size:13px; color:#666; margin-top:4px; }
+  .booking-id { font-size:12px; color:#999; margin:16px 0; }
+  .footer { margin-top:40px; padding-top:20px; border-top:1px solid #e5e7eb; font-size:12px; color:#666; line-height:1.6; text-align:center; }
+  @media print { body { padding:20px; } .header { border-bottom-width:2px; } }
+</style>
+</head>
+<body>
 
-  y -= 30;
+<div class="header">
+  <div class="header-left">
+    <h1>Spick</h1>
+    <span class="title">KVITTO</span>
+  </div>
+  <div class="meta">
+    <div><strong>Kvittonr:</strong> ${esc(d.receiptNumber)}</div>
+    <div><strong>Datum:</strong> ${esc(d.receiptDate)}</div>
+  </div>
+</div>
 
-  // ═══ BOOKING REFERENCE ═══
-  text(`Boknings-ID: ${d.bookingId}`, margin, y, { sz: 8, c: GRAY });
+<div class="parties">
+  <div class="party">
+    <h3>Från</h3>
+    <p>
+      <strong>Haghighi Consulting AB</strong><br>
+      Bifirma: Spick<br>
+      Org.nr: 559402-4522<br>
+      hello@spick.se
+    </p>
+  </div>
+  <div class="party">
+    <h3>Till</h3>
+    <p>${toHtml}</p>
+  </div>
+</div>
 
-  // ═══ FOOTER ═══
-  y = margin + 20;
-  line(margin, y + 10, width - margin, 0.5, GRAY);
-  text("Haghighi Consulting AB (bifirma Spick) | Org.nr: 559402-4522 | hello@spick.se", margin, y - 5, { sz: 8, c: GRAY });
-  text(t("Spick — Sveriges städplattform | spick.se"), margin, y - 18, { f: fontBold, sz: 8, c: GREEN });
+<div class="section-title">Bokningsdetaljer</div>
+<table>
+  <thead>
+    <tr>
+      <th>Tjänst</th>
+      <th>Datum</th>
+      <th>Tid</th>
+      <th class="right">Timmar</th>
+      <th>Adress</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>${esc(d.service)}</td>
+      <td>${esc(d.bookingDate)}</td>
+      <td>${esc(d.bookingTime)}</td>
+      <td style="text-align:right">${d.hours}</td>
+      <td>${esc(d.address)}</td>
+    </tr>
+  </tbody>
+</table>
 
-  return await doc.save();
+${d.cleanerName ? `<p style="font-size:13px;color:#666;margin-bottom:16px">Städare: ${esc(d.cleanerName)}</p>` : ""}
+
+<div class="section-title">Betalning</div>
+${pricingHtml}
+
+<div class="guarantee">
+  <strong>🛡️ Nöjdhetsgaranti</strong>
+  <p>Inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta hello@spick.se inom 24h.</p>
+</div>
+
+<div class="booking-id">Boknings-ID: ${esc(d.bookingId)}</div>
+
+<div class="footer">
+  Haghighi Consulting AB (bifirma Spick) · Org.nr: 559402-4522 · hello@spick.se<br>
+  <strong style="color:#0F6E56">Spick</strong> — Sveriges städplattform · <a href="https://spick.se" style="color:#0F6E56">spick.se</a>
+</div>
+
+</body>
+</html>`;
 }
