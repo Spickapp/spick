@@ -296,6 +296,13 @@ async function init() {
     // Hämta tjänstpriser
     var activIds = active.map(function(m){ return m.id; });
     var svcPrices = [];
+    // Fetch company-level prices
+    var companyPrices = {};
+    try {
+      var cpr = await fetch(SU + '/rest/v1/company_service_prices?company_id=eq.' + co.id, { headers: H });
+      var cpData = await cpr.json() || [];
+      cpData.forEach(function(p) { companyPrices[p.service_type] = p; });
+    } catch(e) {}
     if (activIds.length) {
       var spf = activIds.map(function(id){ return 'cleaner_id.eq.' + id; }).join(',');
       var spr = await fetch(SU + '/rest/v1/cleaner_service_prices?select=cleaner_id,service_type,price,price_type&or=(' + spf + ')', { headers: H });
@@ -357,6 +364,12 @@ async function init() {
         m.services.forEach(function(s) {
           if (!svcMap[s]) svcMap[s] = { service_type: s, price: m.hourly_rate || 350, price_type: 'hourly' };
         });
+      }
+    });
+    // Add company prices as fallback for services without individual prices
+    Object.keys(companyPrices).forEach(function(svc) {
+      if (!svcMap[svc]) {
+        svcMap[svc] = { service_type: svc, price: companyPrices[svc].price, price_type: companyPrices[svc].price_type };
       }
     });
     var uniqueServices = Object.values(svcMap);

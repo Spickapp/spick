@@ -749,6 +749,14 @@ document.addEventListener('DOMContentLoaded', () => {
           window.companyData = rows[0];
           window.companyAllowChoice = rows[0].allow_customer_choice !== false;
           window.companyShowIndividualRatings = rows[0].show_individual_ratings !== false;
+          // Fetch company-level prices
+          fetch(SUPA + '/rest/v1/company_service_prices?company_id=eq.' + window.preCompanyId, {headers: H})
+            .then(function(r){return r.json()})
+            .then(function(cp){
+              window.companyPrices = {};
+              (cp||[]).forEach(function(p){ window.companyPrices[p.service_type] = p; });
+              console.log('[SPICK] Company prices loaded:', Object.keys(window.companyPrices).length);
+            }).catch(function(e){console.warn('[SPICK] Company prices fetch failed:', e);});
           console.log('[SPICK] Company allow_customer_choice:', window.companyAllowChoice);
           // Update heading and title for company bookings
           var compName = rows[0].display_name || rows[0].name || '';
@@ -1815,12 +1823,22 @@ async function loadAvailableCleaners() {
   if (cleaners.length) {
     // Beräkna prisrange med per-tjänst-priser
     var displayRates = cleaners.map(function(cl) {
-      var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+      var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
+        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+        // Lager 2 fallback: company price
+        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+          sp = window.companyPrices[_primarySvc];
+        }
       if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
       return sp ? sp.price : (cl.hourly_rate || 350);
     });
     var hasPerSqm = cleaners.some(function(cl) {
-      var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+      var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
+        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+        // Lager 2 fallback: company price
+        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+          sp = window.companyPrices[_primarySvc];
+        }
       return sp && sp.price_type === 'per_sqm';
     });
     const minR = Math.min(...displayRates), maxR = Math.max(...displayRates);
@@ -1850,12 +1868,22 @@ async function loadAvailableCleaners() {
     // Uppdatera prisrange med per-tjänst-priser
     if (cleaners.length) {
       var displayRates = cleaners.map(function(cl) {
-        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+        var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
+        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+        // Lager 2 fallback: company price
+        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+          sp = window.companyPrices[_primarySvc];
+        }
         if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
         return sp ? sp.price : (cl.hourly_rate || 350);
       });
       var hasPerSqm = cleaners.some(function(cl) {
-        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
+        var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
+        var sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === _primarySvc; });
+        // Lager 2 fallback: company price
+        if (!sp && window.companyPrices && window.companyPrices[_primarySvc]) {
+          sp = window.companyPrices[_primarySvc];
+        }
         return sp && sp.price_type === 'per_sqm';
       });
       var minR = Math.min.apply(null, displayRates), maxR = Math.max.apply(null, displayRates);

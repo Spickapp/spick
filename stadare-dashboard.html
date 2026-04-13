@@ -1162,6 +1162,18 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
               <div style="font-weight:600;font-size:.88rem">Betygsvisning</div>
               <div style="font-size:.75rem;color:var(--m);margin-top:2px" id="rating-toggle-desc">Varje städares betyg syns för kunder</div>
             </div>
+    <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px" id="company-prices-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-weight:600;font-size:.92rem">Företagspriser</div>
+          <div style="font-size:.72rem;color:var(--m);margin-top:2px">Standardpriser för alla städare (kan överskrivas per person)</div>
+        </div>
+      </div>
+      <div id="company-prices-list" style="margin-bottom:12px">
+        <div style="font-size:.75rem;color:var(--gray-400)">Laddar priser...</div>
+      </div>
+      <button id="save-company-prices-btn" onclick="saveCompanyPrices()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer">Spara priser</button>
+    </div>
             <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
               <input type="checkbox" id="toggle-individual-ratings" checked onchange="toggleIndividualRatings(this.checked)" style="opacity:0;width:0;height:0">
               <span style="position:absolute;inset:0;background:#ccc;border-radius:24px;transition:.2s"></span>
@@ -5346,6 +5358,84 @@ async function loadRatingToggle() {
   } catch(e) {}
 }
 setTimeout(function() { if (window._isCompanyOwner) loadRatingToggle(); }, 1500);
+
+// ═══ FÖRETAGSPRISER (LAGER 1) ═══
+async function loadCompanyPrices() {
+  if (!window._companyId) return;
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&order=service_type', { headers: _authHeaders() });
+    var prices = await res.json() || [];
+    renderCompanyPrices(prices);
+  } catch(e) { console.warn('loadCompanyPrices error:', e); }
+}
+
+function renderCompanyPrices(prices) {
+  var wrap = document.getElementById('company-prices-list');
+  if (!wrap) return;
+  
+  // Get company services from owner's profile
+  var ownerSvcs = cleaner.services || [];
+  var allSvcs = ['Hemst\u00e4dning','Storst\u00e4dning','Flyttst\u00e4dning','F\u00f6nsterputs','Kontorsst\u00e4dning','Trappst\u00e4dning','Skolst\u00e4dning','V\u00e5rdst\u00e4dning','Hotell & restaurang'];
+  var svcs = ownerSvcs.length ? ownerSvcs : allSvcs;
+  
+  var priceMap = {};
+  prices.forEach(function(p) { priceMap[p.service_type] = p; });
+  
+  var html = '';
+  svcs.forEach(function(svc) {
+    var p = priceMap[svc];
+    var price = p ? p.price : '';
+    var type = p ? p.price_type : 'hourly';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gray-100)">';
+    html += '<span style="flex:1;font-size:.85rem;font-weight:500">' + svc + '</span>';
+    html += '<input type="number" data-cp-svc="' + svc + '" min="50" max="2000" step="10" value="' + price + '" placeholder="Ej satt" style="width:80px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:.82rem;text-align:right">';
+    html += '<select data-cp-type="' + svc + '" style="padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:.75rem;background:#fff">';
+    html += '<option value="hourly"' + (type === 'hourly' ? ' selected' : '') + '>kr/h</option>';
+    html += '<option value="per_sqm"' + (type === 'per_sqm' ? ' selected' : '') + '>kr/kvm</option>';
+    html += '</select>';
+    html += '</div>';
+  });
+  
+  wrap.innerHTML = html;
+}
+
+async function saveCompanyPrices() {
+  if (!window._companyId) return;
+  var btn = document.getElementById('save-company-prices-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sparar...'; }
+  
+  try {
+    var inputs = document.querySelectorAll('[data-cp-svc]');
+    for (var i = 0; i < inputs.length; i++) {
+      var svc = inputs[i].dataset.cpSvc;
+      var price = parseInt(inputs[i].value);
+      var typeEl = document.querySelector('[data-cp-type="' + svc + '"]');
+      var priceType = typeEl ? typeEl.value : 'hourly';
+      
+      if (!price || price <= 0) {
+        // Delete if exists
+        await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&service_type=eq.' + encodeURIComponent(svc), {
+          method: 'DELETE', headers: _authHeaders()
+        });
+        continue;
+      }
+      
+      // Upsert
+      await fetch(SUPA_URL + '/rest/v1/company_service_prices', {
+        method: 'POST',
+        headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'}),
+        body: JSON.stringify({ company_id: window._companyId, service_type: svc, price: price, price_type: priceType, updated_at: new Date().toISOString() })
+      });
+    }
+    showToast('F\u00f6retagspriser sparade!');
+  } catch(e) {
+    showToast('Kunde inte spara: ' + e.message);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Spara priser'; }
+}
+
+setTimeout(function() { if (window._isCompanyOwner) loadCompanyPrices(); }, 1800);
+
 
 </script>
 </body>
