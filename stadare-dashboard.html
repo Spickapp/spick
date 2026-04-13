@@ -679,6 +679,8 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <button class="btn-nav" id="hero-nav-btn" onclick="heroNavigate()">📍 Navigera</button>
           <a id="hero-uppdrag-btn" href="#" style="display:none;width:100%;padding:12px;background:#fff;color:var(--spick-500);border:1.5px solid var(--spick-500);border-radius:12px;font-size:.88rem;font-weight:600;text-align:center;text-decoration:none;font-family:inherit;margin-top:8px" onclick="event.preventDefault();window.open('stadare-uppdrag.html?bid='+this.dataset.bid,'_blank')">📋 Öppna uppdrag</a>
           <button id="hero-klar-btn" style="display:none;width:100%;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px" onclick="heroMarkDone()">✅ Markera jobbet klart</button>
+          <button id="hero-checkin-btn" style="display:none;width:100%;padding:12px;background:#2563EB;color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px" onclick="doCheckin()">📍 Checka in</button>
+          <button id="hero-checkout-btn" style="display:none;width:100%;padding:12px;background:#7C3AED;color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px" onclick="doCheckout()">📍 Checka ut</button>
           <a href="tel:+46760505153" id="hero-help-btn" style="display:none;width:100%;padding:10px;background:transparent;color:var(--gray-600);border:1px solid var(--gray-300);border-radius:12px;font-size:.82rem;font-weight:500;text-align:center;text-decoration:none;font-family:inherit;margin-top:6px">📞 Problem? Ring Spick</a>
         </div>
       </div>
@@ -688,6 +690,14 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         <div style="font-size:2.5rem;margin-bottom:10px">☀️</div>
         <div style="font-family:inherit;font-size:1.15rem;margin-bottom:6px">Inga jobb idag</div>
         <div style="color:var(--m);font-size:.85rem;line-height:1.6">Kolla fliken <strong>Jobb</strong> för nya matchningar.</div>
+      </div>
+
+      <!-- Mina uppgifter (cleaner view) -->
+      <div id="my-tasks-section" style="display:none;margin:0 16px 16px">
+        <div style="background:var(--w);border-radius:12px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)">
+          <div style="font-weight:600;font-size:.92rem;margin-bottom:12px">📋 Mina uppgifter</div>
+          <div id="my-tasks-list"><div style="text-align:center;color:var(--m);padding:12px;font-size:.85rem">Inga uppgifter</div></div>
+        </div>
       </div>
 
       <!-- Onboarding Checklist -->
@@ -1226,6 +1236,18 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <div id="team-list"></div>
         </div>
 
+        <!-- Uppgifter (VD) -->
+        <div class="card" style="padding:20px;margin-top:12px" id="team-tasks-section">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div>
+              <h4 style="font-size:.95rem;font-weight:700;margin:0">Uppgifter</h4>
+              <p style="font-size:.72rem;color:var(--m);margin-top:2px">Tilldela och följ upp uppgifter</p>
+            </div>
+            <button onclick="openTaskModal()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Ny uppgift</button>
+          </div>
+          <div id="team-tasks-list"><div style="text-align:center;padding:16px;color:var(--gray-400);font-size:.85rem">Inga uppgifter</div></div>
+        </div>
+
         <div class="card" style="padding:20px;margin-top:12px" id="team-bookings-card">
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Teamets bokningar</h4>
           <div id="team-bookings-list"><div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">📋</div><p style="font-size:.85rem;margin:0">Inga bokningar ännu</p></div></div>
@@ -1524,6 +1546,35 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
       <span>Jag</span>
     </button>
   </div>
+
+  <!-- TASK MODAL -->
+  <div id="task-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeTaskModal()">
+    <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:1.1rem;font-weight:700">Ny uppgift</h3>
+        <button onclick="closeTaskModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--m)">✕</button>
+      </div>
+      <div class="tm-form-group"><label>Titel *</label><input type="text" id="task-title" class="tm-input" placeholder="T.ex. Lämna nycklar"></div>
+      <div class="tm-form-group"><label>Beskrivning</label><textarea id="task-desc" class="tm-input" rows="3" placeholder="Detaljer..." style="resize:vertical"></textarea></div>
+      <div class="tm-form-group"><label>Tilldela till</label>
+        <select id="task-assignee" class="tm-input" style="padding:8px 12px">
+          <option value="">Alla i teamet</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="tm-form-group"><label>Deadline</label><input type="date" id="task-deadline" class="tm-input"></div>
+        <div class="tm-form-group"><label>Prioritet</label>
+          <select id="task-priority" class="tm-input" style="padding:8px 12px">
+            <option value="normal">Normal</option>
+            <option value="high">Hög</option>
+            <option value="low">Låg</option>
+          </select>
+        </div>
+      </div>
+      <button id="task-submit-btn" onclick="createTask()" style="width:100%;padding:14px;background:var(--g);color:#fff;border:none;border-radius:var(--radius-full);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;min-height:52px">Skapa uppgift</button>
+    </div>
+  </div>
+
 </div><!-- /screen-app -->
 
 
@@ -2010,6 +2061,9 @@ async function loadCleanerByEmail(email, authUserId) {
     try { await renderTeam(); } catch(e) { console.error('[SPICK] renderTeam init error:', e); }
   }
 
+  // Load tasks (VD gets team tasks, solo cleaner gets assigned tasks)
+  try { if (typeof loadTasks === 'function') loadTasks(); } catch(e) {}
+
   // Owner-only: hide personal cleaning UI
   // Show company settings for company owners
   if (cleaner.is_company_owner) {
@@ -2419,7 +2473,7 @@ function renderHeroCard() {
   const next = todayJobs.find(j => {
     const [h,m] = (j.booking_time||j.scheduled_time||'09:00').split(':').map(Number);
     const jTime = new Date(now); jTime.setHours(h,m,0,0);
-    return jTime > now || (j.checked_in_at && j.status !== 'klar');
+    return jTime > now || ((j.checked_in_at || j.checkin_time) && j.status !== 'klar');
   }) || todayJobs[0];
 
   const heroCard = document.getElementById('hero-card');
@@ -2428,11 +2482,13 @@ function renderHeroCard() {
   if (!next) {
     heroCard.classList.remove('show');
     heroEmpty.style.display = 'block';
+    window._currentBookingId = null;
     // Clear countdown timer
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     return;
   }
 
+  window._currentBookingId = next.id;
   heroEmpty.style.display = 'none';
   heroCard.classList.add('show');
 
@@ -2440,12 +2496,24 @@ function renderHeroCard() {
   var uppdragBtn = document.getElementById('hero-uppdrag-btn');
   var klarBtn = document.getElementById('hero-klar-btn');
   var helpBtn = document.getElementById('hero-help-btn');
+  var checkinBtn = document.getElementById('hero-checkin-btn');
+  var checkoutBtn = document.getElementById('hero-checkout-btn');
+
+  // Reset check-in/out buttons
+  if (checkinBtn) checkinBtn.style.display = 'none';
+  if (checkoutBtn) checkoutBtn.style.display = 'none';
 
   if (next.status === 'pågår') {
     heroLabel.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;background:#22C55E;border-radius:50%;animation:lpulse 1.2s infinite"></span> Pågår nu</span>';
     heroCard.style.border = '2px solid #22C55E';
     heroCard.style.background = 'linear-gradient(135deg,#F0FDF4,#DCFCE7)';
-    if (klarBtn) { klarBtn.style.display = 'block'; klarBtn.dataset.bid = next.id; }
+    // Show checkout if checked in but not yet checked out
+    if (next.checkin_time && !next.checkout_time) {
+      if (checkoutBtn) checkoutBtn.style.display = 'block';
+      if (klarBtn) klarBtn.style.display = 'none';
+    } else {
+      if (klarBtn) { klarBtn.style.display = 'block'; klarBtn.dataset.bid = next.id; }
+    }
     if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
     if (helpBtn) helpBtn.style.display = 'block';
     var detailsDiv2 = document.getElementById('hero-details');
@@ -2501,6 +2569,14 @@ function renderHeroCard() {
     if (klarBtn) klarBtn.style.display = 'none';
     if (uppdragBtn) { uppdragBtn.style.display = 'block'; uppdragBtn.dataset.bid = next.id; }
     if (helpBtn) helpBtn.style.display = 'none';
+    // Show check-in button for confirmed jobs (within 60 min of start)
+    var _ciNow = new Date();
+    var _ciParts = (next.booking_time||'09:00').split(':').map(Number);
+    var _ciJobTime = new Date(_ciNow); _ciJobTime.setHours(_ciParts[0],_ciParts[1],0,0);
+    var _ciDiff = _ciJobTime - _ciNow;
+    if ((next.status === 'confirmed' || next.status === 'bekräftad') && _ciDiff < 3600000 && _ciDiff > -7200000) {
+      if (checkinBtn) checkinBtn.style.display = 'block';
+    }
     var navBtn = document.getElementById('hero-nav-btn');
     if (navBtn) navBtn.style.display = '';
     var heroActions = document.getElementById('hero-actions');
@@ -3967,7 +4043,7 @@ function switchTab(tab) {
   document.getElementById('tab-'+tab)?.classList.add('active');
   document.getElementById('nav-'+tab)?.classList.add('active');
 
-  if (tab === 'hem') renderHome();
+  if (tab === 'hem') { renderHome(); if (typeof loadTasks === 'function') loadTasks(); }
 
   if (tab === 'jobb') {
     if (window._isCompanyOwner) {
@@ -3997,7 +4073,7 @@ function switchTab(tab) {
     }
   }
 
-  if (tab === 'team') renderTeam();
+  if (tab === 'team') { renderTeam(); if (typeof loadTasks === 'function') loadTasks(); }
 }
 
 function showToast(msg) {
@@ -4252,7 +4328,7 @@ async function renderTeam() {
   const memberIds = _teamMembers.map(m => m.id);
   if (memberIds.length > 0) {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
-    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,service_type,booking_date,booking_time,booking_hours,status,cleaner_id,cleaner_name,total_price,customer_address&or=(${idFilter})&order=booking_date.asc&limit=100`);
+    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,service_type,booking_date,booking_time,booking_hours,status,cleaner_id,cleaner_name,total_price,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at&or=(${idFilter})&order=booking_date.asc&limit=100`);
     const teamBookings = bookings || [];
     const stMap = {confirmed:'Bekräftad',pending_confirmation:'Väntar på svar',completed:'Klar',klar:'Klar','pågår':'Pågår',cancelled:'Avbokad',awaiting_reassignment:'Väntar på omtilldelning'};
     const stColors = {confirmed:'#065F46',pending_confirmation:'#92400E',completed:'#065F46',klar:'#065F46','pågår':'#1E40AF',cancelled:'#DC2626',awaiting_reassignment:'#92400E'};
@@ -4287,6 +4363,11 @@ async function renderTeam() {
             '<strong style="font-size:.88rem">' + escHtml(b.customer_name || '\u2013') + '</strong>' +
             '<div style="font-size:.78rem;color:var(--m);margin-top:2px">' + escHtml(b.service_type || 'St\u00e4dning') + ' \u00b7 ' + (b.booking_time || '').slice(0,5) + '</div>' +
             '<div style="font-size:.78rem;color:var(--m)">' + escHtml(b.cleaner_name || 'Ej tilldelad') + '</div>' +
+            (b.checkin_time ? '<div style="font-size:.72rem;margin-top:3px">' +
+              '<span style="color:#2563EB">📍 In ' + (b.checkin_time||'').slice(11,16) + '</span>' +
+              (b.checkout_time ? ' · <span style="color:#7C3AED">Ut ' + (b.checkout_time||'').slice(11,16) + '</span>' +
+                (b.actual_hours ? ' · ' + parseFloat(b.actual_hours).toFixed(1) + 'h' : '') : ' · <span style="color:#F59E0B">Pågår</span>') +
+            '</div>' : '') +
           '</div>' +
           '<div style="text-align:right">' +
             '<span style="font-size:.72rem;font-weight:600;color:' + stColor + ';background:' + stColor + '15;padding:2px 8px;border-radius:99px">' + escHtml(stLabel) + '</span>' +
@@ -5637,7 +5718,7 @@ async function loadSalaryReport() {
   // Fetch bookings + commission_log in parallel
   var bookings = [], commissions = [];
   try {
-    var bUrl = SUPA_URL + '/rest/v1/bookings?select=id,cleaner_id,booking_hours,total_price,payment_status,booking_date,service_type,status,customer_name'
+    var bUrl = SUPA_URL + '/rest/v1/bookings?select=id,cleaner_id,booking_hours,total_price,payment_status,booking_date,service_type,status,customer_name,actual_hours,attest_status,attested_at'
       + '&cleaner_id=in.(' + idFilter + ')&booking_date=gte.' + startDate + '&booking_date=lte.' + endDate + '&payment_status=eq.paid';
     var cUrl = SUPA_URL + '/rest/v1/commission_log?select=booking_id,cleaner_id,gross_amount,net_amount,commission_amt,commission_pct'
       + '&cleaner_id=in.(' + idFilter + ')';
@@ -5680,8 +5761,10 @@ async function loadSalaryReport() {
     });
     var net = gross - comm;
     var commPct = gross > 0 ? Math.round((comm / gross) * 100) : 12;
+    var actualHrs = bs.reduce(function(s, b) { return s + (parseFloat(b.actual_hours) || 0); }, 0);
+    var attestedCount = bs.filter(function(b) { return b.attest_status === 'attested'; }).length;
 
-    salaryRows.push({ id: id, name: m.full_name || 'Okänd', jobs: jobs, hours: hours, gross: gross, comm: comm, commPct: commPct, net: net, bookings: bs });
+    salaryRows.push({ id: id, name: m.full_name || 'Okänd', jobs: jobs, hours: hours, actualHours: actualHrs, gross: gross, comm: comm, commPct: commPct, net: net, attestedCount: attestedCount, bookings: bs });
     totJobs += jobs; totHours += hours; totGross += gross; totComm += comm; totNet += net;
   });
 
@@ -5707,25 +5790,42 @@ async function loadSalaryReport() {
     html += '<span style="font-weight:600;font-size:.92rem">' + escHtml(row.name) + '</span>';
     html += '<span style="font-size:.78rem;color:var(--m)">' + row.jobs + ' jobb</span>';
     html += '</div>';
-    html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:var(--m)">Arbetstimmar</span><span style="font-variant-numeric:tabular-nums">' + row.hours.toFixed(1) + 'h</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:var(--m)">Bokade timmar</span><span style="font-variant-numeric:tabular-nums">' + row.hours.toFixed(1) + 'h</span></div>';
+    if (row.actualHours > 0) {
+      html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:var(--m)">Faktiska timmar (GPS)</span><span style="font-variant-numeric:tabular-nums;color:#2563EB">' + row.actualHours.toFixed(1) + 'h</span></div>';
+    }
     html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:var(--m)">Bruttointäkt</span><span style="font-variant-numeric:tabular-nums">' + fmtKr(row.gross) + '</span></div>';
     html += '<div style="display:flex;justify-content:space-between;font-size:.84rem;padding:3px 0"><span style="color:#92400E">Spick-provision</span><span style="font-variant-numeric:tabular-nums;color:#92400E">-' + fmtKr(row.comm) + ' (' + row.commPct + '%)</span></div>';
     html += '<div style="border-top:1px solid var(--gray-200);margin:6px 0"></div>';
     html += '<div style="display:flex;justify-content:space-between;font-size:.88rem;font-weight:700;padding:3px 0"><span style="color:var(--g)">Netto till företaget</span><span style="font-variant-numeric:tabular-nums;color:var(--g)">' + fmtKr(row.net) + '</span></div>';
+    // Attestation summary
+    var unattested = row.jobs - row.attestedCount;
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:.82rem;padding:6px 0;margin-top:4px">';
+    html += '<span style="color:var(--m)">Attesterat: <strong>' + row.attestedCount + '/' + row.jobs + '</strong></span>';
+    if (unattested > 0) {
+      html += '<button onclick="attestAllForCleaner(\'' + row.id + '\')" style="padding:4px 12px;background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">Attestera alla (' + unattested + ')</button>';
+    } else {
+      html += '<span style="color:#065F46;font-weight:600;font-size:.72rem">✅ Alla attesterade</span>';
+    }
+    html += '</div>';
 
     if (row.bookings.length) {
       html += '<button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.nextElementSibling.style.display===\'none\'?\'▶ Visa detaljer\':\'▼ Dölj detaljer\'" style="margin-top:8px;background:none;border:none;color:var(--spick-500);font-size:.78rem;font-weight:600;cursor:pointer;padding:4px 0;font-family:inherit">▶ Visa detaljer</button>';
       html += '<div style="display:none;margin-top:8px">';
       html += '<table style="width:100%;font-size:.78rem;border-collapse:collapse">';
-      html += '<tr style="color:var(--m);text-align:left"><th style="padding:4px 6px;font-weight:500">Datum</th><th style="padding:4px 6px;font-weight:500">Tjänst</th><th style="padding:4px 6px;font-weight:500">Kund</th><th style="padding:4px 6px;font-weight:500;text-align:right">Timmar</th><th style="padding:4px 6px;font-weight:500;text-align:right">Belopp</th></tr>';
+      html += '<tr style="color:var(--m);text-align:left"><th style="padding:4px 6px;font-weight:500">Datum</th><th style="padding:4px 6px;font-weight:500">Tjänst</th><th style="padding:4px 6px;font-weight:500">Kund</th><th style="padding:4px 6px;font-weight:500;text-align:right">Timmar</th><th style="padding:4px 6px;font-weight:500;text-align:right">Belopp</th><th style="padding:4px 6px;font-weight:500;text-align:center">Attest</th></tr>';
       row.bookings.sort(function(a, b) { return a.booking_date < b.booking_date ? -1 : 1; });
       row.bookings.forEach(function(b) {
+        var isAttested = b.attest_status === 'attested';
+        var hrsDisplay = (parseFloat(b.booking_hours) || 0) + 'h';
+        if (b.actual_hours) hrsDisplay = parseFloat(b.actual_hours).toFixed(1) + 'h';
         html += '<tr style="border-top:1px solid var(--gray-100)">';
         html += '<td style="padding:4px 6px;white-space:nowrap">' + (b.booking_date || '').slice(5) + '</td>';
         html += '<td style="padding:4px 6px">' + escHtml(b.service_type || '') + '</td>';
         html += '<td style="padding:4px 6px">' + escHtml(b.customer_name || '') + '</td>';
-        html += '<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums">' + (parseFloat(b.booking_hours) || 0) + 'h</td>';
+        html += '<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums">' + hrsDisplay + '</td>';
         html += '<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums">' + fmtKr(parseFloat(b.total_price) || 0) + '</td>';
+        html += '<td style="padding:4px 6px;text-align:center">' + (isAttested ? '<span style="color:#065F46">✅</span>' : '<button onclick="attestBooking(\'' + b.id + '\',this)" style="padding:2px 8px;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:6px;font-size:.7rem;font-weight:600;cursor:pointer;font-family:inherit">Attestera</button>') + '</td>';
         html += '</tr>';
       });
       html += '</table></div>';
@@ -5747,11 +5847,11 @@ function exportSalaryCSV() {
   var d = window._salaryData;
   if (!d || !d.rows) { showToast('Ladda löneunderlag först'); return; }
 
-  var csv = 'Städare;Antal jobb;Timmar;Bruttointäkt;Provision (%);Provision (kr);Netto\n';
+  var csv = 'Städare;Antal jobb;Bokade timmar;Faktiska timmar;Bruttointäkt;Provision (%);Provision (kr);Netto;Attesterade\n';
   d.rows.forEach(function(r) {
-    csv += '"' + (r.name || '').replace(/"/g, '""') + '";' + r.jobs + ';' + r.hours.toFixed(1) + ';' + Math.round(r.gross) + ';' + r.commPct + ';' + Math.round(r.comm) + ';' + Math.round(r.net) + '\n';
+    csv += '"' + (r.name || '').replace(/"/g, '""') + '";' + r.jobs + ';' + r.hours.toFixed(1) + ';' + (r.actualHours || 0).toFixed(1) + ';' + Math.round(r.gross) + ';' + r.commPct + ';' + Math.round(r.comm) + ';' + Math.round(r.net) + ';' + (r.attestedCount || 0) + '/' + r.jobs + '\n';
   });
-  csv += '"TOTALT";' + d.totJobs + ';' + d.totHours.toFixed(1) + ';' + Math.round(d.totGross) + ';;' + Math.round(d.totComm) + ';' + Math.round(d.totNet) + '\n';
+  csv += '"TOTALT";' + d.totJobs + ';' + d.totHours.toFixed(1) + ';;' + Math.round(d.totGross) + ';;' + Math.round(d.totComm) + ';' + Math.round(d.totNet) + ';\n';
 
   var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   var url = URL.createObjectURL(blob);
@@ -5763,6 +5863,292 @@ function exportSalaryCSV() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('CSV exporterad');
+}
+
+// ═══ GPS CHECK-IN / CHECK-OUT ═══════════════════════════════════
+async function doCheckin() {
+  var bid = window._currentBookingId;
+  if (!bid) { showToast('Inget jobb att checka in på'); return; }
+  var btn = document.getElementById('hero-checkin-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Hämtar GPS...'; }
+  try {
+    var patchData = { checkin_time: new Date().toISOString(), status: 'pågår' };
+    if (navigator.geolocation) {
+      await new Promise(function(resolve) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            patchData.checkin_lat = pos.coords.latitude;
+            patchData.checkin_lng = pos.coords.longitude;
+            resolve();
+          },
+          function() { resolve(); },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid, {
+      method: 'PATCH',
+      headers: _authHeaders(),
+      body: JSON.stringify(patchData)
+    });
+    if (res.ok) {
+      if (btn) { btn.textContent = '✅ Incheckad!'; btn.style.background = '#065F46'; }
+      showToast('📍 Incheckad!');
+      if (typeof logActivity === 'function') logActivity('checkin', { booking_id: bid });
+      setTimeout(function() { loadJobs(); }, 1500);
+    } else {
+      if (btn) { btn.textContent = '❌ Kunde inte checka in'; btn.disabled = false; }
+    }
+  } catch(e) {
+    console.error('doCheckin error:', e);
+    if (btn) { btn.textContent = '❌ Fel'; btn.disabled = false; }
+  }
+}
+
+async function doCheckout() {
+  var bid = window._currentBookingId;
+  if (!bid) { showToast('Inget jobb att checka ut från'); return; }
+  var btn = document.getElementById('hero-checkout-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Hämtar GPS...'; }
+  try {
+    var now = new Date();
+    var patchData = { checkout_time: now.toISOString(), status: 'klar', completed_at: now.toISOString() };
+    // Calculate actual_hours from checkin_time
+    var job = jobs.find(function(j) { return j.id === bid; });
+    if (job && job.checkin_time) {
+      var diff = (now - new Date(job.checkin_time)) / 3600000;
+      patchData.actual_hours = Math.round(diff * 10) / 10;
+    }
+    if (navigator.geolocation) {
+      await new Promise(function(resolve) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            patchData.checkout_lat = pos.coords.latitude;
+            patchData.checkout_lng = pos.coords.longitude;
+            resolve();
+          },
+          function() { resolve(); },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid, {
+      method: 'PATCH',
+      headers: _authHeaders(),
+      body: JSON.stringify(patchData)
+    });
+    if (res.ok) {
+      if (btn) { btn.textContent = '✅ Utcheckad!'; btn.style.background = '#065F46'; }
+      showToast('📍 Utcheckad!' + (patchData.actual_hours ? ' (' + patchData.actual_hours + 'h)' : ''));
+      if (typeof logActivity === 'function') logActivity('checkout', { booking_id: bid, actual_hours: patchData.actual_hours });
+      setTimeout(function() { loadJobs(); }, 1500);
+    } else {
+      if (btn) { btn.textContent = '❌ Kunde inte checka ut'; btn.disabled = false; }
+    }
+  } catch(e) {
+    console.error('doCheckout error:', e);
+    if (btn) { btn.textContent = '❌ Fel'; btn.disabled = false; }
+  }
+}
+
+// ═══ ATTESTERING ═════════════════════════════════════════════════
+async function attestBooking(bookingId, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bookingId, {
+      method: 'PATCH',
+      headers: _authHeaders(),
+      body: JSON.stringify({ attest_status: 'attested', attested_at: new Date().toISOString() })
+    });
+    if (res.ok) {
+      if (btnEl) btnEl.outerHTML = '<span style="color:#065F46">✅</span>';
+      showToast('Attesterad');
+    } else {
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Attestera'; }
+      showToast('Kunde inte attestera');
+    }
+  } catch(e) {
+    console.error('attestBooking error:', e);
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Attestera'; }
+  }
+}
+
+async function attestAllForCleaner(cleanerId) {
+  var d = window._salaryData;
+  if (!d || !d.rows) return;
+  var row = d.rows.find(function(r) { return r.id === cleanerId; });
+  if (!row) return;
+  var unattested = row.bookings.filter(function(b) { return b.attest_status !== 'attested'; });
+  if (!unattested.length) { showToast('Alla redan attesterade'); return; }
+  showToast('Attesterar ' + unattested.length + ' bokningar...');
+  try {
+    for (var i = 0; i < unattested.length; i++) {
+      await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + unattested[i].id, {
+        method: 'PATCH',
+        headers: _authHeaders(),
+        body: JSON.stringify({ attest_status: 'attested', attested_at: new Date().toISOString() })
+      });
+    }
+    showToast('✅ ' + unattested.length + ' bokningar attesterade');
+    loadSalaryReport();
+  } catch(e) {
+    console.error('attestAll error:', e);
+    showToast('Fel vid attestering');
+  }
+}
+
+// ═══ UPPGIFTER (TASKS) ══════════════════════════════════════════
+async function loadTasks() {
+  if (!cleaner) return;
+  var isVD = window._isCompanyOwner;
+  var companyId = window._companyId;
+
+  var query = '';
+  if (isVD && companyId) {
+    query = 'select=*&company_id=eq.' + companyId + '&order=created_at.desc';
+  } else {
+    query = 'select=*&or=(assigned_to.eq.' + cleaner.id + ',assigned_to.is.null)&company_id=eq.' + (companyId || '') + '&order=created_at.desc';
+  }
+
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/tasks?' + query, { headers: _authHeaders() });
+    var tasks = await res.json();
+    if (!Array.isArray(tasks)) tasks = [];
+    renderTasks(tasks, isVD);
+  } catch(e) {
+    console.warn('loadTasks error:', e);
+  }
+}
+
+function renderTasks(tasks, isVD) {
+  var listId = isVD ? 'team-tasks-list' : 'my-tasks-list';
+  var wrap = document.getElementById(listId);
+  if (!wrap) return;
+
+  // Show the section
+  if (!isVD) {
+    var sec = document.getElementById('my-tasks-section');
+    if (sec) sec.style.display = tasks.length ? '' : 'none';
+  }
+
+  if (!tasks.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:.85rem">Inga uppgifter</div>';
+    return;
+  }
+
+  var prioColors = { high: '#DC2626', normal: '#6B7280', low: '#9CA3AF' };
+  var prioLabels = { high: 'Hög', normal: 'Normal', low: 'Låg' };
+  var memberMap = {};
+  if (_teamMembers) _teamMembers.forEach(function(m) { memberMap[m.id] = m.full_name; });
+
+  var html = '';
+  tasks.forEach(function(t) {
+    var isDone = t.status === 'done';
+    var prioColor = prioColors[t.priority] || '#6B7280';
+    var assignee = t.assigned_to ? escHtml(memberMap[t.assigned_to] || 'Okänd') : 'Alla';
+    var deadlineStr = t.deadline ? t.deadline : '';
+
+    html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;margin-bottom:6px;border-radius:8px;border:1px solid var(--gray-200);background:' + (isDone ? '#F9FAFB' : 'var(--w)') + '">';
+    html += '<button onclick="toggleTaskStatus(\'' + t.id + '\')" style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:2px solid ' + (isDone ? 'var(--g)' : '#D1D5DB') + ';background:' + (isDone ? 'var(--g)' : '#fff') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:2px">' +
+      (isDone ? '<svg width="12" height="12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>' : '') +
+    '</button>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:.88rem;font-weight:500;' + (isDone ? 'text-decoration:line-through;color:var(--m)' : '') + '">' + escHtml(t.title) + '</div>';
+    if (t.description) html += '<div style="font-size:.75rem;color:var(--m);margin-top:2px">' + escHtml(t.description) + '</div>';
+    html += '<div style="display:flex;gap:8px;margin-top:4px;font-size:.7rem;color:var(--m);flex-wrap:wrap">';
+    if (isVD) html += '<span>👤 ' + assignee + '</span>';
+    if (deadlineStr) html += '<span>📅 ' + deadlineStr + '</span>';
+    html += '<span style="color:' + prioColor + '">' + (prioLabels[t.priority] || 'Normal') + '</span>';
+    html += '</div></div>';
+    if (isVD) {
+      html += '<button onclick="deleteTask(\'' + t.id + '\')" style="flex-shrink:0;background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:1rem;padding:2px" title="Ta bort">✕</button>';
+    }
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
+}
+
+async function toggleTaskStatus(taskId) {
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId + '&select=status', { headers: _authHeaders() });
+    var rows = await res.json();
+    var current = (rows && rows[0]) ? rows[0].status : 'pending';
+    var newStatus = current === 'done' ? 'pending' : 'done';
+    await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId, {
+      method: 'PATCH',
+      headers: _authHeaders(),
+      body: JSON.stringify({ status: newStatus })
+    });
+    loadTasks();
+  } catch(e) { console.warn('toggleTaskStatus:', e); }
+}
+
+async function deleteTask(taskId) {
+  if (!confirm('Ta bort uppgiften?')) return;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId, {
+      method: 'DELETE',
+      headers: _authHeaders()
+    });
+    showToast('Uppgift borttagen');
+    loadTasks();
+  } catch(e) { console.warn('deleteTask:', e); }
+}
+
+function openTaskModal() {
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-desc').value = '';
+  document.getElementById('task-deadline').value = '';
+  document.getElementById('task-priority').value = 'normal';
+  // Populate assignee dropdown
+  var sel = document.getElementById('task-assignee');
+  var opts = '<option value="">Alla i teamet</option>';
+  if (_teamMembers) {
+    _teamMembers.forEach(function(m) {
+      opts += '<option value="' + m.id + '">' + escHtml(m.full_name || 'Okänd') + '</option>';
+    });
+  }
+  sel.innerHTML = opts;
+  document.getElementById('task-modal').style.display = 'flex';
+}
+
+function closeTaskModal() {
+  document.getElementById('task-modal').style.display = 'none';
+}
+
+async function createTask() {
+  var title = document.getElementById('task-title').value.trim();
+  if (!title) { showToast('Ange en titel'); return; }
+  var btn = document.getElementById('task-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Skapar...'; }
+  try {
+    var data = {
+      title: title,
+      description: document.getElementById('task-desc').value.trim() || null,
+      assigned_to: document.getElementById('task-assignee').value || null,
+      deadline: document.getElementById('task-deadline').value || null,
+      priority: document.getElementById('task-priority').value || 'normal',
+      company_id: window._companyId,
+      created_by: cleaner.id,
+      status: 'pending'
+    };
+    var res = await fetch(SUPA_URL + '/rest/v1/tasks', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      body: JSON.stringify(data)
+    });
+    if (res.ok) {
+      showToast('Uppgift skapad');
+      closeTaskModal();
+      loadTasks();
+    } else {
+      showToast('Kunde inte skapa uppgift');
+    }
+  } catch(e) {
+    console.error('createTask error:', e);
+    showToast('Fel: ' + e.message);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Skapa uppgift'; }
 }
 
 
