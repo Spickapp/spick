@@ -1187,6 +1187,8 @@ function calcHours() {
   }
   else if (state.services && state.services.length === 1 && state.services[0] === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
     // Extra tid för kombinerade tjänster
+    var _svcs = state.services || [state.service];
+    var _hasFP = _svcs.indexOf('Fönsterputs') > -1;
     if (_hasFP && _svcs.length > 1) h += Math.max(1, Math.ceil(sqm / 40 * 2) / 2); // Lägg till fönsterputstid
   state.hours = h;
   // Om datum redan valts: re-rendera tidsblocket med ny timåtgång
