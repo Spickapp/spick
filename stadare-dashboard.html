@@ -6485,7 +6485,8 @@ async function loadMyInvoices() {
       html += '<td style="padding:8px;text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + ' kr</td>';
       html += '<td style="padding:8px"><span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600">' + sl + '</span></td>';
       html += '<td style="padding:8px;text-align:right;white-space:nowrap">';
-      if (inv.pdf_url) html += '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;margin-right:8px">Visa</a>';
+      if (inv.pdf_url) html += '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;margin-right:8px">PDF</a>';
+      if (inv.html_url) html += '<a href="' + escHtml(inv.html_url) + '" target="_blank" style="color:var(--m);text-decoration:none;margin-right:8px;font-size:.75rem">HTML</a>';
       if (inv.status === 'draft' || inv.status === 'sent') {
         html += '<button onclick="acceptInvoice(\'' + inv.id + '\')" style="background:#dcfce7;color:#166534;border:none;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;margin-right:4px">Godkänn</button>';
         html += '<button onclick="disputeInvoice(\'' + inv.id + '\')" style="background:#fee2e2;color:#991b1b;border:none;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer">Invändning</button>';
@@ -6565,7 +6566,8 @@ async function loadVdInvoices() {
       html += '<td style="padding:8px;text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + '</td>';
       html += '<td style="padding:8px"><span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600">' + sl + '</span></td>';
       html += '<td style="padding:8px">';
-      if (inv.pdf_url) html += '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;font-size:.8rem">Visa</a>';
+      if (inv.pdf_url) html += '<a href="' + escHtml(inv.pdf_url) + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;font-size:.8rem">PDF</a>';
+      if (inv.html_url) html += ' <a href="' + escHtml(inv.html_url) + '" target="_blank" style="color:var(--m);text-decoration:none;font-size:.72rem;margin-left:4px">HTML</a>';
       html += '</td></tr>';
     });
     html += '</tbody></table></div>';

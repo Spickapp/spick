@@ -5,6 +5,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 import { corsHeaders } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -244,20 +245,71 @@ async function generateInvoiceForCleaner(
     totalWithVat,
   });
 
-  // 9. Upload to storage
-  const fileName = `${invoiceNumber}.html`;
+  // 9. Upload HTML to storage
+  const htmlFileName = `${invoiceNumber}.html`;
   const { error: uploadErr } = await supabase.storage
     .from("invoices")
-    .upload(fileName, new TextEncoder().encode(html), {
+    .upload(htmlFileName, new TextEncoder().encode(html), {
       contentType: "text/html; charset=utf-8",
       upsert: true,
     });
-  if (uploadErr) throw new Error("Kunde inte ladda upp faktura: " + uploadErr.message);
+  if (uploadErr) throw new Error("Kunde inte ladda upp HTML-faktura: " + uploadErr.message);
 
-  const { data: urlData } = supabase.storage.from("invoices").getPublicUrl(fileName);
-  const pdfUrl = urlData.publicUrl;
+  const { data: htmlUrlData } = supabase.storage.from("invoices").getPublicUrl(htmlFileName);
+  const htmlUrl = htmlUrlData.publicUrl;
 
-  // 10. Insert self_invoices record
+  // 10. Generate and upload PDF
+  const pdfData = {
+    invoiceNumber,
+    invoiceDate,
+    periodStart,
+    periodEnd,
+    buyer: { name: "Haghighi Consulting AB", orgNumber: "559402-4522", address: "Solna, Sverige" },
+    seller: {
+      name: sellerName,
+      orgNumber: sellerOrg || "\u2014",
+      address: sellerAddress || "\u2014",
+      fSkatt: cleaner.f_skatt_verified || false,
+      vatRegistered: cleaner.vat_registered || false,
+    },
+    lineItems: lineItems.map((li) => ({
+      date: li.date,
+      service: li.service,
+      hours: li.hours,
+      gross: li.gross,
+      commissionPct: li.commission_pct,
+      commission: li.commission,
+      net: li.net,
+    })),
+    totalGross,
+    totalCommission,
+    totalNet,
+    vatAmount,
+    totalWithVat,
+  };
+
+  let pdfUrl = htmlUrl; // fallback to HTML if PDF fails
+  try {
+    const pdfBytes = await generatePdf(pdfData);
+    const pdfFileName = `${invoiceNumber}.pdf`;
+    const { error: pdfUploadErr } = await supabase.storage
+      .from("invoices")
+      .upload(pdfFileName, pdfBytes, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+    if (pdfUploadErr) {
+      console.error("[SELF-INVOICE] PDF upload error:", pdfUploadErr.message);
+    } else {
+      const { data: pdfUrlData } = supabase.storage.from("invoices").getPublicUrl(pdfFileName);
+      pdfUrl = pdfUrlData.publicUrl;
+      console.log("[SELF-INVOICE] PDF uploaded:", pdfFileName);
+    }
+  } catch (pdfErr) {
+    console.error("[SELF-INVOICE] PDF generation error:", (pdfErr as Error).message);
+  }
+
+  // 11. Insert self_invoices record
   const { data: invoice, error: insErr } = await supabase
     .from("self_invoices")
     .insert({
@@ -274,6 +326,7 @@ async function generateInvoiceForCleaner(
       currency: "SEK",
       status: "draft",
       pdf_url: pdfUrl,
+      html_url: htmlUrl,
       booking_ids: bookingIds,
       line_items: lineItems,
       buyer_name: "Haghighi Consulting AB",
@@ -485,4 +538,235 @@ function buildInvoiceHtml(d: InvoiceData): string {
 
 function esc(s: string): string {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// ─── PDF invoice builder (pdf-lib) ──────────────────────────
+
+interface PdfInvoiceData {
+  invoiceNumber: string;
+  invoiceDate: string;
+  periodStart: string;
+  periodEnd: string;
+  buyer: { name: string; orgNumber: string; address: string };
+  seller: { name: string; orgNumber: string; address: string; fSkatt: boolean; vatRegistered: boolean };
+  lineItems: Array<{ date: string; service: string; hours: number; gross: number; commissionPct: number; commission: number; net: number }>;
+  totalGross: number;
+  totalCommission: number;
+  totalNet: number;
+  vatAmount: number;
+  totalWithVat: number;
+}
+
+// Replace Swedish chars for Helvetica (no Unicode support)
+function ascii(s: string): string {
+  return (s || "")
+    .replace(/å/g, "a").replace(/Å/g, "A")
+    .replace(/ä/g, "a").replace(/Ä/g, "A")
+    .replace(/ö/g, "o").replace(/Ö/g, "O")
+    .replace(/é/g, "e").replace(/É/g, "E")
+    .replace(/ü/g, "u").replace(/Ü/g, "U")
+    .replace(/—/g, "-").replace(/–/g, "-")
+    .replace(/•/g, "*").replace(/\u2014/g, "-");
+}
+
+async function generatePdf(d: PdfInvoiceData): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+
+  // Try to load Inter font with Swedish chars, fallback to Helvetica
+  let font: Awaited<ReturnType<typeof doc.embedFont>>;
+  let fontBold: Awaited<ReturnType<typeof doc.embedFont>>;
+  let useFallback = false;
+
+  // Try multiple CDNs for Inter font (supports å, ä, ö)
+  const fontSources = [
+    {
+      regular: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf",
+      bold: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf",
+      name: "jsdelivr",
+    },
+    {
+      regular: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hjQ.ttf",
+      bold: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hjQ.ttf",
+      name: "gstatic",
+    },
+  ];
+
+  for (const src of fontSources) {
+    try {
+      const [fontResp, boldResp] = await Promise.all([
+        fetch(src.regular, { signal: AbortSignal.timeout(8000) }),
+        fetch(src.bold, { signal: AbortSignal.timeout(8000) }),
+      ]);
+      if (fontResp.ok && boldResp.ok) {
+        const [fontBytes, boldBytes] = await Promise.all([
+          fontResp.arrayBuffer(),
+          boldResp.arrayBuffer(),
+        ]);
+        font = await doc.embedFont(fontBytes);
+        fontBold = await doc.embedFont(boldBytes);
+        console.log(`[SELF-INVOICE] Inter font loaded from ${src.name}`);
+        break;
+      }
+    } catch (e) {
+      console.warn(`[SELF-INVOICE] Font fetch failed (${src.name}):`, (e as Error).message);
+    }
+  }
+
+  if (!font) {
+    font = await doc.embedFont(StandardFonts.Helvetica);
+    fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+    useFallback = true;
+    console.log("[SELF-INVOICE] Using Helvetica fallback (no Swedish chars)");
+  }
+
+  const t = useFallback ? ascii : (s: string) => s;
+
+  const page = doc.addPage([595.28, 841.89]);
+  const { width, height } = page.getSize();
+  const margin = 50;
+  let y = height - margin;
+
+  const GREEN = rgb(15 / 255, 110 / 255, 86 / 255);
+  const BLACK = rgb(0.1, 0.1, 0.1);
+  const GRAY = rgb(0.4, 0.4, 0.4);
+  const WHITE = rgb(1, 1, 1);
+  const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
+
+  function text(s: string, x: number, yP: number, opts: { f?: typeof font; sz?: number; c?: typeof BLACK } = {}) {
+    page.drawText(s, { x, y: yP, size: opts.sz || 10, font: opts.f || font, color: opts.c || BLACK });
+  }
+
+  function textR(s: string, xRight: number, yP: number, opts: { f?: typeof font; sz?: number; c?: typeof BLACK } = {}) {
+    const f2 = opts.f || font;
+    const w = f2.widthOfTextAtSize(s, opts.sz || 10);
+    text(s, xRight - w, yP, opts);
+  }
+
+  function line(x1: number, yP: number, x2: number, th = 1, c = GREEN) {
+    page.drawLine({ start: { x: x1, y: yP }, end: { x: x2, y: yP }, thickness: th, color: c });
+  }
+
+  // === HEADER ===
+  text(t("SJÄLVFAKTURA"), margin, y, { f: fontBold, sz: 22, c: GREEN });
+  text("Self-billing invoice", margin, y - 18, { sz: 9, c: GRAY });
+
+  const metaX = width - margin - 180;
+  text(`Fakturanr: ${d.invoiceNumber}`, metaX, y, { f: fontBold, sz: 10 });
+  text(`Fakturadatum: ${d.invoiceDate}`, metaX, y - 14, { sz: 9, c: GRAY });
+  text(`Period: ${d.periodStart} - ${d.periodEnd}`, metaX, y - 28, { sz: 9, c: GRAY });
+
+  y -= 45;
+  line(margin, y, width - margin, 2);
+  y -= 25;
+
+  // === BUYER & SELLER ===
+  const colW = (width - margin * 2 - 20) / 2;
+
+  text(t("KÖPARE (UTSTÄLLARE)"), margin, y, { f: fontBold, sz: 8, c: GREEN });
+  y -= 16;
+  text(d.buyer.name, margin, y, { f: fontBold, sz: 10 });
+  y -= 14;
+  text(`Org.nr: ${d.buyer.orgNumber}`, margin, y, { sz: 9, c: GRAY });
+  y -= 14;
+  text(t(d.buyer.address), margin, y, { sz: 9, c: GRAY });
+
+  const sellerX = margin + colW + 20;
+  let sY = y + 44;
+  text(t("SÄLJARE (UTFÖRARE)"), sellerX, sY, { f: fontBold, sz: 8, c: GREEN });
+  sY -= 16;
+  text(t(d.seller.name), sellerX, sY, { f: fontBold, sz: 10 });
+  sY -= 14;
+  text(`Org.nr: ${d.seller.orgNumber}`, sellerX, sY, { sz: 9, c: GRAY });
+  sY -= 14;
+  text(t(d.seller.address), sellerX, sY, { sz: 9, c: GRAY });
+  if (d.seller.fSkatt) {
+    sY -= 14;
+    text(t("Godkänd för F-skatt"), sellerX, sY, { f: fontBold, sz: 8, c: GREEN });
+  }
+
+  y -= 40;
+  text(t(`Utförda tjänster under perioden ${d.periodStart} - ${d.periodEnd}:`), margin, y, { sz: 9, c: GRAY });
+  y -= 20;
+
+  // === TABLE HEADER ===
+  const cols = [
+    { label: "Datum", x: margin, w: 70, right: false },
+    { label: t("Tjänst"), x: margin + 70, w: 110, right: false },
+    { label: "Timmar", x: margin + 180, w: 50, right: true },
+    { label: "Brutto", x: margin + 230, w: 70, right: true },
+    { label: "Prov.%", x: margin + 300, w: 50, right: true },
+    { label: "Provision", x: margin + 350, w: 70, right: true },
+    { label: "Netto", x: margin + 420, w: 75, right: true },
+  ];
+
+  page.drawRectangle({ x: margin, y: y - 4, width: width - margin * 2, height: 18, color: GREEN });
+  cols.forEach((col) => {
+    const tw = fontBold.widthOfTextAtSize(col.label, 8);
+    const xP = col.right ? col.x + col.w - tw : col.x + 4;
+    text(col.label, xP, y, { f: fontBold, sz: 8, c: WHITE });
+  });
+  y -= 20;
+
+  // === TABLE ROWS ===
+  const fmt2 = (n: number) => n.toFixed(2);
+
+  d.lineItems.forEach((item, i) => {
+    if (y < 100) return; // page overflow guard
+    if (i % 2 === 0) {
+      page.drawRectangle({ x: margin, y: y - 4, width: width - margin * 2, height: 16, color: LIGHT_GRAY });
+    }
+    const rowData = [item.date, t(item.service), String(item.hours), fmt2(item.gross), `${item.commissionPct}%`, fmt2(item.commission), fmt2(item.net)];
+    cols.forEach((col, ci) => {
+      const val = rowData[ci];
+      if (col.right) { textR(val, col.x + col.w, y, { sz: 9 }); }
+      else { text(val, col.x + 4, y, { sz: 9 }); }
+    });
+    y -= 16;
+  });
+
+  y -= 10;
+  line(margin, y, width - margin, 1.5);
+  y -= 20;
+
+  // === SUMMARY ===
+  const sumLX = margin + 300;
+  const sumVX = width - margin - 10;
+
+  function sumRow(label: string, value: string, bold = false) {
+    const f2 = bold ? fontBold : font;
+    const sz = bold ? 13 : 10;
+    text(label, sumLX, y, { f: f2, sz });
+    textR(value, sumVX, y, { f: f2, sz, c: bold ? GREEN : BLACK });
+    y -= bold ? 22 : 16;
+  }
+
+  sumRow("Total brutto:", `${fmt2(d.totalGross)} SEK`);
+  sumRow("Total provision:", `-${fmt2(d.totalCommission)} SEK`);
+  sumRow("Total netto:", `${fmt2(d.totalNet)} SEK`);
+
+  if (!d.seller.vatRegistered) {
+    text(t("Säljaren är inte momsregistrerad - moms: 0,00 SEK"), sumLX, y, { sz: 8, c: GRAY });
+    y -= 16;
+  } else {
+    sumRow("Moms 25%:", `${fmt2(d.vatAmount)} SEK`);
+  }
+
+  line(sumLX, y + 6, width - margin, 1.5);
+  y -= 8;
+  sumRow("Att betala:", `${fmt2(d.totalWithVat)} SEK`, true);
+
+  // === PAYMENT REF ===
+  y -= 10;
+  page.drawRectangle({ x: margin, y: y - 8, width: width - margin * 2, height: 30, color: rgb(0.93, 0.96, 1) });
+  page.drawRectangle({ x: margin, y: y - 8, width: 3, height: 30, color: GREEN });
+  text(t("Betalningsreferens: Utbetalt löpande via Stripe Connect till säljarens konto."), margin + 12, y + 2, { sz: 9 });
+
+  // === FOOTER ===
+  y -= 50;
+  line(margin, y + 10, width - margin, 0.5, GRAY);
+  text(t("Denna självfaktura är utställd av köparen enligt mervärdesskattelagen (ML) 11 kap."), margin, y - 5, { sz: 8, c: GRAY });
+  text(t("Säljaren har godkänt förfarandet genom uppdragsavtalet med Spick."), margin, y - 17, { sz: 8, c: GRAY });
+  text(t("Spick - Sveriges städplattform * spick.se"), margin, y - 35, { f: fontBold, sz: 8, c: GREEN });
+
+  return await doc.save();
 }

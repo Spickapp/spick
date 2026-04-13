@@ -503,6 +503,22 @@ ${!cleaner ? `<div style="background:#FFF5E5;border-left:4px solid #F59E0B;paddi
       body: JSON.stringify({ booking_id: bookingId })
     }).catch(e => console.error("RUT-fel:", e));
   }
+
+  // ── 5. Generera kundkvitto (PDF) ───────────────────────────
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/generate-receipt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "apikey": SUPABASE_SERVICE_KEY,
+      },
+      body: JSON.stringify({ booking_id: bookingId }),
+    });
+    console.log("✅ Kvitto genererat för bokning:", bookingId);
+  } catch (e) {
+    console.error("Kvitto-fel:", (e as Error).message);
+  }
 }
 
 // ── Betalning misslyckades ─────────────────────────────────────────────────
