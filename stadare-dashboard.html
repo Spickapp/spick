@@ -1201,7 +1201,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <div>
               <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
-              <p style="font-size:.82rem;color:var(--m)" id="team-count">Laddar...</p>
+              <p style="font-size:.82rem;color:var(--m)" id="team-count"></p>
             </div>
             <button onclick="showInviteLink()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">📋 Kopiera inbjudningslänk</button>
             <button onclick="resetTeamModal();document.getElementById('team-modal-title').textContent='Lägg till teammedlem';document.getElementById('add-member-btn').textContent='Lägg till teammedlem';document.getElementById('add-member-btn').onclick=addTeamMember;document.getElementById('add-member-modal').style.display='flex'" style="padding:8px 16px;background:var(--spick-50,#E1F5EE);color:var(--g);border:1.5px solid var(--g);border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till manuellt</button>
@@ -1597,6 +1597,7 @@ const R = {
 
 
 let cleaner = null, jobs = [], realtimeCh = null, countdownTimer = null;
+let _cleanerLoadStarted = false;
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
 const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const MONTHLY_GOAL = 10000;
@@ -1617,7 +1618,8 @@ function init() {
 
   SB.auth.getSession().then(({ data: { session } }) => {
     clearTimeout(sessionTimeout);
-    if (session?.user?.email) {
+    if (session?.user?.email && !_cleanerLoadStarted) {
+      _cleanerLoadStarted = true;
       loadCleanerByEmail(session.user.email, session.user.id);
     }
   }).catch(e => {
@@ -1634,8 +1636,12 @@ if (document.readyState === 'loading') {
 
 SB.auth.onAuthStateChange(async (event, session) => {
   if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
-    await loadCleanerByEmail(session.user.email, session.user.id);
+    if (!_cleanerLoadStarted) {
+      _cleanerLoadStarted = true;
+      await loadCleanerByEmail(session.user.email, session.user.id);
+    }
   } else if (event === 'SIGNED_OUT') {
+    _cleanerLoadStarted = false;
     showScreen('login');
   }
 });
@@ -1984,7 +1990,7 @@ async function loadCleanerByEmail(email, authUserId) {
 
   // VD: preload all team data (no auto-redirect, stay on Hem)
   if (cleaner.is_company_owner) {
-    renderTeam();
+    try { await renderTeam(); } catch(e) { console.error('[SPICK] renderTeam init error:', e); }
   }
 
   // Owner-only: hide personal cleaning UI
@@ -3966,6 +3972,7 @@ function switchTab(tab) {
     if (window._isCompanyOwner) {
       renderTeam();
       loadReports();
+      loadCompanyPrices();
     } else {
       renderEarnings();
       setTimeout(loadMyReviews, 200);
@@ -4162,7 +4169,9 @@ function setupVDNavigation() {
 }
 
 async function renderTeam() {
-  if (!cleaner || !cleaner.company_id) return;
+  console.log('[SPICK] renderTeam called, cleaner:', !!cleaner, 'company_id:', cleaner?.company_id, '_companyId:', window._companyId, '_isCompanyOwner:', window._isCompanyOwner);
+  if (!cleaner || !cleaner.company_id) { console.warn('[SPICK] renderTeam: no cleaner or company_id, aborting'); return; }
+  try {
 
   // Fetch company info
   const { data: company } = await R.selectSingle('companies', `select=*&id=eq.${cleaner.company_id}`);
@@ -4337,6 +4346,8 @@ async function renderTeam() {
     // No members — show empty state for reviews
     document.getElementById('team-reviews-list').innerHTML = '<div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">⭐</div><p style="font-size:.85rem;margin:0">Inga recensioner ännu</p></div>';
   }
+
+  } catch(e) { console.error('[SPICK] renderTeam error:', e); }
 }
 
 // ── TEAM MODAL ──────────────────────────────────────────────
@@ -5512,6 +5523,7 @@ function renderCompanyPrices(prices) {
     html += '</div>';
   });
   
+  console.log('[SPICK] renderCompanyPrices: writing', svcs.length, 'services, html length:', html.length, 'to wrap:', wrap.id);
   wrap.innerHTML = html;
 }
 
