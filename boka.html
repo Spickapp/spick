@@ -1,4 +1,20 @@
-﻿<!DOCTYPE html>
+﻿
+  'Trappstädning': {
+    items: ['Entré sopat och moppat','Trappor dammsugt och moppat','Räcken och ledstänger avtorkade','Dörrar och dörrhandtag rengjorda','Fönster i trapphus','Brevlådeområde rengjort'],
+    note: 'Anpassas efter fastighetens storlek och antal våningar.'
+  },
+  'Skolstädning': {
+    items: ['Klassrum — golv, bänkar, stolar','Korridorer dammsugt och moppat','Toaletter rengjorda och påfyllda','Matsal/kök rengjort','Kontaktytor desinficerade','Papperskorgar tömda'],
+    note: 'Anpassad efter skolans schema och verksamhet.'
+  },
+  'Vårdstädning': {
+    items: ['Patientrum rengjort och desinficerat','Hygienutrymmen grundligt rengjorda','Kontaktytor desinficerade','Golv moppat med desinfektionsmedel','Väntrum rengjort','Avfall hanterat enligt rutiner'],
+    note: 'Utförs enligt strikta hygienrutiner för vårdmiljöer.'
+  },
+  'Hotell & restaurang': {
+    items: ['Lobby och reception rengjord','Matsal/restaurangyta rengjord','Köksnära ytor rengjorda','Gästtoaletter rengjorda och påfyllda','Golv dammsugt och moppat','Glaspartier och entré putsade'],
+    note: 'Anpassas efter verksamhetens öppettider och gästflöde.'
+  },<!DOCTYPE html>
 <html lang="sv">
 <head>
 <script>if(top!==self){top.location=self.location}</script>
@@ -314,6 +330,26 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
               <span class="svc-name">Kontorsstädning</span>
               <span class="svc-desc">Daglig/veckovis · 2–6h</span>
             </button>
+          <button class="svc-btn" onclick="selectService('Trappstädning','🪜','BRF &amp; fastigheter','2-4h')" data-svc="Trappstädning" id="svc-trapp" style="display:none">
+            <span class="svc-icon">🪜</span>
+            <span class="svc-name">Trappstädning</span>
+            <span class="svc-desc">BRF & fastigheter · 2-4h</span>
+          </button>
+          <button class="svc-btn" onclick="selectService('Skolstädning','🏫','Skolor &amp; förskolor','3-6h')" data-svc="Skolstädning" id="svc-skola" style="display:none">
+            <span class="svc-icon">🏫</span>
+            <span class="svc-name">Skolstädning</span>
+            <span class="svc-desc">Skolor & förskolor · 3-6h</span>
+          </button>
+          <button class="svc-btn" onclick="selectService('Vårdstädning','🏥','Vårdlokaler &amp; kliniker','3-6h')" data-svc="Vårdstädning" id="svc-vard" style="display:none">
+            <span class="svc-icon">🏥</span>
+            <span class="svc-name">Vårdstädning</span>
+            <span class="svc-desc">Vårdlokaler & kliniker · 3-6h</span>
+          </button>
+          <button class="svc-btn" onclick="selectService('Hotell &amp; restaurang','🏨','Hotell &amp; restauranger','2-6h')" data-svc="Hotell &amp; restaurang" id="svc-hotell" style="display:none">
+            <span class="svc-icon">🏨</span>
+            <span class="svc-name">Hotell & restaurang</span>
+            <span class="svc-desc">Hotell & restauranger · 2-6h</span>
+          </button>
           </div>
           <div id="svc-error" class="field-error" style="display:none;margin-bottom:.75rem">⚠ Välj en tjänst för att fortsätta</div>
           <div id="multi-svc-hint" style="font-size:.72rem;color:var(--m);text-align:center;margin-top:8px;display:none">Flera tjänster valda — timpris baseras på huvudtjänsten</div>
@@ -1021,6 +1057,10 @@ function setCustomerType(type) {
   if (type === 'foretag') {
     if (hemBtn) hemBtn.style.display = 'none';
     if (kontorBtn) kontorBtn.style.display = '';
+    var trappBtn = document.getElementById('svc-trapp'); if (trappBtn) trappBtn.style.display = '';
+    var skolaBtn = document.getElementById('svc-skola'); if (skolaBtn) skolaBtn.style.display = '';
+    var vardBtn = document.getElementById('svc-vard'); if (vardBtn) vardBtn.style.display = '';
+    var hotellBtn = document.getElementById('svc-hotell'); if (hotellBtn) hotellBtn.style.display = '';
     // Uppdatera beskrivningar för företag
     if (storBtn) { var d = storBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Grundlig kontorsstädning · 4–8h'; }
     if (flyttBtn) { var d = flyttBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Kontorsflytt · 4–10h'; }
@@ -1049,6 +1089,10 @@ function setCustomerType(type) {
   } else {
     if (hemBtn) hemBtn.style.display = '';
     if (kontorBtn) kontorBtn.style.display = 'none';
+    var trappBtn2 = document.getElementById('svc-trapp'); if (trappBtn2) trappBtn2.style.display = 'none';
+    var skolaBtn2 = document.getElementById('svc-skola'); if (skolaBtn2) skolaBtn2.style.display = 'none';
+    var vardBtn2 = document.getElementById('svc-vard'); if (vardBtn2) vardBtn2.style.display = 'none';
+    var hotellBtn2 = document.getElementById('svc-hotell'); if (hotellBtn2) hotellBtn2.style.display = 'none';
     // Återställ beskrivningar
     if (storBtn) { var d = storBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Grundlig, hela hemmet · 4–8h'; }
     if (flyttBtn) { var d = flyttBtn.querySelector('.svc-desc'); if (d) d.textContent = 'Godkänd vid besiktning · 4–10h'; }
@@ -1064,7 +1108,8 @@ function setCustomerType(type) {
     var sqmEl = document.getElementById('sqm');
     if (sqmEl) { sqmEl.max = 250; sqmEl.placeholder = 't.ex. 65'; }
     // Om Kontorsstädning var vald, avmarkera
-    if (state.service === 'Kontorsstädning') {
+    if (state.service === 'Kontorsstädning' || state.service === 'Trappstädning' || state.service === 'Skolstädning' || state.service === 'Vårdstädning' || state.service === 'Hotell & restaurang' || (state.services && state.services.some(function(s){return ['Kontorsstädning','Trappstädning','Skolstädning','Vårdstädning','Hotell & restaurang'].indexOf(s)>-1}))) {
+      state.services = [];
       state.service = '';
       document.querySelectorAll('.svc-btn').forEach(function(b) { b.classList.remove('selected'); });
     }
