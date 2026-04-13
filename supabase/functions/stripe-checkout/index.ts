@@ -264,17 +264,19 @@ serve(async (req) => {
 
     // ── Logga provision i commission_log ────────────────────────
     if (destinationAccountId && session.id) {
-      const commissionSek = Math.round(finalAmount * commissionRate);
-      const netSek = finalAmount - commissionSek;
-      await sb.from("commission_log").insert({
-        booking_id,
-        cleaner_id,
-        gross_amount: finalAmount,
-        commission_pct: commissionRate * 100,
-        commission_amt: commissionSek,
-        net_amount: netSek,
-        level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
-      }).catch((e: Error) => console.warn("Commission log error:", e));
+      try {
+        const commissionSek = Math.round(finalAmount * commissionRate);
+        const netSek = finalAmount - commissionSek;
+        await sb.from("commission_log").insert({
+          booking_id,
+          cleaner_id,
+          gross_amount: finalAmount,
+          commission_pct: commissionRate * 100,
+          commission_amt: commissionSek,
+          net_amount: netSek,
+          level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
+        });
+      } catch (e) { console.warn("Commission log error:", e); }
     }
 
     return new Response(JSON.stringify({ url: session.url, session_id: session.id }), {

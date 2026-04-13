@@ -376,6 +376,18 @@ serve(async (req) => {
     console.log("[SPICK] Connect:", { cleanerId: cleaner.id, destinationAccountId, commissionRate });
 
     // ── 12. STRIPE CHECKOUT ────────────────────────
+    // Sanity check: vägra orimliga belopp (undantag: kredit-betald)
+    if (stripeAmount > 0 && stripeAmount < 300) {
+      console.error("[SPICK] Price sanity failed:", { stripeAmount, netPrice, basePrice: pricing.basePricePerHour, validHours });
+      await supabase.from("bookings").delete().eq("id", bookingId);
+      return json(400, { error: "Ogiltigt belopp — kontrollera prisinställningar" });
+    }
+    if (stripeAmount > 30000) {
+      console.error("[SPICK] Price sanity failed (too high):", { stripeAmount });
+      await supabase.from("bookings").delete().eq("id", bookingId);
+      return json(400, { error: "Ogiltigt belopp" });
+    }
+
     if (stripeAmount <= 0) {
       // Helt kredit-betald bokning — bekräfta direkt
       await supabase
@@ -477,16 +489,18 @@ serve(async (req) => {
 
     // ── Logga provision i commission_log ────────────
     if (destinationAccountId) {
-      const commSek = Math.round(stripeAmount * commissionRate);
-      await supabase.from("commission_log").insert({
-        booking_id: bookingId,
-        cleaner_id: cleaner.id,
-        gross_amount: stripeAmount,
-        commission_pct: commissionRate * 100,
-        commission_amt: commSek,
-        net_amount: stripeAmount - commSek,
-        level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
-      }).catch((e: Error) => console.warn("Commission log error:", e));
+      try {
+        const commSek = Math.round(stripeAmount * commissionRate);
+        await supabase.from("commission_log").insert({
+          booking_id: bookingId,
+          cleaner_id: cleaner.id,
+          gross_amount: stripeAmount,
+          commission_pct: commissionRate * 100,
+          commission_amt: commSek,
+          net_amount: stripeAmount - commSek,
+          level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
+        });
+      } catch (e) { console.warn("Commission log error:", e); }
     }
 
     // ── 13. RETURN ─────────────────────────────────
