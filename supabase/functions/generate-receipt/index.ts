@@ -197,7 +197,7 @@ function buildReceiptHtml(d: ReceiptData): string {
   let pricingHtml = "";
 
   if (d.isCompany) {
-    const exVat = Math.round(d.totalPrice * 0.8);
+    const exVat = Math.round(d.totalPrice / 1.25);
     const vat = d.totalPrice - exVat;
     pricingHtml = `
       <div class="card">
@@ -208,11 +208,16 @@ function buildReceiptHtml(d: ReceiptData): string {
       </div>
       ${d.companyRef ? `<div class="ref-box"><strong>Fakturareferens:</strong> ${esc(d.companyRef)}</div>` : ""}`;
   } else if (d.isRut) {
+    const grossPrice = d.totalPrice + d.rutAmount;
+    const exVat = Math.round(grossPrice / 1.25);
+    const vat = grossPrice - exVat;
     pricingHtml = `
       <div class="card">
-        <div class="row"><span class="lbl">Tj&auml;nstepris</span><span class="val">${fmtSEK(d.totalPrice)} kr</span></div>
-        <div class="row rut"><span class="lbl">RUT-avdrag (50%)</span><span class="val">&minus;${fmtSEK(d.rutAmount)} kr</span></div>
-        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmtSEK(d.amountPaid)} kr</span></div>
+        <div class="row"><span class="lbl">Arbetskostnad exkl. moms (${esc(d.hours + "h")})</span><span class="val">${fmtSEK(exVat)} kr</span></div>
+        <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtSEK(vat)} kr</span></div>
+        <div class="row" style="border-top:1px solid #e5e7eb;padding-top:10px"><span class="lbl"><strong>Arbetskostnad inkl. moms</strong></span><span class="val"><strong>${fmtSEK(grossPrice)} kr</strong></span></div>
+        <div class="row rut"><span class="lbl" style="color:#0F6E56">RUT-avdrag 50%</span><span class="val" style="color:#0F6E56">&minus;${fmtSEK(d.rutAmount)} kr</span></div>
+        <div class="row total"><span class="lbl">ATT BETALA</span><span class="val green">${fmtSEK(d.amountPaid)} kr</span></div>
         <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
       </div>
       <div class="rut-box">
@@ -222,10 +227,13 @@ function buildReceiptHtml(d: ReceiptData): string {
           : `Kunden ansvarar sj&auml;lv f&ouml;r att s&ouml;ka RUT-avdrag hos Skatteverket. Detta kvitto utg&ouml;r underlag f&ouml;r ans&ouml;kan. Maximalt avdrag: 75&nbsp;000 kr/&aring;r.`}
       </div>`;
   } else {
+    const exVat = Math.round(d.totalPrice / 1.25);
+    const vat = d.totalPrice - exVat;
     pricingHtml = `
       <div class="card">
-        <div class="row"><span class="lbl">Tj&auml;nstepris</span><span class="val">${fmtSEK(d.totalPrice)} kr</span></div>
-        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmtSEK(d.amountPaid)} kr</span></div>
+        <div class="row"><span class="lbl">Arbetskostnad exkl. moms (${esc(d.hours + "h")})</span><span class="val">${fmtSEK(exVat)} kr</span></div>
+        <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtSEK(vat)} kr</span></div>
+        <div class="row total"><span class="lbl">ATT BETALA INKL. MOMS</span><span class="val green">${fmtSEK(d.totalPrice)} kr</span></div>
         <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
       </div>`;
   }
