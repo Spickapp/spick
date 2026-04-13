@@ -144,16 +144,6 @@ function renderPerService(bookings) {
   }
 }
 
-// Auto-load reports when team tab opens
-var _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
-if (_origSwitchTab) {
-  switchTab = function(tab) {
-    _origSwitchTab(tab);
-    if (tab === 'team') setTimeout(loadReports, 300);
-  };
-}
-// Also load on initial team load
-setTimeout(function() { if (window._isCompanyOwner) loadReports(); }, 2000);
 
 
 </script>
@@ -1992,9 +1982,9 @@ async function loadCleanerByEmail(email, authUserId) {
   if (window._isCompanyOwner) setupVDNavigation();
   showScreen('app');
 
-  // VD: preload company prices (no auto-redirect)
+  // VD: preload all team data (no auto-redirect, stay on Hem)
   if (cleaner.is_company_owner) {
-    loadCompanyPrices();
+    renderTeam();
   }
 
   // Owner-only: hide personal cleaning UI
@@ -4479,7 +4469,8 @@ function resetTeamModal() {
   document.getElementById('team-bio').value = '';
   document.getElementById('team-bio-count').textContent = '0/120';
   document.getElementById('team-rate').value = 350;
-  document.getElementById('team-rate-val').textContent = '350 kr/h';
+  var rateVal = document.getElementById('team-rate-val');
+  if (rateVal) rateVal.textContent = '350 kr/h';
   document.getElementById('team-same-area').checked = true;
   document.getElementById('team-area-custom').style.display = 'none';
   document.getElementById('team-address').value = '';
@@ -5083,7 +5074,8 @@ function editTeamMember(memberId) {
   document.getElementById('team-rate').value = member.hourly_rate || 350;
     // Trigger price fields regeneration for edit mode
     setTimeout(function() { updateTeamSvcPrices(); }, 100);
-  document.getElementById('team-rate-val').textContent = (member.hourly_rate || 350) + ' kr/h';
+  var rateValEl = document.getElementById('team-rate-val');
+  if (rateValEl) rateValEl.textContent = (member.hourly_rate || 350) + ' kr/h';
 
   // Tjänster
   const memberSvcs = member.services || [];
