@@ -6465,6 +6465,20 @@ async function resetCleanerPermissions(cleanerId) {
 
 // ─── Självfakturor ───────────────────────────────────────────
 
+async function viewInvoice(file) {
+  try {
+    var res = await fetch(SUPA_URL + '/functions/v1/serve-invoice?file=' + encodeURIComponent(file), {
+      headers: { 'apikey': ANON_KEY }
+    });
+    var html = await res.text();
+    var win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+  } catch(e) {
+    alert('Kunde inte ladda faktura: ' + e.message);
+  }
+}
+
 async function loadMyInvoices() {
   var el = document.getElementById('my-invoices-list');
   if (!el || !cleaner) return;
@@ -6485,7 +6499,7 @@ async function loadMyInvoices() {
       html += '<td style="padding:8px;text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + ' kr</td>';
       html += '<td style="padding:8px"><span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600">' + sl + '</span></td>';
       html += '<td style="padding:8px;text-align:right;white-space:nowrap">';
-      if (inv.invoice_number) html += '<a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/serve-invoice?file=' + encodeURIComponent(inv.invoice_number + '.html') + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;margin-right:8px">Visa</a>';
+      if (inv.invoice_number) html += '<a href="#" onclick="viewInvoice(\'' + inv.invoice_number + '.html\');return false" style="color:var(--g);font-weight:600;text-decoration:none;margin-right:8px">Visa</a>';
       if (inv.status === 'draft' || inv.status === 'sent') {
         html += '<button onclick="acceptInvoice(\'' + inv.id + '\')" style="background:#dcfce7;color:#166534;border:none;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;margin-right:4px">Godkänn</button>';
         html += '<button onclick="disputeInvoice(\'' + inv.id + '\')" style="background:#fee2e2;color:#991b1b;border:none;padding:4px 10px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer">Invändning</button>';
@@ -6565,7 +6579,7 @@ async function loadVdInvoices() {
       html += '<td style="padding:8px;text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + '</td>';
       html += '<td style="padding:8px"><span style="background:' + sc + '22;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600">' + sl + '</span></td>';
       html += '<td style="padding:8px">';
-      if (inv.invoice_number) html += '<a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/serve-invoice?file=' + encodeURIComponent(inv.invoice_number + '.html') + '" target="_blank" style="color:var(--g);font-weight:600;text-decoration:none;font-size:.8rem">Visa</a>';
+      if (inv.invoice_number) html += '<a href="#" onclick="viewInvoice(\'' + inv.invoice_number + '.html\');return false" style="color:var(--g);font-weight:600;text-decoration:none;font-size:.8rem">Visa</a>';
       html += '</td></tr>';
     });
     html += '</tbody></table></div>';

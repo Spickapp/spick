@@ -4291,6 +4291,20 @@ showPage = function(id) {
 
 let _selfInvoices = [];
 
+async function viewInvoice(file) {
+  try {
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/serve-invoice?file=' + encodeURIComponent(file), {
+      headers: { 'apikey': ANON_KEY }
+    });
+    var html = await res.text();
+    var win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+  } catch(e) {
+    alert('Kunde inte ladda faktura: ' + e.message);
+  }
+}
+
 async function loadSelfInvoices() {
   try {
     var res = await AR.select('self_invoices', 'select=*&order=period_start.desc,seller_name.asc&limit=500');
@@ -4351,7 +4365,7 @@ function renderSelfInvoices() {
       '<td style="text-align:right;font-weight:600">' + Number(inv.total_net).toLocaleString('sv-SE') + '</td>' +
       '<td><span style="background:' + sc + '18;color:' + sc + ';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + sl + '</span></td>' +
       '<td style="white-space:nowrap">' +
-        (inv.pdf_url ? '<a href="https://urjeijcncsyuletprydy.supabase.co/functions/v1/serve-invoice?file=' + encodeURIComponent(inv.invoice_number + '.html') + '" target="_blank" style="color:#0F6E56;font-weight:600;text-decoration:none;font-size:12px">Visa</a>' : '') +
+        (inv.invoice_number ? '<a href="#" onclick="viewInvoice(\'' + inv.invoice_number + '.html\');return false" style="color:#0F6E56;font-weight:600;text-decoration:none;font-size:12px">Visa</a>' : '') +
       '</td></tr>';
   }).join('');
 }

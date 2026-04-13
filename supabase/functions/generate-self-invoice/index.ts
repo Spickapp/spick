@@ -345,8 +345,6 @@ interface InvoiceData {
 }
 
 function buildInvoiceHtml(d: InvoiceData): string {
-  const fmt = (n: number) => n.toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
   const rows = d.lineItems
     .map(
       (li) => `
@@ -354,24 +352,24 @@ function buildInvoiceHtml(d: InvoiceData): string {
       <td>${esc(li.date)}</td>
       <td>${esc(li.service)}</td>
       <td style="text-align:right">${li.hours}</td>
-      <td style="text-align:right">${fmt(li.gross)}</td>
+      <td style="text-align:right">${fmtSEK(li.gross)}</td>
       <td style="text-align:right">${li.commission_pct}%</td>
-      <td style="text-align:right">${fmt(li.commission)}</td>
-      <td style="text-align:right">${fmt(li.net)}</td>
+      <td style="text-align:right">${fmtSEK(li.commission)}</td>
+      <td style="text-align:right">${fmtSEK(li.net)}</td>
     </tr>`,
     )
     .join("");
 
   const vatRow = d.vatRegistered
-    ? `<tr><td colspan="6" style="text-align:right;font-weight:600">Moms ${d.vatRate}%:</td><td style="text-align:right">${fmt(d.vatAmount)} SEK</td></tr>`
-    : `<tr><td colspan="7" style="text-align:right;color:#666;font-size:13px">Säljaren är inte momsregistrerad — moms: 0,00 SEK</td></tr>`;
+    ? `<tr><td colspan="6" style="text-align:right;font-weight:600">Moms ${d.vatRate}%:</td><td style="text-align:right">${fmtSEK(d.vatAmount)} SEK</td></tr>`
+    : `<tr><td colspan="7" style="text-align:right;color:#666;font-size:13px">S&auml;ljaren &auml;r inte momsregistrerad &mdash; moms: 0,00 SEK</td></tr>`;
 
   return `<!DOCTYPE html>
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Självfaktura ${esc(d.invoiceNumber)}</title>
+<title>Sj&auml;lvfaktura ${esc(d.invoiceNumber)}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color:#1a1a19; background:#fff; padding:40px; max-width:800px; margin:0 auto; }
@@ -404,19 +402,19 @@ function buildInvoiceHtml(d: InvoiceData): string {
 
 <div class="header">
   <div>
-    <h1>SJÄLVFAKTURA</h1>
+    <h1>SJ&Auml;LVFAKTURA</h1>
     <div style="font-size:13px;color:#666;margin-top:4px">Self-billing invoice</div>
   </div>
   <div class="invoice-meta">
     <div><strong>Fakturanr:</strong> ${esc(d.invoiceNumber)}</div>
     <div><strong>Fakturadatum:</strong> ${esc(d.invoiceDate)}</div>
-    <div><strong>Period:</strong> ${esc(d.periodStart)} – ${esc(d.periodEnd)}</div>
+    <div><strong>Period:</strong> ${esc(d.periodStart)} &ndash; ${esc(d.periodEnd)}</div>
   </div>
 </div>
 
 <div class="parties">
   <div class="party">
-    <h3>Köpare (utställare)</h3>
+    <h3>K&ouml;pare (utst&auml;llare)</h3>
     <p>
       <strong>Haghighi Consulting AB</strong><br>
       Org.nr: 559402-4522<br>
@@ -424,23 +422,23 @@ function buildInvoiceHtml(d: InvoiceData): string {
     </p>
   </div>
   <div class="party">
-    <h3>Säljare (utförare)</h3>
+    <h3>S&auml;ljare (utf&ouml;rare)</h3>
     <p>
       <strong>${esc(d.sellerName)}</strong><br>
       ${d.sellerOrg ? `Org.nr: ${esc(d.sellerOrg)}<br>` : ""}
       ${d.sellerAddress ? `${esc(d.sellerAddress)}<br>` : ""}
-      ${d.fSkatt ? '<span class="badge">Godkänd för F-skatt</span>' : ""}
+      ${d.fSkatt ? '<span class="badge">Godk&auml;nd f&ouml;r F-skatt</span>' : ""}
     </p>
   </div>
 </div>
 
-<div class="period-label">Utförda tjänster under perioden ${esc(d.periodStart)} – ${esc(d.periodEnd)}:</div>
+<div class="period-label">Utf&ouml;rda tj&auml;nster under perioden ${esc(d.periodStart)} &ndash; ${esc(d.periodEnd)}:</div>
 
 <table>
   <thead>
     <tr>
       <th>Datum</th>
-      <th>Tjänst</th>
+      <th>Tj&auml;nst</th>
       <th style="text-align:right">Timmar</th>
       <th style="text-align:right">Brutto (SEK)</th>
       <th style="text-align:right">Provision</th>
@@ -456,31 +454,31 @@ function buildInvoiceHtml(d: InvoiceData): string {
 <table class="summary">
   <tr>
     <td colspan="6" style="text-align:right;font-weight:600">Total brutto:</td>
-    <td style="text-align:right;font-weight:600">${fmt(d.totalGross)} SEK</td>
+    <td style="text-align:right;font-weight:600">${fmtSEK(d.totalGross)} SEK</td>
   </tr>
   <tr>
     <td colspan="6" style="text-align:right;font-weight:600">Total provision:</td>
-    <td style="text-align:right;font-weight:600">−${fmt(d.totalCommission)} SEK</td>
+    <td style="text-align:right;font-weight:600">&minus;${fmtSEK(d.totalCommission)} SEK</td>
   </tr>
   <tr>
     <td colspan="6" style="text-align:right;font-weight:600">Total netto:</td>
-    <td style="text-align:right;font-weight:600">${fmt(d.totalNet)} SEK</td>
+    <td style="text-align:right;font-weight:600">${fmtSEK(d.totalNet)} SEK</td>
   </tr>
   ${vatRow}
   <tr class="total-row">
     <td colspan="6" style="text-align:right">Att betala:</td>
-    <td style="text-align:right">${fmt(d.totalWithVat)} SEK</td>
+    <td style="text-align:right">${fmtSEK(d.totalWithVat)} SEK</td>
   </tr>
 </table>
 
 <div class="payment-ref">
-  <strong>Betalningsreferens:</strong> Utbetalt löpande via Stripe Connect till säljarens konto.
+  <strong>Betalningsreferens:</strong> Utbetalt l&ouml;pande via Stripe Connect till s&auml;ljarens konto.
 </div>
 
 <div class="footer">
-  Denna självfaktura är utställd av köparen enligt mervärdesskattelagen (ML) 11 kap.<br>
-  Säljaren har godkänt förfarandet genom uppdragsavtalet med Spick.<br><br>
-  <strong style="color:#0F6E56">Spick</strong> — Sveriges städplattform &bull; spick.se
+  Denna sj&auml;lvfaktura &auml;r utst&auml;lld av k&ouml;paren enligt merv&auml;rdesskattelagen (ML) 11 kap.<br>
+  S&auml;ljaren har godk&auml;nt f&ouml;rfarandet genom uppdragsavtalet med Spick.<br><br>
+  <strong style="color:#0F6E56">Spick</strong> &mdash; Sveriges st&auml;dplattform &bull; spick.se
 </div>
 
 </body>
@@ -488,5 +486,23 @@ function buildInvoiceHtml(d: InvoiceData): string {
 }
 
 function esc(s: string): string {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  if (!s) return "";
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/ä/g, "&auml;").replace(/Ä/g, "&Auml;")
+    .replace(/ö/g, "&ouml;").replace(/Ö/g, "&Ouml;")
+    .replace(/å/g, "&aring;").replace(/Å/g, "&Aring;")
+    .replace(/é/g, "&eacute;")
+    .replace(/–/g, "&ndash;").replace(/—/g, "&mdash;")
+    .replace(/\u00A0/g, "&nbsp;");
+}
+
+function fmtSEK(n: number): string {
+  const str = n.toFixed(2).replace(".", ",");
+  const parts = str.split(",");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "&nbsp;");
+  return parts.join(",");
 }

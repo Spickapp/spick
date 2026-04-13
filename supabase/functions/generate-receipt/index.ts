@@ -166,11 +166,25 @@ function translateService(type: string): string {
 }
 
 function esc(s: string): string {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  if (!s) return "";
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/ä/g, "&auml;").replace(/Ä/g, "&Auml;")
+    .replace(/ö/g, "&ouml;").replace(/Ö/g, "&Ouml;")
+    .replace(/å/g, "&aring;").replace(/Å/g, "&Aring;")
+    .replace(/é/g, "&eacute;")
+    .replace(/–/g, "&ndash;").replace(/—/g, "&mdash;")
+    .replace(/\u00A0/g, "&nbsp;");
 }
 
-function fmt(n: number): string {
-  return n.toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtSEK(n: number): string {
+  const str = n.toFixed(2).replace(".", ",");
+  const parts = str.split(",");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "&nbsp;");
+  return parts.join(",");
 }
 
 // ─── HTML Receipt Builder ───────────────────────────────────
@@ -186,30 +200,30 @@ function buildReceiptHtml(d: ReceiptData): string {
     const vat = d.totalPrice - exVat;
     pricingHtml = `
       <div class="card">
-        <div class="row"><span class="lbl">Tjänstepris exkl. moms</span><span class="val">${fmt(exVat)} kr</span></div>
-        <div class="row"><span class="lbl">Moms (25%)</span><span class="val">${fmt(vat)} kr</span></div>
-        <div class="row total"><span class="lbl">Totalt inkl. moms</span><span class="val">${fmt(d.totalPrice)} kr</span></div>
+        <div class="row"><span class="lbl">Tj&auml;nstepris exkl. moms</span><span class="val">${fmtSEK(exVat)} kr</span></div>
+        <div class="row"><span class="lbl">Moms (25%)</span><span class="val">${fmtSEK(vat)} kr</span></div>
+        <div class="row total"><span class="lbl">Totalt inkl. moms</span><span class="val">${fmtSEK(d.totalPrice)} kr</span></div>
         <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
       </div>
       ${d.companyRef ? `<div class="ref-box"><strong>Fakturareferens:</strong> ${esc(d.companyRef)}</div>` : ""}`;
   } else if (d.isRut) {
     pricingHtml = `
       <div class="card">
-        <div class="row"><span class="lbl">Tjänstepris</span><span class="val">${fmt(d.totalPrice)} kr</span></div>
-        <div class="row rut"><span class="lbl">RUT-avdrag (50%)</span><span class="val">−${fmt(d.rutAmount)} kr</span></div>
-        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmt(d.amountPaid)} kr</span></div>
+        <div class="row"><span class="lbl">Tj&auml;nstepris</span><span class="val">${fmtSEK(d.totalPrice)} kr</span></div>
+        <div class="row rut"><span class="lbl">RUT-avdrag (50%)</span><span class="val">&minus;${fmtSEK(d.rutAmount)} kr</span></div>
+        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmtSEK(d.amountPaid)} kr</span></div>
         <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
       </div>
       <div class="rut-box">
         <strong>🏦 RUT-avdrag</strong><br>
-        Spick ansöker automatiskt om ditt RUT-avdrag hos Skatteverket.<br>
-        Du behöver inte göra något — avdraget hanteras av oss.
+        Spick ans&ouml;ker automatiskt om ditt RUT-avdrag hos Skatteverket.<br>
+        Du beh&ouml;ver inte g&ouml;ra n&aring;got &mdash; avdraget hanteras av oss.
       </div>`;
   } else {
     pricingHtml = `
       <div class="card">
-        <div class="row"><span class="lbl">Tjänstepris</span><span class="val">${fmt(d.totalPrice)} kr</span></div>
-        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmt(d.amountPaid)} kr</span></div>
+        <div class="row"><span class="lbl">Tj&auml;nstepris</span><span class="val">${fmtSEK(d.totalPrice)} kr</span></div>
+        <div class="row total"><span class="lbl">Du betalar</span><span class="val green">${fmtSEK(d.amountPaid)} kr</span></div>
         <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
       </div>`;
   }
@@ -291,7 +305,7 @@ function buildReceiptHtml(d: ReceiptData): string {
 
 <div class="parties">
   <div class="party">
-    <h3>Från</h3>
+    <h3>Fr&aring;n</h3>
     <p>
       <strong>Haghighi Consulting AB</strong><br>
       Bifirma: Spick<br>
@@ -309,7 +323,7 @@ function buildReceiptHtml(d: ReceiptData): string {
 <table>
   <thead>
     <tr>
-      <th>Tjänst</th>
+      <th>Tj&auml;nst</th>
       <th>Datum</th>
       <th>Tid</th>
       <th class="right">Timmar</th>
@@ -327,21 +341,21 @@ function buildReceiptHtml(d: ReceiptData): string {
   </tbody>
 </table>
 
-${d.cleanerName ? `<p style="font-size:13px;color:#666;margin-bottom:16px">Städare: ${esc(d.cleanerName)}</p>` : ""}
+${d.cleanerName ? `<p style="font-size:13px;color:#666;margin-bottom:16px">St&auml;dare: ${esc(d.cleanerName)}</p>` : ""}
 
 <div class="section-title">Betalning</div>
 ${pricingHtml}
 
 <div class="guarantee">
-  <strong>🛡️ Nöjdhetsgaranti</strong>
-  <p>Inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta hello@spick.se inom 24h.</p>
+  <strong>&#x1F6E1;&#xFE0F; N&ouml;jdhetsgaranti</strong>
+  <p>Inte n&ouml;jd med st&auml;dningen? Vi st&auml;dar om kostnadsfritt. Kontakta hello@spick.se inom 24h.</p>
 </div>
 
 <div class="booking-id">Boknings-ID: ${esc(d.bookingId)}</div>
 
 <div class="footer">
   Haghighi Consulting AB (bifirma Spick) · Org.nr: 559402-4522 · hello@spick.se<br>
-  <strong style="color:#0F6E56">Spick</strong> — Sveriges städplattform · <a href="https://spick.se" style="color:#0F6E56">spick.se</a>
+  <strong style="color:#0F6E56">Spick</strong> &mdash; Sveriges st&auml;dplattform &middot; <a href="https://spick.se" style="color:#0F6E56">spick.se</a>
 </div>
 
 </body>
