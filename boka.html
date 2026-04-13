@@ -929,7 +929,8 @@ function selectService(name, icon, desc, time) {
   const sqmLabel = document.getElementById('sqm-label');
   const sqmEl = document.getElementById('sqm');
   if (sqmLabel) {
-    if (name === 'Fönsterputs') {
+    var _primary = (state.services && state.services.length) ? state.services[0] : name;
+    if (state.services && state.services.length === 1 && state.services[0] === 'Fönsterputs') {
       sqmLabel.innerHTML = 'Antal fönster (inkl. bågar) <span class="req">*</span>';
       if (sqmEl) { sqmEl.placeholder = 't.ex. 8'; sqmEl.min = 1; sqmEl.max = 50; }
     } else {
@@ -940,17 +941,20 @@ function selectService(name, icon, desc, time) {
   
   // Visa/dölj besiktningsdatum för Flyttstädning
   const bWrap = document.getElementById('besiktning-wrap');
-  if (bWrap) bWrap.style.display = name === 'Flyttstädning' ? 'block' : 'none';
+  if (bWrap) bWrap.style.display = (state.services && state.services.indexOf('Flyttstädning') > -1) ? 'block' : 'none';
   
   // Visa tilläggstjänster för Hem/Storstäd
   const aWrap = document.getElementById('addons-wrap');
   const aGrid = document.getElementById('addons-grid');
   if (aWrap && aGrid) {
-    const addons = {
+    const _addonMap = {
       'Hemstädning':  [['Ugnsrengöring', '+295 kr'], ['Kylskåp invändigt', '+195 kr'], ['Balkong', '+195 kr'], ['Fönster invändigt', '+195 kr']],
       'Storstädning': [['Ugnsrengöring', 'Ingår'], ['Kylskåp invändigt', 'Ingår'], ['Fönster invändigt', '+195 kr'], ['Balkong', '+195 kr']],
       'Flyttstädning':[['Fönster utvändigt', '+395 kr'], ['Balkong', '+195 kr']],
-    }[name] || [];
+    };
+    var _addonList = [];
+    (state.services || [name]).forEach(function(s) { if (_addonMap[s]) _addonList = _addonList.concat(_addonMap[s]); });
+    var addons = _addonList;
     if (addons.length) {
       aGrid.innerHTML = addons.map(([a, p]) => `
         <label style="display:flex;align-items:center;gap:.5rem;border:1.5px solid var(--border);border-radius:10px;padding:.625rem .875rem;cursor:pointer;font-size:.82rem;transition:all .15s">
@@ -1251,7 +1255,7 @@ async function goStep2() {
       const cl = verified[0];
       // 2. Verifiera tjänstematch
       const svcMatch = Array.isArray(cl.services) 
-        ? cl.services.some(s => s.toLowerCase().includes(state.service.toLowerCase().slice(0,3)))
+        ? ((state.services && state.services.length) ? state.services.every(function(sv){return cl.services.some(function(s){return s.toLowerCase().includes(sv.toLowerCase().slice(0,3))})}) : cl.services.some(s => s.toLowerCase().includes(state.service.toLowerCase().slice(0,3))))
         : true; // Om inga tjänster listade, acceptera
       if (!svcMatch) {
         state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = 350;
@@ -1663,7 +1667,7 @@ function selectTime(t, btn) { selectBlockTime(t, btn, ''); }
 async function loadAvailableCleaners() {
   const wrap = document.getElementById('cleaners-wrap');
   wrap.innerHTML = '<div class="loading-pulse"><div class="pulse"></div><div class="pulse"></div><div class="pulse"></div></div>';
-  document.getElementById('step2-sub').textContent = state.service + ' · ' + formatDate(state.date) + ' kl. ' + state.time;
+  document.getElementById('step2-sub').textContent = ((state.services && state.services.length > 1) ? state.services.join(' + ') : state.service) + ' · ' + formatDate(state.date) + ' kl. ' + state.time;
   try {
     const dow = new Date(state.date + 'T00:00:00').getDay();
     let cleaners;
@@ -2438,14 +2442,14 @@ function buildConfirmSummary() {
   document.getElementById('confirm-summary').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .875rem;font-size:.875rem">
       <div style="color:var(--m)">Städare</div><div style="font-weight:600">${state.cleanerName} <button onclick="setStep(2)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
-      <div style="color:var(--m)">Tjänst</div><div style="font-weight:600">${state.service} <button onclick="setStep(1)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
+      <div style="color:var(--m)">Tjänst</div><div style="font-weight:600">${(state.services && state.services.length > 1) ? state.services.join(' + ') : state.service} <button onclick="setStep(1)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
       <div style="color:var(--m)">Datum</div><div style="font-weight:600">${formatDate(state.date)} kl. ${state.time} <button onclick="setStep(1)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
       <div style="color:var(--m)">Adress</div><div style="font-weight:600">${state.address}</div>
       <div style="color:var(--m)">Kontakt</div><div style="font-weight:600">${state.fname} ${state.lname}, ${state.phone} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
       <div style="color:var(--m)">Tillträde</div><div style="font-weight:600">${state.keyType === 'code' ? '🔢 Portkod' : state.keyType === 'key' ? '🗝️ Nyckel' : state.keyType === 'portphone' ? '📱 Porttelefon' : '🚪 Öppen dörr'}${state.keyInfo && state.keyType !== 'open' ? ' — ' + escHtml(state.keyInfo) : ''} <button onclick="setStep(3)" style="font-size:.75rem;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-left:.5rem">Ändra</button></div>
     </div>
     <div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:.82rem;color:#92400E;line-height:1.5">
-      🧹 <strong>Material:</strong> ${getMaterialText(state.service)}
+      🧹 <strong>Material:</strong> ${getMaterialText((state.services && state.services.length) ? state.services[0] : state.service)}
     </div>
     <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)">
       ${useRut && state.customerType !== 'foretag' ? '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--m);margin-bottom:.25rem"><span>Pris före RUT</span><span>' + gross.toLocaleString('sv-SE') + ' kr</span></div><div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--g);margin-bottom:.5rem"><span>RUT-avdrag (50%)</span><span>−' + rut.toLocaleString('sv-SE') + ' kr</span></div>' : ''}
