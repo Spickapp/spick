@@ -496,6 +496,35 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .gantt-sick-btn{padding:2px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:.6rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px}
 .gantt-sick-btn:hover{background:#FCA5A5;color:#7F1D1D}
 
+/* ── BOKNINGSDETALJ-PANEL ──────────────── */
+.booking-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+.booking-detail-overlay.open{display:flex}
+.booking-detail{background:var(--w);border-radius:16px;max-width:440px;width:100%;margin:40px auto;padding:0;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden}
+.bd-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.bd-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--m);padding:4px 8px;border-radius:8px}
+.bd-close:hover{background:var(--gray-100)}
+.bd-status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.bd-status.confirmed,.bd-status.bekräftad{background:#D1FAE5;color:#065F46}
+.bd-status.pending_confirmation{background:#FEF3C7;color:#92400E}
+.bd-status.klar,.bd-status.completed{background:#F3F4F6;color:#6B7280}
+.bd-status.cancelled,.bd-status.avbokad{background:#FEE2E2;color:#DC2626}
+.bd-body{padding:0 20px 20px}
+.bd-section{margin-bottom:16px}
+.bd-section-title{font-size:.68rem;text-transform:uppercase;color:var(--m);font-weight:600;letter-spacing:.04em;margin-bottom:8px}
+.bd-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:.85rem;border-bottom:1px solid var(--gray-50)}
+.bd-row:last-child{border-bottom:none}
+.bd-label{color:var(--m);font-size:.8rem}
+.bd-value{font-weight:500;text-align:right;max-width:60%}
+.bd-edit-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.bd-edit-row input,.bd-edit-row select{padding:6px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.82rem;font-family:inherit;flex:1}
+.bd-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.bd-actions button{flex:1;min-width:100px;padding:10px;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px}
+.bd-btn-primary{background:var(--g);color:#fff}
+.bd-btn-danger{background:#FEE2E2;color:#DC2626}
+.bd-btn-secondary{background:var(--gray-100);color:var(--gray-700)}
+.bd-contact{display:flex;gap:8px;margin-top:12px}
+.bd-contact a{flex:1;padding:10px;border-radius:10px;text-decoration:none;text-align:center;font-size:.82rem;font-weight:600;min-height:44px;display:flex;align-items:center;justify-content:center;gap:4px}
+
 /* ═══ PROFILE / SETTINGS ═══ */
 .prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--spick-500),var(--spick-700));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;margin:0 auto 12px;overflow:hidden}
 .prof-avatar img{width:100%;height:100%;object-fit:cover}
@@ -1573,6 +1602,69 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         </div>
       </div>
     </div>
+
+  <!-- BOOKING DETAIL MODAL -->
+  <div class="booking-detail-overlay" id="bd-overlay" onclick="if(event.target===this)closeBD()">
+    <div class="booking-detail">
+      <div class="bd-header">
+        <div>
+          <div style="font-size:1.05rem;font-weight:700" id="bd-title">Bokning</div>
+          <span class="bd-status" id="bd-status">-</span>
+        </div>
+        <button class="bd-close" onclick="closeBD()">&times;</button>
+      </div>
+      <div class="bd-body">
+        <!-- Kund -->
+        <div class="bd-section">
+          <div class="bd-section-title">Kund</div>
+          <div class="bd-row"><span class="bd-label">Namn</span><span class="bd-value" id="bd-customer-name">-</span></div>
+          <div class="bd-row"><span class="bd-label">E-post</span><span class="bd-value" id="bd-customer-email">-</span></div>
+          <div class="bd-row"><span class="bd-label">Telefon</span><span class="bd-value" id="bd-customer-phone">-</span></div>
+          <div class="bd-row"><span class="bd-label">Adress</span><span class="bd-value" id="bd-customer-address">-</span></div>
+        </div>
+
+        <!-- Jobb -->
+        <div class="bd-section">
+          <div class="bd-section-title">Detaljer</div>
+          <div class="bd-row"><span class="bd-label">Tj&auml;nst</span><span class="bd-value" id="bd-service">-</span></div>
+          <div class="bd-row"><span class="bd-label">Datum</span><span class="bd-value" id="bd-date">-</span></div>
+          <div class="bd-row"><span class="bd-label">Tid</span><span class="bd-value" id="bd-time">-</span></div>
+          <div class="bd-row"><span class="bd-label">Timmar</span><span class="bd-value" id="bd-hours">-</span></div>
+          <div class="bd-row"><span class="bd-label">St&auml;dare</span><span class="bd-value" id="bd-cleaner">-</span></div>
+          <div class="bd-row"><span class="bd-label">Pris</span><span class="bd-value" id="bd-price">-</span></div>
+        </div>
+
+        <!-- Redigera -->
+        <div class="bd-section" id="bd-edit-section">
+          <div class="bd-section-title">Redigera</div>
+          <div class="bd-edit-row">
+            <input type="date" id="bd-edit-date">
+            <input type="time" id="bd-edit-time">
+            <input type="number" id="bd-edit-hours" min="1" max="12" step="0.5" style="max-width:70px">
+          </div>
+          <div class="bd-edit-row">
+            <select id="bd-edit-cleaner" style="flex:2"></select>
+          </div>
+          <div style="margin-top:8px">
+            <button onclick="saveBDChanges()" class="bd-btn-primary" style="width:100%;padding:10px;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;color:#fff;background:var(--g)">Spara &auml;ndringar</button>
+          </div>
+        </div>
+
+        <!-- Kontakt -->
+        <div class="bd-section" id="bd-contact-section">
+          <div class="bd-section-title">Kontakta kund</div>
+          <div class="bd-contact">
+            <a id="bd-call" href="#" style="background:#DCFCE7;color:#166534">Ring</a>
+            <a id="bd-whatsapp" href="#" target="_blank" style="background:#25D36615;color:#128C7E">WhatsApp</a>
+            <a id="bd-email-link" href="#" style="background:var(--gray-100);color:var(--gray-700)">Mejla</a>
+          </div>
+        </div>
+
+        <!-- Åtgärder -->
+        <div class="bd-actions" id="bd-actions"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- MANUAL BOOKING MODAL -->
   <div id="manual-booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeManualBooking()">
@@ -5909,7 +6001,7 @@ function renderGanttDay(wrap) {
         ' data-event-id="' + escHtml(ev.id) + '"' +
         ' data-booking-id="' + escHtml(ev.booking_id || '') + '"' +
         ' data-cleaner-id="' + escHtml(ev.cleaner_id) + '"' +
-        (isDraggable ? ' onpointerdown="ganttDragStart(event,this)"' : '') +
+        (isDraggable ? ' onpointerdown="ganttDragStart(event,this)"' : ' onclick="openBD(\'' + escHtml(ev.booking_id || '') + '\',\'' + escHtml(ev.id) + '\')"') +
         ' onmouseenter="ganttShowTooltip(event,this)" onmouseleave="ganttHideTooltip()"' +
         '>';
       html += '<div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
@@ -6185,6 +6277,13 @@ function ganttDragEnd(e) {
 
   if (!timeChanged && !cleanerChanged) {
     state.el.style.left = state.origLeft + 'px';
+    // Ingen drag — behandla som klick → öppna detalj-panel
+    var dx = Math.abs(e.clientX - state.startX);
+    var dy = Math.abs(e.clientY - state.startY);
+    if (dx < 5 && dy < 5 && state.bookingId) {
+      ganttHideTooltip();
+      openBD(state.bookingId, state.eventId);
+    }
     return;
   }
 
@@ -6248,6 +6347,208 @@ async function ganttMoveBooking(bookingId, newCleanerId, newTime, newDate) {
   } catch(e) {
     showToast('Nätverksfel: ' + (e.message || e));
     loadGanttData();
+  }
+}
+
+// ── BOKNINGSDETALJ-PANEL ─────────────────────────────────────
+
+var _bdBookingId = null;
+
+function openBD(bookingId, eventId) {
+  _bdBookingId = bookingId;
+  var booking = (data_teamBookings || []).find(function(b) { return b.id === bookingId; });
+  var ev = _ganttTeamEvents.find(function(e) { return e.id === eventId; });
+
+  if (!booking && !ev) { showToast('Bokningsdata saknas'); return; }
+
+  var overlay = document.getElementById('bd-overlay');
+  if (!overlay) return;
+
+  // Fyll i data
+  var title = (booking ? booking.service_type : ev ? ev.title : 'Bokning') || 'Bokning';
+  document.getElementById('bd-title').textContent = title;
+
+  // Status
+  var statusEl = document.getElementById('bd-status');
+  var rawStatus = booking ? booking.status : 'unknown';
+  var statusMap = {'bekräftad':'Bekräftad','confirmed':'Bekräftad','pending_confirmation':'Väntar på svar','klar':'Klar','completed':'Klar','cancelled':'Avbokad','avbokad':'Avbokad','pågår':'Pågår'};
+  statusEl.textContent = statusMap[rawStatus] || rawStatus;
+  statusEl.className = 'bd-status ' + (getBookingStatus(bookingId) || rawStatus);
+
+  // Kundinfo
+  document.getElementById('bd-customer-name').textContent = booking ? (booking.customer_name || '-') : '-';
+  document.getElementById('bd-customer-email').textContent = booking ? (booking.customer_email || '-') : '-';
+  document.getElementById('bd-customer-phone').textContent = booking ? (booking.customer_phone || '-') : '-';
+  document.getElementById('bd-customer-address').textContent = booking ? (booking.customer_address || '-') : (ev ? (ev.address || '-') : '-');
+
+  // Detaljer
+  var dateStr = booking ? booking.booking_date : (ev ? evDate(ev.start_at) : '-');
+  var timeStr = booking ? (booking.booking_time || '').slice(0,5) : (ev ? evTime(ev.start_at) : '-');
+  var hours = booking ? booking.booking_hours : (ev ? eventDurationHours(ev) : '-');
+  document.getElementById('bd-service').textContent = title;
+  document.getElementById('bd-date').textContent = dateStr;
+  document.getElementById('bd-time').textContent = timeStr;
+  document.getElementById('bd-hours').textContent = typeof hours === 'number' ? hours + 'h' : hours;
+  document.getElementById('bd-price').textContent = booking && booking.total_price ? booking.total_price + ' kr' : '-';
+
+  // Hitta städarnamn
+  var cleanerName = booking ? (booking.cleaner_name || '') : '';
+  if (!cleanerName && ev) {
+    var member = _teamMembers.find(function(m) { return m.id === ev.cleaner_id; });
+    cleanerName = member ? (member.full_name || '') : '';
+  }
+  document.getElementById('bd-cleaner').textContent = cleanerName || '-';
+
+  // Redigera-fält
+  var editSection = document.getElementById('bd-edit-section');
+  if (booking && rawStatus !== 'cancelled' && rawStatus !== 'avbokad' && rawStatus !== 'klar' && rawStatus !== 'completed') {
+    editSection.style.display = '';
+    document.getElementById('bd-edit-date').value = dateStr;
+    document.getElementById('bd-edit-time').value = timeStr;
+    document.getElementById('bd-edit-hours').value = typeof hours === 'number' ? hours : 3;
+
+    // Städar-dropdown
+    var cleanerSelect = document.getElementById('bd-edit-cleaner');
+    var currentCleanerId = booking.cleaner_id || (ev ? ev.cleaner_id : '');
+    cleanerSelect.innerHTML = (_teamMembers || []).filter(function(m) {
+      return m.is_approved || m.status === 'aktiv';
+    }).map(function(m) {
+      return '<option value="' + m.id + '"' + (m.id === currentCleanerId ? ' selected' : '') + '>' +
+        escHtml(m.full_name || '') + ' (' + (m.hourly_rate || 350) + ' kr/h)</option>';
+    }).join('');
+  } else {
+    editSection.style.display = 'none';
+  }
+
+  // Kontaktlänkar
+  var contactSection = document.getElementById('bd-contact-section');
+  if (booking && booking.customer_phone) {
+    contactSection.style.display = '';
+    var phone = booking.customer_phone.replace(/\s/g, '');
+    document.getElementById('bd-call').href = 'tel:' + phone;
+    document.getElementById('bd-whatsapp').href = 'https://wa.me/' + phone.replace(/^\+?0?/, '46');
+    document.getElementById('bd-email-link').href = 'mailto:' + (booking.customer_email || '');
+  } else {
+    contactSection.style.display = 'none';
+  }
+
+  // Åtgärdsknappar
+  var actionsEl = document.getElementById('bd-actions');
+  var actionsHtml = '';
+  if (booking) {
+    var isPending = rawStatus === 'pending_confirmation';
+    var isConfirmed = rawStatus === 'confirmed' || rawStatus === 'bekräftad';
+    var isActive = isPending || isConfirmed;
+
+    if (isPending) {
+      actionsHtml += '<button class="bd-btn-primary" onclick="bdAccept()">Acceptera</button>';
+      actionsHtml += '<button class="bd-btn-danger" onclick="bdReject()">Avböj</button>';
+    }
+    if (isConfirmed) {
+      actionsHtml += '<button class="bd-btn-primary" onclick="bdMarkDone()">Markera klar</button>';
+    }
+    if (isActive) {
+      actionsHtml += '<button class="bd-btn-danger" onclick="bdCancel()">Avboka</button>';
+    }
+  }
+  actionsEl.innerHTML = actionsHtml;
+
+  overlay.classList.add('open');
+}
+
+function closeBD() {
+  var overlay = document.getElementById('bd-overlay');
+  if (overlay) overlay.classList.remove('open');
+  _bdBookingId = null;
+}
+
+async function saveBDChanges() {
+  if (!_bdBookingId) return;
+  var newDate = document.getElementById('bd-edit-date').value;
+  var newTime = document.getElementById('bd-edit-time').value;
+  var newHours = parseFloat(document.getElementById('bd-edit-hours').value);
+  var newCleanerId = document.getElementById('bd-edit-cleaner').value;
+
+  var booking = (data_teamBookings || []).find(function(b) { return b.id === _bdBookingId; });
+  if (!booking) { showToast('Bokning hittades inte'); return; }
+
+  var patch = {};
+  var changed = false;
+
+  if (newDate && newDate !== booking.booking_date) { patch.booking_date = newDate; changed = true; }
+  if (newTime && newTime !== (booking.booking_time || '').slice(0,5)) { patch.booking_time = newTime; changed = true; }
+  if (newHours && newHours !== booking.booking_hours) { patch.booking_hours = newHours; changed = true; }
+  if (newCleanerId && newCleanerId !== booking.cleaner_id) {
+    var member = _teamMembers.find(function(m) { return m.id === newCleanerId; });
+    patch.cleaner_id = newCleanerId;
+    patch.cleaner_name = member ? member.full_name : null;
+    patch.cleaner_email = member ? member.email : null;
+    patch.cleaner_phone = member ? member.phone : null;
+    changed = true;
+  }
+
+  if (!changed) { showToast('Inga ändringar'); return; }
+
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + _bdBookingId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(patch)
+    });
+    if (res.ok) {
+      showToast('Bokning uppdaterad!');
+      closeBD();
+      await renderTeam();
+    } else {
+      var err = await res.json().catch(function() { return {}; });
+      showToast('Fel: ' + (err.message || 'Kunde inte spara'));
+    }
+  } catch(e) {
+    showToast('Nätverksfel: ' + e.message);
+  }
+}
+
+async function bdAccept() {
+  if (!_bdBookingId) return;
+  closeBD();
+  var booking = (data_teamBookings || []).find(function(b) { return b.id === _bdBookingId; });
+  ownerAcceptBooking(_bdBookingId, booking ? booking.cleaner_id : '');
+}
+
+async function bdReject() {
+  if (!_bdBookingId) return;
+  closeBD();
+  var booking = (data_teamBookings || []).find(function(b) { return b.id === _bdBookingId; });
+  ownerRejectBooking(_bdBookingId, booking ? booking.cleaner_id : '');
+}
+
+async function bdCancel() {
+  if (!_bdBookingId) return;
+  closeBD();
+  ownerCancelBooking(_bdBookingId);
+}
+
+async function bdMarkDone() {
+  if (!_bdBookingId) return;
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + _bdBookingId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: 'klar' })
+    });
+    if (res.ok) {
+      showToast('Bokning markerad som klar!');
+      closeBD();
+      await renderTeam();
+    } else {
+      showToast('Kunde inte uppdatera status');
+    }
+  } catch(e) {
+    showToast('Fel: ' + e.message);
   }
 }
 
