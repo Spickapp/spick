@@ -5118,7 +5118,7 @@ async function loadPricing() {
           '<label style="font-size:.72rem;color:var(--m)">Pristyp</label>' +
           '<select data-svc="' + escHtml(svc) + '" data-field="type" style="width:100%;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit" onchange="updateRutPreview(this)">' +
             '<option value="hourly"' + (priceType === 'hourly' ? ' selected' : '') + '>Kr/timme</option>' +
-            '<option value="per_sqm"' + (priceType === 'per_sqm' ? ' selected' : '') + '>Kr/kvm</option>' +
+            '<option value="per_sqm"' + (priceType === 'per_sqm' ? ' selected' : '') + '>' + (svc === 'Fönsterputs' ? 'Kr/fönster' : 'Kr/kvm') + '</option>' +
           '</select>' +
         '</div>' +
         '<div>' +
@@ -5127,7 +5127,7 @@ async function loadPricing() {
         '</div>' +
       '</div>' +
       '<div data-svc="' + escHtml(svc) + '" data-field="rut-preview" style="font-size:.75rem;color:var(--spick-500);margin-top:6px;font-weight:500">' +
-        (rutPrice ? 'Kund betalar: ' + rutPrice + (priceType === 'per_sqm' ? ' kr/kvm' : ' kr/h') + ' efter RUT' : '') +
+        (rutPrice ? 'Kund betalar: ' + rutPrice + (priceType === 'per_sqm' ? (svc === 'Fönsterputs' ? ' kr/fönster' : ' kr/kvm') : ' kr/h') + ' efter RUT' : '') +
       '</div>' +
     '</div>';
   }).join('');
@@ -5142,7 +5142,7 @@ function updateRutPreview(el) {
   if (!priceInput || !typeSelect || !preview) return;
   var val = parseInt(priceInput.value);
   if (val > 0) {
-    var unit = typeSelect.value === 'per_sqm' ? 'kr/kvm' : 'kr/h';
+    var unit = typeSelect.value === 'per_sqm' ? (svc === 'Fönsterputs' ? 'kr/fönster' : 'kr/kvm') : 'kr/h';
     preview.textContent = 'Kund betalar: ' + Math.round(val * 0.5) + ' ' + unit + ' efter RUT';
   } else {
     preview.textContent = '';
@@ -7065,7 +7065,7 @@ function updateTeamSvcPrices() {
     html += '<input type="number" min="100" max="1000" step="10" value="' + val + '" style="width:70px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:.82rem;text-align:right" onchange="recalcTeamRate()">';
     html += '<select style="padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:.75rem;background:#fff" onchange="recalcTeamRate()">';
     html += '<option value="hourly"' + (type === 'hourly' ? ' selected' : '') + '>kr/h</option>';
-    html += '<option value="per_sqm"' + (type === 'per_sqm' ? ' selected' : '') + '>kr/kvm</option>';
+    html += '<option value="per_sqm"' + (type === 'per_sqm' ? ' selected' : '') + '>' + (svc === 'Fönsterputs' ? 'kr/fönster' : 'kr/kvm') + '</option>';
     html += '</select>';
     html += '</div>';
   });
@@ -7585,7 +7585,7 @@ function renderCompanyPrices(prices) {
     html += '<input type="number" data-cp-svc="' + svc + '" min="50" max="2000" step="10" value="' + price + '" placeholder="Ej satt" style="width:80px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:.82rem;text-align:right">';
     html += '<select data-cp-type="' + svc + '" style="padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:.75rem;background:#fff">';
     html += '<option value="hourly"' + (type === 'hourly' ? ' selected' : '') + '>kr/h</option>';
-    html += '<option value="per_sqm"' + (type === 'per_sqm' ? ' selected' : '') + '>kr/kvm</option>';
+    html += '<option value="per_sqm"' + (type === 'per_sqm' ? ' selected' : '') + '>' + (svc === 'Fönsterputs' ? 'kr/fönster' : 'kr/kvm') + '</option>';
     html += '</select>';
     html += '</div>';
   });
