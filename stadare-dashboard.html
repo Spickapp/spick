@@ -377,6 +377,54 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .cal-day.has-job{background:var(--spick-50);color:var(--spick-600);font-weight:600}
 .cal-day.other-month{color:var(--gray-300)}
 
+/* ── KALENDER V2 ────────────────────────── */
+.cal-v2-controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+.cal-v2-mode{display:flex;background:var(--gray-100);border-radius:10px;overflow:hidden;padding:2px}
+.cal-v2-mode button{padding:6px 14px;border:none;background:none;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--gray-500);transition:all .15s;border-radius:8px}
+.cal-v2-mode button.active{background:var(--w);color:var(--gray-900);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.cal-v2-nav{display:flex;align-items:center;gap:6px}
+.cal-v2-nav button{width:34px;height:34px;border:1px solid var(--gray-200);border-radius:8px;background:var(--w);cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center}
+.cal-v2-label{font-size:1rem;font-weight:700;min-width:160px;text-align:center}
+
+/* Dagvy */
+.cal-day-view{position:relative;min-height:400px}
+.cal-hour-row{display:flex;min-height:52px;border-bottom:1px solid var(--gray-100)}
+.cal-hour-label{width:52px;font-size:.7rem;color:var(--gray-400);text-align:right;padding:2px 8px 0 0;flex-shrink:0}
+.cal-hour-cell{flex:1;position:relative}
+.cal-event-block{position:absolute;left:4px;right:4px;border-radius:8px;padding:6px 8px;font-size:.78rem;line-height:1.3;overflow:hidden;cursor:pointer;z-index:2;border-left:3px solid}
+.cal-event-block.booking{background:#D1FAE5;border-color:#059669;color:#065F46}
+.cal-event-block.blocked{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
+.cal-event-block.external{background:#E0E7FF;border-color:#6366F1;color:#3730A3;opacity:.7}
+.cal-event-block.travel{background:#F3F4F6;border-color:#9CA3AF;color:#6B7280;font-style:italic}
+.cal-event-block.break{background:#FEF3C7;border-color:#D97706;color:#92400E}
+.cal-avail-bg{position:absolute;left:52px;right:0;background:#F0FDF4;z-index:0;pointer-events:none;border-radius:4px}
+
+/* Veckovy */
+.cal-week-grid{display:grid;grid-template-columns:52px repeat(7,1fr);gap:0;font-size:.78rem}
+.cal-week-header{text-align:center;padding:8px 2px;font-weight:600;font-size:.72rem}
+.cal-week-header.today{background:#E1F5EE;border-radius:8px 8px 0 0;color:#0F6E56}
+.cal-week-cell{min-height:48px;border-bottom:1px solid var(--gray-50);border-right:1px solid var(--gray-50);position:relative;padding:2px}
+.cal-week-event{border-radius:5px;padding:2px 5px;font-size:.68rem;margin-bottom:2px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-week-event.booking{background:#D1FAE5;color:#065F46;border-left:2px solid #059669}
+.cal-week-event.blocked{background:#FEE2E2;color:#991B1B;border-left:2px solid #DC2626}
+.cal-week-event.external{background:#E0E7FF;color:#3730A3;border-left:2px solid #6366F1}
+.cal-week-event.travel{background:#F3F4F6;color:#6B7280;border-left:2px solid #9CA3AF}
+.cal-week-event.break{background:#FEF3C7;color:#92400E;border-left:2px solid #D97706}
+
+/* Månadsvy (uppgraderad) */
+.cal-month-cell{min-height:56px;position:relative;padding:4px;flex-direction:column;justify-content:flex-start;align-items:flex-start}
+.cal-month-cell .dot-row{display:flex;gap:2px;flex-wrap:wrap;margin-top:2px;align-items:center}
+.cal-month-cell .event-dot{width:6px;height:6px;border-radius:50%}
+.event-dot.booking{background:#059669}
+.event-dot.blocked{background:#DC2626}
+.event-dot.external{background:#6366F1}
+.event-dot.travel{background:#9CA3AF}
+.event-dot.break{background:#D97706}
+
+/* Realtime-animation */
+@keyframes calEventIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.cal-event-new{animation:calEventIn .3s ease-out}
+
 /* ═══ PROFILE / SETTINGS ═══ */
 .prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--spick-500),var(--spick-700));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;margin:0 auto 12px;overflow:hidden}
 .prof-avatar img{width:100%;height:100%;object-fit:cover}
@@ -834,13 +882,21 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
     <div class="tab-content" id="tab-kalender">
       <div class="tab-pad">
         <div id="solo-kalender-content">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <button onclick="calNav(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">←</button>
-            <div style="font-family:inherit;font-size:1.1rem;font-weight:700" id="cal-month-label">April 2026</div>
-            <button onclick="calNav(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;min-width:48px;min-height:48px">→</button>
+          <div class="cal-v2-controls">
+            <div class="cal-v2-mode" id="cal-mode-toggle">
+              <button onclick="setCalMode('day')" id="cal-mode-day">Dag</button>
+              <button onclick="setCalMode('week')" id="cal-mode-week">Vecka</button>
+              <button onclick="setCalMode('month')" id="cal-mode-month" class="active">Månad</button>
+            </div>
+            <div class="cal-v2-nav">
+              <button onclick="calV2Nav(-1)" aria-label="Föregående">◀</button>
+              <div class="cal-v2-label" id="cal-v2-label">April 2026</div>
+              <button onclick="calV2Nav(1)" aria-label="Nästa">▶</button>
+              <button onclick="calV2Today()" style="padding:4px 12px;width:auto;font-size:.75rem;font-weight:600;color:var(--spick-500);border-color:var(--spick-500)">Idag</button>
+            </div>
           </div>
-          <div class="cal-grid" id="cal-grid"></div>
-          <div id="cal-day-detail" style="margin-top:12px"></div>
+          <div id="cal-v2-body"></div>
+          <div id="cal-v2-detail" style="margin-top:12px"></div>
         </div>
         <div id="vd-kalender-content" style="display:none"></div>
       </div>
@@ -2312,7 +2368,8 @@ async function loadJobs() {
   renderHome();
   renderAvailableJobs();
   renderEarnings();
-  renderCalendar();
+  loadCalendarEvents();
+  subscribeCalendarRealtime();
 }
 
 // ── HOME TAB RENDERING ──────────────────────────────────────
@@ -3230,86 +3287,407 @@ function updateHomeStats() {
   wrap.style.display = 'grid';
 }
 
-// ── CALENDAR TAB ────────────────────────────────────────────
-function renderCalendar() {
-  const grid = document.getElementById('cal-grid');
-  const label = document.getElementById('cal-month-label');
-  const months = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
-  label.textContent = months[calMonth] + ' ' + calYear;
+// ── CALENDAR V2 MOTOR ───────────────────────────────────────
+var _calMode = 'month';          // 'day' | 'week' | 'month'
+var _calDate = new Date();       // aktuellt fokus-datum
+var _calEvents = [];             // cache av calendar_events
+var _calAvailV2 = [];            // cache av availability_v2
+var _calRealtimePollSet = false; // polling-fallback satt?
 
-  // Header row
-  let html = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'].map(d => `<div class="cal-header">${d}</div>`).join('');
+async function loadCalendarEvents() {
+  if (!cleaner || !cleaner.id) return;
+  try {
+    var rangeStart, rangeEnd;
+    if (_calMode === 'day') {
+      rangeStart = new Date(_calDate); rangeStart.setHours(0,0,0,0);
+      rangeEnd   = new Date(_calDate); rangeEnd.setHours(23,59,59,999);
+    } else if (_calMode === 'week') {
+      rangeStart = new Date(_calDate);
+      var dow = rangeStart.getDay(); var diff = dow === 0 ? -6 : 1 - dow;
+      rangeStart.setDate(rangeStart.getDate() + diff); rangeStart.setHours(0,0,0,0);
+      rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 6); rangeEnd.setHours(23,59,59,999);
+    } else {
+      rangeStart = new Date(_calDate.getFullYear(), _calDate.getMonth(), 1);
+      rangeEnd   = new Date(_calDate.getFullYear(), _calDate.getMonth() + 1, 0, 23, 59, 59);
+    }
 
-  const firstDay = new Date(calYear, calMonth, 1);
-  let startDow = firstDay.getDay() - 1; // Mon=0
-  if (startDow < 0) startDow = 6;
+    var startStr = rangeStart.toISOString();
+    var endStr   = rangeEnd.toISOString();
 
-  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-  const prevDays = new Date(calYear, calMonth, 0).getDate();
-  const today = new Date();
+    var evRes, avRes;
+    try {
+      var pair = await Promise.all([
+        fetch(SUPA_URL + '/rest/v1/calendar_events?cleaner_id=eq.' + cleaner.id +
+          '&start_at=gte.' + encodeURIComponent(startStr) +
+          '&end_at=lte.'   + encodeURIComponent(endStr) +
+          '&order=start_at.asc', { headers: _authHeaders() }),
+        fetch(SUPA_URL + '/rest/v1/cleaner_availability_v2?cleaner_id=eq.' + cleaner.id +
+          '&is_active=eq.true&order=day_of_week.asc,start_time.asc', { headers: _authHeaders() })
+      ]);
+      evRes = pair[0]; avRes = pair[1];
+    } catch(fetchErr) {
+      console.warn('[SPICK] Calendar fetch failed:', fetchErr);
+      _calEvents = []; _calAvailV2 = [];
+      renderCalendarLegacy();
+      return;
+    }
 
-  // Job dates for this month
-  const jobDates = new Set();
-  jobs.filter(j => j.cleaner_id === cleaner.id).forEach(j => {
-    const d = new Date(j.scheduled_date||j.booking_date);
-    if (d.getMonth() === calMonth && d.getFullYear() === calYear) {
-      jobDates.add(d.getDate());
+    _calEvents  = evRes && evRes.ok ? await evRes.json() : [];
+    _calAvailV2 = avRes && avRes.ok ? await avRes.json() : [];
+
+    // Fallback: om inga calendar_events och tabellen saknas/inte migrerats
+    // och vi har legacy-jobs → rita legacy-månadsvy i samma container.
+    if (_calEvents.length === 0 && (!evRes || !evRes.ok || evRes.status === 404) && jobs && jobs.length > 0) {
+      renderCalendarLegacy();
+      return;
+    }
+  } catch(e) {
+    console.warn('[SPICK] loadCalendarEvents error:', e);
+    _calEvents = [];
+  }
+  renderCalV2();
+}
+
+function setCalMode(mode) {
+  _calMode = mode;
+  var toggle = document.getElementById('cal-mode-toggle');
+  if (toggle) toggle.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('cal-mode-' + mode);
+  if (btn) btn.classList.add('active');
+  loadCalendarEvents();
+}
+
+function calV2Nav(dir) {
+  if (_calMode === 'day')       _calDate.setDate(_calDate.getDate() + dir);
+  else if (_calMode === 'week') _calDate.setDate(_calDate.getDate() + (dir * 7));
+  else                          _calDate.setMonth(_calDate.getMonth() + dir);
+  loadCalendarEvents();
+}
+
+function calV2Today() {
+  _calDate = new Date();
+  loadCalendarEvents();
+}
+
+function renderCalV2() {
+  var label = document.getElementById('cal-v2-label');
+  var body  = document.getElementById('cal-v2-body');
+  if (!label || !body) return;
+  var months  = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+  var mShort  = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+
+  if (_calMode === 'day') {
+    label.textContent = _calDate.getDate() + ' ' + months[_calDate.getMonth()] + ' ' + _calDate.getFullYear();
+    renderCalDay(body);
+  } else if (_calMode === 'week') {
+    var ws = new Date(_calDate); var dow = ws.getDay(); var diff = dow === 0 ? -6 : 1 - dow;
+    ws.setDate(ws.getDate() + diff);
+    var we = new Date(ws); we.setDate(we.getDate() + 6);
+    label.textContent = ws.getDate() + ' ' + mShort[ws.getMonth()] + ' – ' + we.getDate() + ' ' + mShort[we.getMonth()] + ' ' + we.getFullYear();
+    renderCalWeek(body, ws);
+  } else {
+    label.textContent = months[_calDate.getMonth()] + ' ' + _calDate.getFullYear();
+    renderCalMonth(body);
+  }
+  var det = document.getElementById('cal-v2-detail');
+  if (det) det.innerHTML = '';
+}
+
+function renderCalDay(container) {
+  var today    = _calDate.toISOString().slice(0,10);
+  var todayDow = _calDate.getDay();           // 0=sön..6=lör
+  var dowV2    = todayDow === 0 ? 7 : todayDow; // 1=mån..7=sön
+
+  var availSlots = _calAvailV2.filter(function(a) { return a.day_of_week === dowV2; });
+
+  var html = '<div class="cal-day-view">';
+  for (var h = 7; h <= 21; h++) {
+    var hourStr = (h < 10 ? '0' : '') + h + ':00';
+    html += '<div class="cal-hour-row">' +
+      '<div class="cal-hour-label">' + hourStr + '</div>' +
+      '<div class="cal-hour-cell" id="cal-hour-' + h + '"></div>' +
+      '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  var dayView = container.querySelector('.cal-day-view');
+
+  // Availability-bakgrund
+  availSlots.forEach(function(slot) {
+    var sH = parseInt(String(slot.start_time).slice(0,2), 10);
+    var eH = parseInt(String(slot.end_time).slice(0,2), 10);
+    if (isNaN(sH) || isNaN(eH)) return;
+    var startEl = document.getElementById('cal-hour-' + sH);
+    var endEl   = document.getElementById('cal-hour-' + Math.min(eH, 21));
+    if (startEl && dayView) {
+      var top    = startEl.offsetTop;
+      var bottom = endEl ? (endEl.offsetTop + endEl.offsetHeight) : (startEl.offsetTop + 200);
+      var bg = document.createElement('div');
+      bg.className = 'cal-avail-bg';
+      bg.style.top    = top + 'px';
+      bg.style.height = (bottom - top) + 'px';
+      dayView.appendChild(bg);
     }
   });
 
-  // Previous month padding
-  for (let i = startDow - 1; i >= 0; i--) {
-    html += `<div class="cal-day other-month">${prevDays - i}</div>`;
-  }
+  // Events
+  _calEvents.forEach(function(ev) {
+    var evDate = String(ev.start_at).slice(0,10);
+    if (evDate !== today) return;
+    var startH = parseInt(String(ev.start_at).slice(11,13), 10);
+    var startM = parseInt(String(ev.start_at).slice(14,16), 10);
+    var endH   = parseInt(String(ev.end_at).slice(11,13), 10);
+    var endM   = parseInt(String(ev.end_at).slice(14,16), 10);
+    var cell = document.getElementById('cal-hour-' + startH);
+    if (!cell) return;
+    var topOffset = (startM / 60) * 52;
+    var duration  = (endH - startH) + (endM - startM) / 60;
+    var height    = Math.max(duration * 52, 26);
 
-  // Current month
-  for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
-    const hasJob = jobDates.has(d);
-    html += `<div class="cal-day ${isToday?'today':''} ${hasJob&&!isToday?'has-job':''}" onclick="showCalDay(${d})">${d}</div>`;
-  }
-
-  // Next month padding
-  const totalCells = startDow + daysInMonth;
-  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for (let i = 1; i <= remaining; i++) {
-    html += `<div class="cal-day other-month">${i}</div>`;
-  }
-
-  grid.innerHTML = html;
-  document.getElementById('cal-day-detail').innerHTML = '';
-}
-
-function calNav(dir) {
-  calMonth += dir;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  if (calMonth < 0) { calMonth = 11; calYear--; }
-  renderCalendar();
-}
-
-function showCalDay(day) {
-  const dayJobs = jobs.filter(j => {
-    const d = new Date(j.scheduled_date||j.booking_date);
-    return d.getDate() === day && d.getMonth() === calMonth && d.getFullYear() === calYear && j.cleaner_id === cleaner.id;
+    var block = document.createElement('div');
+    block.className = 'cal-event-block ' + ev.event_type;
+    block.style.top    = topOffset + 'px';
+    block.style.height = height + 'px';
+    block.innerHTML = '<div style="font-weight:600">' + escHtml(ev.title || ev.event_type) + '</div>' +
+      '<div style="font-size:.68rem;opacity:.8">' + String(ev.start_at).slice(11,16) + '–' + String(ev.end_at).slice(11,16) +
+      (ev.address ? ' · ' + escHtml(String(ev.address).slice(0,30)) : '') + '</div>';
+    block.onclick = function() { showCalEventDetail(ev); };
+    cell.appendChild(block);
   });
-  const el = document.getElementById('cal-day-detail');
-  if (!dayJobs.length) {
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--m);font-size:.85rem;padding:16px">Inga jobb ${day}/${calMonth+1}</div>`;
+}
+
+function renderCalWeek(container, weekStart) {
+  var dayNames = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
+  var todayStr = new Date().toISOString().slice(0,10);
+  var html = '<div class="cal-week-grid">';
+
+  html += '<div></div>';
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(weekStart); d.setDate(d.getDate() + i);
+    var isToday = d.toISOString().slice(0,10) === todayStr;
+    html += '<div class="cal-week-header ' + (isToday ? 'today' : '') + '">' +
+      dayNames[i] + '<br>' + d.getDate() + '</div>';
+  }
+
+  for (var h = 7; h <= 21; h++) {
+    var hourStr = (h < 10 ? '0' : '') + h + ':00';
+    html += '<div class="cal-hour-label" style="padding:4px 6px 0 0;border-bottom:1px solid var(--gray-50)">' + hourStr + '</div>';
+    for (var j = 0; j < 7; j++) {
+      var dd = new Date(weekStart); dd.setDate(dd.getDate() + j);
+      var dateStr = dd.toISOString().slice(0,10);
+      var isTd = dateStr === todayStr;
+      var hourEvents = _calEvents.filter(function(ev) {
+        return String(ev.start_at).slice(0,10) === dateStr && parseInt(String(ev.start_at).slice(11,13), 10) === h;
+      });
+      html += '<div class="cal-week-cell" style="' + (isTd ? 'background:rgba(225,245,238,.3)' : '') + '">';
+      hourEvents.forEach(function(ev) {
+        var title = String(ev.title || ev.event_type || '');
+        html += '<div class="cal-week-event ' + ev.event_type + '" title="' + escHtml(title) +
+          '" onclick=\'showCalEventDetail(' + JSON.stringify(ev).replace(/'/g, "&#39;") + ')\'>' +
+          String(ev.start_at).slice(11,16) + ' ' + escHtml(title.slice(0,12)) + '</div>';
+      });
+      html += '</div>';
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function renderCalMonth(container) {
+  var year  = _calDate.getFullYear();
+  var month = _calDate.getMonth();
+  var dayNames = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
+
+  var html = '<div class="cal-grid">';
+  html += dayNames.map(function(d){ return '<div class="cal-header">' + d + '</div>'; }).join('');
+
+  var firstDay = new Date(year, month, 1);
+  var startDow = firstDay.getDay() - 1; if (startDow < 0) startDow = 6;
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var prevDays    = new Date(year, month, 0).getDate();
+  var today = new Date();
+
+  var eventsByDay = {};
+  _calEvents.forEach(function(ev) {
+    var day = parseInt(String(ev.start_at).slice(8,10), 10);
+    var m   = parseInt(String(ev.start_at).slice(5,7), 10) - 1;
+    var y   = parseInt(String(ev.start_at).slice(0,4), 10);
+    if (m === month && y === year) {
+      if (!eventsByDay[day]) eventsByDay[day] = [];
+      eventsByDay[day].push(ev);
+    }
+  });
+
+  for (var i = startDow - 1; i >= 0; i--) {
+    html += '<div class="cal-day other-month">' + (prevDays - i) + '</div>';
+  }
+
+  for (var d = 1; d <= daysInMonth; d++) {
+    var isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+    var dayEvs  = eventsByDay[d] || [];
+    var hasBooking  = dayEvs.some(function(e){ return e.event_type === 'booking'; });
+    var hasBlocked  = dayEvs.some(function(e){ return e.event_type === 'blocked'; });
+    var hasExternal = dayEvs.some(function(e){ return e.event_type === 'external'; });
+
+    html += '<div class="cal-day cal-month-cell ' + (isToday ? 'today' : '') + ' ' +
+      (hasBooking && !isToday ? 'has-job' : '') + '" onclick="showCalDayV2(' + d + ')" style="cursor:pointer">' +
+      '<div>' + d + '</div>';
+    if (dayEvs.length > 0) {
+      html += '<div class="dot-row">';
+      if (hasBooking)  html += '<div class="event-dot booking"></div>';
+      if (hasBlocked)  html += '<div class="event-dot blocked"></div>';
+      if (hasExternal) html += '<div class="event-dot external"></div>';
+      if (dayEvs.length > 1) html += '<span style="font-size:.6rem;color:var(--gray-400)">' + dayEvs.length + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  var total = startDow + daysInMonth;
+  var rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (var k = 1; k <= rem; k++) {
+    html += '<div class="cal-day other-month">' + k + '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function showCalDayV2(day) {
+  var year  = _calDate.getFullYear();
+  var month = _calDate.getMonth();
+  var dayEvs = _calEvents.filter(function(ev) {
+    var d = parseInt(String(ev.start_at).slice(8,10), 10);
+    var m = parseInt(String(ev.start_at).slice(5,7), 10) - 1;
+    var y = parseInt(String(ev.start_at).slice(0,4), 10);
+    return d === day && m === month && y === year;
+  });
+  var el = document.getElementById('cal-v2-detail');
+  if (!el) return;
+  if (!dayEvs.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:var(--m);font-size:.85rem;padding:16px">Inga h&auml;ndelser ' + day + '/' + (month + 1) + '</div>';
     return;
   }
-  el.innerHTML = dayJobs.map(j => {
-    const pay = Math.round((j.total_price||0) * 0.83);
-    return `<div class="card" style="padding:12px 16px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-weight:600;font-size:.88rem">${escHtml(j.service_type||'Hemstädning')}</div>
-          <div style="font-size:.78rem;color:var(--m)">${j.booking_time||'09:00'} · ${j.booking_hours||3}h · ${escHtml(j.customer_address||'')}</div>
-        </div>
-        <div style="font-family:inherit;color:var(--g);font-weight:700">${pay.toLocaleString('sv')} kr</div>
-      </div>
-    </div>`;
+  el.innerHTML = dayEvs.map(function(ev) {
+    var labels = { booking:'Bokning', blocked:'Blockerad', external:'Extern', travel:'Restid', break:'Paus' };
+    var bgMap  = { booking:'#D1FAE5', blocked:'#FEE2E2', external:'#E0E7FF', travel:'#F3F4F6', break:'#FEF3C7' };
+    var typeLabel = labels[ev.event_type] || '';
+    return '<div class="card" style="padding:12px 16px;margin-bottom:8px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="font-weight:600;font-size:.88rem">' + escHtml(ev.title || typeLabel) + '</div>' +
+        '<div style="font-size:.78rem;color:var(--m)">' + String(ev.start_at).slice(11,16) + '–' + String(ev.end_at).slice(11,16) +
+        (ev.address ? ' · ' + escHtml(ev.address) : '') + '</div>' +
+      '</div>' +
+      '<span style="font-size:.68rem;padding:2px 8px;border-radius:6px;background:' + (bgMap[ev.event_type] || '#F3F4F6') + '">' + typeLabel + '</span>' +
+      '</div></div>';
   }).join('');
 }
+
+function showCalEventDetail(ev) {
+  var el = document.getElementById('cal-v2-detail');
+  if (!el) return;
+  var labels = { booking:'Bokning', blocked:'Blockerad', external:'Extern kalender', travel:'Restid', break:'Paus' };
+  var typeLabel = labels[ev.event_type] || '';
+  el.innerHTML = '<div class="card" style="padding:16px">' +
+    '<div style="font-size:1rem;font-weight:700;margin-bottom:6px">' + escHtml(ev.title || typeLabel) + '</div>' +
+    '<div style="font-size:.85rem;color:var(--m);margin-bottom:4px">' + String(ev.start_at).slice(11,16) + ' – ' + String(ev.end_at).slice(11,16) + '</div>' +
+    (ev.address ? '<div style="font-size:.82rem;color:var(--m)">&#128205; ' + escHtml(ev.address) + '</div>' : '') +
+    (ev.source && ev.source !== 'spick' ? '<div style="font-size:.75rem;color:#6366F1;margin-top:4px">K&auml;lla: ' + escHtml(ev.source) + '</div>' : '') +
+    '</div>';
+}
+
+// Realtime via polling var 30:e sekund när kalender-taben är aktiv.
+// Full Supabase Realtime (postgres_changes) kräver supabase-js v2 — planerat för Fas 2.
+function subscribeCalendarRealtime() {
+  if (!cleaner || !cleaner.id || _calRealtimePollSet) return;
+  try {
+    _calRealtimePollSet = true;
+    setInterval(function() {
+      var tab = document.getElementById('tab-kalender');
+      if (tab && tab.style.display !== 'none') {
+        loadCalendarEvents();
+      }
+    }, 30000);
+    console.log('[SPICK] Calendar realtime polling active (30s interval)');
+  } catch(e) {
+    console.warn('[SPICK] Calendar realtime setup failed:', e);
+  }
+}
+
+// ── LEGACY KALENDER (fallback om calendar_events saknar data) ─
+function renderCalendarLegacy() {
+  var body = document.getElementById('cal-v2-body');
+  var label = document.getElementById('cal-v2-label');
+  if (!body || !label) return;
+  var months = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+  var year  = _calDate.getFullYear();
+  var month = _calDate.getMonth();
+  label.textContent = months[month] + ' ' + year;
+
+  var html = '<div class="cal-grid">';
+  html += ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'].map(function(d){ return '<div class="cal-header">' + d + '</div>'; }).join('');
+
+  var firstDay = new Date(year, month, 1);
+  var startDow = firstDay.getDay() - 1; if (startDow < 0) startDow = 6;
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var prevDays = new Date(year, month, 0).getDate();
+  var today = new Date();
+
+  var jobDates = new Set();
+  (jobs || []).filter(function(j){ return j.cleaner_id === cleaner.id; }).forEach(function(j) {
+    var d = new Date(j.scheduled_date || j.booking_date);
+    if (d.getMonth() === month && d.getFullYear() === year) jobDates.add(d.getDate());
+  });
+
+  for (var i = startDow - 1; i >= 0; i--) {
+    html += '<div class="cal-day other-month">' + (prevDays - i) + '</div>';
+  }
+  for (var d = 1; d <= daysInMonth; d++) {
+    var isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+    var hasJob  = jobDates.has(d);
+    html += '<div class="cal-day ' + (isToday ? 'today' : '') + ' ' + (hasJob && !isToday ? 'has-job' : '') +
+      '" onclick="showCalDayLegacy(' + d + ')">' + d + '</div>';
+  }
+  var totalCells = startDow + daysInMonth;
+  var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (var k = 1; k <= remaining; k++) {
+    html += '<div class="cal-day other-month">' + k + '</div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
+  var det = document.getElementById('cal-v2-detail');
+  if (det) det.innerHTML = '';
+}
+
+function showCalDayLegacy(day) {
+  var year  = _calDate.getFullYear();
+  var month = _calDate.getMonth();
+  var dayJobs = (jobs || []).filter(function(j) {
+    var d = new Date(j.scheduled_date || j.booking_date);
+    return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year && j.cleaner_id === cleaner.id;
+  });
+  var el = document.getElementById('cal-v2-detail');
+  if (!el) return;
+  if (!dayJobs.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:var(--m);font-size:.85rem;padding:16px">Inga jobb ' + day + '/' + (month + 1) + '</div>';
+    return;
+  }
+  el.innerHTML = dayJobs.map(function(j) {
+    var pay = Math.round((j.total_price || 0) * 0.83);
+    return '<div class="card" style="padding:12px 16px;margin-bottom:8px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<div><div style="font-weight:600;font-size:.88rem">' + escHtml(j.service_type || 'Hemstädning') + '</div>' +
+      '<div style="font-size:.78rem;color:var(--m)">' + (j.booking_time || '09:00') + ' · ' + (j.booking_hours || 3) + 'h · ' + escHtml(j.customer_address || '') + '</div></div>' +
+      '<div style="font-family:inherit;color:var(--g);font-weight:700">' + pay.toLocaleString('sv') + ' kr</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+// Bakåtkompatibla stubs (externa anrop leder till nya motorn)
+function renderCalendar() { loadCalendarEvents(); }
+function calNav(dir)      { calV2Nav(dir); }
+function showCalDay(day)  { showCalDayV2(day); }
 
 // ── EARNINGS TAB ─────────────────────────────────────────────
 function renderEarnings() {
@@ -4250,7 +4628,7 @@ function switchTab(tab) {
     if (window._isCompanyOwner) {
       renderTeam();
     } else {
-      renderCalendar();
+      loadCalendarEvents();
     }
   }
 
