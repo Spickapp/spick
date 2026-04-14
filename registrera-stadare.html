@@ -1160,18 +1160,32 @@ async function submitRegistration() {
     });
 
     if (res.ok || res.status === 201) {
-      try {
-        fetch(SUPA_URL + '/functions/v1/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
-          body: JSON.stringify({ type: 'application', record: { full_name: fullName, first_name: firstName, last_name: lastName, email: email, phone: phone, home_address: address, bio: bio, services: svcs, hourly_rate: parseInt(price) || 350, service_radius_km: parseInt(radius) || 30, fskatt_confirmed: _fskattStatus === 'yes', fskatt_needs_help: _fskattStatus === 'applying' || _fskattStatus === 'unknown', is_company: _regType === 'foretag', company_name: _regType === 'foretag' ? document.getElementById('companyName').value.trim() : null, org_number: _regType === 'foretag' ? document.getElementById('orgNumber').value.trim() : null, languages: _selectedLangs.slice(), experience: document.getElementById('experienceInput').value || null } })
-        });
-      } catch (e) { /* non-critical */ }
-
       document.getElementById('confirmedName').textContent = fullName;
       document.getElementById('confirmedEmail').textContent = email;
       document.getElementById('confirmedCity').textContent = address;
       goToStep(4); // Skip BankID, go directly to Done
+
+      // Notify körs EFTER goToStep(4) — icke-kritiskt, guardat så att tomma
+      // värden aldrig skickas om något variable-scope-problem uppstår.
+      if (fullName && email) {
+        fetch(SUPA_URL + '/functions/v1/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY },
+          body: JSON.stringify({ type: 'application', record: {
+            full_name: fullName,
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            phone: phone,
+            home_address: address,
+            city: document.getElementById('cleaner-city')?.value || '',
+            bio: bio,
+            services: svcs,
+            hourly_rate: parseInt(price) || 350,
+            service_radius_km: parseInt(radius) || 30
+          }})
+        }).catch(function(){});
+      }
     } else {
       var errBody = await res.text().catch(() => '');
       console.error('Server response:', res.status, errBody);
