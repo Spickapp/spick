@@ -309,6 +309,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-item" onclick="showPage('cleaners')"><span class="icon">🧹</span>Städare</div>
       <div class="nav-item" onclick="showPage('applications')"><span class="icon">📋</span>Ansökningar <span class="badge-count" id="badge-apps">0</span></div>
       <div class="nav-item" onclick="showPage('onboarding')"><span class="icon">🚀</span>Onboarding <span class="badge-count" id="badge-onboard">0</span></div>
+      <div class="nav-item" onclick="showPage('company-wizard')"><span class="icon">🏢</span>Nytt företag</div>
       
       <div class="nav-section">Kunder</div>
       <div class="nav-item" onclick="showPage('customers')"><span class="icon">👥</span>Kunder</div>
@@ -984,6 +985,124 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
     </div>
 
+    <!-- ── COMPANY WIZARD ─────────────────────────────── -->
+    <div class="page" id="page-company-wizard">
+      <div class="page-header">
+        <div class="page-title">Nytt företag 🏢</div>
+        <div class="page-sub">Skapa företag, VD, priser och team i ett steg</div>
+      </div>
+      <div class="card" id="cw-card">
+        <!-- Stegindikator -->
+        <div id="cw-steps-bar" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>
+
+        <!-- Steg 1: Företag -->
+        <div id="cw-step-1" class="cw-step">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:18px">1. Företagsinfo</h3>
+          <div class="cw-form-grid">
+            <div class="cw-field"><label>Företagsnamn *</label><input id="cw-name" type="text" placeholder="Solid Service Sverige AB"></div>
+            <div class="cw-field"><label>Organisationsnummer</label><input id="cw-org" type="text" placeholder="559537-7523"></div>
+            <div class="cw-field"><label>Kontakt-e-post *</label><input id="cw-email" type="email" placeholder="info@example.se"></div>
+            <div class="cw-field"><label>Telefon</label><input id="cw-phone" type="tel" placeholder="070-000 00 00"></div>
+            <div class="cw-field"><label>Stad *</label><input id="cw-city" type="text" placeholder="Stockholm"></div>
+            <div class="cw-field cw-field-full"><label>Beskrivning</label><textarea id="cw-bio" rows="3" placeholder="Beskriv företaget..."></textarea></div>
+            <div class="cw-field"><label>Anställningsform *</label>
+              <select id="cw-employment" onchange="cwUpdateEmploymentHint()">
+                <option value="employed">Anställda</option>
+                <option value="contractor">Underleverantörer</option>
+              </select>
+              <div id="cw-employment-hint" style="font-size:.82rem;color:var(--m);margin-top:6px">Utbetalning sker till företaget. Företaget betalar sina anställda.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Steg 2: VD -->
+        <div id="cw-step-2" class="cw-step" style="display:none">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:18px">2. VD / Kontaktperson</h3>
+          <div class="cw-form-grid">
+            <div class="cw-field"><label>Namn *</label><input id="cw-owner-name" type="text" placeholder="Anna Andersson"></div>
+            <div class="cw-field"><label>E-post (för login) *</label><input id="cw-owner-email" type="email" placeholder="anna@example.se"></div>
+            <div class="cw-field"><label>Telefon</label><input id="cw-owner-phone" type="tel" placeholder="070-000 00 00"></div>
+            <div class="cw-field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input id="cw-owner-only" type="checkbox" checked onchange="cwToggleOwnerOnly()"> <span>Städar ej (admin only)</span></label></div>
+            <div class="cw-field cw-field-full" id="cw-owner-address-wrap" style="display:none">
+              <label>Hemadress</label><input id="cw-owner-address" type="text" placeholder="Storgatan 1, Stockholm">
+            </div>
+          </div>
+          <div id="cw-owner-only-hint" style="font-size:.85rem;color:var(--m);margin-top:8px">VD hanterar bara teamet och tar inte emot egna bokningar.</div>
+        </div>
+
+        <!-- Steg 3: Tjänster & priser -->
+        <div id="cw-step-3" class="cw-step" style="display:none">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:18px">3. Tjänster &amp; priser</h3>
+          <div id="cw-services-list"></div>
+          <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+            <label style="display:flex;align-items:center;gap:10px"><strong>Provision:</strong>
+              <input id="cw-commission" type="number" min="0" max="50" value="12" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px"> %
+              <span style="font-size:.85rem;color:var(--m)">(standard för företag)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Steg 4: Team -->
+        <div id="cw-step-4" class="cw-step" style="display:none">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:8px">4. Team</h3>
+          <div id="cw-team-summary" style="background:var(--gr);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:.88rem;color:var(--g)"></div>
+          <div id="cw-team-list"></div>
+          <button class="btn btn-outline" type="button" onclick="cwAddMember()" style="margin-top:14px">+ Lägg till teammedlem</button>
+        </div>
+
+        <!-- Steg 5: Granska -->
+        <div id="cw-step-5" class="cw-step" style="display:none">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:18px">5. Granska &amp; skapa</h3>
+          <div id="cw-review-body"></div>
+        </div>
+
+        <!-- Navigation -->
+        <div id="cw-nav" style="display:flex;justify-content:space-between;margin-top:28px;padding-top:18px;border-top:1px solid var(--border)">
+          <button class="btn btn-outline" type="button" id="cw-back-btn" onclick="cwBack()">← Tillbaka</button>
+          <button class="btn btn-primary" type="button" id="cw-next-btn" onclick="cwNext()">Nästa →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── COMPANY WIZARD STYLES ──────────────────────── -->
+    <style>
+      .cw-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .cw-field{display:flex;flex-direction:column;gap:6px}
+      .cw-field-full{grid-column:1 / -1}
+      .cw-field label{font-size:.85rem;font-weight:600;color:var(--b)}
+      .cw-field input,.cw-field textarea,.cw-field select{padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.92rem;font-family:inherit;outline:none;background:#fff;color:var(--b);transition:border-color .15s}
+      .cw-field input:focus,.cw-field textarea:focus,.cw-field select:focus{border-color:var(--g)}
+      .cw-field input.cw-err,.cw-field textarea.cw-err,.cw-field select.cw-err{border-color:var(--r)}
+      .cw-step-pill{padding:8px 14px;border-radius:20px;font-size:.82rem;font-weight:600;background:#F3F4F6;color:#6B7280;cursor:default;border:none;font-family:inherit;transition:all .15s}
+      .cw-step-pill.active{background:var(--g);color:#fff}
+      .cw-step-pill.done{background:var(--gr);color:var(--g);cursor:pointer}
+      .cw-step-pill.done:hover{background:var(--grd)}
+      .cw-svc-row{display:grid;grid-template-columns:30px 1fr 110px 130px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #F0F0EC}
+      .cw-svc-row:last-child{border-bottom:none}
+      .cw-svc-row.disabled{opacity:.4}
+      .cw-svc-row label{font-weight:500}
+      .cw-svc-row input,.cw-svc-row select{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.88rem;font-family:inherit;background:#fff;color:var(--b);outline:none}
+      .cw-team-card{border:1.5px solid var(--border);border-radius:12px;padding:0;margin-bottom:12px;overflow:hidden;background:#fff}
+      .cw-team-head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#FAFAF8}
+      .cw-team-head:hover{background:#F4F4F1}
+      .cw-team-head .cw-team-name{font-weight:600;font-size:.95rem}
+      .cw-team-head .cw-team-meta{font-size:.78rem;color:var(--m);margin-top:2px}
+      .cw-team-body{padding:16px;border-top:1px solid var(--border);display:none}
+      .cw-team-body.open{display:block}
+      .cw-team-svc-row{display:grid;grid-template-columns:30px 1fr 110px;gap:10px;align-items:center;padding:8px 0}
+      .cw-team-svc-row input{padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;font-family:inherit;background:#fff;outline:none}
+      .cw-team-svc-row input.cw-inherited{color:var(--m);font-style:italic}
+      .cw-warn{background:#FEF3C7;color:#92400E;padding:10px 14px;border-radius:8px;font-size:.85rem;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+      .cw-review-section{margin-bottom:20px}
+      .cw-review-section h4{font-size:.92rem;font-weight:700;margin-bottom:8px;color:var(--g)}
+      .cw-review-section .cw-review-grid{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;font-size:.88rem}
+      .cw-review-section .cw-review-grid .lbl{color:var(--m)}
+      @media(max-width:700px){
+        .cw-form-grid{grid-template-columns:1fr}
+        .cw-svc-row{grid-template-columns:30px 1fr 90px 110px}
+      }
+    </style>
+
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -1517,6 +1636,7 @@ function showPage(id) {
   if (id === 'settings') renderSettings();
   if (id === 'inbox') setTimeout(loadInbox, 100);
   if (id === 'self-invoices') loadSelfInvoices();
+  if (id === 'company-wizard') cwInit();
 }
 
 // ── LOAD ALL DATA ─────────────────────────────────────
@@ -4805,6 +4925,498 @@ function exportSelfInvoicesCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = 'självfakturor' + (filterMonth ? '-' + filterMonth : '') + '.csv';
   a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPANY WIZARD — Nytt företag
+// ═══════════════════════════════════════════════════════════════
+var cwStep = 1;
+var cwMaxStep = 1; // Högsta besökta steg
+var cwTeamMembers = []; // [{ name, email, phone, home_address, city, radius, languages, pet_pref, services:{type:{enabled,price,price_type}}, expanded }]
+var cwInitialized = false;
+
+var CW_SERVICES_CATALOG = [
+  { type: 'Hemstädning',         defaultPrice: 390, priceType: 'hourly',  checked: true },
+  { type: 'Storstädning',        defaultPrice: 450, priceType: 'hourly',  checked: false },
+  { type: 'Flyttstädning',       defaultPrice: 480, priceType: 'hourly',  checked: false },
+  { type: 'Fönsterputs',         defaultPrice: 60,  priceType: 'per_window', checked: false },
+  { type: 'Kontorsstädning',     defaultPrice: 420, priceType: 'hourly',  checked: false },
+  { type: 'Trappstädning',       defaultPrice: 380, priceType: 'hourly',  checked: false },
+  { type: 'Skolstädning',        defaultPrice: 390, priceType: 'hourly',  checked: false },
+  { type: 'Vårdstädning',        defaultPrice: 450, priceType: 'hourly',  checked: false },
+  { type: 'Hotell & restaurang', defaultPrice: 410, priceType: 'hourly',  checked: false }
+];
+var CW_PRICE_TYPES = [
+  { val: 'hourly',     label: 'kr/h' },
+  { val: 'per_window', label: 'kr/fönster' },
+  { val: 'per_sqm',    label: 'kr/kvm' }
+];
+
+function cwInit() {
+  if (cwInitialized) { cwRenderStepsBar(); return; }
+  cwInitialized = true;
+  cwStep = 1;
+  cwMaxStep = 1;
+  cwTeamMembers = [];
+  cwRenderServices();
+  cwRenderStepsBar();
+  cwUpdateEmploymentHint();
+  cwUpdateNavButtons();
+}
+
+function cwRenderStepsBar() {
+  var bar = document.getElementById('cw-steps-bar');
+  if (!bar) return;
+  var labels = ['1. Företag', '2. VD', '3. Tjänster', '4. Team', '5. Granska'];
+  var html = '';
+  for (var i = 1; i <= 5; i++) {
+    var cls = 'cw-step-pill';
+    if (i === cwStep) cls += ' active';
+    else if (i < cwStep || i <= cwMaxStep) cls += ' done';
+    var clickable = (i <= cwMaxStep && i !== cwStep) ? ('onclick="cwGoTo(' + i + ')"') : '';
+    html += '<button class="' + cls + '" type="button" ' + clickable + '>' + labels[i - 1] + '</button>';
+  }
+  bar.innerHTML = html;
+}
+
+function cwRenderServices() {
+  var host = document.getElementById('cw-services-list');
+  if (!host) return;
+  var html = '';
+  CW_SERVICES_CATALOG.forEach(function(s, idx) {
+    var ptOptions = CW_PRICE_TYPES.map(function(pt) {
+      return '<option value="' + pt.val + '"' + (pt.val === s.priceType ? ' selected' : '') + '>' + pt.label + '</option>';
+    }).join('');
+    html += '<div class="cw-svc-row' + (s.checked ? '' : ' disabled') + '" data-idx="' + idx + '">'
+          + '<input type="checkbox"' + (s.checked ? ' checked' : '') + ' onchange="cwToggleService(' + idx + ', this.checked)">'
+          + '<label>' + escHtml(s.type) + '</label>'
+          + '<input type="number" min="50" max="2000" value="' + s.defaultPrice + '" data-svc-price="' + idx + '"' + (s.checked ? '' : ' disabled') + '>'
+          + '<select data-svc-type="' + idx + '"' + (s.checked ? '' : ' disabled') + '>' + ptOptions + '</select>'
+          + '</div>';
+  });
+  host.innerHTML = html;
+}
+
+function cwToggleService(idx, checked) {
+  CW_SERVICES_CATALOG[idx].checked = checked;
+  var row = document.querySelector('.cw-svc-row[data-idx="' + idx + '"]');
+  if (!row) return;
+  row.classList.toggle('disabled', !checked);
+  row.querySelectorAll('input[type="number"], select').forEach(function(el) { el.disabled = !checked; });
+}
+
+function cwUpdateEmploymentHint() {
+  var v = document.getElementById('cw-employment').value;
+  var hint = document.getElementById('cw-employment-hint');
+  if (!hint) return;
+  if (v === 'employed') hint.textContent = 'Utbetalning sker till företaget. Företaget betalar sina anställda.';
+  else hint.textContent = 'Varje städare har egen F-skatt och får egen utbetalning.';
+}
+
+function cwToggleOwnerOnly() {
+  var cb = document.getElementById('cw-owner-only');
+  var wrap = document.getElementById('cw-owner-address-wrap');
+  var hint = document.getElementById('cw-owner-only-hint');
+  if (cb.checked) {
+    wrap.style.display = 'none';
+    hint.textContent = 'VD hanterar bara teamet och tar inte emot egna bokningar.';
+  } else {
+    wrap.style.display = '';
+    hint.textContent = 'VD kan själv ta emot bokningar som städare.';
+  }
+}
+
+// ── Navigation ──
+function cwGoTo(step) {
+  if (step < 1 || step > 5) return;
+  if (step > cwMaxStep + 1) return; // Endast via Nästa framåt
+  for (var i = 1; i <= 5; i++) {
+    var el = document.getElementById('cw-step-' + i);
+    if (el) el.style.display = (i === step ? '' : 'none');
+  }
+  cwStep = step;
+  if (step > cwMaxStep) cwMaxStep = step;
+  cwRenderStepsBar();
+  cwUpdateNavButtons();
+  if (step === 4) { cwRenderTeamSummary(); cwRenderTeam(); }
+  if (step === 5) cwRenderReview();
+}
+
+function cwNext() {
+  if (!cwValidate(cwStep)) return;
+  if (cwStep === 5) { cwSubmit(); return; }
+  cwGoTo(cwStep + 1);
+}
+
+function cwBack() {
+  if (cwStep > 1) cwGoTo(cwStep - 1);
+}
+
+function cwUpdateNavButtons() {
+  var backBtn = document.getElementById('cw-back-btn');
+  var nextBtn = document.getElementById('cw-next-btn');
+  if (!backBtn || !nextBtn) return;
+  backBtn.style.visibility = (cwStep === 1 ? 'hidden' : 'visible');
+  nextBtn.textContent = (cwStep === 5 ? 'Skapa allt ✨' : 'Nästa →');
+}
+
+// ── Validering ──
+function cwValidate(step) {
+  var errors = [];
+  function mark(id, bad) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('cw-err', !!bad);
+  }
+  if (step === 1) {
+    var name = document.getElementById('cw-name').value.trim();
+    var email = document.getElementById('cw-email').value.trim();
+    var city = document.getElementById('cw-city').value.trim();
+    mark('cw-name', !name);
+    mark('cw-email', !email || !/.+@.+\..+/.test(email));
+    mark('cw-city', !city);
+    if (!name) errors.push('Företagsnamn krävs');
+    if (!email) errors.push('E-post krävs');
+    if (email && !/.+@.+\..+/.test(email)) errors.push('Ogiltig e-post');
+    if (!city) errors.push('Stad krävs');
+  }
+  if (step === 2) {
+    var oName = document.getElementById('cw-owner-name').value.trim();
+    var oEmail = document.getElementById('cw-owner-email').value.trim();
+    mark('cw-owner-name', !oName);
+    mark('cw-owner-email', !oEmail || !/.+@.+\..+/.test(oEmail));
+    if (!oName) errors.push('VD namn krävs');
+    if (!oEmail) errors.push('VD e-post krävs');
+    if (oEmail && !/.+@.+\..+/.test(oEmail)) errors.push('Ogiltig VD-e-post');
+  }
+  if (step === 3) {
+    var anyChecked = CW_SERVICES_CATALOG.some(function(s) { return s.checked; });
+    if (!anyChecked) errors.push('Välj minst en tjänst');
+    // Läs in priser från DOM
+    CW_SERVICES_CATALOG.forEach(function(s, idx) {
+      if (!s.checked) return;
+      var p = document.querySelector('[data-svc-price="' + idx + '"]');
+      var t = document.querySelector('[data-svc-type="' + idx + '"]');
+      var priceNum = p ? parseFloat(p.value) : 0;
+      if (!priceNum || priceNum < 50) { errors.push(s.type + ' saknar pris'); if (p) p.classList.add('cw-err'); }
+      else { if (p) p.classList.remove('cw-err'); s.defaultPrice = priceNum; s.priceType = t ? t.value : s.priceType; }
+    });
+  }
+  if (step === 4) {
+    // Varje medlem måste ha ett namn
+    for (var i = 0; i < cwTeamMembers.length; i++) {
+      var m = cwTeamMembers[i];
+      var nameEl = document.querySelector('[data-member-field="name"][data-member-idx="' + i + '"]');
+      var nm = nameEl ? nameEl.value.trim() : (m.name || '').trim();
+      if (!nm) { errors.push('Teammedlem ' + (i + 1) + ' saknar namn'); if (nameEl) nameEl.classList.add('cw-err'); }
+      else { if (nameEl) nameEl.classList.remove('cw-err'); }
+    }
+    cwReadTeamFromDom();
+  }
+  if (errors.length) {
+    try { showToast('⚠ ' + errors[0]); } catch(e) { alert(errors.join('\n')); }
+    return false;
+  }
+  return true;
+}
+
+// ── Team ──
+function cwAddMember() {
+  var svcMap = {};
+  CW_SERVICES_CATALOG.filter(function(s) { return s.checked; }).forEach(function(s) {
+    svcMap[s.type] = { enabled: true, price: s.defaultPrice, price_type: s.priceType, overridden: false };
+  });
+  cwTeamMembers.push({
+    name: '', email: '', phone: '',
+    home_address: '', city: '', radius: 30,
+    languages: '', pet_pref: 'ok',
+    services: svcMap, expanded: true
+  });
+  cwRenderTeam();
+}
+
+function cwRemoveMember(idx) {
+  cwReadTeamFromDom();
+  cwTeamMembers.splice(idx, 1);
+  cwRenderTeam();
+}
+
+function cwToggleMemberCard(idx) {
+  cwReadTeamFromDom();
+  cwTeamMembers[idx].expanded = !cwTeamMembers[idx].expanded;
+  cwRenderTeam();
+}
+
+function cwReadTeamFromDom() {
+  for (var i = 0; i < cwTeamMembers.length; i++) {
+    var m = cwTeamMembers[i];
+    function getVal(field) {
+      var el = document.querySelector('[data-member-field="' + field + '"][data-member-idx="' + i + '"]');
+      return el ? el.value : '';
+    }
+    var name = getVal('name'); if (name !== '') m.name = name;
+    var email = getVal('email'); if (email !== '') m.email = email; else if (document.querySelector('[data-member-field="email"][data-member-idx="' + i + '"]')) m.email = '';
+    m.phone = getVal('phone') || m.phone;
+    m.home_address = getVal('address') || m.home_address;
+    m.city = getVal('city') || m.city;
+    m.radius = parseInt(getVal('radius') || m.radius, 10);
+    m.languages = getVal('languages') || m.languages;
+    var pp = getVal('pet_pref'); if (pp) m.pet_pref = pp;
+    // Tjänster
+    Object.keys(m.services).forEach(function(type) {
+      var cb = document.querySelector('[data-member-svc-enabled="' + type + '"][data-member-idx="' + i + '"]');
+      var pr = document.querySelector('[data-member-svc-price="' + type + '"][data-member-idx="' + i + '"]');
+      if (cb) m.services[type].enabled = cb.checked;
+      if (pr) {
+        var newPrice = parseFloat(pr.value);
+        var catDefault = (CW_SERVICES_CATALOG.find(function(s) { return s.type === type; }) || {}).defaultPrice || 0;
+        if (newPrice && newPrice !== catDefault) {
+          m.services[type].price = newPrice;
+          m.services[type].overridden = true;
+        } else {
+          m.services[type].price = catDefault;
+          m.services[type].overridden = false;
+        }
+      }
+    });
+  }
+}
+
+function cwRenderTeamSummary() {
+  var el = document.getElementById('cw-team-summary');
+  if (!el) return;
+  var active = CW_SERVICES_CATALOG.filter(function(s) { return s.checked; });
+  if (!active.length) { el.textContent = 'Inga tjänster valda ännu — gå tillbaka till steg 3.'; return; }
+  var txt = 'Företagets standardpriser (ärvs av alla teammedlemmar): ';
+  txt += active.map(function(s) {
+    var pt = CW_PRICE_TYPES.find(function(p) { return p.val === s.priceType; }) || CW_PRICE_TYPES[0];
+    return escHtml(s.type) + ' ' + s.defaultPrice + ' ' + pt.label;
+  }).join(' · ');
+  el.innerHTML = txt;
+}
+
+function cwRenderTeam() {
+  var host = document.getElementById('cw-team-list');
+  if (!host) return;
+  if (!cwTeamMembers.length) {
+    host.innerHTML = '<div style="padding:24px;text-align:center;color:var(--m);border:2px dashed var(--border);border-radius:12px">Inga teammedlemmar än. Klicka "Lägg till teammedlem" nedan.</div>';
+    return;
+  }
+  var html = '';
+  cwTeamMembers.forEach(function(m, i) {
+    var meta = [m.phone, m.city].filter(Boolean).join(' · ');
+    var activeSvc = Object.keys(m.services).filter(function(t) { return m.services[t].enabled; }).length;
+    html += '<div class="cw-team-card">'
+          + '<div class="cw-team-head" onclick="cwToggleMemberCard(' + i + ')">'
+          + '<div><div class="cw-team-name">' + escHtml(m.name || ('Teammedlem ' + (i + 1))) + '</div>'
+          + '<div class="cw-team-meta">' + escHtml(meta || 'Klicka för att fylla i') + ' · ' + activeSvc + ' tjänster</div></div>'
+          + '<div style="display:flex;gap:6px;align-items:center">'
+          + '<span style="font-size:.78rem;color:var(--m)">' + (m.expanded ? '▲' : '▼') + '</span>'
+          + '<button type="button" onclick="event.stopPropagation();cwRemoveMember(' + i + ')" style="background:none;border:none;color:var(--r);font-size:1.1rem;cursor:pointer;padding:4px 8px" title="Ta bort">✕</button>'
+          + '</div></div>'
+          + '<div class="cw-team-body' + (m.expanded ? ' open' : '') + '">'
+          + cwRenderMemberBody(m, i)
+          + '</div></div>';
+  });
+  host.innerHTML = html;
+}
+
+function cwRenderMemberBody(m, i) {
+  var svcRows = '';
+  Object.keys(m.services).forEach(function(type) {
+    var s = m.services[type];
+    var cat = CW_SERVICES_CATALOG.find(function(c) { return c.type === type; });
+    var defaultPrice = cat ? cat.defaultPrice : s.price;
+    var pt = CW_PRICE_TYPES.find(function(p) { return p.val === s.price_type; }) || CW_PRICE_TYPES[0];
+    var inherited = !s.overridden;
+    svcRows += '<div class="cw-team-svc-row">'
+             + '<input type="checkbox"' + (s.enabled ? ' checked' : '') + ' data-member-svc-enabled="' + escHtml(type) + '" data-member-idx="' + i + '">'
+             + '<span>' + escHtml(type) + ' <span style="font-size:.75rem;color:var(--m)">(std ' + defaultPrice + ' ' + pt.label + ')</span></span>'
+             + '<input type="number" min="50" max="2000" value="' + s.price + '" class="' + (inherited ? 'cw-inherited' : '') + '" data-member-svc-price="' + escHtml(type) + '" data-member-idx="' + i + '">'
+             + '</div>';
+  });
+  return ''
+    + '<div class="cw-form-grid" style="margin-bottom:14px">'
+    + '<div class="cw-field"><label>Namn *</label><input type="text" value="' + escHtml(m.name) + '" data-member-field="name" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>E-post <span style="color:var(--m);font-weight:400">(kan läggas till senare)</span></label><input type="email" value="' + escHtml(m.email) + '" data-member-field="email" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>Telefon</label><input type="tel" value="' + escHtml(m.phone) + '" data-member-field="phone" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>Hemadress</label><input type="text" value="' + escHtml(m.home_address) + '" data-member-field="address" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>Stad</label><input type="text" value="' + escHtml(m.city || (document.getElementById('cw-city').value || '')) + '" data-member-field="city" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>Serviceradie</label><select data-member-field="radius" data-member-idx="' + i + '">'
+    + '<option value="15"' + (m.radius == 15 ? ' selected' : '') + '>15 km</option>'
+    + '<option value="30"' + (m.radius == 30 ? ' selected' : '') + '>30 km</option>'
+    + '<option value="50"' + (m.radius == 50 ? ' selected' : '') + '>50 km</option>'
+    + '</select></div>'
+    + '<div class="cw-field"><label>Språk (kommaseparerade)</label><input type="text" value="' + escHtml(m.languages) + '" placeholder="svenska, engelska" data-member-field="languages" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>Husdjur</label><select data-member-field="pet_pref" data-member-idx="' + i + '">'
+    + '<option value="ok"' + (m.pet_pref === 'ok' ? ' selected' : '') + '>OK</option>'
+    + '<option value="allergy"' + (m.pet_pref === 'allergy' ? ' selected' : '') + '>Allergi</option>'
+    + '<option value="avoid"' + (m.pet_pref === 'avoid' ? ' selected' : '') + '>Undviker</option>'
+    + '</select></div>'
+    + '</div>'
+    + '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #F0F0EC"><strong style="font-size:.9rem">Tjänster &amp; priser</strong>'
+    + svcRows + '</div>';
+}
+
+// ── Granska ──
+function cwRenderReview() {
+  cwReadTeamFromDom();
+  var host = document.getElementById('cw-review-body');
+  if (!host) return;
+  var warnings = [];
+
+  // Läs ALLA priser från DOM innan granska (om användaren ändrade på steg 3)
+  CW_SERVICES_CATALOG.forEach(function(s, idx) {
+    if (!s.checked) return;
+    var p = document.querySelector('[data-svc-price="' + idx + '"]');
+    var t = document.querySelector('[data-svc-type="' + idx + '"]');
+    if (p && parseFloat(p.value)) s.defaultPrice = parseFloat(p.value);
+    if (t) s.priceType = t.value;
+  });
+
+  var cName = document.getElementById('cw-name').value;
+  var cOrg = document.getElementById('cw-org').value;
+  var cCity = document.getElementById('cw-city').value;
+  var cEmail = document.getElementById('cw-email').value;
+  var cBio = document.getElementById('cw-bio').value;
+  var cEmpl = document.getElementById('cw-employment').value;
+  var oName = document.getElementById('cw-owner-name').value;
+  var oEmail = document.getElementById('cw-owner-email').value;
+  var oPhone = document.getElementById('cw-owner-phone').value;
+  var ownerOnly = document.getElementById('cw-owner-only').checked;
+
+  if (!cBio.trim()) warnings.push('Företaget saknar beskrivning — visas tomt på profilen');
+  cwTeamMembers.forEach(function(m) {
+    if (!m.email) warnings.push(m.name + ' saknar e-post — kan inte logga in förrän e-post läggs till');
+    if (!m.home_address) warnings.push(m.name + ' saknar adress — visas inte i geo-matchning');
+  });
+
+  var activeSvcs = CW_SERVICES_CATALOG.filter(function(s) { return s.checked; });
+  var svcRows = activeSvcs.map(function(s) {
+    var pt = CW_PRICE_TYPES.find(function(p) { return p.val === s.priceType; }) || CW_PRICE_TYPES[0];
+    return '<tr><td>' + escHtml(s.type) + '</td><td>' + s.defaultPrice + '</td><td>' + pt.label + '</td></tr>';
+  }).join('');
+
+  var teamCards = cwTeamMembers.map(function(m, i) {
+    var overrides = Object.keys(m.services).filter(function(t) { return m.services[t].enabled && m.services[t].overridden; });
+    var activeCount = Object.keys(m.services).filter(function(t) { return m.services[t].enabled; }).length;
+    return '<div style="padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">'
+         + '<strong>' + escHtml(m.name) + '</strong> <span style="color:var(--m);font-size:.85rem">(' + escHtml(m.email || 'saknar e-post') + ')</span>'
+         + '<div style="font-size:.82rem;color:var(--m);margin-top:4px">' + escHtml((m.phone || '—') + ' · ' + (m.city || '—')) + ' · ' + activeCount + ' tjänster'
+         + (overrides.length ? ' · <span style="color:var(--g);font-weight:600">' + overrides.length + ' prisöverrides</span>' : '')
+         + '</div></div>';
+  }).join('');
+  if (!teamCards) teamCards = '<div style="color:var(--m);font-size:.88rem">Inga teammedlemmar — bara VD.</div>';
+
+  var warnHtml = warnings.map(function(w) { return '<div class="cw-warn">⚠ ' + escHtml(w) + '</div>'; }).join('');
+
+  host.innerHTML = ''
+    + '<div class="cw-review-section"><h4>Företag</h4><div class="cw-review-grid">'
+    + '<span class="lbl">Namn</span><span>' + escHtml(cName) + '</span>'
+    + '<span class="lbl">Org.nr</span><span>' + escHtml(cOrg || '—') + '</span>'
+    + '<span class="lbl">Stad</span><span>' + escHtml(cCity) + '</span>'
+    + '<span class="lbl">E-post</span><span>' + escHtml(cEmail) + '</span>'
+    + '<span class="lbl">Beskrivning</span><span>' + escHtml(cBio.length > 120 ? cBio.substring(0, 120) + '…' : (cBio || '—')) + '</span>'
+    + '<span class="lbl">Anställningsform</span><span>' + (cEmpl === 'employed' ? 'Anställda' : 'Underleverantörer') + '</span>'
+    + '</div></div>'
+
+    + '<div class="cw-review-section"><h4>VD</h4><div class="cw-review-grid">'
+    + '<span class="lbl">Namn</span><span>' + escHtml(oName) + '</span>'
+    + '<span class="lbl">E-post</span><span>' + escHtml(oEmail) + '</span>'
+    + '<span class="lbl">Telefon</span><span>' + escHtml(oPhone || '—') + '</span>'
+    + '<span class="lbl">Roll</span><span>' + (ownerOnly ? 'Städar ej' : 'Aktiv städare') + '</span>'
+    + '</div></div>'
+
+    + '<div class="cw-review-section"><h4>Tjänster &amp; priser</h4><table style="width:100%"><thead><tr><th>Tjänst</th><th>Pris</th><th>Typ</th></tr></thead><tbody>' + svcRows + '</tbody></table></div>'
+
+    + '<div class="cw-review-section"><h4>Teammedlemmar (' + cwTeamMembers.length + ')</h4>' + teamCards + '</div>'
+
+    + (warnHtml ? '<div class="cw-review-section"><h4>Varningar</h4>' + warnHtml + '</div>' : '');
+}
+
+// ── Submit ──
+function cwCollectData() {
+  cwReadTeamFromDom();
+  var activeSvcs = CW_SERVICES_CATALOG.filter(function(s) { return s.checked; }).map(function(s) {
+    return { service_type: s.type, price: s.defaultPrice, price_type: s.priceType };
+  });
+  var commission = parseInt(document.getElementById('cw-commission').value || '12', 10);
+  var ownerOnly = document.getElementById('cw-owner-only').checked;
+  var employment = document.getElementById('cw-employment').value;
+
+  return {
+    company_name: document.getElementById('cw-name').value.trim(),
+    org_number: document.getElementById('cw-org').value.trim() || undefined,
+    city: document.getElementById('cw-city').value.trim(),
+    contact_email: document.getElementById('cw-email').value.trim(),
+    contact_phone: document.getElementById('cw-phone').value.trim() || undefined,
+    bio: document.getElementById('cw-bio').value.trim() || undefined,
+    employment_model: employment,
+    commission_rate: commission,
+    owner_name: document.getElementById('cw-owner-name').value.trim(),
+    owner_email: document.getElementById('cw-owner-email').value.trim(),
+    owner_phone: document.getElementById('cw-owner-phone').value.trim() || undefined,
+    owner_only: ownerOnly,
+    owner_address: ownerOnly ? undefined : document.getElementById('cw-owner-address').value.trim(),
+    services: activeSvcs,
+    team_members: cwTeamMembers.map(function(m) {
+      var memberServices = Object.keys(m.services).filter(function(t) { return m.services[t].enabled; });
+      var priceOverrides = Object.keys(m.services)
+        .filter(function(t) { return m.services[t].enabled && m.services[t].overridden; })
+        .map(function(t) { return { service_type: t, price: m.services[t].price, price_type: m.services[t].price_type }; });
+      return {
+        full_name: m.name.trim(),
+        email: m.email ? m.email.trim() : undefined,
+        phone: m.phone ? m.phone.trim() : undefined,
+        home_address: m.home_address ? m.home_address.trim() : undefined,
+        city: m.city ? m.city.trim() : undefined,
+        service_radius_km: parseInt(m.radius, 10) || 30,
+        languages: m.languages ? m.languages.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [],
+        pet_pref: m.pet_pref || 'ok',
+        services: memberServices,
+        price_overrides: priceOverrides
+      };
+    })
+  };
+}
+
+async function cwSubmit() {
+  var btn = document.getElementById('cw-next-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Skapar företag...';
+  try {
+    var payload = cwCollectData();
+    var headers = await _adminHeaders();
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-create-company', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+    var result = await res.json();
+    if (!res.ok) throw new Error(result.error || ('HTTP ' + res.status));
+
+    document.getElementById('cw-step-5').innerHTML = ''
+      + '<div style="text-align:center;padding:40px 20px">'
+      + '<div style="font-size:3rem;margin-bottom:16px">✅</div>'
+      + '<h3 style="font-family:\'Playfair Display\',serif;font-size:1.6rem;margin-bottom:8px">' + escHtml(payload.company_name) + ' skapat!</h3>'
+      + '<p style="color:var(--m);margin-bottom:24px">' + (result.team_member_ids ? result.team_member_ids.length : 0) + ' teammedlemmar tillagda</p>'
+      + '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">'
+      + '<a href="' + escHtml(result.public_url) + '" target="_blank" class="btn btn-outline">🔗 Företagsprofil</a>'
+      + '<button class="btn btn-primary" onclick="cwFinish()">Visa i städarlistan</button>'
+      + '</div></div>';
+    document.getElementById('cw-nav').style.display = 'none';
+    try { if (typeof loadAll === 'function') loadAll(); } catch(e) {}
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Skapa allt ✨';
+    try { showToast('❌ ' + e.message); } catch(_) { alert('Fel: ' + e.message); }
+  }
+}
+
+function cwFinish() {
+  cwInitialized = false; // Nollställ för nästa gång
+  showPage('cleaners');
 }
 
 </script>
