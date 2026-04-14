@@ -1696,7 +1696,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="tm-form-group"><label>Antal timmar *</label><input type="number" id="mb-hours" class="tm-input" value="3" min="1" max="12" step="0.5"></div>
         <div class="tm-form-group"><label>Tjänst</label>
-          <select id="mb-service" class="tm-input" style="padding:8px 12px">
+          <select id="mb-service" class="tm-input" style="padding:8px 12px" onchange="updateManualPrice()">
             <option>Hemstädning</option><option>Storstädning</option><option>Flyttstädning</option><option>Fönsterputs</option><option>Kontorsstädning</option><option>Trappstädning</option><option>Skolstädning</option><option>Vårdstädning</option><option>Hotell & restaurang</option>
           </select>
         </div>
@@ -5769,7 +5769,16 @@ function updateManualPrice() {
   var rate = member ? (member.hourly_rate || 350) : 350;
   var price = Math.round(hours * rate);
   document.getElementById('mb-price-display').textContent = price + ' kr';
-  document.getElementById('mb-rut-display').textContent = Math.round(price * 0.5) + ' kr';
+  // RUT-raden visas bara för hushållsnära tjänster
+  var svc = document.getElementById('mb-service').value;
+  var rutDisplay = document.getElementById('mb-rut-display');
+  var rutRow = rutDisplay.parentElement;
+  if (isRutEligible(svc)) {
+    rutRow.style.display = '';
+    rutDisplay.textContent = Math.round(price * 0.5) + ' kr';
+  } else {
+    rutRow.style.display = 'none';
+  }
 }
 
 async function submitManualBooking() {
@@ -5830,7 +5839,7 @@ async function submitManualBooking() {
         hours: hours,
         service: service,
         cleaner_id: cleanerId,
-        rut: true,
+        rut: isRutEligible(service),
         frequency: 'once',
         manual_entry: true,
         created_by_company: cleaner.company_id || null
