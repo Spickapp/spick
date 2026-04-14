@@ -1354,7 +1354,44 @@ body{top:0!important}
     <!-- ═══ TAB: TEAM (only visible for company owners) ═══ -->
     <div class="tab-content" id="tab-team">
       <div class="tab-pad">
-        <div class="card" style="padding:20px;margin-bottom:12px" id="team-company-profile">
+        <!-- Onboarding guide (visas bara om teamet är tomt) -->
+        <div id="vd-onboarding-guide" style="display:none">
+          <div style="background:linear-gradient(135deg,#E1F5EE,#DBEAFE);border-radius:16px;padding:28px;margin-bottom:16px">
+            <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:6px">Välkommen! Låt oss komma igång</h3>
+            <p style="font-size:.88rem;color:var(--m);margin-bottom:20px">Tre steg för att aktivera ditt företag på Spick</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div id="ob-step-1" style="background:var(--w);border-radius:12px;padding:16px;text-align:center;border:2px solid var(--g)">
+                <div style="font-size:1.5rem;margin-bottom:8px">👥</div>
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:4px">1. Lägg till team</div>
+                <div style="font-size:.75rem;color:var(--m)">Lägg till dina städare med namn och kontaktinfo</div>
+              </div>
+              <div id="ob-step-2" style="background:var(--w);border-radius:12px;padding:16px;text-align:center;border:2px solid var(--gray-200)">
+                <div style="font-size:1.5rem;margin-bottom:8px">💰</div>
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:4px">2. Sätt priser</div>
+                <div style="font-size:.75rem;color:var(--m)">Ange timpris per tjänst för ditt team</div>
+              </div>
+              <div id="ob-step-3" style="background:var(--w);border-radius:12px;padding:16px;text-align:center;border:2px solid var(--gray-200)">
+                <div style="font-size:1.5rem;margin-bottom:8px">🔗</div>
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:4px">3. Dela profilen</div>
+                <div style="font-size:.75rem;color:var(--m)">Skicka er Spick-länk till potentiella kunder</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:20px" id="team-management-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
+              <p style="font-size:.82rem;color:var(--m)" id="team-count"></p>
+            </div>
+            <button onclick="showInviteLink()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">📋 Kopiera inbjudningslänk</button>
+            <button onclick="resetTeamModal();document.getElementById('team-modal-title').textContent='Lägg till teammedlem';document.getElementById('add-member-btn').textContent='Lägg till teammedlem';document.getElementById('add-member-btn').onclick=addTeamMember;document.getElementById('add-member-modal').style.display='flex'" style="padding:8px 16px;background:var(--spick-50,#E1F5EE);color:var(--g);border:1.5px solid var(--g);border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till manuellt</button>
+          </div>
+          <div id="team-list"></div>
+        </div>
+
+        <div class="card" style="padding:20px;margin-top:12px" id="team-company-profile">
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Företagsprofil</h4>
           <div id="company-profile-view">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -1416,47 +1453,6 @@ body{top:0!important}
           </div>
           <div id="company-prices-list" style="margin-bottom:12px"></div>
           <button id="save-company-prices-btn" onclick="saveCompanyPrices()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer">Spara priser</button>
-        </div>
-
-        <!-- Löneunderlag -->
-        <div id="salary-report-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-            <div>
-              <div style="font-weight:600;font-size:.92rem">Löneunderlag</div>
-              <div style="font-size:.72rem;color:var(--m);margin-top:2px">Summering per städare och månad</div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <select id="salary-month" onchange="loadSalaryReport()" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:.82rem;font-family:inherit;background:var(--w)"></select>
-              <button onclick="exportSalaryCSV()" style="padding:6px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Exportera CSV</button>
-            </div>
-          </div>
-          <div id="salary-report-content">
-            <div style="text-align:center;color:var(--m);padding:20px;font-size:.85rem">Välj månad för att visa löneunderlag</div>
-          </div>
-        </div>
-
-        <!-- Självfakturor (VD) -->
-        <div id="vd-invoices-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-            <div>
-              <div style="font-weight:600;font-size:.92rem">Självfakturor</div>
-              <div style="font-size:.72rem;color:var(--m);margin-top:2px">Generera bokföringsunderlag för städare med F-skatt</div>
-            </div>
-            <button id="generate-invoices-btn" onclick="generateInvoices()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Generera för förra månaden</button>
-          </div>
-          <div id="vd-invoices-list" style="font-size:.85rem;color:var(--m)">Laddar...</div>
-        </div>
-
-        <div class="card" style="padding:20px" id="team-management-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <div>
-              <h3 style="font-size:1.1rem;font-weight:700" id="team-company-name">Ditt team</h3>
-              <p style="font-size:.82rem;color:var(--m)" id="team-count"></p>
-            </div>
-            <button onclick="showInviteLink()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">📋 Kopiera inbjudningslänk</button>
-            <button onclick="resetTeamModal();document.getElementById('team-modal-title').textContent='Lägg till teammedlem';document.getElementById('add-member-btn').textContent='Lägg till teammedlem';document.getElementById('add-member-btn').onclick=addTeamMember;document.getElementById('add-member-modal').style.display='flex'" style="padding:8px 16px;background:var(--spick-50,#E1F5EE);color:var(--g);border:1.5px solid var(--g);border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till manuellt</button>
-          </div>
-          <div id="team-list"></div>
         </div>
 
         <!-- Uppgifter (VD) -->
@@ -1557,7 +1553,35 @@ body{top:0!important}
           </div>
         </div>
 
-        
+        <!-- Löneunderlag -->
+        <div id="salary-report-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:600;font-size:.92rem">Löneunderlag</div>
+              <div style="font-size:.72rem;color:var(--m);margin-top:2px">Summering per städare och månad</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="salary-month" onchange="loadSalaryReport()" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:.82rem;font-family:inherit;background:var(--w)"></select>
+              <button onclick="exportSalaryCSV()" style="padding:6px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Exportera CSV</button>
+            </div>
+          </div>
+          <div id="salary-report-content">
+            <div style="text-align:center;color:var(--m);padding:20px;font-size:.85rem">Välj månad för att visa löneunderlag</div>
+          </div>
+        </div>
+
+        <!-- Självfakturor (VD) -->
+        <div id="vd-invoices-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:600;font-size:.92rem">Självfakturor</div>
+              <div style="font-size:.72rem;color:var(--m);margin-top:2px">Generera bokföringsunderlag för städare med F-skatt</div>
+            </div>
+            <button id="generate-invoices-btn" onclick="generateInvoices()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Generera för förra månaden</button>
+          </div>
+          <div id="vd-invoices-list" style="font-size:.85rem;color:var(--m)">Laddar...</div>
+        </div>
+
         <!-- ═══ VD-RAPPORTER ═══ -->
         <div class="card" style="padding:20px;margin-top:12px" id="team-reports-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -5396,6 +5420,12 @@ async function renderTeam() {
       </div>
     </div>`;
   }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
+
+  // Visa onboarding-guide om teamet är tomt (0 icke-ägare-medlemmar)
+  var obGuide = document.getElementById('vd-onboarding-guide');
+  if (obGuide) {
+    obGuide.style.display = nonOwner.length > 0 ? 'none' : '';
+  }
 
   // Fetch team bookings
   const memberIds = _teamMembers.map(m => m.id);

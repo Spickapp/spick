@@ -30,6 +30,7 @@ if (!document.getElementById('spick-nav-css')) {
   style.id = 'spick-nav-css';
   style.textContent = `
 /* === SPICK GLOBAL NAV & FOOTER – injicerat av components.js === */
+html{font-size:17px}
 :root{
   --g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;
   --b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff;
