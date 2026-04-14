@@ -17,6 +17,23 @@ serve(async (req) => {
     const sb = createClient(SUPA_URL, SERVICE_KEY);
     const body = await req.json();
 
+    // ── AUTH: verify admin ──────────────────────────────────
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "") || "";
+    if (!token || token === Deno.env.get("SUPABASE_ANON_KEY")) {
+      return json(401, { error: "Unauthorized — admin-token krävs" });
+    }
+    const authRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
+    });
+    if (!authRes.ok) return json(401, { error: "Ogiltig token" });
+    const authUser = await authRes.json();
+    const { data: adminRow } = await sb
+      .from("admin_users")
+      .select("id")
+      .eq("email", authUser.email)
+      .maybeSingle();
+    if (!adminRow) return json(403, { error: "Forbidden: inte admin" });
+
     // ── Validering ──
     if (!body.company_name) return json(400, { error: "Företagsnamn krävs" });
     if (!body.owner_name || !body.owner_email) return json(400, { error: "VD namn och e-post krävs" });
