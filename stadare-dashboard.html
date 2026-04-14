@@ -601,6 +601,9 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .sub-view-header h2{font-size:1.05rem;font-weight:600;letter-spacing:-.2px}
 .sub-view-body{padding:16px;max-width:640px;margin:0 auto}
 
+/* Admin view-as: shift sub-view så bannern inte döljer tillbaka-knappen */
+body.admin-view-active .sub-view{top:var(--admin-banner-h,44px)}
+
 /* ═══ ANIMATIONS ═══ */
 @keyframes flashGreen{0%{background:#ecfdf5;transform:scale(.98)}50%{background:#d1fae5}100%{opacity:0;transform:scale(.95) translateX(100px);height:0;padding:0;margin:0;overflow:hidden}}
 .job-card.accepted-flash{animation:flashGreen .6s ease forwards}
@@ -2233,6 +2236,8 @@ async function init() {
                 adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 0 0 4px">' + escHtml(_adminPreloadedCleaner.full_name || '') + '</strong>s dashboard</span>' +
                   '<a href="admin.html" style="padding:6px 14px;background:#92400E;color:#fff;border-radius:8px;text-decoration:none;font-size:.78rem">← Tillbaka till admin</a>';
                 document.body.prepend(adminBanner);
+                document.body.classList.add('admin-view-active');
+                document.documentElement.style.setProperty('--admin-banner-h', (adminBanner.offsetHeight || 44) + 'px');
               }
             } catch(e) { console.warn('banner prepend failed:', e); }
             // loadCleanerByEmail har preload-fallback som hoppar över auth-lookup
@@ -2698,10 +2703,12 @@ async function loadCleanerByEmail(email, authUserId) {
   if (_isAdminView && cleaner && !document.getElementById('admin-view-banner')) {
     var adminBanner = document.createElement('div');
     adminBanner.id = 'admin-view-banner';
-    adminBanner.style.cssText = 'position:sticky;top:0;z-index:999;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;font-weight:600;color:#92400E';
+    adminBanner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;font-weight:600;color:#92400E';
     adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 0 0 4px">' + escHtml(cleaner.full_name || '') + '</strong>s dashboard</span>' +
       '<a href="admin.html" style="padding:6px 14px;background:#92400E;color:#fff;border-radius:8px;text-decoration:none;font-size:.78rem">← Tillbaka till admin</a>';
     document.body.prepend(adminBanner);
+    document.body.classList.add('admin-view-active');
+    document.documentElement.style.setProperty('--admin-banner-h', (adminBanner.offsetHeight || 44) + 'px');
   }
 
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
