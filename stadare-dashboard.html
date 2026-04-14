@@ -5864,7 +5864,7 @@ function renderGanttDay(wrap) {
     html += '<div class="gantt-row-name">' + escHtml((m.first_name || m.full_name || '').split(' ')[0]) + '</div>';
     html += '<div class="gantt-row-rate">' + (m.hourly_rate || 350) + ' kr/h · ' + bookedHours.toFixed(1) + '/' + availHours.toFixed(0) + 'h</div>';
     html += '<div class="gantt-row-cap"><div class="gantt-row-cap-fill ' + capClass + '" style="width:' + Math.min(capPct, 100) + '%"></div></div>';
-    html += '<button class="gantt-sick-btn" onclick="ganttMarkSick(\'' + escHtml(m.id) + '\',\'' + dateStr + '\')">Sjuk idag</button>';
+    html += '<button class="gantt-sick-btn" onclick="ganttMarkSick(\'' + escHtml(m.id) + '\',\'' + dateStr + '\')">Sjukanmäl</button>';
     html += '</div>';
 
     html += '<div class="gantt-row-cells" data-cleaner-id="' + escHtml(m.id) + '" data-date="' + dateStr + '">';
@@ -6307,35 +6307,37 @@ async function ganttMarkSick(cleanerId, dateStr) {
   if (dayBookings.length > 0) msg += '\n\n' + dayBookings.length + ' bokning(ar) behöver omfördelas. Vill du fortsätta?';
   if (!confirm(msg)) return;
 
-  // 1. Skapa blockering i calendar_events
-  try {
-    // Hämta session-token direkt från SB (tål blockerad localStorage)
-    var session = (await SB.auth.getSession()).data.session;
-    var token = session ? session.access_token : ANON_KEY;
+  var daysStr = prompt('Hur många dagar? (1 = bara idag)', '1');
+  if (!daysStr) return;
+  var numDays = Math.min(Math.max(parseInt(daysStr) || 1, 1), 30);
 
-    var res = await fetch(SUPA_URL + '/rest/v1/calendar_events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        cleaner_id: cleanerId,
-        start_at: dateStr + 'T00:00:00Z',
-        end_at:   dateStr + 'T23:59:59Z',
-        event_type: 'blocked',
-        source: 'manual',
-        title: 'Sjuk',
-        is_all_day: true
-      })
-    });
-    if (!res.ok) {
-      var err = await res.json().catch(function() { return {}; });
-      showToast('Kunde inte skapa blockering: ' + (err.message || res.status));
-      return;
+  // 1. Skapa blockering i calendar_events (en rad per dag)
+  for (var di = 0; di < numDays; di++) {
+    var blockDate = new Date(dateStr + 'T12:00:00');
+    blockDate.setDate(blockDate.getDate() + di);
+    var blockDateStr = blockDate.toISOString().slice(0,10);
+
+    try {
+      var session = (await SB.auth.getSession()).data.session;
+      var token = session ? session.access_token : ANON_KEY;
+      await fetch(SUPA_URL + '/rest/v1/calendar_events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          cleaner_id: cleanerId,
+          start_at: blockDateStr + 'T00:00:00Z',
+          end_at:   blockDateStr + 'T23:59:59Z',
+          event_type: 'blocked',
+          source: 'manual',
+          title: 'Sjuk',
+          is_all_day: true
+        })
+      });
+    } catch(e) {
+      console.warn('Sick day ' + blockDateStr + ' failed:', e);
     }
-    showToast(name + ' markerad som sjuk');
-  } catch(e) {
-    showToast('Fel: ' + (e.message || e));
-    return;
   }
+  showToast(name + ' markerad som sjuk ' + numDays + ' dag' + (numDays > 1 ? 'ar' : ''));
 
   // 2. Omfördelnings-dialog
   if (dayBookings.length > 0) {
