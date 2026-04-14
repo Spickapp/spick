@@ -2135,10 +2135,11 @@ function escHtml(s) { const d = document.createElement('div'); d.textContent = s
 var _viewAsId = new URLSearchParams(window.location.search).get('view_as');
 var _isAdminView = false;
 var _adminPreloadedCleaner = null;
+// Blockera auth-listener från att köra auto-load medan admin-checken pågår
+if (_viewAsId) { _cleanerLoadStarted = true; }
 
 // ── INIT ────────────────────────────────────────────────────
 async function init() {
-  showScreen('login');
   const errEl = document.getElementById('login-err');
   if (errEl) errEl.style.display = 'none';
 
@@ -2147,7 +2148,7 @@ async function init() {
     document.documentElement.style.visibility='visible';
   }, 3000);
 
-  // Admin view-as: verifiera admin-behörighet och förhämta städare
+  // Admin view-as: KÖR FÖRE login-skärmen visas
   if (_viewAsId) {
     try {
       var session = (await SB.auth.getSession()).data.session;
@@ -2165,14 +2166,21 @@ async function init() {
           if (Array.isArray(cleanerRows) && cleanerRows.length) {
             _adminPreloadedCleaner = cleanerRows[0];
             clearTimeout(sessionTimeout);
-            _cleanerLoadStarted = true;
+            // Hoppa ÖVER login-skärmen — gå direkt till cleaner-load
             loadCleanerByEmail(session.user.email, session.user.id);
             return;
           }
         }
       }
     } catch(e) { console.warn('admin view-as check failed:', e); }
+    // Misslyckad admin-check → släpp lock och fall till normalt flöde
+    _cleanerLoadStarted = false;
+    _isAdminView = false;
+    _adminPreloadedCleaner = null;
   }
+
+  // Normalt flöde: visa login-skärm och låt auth-listener/getSession hantera
+  showScreen('login');
 
   SB.auth.getSession().then(({ data: { session } }) => {
     clearTimeout(sessionTimeout);
