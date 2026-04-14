@@ -3827,9 +3827,13 @@ async function loadCalendarConnections() {
   if (!cleaner || !cleaner.id) return;
 
   // Sätt iCal URL
-  var icalUrl = SUPA_URL + '/functions/v1/calendar-ical-feed?slug=' + (cleaner.slug || cleaner.id);
+  var icalSlug = cleaner.slug || cleaner.id;
+  var icalUrl = SUPA_URL + '/functions/v1/calendar-ical-feed?slug=' + icalSlug;
   var icalInput = document.getElementById('ical-feed-url');
-  if (icalInput) icalInput.value = icalUrl;
+  if (icalInput) {
+    icalInput.value = 'spick.se/cal/' + icalSlug;
+    icalInput.dataset.fullUrl = icalUrl;
+  }
 
   // Hämta befintliga kopplingar
   try {
@@ -3931,20 +3935,18 @@ async function disconnectCalendar(connectionId) {
 
 function copyICalUrl() {
   var input = document.getElementById('ical-feed-url');
-  if (!input || !input.value) return;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(input.value).then(function() {
-      showToast('URL kopierad!');
-    }).catch(function() {
-      input.select();
-      document.execCommand('copy');
-      showToast('URL kopierad!');
-    });
-  } else {
+  if (!input) return;
+  var url = input.dataset.fullUrl || input.value;
+  navigator.clipboard.writeText(url).then(function() {
+    showToast('URL kopierad!');
+  }).catch(function() {
+    // Fallback: visa fulla URL:en tillfälligt för manuell kopiering
+    input.value = url;
     input.select();
     document.execCommand('copy');
+    input.value = 'spick.se/cal/' + (cleaner.slug || cleaner.id);
     showToast('URL kopierad!');
-  }
+  });
 }
 
 // Kolla URL-parametrar vid sidladdning (efter OAuth-redirect)
