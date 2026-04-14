@@ -6030,9 +6030,13 @@ async function ganttMoveBooking(bookingId, newCleanerId, newTime, newDate) {
   if (newDate) patch.booking_date = newDate;
 
   try {
+    // Hämta session-token direkt från SB (tål blockerad localStorage)
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+
     var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bookingId, {
       method: 'PATCH',
-      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
       body: JSON.stringify(patch)
     });
     if (res.ok) {
@@ -6122,9 +6126,13 @@ async function ganttMarkSick(cleanerId, dateStr) {
 
   // 1. Skapa blockering i calendar_events
   try {
+    // Hämta session-token direkt från SB (tål blockerad localStorage)
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+
     var res = await fetch(SUPA_URL + '/rest/v1/calendar_events', {
       method: 'POST',
-      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
         cleaner_id: cleanerId,
         start_at: dateStr + 'T00:00:00Z',
