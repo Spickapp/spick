@@ -425,6 +425,71 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 @keyframes calEventIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 .cal-event-new{animation:calEventIn .3s ease-out}
 
+/* ── GANTT VD-KALENDER (FAS 2) ────────────────── */
+.gantt-wrap{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;position:relative}
+.gantt-header{display:flex;position:sticky;top:0;z-index:3;background:var(--w)}
+.gantt-header-label{width:140px;flex-shrink:0;padding:6px;font-size:.7rem;font-weight:600;color:var(--m)}
+.gantt-header-hours{display:flex;flex:1}
+.gantt-hour-col{flex:1;min-width:50px;text-align:center;font-size:.68rem;font-weight:600;color:var(--gray-400);padding:4px 0;border-left:1px solid var(--gray-100)}
+.gantt-hour-col.now{color:var(--spick-600);font-weight:700}
+
+.gantt-body{position:relative}
+.gantt-row{display:flex;min-height:64px;border-bottom:1px solid var(--gray-100)}
+.gantt-row:hover{background:var(--gray-50)}
+.gantt-row-label{width:140px;flex-shrink:0;padding:8px 8px 8px 4px;display:flex;flex-direction:column;justify-content:center}
+.gantt-row-name{font-weight:600;font-size:.8rem;line-height:1.2}
+.gantt-row-rate{font-size:.65rem;color:var(--m)}
+.gantt-row-cap{height:4px;border-radius:2px;background:var(--gray-200);margin-top:4px;overflow:hidden}
+.gantt-row-cap-fill{height:100%;border-radius:2px;transition:width .3s}
+.gantt-row-cap-fill.low{background:#16a34a}
+.gantt-row-cap-fill.mid{background:#d97706}
+.gantt-row-cap-fill.high{background:#dc2626}
+
+.gantt-row-cells{flex:1;position:relative;display:flex}
+.gantt-cell{flex:1;min-width:50px;border-left:1px solid var(--gray-50);position:relative;cursor:pointer}
+.gantt-cell:hover{background:rgba(15,110,86,.03)}
+.gantt-cell.drop-target{background:rgba(15,110,86,.08)}
+
+.gantt-event{position:absolute;top:4px;bottom:4px;border-radius:6px;padding:3px 6px;font-size:.7rem;line-height:1.2;overflow:hidden;cursor:grab;z-index:2;border-left:3px solid;transition:box-shadow .15s,opacity .15s;user-select:none;touch-action:none}
+.gantt-event:hover{box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5}
+.gantt-event.dragging{opacity:.7;cursor:grabbing;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.gantt-event.confirmed{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gantt-event.pending_confirmation{background:#FEF3C7;border-color:#D97706;color:#92400E}
+.gantt-event.klar,.gantt-event.completed{background:#F3F4F6;border-color:#9CA3AF;color:#6B7280}
+.gantt-event.blocked{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
+.gantt-event.external{background:#E0E7FF;border-color:#6366F1;color:#3730A3;cursor:default}
+
+.gantt-avail-stripe{position:absolute;top:0;bottom:0;background:rgba(15,110,86,.04);z-index:0;pointer-events:none;border-left:1px dashed rgba(15,110,86,.12)}
+.gantt-now-line{position:absolute;top:0;bottom:0;width:2px;background:var(--spick-500);z-index:4;pointer-events:none}
+.gantt-now-line::before{content:'';position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--spick-500)}
+
+/* Ghost-block vid drag */
+.gantt-ghost{position:absolute;top:0;bottom:0;border-radius:6px;background:rgba(15,110,86,.12);border:2px dashed var(--spick-500);z-index:1;pointer-events:none;display:none}
+
+/* Dag/Vecka toggle i Gantt-header */
+.gantt-toggle{display:flex;background:var(--gray-100);border-radius:8px;overflow:hidden;margin-right:8px;padding:2px}
+.gantt-toggle button{padding:4px 12px;border:none;background:none;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--gray-500);border-radius:6px}
+.gantt-toggle button.active{background:var(--w);color:var(--gray-900);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* Filter-rad */
+.gantt-filters{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.gantt-filter-chip{padding:4px 10px;border:1px solid var(--gray-200);border-radius:20px;font-size:.7rem;font-weight:500;cursor:pointer;font-family:inherit;background:var(--w);color:var(--gray-600);transition:all .15s}
+.gantt-filter-chip.active{background:var(--spick-50);color:var(--spick-700);border-color:var(--spick-400)}
+.gantt-filter-chip:hover{border-color:var(--spick-400)}
+
+/* Kapacitetssammanfattning ovanför Gantt */
+.gantt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.gantt-stat{background:var(--bg);border-radius:8px;padding:8px 10px;text-align:center}
+.gantt-stat-label{font-size:.62rem;text-transform:uppercase;color:var(--m);font-weight:600;letter-spacing:.03em}
+.gantt-stat-value{font-size:1rem;font-weight:700;color:var(--g);margin-top:2px}
+
+/* Tooltip vid hover */
+.gantt-tooltip{position:fixed;background:var(--gray-900);color:#fff;border-radius:8px;padding:8px 12px;font-size:.75rem;z-index:100;pointer-events:none;max-width:220px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.3);display:none}
+
+/* Sick-day knapp */
+.gantt-sick-btn{padding:2px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:.6rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px}
+.gantt-sick-btn:hover{background:#FCA5A5;color:#7F1D1D}
+
 /* ═══ PROFILE / SETTINGS ═══ */
 .prof-avatar{width:72px;height:72px;background:linear-gradient(135deg,var(--spick-500),var(--spick-700));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;margin:0 auto 12px;overflow:hidden}
 .prof-avatar img{width:100%;height:100%;object-fit:cover}
@@ -1342,22 +1407,51 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         </div>
 
         <div class="card" style="padding:20px;margin-top:12px" id="team-calendar-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <h4 style="font-size:.95rem;font-weight:700;margin:0">Teamets veckokalender</h4>
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
-              <button onclick="calPrevWeek()" style="width:32px;height:32px;border:1px solid var(--gray-200);border-radius:8px;background:var(--w);cursor:pointer;font-size:1rem">◀</button>
-              <button onclick="openManualBooking()" style="padding:6px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">+ Lägg till jobb</button>
-              <span id="cal-week-label" style="font-size:.85rem;font-weight:600;min-width:160px;text-align:center"></span>
-              <button onclick="calNextWeek()" style="width:32px;height:32px;border:1px solid var(--gray-200);border-radius:8px;background:var(--w);cursor:pointer;font-size:1rem">▶</button>
-              <button onclick="calGoToday()" style="padding:4px 12px;border:1px solid var(--spick-500);border-radius:8px;background:var(--w);color:var(--spick-500);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Idag</button>
+              <h4 style="font-size:.95rem;font-weight:700;margin:0">Teamkalender</h4>
+              <div class="gantt-toggle" id="gantt-mode-toggle">
+                <button onclick="setGanttMode('day')" id="gantt-mode-day" class="active">Dag</button>
+                <button onclick="setGanttMode('week')" id="gantt-mode-week">Vecka</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button onclick="ganttNav(-1)" style="width:32px;height:32px;border:1px solid var(--gray-200);border-radius:8px;background:var(--w);cursor:pointer;font-size:1rem">◀</button>
+              <button onclick="openManualBooking()" style="padding:6px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">+ Jobb</button>
+              <span id="gantt-date-label" style="font-size:.85rem;font-weight:600;min-width:140px;text-align:center"></span>
+              <button onclick="ganttNav(1)" style="width:32px;height:32px;border:1px solid var(--gray-200);border-radius:8px;background:var(--w);cursor:pointer;font-size:1rem">▶</button>
+              <button onclick="ganttToday()" style="padding:4px 12px;border:1px solid var(--spick-500);border-radius:8px;background:var(--w);color:var(--spick-500);font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">Idag</button>
             </div>
           </div>
-          <div id="team-calendar" style="overflow-x:auto"></div>
-          <div style="display:flex;gap:12px;margin-top:10px;font-size:.72rem;color:var(--m)">
-            <span>■ <span style="color:#0F6E56">Bekräftad</span></span>
-            <span>■ <span style="color:#D97706">Väntar</span></span>
-            <span>■ <span style="color:#6B7280">Klar</span></span>
-            <span>□ Ledig</span>
+
+          <!-- Kapacitetssammanfattning -->
+          <div class="gantt-summary" id="gantt-summary">
+            <div class="gantt-stat"><div class="gantt-stat-label">Bokade timmar</div><div class="gantt-stat-value" id="gs-booked">0h</div></div>
+            <div class="gantt-stat"><div class="gantt-stat-label">Kapacitet kvar</div><div class="gantt-stat-value" id="gs-available">0h</div></div>
+            <div class="gantt-stat"><div class="gantt-stat-label">Beläggning</div><div class="gantt-stat-value" id="gs-utilization">0%</div></div>
+            <div class="gantt-stat"><div class="gantt-stat-label">Intäkt (est.)</div><div class="gantt-stat-value" id="gs-revenue">0 kr</div></div>
+          </div>
+
+          <!-- Filterrad -->
+          <div class="gantt-filters" id="gantt-filters">
+            <button class="gantt-filter-chip active" onclick="toggleGanttFilter(this,'all')" data-filter="all">Alla</button>
+            <button class="gantt-filter-chip" onclick="toggleGanttFilter(this,'confirmed')" data-filter="confirmed">Bekräftade</button>
+            <button class="gantt-filter-chip" onclick="toggleGanttFilter(this,'pending_confirmation')" data-filter="pending_confirmation">Väntande</button>
+            <button class="gantt-filter-chip" onclick="toggleGanttFilter(this,'klar')" data-filter="klar">Klara</button>
+          </div>
+
+          <!-- Gantt-kropp -->
+          <div class="gantt-wrap" id="gantt-wrap"></div>
+
+          <!-- Legend -->
+          <div style="display:flex;gap:12px;margin-top:10px;font-size:.68rem;color:var(--m);flex-wrap:wrap">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#D1FAE5;border:1px solid #059669;vertical-align:middle"></span> Bekräftad</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEF3C7;border:1px solid #D97706;vertical-align:middle"></span> Väntar</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#F3F4F6;border:1px solid #9CA3AF;vertical-align:middle"></span> Klar</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#E0E7FF;border:1px solid #6366F1;vertical-align:middle"></span> Extern</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEE2E2;border:1px solid #DC2626;vertical-align:middle"></span> Blockerad</span>
+            <span style="margin-left:8px"><span style="display:inline-block;width:12px;height:2px;background:var(--spick-500);vertical-align:middle"></span> Nu</span>
           </div>
         </div>
 
@@ -5312,6 +5406,27 @@ async function submitManualBooking() {
     return;
   }
 
+  // Konfliktkontroll: jämför mot befintliga calendar_events för vald städare + datum.
+  // TZ-säkert via evDate/evHour/evMinute (hanterar UTC→CET korrekt).
+  var _bookStartH = parseInt((time || '09:00').split(':')[0], 10);
+  var _bookEndH   = _bookStartH + hours;
+  var _conflicts = (_ganttTeamEvents || []).filter(function(ev) {
+    if (ev.cleaner_id !== cleanerId || evDate(ev.start_at) !== date) return false;
+    var evStartH   = evHour(ev.start_at);
+    var evEndH     = evHour(ev.end_at);
+    var evEndM     = evMinute(ev.end_at);
+    var evEndDec   = evEndH + evEndM / 60;
+    return (_bookStartH < evEndDec && _bookEndH > evStartH);
+  });
+  if (_conflicts.length > 0) {
+    var _conflictDesc = _conflicts.map(function(e) {
+      return (e.title || e.event_type) + ' ' + evTime(e.start_at) + '-' + evTime(e.end_at);
+    }).join(', ');
+    if (!confirm('⚠️ Städaren har redan bokning(ar) på den tiden:\n\n' + _conflictDesc + '\n\nVill du fortsätta ändå?')) {
+      return;
+    }
+  }
+
   var btn = document.getElementById('mb-submit-btn');
   btn.disabled = true; btn.textContent = 'Skapar bokning...';
 
@@ -5389,96 +5504,721 @@ document.addEventListener('change', function(e) {
   if (e.target.id === 'mb-hours' || e.target.id === 'mb-cleaner') updateManualPrice();
 });
 
-var _calWeekStart = null;
+// ── GANTT V2 MOTOR (Fas 2) ───────────────────────────────────
+var _ganttMode = 'day';          // 'day' | 'week'
+var _ganttDate = new Date();     // fokus-datum
+var _ganttTeamEvents = [];       // calendar_events för hela teamet
+var _ganttTeamAvail = [];        // availability_v2 för hela teamet
+var _ganttFilter = 'all';        // status-filter
+var _ganttDragState = null;      // drag-and-drop state
+var _ganttHourStart = 7;
+var _ganttHourEnd = 21;
+var _ganttHourCount = 14;        // 21-7
+var _ganttHourPx = 50;           // pixlar per timme (matchar .gantt-hour-col min-width)
+var _ganttTooltipEl = null;
 
-function calInit() {
-  var now = new Date();
-  var day = now.getDay();
-  var diff = day === 0 ? -6 : 1 - day;
-  _calWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
-  renderTeamCalendar();
+// TZ-säkra hjälpare (konverterar UTC-ISO till lokal tid för display/beräkning)
+function evTime(isoStr) {
+  if (!isoStr) return '';
+  var d = new Date(isoStr);
+  var h = d.getHours(), m = d.getMinutes();
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+function evDate(isoStr) {
+  if (!isoStr) return '';
+  return localDateStr(new Date(isoStr));
+}
+function evHour(isoStr)   { return new Date(isoStr).getHours(); }
+function evMinute(isoStr) { return new Date(isoStr).getMinutes(); }
+
+function localDateStr(d) {
+  var y = d.getFullYear();
+  var mo = d.getMonth() + 1;
+  var da = d.getDate();
+  return y + '-' + (mo < 10 ? '0' : '') + mo + '-' + (da < 10 ? '0' : '') + da;
 }
 
-function calPrevWeek() { _calWeekStart.setDate(_calWeekStart.getDate() - 7); renderTeamCalendar(); }
-function calNextWeek() { _calWeekStart.setDate(_calWeekStart.getDate() + 7); renderTeamCalendar(); }
-function calGoToday() { calInit(); }
+function getWeekStart(d) {
+  var dt = new Date(d);
+  var day = dt.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + diff);
+}
 
-function renderTeamCalendar() {
-  var el = document.getElementById('team-calendar');
-  var label = document.getElementById('cal-week-label');
-  if (!el || !_teamMembers || !_teamMembers.length) {
-    if (el) el.innerHTML = '<p style="font-size:.85rem;color:var(--m)">Lägg till teammedlemmar för att se kalendern.</p>';
+// ── DATAHÄMTNING ─────────────────────────────────────────────
+
+async function loadGanttData() {
+  if (!_teamMembers || !_teamMembers.length) { renderGantt(); return; }
+
+  var memberIds = _teamMembers.map(function(m) { return m.id; });
+  var rangeStart, rangeEnd;
+  if (_ganttMode === 'day') {
+    rangeStart = new Date(_ganttDate); rangeStart.setHours(0,0,0,0);
+    rangeEnd   = new Date(_ganttDate); rangeEnd.setHours(23,59,59,999);
+  } else {
+    rangeStart = getWeekStart(_ganttDate); rangeStart.setHours(0,0,0,0);
+    rangeEnd   = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 6); rangeEnd.setHours(23,59,59,999);
+  }
+
+  try {
+    var idFilter = memberIds.map(function(id) { return 'cleaner_id.eq.' + id; }).join(',');
+    var startISO = rangeStart.toISOString();
+    var endISO   = rangeEnd.toISOString();
+
+    var pair = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/calendar_events?or=(' + idFilter + ')' +
+        '&start_at=gte.' + encodeURIComponent(startISO) +
+        '&end_at=lte.'   + encodeURIComponent(endISO) +
+        '&order=start_at.asc', { headers: _authHeaders() }),
+      fetch(SUPA_URL + '/rest/v1/cleaner_availability_v2?or=(' + idFilter + ')' +
+        '&is_active=eq.true&order=day_of_week.asc,start_time.asc', { headers: _authHeaders() })
+    ]);
+    _ganttTeamEvents = pair[0] && pair[0].ok ? await pair[0].json() : [];
+    _ganttTeamAvail  = pair[1] && pair[1].ok ? await pair[1].json() : [];
+  } catch(e) {
+    console.warn('[SPICK] loadGanttData error:', e);
+    _ganttTeamEvents = []; _ganttTeamAvail = [];
+  }
+
+  renderGantt();
+}
+
+// ── NAVIGATION & MODE ───────────────────────────────────────
+
+function setGanttMode(mode) {
+  _ganttMode = mode;
+  document.querySelectorAll('#gantt-mode-toggle button').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('gantt-mode-' + mode);
+  if (btn) btn.classList.add('active');
+  loadGanttData();
+}
+
+function ganttNav(dir) {
+  if (_ganttMode === 'day') _ganttDate.setDate(_ganttDate.getDate() + dir);
+  else                      _ganttDate.setDate(_ganttDate.getDate() + (dir * 7));
+  loadGanttData();
+}
+
+function ganttToday() {
+  _ganttDate = new Date();
+  loadGanttData();
+}
+
+function toggleGanttFilter(btn, filter) {
+  _ganttFilter = filter;
+  document.querySelectorAll('.gantt-filter-chip').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderGantt();
+}
+
+// ── RENDERING ────────────────────────────────────────────────
+
+function renderGantt() {
+  var wrap = document.getElementById('gantt-wrap');
+  if (!wrap) return;
+
+  var months   = ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'];
+  var dayNames = ['söndag','måndag','tisdag','onsdag','torsdag','fredag','lördag'];
+  var mShort   = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  var label = document.getElementById('gantt-date-label');
+
+  if (_ganttMode === 'day') {
+    if (label) label.textContent = dayNames[_ganttDate.getDay()] + ' ' + _ganttDate.getDate() + ' ' + months[_ganttDate.getMonth()];
+    renderGanttDay(wrap);
+  } else {
+    var ws = getWeekStart(_ganttDate);
+    var we = new Date(ws); we.setDate(we.getDate() + 6);
+    if (label) label.textContent = ws.getDate() + ' ' + mShort[ws.getMonth()] + ' – ' + we.getDate() + ' ' + mShort[we.getMonth()];
+    renderGanttWeek(wrap);
+  }
+
+  updateGanttSummary();
+}
+
+function renderGanttDay(wrap) {
+  var activeMembers = _teamMembers.filter(function(m) {
+    return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved;
+  });
+  if (!activeMembers.length) {
+    wrap.innerHTML = '<p style="font-size:.85rem;color:var(--m);text-align:center;padding:24px">Lägg till teammedlemmar för att se kalendern.</p>';
     return;
   }
 
-  var days = [];
-  var dayNames = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
-  var monthNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
-  for (var i = 0; i < 7; i++) {
-    var d = new Date(_calWeekStart);
-    d.setDate(d.getDate() + i);
-    days.push(d);
+  var dateStr = localDateStr(_ganttDate);
+  var todayStr = localDateStr(new Date());
+  var isToday = dateStr === todayStr;
+  var dow = _ganttDate.getDay();
+  var dowV2 = dow === 0 ? 7 : dow;
+
+  var minWidth = 140 + _ganttHourCount * _ganttHourPx + _ganttHourPx; // +hour för 21-kolumn
+  var html = '<div style="min-width:' + minWidth + 'px">';
+
+  // Header
+  html += '<div class="gantt-header">';
+  html += '<div class="gantt-header-label"></div>';
+  html += '<div class="gantt-header-hours">';
+  var nowH = new Date().getHours();
+  var nowM = new Date().getMinutes();
+  for (var h = _ganttHourStart; h <= _ganttHourEnd; h++) {
+    var isNow = isToday && h === nowH;
+    html += '<div class="gantt-hour-col' + (isNow ? ' now' : '') + '">' + (h < 10 ? '0' : '') + h + '</div>';
+  }
+  html += '</div></div>';
+
+  // Body
+  html += '<div class="gantt-body">';
+  activeMembers.forEach(function(m) {
+    var memberEvents = getFilteredEvents(m.id, dateStr);
+    var memberAvail  = _ganttTeamAvail.filter(function(a) { return a.cleaner_id === m.id && a.day_of_week === dowV2; });
+
+    var availHours = memberAvail.reduce(function(s, a) { return s + timeDiffHours(a.start_time, a.end_time); }, 0);
+    var bookedHours = memberEvents.filter(function(e) { return e.event_type === 'booking'; })
+      .reduce(function(s, e) { return s + eventDurationHours(e); }, 0);
+    var capPct = availHours > 0 ? Math.round((bookedHours / availHours) * 100) : 0;
+    var capClass = capPct < 70 ? 'low' : capPct < 90 ? 'mid' : 'high';
+
+    html += '<div class="gantt-row" data-cleaner-id="' + escHtml(m.id) + '">';
+
+    html += '<div class="gantt-row-label">';
+    html += '<div class="gantt-row-name">' + escHtml((m.first_name || m.full_name || '').split(' ')[0]) + '</div>';
+    html += '<div class="gantt-row-rate">' + (m.hourly_rate || 350) + ' kr/h · ' + bookedHours.toFixed(1) + '/' + availHours.toFixed(0) + 'h</div>';
+    html += '<div class="gantt-row-cap"><div class="gantt-row-cap-fill ' + capClass + '" style="width:' + Math.min(capPct, 100) + '%"></div></div>';
+    html += '<button class="gantt-sick-btn" onclick="ganttMarkSick(\'' + escHtml(m.id) + '\',\'' + dateStr + '\')">Sjuk idag</button>';
+    html += '</div>';
+
+    html += '<div class="gantt-row-cells" data-cleaner-id="' + escHtml(m.id) + '" data-date="' + dateStr + '">';
+
+    // Availability-bakgrund
+    memberAvail.forEach(function(a) {
+      var startPx = Math.max(0, timeToPixels(a.start_time));
+      var endPx   = Math.min(_ganttHourCount * _ganttHourPx, timeToPixels(a.end_time));
+      if (endPx > startPx) {
+        html += '<div class="gantt-avail-stripe" style="left:' + startPx + 'px;width:' + (endPx - startPx) + 'px"></div>';
+      }
+    });
+
+    // Klickbara timceller
+    for (var hh = _ganttHourStart; hh <= _ganttHourEnd; hh++) {
+      html += '<div class="gantt-cell" onclick="ganttCellClick(\'' + escHtml(m.id) + '\',\'' + dateStr + '\',' + hh + ')" data-hour="' + hh + '"></div>';
+    }
+
+    // Event-block
+    memberEvents.forEach(function(ev) {
+      var startPx = Math.max(0, eventStartPixels(ev));
+      var widthPx = eventWidthPixels(ev);
+      var maxPx   = _ganttHourCount * _ganttHourPx;
+      if (startPx + widthPx > maxPx) widthPx = maxPx - startPx;
+      if (widthPx < 10) return;
+
+      var statusClass = ev.event_type === 'booking'
+        ? (ev.booking_id ? getBookingStatus(ev.booking_id) : 'confirmed')
+        : ev.event_type;
+      var isDraggable = ev.event_type === 'booking' && ev.source === 'spick' && !!ev.booking_id;
+
+      html += '<div class="gantt-event ' + statusClass + '"' +
+        ' style="left:' + startPx + 'px;width:' + Math.max(widthPx, 30) + 'px"' +
+        ' data-event-id="' + escHtml(ev.id) + '"' +
+        ' data-booking-id="' + escHtml(ev.booking_id || '') + '"' +
+        ' data-cleaner-id="' + escHtml(ev.cleaner_id) + '"' +
+        (isDraggable ? ' onpointerdown="ganttDragStart(event,this)"' : '') +
+        ' onmouseenter="ganttShowTooltip(event,this)" onmouseleave="ganttHideTooltip()"' +
+        '>';
+      html += '<div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+        evTime(ev.start_at) + ' ' + escHtml((ev.title || '').slice(0, 15)) + '</div>';
+      if (widthPx > 80) {
+        html += '<div style="font-size:.6rem;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+          escHtml(ev.address || '') + '</div>';
+      }
+      html += '</div>';
+    });
+
+    // Nu-linje
+    if (isToday) {
+      var nowTimeStr = (nowH < 10 ? '0' : '') + nowH + ':' + (nowM < 10 ? '0' : '') + nowM;
+      var nowPx = timeToPixels(nowTimeStr);
+      if (nowPx > 0 && nowPx < _ganttHourCount * _ganttHourPx) {
+        html += '<div class="gantt-now-line" style="left:' + nowPx + 'px"></div>';
+      }
+    }
+
+    // Ghost-block för drag preview
+    html += '<div class="gantt-ghost" id="gantt-ghost-' + escHtml(m.id) + '"></div>';
+
+    html += '</div>'; // row-cells
+    html += '</div>'; // row
+  });
+  html += '</div>'; // body
+  html += '</div>'; // min-width wrap
+  wrap.innerHTML = html;
+}
+
+function renderGanttWeek(wrap) {
+  var activeMembers = _teamMembers.filter(function(m) {
+    return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved;
+  });
+  if (!activeMembers.length) {
+    wrap.innerHTML = '<p style="font-size:.85rem;color:var(--m);text-align:center;padding:24px">Inga teammedlemmar.</p>';
+    return;
   }
 
-  var weekEnd = new Date(days[6]);
-  label.textContent = days[0].getDate() + ' ' + monthNames[days[0].getMonth()] + ' – ' + weekEnd.getDate() + ' ' + monthNames[weekEnd.getMonth()] + ' ' + weekEnd.getFullYear();
-
-  var today = new Date().toISOString().slice(0,10);
-
-  // Get all bookings for this week
-  var weekStart = days[0].toISOString().slice(0,10);
-  var weekEndStr = days[6].toISOString().slice(0,10);
+  var ws = getWeekStart(_ganttDate);
+  var todayStr = localDateStr(new Date());
+  var dayNames = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
 
   var html = '<table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:600px">';
 
-  // Header
-  html += '<tr><th style="padding:8px 6px;text-align:left;font-weight:600;color:var(--m);border-bottom:2px solid var(--gray-200);width:120px;font-size:.75rem">STÄDARE</th>';
+  html += '<tr><th style="padding:8px 6px;text-align:left;font-weight:600;color:var(--m);border-bottom:2px solid var(--gray-200);width:120px;font-size:.72rem">STÄDARE</th>';
   for (var i = 0; i < 7; i++) {
-    var isToday = days[i].toISOString().slice(0,10) === today;
-    html += '<th style="padding:8px 4px;text-align:center;font-weight:600;border-bottom:2px solid var(--gray-200);font-size:.75rem;' + (isToday ? 'background:#E1F5EE;border-radius:8px 8px 0 0' : '') + '">';
-    html += '<div style="color:var(--m)">' + dayNames[i] + '</div>';
-    html += '<div style="font-size:.9rem;' + (isToday ? 'color:#0F6E56' : 'color:var(--gray-900)') + '">' + days[i].getDate() + '</div>';
-    html += '</th>';
+    var d = new Date(ws); d.setDate(d.getDate() + i);
+    var dStr = localDateStr(d);
+    var isTd = dStr === todayStr;
+    html += '<th style="padding:8px 4px;text-align:center;font-weight:600;border-bottom:2px solid var(--gray-200);font-size:.72rem;' +
+      (isTd ? 'background:#E1F5EE;border-radius:8px 8px 0 0' : '') + '">' +
+      '<div style="color:var(--m)">' + dayNames[i] + '</div>' +
+      '<div style="font-size:.88rem;' + (isTd ? 'color:#0F6E56' : '') + '">' + d.getDate() + '</div></th>';
   }
   html += '</tr>';
 
-  // Row per team member
-  var activeMembers = _teamMembers.filter(function(m) { return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved; });
   activeMembers.forEach(function(m) {
     html += '<tr>';
-    html += '<td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);vertical-align:top">';
-    html += '<div style="font-weight:600;font-size:.8rem">' + escHtml((m.first_name || m.full_name || '').split(' ')[0]) + '</div>';
-    html += '<div style="font-size:.68rem;color:var(--m)">' + (m.hourly_rate || 350) + ' kr/h</div>';
-    html += '</td>';
+    html += '<td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);vertical-align:top">' +
+      '<div style="font-weight:600;font-size:.78rem">' + escHtml((m.first_name || m.full_name || '').split(' ')[0]) + '</div>' +
+      '<div style="font-size:.65rem;color:var(--m)">' + (m.hourly_rate || 350) + ' kr/h</div></td>';
 
-    for (var i = 0; i < 7; i++) {
-      var dateStr = days[i].toISOString().slice(0,10);
-      var isToday = dateStr === today;
-      var dayBookings = (data_teamBookings || []).filter(function(b) {
-        return b.cleaner_id === m.id && b.booking_date === dateStr && b.status !== 'cancelled';
-      });
+    for (var j = 0; j < 7; j++) {
+      var dd = new Date(ws); dd.setDate(dd.getDate() + j);
+      var ddStr = localDateStr(dd);
+      var isTdd = ddStr === todayStr;
+      var dayEvents = getFilteredEvents(m.id, ddStr);
 
-      html += '<td style="padding:4px;border-bottom:1px solid var(--gray-100);vertical-align:top;' + (isToday ? 'background:#E1F5EE20' : '') + '">';
+      html += '<td style="padding:3px;border-bottom:1px solid var(--gray-100);vertical-align:top;min-width:75px;' +
+        (isTdd ? 'background:rgba(225,245,238,.3)' : '') +
+        '" onclick="ganttWeekDayClick(\'' + escHtml(m.id) + '\',\'' + ddStr + '\')">';
 
-      if (dayBookings.length > 0) {
-        dayBookings.forEach(function(b) {
-          var bgColor = b.status === 'confirmed' ? '#D1FAE5' : b.status === 'pending_confirmation' ? '#FEF3C7' : '#F3F4F6';
-          var textColor = b.status === 'confirmed' ? '#065F46' : b.status === 'pending_confirmation' ? '#92400E' : '#374151';
-          html += '<div style="background:' + bgColor + ';color:' + textColor + ';border-radius:6px;padding:4px 6px;margin-bottom:3px;font-size:.72rem;line-height:1.3;cursor:default" title="' + escHtml(b.customer_name || '') + ' - ' + escHtml(b.service_type || '') + '">';
-          html += '<div style="font-weight:600">' + (b.booking_time || '').slice(0,5) + '</div>';
-          html += '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">' + escHtml(b.customer_name || '–') + '</div>';
-          html += '</div>';
+      if (dayEvents.length > 0) {
+        dayEvents.forEach(function(ev) {
+          var cls = ev.event_type === 'booking'
+            ? (ev.booking_id ? getBookingStatus(ev.booking_id) : 'confirmed')
+            : ev.event_type;
+          var bgMap  = {confirmed:'#D1FAE5',pending_confirmation:'#FEF3C7',klar:'#F3F4F6',completed:'#F3F4F6',blocked:'#FEE2E2',external:'#E0E7FF'};
+          var txtMap = {confirmed:'#065F46',pending_confirmation:'#92400E',klar:'#6B7280',completed:'#6B7280',blocked:'#991B1B',external:'#3730A3'};
+          html += '<div style="background:' + (bgMap[cls] || '#F3F4F6') + ';color:' + (txtMap[cls] || '#374151') +
+            ';border-radius:5px;padding:2px 5px;font-size:.68rem;margin-bottom:2px;line-height:1.2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" ' +
+            'title="' + escHtml(ev.title||'') + ' ' + evTime(ev.start_at) + '-' + evTime(ev.end_at) + '">' +
+            '<span style="font-weight:600">' + evTime(ev.start_at) + '</span> ' +
+            escHtml((ev.title || '').slice(0, 10)) + '</div>';
         });
       } else {
-        html += '<div style="color:var(--gray-300);font-size:.72rem;text-align:center;padding:8px 0">–</div>';
+        html += '<div style="color:var(--gray-300);font-size:.68rem;text-align:center;padding:6px 0">–</div>';
       }
       html += '</td>';
     }
     html += '</tr>';
   });
-
   html += '</table>';
-  el.innerHTML = html;
+  wrap.innerHTML = html;
+}
+
+// ── HJÄLPFUNKTIONER ──────────────────────────────────────────
+
+function getFilteredEvents(cleanerId, dateStr) {
+  return _ganttTeamEvents.filter(function(ev) {
+    if (ev.cleaner_id !== cleanerId || evDate(ev.start_at) !== dateStr) return false;
+    if (_ganttFilter === 'all') return true;
+    if (ev.event_type !== 'booking') return true;
+    var status = ev.booking_id ? getBookingStatus(ev.booking_id) : 'confirmed';
+    return status === _ganttFilter;
+  });
+}
+
+function getBookingStatus(bookingId) {
+  if (!bookingId) return 'confirmed';
+  var b = (data_teamBookings || []).find(function(bk) { return bk.id === bookingId; });
+  return b ? (b.status || 'confirmed') : 'confirmed';
+}
+
+function timeToPixels(timeStr) {
+  if (!timeStr) return 0;
+  var parts = String(timeStr).split(':');
+  var h = parseInt(parts[0], 10);
+  var m = parseInt(parts[1] || '0', 10);
+  if (isNaN(h)) return 0;
+  return ((h - _ganttHourStart) + m / 60) * _ganttHourPx;
+}
+
+function eventStartPixels(ev) {
+  var h = evHour(ev.start_at);
+  var m = evMinute(ev.start_at);
+  return ((h - _ganttHourStart) + m / 60) * _ganttHourPx;
+}
+
+function eventWidthPixels(ev) {
+  return eventDurationHours(ev) * _ganttHourPx;
+}
+
+function eventDurationHours(ev) {
+  var start = new Date(ev.start_at).getTime();
+  var end   = new Date(ev.end_at).getTime();
+  return Math.max(0, (end - start) / 3600000);
+}
+
+function timeDiffHours(startTime, endTime) {
+  var sp = String(startTime).split(':');
+  var ep = String(endTime).split(':');
+  return (parseInt(ep[0], 10) - parseInt(sp[0], 10)) + (parseInt(ep[1] || '0', 10) - parseInt(sp[1] || '0', 10)) / 60;
+}
+
+function updateGanttSummary() {
+  var activeMembers = _teamMembers.filter(function(m) { return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved; });
+  var totalAvail = 0, totalBooked = 0, totalRevenue = 0;
+
+  function sumForDate(dateStr, dowV2) {
+    activeMembers.forEach(function(m) {
+      var avail = _ganttTeamAvail.filter(function(a) { return a.cleaner_id === m.id && a.day_of_week === dowV2; });
+      totalAvail += avail.reduce(function(s, a) { return s + timeDiffHours(a.start_time, a.end_time); }, 0);
+      var events = _ganttTeamEvents.filter(function(e) {
+        return e.cleaner_id === m.id && evDate(e.start_at) === dateStr && e.event_type === 'booking';
+      });
+      var hrs = events.reduce(function(s, e) { return s + eventDurationHours(e); }, 0);
+      totalBooked += hrs;
+      totalRevenue += hrs * (m.hourly_rate || 350);
+    });
+  }
+
+  if (_ganttMode === 'day') {
+    var dateStr = localDateStr(_ganttDate);
+    var dow = _ganttDate.getDay();
+    var dowV2 = dow === 0 ? 7 : dow;
+    sumForDate(dateStr, dowV2);
+  } else {
+    var ws = getWeekStart(_ganttDate);
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(ws); d.setDate(d.getDate() + i);
+      var dowi = d.getDay();
+      sumForDate(localDateStr(d), dowi === 0 ? 7 : dowi);
+    }
+  }
+
+  var el1 = document.getElementById('gs-booked');       if (el1) el1.textContent = totalBooked.toFixed(1) + 'h';
+  var el2 = document.getElementById('gs-available');    if (el2) el2.textContent = Math.max(totalAvail - totalBooked, 0).toFixed(1) + 'h';
+  var el3 = document.getElementById('gs-utilization');  if (el3) el3.textContent = totalAvail > 0 ? Math.round(totalBooked / totalAvail * 100) + '%' : '–';
+  var el4 = document.getElementById('gs-revenue');      if (el4) el4.textContent = Math.round(totalRevenue).toLocaleString('sv') + ' kr';
+}
+
+// ── DRAG AND DROP ────────────────────────────────────────────
+
+function ganttDragStart(e, el) {
+  e.preventDefault();
+  var cells = el.closest('.gantt-row-cells');
+  if (!cells) return;
+  var cellsRect = cells.getBoundingClientRect();
+  var row = el.closest('.gantt-row');
+
+  _ganttDragState = {
+    el: el,
+    eventId: el.dataset.eventId,
+    bookingId: el.dataset.bookingId,
+    originalCleanerId: el.dataset.cleanerId,
+    targetCleanerId: el.dataset.cleanerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    origLeft: parseFloat(el.style.left) || 0,
+    origWidth: parseFloat(el.style.width) || 50,
+    cellsTop: cellsRect.top,
+    cellsLeft: cellsRect.left,
+    rowHeight: row ? row.offsetHeight : 64
+  };
+
+  el.classList.add('dragging');
+  try { el.setPointerCapture(e.pointerId); } catch(_) {}
+  el.onpointermove = ganttDragMove;
+  el.onpointerup   = ganttDragEnd;
+  el.onpointercancel = ganttDragEnd;
+}
+
+function ganttDragMove(e) {
+  if (!_ganttDragState) return;
+  var dx = e.clientX - _ganttDragState.startX;
+  var newLeft = _ganttDragState.origLeft + dx;
+
+  // Snap till 25px (30 min)
+  newLeft = Math.round(newLeft / 25) * 25;
+  newLeft = Math.max(0, Math.min(newLeft, _ganttHourCount * _ganttHourPx - _ganttDragState.origWidth));
+  _ganttDragState.el.style.left = newLeft + 'px';
+
+  // Hitta vilken rad vi är över
+  var rows = document.querySelectorAll('.gantt-row');
+  var targetRow = null;
+  rows.forEach(function(row) {
+    var r = row.getBoundingClientRect();
+    if (e.clientY >= r.top && e.clientY <= r.bottom) targetRow = row;
+  });
+
+  document.querySelectorAll('.gantt-ghost').forEach(function(g) { g.style.display = 'none'; });
+  if (targetRow) {
+    var targetCleanerId = targetRow.dataset.cleanerId;
+    _ganttDragState.targetCleanerId = targetCleanerId;
+    if (targetCleanerId && targetCleanerId !== _ganttDragState.originalCleanerId) {
+      var ghost = document.getElementById('gantt-ghost-' + targetCleanerId);
+      if (ghost) {
+        ghost.style.display = 'block';
+        ghost.style.left  = newLeft + 'px';
+        ghost.style.width = _ganttDragState.origWidth + 'px';
+      }
+    }
+  }
+}
+
+function ganttDragEnd(e) {
+  if (!_ganttDragState) return;
+  var state = _ganttDragState;
+  _ganttDragState = null;
+
+  state.el.classList.remove('dragging');
+  state.el.onpointermove   = null;
+  state.el.onpointerup     = null;
+  state.el.onpointercancel = null;
+  document.querySelectorAll('.gantt-ghost').forEach(function(g) { g.style.display = 'none'; });
+
+  var newLeft = parseFloat(state.el.style.left) || 0;
+  var newHourDecimal = (newLeft / _ganttHourPx) + _ganttHourStart;
+  var newHour = Math.floor(newHourDecimal);
+  var minPart = (newHourDecimal - newHour) * 60;
+  var newMin = Math.round(minPart / 30) * 30;
+  if (newMin >= 60) { newHour++; newMin = 0; }
+  var newTime = (newHour < 10 ? '0' : '') + newHour + ':' + (newMin < 10 ? '0' : '') + newMin;
+  var dateStr = localDateStr(_ganttDate);
+
+  var timeChanged    = Math.abs(newLeft - state.origLeft) > 1;
+  var cleanerChanged = !!(state.targetCleanerId && state.targetCleanerId !== state.originalCleanerId);
+
+  if (!timeChanged && !cleanerChanged) {
+    state.el.style.left = state.origLeft + 'px';
+    return;
+  }
+
+  var msg = 'Flytta bokning';
+  if (cleanerChanged) {
+    var newMember = _teamMembers.find(function(m) { return m.id === state.targetCleanerId; });
+    msg += ' till ' + (newMember ? (newMember.full_name || newMember.first_name || 'annan') : 'annan städare');
+  }
+  if (timeChanged) msg += ' till kl ' + newTime;
+  msg += '?';
+
+  if (!confirm(msg)) {
+    state.el.style.left = state.origLeft + 'px';
+    return;
+  }
+
+  ganttMoveBooking(state.bookingId, cleanerChanged ? state.targetCleanerId : null, timeChanged ? newTime : null, dateStr);
+}
+
+async function ganttMoveBooking(bookingId, newCleanerId, newTime, newDate) {
+  if (!bookingId) { showToast('Kan inte flytta — saknar boknings-ID'); loadGanttData(); return; }
+
+  var patch = {};
+  if (newCleanerId) {
+    var member = _teamMembers.find(function(m) { return m.id === newCleanerId; });
+    patch.cleaner_id = newCleanerId;
+    if (member) {
+      patch.cleaner_name  = member.full_name || null;
+      patch.cleaner_email = member.email || null;
+      patch.cleaner_phone = member.phone || null;
+    }
+  }
+  if (newTime) patch.booking_time = newTime;
+  if (newDate) patch.booking_date = newDate;
+
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bookingId, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify(patch)
+    });
+    if (res.ok) {
+      showToast('Bokning flyttad!');
+      if (typeof renderTeam === 'function') { try { await renderTeam(); } catch(_) { loadGanttData(); } }
+      else loadGanttData();
+    } else {
+      var err = await res.json().catch(function() { return {}; });
+      // Trigger kan blockera om overlap — visa vänligt fel
+      var errMsg = (err && (err.message || err.hint || err.details)) || 'Kunde inte flytta';
+      if (String(errMsg).indexOf('overlap') !== -1 || String(errMsg).indexOf('no_booking_overlap') !== -1) {
+        showToast('Tiden krockar med annan bokning hos städaren');
+      } else {
+        showToast('Fel: ' + errMsg);
+      }
+      loadGanttData();
+    }
+  } catch(e) {
+    showToast('Nätverksfel: ' + (e.message || e));
+    loadGanttData();
+  }
+}
+
+// ── SMART MANUELL BOKNING ───────────────────────────────────
+
+function ganttCellClick(cleanerId, dateStr, hour) {
+  _mbLat = null; _mbLng = null;
+  var dateInput    = document.getElementById('mb-date');
+  var timeInput    = document.getElementById('mb-time');
+  var cleanerSelect = document.getElementById('mb-cleaner');
+
+  if (dateInput) dateInput.value = dateStr;
+  if (timeInput) timeInput.value = (hour < 10 ? '0' : '') + hour + ':00';
+
+  if (cleanerSelect) {
+    cleanerSelect.innerHTML = (_teamMembers || []).filter(function(m) { return m.is_approved || m.status === 'aktiv'; }).map(function(m) {
+      return '<option value="' + escHtml(m.id) + '"' + (m.id === cleanerId ? ' selected' : '') + '>' + escHtml(m.full_name || '') + ' (' + (m.hourly_rate || 350) + ' kr/h)</option>';
+    }).join('');
+  }
+
+  // Conflict-check
+  var conflicts = _ganttTeamEvents.filter(function(ev) {
+    if (ev.cleaner_id !== cleanerId || evDate(ev.start_at) !== dateStr) return false;
+    var evStartH = evHour(ev.start_at);
+    var evEndH   = evHour(ev.end_at);
+    var evEndM   = evMinute(ev.end_at);
+    var evEndDec = evEndH + evEndM / 60;
+    return hour >= evStartH && hour < evEndDec;
+  });
+
+  var msgEl = document.getElementById('mb-msg');
+  if (conflicts.length > 0 && msgEl) {
+    msgEl.textContent = 'OBS: Denna tid har redan en händelse (' + (conflicts[0].title || conflicts[0].event_type) + ')';
+    msgEl.style.color = '#D97706';
+    msgEl.style.display = 'block';
+  } else if (msgEl) {
+    msgEl.style.display = 'none';
+  }
+
+  updateManualPrice();
+  var modal = document.getElementById('manual-booking-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function ganttWeekDayClick(cleanerId, dateStr) {
+  _ganttMode = 'day';
+  _ganttDate = new Date(dateStr + 'T12:00:00');
+  document.querySelectorAll('#gantt-mode-toggle button').forEach(function(b) { b.classList.remove('active'); });
+  var dayBtn = document.getElementById('gantt-mode-day');
+  if (dayBtn) dayBtn.classList.add('active');
+  loadGanttData();
+}
+
+// ── SJUKDAG ──────────────────────────────────────────────────
+
+async function ganttMarkSick(cleanerId, dateStr) {
+  var member = _teamMembers.find(function(m) { return m.id === cleanerId; });
+  var name = member ? ((member.first_name || member.full_name || '').split(' ')[0] || 'Städaren') : 'Städaren';
+
+  var dayBookings = _ganttTeamEvents.filter(function(ev) {
+    return ev.cleaner_id === cleanerId && evDate(ev.start_at) === dateStr && ev.event_type === 'booking';
+  });
+
+  var msg = name + ' markeras som sjuk ' + dateStr + '.';
+  if (dayBookings.length > 0) msg += '\n\n' + dayBookings.length + ' bokning(ar) behöver omfördelas. Vill du fortsätta?';
+  if (!confirm(msg)) return;
+
+  // 1. Skapa blockering i calendar_events
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/calendar_events', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({
+        cleaner_id: cleanerId,
+        start_at: dateStr + 'T00:00:00Z',
+        end_at:   dateStr + 'T23:59:59Z',
+        event_type: 'blocked',
+        source: 'manual',
+        title: 'Sjuk',
+        is_all_day: true
+      })
+    });
+    if (!res.ok) {
+      var err = await res.json().catch(function() { return {}; });
+      showToast('Kunde inte skapa blockering: ' + (err.message || res.status));
+      return;
+    }
+    showToast(name + ' markerad som sjuk');
+  } catch(e) {
+    showToast('Fel: ' + (e.message || e));
+    return;
+  }
+
+  // 2. Omfördelnings-dialog
+  if (dayBookings.length > 0) {
+    var availableMembers = _teamMembers.filter(function(m) {
+      return m.id !== cleanerId && (m.status === 'aktiv' || m.is_approved);
+    });
+    if (availableMembers.length === 0) {
+      alert('Inga andra tillgängliga städare att omfördela till. Kontakta kunderna manuellt.');
+    } else {
+      dayBookings.forEach(function(ev) {
+        if (ev.booking_id && typeof showReassignPicker === 'function') {
+          showReassignPicker(ev.booking_id, cleanerId);
+        }
+      });
+    }
+  }
+
+  loadGanttData();
+}
+
+// ── TOOLTIP ──────────────────────────────────────────────────
+
+function ganttShowTooltip(e, el) {
+  var evId = el.dataset.eventId;
+  var ev = _ganttTeamEvents.find(function(x) { return x.id === evId; });
+  if (!ev) return;
+
+  if (!_ganttTooltipEl) {
+    _ganttTooltipEl = document.createElement('div');
+    _ganttTooltipEl.className = 'gantt-tooltip';
+    document.body.appendChild(_ganttTooltipEl);
+  }
+
+  var booking = ev.booking_id ? (data_teamBookings || []).find(function(b) { return b.id === ev.booking_id; }) : null;
+  var html = '<div style="font-weight:600;margin-bottom:4px">' + escHtml(ev.title || ev.event_type) + '</div>';
+  html += '<div>' + evTime(ev.start_at) + ' – ' + evTime(ev.end_at) + '</div>';
+  if (ev.address) html += '<div style="opacity:.7">&#128205; ' + escHtml(ev.address) + '</div>';
+  if (booking) {
+    html += '<div style="margin-top:4px;border-top:1px solid rgba(255,255,255,.2);padding-top:4px">';
+    html += '<div>Kund: ' + escHtml(booking.customer_name || '') + '</div>';
+    if (booking.total_price) html += '<div>Pris: ' + booking.total_price + ' kr</div>';
+    html += '</div>';
+  }
+  if (ev.source && ev.source !== 'spick') html += '<div style="opacity:.6;margin-top:4px">Källa: ' + escHtml(ev.source) + '</div>';
+
+  _ganttTooltipEl.innerHTML = html;
+  _ganttTooltipEl.style.display = 'block';
+  _ganttTooltipEl.style.left = Math.min(e.clientX + 12, window.innerWidth - 240) + 'px';
+  _ganttTooltipEl.style.top  = (e.clientY + 12) + 'px';
+}
+
+function ganttHideTooltip() {
+  if (_ganttTooltipEl) _ganttTooltipEl.style.display = 'none';
+}
+
+// ── LEGACY-WRAPPERS (kompatibilitet med befintliga anrop) ────
+var _calWeekStart = null;
+
+function calInit() {
+  _ganttDate = new Date();
+  loadGanttData();
+}
+
+function calPrevWeek() { ganttNav(-1); }
+function calNextWeek() { ganttNav(1); }
+function calGoToday()  { ganttToday(); }
+
+function renderTeamCalendar() {
+  // Legacy wrapper — rendering sker nu via Gantt-motorn
+  if (_ganttTeamEvents.length > 0 || _ganttTeamAvail.length > 0) {
+    renderGantt();
+    return;
+  }
+  loadGanttData();
 }
 
 // Store team bookings globally for calendar
