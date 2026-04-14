@@ -464,6 +464,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .gantt-event.klar,.gantt-event.completed{background:#F3F4F6;border-color:#9CA3AF;color:#6B7280}
 .gantt-event.blocked{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
 .gantt-event.external{background:#E0E7FF;border-color:#6366F1;color:#3730A3;cursor:default}
+.gantt-event.assist{background:#EDE9FE;border-color:#7C3AED;color:#5B21B6;font-style:italic}
 
 .gantt-avail-stripe{position:absolute;top:0;bottom:0;background:rgba(15,110,86,.04);z-index:0;pointer-events:none;border-left:1px dashed rgba(15,110,86,.12)}
 .gantt-now-line{position:absolute;top:0;bottom:0;width:2px;background:var(--spick-500);z-index:4;pointer-events:none}
@@ -1644,6 +1645,16 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
           </div>
           <div class="bd-edit-row">
             <select id="bd-edit-cleaner" style="flex:2"></select>
+          </div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-100)">
+            <div style="font-size:.78rem;font-weight:600;margin-bottom:6px">Kollegor p&aring; detta jobb</div>
+            <div id="bd-assistants"></div>
+            <div class="bd-edit-row">
+              <select id="bd-add-assistant" style="flex:2">
+                <option value="">+ L&auml;gg till kollega...</option>
+              </select>
+              <button onclick="bdAddAssistant()" style="padding:6px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">L&auml;gg till</button>
+            </div>
           </div>
           <div style="margin-top:8px">
             <button onclick="saveBDChanges()" class="bd-btn-primary" style="width:100%;padding:10px;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;color:#fff;background:var(--g)">Spara &auml;ndringar</button>
@@ -6416,6 +6427,30 @@ function openBD(bookingId, eventId) {
       return '<option value="' + m.id + '"' + (m.id === currentCleanerId ? ' selected' : '') + '>' +
         escHtml(m.full_name || '') + ' (' + (m.hourly_rate || 350) + ' kr/h)</option>';
     }).join('');
+
+    // Ladda befintliga assistenter (calendar_events med samma tid + 'assist' type)
+    var assistantSelect = document.getElementById('bd-add-assistant');
+    var assistantsDiv = document.getElementById('bd-assistants');
+
+    // Fyll dropdown med kollegor (exklusive den redan tilldelade)
+    assistantSelect.innerHTML = '<option value="">+ Lägg till kollega...</option>' +
+      (_teamMembers || []).filter(function(m) {
+        return m.id !== currentCleanerId && (m.is_approved || m.status === 'aktiv');
+      }).map(function(m) {
+        return '<option value="' + m.id + '">' + escHtml(m.full_name || '') + '</option>';
+      }).join('');
+
+    // Visa befintliga assistenter
+    var assistEvents = _ganttTeamEvents.filter(function(ae) {
+      return ae.event_type === 'assist' && ae.title && ae.title.indexOf(bookingId) !== -1;
+    });
+    assistantsDiv.innerHTML = assistEvents.map(function(ae) {
+      var member = _teamMembers.find(function(m) { return m.id === ae.cleaner_id; });
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:.82rem">' +
+        '<span>' + escHtml(member ? member.full_name : 'Okänd') + '</span>' +
+        '<button onclick="bdRemoveAssistant(\'' + ae.id + '\')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:.9rem">&times;</button>' +
+        '</div>';
+    }).join('') || '<div style="font-size:.78rem;color:var(--m);font-style:italic">Inga kollegor tillagda</div>';
   } else {
     editSection.style.display = 'none';
   }
@@ -6550,6 +6585,62 @@ async function bdMarkDone() {
   } catch(e) {
     showToast('Fel: ' + e.message);
   }
+}
+
+async function bdAddAssistant() {
+  var select = document.getElementById('bd-add-assistant');
+  var assistCleanerId = select.value;
+  if (!assistCleanerId || !_bdBookingId) return;
+
+  var booking = (data_teamBookings || []).find(function(b) { return b.id === _bdBookingId; });
+  if (!booking) { showToast('Bokning hittades inte'); return; }
+
+  var member = _teamMembers.find(function(m) { return m.id === assistCleanerId; });
+
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+    var startAt = booking.booking_date + 'T' + (booking.booking_time || '09:00') + ':00Z';
+    var endH = parseInt((booking.booking_time || '09:00').slice(0,2)) + (booking.booking_hours || 3);
+    var endAt = booking.booking_date + 'T' + (endH < 10 ? '0' : '') + endH + ':00:00Z';
+
+    var res = await fetch(SUPA_URL + '/rest/v1/calendar_events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        cleaner_id: assistCleanerId,
+        start_at: startAt,
+        end_at: endAt,
+        event_type: 'assist',
+        source: 'manual',
+        title: 'Assistent: ' + (booking.service_type || 'Städning') + ' [' + _bdBookingId + ']',
+        address: booking.customer_address || ''
+      })
+    });
+    if (res.ok) {
+      showToast((member ? member.full_name : 'Kollega') + ' tillagd!');
+      await loadGanttData();
+      openBD(_bdBookingId, null); // refresh panelen
+    } else {
+      var err = await res.json().catch(function() { return {}; });
+      showToast('Fel: ' + (err.message || 'Kunde inte lägga till'));
+    }
+  } catch(e) { showToast('Fel: ' + e.message); }
+}
+
+async function bdRemoveAssistant(eventId) {
+  if (!confirm('Ta bort kollega från detta jobb?')) return;
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+    await fetch(SUPA_URL + '/rest/v1/calendar_events?id=eq.' + eventId, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' }
+    });
+    showToast('Kollega borttagen');
+    await loadGanttData();
+    if (_bdBookingId) openBD(_bdBookingId, null);
+  } catch(e) { showToast('Fel: ' + e.message); }
 }
 
 // ── SMART MANUELL BOKNING ───────────────────────────────────
