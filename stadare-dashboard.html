@@ -1550,8 +1550,9 @@ body{top:0!important}
               <div style="font-size:1rem;font-weight:700;color:#0F6E56" id="team-time-saved">0h</div>
             </div>
           </div>
+          <div id="team-stats-empty-hint" style="display:none;text-align:center;padding:12px;color:var(--m);font-size:.82rem;margin-top:6px">Statistiken uppdateras automatiskt efter första bokningen</div>
           <div style="margin-top:10px;padding:10px;background:#F0FAF6;border-radius:8px;text-align:center">
-            <div style="font-size:.75rem;color:#065F46">✅ Spick hanterar bokning, betalning, RUT och kundkommunikation — <strong>du fokuserar på städningen</strong></div>
+            <div style="font-size:.75rem;color:#065F46;line-height:1.5;white-space:normal">✅ Spick sköter administrationen — <strong>ni fokuserar på städningen</strong></div>
           </div>
         </div>
 
@@ -2204,7 +2205,7 @@ async function init() {
                 var adminBanner = document.createElement('div');
                 adminBanner.id = 'admin-view-banner';
                 adminBanner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;font-weight:600;color:#92400E';
-                adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 4px">' + escHtml(_adminPreloadedCleaner.full_name || '') + '</strong>s dashboard</span>' +
+                adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 0 0 4px">' + escHtml(_adminPreloadedCleaner.full_name || '') + '</strong>s dashboard</span>' +
                   '<a href="admin.html" style="padding:6px 14px;background:#92400E;color:#fff;border-radius:8px;text-decoration:none;font-size:.78rem">← Tillbaka till admin</a>';
                 document.body.prepend(adminBanner);
               }
@@ -2673,7 +2674,7 @@ async function loadCleanerByEmail(email, authUserId) {
     var adminBanner = document.createElement('div');
     adminBanner.id = 'admin-view-banner';
     adminBanner.style.cssText = 'position:sticky;top:0;z-index:999;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;font-weight:600;color:#92400E';
-    adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 4px">' + escHtml(cleaner.full_name || '') + '</strong>s dashboard</span>' +
+    adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 0 0 4px">' + escHtml(cleaner.full_name || '') + '</strong>s dashboard</span>' +
       '<a href="admin.html" style="padding:6px 14px;background:#92400E;color:#fff;border-radius:8px;text-decoration:none;font-size:.78rem">← Tillbaka till admin</a>';
     document.body.prepend(adminBanner);
   }
@@ -5129,7 +5130,7 @@ function switchTab(tab) {
 
   if (tab === 'inst') { loadMyInvoices(); }
 
-  if (tab === 'team') { renderTeam(); if (typeof loadTasks === 'function') loadTasks(); }
+  if (tab === 'team') { renderTeam(); if (typeof loadTasks === 'function') loadTasks(); if (typeof loadVdInvoices === 'function') loadVdInvoices(); }
 }
 
 function showToast(msg) {
@@ -5361,11 +5362,10 @@ async function renderTeam() {
   renderCompanyPermissions(window._companyConfig);
   renderPerCleanerPermissions(_teamMembers);
 
-  const nonOwner = _teamMembers.filter(m => m.id !== cleaner.id);
+  const nonOwner = _teamMembers.filter(m => m.id !== cleaner.id && !m.is_company_owner);
   document.getElementById('team-count').textContent = nonOwner.length + ' teammedlem' + (nonOwner.length !== 1 ? 'mar' : '');
 
-  document.getElementById('team-list').innerHTML = _teamMembers.length ? _teamMembers.map(m => {
-    const isOwner = m.id === cleaner.id;
+  document.getElementById('team-list').innerHTML = nonOwner.length ? nonOwner.map(m => {
     const isPaused = m.status === 'inactive' || m.is_active === false;
     const isOnboarding = m.status === 'onboarding';
     const statusDot = isOnboarding
@@ -5381,8 +5381,7 @@ async function renderTeam() {
     return `<div class="tm-member-card ${isPaused ? 'paused' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <div style="font-weight:600;font-size:.92rem">${escHtml(m.full_name || m.first_name + ' ' + (m.last_name||''))}
-            ${isOwner ? '<span style="font-size:11px;background:var(--spick-50);padding:2px 8px;border-radius:var(--radius-full);color:var(--spick-600);font-weight:600;margin-left:6px">Ägare</span>' : ''}</div>
+          <div style="font-weight:600;font-size:.92rem">${escHtml(m.full_name || m.first_name + ' ' + (m.last_name||''))}</div>
           <div style="font-size:.78rem;color:var(--gray-500);margin-top:2px">${escHtml(m.email || '')}${m.phone ? ' · ' + escHtml(m.phone) : ''}</div>
           <div style="margin-top:4px">${statusDot} · ${m.completed_jobs || 0} uppdrag · ${m.hourly_rate || 350} kr/h</div>
           ${svcs ? '<div style="margin-top:6px">' + svcs + '</div>' : ''}
@@ -5390,10 +5389,10 @@ async function renderTeam() {
           ${m.bio ? '<div style="font-size:.78rem;color:var(--gray-500);margin-top:4px;font-style:italic">"' + escHtml(m.bio) + '"</div>' : ''}
         </div>
       </div>
-      ${!isOwner ? `<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button onclick="editTeamMember('${m.id}')" style="flex:1;padding:10px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Redigera</button>
         <button onclick="toggleMemberStatus('${m.id}','${isPaused || isOnboarding ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused || isOnboarding ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused || isOnboarding ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused || isOnboarding ? 'Aktivera' : 'Pausa'}</button>
-      </div>` : ''}
+      </div>
     </div>`;
   }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
 
@@ -5479,9 +5478,14 @@ async function renderTeam() {
     // Estimated time saved: 15 min per booking (admin, invoicing, scheduling)
     var timeSaved = Math.round(totalJobs * 0.25 * 10) / 10;
     document.getElementById('team-time-saved').textContent = timeSaved + 'h';
+    // Tom-statistik-hint: visa bara om ALLA värden är 0
+    var statsEmptyHint = document.getElementById('team-stats-empty-hint');
+    if (statsEmptyHint) statsEmptyHint.style.display = (totalEarn === 0 && totalJobs === 0 && rutTotal === 0 && timeSaved === 0) ? 'block' : 'none';
   } else {
     // No members — show empty states
     document.getElementById('team-bookings-list').innerHTML = '<div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">📋</div><p style="font-size:.85rem;margin:0">Inga bokningar ännu</p></div>';
+    var statsEmptyHint2 = document.getElementById('team-stats-empty-hint');
+    if (statsEmptyHint2) statsEmptyHint2.style.display = 'block';
   }
 
   // Fetch team reviews
@@ -8481,8 +8485,15 @@ async function loadVdInvoices() {
   // Generera-knappen är en admin-operation — dölj för vanliga städare (inkl. VD:er)
   var genBtn = document.getElementById('generate-invoices-btn');
   if (genBtn) genBtn.style.display = _isAdminView ? '' : 'none';
+  // Timeout-vakt: om anropet hänger i >8s visa tom-tillstånd istf "Laddar..."
+  var _loadTimeout = setTimeout(function(){
+    if (el && el.textContent && el.textContent.indexOf('Laddar') !== -1) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
+    }
+  }, 8000);
   try {
     var res = await R.select('self_invoices', 'select=*&order=period_start.desc,seller_name.asc&limit=100');
+    clearTimeout(_loadTimeout);
     var invoices = res.data || [];
     if (!invoices || !invoices.length) {
       el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
@@ -8510,6 +8521,7 @@ async function loadVdInvoices() {
     html += '</tbody></table></div>';
     el.innerHTML = html;
   } catch(e) {
+    clearTimeout(_loadTimeout);
     console.error('loadVdInvoices error:', e);
     el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
   }
