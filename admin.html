@@ -170,6 +170,61 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 .stat-row:last-child{border-bottom:none}
 .stat-row .lbl{color:var(--m)}
 .stat-row .val{font-weight:600}
+
+/* ── MORGONDASHBOARD ── */
+.action-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:20px}
+.action-card{background:var(--w);border-radius:14px;padding:16px 20px;border-left:4px solid var(--border);box-shadow:var(--shadow)}
+.action-card.urgent{border-left-color:var(--r);background:#FEF2F2}
+.action-card.warning{border-left-color:var(--y);background:#FFFBEB}
+.action-card.info{border-left-color:#2563EB;background:#EFF6FF}
+.action-card.success{border-left-color:var(--g);background:var(--gr)}
+.action-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.action-card-title{font-weight:600;font-size:.88rem}
+.action-card-count{font-size:1.5rem;font-weight:700}
+.action-card-count.red{color:var(--r)}
+.action-card-count.yellow{color:#D97706}
+.action-card-count.blue{color:#2563EB}
+.action-card-count.green{color:var(--g)}
+.action-card-desc{font-size:.78rem;color:var(--m);margin-bottom:10px;line-height:1.5}
+.action-card-items{font-size:.82rem;max-height:120px;overflow-y:auto}
+.action-card-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.05)}
+.action-card-item:last-child{border-bottom:none}
+.action-btn{padding:4px 12px;border:none;border-radius:8px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.action-btn.green{background:var(--g);color:#fff}
+.action-btn.red{background:#FEE2E2;color:#DC2626}
+.action-btn.blue{background:#DBEAFE;color:#1E40AF}
+.action-btn.gray{background:var(--bg);color:var(--b)}
+
+/* Dagens tidslinje */
+.today-timeline{background:var(--w);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+.today-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.today-header h3{font-size:.95rem;font-weight:600}
+.today-summary{display:flex;gap:16px;font-size:.78rem;color:var(--m)}
+.today-summary strong{color:var(--b)}
+.tl-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.85rem}
+.tl-row:last-child{border-bottom:none}
+.tl-time{font-weight:600;color:var(--g);min-width:50px;font-variant-numeric:tabular-nums}
+.tl-cleaner{min-width:110px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-customer{flex:1;color:var(--m)}
+.tl-service{font-size:.75rem;background:var(--gr);color:var(--g);padding:2px 8px;border-radius:6px;font-weight:500}
+.tl-status{font-size:.72rem;padding:2px 8px;border-radius:6px;font-weight:600}
+.tl-status.paid{background:#D1FAE5;color:#065F46}
+.tl-status.pending{background:#FEF3C7;color:#92400E}
+.tl-status.cancelled{background:#FEE2E2;color:#DC2626}
+.tl-empty{text-align:center;padding:20px;color:var(--m);font-size:.88rem}
+
+/* Onboarding pipeline */
+.onboard-pipeline{background:var(--w);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+.onboard-pipeline h3{font-size:.95rem;font-weight:600;margin-bottom:14px}
+.pipeline-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.82rem}
+.pipeline-row:last-child{border-bottom:none}
+.pipeline-name{min-width:140px;font-weight:500}
+.pipeline-steps{display:flex;gap:4px;flex:1}
+.pipeline-step{padding:3px 10px;border-radius:6px;font-size:.7rem;font-weight:600}
+.pipeline-step.done{background:#D1FAE5;color:#065F46}
+.pipeline-step.current{background:#FEF3C7;color:#92400E;border:1.5px solid #F59E0B}
+.pipeline-step.todo{background:var(--bg);color:var(--m)}
+.pipeline-action{margin-left:auto}
 </style>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script src="js/config.js"></script>
@@ -292,8 +347,17 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="kpi"><div class="kpi-val" id="kpi-rating">–</div><div class="kpi-lbl">Snittbetyg</div></div>
         <div class="kpi red"><div class="kpi-val" id="kpi-apps">–</div><div class="kpi-lbl">Ansökningar att granska</div></div>
       </div>
-      <!-- Alerts -->
-      <div id="admin-alert-row" style="margin-bottom:16px"></div>
+      <!-- KRÄVER ÅTGÄRD -->
+      <div class="action-cards" id="action-cards"></div>
+
+      <!-- DAGENS SCHEMA -->
+      <div class="today-timeline" id="today-timeline"></div>
+
+      <!-- ONBOARDING PIPELINE -->
+      <div class="onboard-pipeline" id="onboard-pipeline" style="display:none">
+        <h3>Onboarding-pipeline</h3>
+        <div id="pipeline-rows"></div>
+      </div>
 
       <!-- Snabbåtgärder -->
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -1533,16 +1597,154 @@ document.addEventListener('click', e => {
 // ALERTS
 // ═══════════════════════════════════════════════════════════════
 function renderAlerts() {
-  const el = document.getElementById('admin-alert-row');
+  renderActionCards();
+  renderTodayTimeline();
+  renderOnboardPipeline();
+}
+
+function renderActionCards() {
+  var el = document.getElementById('action-cards');
   if (!el) return;
-  const alerts = [];
-  const unpaidAssigned = data.bookings.filter(b => b.payment_status === 'paid' && !b.cleaner_id);
-  const pending = data.bookings.filter(b => b.payment_status === 'pending');
-  const newApps = data.applications.filter(a => a.status === 'pending' || !a.status);
-  if (unpaidAssigned.length) alerts.push(`<div class="alert info" style="cursor:pointer" onclick="showPage('bookings')">⚠️ <strong>${unpaidAssigned.length}</strong> betalda bokningar saknar städare – <u>Tilldela nu</u></div>`);
-  if (pending.length > 3) alerts.push(`<div class="alert" style="background:#FEF3C7;color:#92400E">💳 <strong>${pending.length}</strong> bokningar väntar på betalning</div>`);
-  if (newApps.length) alerts.push(`<div class="alert info" style="cursor:pointer" onclick="showPage('applications')">📋 <strong>${newApps.length}</strong> nya ansökningar att granska</div>`);
-  el.innerHTML = alerts.join('');
+  var cards = [];
+  var today = new Date().toISOString().split('T')[0];
+
+  // 1. Nya ansökningar (URGENT)
+  var newApps = data.applications.filter(function(a) { return a.status === 'pending' || !a.status; });
+  if (newApps.length) {
+    var items = newApps.slice(0, 4).map(function(a) {
+      return '<div class="action-card-item"><span>' + escHtml(a.full_name || a.email || '?') +
+        (a.is_company ? ' <span style="font-size:.65rem;background:#DBEAFE;color:#1E40AF;padding:1px 5px;border-radius:4px">Företag</span>' : '') +
+        '</span><button class="action-btn green" onclick="showPage(\'applications\')">Granska</button></div>';
+    }).join('');
+    cards.push('<div class="action-card urgent"><div class="action-card-header"><div class="action-card-title">Nya ansökningar</div><div class="action-card-count red">' + newApps.length + '</div></div>' +
+      '<div class="action-card-desc">Väntar på ditt godkännande</div><div class="action-card-items">' + items + '</div></div>');
+  }
+
+  // 2. Betalda utan städare (URGENT)
+  var unassigned = data.bookings.filter(function(b) { return b.payment_status === 'paid' && !b.cleaner_id && b.status !== 'cancelled' && b.status !== 'avbokad'; });
+  if (unassigned.length) {
+    var items2 = unassigned.slice(0, 4).map(function(b) {
+      return '<div class="action-card-item"><span>' + escHtml(b.customer_name || '?') + ' · ' + (b.booking_date || '?') + '</span><button class="action-btn blue" onclick="showPage(\'bookings\')">Tilldela</button></div>';
+    }).join('');
+    cards.push('<div class="action-card urgent"><div class="action-card-header"><div class="action-card-title">Saknar städare</div><div class="action-card-count red">' + unassigned.length + '</div></div>' +
+      '<div class="action-card-desc">Betalda bokningar utan tilldelad städare</div><div class="action-card-items">' + items2 + '</div></div>');
+  }
+
+  // 3. Väntande betalningar >24h (WARNING)
+  var staleBookings = data.bookings.filter(function(b) {
+    if (b.payment_status !== 'pending') return false;
+    var created = new Date(b.created_at).getTime();
+    return (Date.now() - created) > 86400000;
+  });
+  if (staleBookings.length) {
+    cards.push('<div class="action-card warning"><div class="action-card-header"><div class="action-card-title">Obetalde >24h</div><div class="action-card-count yellow">' + staleBookings.length + '</div></div>' +
+      '<div class="action-card-desc">Bokningar där kunden inte betalat inom 24 timmar</div></div>');
+  }
+
+  // 4. Onboarding ofärdiga (INFO)
+  var onboarding = data.cleaners.filter(function(c) {
+    return c.is_approved && (c.status === 'onboarding' || c.stripe_onboarding_status !== 'complete');
+  });
+  if (onboarding.length) {
+    var items4 = onboarding.slice(0, 3).map(function(c) {
+      var missing = [];
+      if (c.stripe_onboarding_status !== 'complete') missing.push('Stripe');
+      if (!c.has_fskatt) missing.push('F-skatt');
+      return '<div class="action-card-item"><span>' + escHtml(c.full_name || '?') + ' — saknar: ' + missing.join(', ') + '</span><button class="action-btn gray" onclick="showPage(\'onboarding\')">Visa</button></div>';
+    }).join('');
+    cards.push('<div class="action-card info"><div class="action-card-header"><div class="action-card-title">Ofärdig onboarding</div><div class="action-card-count blue">' + onboarding.length + '</div></div>' +
+      '<div class="action-card-desc">Städare som behöver slutföra sin profil</div><div class="action-card-items">' + items4 + '</div></div>');
+  }
+
+  // 5. Allt klart (SUCCESS) — visa om inga andra kort
+  if (!cards.length) {
+    cards.push('<div class="action-card success"><div class="action-card-header"><div class="action-card-title">Allt under kontroll</div><div class="action-card-count green">✓</div></div>' +
+      '<div class="action-card-desc">Inga ärenden som kräver din uppmärksamhet just nu.</div></div>');
+  }
+
+  el.innerHTML = cards.join('');
+}
+
+function renderTodayTimeline() {
+  var el = document.getElementById('today-timeline');
+  if (!el) return;
+  var today = new Date().toISOString().split('T')[0];
+  var todayBookings = data.bookings.filter(function(b) {
+    return b.booking_date === today && b.status !== 'cancelled' && b.status !== 'avbokad';
+  }).sort(function(a, b) {
+    return (a.booking_time || '09:00').localeCompare(b.booking_time || '09:00');
+  });
+
+  var totalHours = todayBookings.reduce(function(s, b) { return s + (b.booking_hours || 3); }, 0);
+  var totalRevenue = todayBookings.filter(function(b) { return b.payment_status === 'paid'; }).reduce(function(s, b) { return s + (b.total_price || 0); }, 0);
+  var paidCount = todayBookings.filter(function(b) { return b.payment_status === 'paid'; }).length;
+
+  var html = '<div class="today-header"><h3>Dagens schema — ' + new Date().toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long'}) + '</h3>' +
+    '<div class="today-summary"><span><strong>' + todayBookings.length + '</strong> bokningar</span><span><strong>' + totalHours + 'h</strong> arbete</span><span><strong>' + Math.round(totalRevenue).toLocaleString('sv') + ' kr</strong> intäkt</span></div></div>';
+
+  if (!todayBookings.length) {
+    html += '<div class="tl-empty">Inga bokningar idag. Bra tillfälle att jobba med rekrytering och marknadsföring.</div>';
+  } else {
+    todayBookings.forEach(function(b) {
+      var cleanerName = b.cleaner_name || '⚠️ Ej tilldelad';
+      var time = (b.booking_time || '09:00').slice(0, 5);
+      var statusClass = b.payment_status === 'paid' ? 'paid' : b.payment_status === 'pending' ? 'pending' : 'cancelled';
+      var statusLabel = b.payment_status === 'paid' ? 'Betald' : b.payment_status === 'pending' ? 'Väntar' : b.payment_status;
+      html += '<div class="tl-row">' +
+        '<span class="tl-time">' + time + '</span>' +
+        '<span class="tl-cleaner">' + escHtml(cleanerName) + '</span>' +
+        '<span class="tl-customer">' + escHtml(b.customer_name || '?') + ' · ' + escHtml(b.customer_address || '').split(',')[0] + '</span>' +
+        '<span class="tl-service">' + escHtml(b.service_type || 'Städning') + ' ' + (b.booking_hours || 3) + 'h</span>' +
+        '<span class="tl-status ' + statusClass + '">' + statusLabel + '</span>' +
+        '</div>';
+    });
+  }
+  el.innerHTML = html;
+}
+
+function renderOnboardPipeline() {
+  var wrap = document.getElementById('onboard-pipeline');
+  var el = document.getElementById('pipeline-rows');
+  if (!wrap || !el) return;
+
+  var pipeline = data.cleaners.filter(function(c) {
+    return c.is_approved && (c.status === 'onboarding' || c.stripe_onboarding_status !== 'complete' || !c.has_fskatt);
+  });
+
+  if (!pipeline.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  var html = pipeline.map(function(c) {
+    var steps = [
+      { label: 'Godkänd', done: true },
+      { label: 'F-skatt', done: !!c.has_fskatt },
+      { label: 'Stripe', done: c.stripe_onboarding_status === 'complete' },
+      { label: 'Profil', done: !!(c.bio && c.services && c.services.length > 0 && c.home_address) },
+      { label: 'Aktiv', done: c.status === 'aktiv' }
+    ];
+    var currentIdx = steps.findIndex(function(s) { return !s.done; });
+
+    var stepsHtml = steps.map(function(s, i) {
+      var cls = s.done ? 'done' : (i === currentIdx ? 'current' : 'todo');
+      return '<span class="pipeline-step ' + cls + '">' + (s.done ? '✓ ' : '') + s.label + '</span>';
+    }).join('');
+
+    var nextAction = '';
+    if (currentIdx >= 0) {
+      var stepName = steps[currentIdx].label;
+      if (stepName === 'Stripe') nextAction = '<button class="action-btn blue" onclick="showPage(\'onboarding\')">Skicka Stripe-länk</button>';
+      else if (stepName === 'F-skatt') nextAction = '<button class="action-btn gray" onclick="showPage(\'cleaners\')">Kontakta</button>';
+      else nextAction = '<button class="action-btn gray" onclick="showPage(\'onboarding\')">Visa</button>';
+    }
+
+    return '<div class="pipeline-row">' +
+      '<span class="pipeline-name">' + escHtml(c.full_name || '?') + '</span>' +
+      '<div class="pipeline-steps">' + stepsHtml + '</div>' +
+      '<div class="pipeline-action">' + nextAction + '</div>' +
+      '</div>';
+  }).join('');
+
+  el.innerHTML = html;
 }
 
 // Begär notis-tillstånd
