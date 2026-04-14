@@ -6577,7 +6577,6 @@ function openBD(bookingId, eventId) {
   if (booking) {
     var isPending = rawStatus === 'pending_confirmation';
     var isConfirmed = rawStatus === 'confirmed' || rawStatus === 'bekräftad';
-    var isActive = isPending || isConfirmed;
 
     if (isPending) {
       actionsHtml += '<button class="bd-btn-primary" onclick="bdAccept()">Acceptera</button>';
@@ -6586,7 +6585,7 @@ function openBD(bookingId, eventId) {
     if (isConfirmed) {
       actionsHtml += '<button class="bd-btn-primary" onclick="bdMarkDone()">Markera klar</button>';
     }
-    if (isActive) {
+    if (isPending || isConfirmed) {
       actionsHtml += '<button class="bd-btn-danger" onclick="bdCancel()">Avboka</button>';
     }
   }
