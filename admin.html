@@ -2995,17 +2995,49 @@ async function saveAdminPrices(cleanerId) {
 }
 
 async function openCleanerDashboard(id) {
-  // Lagra admin-token i localStorage så att den är tillgänglig i alla flikar
-  // på samma origin — låter stadare-dashboard läsa token direkt utan att
-  // vänta på SB.auth.getSession() (som kan trigga refresh på kalla sessioner).
   try {
-    const s = await SB.auth.getSession();
-    const t = s.data.session ? s.data.session.access_token : '';
-    const em = s.data.session ? s.data.session.user.email : '';
-    localStorage.setItem('spick_admin_token', t);
-    localStorage.setItem('spick_admin_email', em);
-  } catch(e) { console.warn('getSession before dashboard-open failed:', e); }
-  window.open('stadare-dashboard.html?view_as=' + encodeURIComponent(id), '_blank');
+    // Hämta token från befintlig admin-session utan getSession()
+    var token = '';
+    var email = '';
+
+    // Metod 1: Prova localStorage direkt (Supabase lagrar session här)
+    var storageKey = Object.keys(localStorage).find(function(k) { return k.includes('auth-token') || k.includes('supabase.auth'); });
+    if (storageKey) {
+      try {
+        var stored = JSON.parse(localStorage.getItem(storageKey));
+        if (stored && stored.access_token) {
+          token = stored.access_token;
+          email = stored.user ? stored.user.email : '';
+        }
+      } catch(e) {}
+    }
+
+    // Metod 2: Fallback — sök alla localStorage-nycklar
+    if (!token) {
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        try {
+          var val = JSON.parse(localStorage.getItem(key));
+          if (val && val.access_token && val.user && val.user.email) {
+            token = val.access_token;
+            email = val.user.email;
+            break;
+          }
+        } catch(e) {}
+      }
+    }
+
+    if (!token) {
+      alert('Kunde inte hämta admin-session. Prova ladda om sidan.');
+      return;
+    }
+
+    localStorage.setItem('spick_admin_token', token);
+    localStorage.setItem('spick_admin_email', email);
+    window.open('stadare-dashboard.html?view_as=' + id, '_blank');
+  } catch(e) {
+    alert('Fel: ' + e.message);
+  }
 }
 
 function showCleanerDetail(id) {
