@@ -82,6 +82,17 @@ serve(async (req) => {
 });
 
 async function processSubscription(supabase: any, sub: any) {
+  // Dubbel-körningsskydd: verifiera att next_booking_date fortfarande matchar
+  const { data: fresh } = await supabase
+    .from("subscriptions")
+    .select("next_booking_date")
+    .eq("id", sub.id)
+    .single();
+
+  if (!fresh || fresh.next_booking_date !== sub.next_booking_date) {
+    return { status: "skipped", reason: "already processed" };
+  }
+
   // 1. Hitta nästa tillgänglig tid
   const bookingDate = sub.next_booking_date;
   const bookingTime = sub.preferred_time || "09:00";
