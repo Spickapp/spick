@@ -1798,6 +1798,15 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
         </div>
       </div>
 
+      <!-- Fält 7b: Språk -->
+      <div class="tm-form-group">
+        <label>Språk</label>
+        <div id="team-lang-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;min-height:28px"></div>
+        <select id="team-lang-select" class="tm-input" onchange="addTeamLang(this)" style="padding:8px 12px">
+          <option value="">+ Lägg till språk...</option>
+        </select>
+      </div>
+
       <!-- Fält 8: Husdjur -->
       <div class="tm-form-group">
         <label>Husdjur</label>
@@ -5560,7 +5569,15 @@ async function addTeamMember() {
       fskatt_confirmed: true,
       gdpr_consent: true,
       gdpr_consent_at: new Date().toISOString(),
-      marketing_consent: false
+      marketing_consent: false,
+      // ── GAP 2: Koordinater ──
+      home_address: address || cleaner.home_address || '',
+      home_lat: sameArea ? cleaner.home_lat : (_tmLat || null),
+      home_lng: sameArea ? cleaner.home_lng : (_tmLng || null),
+      // ── GAP 4: Språk ──
+      languages: _teamSelectedLangs || [],
+      // ── GAP 5: Husdjurspreferens ──
+      pet_pref: petPref || 'ok'
     };
 
     var res = await fetch(SUPA_URL + '/rest/v1/cleaner_applications', {
@@ -5653,6 +5670,8 @@ function resetTeamModal() {
   const btn = document.getElementById('add-member-btn');
   btn.disabled = false;
   btn.textContent = 'Spara ändringar';
+  _teamSelectedLangs = ['Svenska'];
+  renderTeamLangs();
 }
 
 async function toggleOwnerOnly(isOwner) {
@@ -7138,6 +7157,39 @@ function recalcTeamRate() {
 function setTeamPet(btn) {
   document.querySelectorAll('#team-pet-options .tm-chip').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+// ── Team member language picker ──
+var _teamAllLangs = ['Svenska','English','العربية','Français','Deutsch','فارسی','Suomi','Soomaali','ትግርኛ','Türkçe','Українська','Polski','Español','Română','Bosanski','Hrvatski','Srpski'];
+var _teamSelectedLangs = ['Svenska'];
+
+function renderTeamLangs() {
+  var c = document.getElementById('team-lang-chips');
+  if (!c) return;
+  c.innerHTML = _teamSelectedLangs.map(function(l) {
+    return '<span style="background:var(--spick-50);color:var(--spick-600);padding:4px 10px;border-radius:8px;font-size:.78rem;font-weight:500;display:flex;align-items:center;gap:4px">' + l + ' <span onclick="removeTeamLang(\'' + l.replace(/'/g, "\\'") + '\')" style="cursor:pointer;opacity:.6;font-size:.9rem">x</span></span>';
+  }).join('');
+  var sel = document.getElementById('team-lang-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">+ Lägg till språk...</option>';
+  _teamAllLangs.forEach(function(l) {
+    if (_teamSelectedLangs.indexOf(l) === -1) {
+      sel.innerHTML += '<option value="' + l + '">' + l + '</option>';
+    }
+  });
+}
+
+function addTeamLang(el) {
+  if (el.value && _teamSelectedLangs.indexOf(el.value) === -1) {
+    _teamSelectedLangs.push(el.value);
+    renderTeamLangs();
+  }
+  el.value = '';
+}
+
+function removeTeamLang(lang) {
+  _teamSelectedLangs = _teamSelectedLangs.filter(function(l) { return l !== lang; });
+  renderTeamLangs();
 }
 
 // Team member address autocomplete

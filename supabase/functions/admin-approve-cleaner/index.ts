@@ -150,6 +150,7 @@ serve(async (req) => {
         stripe_onboarding_status: "pending",
         has_fskatt: !!app.fskatt_confirmed,
         fskatt_needs_help: !!app.fskatt_needs_help,
+        pet_pref: app.pet_pref || "ok",
 
         created_at: new Date().toISOString(),
       };
@@ -197,6 +198,46 @@ serve(async (req) => {
         }, { onConflict: "cleaner_id" });
       } catch (e) {
         log("warn", "admin-approve-cleaner", "Default availability failed", { error: (e as Error).message });
+      }
+
+      // 3a2. Create availability_v2 (nya tabellen som boka.html läser)
+      try {
+        const v2Rows = [1, 2, 3, 4, 5].map(dow => ({
+          cleaner_id: cleanerId,
+          day_of_week: dow,
+          start_time: "08:00",
+          end_time: "17:00",
+          is_active: true,
+        }));
+        await sb.from("cleaner_availability_v2").insert(v2Rows);
+        log("info", "admin-approve-cleaner", "Default availability_v2 created", { cleanerId, days: 5 });
+      } catch (e) {
+        log("warn", "admin-approve-cleaner", "Default availability_v2 failed", { error: (e as Error).message });
+      }
+
+      // 3a3. Parse och skapa service_prices om VD angav priser i notes
+      if (app.notes && app.notes.startsWith("Priser:")) {
+        try {
+          // Format: "Priser: Hemstädning: 380 kr/h, Fönsterputs: 60 kr/kvm"
+          const priceEntries = app.notes.replace("Priser: ", "").split(", ");
+          for (const entry of priceEntries) {
+            const match = entry.match(/^(.+?):\s*(\d+)\s*(kr\/h|kr\/kvm|kr\/fönster)?$/);
+            if (match) {
+              const serviceType = match[1].trim();
+              const price = parseInt(match[2]);
+              const priceType = (match[3] === "kr/kvm" || match[3] === "kr/fönster") ? "per_sqm" : "hourly";
+              await sb.from("cleaner_service_prices").upsert({
+                cleaner_id: cleanerId,
+                service_type: serviceType,
+                price: price,
+                price_type: priceType,
+              }, { onConflict: "cleaner_id,service_type" });
+            }
+          }
+          log("info", "admin-approve-cleaner", "Service prices created from notes", { cleanerId });
+        } catch (e) {
+          log("warn", "admin-approve-cleaner", "Service prices parsing failed", { error: (e as Error).message, notes: app.notes });
+        }
       }
 
       // 3b. If company application, create company and link
