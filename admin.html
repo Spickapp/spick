@@ -3007,7 +3007,7 @@ async function openCleanerDashboard(id) {
         var stored = JSON.parse(localStorage.getItem(storageKey));
         if (stored && stored.access_token) {
           token = stored.access_token;
-          email = stored.user ? stored.user.email : '';
+          email = (stored.user && stored.user.email) ? stored.user.email : '';
         }
       } catch(e) {}
     }
@@ -3025,6 +3025,15 @@ async function openCleanerDashboard(id) {
           }
         } catch(e) {}
       }
+    }
+
+    // Metod 3: Hämta email från admin-sessionen i UI
+    if (token && !email) {
+      // Supabase v2 lagrar inte user i token-objektet — dekoda JWT
+      try {
+        var payload = JSON.parse(atob(token.split('.')[1]));
+        email = payload.email || payload.sub || '';
+      } catch(e) {}
     }
 
     if (!token) {
