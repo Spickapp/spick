@@ -2150,13 +2150,14 @@ async function init() {
     document.documentElement.style.visibility='visible';
   }, _viewAsId ? 10000 : 3000);
 
-  // Admin view-as: läs token från sessionStorage (satt av admin.html:s
+  // Admin view-as: läs token från localStorage (satt av admin.html:s
   // openCleanerDashboard). Detta undviker SB.auth.getSession() som kan trigga
   // token-refresh med fetch-anrop på kalla sessioner — vi har redan en färsk
   // token direkt från admin-fliken, så ingen väntan behövs.
   if (_viewAsId) {
-    var adminToken = sessionStorage.getItem('spick_admin_token');
-    var adminEmail = sessionStorage.getItem('spick_admin_email');
+    console.log('[ADMIN VIEW] token found:', !!localStorage.getItem('spick_admin_token'), 'email:', localStorage.getItem('spick_admin_email'));
+    var adminToken = localStorage.getItem('spick_admin_token');
+    var adminEmail = localStorage.getItem('spick_admin_email');
     if (adminToken && adminEmail) {
       try {
         var adminCheck = await fetch(SUPA_URL + '/rest/v1/admin_users?email=eq.' + encodeURIComponent(adminEmail) + '&select=id', {
@@ -2172,9 +2173,9 @@ async function init() {
           if (Array.isArray(cleanerRows) && cleanerRows.length) {
             _adminPreloadedCleaner = cleanerRows[0];
             clearTimeout(sessionTimeout);
-            // Rensa token efter användning — behöver inte ligga kvar i sessionStorage
-            sessionStorage.removeItem('spick_admin_token');
-            sessionStorage.removeItem('spick_admin_email');
+            // Rensa token efter användning — behöver inte ligga kvar i localStorage
+            localStorage.removeItem('spick_admin_token');
+            localStorage.removeItem('spick_admin_email');
             // loadCleanerByEmail har preload-fallback som hoppar över auth-lookup
             // när _adminPreloadedCleaner är satt, och kör resten av render-flödet
             // (header, greeting, team, banner, loadJobs, realtime etc.)
@@ -2184,7 +2185,7 @@ async function init() {
         }
       } catch(e) { console.warn('admin view-as failed:', e); }
     }
-    // Ingen token i sessionStorage eller misslyckad admin-check → fall till normalt flöde
+    // Ingen token i localStorage eller misslyckad admin-check → fall till normalt flöde
     clearTimeout(sessionTimeout);
     _cleanerLoadStarted = false;
     _isAdminView = false;

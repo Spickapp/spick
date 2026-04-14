@@ -2995,15 +2995,15 @@ async function saveAdminPrices(cleanerId) {
 }
 
 async function openCleanerDashboard(id) {
-  // Lagra admin-token i sessionStorage som flyttas till den nya fliken via
-  // window.open(). Detta låter stadare-dashboard läsa token direkt utan att
+  // Lagra admin-token i localStorage så att den är tillgänglig i alla flikar
+  // på samma origin — låter stadare-dashboard läsa token direkt utan att
   // vänta på SB.auth.getSession() (som kan trigga refresh på kalla sessioner).
   try {
     const s = await SB.auth.getSession();
     const t = s.data.session ? s.data.session.access_token : '';
     const em = s.data.session ? s.data.session.user.email : '';
-    sessionStorage.setItem('spick_admin_token', t);
-    sessionStorage.setItem('spick_admin_email', em);
+    localStorage.setItem('spick_admin_token', t);
+    localStorage.setItem('spick_admin_email', em);
   } catch(e) { console.warn('getSession before dashboard-open failed:', e); }
   window.open('stadare-dashboard.html?view_as=' + encodeURIComponent(id), '_blank');
 }
