@@ -199,6 +199,7 @@ function googleTranslateElementInit() {
 html{scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
 body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg-app);color:var(--gray-900);min-height:100vh;font-size:15px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;padding-top:env(safe-area-inset-top,0)}
 input,select,textarea{font-size:16px}
+select,option{background-color:#fff;color:#1C1C1A}
 button:active{transform:scale(.97);transition:transform .1s ease}
 
 /* ═══ SCREENS ═══ */
@@ -7680,6 +7681,10 @@ async function togglePricingModel(useCompany, silent) {
     if (knob) knob.style.left = '2px';
     if (track) track.style.background = '#ccc';
   }
+
+  // Dölj/visa Företagspriser-sektionen beroende på prismodell
+  var pricesSection = document.getElementById('company-prices-section');
+  if (pricesSection) pricesSection.style.display = useCompany ? '' : 'none';
 
   try {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId, {
