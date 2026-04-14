@@ -8291,7 +8291,10 @@ async function loadMyInvoices() {
   try {
     var res = await R.select('self_invoices', 'select=*&cleaner_id=eq.' + cleaner.id + '&order=period_start.desc&limit=50');
     var invoices = res.data || [];
-    if (!invoices.length) { el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--m)">Inga fakturor ännu.</div>'; return; }
+    if (!invoices || !invoices.length) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
+      return;
+    }
     var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">';
     html += '<thead><tr style="background:#f5f5f3;text-align:left"><th style="padding:8px">Fakturanr</th><th style="padding:8px">Period</th><th style="padding:8px;text-align:right">Netto</th><th style="padding:8px">Status</th><th style="padding:8px"></th></tr></thead><tbody>';
     invoices.forEach(function(inv) {
@@ -8316,7 +8319,7 @@ async function loadMyInvoices() {
     el.innerHTML = html;
   } catch(e) {
     console.error('loadMyInvoices error:', e);
-    el.innerHTML = '<div style="color:#dc2626">Kunde inte ladda fakturor.</div>';
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
   }
 }
 
@@ -8365,10 +8368,16 @@ async function generateInvoices() {
 async function loadVdInvoices() {
   var el = document.getElementById('vd-invoices-list');
   if (!el) return;
+  // Generera-knappen är en admin-operation — dölj för vanliga städare (inkl. VD:er)
+  var genBtn = document.getElementById('generate-invoices-btn');
+  if (genBtn) genBtn.style.display = _isAdminView ? '' : 'none';
   try {
     var res = await R.select('self_invoices', 'select=*&order=period_start.desc,seller_name.asc&limit=100');
     var invoices = res.data || [];
-    if (!invoices.length) { el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--m)">Inga fakturor genererade ännu.</div>'; return; }
+    if (!invoices || !invoices.length) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
+      return;
+    }
     var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.82rem">';
     html += '<thead><tr style="background:#f5f5f3;text-align:left"><th style="padding:8px">Fakturanr</th><th style="padding:8px">Städare</th><th style="padding:8px">Period</th><th style="padding:8px;text-align:right">Brutto</th><th style="padding:8px;text-align:right">Provision</th><th style="padding:8px;text-align:right">Netto</th><th style="padding:8px">Status</th><th style="padding:8px"></th></tr></thead><tbody>';
     invoices.forEach(function(inv) {
@@ -8392,7 +8401,7 @@ async function loadVdInvoices() {
     el.innerHTML = html;
   } catch(e) {
     console.error('loadVdInvoices error:', e);
-    el.innerHTML = '<div style="color:#dc2626">Kunde inte ladda fakturor.</div>';
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
   }
 }
 
