@@ -2176,9 +2176,22 @@ async function init() {
             // Rensa token efter användning — behöver inte ligga kvar i localStorage
             localStorage.removeItem('spick_admin_token');
             localStorage.removeItem('spick_admin_email');
+            // Injicera admin-banner direkt, innan loadCleanerByEmail triggar
+            // render-flödet — så bannern är synlig från första frame
+            console.log('[ADMIN] banner prepend, _isAdminView:', _isAdminView);
+            try {
+              if (!document.getElementById('admin-view-banner')) {
+                var adminBanner = document.createElement('div');
+                adminBanner.id = 'admin-view-banner';
+                adminBanner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;font-weight:600;color:#92400E';
+                adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 4px">' + escHtml(_adminPreloadedCleaner.full_name || '') + '</strong>s dashboard</span>' +
+                  '<a href="admin.html" style="padding:6px 14px;background:#92400E;color:#fff;border-radius:8px;text-decoration:none;font-size:.78rem">← Tillbaka till admin</a>';
+                document.body.prepend(adminBanner);
+              }
+            } catch(e) { console.warn('banner prepend failed:', e); }
             // loadCleanerByEmail har preload-fallback som hoppar över auth-lookup
             // när _adminPreloadedCleaner är satt, och kör resten av render-flödet
-            // (header, greeting, team, banner, loadJobs, realtime etc.)
+            // (header, greeting, team, loadJobs, realtime etc.)
             loadCleanerByEmail(adminEmail, '');
             return;
           }
