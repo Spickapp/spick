@@ -2150,35 +2150,45 @@ async function init() {
     document.documentElement.style.visibility='visible';
   }, _viewAsId ? 10000 : 3000);
 
-  // Admin view-as: KÖR FÖRE login-skärmen visas
+  // Admin view-as: läs token från sessionStorage (satt av admin.html:s
+  // openCleanerDashboard). Detta undviker SB.auth.getSession() som kan trigga
+  // token-refresh med fetch-anrop på kalla sessioner — vi har redan en färsk
+  // token direkt från admin-fliken, så ingen väntan behövs.
   if (_viewAsId) {
-    try {
-      var session = (await SB.auth.getSession()).data.session;
-      if (session) {
-        var adminCheck = await fetch(SUPA_URL + '/rest/v1/admin_users?email=eq.' + encodeURIComponent(session.user.email) + '&select=id', {
-          headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
+    var adminToken = sessionStorage.getItem('spick_admin_token');
+    var adminEmail = sessionStorage.getItem('spick_admin_email');
+    if (adminToken && adminEmail) {
+      try {
+        var adminCheck = await fetch(SUPA_URL + '/rest/v1/admin_users?email=eq.' + encodeURIComponent(adminEmail) + '&select=id', {
+          headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + adminToken }
         });
         var adminRows = await adminCheck.json();
         if (Array.isArray(adminRows) && adminRows.length > 0) {
           _isAdminView = true;
           var cleanerRes = await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + encodeURIComponent(_viewAsId) + '&select=*', {
-            headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
+            headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + adminToken }
           });
           var cleanerRows = await cleanerRes.json();
           if (Array.isArray(cleanerRows) && cleanerRows.length) {
             _adminPreloadedCleaner = cleanerRows[0];
             clearTimeout(sessionTimeout);
-            // Hoppa ÖVER login-skärmen — gå direkt till cleaner-load
-            loadCleanerByEmail(session.user.email, session.user.id);
+            // Rensa token efter användning — behöver inte ligga kvar i sessionStorage
+            sessionStorage.removeItem('spick_admin_token');
+            sessionStorage.removeItem('spick_admin_email');
+            // loadCleanerByEmail har preload-fallback som hoppar över auth-lookup
+            // när _adminPreloadedCleaner är satt, och kör resten av render-flödet
+            // (header, greeting, team, banner, loadJobs, realtime etc.)
+            loadCleanerByEmail(adminEmail, '');
             return;
           }
         }
-      }
-    } catch(e) { console.warn('admin view-as check failed:', e); }
-    // Misslyckad admin-check → rensa timeout, släpp lock och fall till normalt flöde
+      } catch(e) { console.warn('admin view-as failed:', e); }
+    }
+    // Ingen token i sessionStorage eller misslyckad admin-check → fall till normalt flöde
     clearTimeout(sessionTimeout);
     _cleanerLoadStarted = false;
     _isAdminView = false;
+    _viewAsId = null;
     _adminPreloadedCleaner = null;
   }
 

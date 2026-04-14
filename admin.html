@@ -2137,7 +2137,7 @@ function renderCleaners() {
       </td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button onclick="window.open('stadare-dashboard.html?view_as=${c.id}','_blank')" style="padding:6px 12px;background:var(--gr);border:1.5px solid var(--g);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit">Dashboard</button>
+          <button onclick="openCleanerDashboard('${c.id}')" style="padding:6px 12px;background:var(--gr);border:1.5px solid var(--g);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit">Dashboard</button>
           <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Redigera</button>
           <a href="mailto:${c.email||''}?subject=Spick – uppdatering" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
         </div>
@@ -2992,6 +2992,20 @@ async function saveAdminPrices(cleanerId) {
     btn.textContent = '❌ Fel';
     btn.disabled = false;
   }
+}
+
+async function openCleanerDashboard(id) {
+  // Lagra admin-token i sessionStorage som flyttas till den nya fliken via
+  // window.open(). Detta låter stadare-dashboard läsa token direkt utan att
+  // vänta på SB.auth.getSession() (som kan trigga refresh på kalla sessioner).
+  try {
+    const s = await SB.auth.getSession();
+    const t = s.data.session ? s.data.session.access_token : '';
+    const em = s.data.session ? s.data.session.user.email : '';
+    sessionStorage.setItem('spick_admin_token', t);
+    sessionStorage.setItem('spick_admin_email', em);
+  } catch(e) { console.warn('getSession before dashboard-open failed:', e); }
+  window.open('stadare-dashboard.html?view_as=' + encodeURIComponent(id), '_blank');
 }
 
 function showCleanerDetail(id) {
