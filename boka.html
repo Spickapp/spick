@@ -701,6 +701,26 @@ const MONTHS = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti
 const DAYS_SV = ['sön','mån','tis','ons','tor','fre','lör'];
 const COLORS  = ['#0F6E56','#7C3AED','#DC2626','#2563EB','#D97706','#0891B2','#9333EA','#059669'];
 
+// ── RUT-berättigade tjänster ──────────────────────────────────────
+// Endast hushållsnära tjänster ger RUT-avdrag (50%). Företagstjänster
+// (kontor, trapp, skola, vård, hotell/restaurang) är ej RUT-berättigade.
+var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
+function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
+function syncRutToggleVisibility() {
+  var selected = (state.services && state.services.length) ? state.services : (state.service ? [state.service] : []);
+  var anyRut = selected.length === 0 ? true : selected.some(function(s) { return isRutEligible(s); });
+  var rutToggle = document.getElementById('rut-toggle');
+  if (rutToggle) rutToggle.style.display = anyRut ? '' : 'none';
+  if (!anyRut) {
+    if (typeof useRut !== 'undefined') useRut = false;
+    state.useRut = false;
+    var pnrWrap = document.getElementById('pnr-wrap');
+    if (pnrWrap) pnrWrap.style.display = 'none';
+    var sRutRow = document.getElementById('s-rut-row');
+    if (sRutRow) sRutRow.style.display = 'none';
+  }
+}
+
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state = {
   service: '', hours: 3, sqm: 0,
@@ -1000,6 +1020,8 @@ function selectService(name, icon, desc, time) {
     b.classList.toggle('selected', (state.services || []).indexOf(b.dataset.svc) > -1);
   });
   document.getElementById('svc-error').style.display = 'none';
+  // Dölj RUT-toggle om ingen av de valda tjänsterna är RUT-berättigade
+  syncRutToggleVisibility();
   updateSidebar();
   setTimeout(function() {
     var sqm = document.getElementById('sqm');
@@ -1122,6 +1144,8 @@ function setCustomerType(type) {
   if (rutToggle) rutToggle.style.display = type === 'foretag' ? 'none' : '';
   if (type === 'foretag') { useRut = false; state.useRut = false; }
   if (type === 'privat' && !useRut) { useRut = true; state.useRut = true; }
+  // Fin-justering: dölj även om valda tjänster inte är RUT-berättigade
+  if (type === 'privat') syncRutToggleVisibility();
 
   // Företagsfält: visa/dölj (steg 3)
   var bizFields = document.getElementById('business-fields');

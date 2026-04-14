@@ -1847,7 +1847,7 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
   <div class="sub-view" id="sv-pricing">
     <div class="sub-view-header"><button onclick="closeSubView('sv-pricing')">←</button><h2>Prissättning per tjänst</h2></div>
     <div class="sub-view-body">
-      <p style="font-size:.85rem;color:var(--m);margin-bottom:16px">Sätt pris per tjänst. Kunder ser priset efter RUT-avdrag (50%). Lämna tomt för att använda ditt standardpris.</p>
+      <p style="font-size:.85rem;color:var(--m);margin-bottom:16px">Sätt pris per tjänst. För hushållsnära tjänster (Hem-, Stor-, Flytt-, Fönster) visas priset efter RUT-avdrag (50%). Kontors- och företagstjänster visas utan RUT. Lämna tomt för att använda ditt standardpris.</p>
       <div id="pricing-list" style="display:grid;gap:12px">Laddar...</div>
       <button onclick="savePricing()" id="pricing-save-btn" style="width:100%;padding:14px;background:#0F6E56;color:#fff;border:none;border-radius:var(--radius-full);font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:16px;min-height:52px">💾 Spara priser</button>
       <div id="pricing-msg" style="font-size:.82rem;text-align:center;margin-top:8px;display:none"></div>
@@ -1942,7 +1942,12 @@ const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
   }
 });
 
-
+// ── RUT-berättigade tjänster ────────────────────────────────
+// RUT-avdrag (50%) gäller endast för hushållsnära tjänster.
+// Kontors-, trapp-, skol-, vård-, hotell- och restaurangstädning
+// räknas som företagstjänster och är EJ RUT-berättigade.
+var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
+function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
 
 // ── REST helpers — bypass SB.from() to avoid navigator.locks deadlock ──
 function _authHeaders() {
@@ -5153,8 +5158,12 @@ async function loadPricing() {
           '<input type="number" data-svc="' + escHtml(svc) + '" data-field="price" value="' + price + '" placeholder="Rek: ' + (cleaner.hourly_rate || 350) + '" min="100" max="2000" style="width:100%;padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.85rem;font-family:inherit" oninput="updateRutPreview(this)">' +
         '</div>' +
       '</div>' +
-      '<div data-svc="' + escHtml(svc) + '" data-field="rut-preview" style="font-size:.75rem;color:var(--spick-500);margin-top:6px;font-weight:500">' +
-        (rutPrice ? 'Kund betalar: ' + rutPrice + (priceType === 'per_sqm' ? (svc === 'Fönsterputs' ? ' kr/fönster' : ' kr/kvm') : ' kr/h') + ' efter RUT' : '') +
+      '<div data-svc="' + escHtml(svc) + '" data-field="rut-preview" style="font-size:.75rem;margin-top:6px;font-weight:500;color:' + (isRutEligible(svc) ? 'var(--spick-500)' : '#92400E') + '">' +
+        (price
+          ? (isRutEligible(svc)
+              ? 'Kund betalar: ' + rutPrice + (priceType === 'per_sqm' ? (svc === 'Fönsterputs' ? ' kr/fönster' : ' kr/kvm') : ' kr/h') + ' efter RUT'
+              : 'Kund betalar: ' + price + (priceType === 'per_sqm' ? (svc === 'Fönsterputs' ? ' kr/fönster' : ' kr/kvm') : ' kr/h') + ' (RUT gäller ej)')
+          : '') +
       '</div>' +
     '</div>';
   }).join('');
@@ -5170,7 +5179,13 @@ function updateRutPreview(el) {
   var val = parseInt(priceInput.value);
   if (val > 0) {
     var unit = typeSelect.value === 'per_sqm' ? (svc === 'Fönsterputs' ? 'kr/fönster' : 'kr/kvm') : 'kr/h';
-    preview.textContent = 'Kund betalar: ' + Math.round(val * 0.5) + ' ' + unit + ' efter RUT';
+    if (isRutEligible(svc)) {
+      preview.textContent = 'Kund betalar: ' + Math.round(val * 0.5) + ' ' + unit + ' efter RUT';
+      preview.style.color = 'var(--spick-500)';
+    } else {
+      preview.textContent = 'Kund betalar: ' + val + ' ' + unit + ' (RUT gäller ej)';
+      preview.style.color = '#92400E';
+    }
   } else {
     preview.textContent = '';
   }
