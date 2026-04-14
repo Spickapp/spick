@@ -238,7 +238,7 @@ BEGIN
   v_start := (NEW.booking_date::text || ' ' || COALESCE(NEW.booking_time::text, '09:00'))::timestamptz;
   v_end   := v_start + (v_hours || ' hours')::interval;
   v_title := COALESCE(NEW.service_type, 'Städning');
-  v_addr  := COALESCE(NEW.customer_address, NEW.address, '');
+  v_addr  := COALESCE(NEW.customer_address, '');
 
   -- Avbokade/refunderade → ta bort ev. event
   IF NEW.status IN ('cancelled','avbokad') OR NEW.payment_status = 'refunded' THEN
@@ -290,7 +290,7 @@ SELECT
   'spick',
   b.id,
   COALESCE(b.service_type, 'Städning'),
-  COALESCE(b.customer_address, b.address, '')
+  COALESCE(b.customer_address, '')
 FROM bookings b
 WHERE b.status NOT IN ('cancelled','avbokad')
   AND COALESCE(b.payment_status, '') <> 'refunded'
