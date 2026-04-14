@@ -2098,13 +2098,26 @@ function renderCleaners(cleaners) {
         '<div style="font-size:.78rem;color:#6B7280;margin-top:.25rem">' + escHtml(compDesc) + '</div>' +
       '</div>' +
       '<div class="cleaner-badges">' +
-        (isPricePerSqm
-          ? (state.customerType === "privat"
-            ? '<div class="cleaner-price">' + rutRate + ' kr/kvm</div><div class="cleaner-rut">efter RUT (' + rate + ' kr/kvm före)</div>'
-            : '<div class="cleaner-price">' + rate + ' kr/kvm</div>')
-          : (state.customerType === "privat"
-            ? '<div class="cleaner-price">' + rutRate + ' kr/h</div><div class="cleaner-rut">inkl. RUT-avdrag</div>'
-            : '<div class="cleaner-price">' + rate + ' kr/h</div>')) +
+        (function() {
+          var hrs = state.hours || 3;
+          if (isPricePerSqm && state.sqm) {
+            var total = rate * state.sqm;
+            var totalRut = Math.floor(total * 0.5);
+            return state.customerType === 'privat'
+              ? '<div class="cleaner-price">' + totalRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">efter RUT (' + total.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rate + ' kr/kvm × ' + state.sqm + ' kvm</div>'
+              : '<div class="cleaner-price">' + total.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/kvm × ' + state.sqm + ' kvm)</div>';
+          }
+          if (isPricePerSqm) {
+            return state.customerType === 'privat'
+              ? '<div class="cleaner-price">' + rutRate + ' kr/kvm</div><div class="cleaner-rut">efter RUT (' + rate + ' kr/kvm före)</div>'
+              : '<div class="cleaner-price">' + rate + ' kr/kvm</div>';
+          }
+          var totalH = rate * hrs;
+          var totalHRut = Math.floor(totalH * 0.5);
+          return state.customerType === 'privat'
+            ? '<div class="cleaner-price">' + totalHRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">efter RUT (' + totalH.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rate + ' kr/h × ' + hrs + ' h</div>'
+            : '<div class="cleaner-price">' + totalH.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/h × ' + hrs + ' h)</div>';
+        })() +
       '</div>';
     compCard.onclick = function() {
       // Auto-select best cleaner in background
@@ -2165,21 +2178,26 @@ function renderCleaners(cleaners) {
       </div>
       <div class="cleaner-badges">
         ${(() => {
+          var hrs = state.hours || 3;
           if (isPricePerSqm && state.sqm) {
             var total = rate * state.sqm;
             var totalRut = Math.floor(total * 0.5);
-            if (isPricePerSqm) {
+            return state.customerType === 'privat'
+              ? '<div class="cleaner-price">' + totalRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">efter RUT (' + total.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rate + ' kr/kvm × ' + state.sqm + ' kvm</div>'
+              : '<div class="cleaner-price">' + total.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/kvm × ' + state.sqm + ' kvm)</div>';
+          }
+          if (isPricePerSqm) {
+            // Per-kvm men saknar sqm ännu — visa enhet
             return state.customerType === 'privat'
               ? '<div class="cleaner-price">' + rutRate + ' kr/kvm</div><div class="cleaner-rut">efter RUT (' + rate + ' kr/kvm före)</div>'
               : '<div class="cleaner-price">' + rate + ' kr/kvm</div>';
           }
+          // Timpris — beräkna totalt pris
+          var totalH = rate * hrs;
+          var totalHRut = Math.floor(totalH * 0.5);
           return state.customerType === 'privat'
-              ? '<div class="cleaner-price">' + totalRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt efter RUT (' + total.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rutRate + ' kr/kvm × ' + state.sqm + ' kvm</div>'
-              : '<div class="cleaner-price">' + total.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/kvm × ' + state.sqm + ' kvm)</div>';
-          }
-          return state.customerType === 'privat'
-            ? '<div class="cleaner-price">' + rutRate + ' kr/h</div><div class="cleaner-rut">inkl. RUT-avdrag</div>'
-            : '<div class="cleaner-price">' + rate + ' kr/h</div>';
+            ? '<div class="cleaner-price">' + totalHRut.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">efter RUT (' + totalH.toLocaleString('sv') + ' kr före)</div><div style="font-size:.68rem;color:var(--m)">' + rate + ' kr/h × ' + hrs + ' h</div>'
+            : '<div class="cleaner-price">' + totalH.toLocaleString('sv') + ' kr</div><div class="cleaner-rut">totalt (' + rate + ' kr/h × ' + hrs + ' h)</div>';
         })()}
         ${cl.bankid_verified ? '<div class="badge-bankid">✓ Verifierad</div>' : ''}
         ${hasRatings && cl.avg_rating >= 4.8 && cl.review_count >= 3 ? '<div class="badge-gold">⭐ Toppvald</div>' : ''}
