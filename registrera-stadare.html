@@ -870,6 +870,12 @@ function goToStep(n) {
   if (n === 2) adaptStep2ForOwner();
   [1,2,3,4].forEach(function(i) {
     document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
+    if (i === n) {
+      document.getElementById('step' + i).style.height = 'auto';
+      document.getElementById('step' + i).style.overflow = 'visible';
+      // Force reflow
+      document.getElementById('step' + i).offsetHeight;
+    }
     var dot = document.getElementById('dot' + i);
     var lbl = document.getElementById('lbl' + i);
     if (i < n) { dot.className = 'step-dot done'; dot.textContent = '✓'; lbl.className = 'step-label done'; }
