@@ -3161,7 +3161,20 @@ function showCleanerDetail(id) {
   const isSuspended = c.status === 'avstängd';
   
   document.getElementById('cleaner-panel-title').textContent = (c.full_name || 'Städare') + (c.is_company_owner ? ' 🏢' : c.company_id ? ' 👥' : '');
-  var profileUrl = 'https://spick.se/s/' + (c.slug || c.id);
+  var profileUrl;
+  if (c.is_company_owner && c.company_id) {
+    // Företagsägare — länka till företagets /f/<slug>-sida
+    var companySlug = '';
+    if (data.companies && data.companies.length) {
+      var co = data.companies.find(function(x) { return x.id === c.company_id; });
+      companySlug = co ? (co.slug || '') : '';
+    }
+    profileUrl = companySlug
+      ? 'https://spick.se/f/' + companySlug
+      : 'https://spick.se/s/' + (c.slug || c.id); // fallback om ingen företagsslug finns
+  } else {
+    profileUrl = 'https://spick.se/s/' + (c.slug || c.id);
+  }
   document.getElementById('cleaner-panel-body').innerHTML = `
     <!-- Status-banner -->
     <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;font-size:.85rem;font-weight:600;

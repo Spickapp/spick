@@ -243,11 +243,27 @@ serve(async (req) => {
       // 3b. If company application, create company and link
       if (app.is_company && app.company_name) {
         try {
+          // Generate unique company slug (samma mönster som cleaner-slug ovan)
+          const companyBaseSlug = (app.company_name || "foretag")
+            .toLowerCase()
+            .replace(/[åä]/g, "a")
+            .replace(/ö/g, "o")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "");
+          const { data: compSlugExisting } = await sb
+            .from("companies")
+            .select("id")
+            .like("slug", `${companyBaseSlug}%`);
+          const companySlug = compSlugExisting && compSlugExisting.length > 0
+            ? `${companyBaseSlug}-${compSlugExisting.length + 1}`
+            : companyBaseSlug;
+
           const { data: company, error: compErr } = await sb.from("companies").insert({
             name: app.company_name,
             org_number: app.org_number || null,
             owner_cleaner_id: cleanerId,
             commission_rate: 17,
+            slug: companySlug,
           }).select("id").single();
 
           if (compErr || !company) {
