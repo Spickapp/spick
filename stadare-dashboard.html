@@ -8492,7 +8492,22 @@ async function loadVdInvoices() {
     }
   }, 8000);
   try {
-    var res = await R.select('self_invoices', 'select=*&order=period_start.desc,seller_name.asc&limit=100');
+    // SÄKERHET: filtrera på company_id så en VD bara ser sitt eget företags fakturor.
+    // Utan filter läcker vi ALLA företags självfakturor till vilken som helst VD.
+    var companyId = (typeof cleaner !== 'undefined' && cleaner && cleaner.company_id) || window._companyId;
+    var cleanerId = (typeof cleaner !== 'undefined' && cleaner && cleaner.id) || null;
+    var res;
+    if (companyId) {
+      res = await R.select('self_invoices', 'select=*&company_id=eq.' + encodeURIComponent(companyId) + '&order=period_start.desc,seller_name.asc&limit=100');
+    } else if (cleanerId) {
+      // Fallback (solo-städare utan företag): bara egna fakturor
+      res = await R.select('self_invoices', 'select=*&cleaner_id=eq.' + encodeURIComponent(cleanerId) + '&order=period_start.desc&limit=100');
+    } else {
+      // Ingen identitet — visa tom-tillstånd (aldrig ofiltrerat)
+      clearTimeout(_loadTimeout);
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
+      return;
+    }
     clearTimeout(_loadTimeout);
     var invoices = res.data || [];
     if (!invoices || !invoices.length) {
