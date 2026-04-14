@@ -116,6 +116,37 @@ select.filter{padding:9px 12px;border:1.5px solid var(--border);border-radius:10
 .modal h3{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:16px}
 .modal-actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
 
+/* ── CLEANER SLIDE-OVER PANEL ── */
+.cleaner-panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:999;display:none;opacity:0;transition:opacity .2s}
+.cleaner-panel-overlay.open{display:block;opacity:1}
+.cleaner-panel{position:fixed;top:0;right:0;bottom:0;width:420px;background:var(--w);z-index:1000;box-shadow:-4px 0 24px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;overflow:hidden}
+.cleaner-panel.open{transform:translateX(0)}
+.cleaner-panel-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.cleaner-panel-head h3{font-family:'Playfair Display',serif;font-size:1.2rem;margin:0}
+.cleaner-panel-close{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--w);cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--m);transition:all .15s}
+.cleaner-panel-close:hover{border-color:var(--g);color:var(--g)}
+.cleaner-panel-body{flex:1;overflow-y:auto;padding:20px 24px}
+.cleaner-panel-actions{display:flex;gap:8px;padding:16px 24px;border-top:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+
+/* ── FILTER CHIPS ── */
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap}
+.filter-chip{padding:6px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--w);font-size:.78rem;font-weight:600;color:var(--b);cursor:pointer;font-family:inherit;transition:all .15s}
+.filter-chip:hover{border-color:var(--g);color:var(--g)}
+.filter-chip.active{background:var(--gr);color:var(--g);border-color:var(--g)}
+.filter-chip .chip-count{font-weight:400;opacity:.7;margin-left:4px}
+
+/* ── CLICKABLE ROWS + READY ICONS ── */
+tr.clickable-row{cursor:pointer;transition:background .1s}
+tr.clickable-row:hover td{background:#F5FAF7}
+tr.clickable-row.selected td{background:var(--gr)}
+.ready-icons{display:flex;gap:4px;align-items:center}
+.ready-icons .ready-ok{color:var(--g)}
+.ready-icons .ready-no{color:var(--r)}
+
+@media(max-width:768px){
+  .cleaner-panel{width:100%}
+}
+
 /* ── ALERTS ── */
 .alert{padding:12px 16px;border-radius:10px;font-size:.88rem;margin-bottom:16px;display:flex;align-items:center;gap:10px}
 .alert.success{background:var(--gr);color:var(--g)}
@@ -163,7 +194,8 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   .toolbar{flex-wrap:wrap}
   .search-input{width:100%}
   th:nth-child(4),td:nth-child(4),
-  th:nth-child(7),td:nth-child(7){display:none}
+  th:nth-child(5),td:nth-child(5),
+  th:nth-child(6),td:nth-child(6){display:none}
   .btn-sm{padding:10px 16px;font-size:.85rem;min-height:48px}
 }
 .stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0F0EC;font-size:.88rem}
@@ -505,11 +537,14 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
       <div class="card">
         <div class="toolbar">
-          <input class="search-input" id="cleaner-search" placeholder="Sök namn, stad, e-post..." oninput="renderCleaners()">
-          <select class="filter" id="cleaner-filter" onchange="renderCleaners()">
-            <option value="">Alla städer</option>
-            <option value="onboarding">🚀 Onboarding</option>
-          </select>
+          <input class="search-input" id="cleaner-search" placeholder="Sök namn, stad, e-post..." oninput="renderCleaners()" style="max-width:280px">
+          <div class="filter-chips" id="cleaner-chips">
+            <button class="filter-chip active" onclick="setCleanerFilter('',this)">Alla <span class="chip-count" id="chip-all"></span></button>
+            <button class="filter-chip" onclick="setCleanerFilter('aktiv',this)">Aktiva <span class="chip-count" id="chip-aktiv"></span></button>
+            <button class="filter-chip" onclick="setCleanerFilter('onboarding',this)">Onboarding <span class="chip-count" id="chip-onboarding"></span></button>
+            <button class="filter-chip" onclick="setCleanerFilter('pausad',this)">Pausade <span class="chip-count" id="chip-pausad"></span></button>
+            <button class="filter-chip" onclick="setCleanerFilter('avstängd',this)">Avstängda <span class="chip-count" id="chip-avstängd"></span></button>
+          </div>
           <button class="btn btn-outline btn-sm" onclick="console.log('Uppdatera clicked');this.textContent='⏳ Laddar...';loadAll().then(()=>{renderCleaners();this.textContent='↻ Uppdatera';console.log('Cleaners refreshed:',data.cleaners.length)}).catch(e=>{this.textContent='↻ Uppdatera';console.error(e)})">↻ Uppdatera</button>
         </div>
         <!-- Bulk action bar -->
@@ -522,8 +557,15 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
         <div class="table-wrap" style="overflow-x:auto">
           <table>
-            <thead><tr><th>Städare</th><th>Plats</th><th>Telefon</th><th>Betyg</th><th>Tjänster</th><th>Timpris</th><th>Radie</th><th>F-skatt</th><th>Stripe</th><th>Status</th><th>Uppdrag</th><th></th></tr></thead>
-            <tbody id="cleaners-tbody"><tr><td colspan="12" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+            <thead><tr>
+              <th style="width:35%">Städare</th>
+              <th style="width:14%">Stad</th>
+              <th style="width:12%">Timpris</th>
+              <th style="width:12%">Uppdrag</th>
+              <th style="width:14%">Status</th>
+              <th style="width:13%">Redo?</th>
+            </tr></thead>
+            <tbody id="cleaners-tbody"><tr><td colspan="6" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -977,6 +1019,19 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <div class="modal-actions" style="flex-wrap:wrap">
       <button class="btn btn-outline" onclick="closeCleanerModal()">Stäng</button>
     </div>
+  </div>
+</div>
+
+<!-- SLIDE-OVER PANEL: Cleaner detail -->
+<div class="cleaner-panel-overlay" id="cleaner-panel-overlay" onclick="closeCleanerPanel()"></div>
+<div class="cleaner-panel" id="cleaner-panel">
+  <div class="cleaner-panel-head">
+    <h3 id="cleaner-panel-title">Städardetaljer</h3>
+    <button class="cleaner-panel-close" onclick="closeCleanerPanel()" title="Stäng">✕</button>
+  </div>
+  <div class="cleaner-panel-body" id="cleaner-panel-body"></div>
+  <div class="cleaner-panel-actions" id="cleaner-panel-actions">
+    <button class="btn btn-outline" onclick="closeCleanerPanel()">Stäng</button>
   </div>
 </div>
 
@@ -2058,20 +2113,36 @@ function renderPending() {
 }
 
 // ── CLEANERS ──────────────────────────────────────────
+var activeCleanerFilter = '';
+function setCleanerFilter(filter, btn) {
+  activeCleanerFilter = filter;
+  document.querySelectorAll('#cleaner-chips .filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderCleaners();
+}
+
 function renderCleaners() {
   const q = document.getElementById('cleaner-search').value.toLowerCase();
-  const f = document.getElementById('cleaner-filter').value;
   let filtered = data.cleaners; // Visa ALLA städare (ej bara godkända)
   if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''} ${c.status||''}`.toLowerCase().includes(q));
-  if (f === 'onboarding') filtered = filtered.filter(c => c.status === 'onboarding');
-  else if (f) filtered = filtered.filter(c => c.city === f);
 
-  // Populate city filter
-  const cities = [...new Set(data.cleaners.map(c => c.city).filter(Boolean))];
-  const citySelect = document.getElementById('cleaner-filter');
-  if (citySelect.options.length === 1) {
-    cities.forEach(city => { const o = document.createElement('option'); o.value = o.textContent = city; citySelect.appendChild(o); });
-  }
+  // Räkna chip-counts FÖRE statusfilter appliceras (men EFTER sök)
+  var countAll = filtered.length;
+  var countAktiv = filtered.filter(function(c){ return c.is_approved && c.status !== 'pausad' && c.status !== 'avstängd' && c.status !== 'onboarding'; }).length;
+  var countOnboarding = filtered.filter(function(c){ return c.status === 'onboarding'; }).length;
+  var countPausad = filtered.filter(function(c){ return c.status === 'pausad'; }).length;
+  var countAvstangd = filtered.filter(function(c){ return c.status === 'avstängd' || !c.is_approved; }).length;
+  var chipAll = document.getElementById('chip-all'); if (chipAll) chipAll.textContent = countAll;
+  var chipAktiv = document.getElementById('chip-aktiv'); if (chipAktiv) chipAktiv.textContent = countAktiv;
+  var chipOnboarding = document.getElementById('chip-onboarding'); if (chipOnboarding) chipOnboarding.textContent = countOnboarding;
+  var chipPausad = document.getElementById('chip-pausad'); if (chipPausad) chipPausad.textContent = countPausad;
+  var chipAvstangd = document.getElementById('chip-avstängd'); if (chipAvstangd) chipAvstangd.textContent = countAvstangd;
+
+  // Applicera statusfilter efteråt
+  if (activeCleanerFilter === 'aktiv') filtered = filtered.filter(function(c){ return c.is_approved && c.status !== 'pausad' && c.status !== 'avstängd' && c.status !== 'onboarding'; });
+  else if (activeCleanerFilter === 'onboarding') filtered = filtered.filter(function(c){ return c.status === 'onboarding'; });
+  else if (activeCleanerFilter === 'pausad') filtered = filtered.filter(function(c){ return c.status === 'pausad'; });
+  else if (activeCleanerFilter === 'avstängd') filtered = filtered.filter(function(c){ return c.status === 'avstängd' || !c.is_approved; });
 
   // Gruppera: solo först, sen företag (ägare + members)
   var solo = filtered.filter(function(c) { return !c.company_id; });
@@ -2099,50 +2170,46 @@ function renderCleaners() {
     else if (c.status === 'onboarding') {
       var _obSteps = [!!c.avatar_url, !!(c.bio && c.bio.length > 5), !!(c.availability_schedule), c.stripe_onboarding_status === 'complete'];
       var _obDone = _obSteps.filter(Boolean).length;
-      statusBadge = '<span class="badge" style="background:#DBEAFE;color:#1E40AF">\ud83d\ude80 Onboarding ' + _obDone + '/4</span>';
+      statusBadge = '<span class="badge" style="background:#DBEAFE;color:#1E40AF">\ud83d\ude80 ' + _obDone + '/4</span>';
     }
-    
-    const svcsDisplay = Array.isArray(c.services) ? c.services.map(s => escHtml(s)).join(', ') : escHtml(c.services || '–');
+
     const hasFskatt = c.fskatt_confirmed || c.verified || c.has_fskatt;
-    const fskattNeedsHelp = c.fskatt_needs_help;
     const stripeOk = c.stripe_onboarding_status === 'complete';
 
     var isTeamMember = c.company_id && !c.is_company_owner;
     var teamCount = c.is_company_owner ? data.cleaners.filter(function(m) { return m.company_id === c.company_id && m.id !== c.id; }).length : 0;
-    return `<tr style="${isSuspended ? 'opacity:.6' : ''}${isTeamMember ? ';display:none' : ''}" ${isTeamMember ? 'class="team-member-row" data-company="' + c.company_id + '"' : ''} ${c.is_company_owner ? 'data-owner-company="' + c.company_id + '"' : ''}>
-      <td>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input type="checkbox" onchange="toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer">
+    var isSelected = currentCleanerId === c.id;
+    var rowStyle = (isSuspended ? 'opacity:.6' : '') + (isTeamMember ? ';display:none' : '');
+    var rowClasses = 'clickable-row' + (isTeamMember ? ' team-member-row' : '') + (isSelected ? ' selected' : '');
+    return `<tr class="${rowClasses}" style="${rowStyle}" ${isTeamMember ? 'data-company="' + c.company_id + '"' : ''} ${c.is_company_owner ? 'data-owner-company="' + c.company_id + '"' : ''} onclick="showCleanerDetail('${c.id}')">
+      <td style="min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0">
+          <input type="checkbox" onclick="event.stopPropagation()" onchange="event.stopPropagation();toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
           ${c.avatar_url
             ? '<div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0"><img src="' + c.avatar_url + '?t=' + Date.now() + '" style="width:100%;height:100%;object-fit:cover"></div>'
             : '<div style="width:36px;height:36px;border-radius:50%;background:' + (isSuspended ? '#6B7280' : isPaused ? '#F59E0B' : '#0F6E5620') + ';color:' + (isSuspended || isPaused ? '#fff' : '#0F6E56') + ';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0">' + (c.full_name||'?').charAt(0).toUpperCase() + '</div>'}
-          <div>${isTeamMember ? '<span style="color:#BFDBFE;margin-right:4px">└─</span>' : ''}<strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢 Företagsägare</span>' : c.company_id ? ' <span style="background:#EFF6FF;color:#3B82F6;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:500">👥 Teammedlem</span>' : ''}${c.is_company_owner && teamCount > 0 ? ' <button onclick="event.stopPropagation();toggleTeamRows(\'' + c.company_id + '\',this)" style="background:#DBEAFE;color:#1E40AF;border:none;border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;margin-left:4px" title="Visa/dölj teammedlemmar">▶ ' + teamCount + ' st</button>' : ''}<br><span style="font-size:.78rem;color:var(--m)">${escHtml(c.email || '')}</span></div>
+          <div style="min-width:0;overflow:hidden">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${isTeamMember ? '<span style="color:#BFDBFE;margin-right:4px">└─</span>' : ''}<strong>${escHtml(c.full_name || '–')}</strong>${c.is_company_owner ? ' <span style="background:#DBEAFE;color:#1E40AF;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:600">🏢</span>' : c.company_id ? ' <span style="background:#EFF6FF;color:#3B82F6;font-size:.65rem;padding:1px 6px;border-radius:8px;font-weight:500">👥</span>' : ''}${c.is_company_owner && teamCount > 0 ? ' <button onclick="event.stopPropagation();toggleTeamRows(\'' + c.company_id + '\',this)" style="background:#DBEAFE;color:#1E40AF;border:none;border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;margin-left:4px" title="Visa/dölj teammedlemmar">▶ ' + teamCount + '</button>' : ''}
+            </div>
+            <div style="font-size:.78rem;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.email || '')}</div>
+          </div>
         </div>
       </td>
-      <td>${c.city ? '<div style="font-weight:600">' + escHtml(c.city) + '</div>' : ''}${c.home_address ? '<div style="font-size:.72rem;color:#6B6960">' + escHtml(c.home_address) + '</div>' : ''}${!c.city && !c.home_address ? '–' : ''}</td>
-      <td>${c.phone ? `<a href="tel:${escHtml(c.phone)}" style="color:var(--g);text-decoration:none;font-size:.82rem">${escHtml(c.phone)}</a>` : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
-      <td>
-        <span style="font-size:.9rem">⭐ ${c.avg_rating || '–'}</span>
-        <div style="font-size:.72rem;color:var(--m)">${c.review_count || 0} betyg</div>
-      </td>
-      <td style="max-width:180px;font-size:.78rem;white-space:normal">${svcsDisplay}</td>
+      <td>${c.city ? escHtml(c.city) : '<span style="color:var(--m)">–</span>'}</td>
       <td>${c.hourly_rate || '350'} kr/h</td>
-      <td>${c.service_radius_km ? c.service_radius_km + ' km' : '<span style="color:#D97706;font-size:.78rem">⚠️</span>'}</td>
-      <td>${hasFskatt ? '✅' : fskattNeedsHelp ? '📝' : '❌'}</td>
-      <td>${stripeOk ? '✅' : '❌'}</td>
-      <td>${statusBadge}${c.last_active_at ? '<div style="font-size:.68rem;color:#6B6960">' + new Date(c.last_active_at).toLocaleDateString('sv-SE', {day:'numeric',month:'short'}) + '</div>' : ''}</td>
       <td>
-        <div style="font-weight:600;color:var(--g)">${cleaner_jobs} uppdrag</div>
-        <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr intjänat</div>
+        <div style="font-weight:600;color:var(--g)">${cleaner_jobs}</div>
+        <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr</div>
       </td>
+      <td>${statusBadge}</td>
       <td>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button onclick="openCleanerDashboard('${c.id}')" style="padding:6px 12px;background:var(--gr);border:1.5px solid var(--g);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit">Dashboard</button>
-          <button class="btn btn-outline btn-sm" onclick="showCleanerDetail('${c.id}')">Redigera</button>
-          <a href="mailto:${c.email||''}?subject=Spick – uppdatering" class="btn btn-outline btn-sm" title="Maila" style="text-decoration:none">✉️</a>
+        <div class="ready-icons">
+          <span class="${hasFskatt ? 'ready-ok' : 'ready-no'}" title="F-skatt">${hasFskatt ? '✓' : '✗'} F</span>
+          <span class="${stripeOk ? 'ready-ok' : 'ready-no'}" title="Stripe" style="margin-left:6px">${stripeOk ? '✓' : '✗'} S</span>
         </div>
       </td>
-    </tr>`;}).join('') : `<tr><td colspan="12" class="empty">
+    </tr>`;}).join('') : `<tr><td colspan="6" class="empty">
   <div class="empty-icon">🧹</div>
   <div>Inga städare matchar filtret</div>
 </td></tr>`;
@@ -3059,9 +3126,9 @@ function showCleanerDetail(id) {
   const isActive = c.is_approved;
   const isSuspended = c.status === 'avstängd';
   
-  document.getElementById('cleaner-modal-title').textContent = (c.full_name || 'Städare') + (c.is_company_owner ? ' 🏢' : c.company_id ? ' 👥' : '');
+  document.getElementById('cleaner-panel-title').textContent = (c.full_name || 'Städare') + (c.is_company_owner ? ' 🏢' : c.company_id ? ' 👥' : '');
   var profileUrl = 'https://spick.se/s/' + (c.slug || c.id);
-  document.getElementById('cleaner-modal-body').innerHTML = `
+  document.getElementById('cleaner-panel-body').innerHTML = `
     <!-- Status-banner -->
     <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;font-size:.85rem;font-weight:600;
       ${isSuspended ? 'background:#FEE2E2;color:#991B1B' : isPaused ? 'background:#FEF3C7;color:#92400E' : 'background:#D1FAE5;color:#065F46'}">
@@ -3453,20 +3520,32 @@ function showCleanerDetail(id) {
       </div>`;
   }
 
-  // Uppdatera modal-knappar
-  const actionsEl = document.getElementById('cleaner-modal').querySelector('.modal-actions');
+  // Uppdatera panel-knappar
+  const actionsEl = document.getElementById('cleaner-panel-actions');
   actionsEl.innerHTML = `
-    <button class="btn btn-outline" onclick="closeCleanerModal()">Stäng</button>
     <button class="btn btn-primary" onclick="saveCleanerFromAdmin()">💾 Spara</button>
-    ${isActive && !isPaused ? `<button class="btn btn-outline" style="color:#92400E;border-color:#F59E0B" onclick="pauseCleaner()">⏸ Pausa</button>` : ''}
-    ${isPaused ? `<button class="btn btn-primary" onclick="activateCleaner()">▶️ Aktivera</button>` : ''}
-    ${!isSuspended ? `<button class="btn btn-danger btn-sm" onclick="suspendCleaner()">⛔ Stäng av</button>` : `<button class="btn btn-primary btn-sm" onclick="reactivateCleaner()">✅ Återaktivera</button>`}
+    <button class="btn btn-outline" style="padding:6px 12px;background:var(--gr);border:1.5px solid var(--g);color:var(--g);font-weight:600" onclick="openCleanerDashboard('${c.id}')">📊 Dashboard</button>
+    ${isActive && !isPaused ? '<button class="btn btn-outline" style="color:#92400E;border-color:#F59E0B" onclick="pauseCleaner()">⏸ Pausa</button>' : ''}
+    ${isPaused ? '<button class="btn btn-primary" onclick="activateCleaner()">▶️ Aktivera</button>' : ''}
+    ${!isSuspended ? '<button class="btn btn-danger btn-sm" onclick="suspendCleaner()">⛔ Stäng av</button>' : '<button class="btn btn-primary btn-sm" onclick="reactivateCleaner()">✅ Återaktivera</button>'}
+    <button class="btn btn-outline btn-sm" onclick="closeCleanerPanel()">Stäng</button>
   `;
-  
-  document.getElementById('cleaner-modal').classList.add('open');
+
+  document.getElementById('cleaner-panel').classList.add('open');
+  document.getElementById('cleaner-panel-overlay').classList.add('open');
+  // Markera vald rad
+  document.querySelectorAll('#cleaners-tbody tr.clickable-row').forEach(function(r) { r.classList.remove('selected'); });
+  var rows = document.querySelectorAll('#cleaners-tbody tr.clickable-row');
+  rows.forEach(function(r) { if (r.getAttribute('onclick') && r.getAttribute('onclick').includes(c.id)) r.classList.add('selected'); });
   loadCleanerHistory(id);
 }
 function closeCleanerModal() { document.getElementById('cleaner-modal').classList.remove('open'); }
+function closeCleanerPanel() {
+  document.getElementById('cleaner-panel').classList.remove('open');
+  document.getElementById('cleaner-panel-overlay').classList.remove('open');
+  document.querySelectorAll('#cleaners-tbody tr.clickable-row').forEach(function(r) { r.classList.remove('selected'); });
+  currentCleanerId = null;
+}
 
 async function toggleVisibility(cleanerId, visible) {
   if (!hasPerm('cleaners','suspend')) { showToast('🔒 Ej behörighet'); return; }
@@ -3518,7 +3597,7 @@ async function suspendCleaner() {
     await auditLog('reassign_bookings','booking', currentCleanerId, null, {count: activeBookings.length}, 'Cleaner suspended');
     showToast(`⚠️ ${activeBookings.length} bokningar omtilldelades`);
   }
-  closeCleanerModal();
+  closeCleanerPanel();
   showToast('⛔ Städare avstängd');
   await loadAll();
 }
@@ -3533,7 +3612,7 @@ async function pauseCleaner() {
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   await AR.update('cleaners', { status: 'pausad' }, 'id=eq.' + currentCleanerId);
   await auditLog('pause','cleaner', currentCleanerId, c ? {status:c.status} : null, {status:'pausad'});
-  closeCleanerModal();
+  closeCleanerPanel();
   showToast('⏸ Städare pausad');
   await loadAll();
 }
@@ -3542,7 +3621,7 @@ async function activateCleaner() {
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   await AR.update('cleaners', { status: 'aktiv', is_approved: true }, 'id=eq.' + currentCleanerId);
   await auditLog('activate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
-  closeCleanerModal();
+  closeCleanerPanel();
   showToast('▶️ Städare aktiverad');
   await loadAll();
 }
@@ -3557,7 +3636,7 @@ async function reactivateCleaner() {
   const c = data.cleaners.find(x => x.id === currentCleanerId);
   await AR.update('cleaners', { is_approved: true, status: 'aktiv' }, 'id=eq.' + currentCleanerId);
   await auditLog('reactivate','cleaner', currentCleanerId, c ? {status:c.status, is_approved:c.is_approved} : null, {status:'aktiv', is_approved:true});
-  closeCleanerModal();
+  closeCleanerPanel();
   showToast('✅ Städare återaktiverad');
   await loadAll();
 }
@@ -3629,7 +3708,7 @@ async function saveCleanerFromAdmin() {
     return;
   }
   await auditLog('update','cleaner', currentCleanerId, oldValue, updates);
-  closeCleanerModal();
+  closeCleanerPanel();
   showToast('✅ Städarprofil sparad!');
   await loadAll();
 }
@@ -4059,6 +4138,7 @@ document.addEventListener('keydown', e => {
     modals.forEach(m => m.classList.remove('open'));
     closeModal?.();
     closeCleanerModal?.();
+    closeCleanerPanel?.();
     closeEmailModal?.();
   }
   // Alt+1-7 = navigera mellan sidor (om inte i input)
