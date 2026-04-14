@@ -1240,7 +1240,8 @@ async function goStep2() {
     document.getElementById('svc-grid').scrollIntoView({behavior:'smooth', block:'center'});
     return;
   }
-  if (!state.sqm || state.sqm < 10) {
+  var minSqm = parseInt(document.getElementById('sqm').min) || 20;
+  if (!state.sqm || state.sqm < minSqm) {
     document.getElementById('sqm').classList.add('invalid');
     document.getElementById('sqm').focus();
     return;
@@ -1346,6 +1347,100 @@ async function loadGlobalAvailability() {
   const fallbackAvail = [1,2,3,4,5,6].map(d => ({
     cleaner_id: null, day_of_week: d, start_time: '08:00', end_time: '18:00', is_active: true
   }));
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const futureStr = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
+
+    // ── NY KÄLLA: calendar_events + cleaner_availability_v2 ──
+    const [availRes, calEventsRes] = await Promise.all([
+      // 1. Availability: ny v2-tabell (flera tidsspann per dag)
+      fetch(`${SUPA}/rest/v1/cleaner_availability_v2?is_active=eq.true&select=cleaner_id,day_of_week,start_time,end_time`, {
+        headers: H, signal: controller.signal
+      }),
+      // 2. Calendar events: bokningar + blockeringar + externa events
+      fetch(`${SUPA}/rest/v1/calendar_events?start_at=gte.${todayStr}T00:00:00Z&start_at=lte.${futureStr}T23:59:59Z&select=cleaner_id,start_at,end_at,event_type,is_all_day,title,source&order=start_at.asc`, {
+        headers: H, signal: controller.signal
+      })
+    ]);
+    clearTimeout(timeout);
+
+    const avail = availRes.ok ? await availRes.json() : [];
+    const calEvents = calEventsRes.ok ? await calEventsRes.json() : [];
+
+    // ── FALLBACK: om calendar_events saknas/tom, prova gamla tabeller ──
+    if (!calEventsRes.ok || (calEvents.length === 0 && calEventsRes.status === 404)) {
+      console.log('[SPICK] calendar_events unavailable, falling back to legacy tables');
+      return loadGlobalAvailabilityLegacy();
+    }
+
+    // ── TRANSFORMERA availability (redan rätt format) ──
+    state.availability = Array.isArray(avail) && avail.length > 0 ? avail : fallbackAvail;
+
+    // ── TRANSFORMERA blocked (heldags-blockeringar) ──
+    // Inkluderar: blocked (sjukdag), external heldags (Google heldags-event)
+    state.blocked = calEvents
+      .filter(ev => ev.is_all_day === true && (ev.event_type === 'blocked' || ev.event_type === 'external'))
+      .map(ev => ({
+        cleaner_id: ev.cleaner_id,
+        blocked_date: String(ev.start_at).slice(0, 10)
+      }));
+
+    // ── TRANSFORMERA bookings (tidsblock som upptar tid) ──
+    // Inkluderar: bokningar, partiella blockeringar, externa events (Google), restid
+    state.bookings = calEvents
+      .filter(ev => {
+        // Heldags-blockeringar hanteras av state.blocked ovan
+        if (ev.is_all_day) return false;
+        // Inkludera alla event-typer som upptar tid
+        return ['booking', 'blocked', 'external', 'travel', 'break'].includes(ev.event_type);
+      })
+      .map(ev => {
+        var startStr = String(ev.start_at);
+        var endStr = String(ev.end_at);
+        // Beräkna timmar från timestamps
+        // Använder slice (naive UTC) — konsistent med hur booking_time sparas
+        var startH = parseInt(startStr.slice(11, 13)) || 0;
+        var startM = parseInt(startStr.slice(14, 16)) || 0;
+        var endH = parseInt(endStr.slice(11, 13)) || 0;
+        var endM = parseInt(endStr.slice(14, 16)) || 0;
+        var hours = (endH - startH) + (endM - startM) / 60;
+        if (hours <= 0) hours = 1; // safety
+
+        return {
+          cleaner_id: ev.cleaner_id,
+          date: startStr.slice(0, 10),
+          time: startStr.slice(11, 16),
+          hours: hours
+        };
+      });
+
+    console.log('[SPICK] availability:', state.availability.length,
+      'blocked:', state.blocked.length,
+      'bookings:', state.bookings.length,
+      '(source: calendar_events + availability_v2)');
+
+  } catch (e) {
+    console.warn('[SPICK] loadGlobalAvailability failed:', e.message);
+    // Vid nätverksfel: prova legacy som fallback
+    try {
+      return await loadGlobalAvailabilityLegacy();
+    } catch (e2) {
+      console.warn('[SPICK] Legacy fallback also failed:', e2.message);
+      state.availability = fallbackAvail;
+      state.blocked = [];
+      state.bookings = [];
+    }
+  }
+}
+
+// ── LEGACY FALLBACK (gamla tabeller, används om calendar_events saknas) ──
+async function loadGlobalAvailabilityLegacy() {
+  const fallbackAvail = [1,2,3,4,5,6].map(d => ({
+    cleaner_id: null, day_of_week: d, start_time: '08:00', end_time: '18:00', is_active: true
+  }));
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -1377,9 +1472,9 @@ async function loadGlobalAvailability() {
     })) : [];
 
     state.bookings = [...normalizedSlots, ...normalizedBookings];
-    console.log('[SPICK] availability:', state.availability.length, 'blocked:', state.blocked.length, 'bookings:', state.bookings.length);
+    console.log('[SPICK] availability:', state.availability.length, 'blocked:', state.blocked.length, 'bookings:', state.bookings.length, '(source: LEGACY tables)');
   } catch(e) {
-    console.warn('[SPICK] loadGlobalAvailability failed:', e.message);
+    console.warn('[SPICK] loadGlobalAvailabilityLegacy failed:', e.message);
     state.availability = fallbackAvail;
     state.blocked      = [];
     state.bookings     = [];
