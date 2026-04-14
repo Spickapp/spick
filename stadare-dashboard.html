@@ -3849,9 +3849,9 @@ async function loadCalendarConnections() {
 
     if (connections.length === 0) {
       list.innerHTML = '<div style="text-align:center;color:var(--gray-400);font-size:.82rem;padding:8px">Inga kalendrar kopplade</div>';
-      // Visa Google-knapp om borttagen tidigare
-      var gbtn = document.getElementById('btn-connect-google');
-      if (gbtn) gbtn.style.display = 'flex';
+      // Google OAuth ej konfigurerat ännu — knappen förblir dold
+      // var gbtn = document.getElementById('btn-connect-google');
+      // if (gbtn) gbtn.style.display = 'flex';
       return;
     }
 
@@ -3867,10 +3867,12 @@ async function loadCalendarConnections() {
         '</div></div>';
     }).join('');
 
+    // Google OAuth ej konfigurerat ännu — knappen förblir dold
     // Göm "Koppla Google"-knapp om redan kopplad
     var hasGoogle = connections.some(function(c) { return c.provider === 'google'; });
     var googleBtn = document.getElementById('btn-connect-google');
-    if (googleBtn) googleBtn.style.display = hasGoogle ? 'none' : 'flex';
+    // if (googleBtn && !hasGoogle) googleBtn.style.display = 'flex';
+    if (googleBtn && hasGoogle) googleBtn.style.display = 'none';
 
   } catch(e) {
     console.warn('loadCalendarConnections error:', e);
