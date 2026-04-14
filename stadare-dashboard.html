@@ -2131,8 +2131,13 @@ const MONTHLY_GOAL = 10000;
 // Escape HTML helper
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
 
+// ── ADMIN VIEW-AS ───────────────────────────────────────────
+var _viewAsId = new URLSearchParams(window.location.search).get('view_as');
+var _isAdminView = false;
+var _adminPreloadedCleaner = null;
+
 // ── INIT ────────────────────────────────────────────────────
-function init() {
+async function init() {
   showScreen('login');
   const errEl = document.getElementById('login-err');
   if (errEl) errEl.style.display = 'none';
@@ -2141,6 +2146,33 @@ function init() {
     console.warn('getSession timeout – visar login');
     document.documentElement.style.visibility='visible';
   }, 3000);
+
+  // Admin view-as: verifiera admin-behörighet och förhämta städare
+  if (_viewAsId) {
+    try {
+      var session = (await SB.auth.getSession()).data.session;
+      if (session) {
+        var adminCheck = await fetch(SUPA_URL + '/rest/v1/admin_users?email=eq.' + encodeURIComponent(session.user.email) + '&select=id', {
+          headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
+        });
+        var adminRows = await adminCheck.json();
+        if (Array.isArray(adminRows) && adminRows.length > 0) {
+          _isAdminView = true;
+          var cleanerRes = await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + encodeURIComponent(_viewAsId) + '&select=*', {
+            headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
+          });
+          var cleanerRows = await cleanerRes.json();
+          if (Array.isArray(cleanerRows) && cleanerRows.length) {
+            _adminPreloadedCleaner = cleanerRows[0];
+            clearTimeout(sessionTimeout);
+            _cleanerLoadStarted = true;
+            loadCleanerByEmail(session.user.email, session.user.id);
+            return;
+          }
+        }
+      }
+    } catch(e) { console.warn('admin view-as check failed:', e); }
+  }
 
   SB.auth.getSession().then(({ data: { session } }) => {
     clearTimeout(sessionTimeout);
@@ -2347,7 +2379,10 @@ async function doLogout() {
 async function loadCleanerByEmail(email, authUserId) {
   let data, error;
 
-  if (authUserId) {
+  if (_isAdminView && _adminPreloadedCleaner) {
+    // Admin view-as: använd förhämtad städardata, skippa normal auth-lookup
+    data = _adminPreloadedCleaner;
+  } else if (authUserId) {
     const res = await R.selectSingle('cleaners', `select=*&auth_user_id=eq.${authUserId}&is_approved=eq.true`);
     data = res.data; error = res.error;
   }
@@ -2576,6 +2611,16 @@ async function loadCleanerByEmail(email, authUserId) {
     banner.style.cssText = 'background:#FEF3C7;color:#92400E;padding:12px 20px;font-size:.85rem;font-weight:600;text-align:center;border-bottom:1px solid #FDE68A';
     banner.innerHTML = '⏸ Ditt konto är pausat – du kan inte ta emot nya bokningar. Kontakta <a href="mailto:hello@spick.se" style="color:#92400E;text-decoration:underline">hello@spick.se</a> för att aktivera.';
     document.querySelector('.app-header')?.after(banner);
+  }
+
+  // Admin view-as banner
+  if (_isAdminView && cleaner && !document.getElementById('admin-view-banner')) {
+    var adminBanner = document.createElement('div');
+    adminBanner.id = 'admin-view-banner';
+    adminBanner.style.cssText = 'position:sticky;top:0;z-index:999;background:#FEF3C7;border-bottom:2px solid #F59E0B;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;font-weight:600;color:#92400E';
+    adminBanner.innerHTML = '<span>⚠️ Admin-vy — du hanterar <strong style="margin:0 4px">' + escHtml(cleaner.full_name || '') + '</strong>s dashboard</span>' +
+      '<a href="admin.html" style="padding:6px 14px;background:#92400E;color:#fff;border-radius:8px;text-decoration:none;font-size:.78rem">← Tillbaka till admin</a>';
+    document.body.prepend(adminBanner);
   }
 
   await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
