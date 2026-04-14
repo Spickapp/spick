@@ -81,6 +81,13 @@ serve(async (req) => {
   }
 });
 
+function addDaysISO(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
 async function processSubscription(supabase: any, sub: any) {
   // Dubbel-körningsskydd: verifiera att next_booking_date fortfarande matchar
   const { data: fresh } = await supabase
@@ -177,20 +184,16 @@ async function processSubscription(supabase: any, sub: any) {
   }
 
   // 4. Beräkna nästa booking_date
-  const nextDate = new Date(bookingDate + "T12:00:00");
-  if (sub.frequency === "weekly") {
-    nextDate.setDate(nextDate.getDate() + 7);
-  } else if (sub.frequency === "biweekly" || sub.frequency === "varannan-vecka") {
-    nextDate.setDate(nextDate.getDate() + 14);
-  } else {
-    nextDate.setDate(nextDate.getDate() + 30); // monthly fallback
-  }
+  const daysToAdd = sub.frequency === "weekly" ? 7
+    : (sub.frequency === "biweekly" || sub.frequency === "varannan-vecka") ? 14
+    : 30;
+  const nextBookingDate = addDaysISO(bookingDate, daysToAdd);
 
   // 5. Uppdatera prenumerationen
   await supabase
     .from("subscriptions")
     .update({
-      next_booking_date: nextDate.toISOString().split("T")[0],
+      next_booking_date: nextBookingDate,
       total_bookings: (sub.total_bookings || 0) + 1,
       last_booking_id: createResult.booking_id || null,
       updated_at: new Date().toISOString(),
@@ -201,6 +204,6 @@ async function processSubscription(supabase: any, sub: any) {
     status: "ok",
     booking_id: createResult.booking_id,
     payment_url: paymentUrl,
-    next_date: nextDate.toISOString().split("T")[0],
+    next_date: nextBookingDate,
   };
 }
