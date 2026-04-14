@@ -1089,7 +1089,7 @@ const AR = {
 // ── AUTH – Supabase Auth (ej hårdkodat lösenord) ──────
 let ADMIN_EMAIL = null; // resolved from Supabase auth session
 let _sessionToken = null;
-let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[] };
+let data = { bookings:[], cleaners:[], applications:[], customers:[], reviews:[], companies:[] };
 let currentBookingId = null, currentCleanerId = null;
 
 // Kolla om redan inloggad
@@ -1813,12 +1813,13 @@ async function loadAll() {
   });
 
   try {
-    const [bookings, cleaners, applications, customers, reviews] = await Promise.all([
+    const [bookings, cleaners, applications, customers, reviews, companies] = await Promise.all([
       AR.select('bookings', 'select=*&order=created_at.desc&limit=100'),
       AR.select('cleaners', 'select=*&order=avg_rating.desc.nullslast'),
       AR.select('cleaner_applications', 'select=*&order=created_at.desc'),
       AR.select('customer_profiles', 'select=*&order=total_bookings.desc.nullslast'),
       AR.select('reviews', 'select=*&order=created_at.desc&limit=200'),
+      AR.select('companies', 'select=id,name,display_name,org_number,owner_cleaner_id,commission_rate,slug'),
     ]);
 
     data.bookings = bookings.data || [];
@@ -1826,6 +1827,8 @@ async function loadAll() {
     data.applications = applications.data || [];
     data.customers = customers.data || [];
     data.reviews = reviews.data || [];
+    data.companies = companies.data || [];
+    window._companyNames = null;
 
     try {
       const subs = await AR.select('subscriptions', 'select=*&order=created_at.desc');
@@ -2126,6 +2129,14 @@ function renderCleaners() {
   let filtered = data.cleaners; // Visa ALLA städare (ej bara godkända)
   if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''} ${c.status||''}`.toLowerCase().includes(q));
 
+  // Bygg company name lookup (cachas tills loadAll() rensar)
+  if (!window._companyNames) {
+    window._companyNames = {};
+    if (data.companies && data.companies.length) {
+      data.companies.forEach(function(co) { window._companyNames[co.id] = co.name || co.display_name || ''; });
+    }
+  }
+
   // Räkna chip-counts FÖRE statusfilter appliceras (men EFTER sök)
   var countAll = filtered.length;
   var countAktiv = filtered.filter(function(c){ return c.is_approved && c.status !== 'pausad' && c.status !== 'avstängd' && c.status !== 'onboarding'; }).length;
@@ -2181,8 +2192,27 @@ function renderCleaners() {
     var isSelected = currentCleanerId === c.id;
     var rowStyle = (isSuspended ? 'opacity:.6' : '') + (isTeamMember ? ';display:none' : '');
     var rowClasses = 'clickable-row' + (isTeamMember ? ' team-member-row' : '') + (isSelected ? ' selected' : '');
-    return `<tr class="${rowClasses}" style="${rowStyle}" ${isTeamMember ? 'data-company="' + c.company_id + '"' : ''} ${c.is_company_owner ? 'data-owner-company="' + c.company_id + '"' : ''} onclick="showCleanerDetail('${c.id}')">
-      <td style="min-width:0">
+
+    // Företagsägare: visa företagsnamn som primär, ägarens namn som sekundär
+    var companyName = c.is_company_owner && c.company_id ? (window._companyNames[c.company_id] || '') : '';
+    var isCompanyRow = c.is_company_owner && c.company_id && companyName;
+
+    var nameCell;
+    if (isCompanyRow) {
+      nameCell = '<td style="min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:10px;min-width:0">' +
+          '<input type="checkbox" onclick="event.stopPropagation()" onchange="event.stopPropagation();toggleSelectCleaner(\'' + c.id + '\')"' + (selectedCleaners.has(c.id) ? ' checked' : '') + ' style="width:16px;height:16px;cursor:pointer;flex-shrink:0">' +
+          '<div style="width:36px;height:36px;border-radius:10px;background:#DBEAFE;color:#1E40AF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0">🏢</div>' +
+          '<div style="min-width:0;overflow:hidden">' +
+            '<strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(companyName) + '</strong>' +
+            '<span style="font-size:.72rem;color:var(--m)">' + escHtml(c.full_name || '–') + ' · ' + (teamCount + 1) + ' städare</span>' +
+            (teamCount > 0 ? ' <button onclick="event.stopPropagation();toggleTeamRows(\'' + c.company_id + '\',this)" style="background:#DBEAFE;color:#1E40AF;border:none;border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;margin-left:4px" title="Visa/dölj teammedlemmar">▶ Visa team</button>' : '') +
+            '<br><span style="font-size:.72rem;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%">' + escHtml(c.email || '') + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</td>';
+    } else {
+      nameCell = `<td style="min-width:0">
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
           <input type="checkbox" onclick="event.stopPropagation()" onchange="event.stopPropagation();toggleSelectCleaner('${c.id}')" ${selectedCleaners.has(c.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
           ${c.avatar_url
@@ -2195,7 +2225,11 @@ function renderCleaners() {
             <div style="font-size:.78rem;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.email || '')}</div>
           </div>
         </div>
-      </td>
+      </td>`;
+    }
+
+    return `<tr class="${rowClasses}" style="${rowStyle}" ${isTeamMember ? 'data-company="' + c.company_id + '"' : ''} ${c.is_company_owner ? 'data-owner-company="' + c.company_id + '"' : ''} onclick="showCleanerDetail('${c.id}')">
+      ${nameCell}
       <td>${c.city ? escHtml(c.city) : '<span style="color:var(--m)">–</span>'}</td>
       <td>${c.hourly_rate || '350'} kr/h</td>
       <td>
