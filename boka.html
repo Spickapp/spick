@@ -2921,7 +2921,14 @@ function showServiceDetail(name) {
     if (!info) { d.style.display = 'none'; return; }
     html += '<div class="svc-detail-title">Vad ing\u00e5r i ' + svcs[0].toLowerCase() + '?</div>';
     html += '<div class="svc-detail-grid">';
-    if (info.also) html += '<div class="svc-detail-also">' + info.also + '</div>';
+    if (info.also) {
+      var alsoText = info.also;
+      if (state.customerType === 'foretag') {
+        alsoText = alsoText.replace('hemstädning', 'kontorsstädning').replace('Hemstädning', 'Kontorsstädning');
+        alsoText = alsoText.replace('storstädning', 'grundstädning').replace('Storstädning', 'Grundstädning');
+      }
+      html += '<div class="svc-detail-also">' + alsoText + '</div>';
+    }
     for (var i=0;i<info.items.length;i++) html += '<div class="svc-detail-item">' + info.items[i] + '</div>';
     html += '</div>';
     if (info.upsell) html += '<div class="svc-detail-upsell">' + info.upsell + '</div>';
