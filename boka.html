@@ -1361,7 +1361,7 @@ async function loadGlobalAvailability() {
         headers: H, signal: controller.signal
       }),
       // 2. Calendar events: bokningar + blockeringar + externa events
-      fetch(`${SUPA}/rest/v1/calendar_events?start_at=gte.${todayStr}T00:00:00Z&start_at=lte.${futureStr}T23:59:59Z&select=cleaner_id,start_at,end_at,event_type,is_all_day,title,source&order=start_at.asc`, {
+      fetch(`${SUPA}/rest/v1/calendar_events?and=(start_at.gte.${todayStr}T00:00:00Z,start_at.lte.${futureStr}T23:59:59Z)&select=cleaner_id,start_at,end_at,event_type,is_all_day,title,source&order=start_at.asc`, {
         headers: H, signal: controller.signal
       })
     ]);

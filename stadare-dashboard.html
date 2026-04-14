@@ -5752,8 +5752,8 @@ async function loadGanttData() {
 
     var pair = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/calendar_events?or=(' + idFilter + ')' +
-        '&start_at=gte.' + encodeURIComponent(startISO) +
-        '&end_at=lte.'   + encodeURIComponent(endISO) +
+        '&and=(start_at.gte.' + encodeURIComponent(startISO) +
+        ',start_at.lte.'      + encodeURIComponent(endISO) + ')' +
         '&order=start_at.asc', { headers: _authHeaders() }),
       fetch(SUPA_URL + '/rest/v1/cleaner_availability_v2?or=(' + idFilter + ')' +
         '&is_active=eq.true&order=day_of_week.asc,start_time.asc', { headers: _authHeaders() })
