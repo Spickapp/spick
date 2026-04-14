@@ -1024,7 +1024,11 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <div class="cw-field"><label>Telefon</label><input id="cw-owner-phone" type="tel" placeholder="070-000 00 00"></div>
             <div class="cw-field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input id="cw-owner-only" type="checkbox" checked onchange="cwToggleOwnerOnly()"> <span>Städar ej (admin only)</span></label></div>
             <div class="cw-field cw-field-full" id="cw-owner-address-wrap" style="display:none">
-              <label>Hemadress</label><input id="cw-owner-address" type="text" placeholder="Storgatan 1, Stockholm">
+              <label>Hemadress</label>
+              <div style="position:relative">
+                <input id="cw-owner-address" type="text" placeholder="Storgatan 1, Stockholm" oninput="cwAddrSearch(this.value, 'owner')" autocomplete="off">
+                <div id="cw-owner-addr-list" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;z-index:10;width:100%"></div>
+              </div>
             </div>
           </div>
           <div id="cw-owner-only-hint" style="font-size:.85rem;color:var(--m);margin-top:8px">VD hanterar bara teamet och tar inte emot egna bokningar.</div>
@@ -4958,6 +4962,8 @@ function cwInit() {
   cwStep = 1;
   cwMaxStep = 1;
   cwTeamMembers = [];
+  window._cwOwnerLat = null;
+  window._cwOwnerLng = null;
   cwRenderServices();
   cwRenderStepsBar();
   cwUpdateEmploymentHint();
@@ -5128,7 +5134,7 @@ function cwAddMember() {
   });
   cwTeamMembers.push({
     name: '', email: '', phone: '',
-    home_address: '', city: '', radius: 30,
+    home_address: '', city: '', lat: null, lng: null, radius: 30,
     languages: '', pet_pref: 'ok',
     services: svcMap, expanded: true
   });
@@ -5240,8 +5246,8 @@ function cwRenderMemberBody(m, i) {
     + '<div class="cw-field"><label>Namn *</label><input type="text" value="' + escHtml(m.name) + '" data-member-field="name" data-member-idx="' + i + '"></div>'
     + '<div class="cw-field"><label>E-post <span style="color:var(--m);font-weight:400">(kan läggas till senare)</span></label><input type="email" value="' + escHtml(m.email) + '" data-member-field="email" data-member-idx="' + i + '"></div>'
     + '<div class="cw-field"><label>Telefon</label><input type="tel" value="' + escHtml(m.phone) + '" data-member-field="phone" data-member-idx="' + i + '"></div>'
-    + '<div class="cw-field"><label>Hemadress</label><input type="text" value="' + escHtml(m.home_address) + '" data-member-field="address" data-member-idx="' + i + '"></div>'
-    + '<div class="cw-field"><label>Stad</label><input type="text" value="' + escHtml(m.city || (document.getElementById('cw-city').value || '')) + '" data-member-field="city" data-member-idx="' + i + '"></div>'
+    + '<div class="cw-field"><label>Hemadress</label><div style="position:relative"><input type="text" value="' + escHtml(m.home_address) + '" data-member-field="address" data-member-idx="' + i + '" data-cw-addr="' + i + '" oninput="cwAddrSearch(this.value, ' + i + ')" autocomplete="off"><div id="cw-member-addr-list-' + i + '" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;z-index:10;width:100%"></div></div></div>'
+    + '<div class="cw-field"><label>Stad</label><input type="text" value="' + escHtml(m.city || (document.getElementById('cw-city').value || '')) + '" data-member-field="city" data-member-idx="' + i + '" data-cw-city="' + i + '"></div>'
     + '<div class="cw-field"><label>Serviceradie</label><select data-member-field="radius" data-member-idx="' + i + '">'
     + '<option value="15"' + (m.radius == 15 ? ' selected' : '') + '>15 km</option>'
     + '<option value="30"' + (m.radius == 30 ? ' selected' : '') + '>30 km</option>'
@@ -5358,6 +5364,8 @@ function cwCollectData() {
     owner_phone: document.getElementById('cw-owner-phone').value.trim() || undefined,
     owner_only: ownerOnly,
     owner_address: ownerOnly ? undefined : document.getElementById('cw-owner-address').value.trim(),
+    owner_lat: ownerOnly ? undefined : (window._cwOwnerLat || null),
+    owner_lng: ownerOnly ? undefined : (window._cwOwnerLng || null),
     services: activeSvcs,
     team_members: cwTeamMembers.map(function(m) {
       var memberServices = Object.keys(m.services).filter(function(t) { return m.services[t].enabled; });
@@ -5370,6 +5378,8 @@ function cwCollectData() {
         phone: m.phone ? m.phone.trim() : undefined,
         home_address: m.home_address ? m.home_address.trim() : undefined,
         city: m.city ? m.city.trim() : undefined,
+        home_lat: m.lat || null,
+        home_lng: m.lng || null,
         service_radius_km: parseInt(m.radius, 10) || 30,
         languages: m.languages ? m.languages.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [],
         pet_pref: m.pet_pref || 'ok',
@@ -5413,6 +5423,103 @@ async function cwSubmit() {
     try { showToast('❌ ' + e.message); } catch(_) { alert('Fel: ' + e.message); }
   }
 }
+
+// ── Adress-autocomplete (Google Places) ──────────────────────────
+var _cwAddrTimer = null;
+
+function cwAddrSearch(q, target) {
+  clearTimeout(_cwAddrTimer);
+  var listId = typeof target === 'number' ? 'cw-member-addr-list-' + target : 'cw-owner-addr-list';
+  var list = document.getElementById(listId);
+  if (!list || !q || q.length < 3) { if (list) list.style.display = 'none'; return; }
+
+  // Nollställ ev. gamla koordinater när användaren skriver
+  if (typeof target === 'number') {
+    if (cwTeamMembers[target]) { cwTeamMembers[target].lat = null; cwTeamMembers[target].lng = null; }
+  } else {
+    window._cwOwnerLat = null; window._cwOwnerLng = null;
+  }
+
+  _cwAddrTimer = setTimeout(async function() {
+    try {
+      var res = await fetch(SPICK.SUPA_URL + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY },
+        body: JSON.stringify({ query: q, country: 'se', types: 'address' })
+      });
+      var data = await res.json();
+      var preds = data.predictions || [];
+      if (!preds.length) { list.style.display = 'none'; return; }
+      list.innerHTML = preds.map(function(p) {
+        var d = (p.description || '').replace(/, Sverige$/, '');
+        var safeD = d.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        var safePid = (p.place_id || '').replace(/'/g, "\\'");
+        var targetArg = typeof target === 'number' ? target : "'owner'";
+        return '<div onclick="cwPickAddr(\'' + safeD + '\',\'' + safePid + '\',' + targetArg + ')" style="padding:10px 14px;cursor:pointer;font-size:.85rem;border-bottom:1px solid #f0f0f0;font-family:inherit">' + escHtml(d) + '</div>';
+      }).join('');
+      list.style.display = 'block';
+    } catch(e) { if (list) list.style.display = 'none'; }
+  }, 300);
+}
+
+async function cwPickAddr(val, pid, target) {
+  // Sätt adressvärde
+  if (typeof target === 'number') {
+    var input = document.querySelector('[data-cw-addr="' + target + '"]');
+    if (input) input.value = val;
+    if (cwTeamMembers[target]) cwTeamMembers[target].home_address = val;
+  } else {
+    var ownerInput = document.getElementById('cw-owner-address');
+    if (ownerInput) ownerInput.value = val;
+  }
+
+  // Dölj dropdown
+  var listId = typeof target === 'number' ? 'cw-member-addr-list-' + target : 'cw-owner-addr-list';
+  var list = document.getElementById(listId);
+  if (list) list.style.display = 'none';
+
+  // Försök extrahera stad automatiskt (sista komma-separerade delen)
+  var parts = val.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  if (parts.length >= 2) {
+    var cityPart = parts[parts.length - 1].replace(/^\d{3}\s?\d{2}\s+/, ''); // Ta bort postnummer
+    if (typeof target === 'number') {
+      var cityInput = document.querySelector('[data-cw-city="' + target + '"]');
+      if (cityInput && !cityInput.value) {
+        cityInput.value = cityPart;
+        if (cwTeamMembers[target]) cwTeamMembers[target].city = cityPart;
+      }
+    } else {
+      var cwCity = document.getElementById('cw-city');
+      if (cwCity && !cwCity.value) cwCity.value = cityPart;
+    }
+  }
+
+  // Hämta koordinater
+  if (pid) {
+    try {
+      var r = await fetch(SPICK.SUPA_URL + '/functions/v1/places-autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY },
+        body: JSON.stringify({ place_id: pid })
+      });
+      var g = await r.json();
+      if (g && g.lat && g.lng) {
+        if (typeof target === 'number') {
+          if (cwTeamMembers[target]) { cwTeamMembers[target].lat = g.lat; cwTeamMembers[target].lng = g.lng; }
+        } else {
+          window._cwOwnerLat = g.lat; window._cwOwnerLng = g.lng;
+        }
+      }
+    } catch(e) { console.warn('[CW] geocode failed:', e); }
+  }
+}
+
+// Stäng dropdowns vid klick utanför
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('[data-cw-addr]') && !e.target.closest('#cw-owner-address') && !e.target.closest('[id^="cw-member-addr-list-"]') && !e.target.closest('#cw-owner-addr-list')) {
+    document.querySelectorAll('[id^="cw-member-addr-list-"], #cw-owner-addr-list').forEach(function(l) { l.style.display = 'none'; });
+  }
+});
 
 function cwFinish() {
   cwInitialized = false; // Nollställ för nästa gång
