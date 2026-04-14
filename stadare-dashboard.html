@@ -1771,7 +1771,10 @@ input:checked + span + #rating-toggle-knob{left:22px!important}
 
       <!-- Fält 6: Priser per tjänst -->
       <div class="tm-form-group">
-        <label>Priser per tjänst</label>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <label>Priser per tjänst</label>
+          <button type="button" onclick="copyVdPricesToTeam()" style="padding:4px 10px;background:var(--spick-50);color:var(--g);border:1px solid var(--g);border-radius:6px;font-size:.7rem;font-weight:600;cursor:pointer;font-family:inherit">Kopiera mina priser</button>
+        </div>
         <div id="team-svc-prices" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
           <div style="font-size:.75rem;color:var(--gray-400);font-style:italic">Välj tjänster ovan för att sätta priser</div>
         </div>
@@ -5134,6 +5137,8 @@ function showToast(msg) {
 
 // ── PRICING ─────────────────────────────────────────────────
 var _servicePrices = [];
+var _editingTeamMemberId = null;
+var _editingMemberPrices = [];
 var _allServices = ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning'];
 
 async function loadPricing() {
@@ -5645,6 +5650,8 @@ function closeTeamModal() {
 }
 
 function resetTeamModal() {
+  _editingTeamMemberId = null;
+  _editingMemberPrices = [];
   document.getElementById('team-fname').value = '';
   document.getElementById('team-lname').value = '';
   document.getElementById('team-phone').value = '';
@@ -7127,8 +7134,22 @@ function updateTeamSvcPrices() {
   var html = '';
   selected.forEach(function(svc) {
     var existing = container.querySelector('[data-price-svc="' + svc + '"]');
-    var val = existing ? existing.querySelector('input[type=number]').value : '350';
-    var type = existing ? existing.querySelector('select').value : 'hourly';
+    var val, type;
+    if (existing) {
+      // Behåll befintligt värde i DOM
+      val = existing.querySelector('input[type=number]').value;
+      type = existing.querySelector('select').value;
+    } else if (_editingTeamMemberId && _editingMemberPrices.length) {
+      // Edit-läge: använd medlemmens egna priser
+      var mp = _editingMemberPrices.find(function(p) { return p.service_type === svc; });
+      val = mp ? mp.price : (cleaner.hourly_rate || 350);
+      type = mp ? mp.price_type : 'hourly';
+    } else {
+      // Nytt-läge: ärv VD:s priser
+      var vdPrice = (_servicePrices || []).find(function(p) { return p.service_type === svc; });
+      val = vdPrice ? vdPrice.price : (cleaner.hourly_rate || 350);
+      type = vdPrice ? vdPrice.price_type : 'hourly';
+    }
     html += '<div data-price-svc="' + svc + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px">';
     html += '<span style="flex:1;font-size:.82rem;font-weight:500">' + svc + '</span>';
     html += '<input type="number" min="100" max="1000" step="10" value="' + val + '" style="width:70px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:.82rem;text-align:right" onchange="recalcTeamRate()">';
@@ -7140,6 +7161,23 @@ function updateTeamSvcPrices() {
   });
   container.innerHTML = html;
   recalcTeamRate();
+}
+
+function copyVdPricesToTeam() {
+  var container = document.getElementById('team-svc-prices');
+  if (!container) return;
+  container.querySelectorAll('[data-price-svc]').forEach(function(el) {
+    var svc = el.dataset.priceSvc;
+    var vdPrice = (_servicePrices || []).find(function(p) { return p.service_type === svc; });
+    if (vdPrice) {
+      var input = el.querySelector('input[type=number]');
+      var select = el.querySelector('select');
+      if (input) input.value = vdPrice.price;
+      if (select) select.value = vdPrice.price_type || 'hourly';
+    }
+  });
+  recalcTeamRate();
+  showToast('Priser kopierade från din profil');
 }
 
 function recalcTeamRate() {
@@ -7240,9 +7278,16 @@ function toggleTeamArea(cb) {
 }
 
 // ── EDIT TEAM MEMBER ────────────────────────────────────────
-function editTeamMember(memberId) {
+async function editTeamMember(memberId) {
   const member = _teamMembers.find(m => m.id === memberId);
   if (!member) return;
+
+  _editingTeamMemberId = memberId;
+  // Ladda medlemmens egna priser
+  try {
+    var priceRes = await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + memberId + '&select=*', { headers: _authHeaders() });
+    _editingMemberPrices = priceRes.ok ? await priceRes.json() : [];
+  } catch(e) { _editingMemberPrices = []; }
 
   document.getElementById('team-fname').value = member.first_name || '';
   document.getElementById('team-lname').value = member.last_name || '';
