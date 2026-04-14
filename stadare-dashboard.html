@@ -2143,10 +2143,12 @@ async function init() {
   const errEl = document.getElementById('login-err');
   if (errEl) errEl.style.display = 'none';
 
+  // Längre timeout när view_as finns — admin-checken har tre sekventiella await
+  // (getSession + admin_users + cleaners) som kan överstiga 3s på kall session.
   const sessionTimeout = setTimeout(() => {
     console.warn('getSession timeout – visar login');
     document.documentElement.style.visibility='visible';
-  }, 3000);
+  }, _viewAsId ? 10000 : 3000);
 
   // Admin view-as: KÖR FÖRE login-skärmen visas
   if (_viewAsId) {
@@ -2173,7 +2175,8 @@ async function init() {
         }
       }
     } catch(e) { console.warn('admin view-as check failed:', e); }
-    // Misslyckad admin-check → släpp lock och fall till normalt flöde
+    // Misslyckad admin-check → rensa timeout, släpp lock och fall till normalt flöde
+    clearTimeout(sessionTimeout);
     _cleanerLoadStarted = false;
     _isAdminView = false;
     _adminPreloadedCleaner = null;
