@@ -678,9 +678,12 @@ body{top:0!important}
   .bottom-nav{max-width:900px;left:50%;right:auto;transform:translateX(-50%);border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 }
 
-input:checked + span{background:var(--g)!important}
-input:checked + span + #pricing-model-knob{left:22px!important}
-input:checked + span + #rating-toggle-knob{left:22px!important}
+/* Toggle-switchar (scoped till specifika IDs för att inte påverka andra checkbox+span) */
+#toggle-owner-only:checked + span,
+#toggle-individual-ratings:checked + span,
+#toggle-company-pricing:checked + span{background:var(--g)!important}
+#toggle-company-pricing:checked + span + #pricing-model-knob{left:22px!important}
+#toggle-individual-ratings:checked + span + #rating-toggle-knob{left:22px!important}
 </style>
 <script src="js/config.js"></script>
 <script src="js/commission.js"></script>
@@ -8276,9 +8279,9 @@ function renderCompanyPermissions(config) {
     var isChecked = key === 'profile' ? current[key] === true : !!current[key];
     html += '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:' + (meta.locked ? 'default' : 'pointer') + '">'
       + '<input type="checkbox" data-perm="' + key + '" ' + (isChecked ? 'checked' : '') + ' ' + (meta.locked ? 'disabled checked' : '')
-      + ' style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0">'
-      + '<span style="font-size:.88rem;' + (meta.locked ? 'color:var(--m)' : '') + '">' + meta.label + '</span>'
-      + (meta.locked ? '<span style="font-size:.7rem;color:var(--m)">(alltid på)</span>' : '')
+      + ' style="width:18px;height:18px;accent-color:var(--g);flex-shrink:0">'
+      + '<span style="font-size:.85rem;font-weight:400;background:none;color:' + (meta.locked ? 'var(--m)' : 'var(--b)') + '">' + meta.label + '</span>'
+      + (meta.locked ? '<span style="font-size:.7rem;color:var(--m);background:none">(alltid på)</span>' : '')
       + '</label>';
   }
   container.innerHTML = html;
@@ -8328,8 +8331,10 @@ function openCleanerPermissions(cleanerId) {
     var isChecked = key === 'profile' ? current[key] === true : !!current[key];
     togglesHtml += '<label style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:' + (meta.locked ? 'default' : 'pointer') + '">'
       + '<input type="checkbox" data-perm="' + key + '" ' + (isChecked ? 'checked' : '') + ' ' + (meta.locked ? 'disabled checked' : '')
-      + ' style="width:18px;height:18px;accent-color:#0F6E56;flex-shrink:0">'
-      + '<span style="font-size:.85rem">' + meta.label + '</span></label>';
+      + ' style="width:18px;height:18px;accent-color:var(--g);flex-shrink:0">'
+      + '<span style="font-size:.85rem;font-weight:400;background:none;color:' + (meta.locked ? 'var(--m)' : 'var(--b)') + '">' + meta.label + '</span>'
+      + (meta.locked ? '<span style="font-size:.7rem;color:var(--m);background:none">(alltid på)</span>' : '')
+      + '</label>';
   }
 
   var html = '<div id="cleaner-perm-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)this.remove()">'
