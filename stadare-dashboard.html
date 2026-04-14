@@ -454,6 +454,12 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .gantt-event:hover{box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5}
 .gantt-event.dragging{opacity:.7;cursor:grabbing;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .gantt-event.confirmed{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gantt-event.bekräftad{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gantt-event.bekr\00e4ftad{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gantt-event.pågår{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gantt-event.p\00e5g\00e5r{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gantt-event.avbokad{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
+.gantt-event.cancelled{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
 .gantt-event.pending_confirmation{background:#FEF3C7;border-color:#D97706;color:#92400E}
 .gantt-event.klar,.gantt-event.completed{background:#F3F4F6;border-color:#9CA3AF;color:#6B7280}
 .gantt-event.blocked{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
@@ -6009,7 +6015,9 @@ function getFilteredEvents(cleanerId, dateStr) {
 function getBookingStatus(bookingId) {
   if (!bookingId) return 'confirmed';
   var b = (data_teamBookings || []).find(function(bk) { return bk.id === bookingId; });
-  return b ? (b.status || 'confirmed') : 'confirmed';
+  var st = b ? (b.status || 'confirmed') : 'confirmed';
+  var map = {'bekräftad':'confirmed','avbokad':'cancelled','pågår':'confirmed'};
+  return map[st] || st;
 }
 
 function timeToPixels(timeStr) {
