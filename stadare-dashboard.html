@@ -5698,19 +5698,23 @@ var _ganttHourCount = 14;        // 21-7
 var _ganttHourPx = 50;           // pixlar per timme (matchar .gantt-hour-col min-width)
 var _ganttTooltipEl = null;
 
-// TZ-säkra hjälpare (konverterar UTC-ISO till lokal tid för display/beräkning)
+// Naiv-UTC slice (Booking-trigger lagrar Stockholm-tid som "10:00+00" i DB —
+// Date.getHours() skulle konvertera UTC→CET och flytta +2h. slice(11,16) ger
+// rätt tidssiffror direkt, konsistent med solo-kalendern).
 function evTime(isoStr) {
   if (!isoStr) return '';
-  var d = new Date(isoStr);
-  var h = d.getHours(), m = d.getMinutes();
-  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  return String(isoStr).slice(11, 16);
 }
 function evDate(isoStr) {
   if (!isoStr) return '';
-  return localDateStr(new Date(isoStr));
+  return String(isoStr).slice(0, 10);
 }
-function evHour(isoStr)   { return new Date(isoStr).getHours(); }
-function evMinute(isoStr) { return new Date(isoStr).getMinutes(); }
+function evHour(isoStr) {
+  return parseInt(String(isoStr).slice(11, 13)) || 0;
+}
+function evMinute(isoStr) {
+  return parseInt(String(isoStr).slice(14, 16)) || 0;
+}
 
 function localDateStr(d) {
   var y = d.getFullYear();

@@ -198,19 +198,9 @@ function formatICalDate(d: Date): string {
 }
 
 function formatICalDateTime(iso: string): string {
-  // Konvertera ISO-sträng till Stockholm-tid
-  const d = new Date(iso);
-  const stockholm = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Stockholm",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-
-  const parts: Record<string, string> = {};
-  stockholm.forEach(p => { if (p.type !== "literal") parts[p.type] = p.value; });
-
-  return `${parts.year}${parts.month}${parts.day}T${parts.hour}${parts.minute}${parts.second}`;
+  // Booking-tid lagras som naiv UTC — extrahera direkt utan TZ-konvertering
+  const s = String(iso).replace(/[-:]/g, "");
+  return s.slice(0, 8) + "T" + s.slice(9, 15);
 }
 
 function icalEscape(s: string): string {
