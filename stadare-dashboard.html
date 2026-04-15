@@ -832,7 +832,7 @@ body{top:0!important}
         </div>
         <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
           <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Snittbetyg</div>
-          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-rating-display">0 kr</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--g);margin-top:2px" id="home-rating-display">–</div>
           <div style="font-size:.68rem;color:var(--m);margin-top:2px" id="home-rating-count">0 betyg</div>
         </div>
       </div>
@@ -1109,7 +1109,7 @@ body{top:0!important}
           <div class="prof-name" id="prof-name">Laddar...</div>
           <div class="prof-sub" id="prof-sub">Spick-städare</div>
           <div style="margin-bottom:8px">
-            <span class="stars" id="prof-stars">⭐⭐⭐⭐⭐</span>
+            <span class="stars" id="prof-stars"></span>
             <span style="font-size:.8rem;color:var(--m);margin-left:6px" id="prof-rating-txt"></span>
           </div>
           <span id="prof-status" style="color:var(--g);font-size:.85rem">✅ Aktiv</span>
@@ -2640,10 +2640,13 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('prof-services').textContent = svcText;
   initProfileServices(cleaner.services);
   const rating = cleaner.avg_rating;
-  if (rating) {
-    const stars = '⭐'.repeat(Math.round(rating));
+  if (rating > 0 && (cleaner.review_count || 0) > 0) {
+    const stars = '⭐'.repeat(Math.min(5, Math.round(rating)));
     document.getElementById('prof-stars').textContent = stars;
-    document.getElementById('prof-rating-txt').textContent = `${rating}/5 (${cleaner.review_count || 0} betyg)`;
+    document.getElementById('prof-rating-txt').textContent = `${parseFloat(rating).toFixed(1)}/5 (${cleaner.review_count} betyg)`;
+  } else {
+    document.getElementById('prof-stars').textContent = '';
+    document.getElementById('prof-rating-txt').textContent = 'Inga betyg ännu';
   }
 
   buildSchedule();
@@ -3799,7 +3802,11 @@ function updateHomeStats() {
   document.getElementById('home-month-earn').textContent = monthEarn.toLocaleString('sv') + ' kr';
   document.getElementById('home-month-jobs').textContent = monthJobs.length + ' uppdrag';
   var ratingEl = document.getElementById('home-rating-display');
-  if (ratingEl && cleaner.avg_rating) ratingEl.textContent = cleaner.avg_rating + '/5';
+  if (ratingEl) {
+    ratingEl.textContent = (cleaner.avg_rating > 0 && (cleaner.review_count || 0) > 0)
+      ? parseFloat(cleaner.avg_rating).toFixed(1) + '/5'
+      : '–';
+  }
   var ratingCountEl = document.getElementById('home-rating-count');
   if (ratingCountEl) ratingCountEl.textContent = (cleaner.review_count || 0) + ' betyg';
   wrap.style.display = 'grid';
@@ -6300,7 +6307,7 @@ function renderGantt() {
 
 function renderGanttDay(wrap) {
   var activeMembers = _teamMembers.filter(function(m) {
-    return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved;
+    return (m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved) && !m.owner_only;
   });
   if (!activeMembers.length) {
     wrap.innerHTML = '<p style="font-size:.85rem;color:var(--m);text-align:center;padding:24px">Lägg till teammedlemmar för att se kalendern.</p>';
@@ -6417,7 +6424,7 @@ function renderGanttDay(wrap) {
 
 function renderGanttWeek(wrap) {
   var activeMembers = _teamMembers.filter(function(m) {
-    return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved;
+    return (m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved) && !m.owner_only;
   });
   if (!activeMembers.length) {
     wrap.innerHTML = '<p style="font-size:.85rem;color:var(--m);text-align:center;padding:24px">Inga teammedlemmar.</p>';
@@ -6534,7 +6541,7 @@ function timeDiffHours(startTime, endTime) {
 }
 
 function updateGanttSummary() {
-  var activeMembers = _teamMembers.filter(function(m) { return m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved; });
+  var activeMembers = _teamMembers.filter(function(m) { return (m.status === 'aktiv' || m.status === 'onboarding' || m.is_approved) && !m.owner_only; });
   var totalAvail = 0, totalBooked = 0, totalRevenue = 0;
 
   function sumForDate(dateStr, dowV2) {
@@ -7112,7 +7119,7 @@ async function ganttMarkSick(cleanerId, dateStr) {
   // 2. Omfördelnings-dialog
   if (dayBookings.length > 0) {
     var availableMembers = _teamMembers.filter(function(m) {
-      return m.id !== cleanerId && (m.status === 'aktiv' || m.is_approved);
+      return m.id !== cleanerId && (m.status === 'aktiv' || m.is_approved) && !m.owner_only;
     });
     if (availableMembers.length === 0) {
       alert('Inga andra tillgängliga städare att omfördela till. Kontakta kunderna manuellt.');
