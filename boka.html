@@ -1328,7 +1328,9 @@ async function goStep2() {
         setStep(2); await loadAvailableCleaners(); return;
       }
       // 3. Uppdatera state med DB-data (inte URL som kan manipuleras)
-      state.cleanerName = cl.full_name;
+      state.cleanerName = (cl.company_display_name || cl.company_name)
+        ? (cl.company_display_name || cl.company_name) + ' — ' + (cl.full_name || '').split(' ')[0]
+        : cl.full_name;
       state.cleanerRate = cl.hourly_rate || 350;
       state.cleanerCity = cl.city || '';
     } catch(e) {
@@ -2257,7 +2259,9 @@ function renderCleaners(cleaners) {
           card.classList.add('selected');
         }
       });
-      state.cleanerName = preSelected.full_name;
+      state.cleanerName = (preSelected.company_display_name || preSelected.company_name)
+        ? (preSelected.company_display_name || preSelected.company_name) + ' — ' + (preSelected.full_name || '').split(' ')[0]
+        : preSelected.full_name;
       state.cleanerRate = preSelected.hourly_rate || 350;
       state.cleanerCity = preSelected.city || '';
       updateSidebar();
@@ -2342,7 +2346,9 @@ async function findFirstAvailable() {
 }
 function selectCleaner(cl, cardEl) {
   state.cleanerId   = cl.id;
-  state.cleanerName = cl.full_name;
+  state.cleanerName = (cl.company_display_name || cl.company_name)
+    ? (cl.company_display_name || cl.company_name) + ' — ' + (cl.full_name || '').split(' ')[0]
+    : cl.full_name;
   // Per-tjänst-pris
   var _sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
   state._isPricePerSqm = _sp && _sp.price_type === 'per_sqm';
