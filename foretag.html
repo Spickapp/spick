@@ -211,6 +211,9 @@ var H = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
+var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
+function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
+
 // ── DYNAMIC ACCENT COLOR from company name ──
 function nameToColor(name) {
   var hash = 0;
@@ -354,22 +357,26 @@ async function init() {
     var bookUrl = 'boka.html?company=' + co.id;
 
     // Bygg unika tjänster med lägsta pris
+    // Prioritet: 1) individuella priser  2) företagspriser  3) hourly_rate fallback
+    // (Samma ordning som stripe-checkout och boka.html)
     var svcMap = {};
+    // Steg 1: Individuella cleaner_service_prices (lägst vinner)
     svcPrices.forEach(function(sp) {
       var key = sp.service_type;
       if (!svcMap[key] || sp.price < svcMap[key].price) svcMap[key] = sp;
     });
+    // Steg 2: Företagspriser (company_service_prices) — fallback för tjänster utan individpris
+    Object.keys(companyPrices).forEach(function(svc) {
+      if (!svcMap[svc]) {
+        svcMap[svc] = { service_type: svc, price: companyPrices[svc].price, price_type: companyPrices[svc].price_type };
+      }
+    });
+    // Steg 3: hourly_rate som sista fallback — bara om varken steg 1 eller 2 har priset
     active.forEach(function(m) {
       if (Array.isArray(m.services)) {
         m.services.forEach(function(s) {
           if (!svcMap[s]) svcMap[s] = { service_type: s, price: m.hourly_rate || 350, price_type: 'hourly' };
         });
-      }
-    });
-    // Add company prices as fallback for services without individual prices
-    Object.keys(companyPrices).forEach(function(svc) {
-      if (!svcMap[svc]) {
-        svcMap[svc] = { service_type: svc, price: companyPrices[svc].price, price_type: companyPrices[svc].price_type };
       }
     });
     var uniqueServices = Object.values(svcMap);
@@ -414,7 +421,9 @@ async function init() {
     // ── 2. ANIMERADE SIFFROR ──
     h += '<div class="hero-stats">';
     if (avgRating > 0) h += '<div><div class="hero-stat-val">' + avgRating.toFixed(1) + '</div><div class="hero-stat-lbl">Snittbetyg</div></div>';
-    h += '<div><div class="hero-stat-val animated-counter" data-target="' + totalJobs + '">0</div><div class="hero-stat-lbl">Utförda jobb</div></div>';
+    if (totalJobs > 0) {
+      h += '<div><div class="hero-stat-val animated-counter" data-target="' + totalJobs + '">0</div><div class="hero-stat-lbl">Utförda jobb</div></div>';
+    }
     if (active.length > 0) h += '<div><div class="hero-stat-val animated-counter" data-target="' + active.length + '">0</div><div class="hero-stat-lbl">Städare</div></div>';
     if (reviews.length) h += '<div><div class="hero-stat-val animated-counter" data-target="' + reviews.length + '">0</div><div class="hero-stat-lbl">Recensioner</div></div>';
     h += '</div>';
@@ -458,13 +467,13 @@ async function init() {
 
     // ── 4. TJÄNSTER ──
     if (uniqueServices.length) {
-      h += '<div class="section"><div class="section-head"><div class="section-title">Tjänster & priser</div><div class="section-sub">Alla priser efter RUT-avdrag</div></div>';
+      h += '<div class="section"><div class="section-head"><div class="section-title">Tjänster & priser</div><div class="section-sub">Hushållstjänster visas efter RUT-avdrag (50%)</div></div>';
       h += '<div class="svc-grid">';
       uniqueServices.forEach(function(svc) {
         var icon = svcIcons[svc.service_type] || '🧹';
         var desc = svcDescs[svc.service_type] || 'Professionell tjänst med kvalitetsgaranti.';
         var isPerSqm = svc.price_type === 'per_sqm';
-        var rutPrice = Math.floor(svc.price * 0.5);
+        var isRut = isRutEligible(svc.service_type);
         var isPopular = svc.service_type === popularService;
         h += '<a href="' + bookUrl + '" class="svc-card' + (isPopular ? ' popular' : '') + '">';
         if (isPopular) h += '<div class="svc-popular-badge">Populär</div>';
@@ -472,11 +481,19 @@ async function init() {
         h += '<div class="svc-name">' + esc(svc.service_type) + '</div>';
         h += '<div class="svc-desc">' + desc + '</div>';
         if (isPerSqm) {
-          h += '<div class="svc-price">' + rutPrice + ' kr/kvm</div>';
-          h += '<div class="svc-rut">efter RUT (' + svc.price + ' kr/kvm före)</div>';
+          if (isRut) {
+            h += '<div class="svc-price">' + Math.floor(svc.price * 0.5) + ' kr/kvm</div>';
+            h += '<div class="svc-rut">efter RUT (' + svc.price + ' kr/kvm före)</div>';
+          } else {
+            h += '<div class="svc-price">' + svc.price + ' kr/kvm</div>';
+          }
         } else {
-          h += '<div class="svc-price">från ' + rutPrice + ' kr/h</div>';
-          h += '<div class="svc-rut">efter RUT-avdrag</div>';
+          if (isRut) {
+            h += '<div class="svc-price">från ' + Math.floor(svc.price * 0.5) + ' kr/h</div>';
+            h += '<div class="svc-rut">efter RUT-avdrag</div>';
+          } else {
+            h += '<div class="svc-price">från ' + svc.price + ' kr/h</div>';
+          }
         }
         h += '<div class="svc-cta">Boka →</div>';
         h += '</a>';
@@ -491,15 +508,21 @@ async function init() {
       active.forEach(function(m) {
         var stars = '', rat = parseFloat(m.avg_rating) || 0;
         for (var i = 0; i < 5; i++) stars += i < Math.round(rat) ? '★' : '☆';
-        var svcs = Array.isArray(m.services) ? m.services.slice(0, 2) : [];
+        var allSvcsForMember = Array.isArray(m.services) ? m.services : [];
+        var svcs = allSvcsForMember.slice(0, 4);
+        var extraCount = allSvcsForMember.length - 4;
         h += '<div class="team-card">';
         h += m.avatar_url ? '<div class="team-av"><img src="' + m.avatar_url + '" alt="' + esc(m.full_name) + '"></div>' : '<div class="team-av">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
         h += '<div class="team-name">' + esc(m.full_name) + '</div>';
         if (rat > 0 && co.show_individual_ratings !== false) h += '<div class="team-stars">' + stars + ' ' + rat.toFixed(1) + '</div>';
         else h += '<div class="team-meta">Ny på Spick</div>';
-        h += '<div class="team-meta">' + (co.show_individual_ratings !== false ? (m.completed_jobs || 0) + ' jobb' : '') + '</div>';
+        if ((m.completed_jobs || 0) > 0 && co.show_individual_ratings !== false) {
+          h += '<div class="team-meta">' + m.completed_jobs + ' jobb</div>';
+        } else if (co.show_individual_ratings !== false) {
+          h += '<div class="team-meta">Ny på Spick</div>';
+        }
         if (m.bio) h += '<div class="team-bio">"' + esc(m.bio) + '"</div>';
-        if (svcs.length) { h += '<div class="team-svcs">'; svcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); h += '</div>'; }
+        if (svcs.length) { h += '<div class="team-svcs">'; svcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); if (extraCount > 0) h += '<span class="team-svc" style="opacity:.6">+' + extraCount + ' till</span>'; h += '</div>'; }
         h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</a>';
         h += '</div>';
       });
