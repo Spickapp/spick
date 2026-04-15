@@ -298,6 +298,8 @@ let _cleaner = null;
 function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 var svcIcons = {'Hemstädning':'🏠','Storstädning':'✨','Flyttstädning':'📦','Fönsterputs':'🪟','Kontorsstädning':'🏢'};
+var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
+function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
 
 async function loadProfile() {
   var params = new URLSearchParams(location.search);
@@ -338,7 +340,9 @@ async function loadProfile() {
 
   var firstName = (c.full_name || '').split(' ')[0];
   var rate = c.hourly_rate || 350;
-  var rutPrice = Math.round(rate * 0.5);
+  var svcsForRut = Array.isArray(c.services) ? c.services : (c.services || 'Hemstädning').split(',');
+  var hasRutServices = svcsForRut.some(function(s) { return isRutEligible(s.trim()); });
+  var rutPrice = hasRutServices ? Math.round(rate * 0.5) : rate;
   var hasRatings = c.avg_rating != null && c.review_count > 0;
   var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate;
 
@@ -364,6 +368,25 @@ async function loadProfile() {
   } else {
     document.getElementById('p-name').textContent = c.full_name || 'Städare';
   }
+
+  // Teammedlem — visa företagstillhörighet
+  if (c.company_id && !c.is_company_owner) {
+    (async function() {
+      try {
+        var compRes = await fetch(SUPA + '/rest/v1/companies?select=name,slug&id=eq.' + c.company_id + '&apikey=' + KEY, {headers: H});
+        var compArr = compRes.ok ? await compRes.json() : [];
+        if (compArr[0] && compArr[0].name) {
+          var banner = document.createElement('a');
+          banner.href = '/f/' + (compArr[0].slug || '');
+          banner.style.cssText = 'display:flex;align-items:center;gap:8px;background:#DBEAFE;border:1.5px solid #93C5FD;border-radius:12px;padding:12px 16px;margin:12px 0 0;text-decoration:none;color:#1E40AF;font-size:.85rem;font-weight:600;transition:background .2s';
+          banner.innerHTML = '🏢 Del av <strong>' + escHtml(compArr[0].name) + '</strong> <span style="margin-left:auto;font-size:.78rem;opacity:.7">Visa företaget →</span>';
+          var nameEl = document.getElementById('p-name');
+          if (nameEl) nameEl.parentNode.insertBefore(banner, nameEl.nextSibling.nextSibling || nameEl.nextSibling);
+        }
+      } catch(e) {}
+    })();
+  }
+
   if ((c.avg_rating >= 4.8 && c.completed_jobs >= 10) || c.completed_jobs >= 20) {
     document.getElementById('p-top-badge').style.display = 'inline-block';
   }
@@ -414,7 +437,7 @@ async function loadProfile() {
     }
   } catch(e) { console.warn('Detail ratings:', e); }
 
-  document.getElementById('rv-jobs').textContent = c.completed_jobs || '0';
+  document.getElementById('rv-jobs').textContent = (c.completed_jobs > 0) ? c.completed_jobs : 'Ny';
   if (c.member_since) {
     var ms = new Date(c.member_since);
     var mNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
@@ -442,8 +465,18 @@ async function loadProfile() {
   document.getElementById('p-tags').innerHTML = tagsHTML;
 
   // Price
-  document.getElementById('p-rut-price').textContent = rutPrice + ' kr';
-  document.getElementById('p-full-price').textContent = rate;
+  if (hasRutServices) {
+    document.getElementById('p-rut-price').textContent = rutPrice + ' kr';
+    document.getElementById('p-full-price').textContent = rate;
+    document.getElementById('sticky-price').textContent = rutPrice + ' kr/h med RUT';
+  } else {
+    document.getElementById('p-rut-price').textContent = rate + ' kr';
+    var priceUnit = document.querySelector('.price-unit');
+    if (priceUnit) priceUnit.textContent = '/h';
+    var rutInfo = document.querySelector('.price-rut');
+    if (rutInfo) rutInfo.style.display = 'none';
+    document.getElementById('sticky-price').textContent = rate + ' kr/h';
+  }
 
   // CTA
   var ctaName = _isCompany && _company ? _company.name : firstName;
@@ -451,7 +484,6 @@ async function loadProfile() {
   document.getElementById('book-btn').textContent = 'Boka ' + escHtml(ctaName) + ' — Välj tid →';
 
   // Sticky CTA
-  document.getElementById('sticky-price').textContent = rutPrice + ' kr/h med RUT';
   document.getElementById('sticky-name').textContent = escHtml(ctaName) + (hasRatings ? ' · ★ ' + c.avg_rating.toFixed(1) : ' · Ny på Spick');
   document.getElementById('sticky-btn').href = bokaHref;
 
@@ -467,9 +499,11 @@ async function loadProfile() {
     s = s.trim();
     var sp = _svcPrices.find(function(p) { return p.service_type === s; });
     var svcRate = sp ? sp.price : rate;
-    var svcRut = Math.round(svcRate * 0.5);
     var unit = sp && sp.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h';
-    return '<div class="service-card"><div class="service-icon">' + (svcIcons[s] || '🧹') + '</div><div class="service-name">' + escHtml(s) + '</div><div class="service-price">från ' + svcRut + ' ' + unit + ' m. RUT</div></div>';
+    var isRut = isRutEligible(s);
+    var displayPrice = isRut ? Math.round(svcRate * 0.5) : svcRate;
+    var priceLabel = isRut ? 'från ' + displayPrice + ' ' + unit + ' m. RUT' : 'från ' + displayPrice + ' ' + unit;
+    return '<div class="service-card"><div class="service-icon">' + (svcIcons[s] || '🧹') + '</div><div class="service-name">' + escHtml(s) + '</div><div class="service-price">' + priceLabel + '</div></div>';
   }).join('');
   document.getElementById('p-services').innerHTML = svcHTML;
 
@@ -571,15 +605,22 @@ async function loadProfile() {
 
   // 5. Similar cleaners (nearby, same city)
   try {
-    var simUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,avg_rating&is_approved=eq.true&id=neq.' + c.id + '&limit=3&apikey=' + KEY;
+    var simUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,avg_rating,company_id,is_company_owner&is_approved=eq.true&id=neq.' + c.id + '&limit=6&apikey=' + KEY;
     if (c.city) simUrl += '&city=ilike.' + encodeURIComponent(c.city);
+    if (c.company_id) simUrl += '&or=(company_id.is.null,company_id.neq.' + c.company_id + ')';
     var simRes = await fetch(simUrl, {headers: H});
     var sims = simRes.ok ? await simRes.json() : [];
-    if (sims && sims.length > 0) {
+    // Filtrera: visa företagsägare (representerar företaget) och solo-städare, ej individuella teammedlemmar
+    sims = sims.filter(function(s) {
+      if (s.company_id && !s.is_company_owner) return false;
+      return true;
+    }).slice(0, 3);
+    if (sims.length > 0) {
       document.getElementById('p-similar').innerHTML = sims.map(function(s) {
         var initial = (s.full_name || '?')[0].toUpperCase();
         var href = '/stadare-profil.html?s=' + encodeURIComponent(s.slug || s.id);
-        return '<a href="' + href + '" class="similar-card"><div class="similar-avatar">' + initial + '</div><div class="similar-name">' + escHtml(s.full_name || 'Städare') + '</div><div class="similar-area">' + escHtml(s.city || 'Stockholm') + '</div>' + (s.avg_rating ? '<div class="similar-rating">★ ' + Number(s.avg_rating).toFixed(1) + '</div>' : '') + '</a>';
+        var displayName = s.is_company_owner ? s.full_name : (s.full_name || 'Städare');
+        return '<a href="' + href + '" class="similar-card"><div class="similar-avatar">' + initial + '</div><div class="similar-name">' + escHtml(displayName) + '</div><div class="similar-area">' + escHtml(s.city || 'Stockholm') + '</div>' + (s.avg_rating ? '<div class="similar-rating">★ ' + Number(s.avg_rating).toFixed(1) + '</div>' : '') + '</a>';
       }).join('');
       document.getElementById('similar-section').style.display = 'block';
     }
