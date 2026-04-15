@@ -3457,7 +3457,7 @@ function showCleanerDetail(id) {
         <option value="3+ år"${c.experience === '3+ år' ? ' selected' : ''}>3+ år</option>
       </select>
     </span></div>
-    <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet'}</span></div>
+    <div class="stat-row"><span class="lbl">Stripe-konto</span><span class="val">${c.stripe_account_id && c.stripe_onboarding_status === 'complete' ? '✅ Anslutet' : c.stripe_account_id ? '⏳ Påbörjad' : '❌ Ej anslutet'}</span></div>
     <div class="stat-row"><span class="lbl">Registrerad</span><span class="val">${c.created_at ? new Date(c.created_at).toLocaleDateString('sv') : '–'}</span></div>
     <div class="stat-row"><span class="lbl">Senast aktiv</span><span class="val">${c.last_active_at ? '<span style="color:' + (Date.now() - new Date(c.last_active_at).getTime() < 86400000 ? '#065F46;font-weight:600' : '#6B6960') + '">' + new Date(c.last_active_at).toLocaleDateString('sv-SE', {day:'numeric',month:'short',year:'numeric'}) + ' ' + new Date(c.last_active_at).toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '<span style="color:#DC2626">Aldrig</span>'}</span></div>
     
@@ -3547,7 +3547,7 @@ function showCleanerDetail(id) {
         '<div><span style="font-size:.72rem;color:#6B7280">Visningsnamn</span><br><strong>' + escHtml(co.display_name || '(samma som bolagsnamn)') + '</strong></div>' +
         '<div style="display:none"><span>ignore</span><br><strong>' + escHtml(co.name || '–') + '</strong></div>' +
         '<div><span style="font-size:.72rem;color:#6B7280">Org.nr</span><br><strong>' + escHtml(co.org_number || '–') + '</strong></div>' +
-        '<div><span style="font-size:.72rem;color:#6B7280">Stripe</span><br><strong>' + (co.stripe_account_id ? '✅ Anslutet' : '❌ Ej anslutet') + '</strong></div>' +
+        '<div><span style="font-size:.72rem;color:#6B7280">Stripe</span><br><strong>' + (c.stripe_account_id && c.stripe_onboarding_status === 'complete' ? '✅ Anslutet' : c.stripe_account_id ? '⏳ Påbörjad' : '❌ Ej anslutet') + '</strong></div>' +
         '<div><span style="font-size:.72rem;color:#6B7280">Provision</span><br><strong>' + (co.commission_rate != null ? (co.commission_rate < 1 ? Math.round(co.commission_rate * 100) : co.commission_rate) + '%' : '17%') + '</strong></div>' +
         '</div>';
 
