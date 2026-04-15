@@ -51,19 +51,54 @@ serve(async (req) => {
     if (action === "onboard_cleaner") {
       const { cleaner_id, email, name } = params;
 
-      // Skapa Express-konto i Stripe
-      const account = await stripe("/accounts", "POST", {
+      // Kolla om städaren är VD med företag
+      const { data: cleanerRow } = await sb.from("cleaners")
+        .select("is_company_owner, company_id")
+        .eq("id", cleaner_id)
+        .maybeSingle();
+
+      let companyData: { name?: string; org_number?: string } | null = null;
+      if (cleanerRow?.is_company_owner && cleanerRow?.company_id) {
+        const { data: comp } = await sb.from("companies")
+          .select("name, org_number")
+          .eq("id", cleanerRow.company_id)
+          .maybeSingle();
+        if (comp?.org_number) companyData = comp;
+      }
+
+      // Bygg Stripe-parametrar baserat på om det är företag eller individ
+      const isCompanyAccount = !!companyData;
+      const taxId = (companyData?.org_number || "").replace(/\D/g, "");
+
+      const accountParams: Record<string, string> = {
         type: "express",
         country: "SE",
         email,
         "capabilities[transfers][requested]": "true",
-        business_type: "individual",
-        "individual[email]": email,
-        "individual[first_name]": name?.split(" ")[0] || "",
-        "individual[last_name]":  name?.split(" ").slice(1).join(" ") || "",
         "settings[payouts][schedule][interval]": "daily",
         "metadata[cleaner_id]": cleaner_id,
-      });
+      };
+
+      if (isCompanyAccount && taxId.length >= 10) {
+        // VD med företag → business_type: company
+        accountParams.business_type = "company";
+        accountParams["company[name]"] = companyData!.name || "";
+        accountParams["company[tax_id]"] = taxId;
+        // Representant = VD (står som individ bakom företaget)
+        accountParams["individual[email]"] = email;
+        accountParams["individual[first_name]"] = name?.split(" ")[0] || "";
+        accountParams["individual[last_name]"] = name?.split(" ").slice(1).join(" ") || "";
+        accountParams["metadata[company_id]"] = cleanerRow!.company_id!;
+      } else {
+        // Solo-städare → business_type: individual (som förut)
+        accountParams.business_type = "individual";
+        accountParams["individual[email]"] = email;
+        accountParams["individual[first_name]"] = name?.split(" ")[0] || "";
+        accountParams["individual[last_name]"] = name?.split(" ").slice(1).join(" ") || "";
+      }
+
+      // Skapa Express-konto i Stripe
+      const account = await stripe("/accounts", "POST", accountParams);
 
       if (account.error) throw new Error(account.error.message);
 
