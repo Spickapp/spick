@@ -605,13 +605,14 @@ async function loadProfile() {
 
   // 5. Similar cleaners (nearby, same city)
   try {
-    var simUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,avg_rating,company_id,is_company_owner&is_approved=eq.true&id=neq.' + c.id + '&limit=6&apikey=' + KEY;
+    var simUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,avg_rating,company_id,is_company_owner,owner_only&is_approved=eq.true&id=neq.' + c.id + '&owner_only=neq.true&limit=6&apikey=' + KEY;
     if (c.city) simUrl += '&city=ilike.' + encodeURIComponent(c.city);
     if (c.company_id) simUrl += '&or=(company_id.is.null,company_id.neq.' + c.company_id + ')';
     var simRes = await fetch(simUrl, {headers: H});
     var sims = simRes.ok ? await simRes.json() : [];
     // Filtrera: visa företagsägare (representerar företaget) och solo-städare, ej individuella teammedlemmar
     sims = sims.filter(function(s) {
+      if (s.owner_only) return false;
       if (s.company_id && !s.is_company_owner) return false;
       return true;
     }).slice(0, 3);
