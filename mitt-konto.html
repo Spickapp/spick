@@ -810,7 +810,7 @@ async function submitInlineReview() {
     if (s.data.session) reviewToken = s.data.session.access_token;
   } catch(e) {}
   const bkRes = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/bookings?id=eq.${_reviewBid}&select=cleaner_id,cleaner_email,cleaner_name,customer_email,customer_name,service,date`,
+    `${SPICK.SUPA_URL}/rest/v1/bookings?id=eq.${_reviewBid}&select=cleaner_id,cleaner_name,customer_email,customer_name,service_type,booking_date`,
     {
       headers: {
         'apikey': SPICK.SUPA_KEY,
@@ -823,13 +823,12 @@ async function submitInlineReview() {
 
   if (!bk) { spickToast('Kunde inte hämta bokningsinfo', 'error'); btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false; return; }
 
-  // Spara recension — matchar faktisk DB-schema (cleaner_id, job_id, comment)
-  const { error } = await SB.from('reviews').insert({
-    cleaner_id:    bk.cleaner_id   || null,
-    customer_id:   null,
-    job_id:        _reviewBid      || null,
-    cleaner_rating: _reviewStars,
-    comment:       comment         || null,
+  // Spara recension i ratings-tabellen (reviews = vy som läser härifrån)
+  const { error } = await SB.from('ratings').insert({
+    cleaner_id: bk.cleaner_id || null,
+    job_id:     _reviewBid     || null,
+    rating:     _reviewStars,
+    comment:    comment        || null,
   });
 
   if (!error) {
