@@ -4814,13 +4814,41 @@ async function renderSystemStatus() {
 var _origShowPage = showPage;
 showPage = function(id) {
   _origShowPage(id);
-  if (id==='support') loadTickets();
-  if (id==='quality') renderQualityPanel();
-  if (id==='team') loadTeam();
-  if (id==='platform-settings') loadPlatformSettings();
-  if (id==='audit') loadAuditLog();
-  if (id==='activity') loadActivity();
-  if (id==='system-status') renderSystemStatus();
+  var loaders = {
+    'support': loadTickets,
+    'quality': renderQualityPanel,
+    'team': loadTeam,
+    'platform-settings': loadPlatformSettings,
+    'audit': loadAuditLog,
+    'activity': loadActivity,
+    'system-status': renderSystemStatus
+  };
+  var fn = loaders[id];
+  if (fn) {
+    Promise.resolve().then(function() { return fn(); }).catch(function(e) {
+      console.warn('[SPICK] Section load error:', id, e);
+      var page = document.getElementById('page-' + id);
+      if (page) {
+        // Hitta loading-indikatorer: spinner ELLER "Laddar..."-text
+        var spinners = page.querySelectorAll('.loading, .spin');
+        if (spinners.length) {
+          spinners.forEach(function(el) {
+            el.outerHTML = '<div style="text-align:center;padding:24px;color:#92400E;font-size:.85rem">Kunde inte ladda data. Klicka ↻ Uppdatera.</div>';
+          });
+        } else {
+          // Fallback: sök efter "Laddar..."-text
+          var divs = page.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            if (divs[i].textContent.trim() === 'Laddar...') {
+              divs[i].textContent = 'Kunde inte ladda data. Klicka ↻ Uppdatera.';
+              divs[i].style.color = '#92400E';
+              break;
+            }
+          }
+        }
+      }
+    });
+  }
 };
 
 // ─── Självfakturor ───────────────────────────────────────────
