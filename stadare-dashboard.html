@@ -964,15 +964,15 @@ body{top:0!important}
 
       <!-- Quick Actions -->
       <div id="quick-actions" style="padding:8px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div onclick="switchTab('kalender')" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
+        <div id="quick-schema" onclick="switchTab('kalender')" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
           <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Schema</div>
         </div>
-        <div onclick="switchTab('inst');setTimeout(function(){openSubView('sv-profile')},200)" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
+        <div id="quick-profil" onclick="switchTab('inst');setTimeout(function(){openSubView('sv-profile')},200)" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
           <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Profil</div>
         </div>
-        <div onclick="shareProfile()" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
+        <div id="quick-dela" onclick="shareProfile()" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
           <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Dela profil</div>
         </div>
@@ -1117,13 +1117,13 @@ body{top:0!important}
         </div>
 
         <!-- Settings menu -->
-        <div class="settings-section">
-          <div class="settings-section-title">Profil</div>
+        <div class="settings-section" id="settings-profil-section">
+          <div class="settings-section-title" id="settings-profil-title">Profil</div>
           <div class="settings-link" onclick="openSubView('sv-profile')">
-            <span class="sl-icon">👤</span><span class="sl-text">Redigera profil</span><span class="sl-arrow">›</span>
+            <span class="sl-icon">👤</span><span class="sl-text" id="sl-redigera-profil">Redigera profil</span><span class="sl-arrow">›</span>
           </div>
           <div class="settings-link" onclick="shareProfile()">
-            <span class="sl-icon">🔗</span><span class="sl-text">Dela min profil</span><span class="sl-arrow">›</span>
+            <span class="sl-icon">🔗</span><span class="sl-text" id="sl-dela-profil">Dela min profil</span><span class="sl-arrow">›</span>
           </div>
         </div>
 
@@ -1145,7 +1145,7 @@ body{top:0!important}
           </div>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section" id="settings-arbete-section">
           <div class="settings-section-title">Arbete</div>
           <div class="settings-link" onclick="openSubView('sv-pricing')">
             <span class="sl-icon">💰</span><span class="sl-text">Prissättning per tjänst</span><span class="sl-arrow">›</span>
@@ -1194,7 +1194,7 @@ body{top:0!important}
           </div>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section" id="settings-tjanster-section">
           <div class="settings-section-title">Tjänster</div>
           <div class="card">
             <div class="card-title">🧹 Mina tjänster <a id="prof-services-edit" onclick="openSubView('sv-profile')" style="font-size:.75rem;color:#0F6E56;cursor:pointer;text-decoration:underline;margin-left:.5rem">Ändra</a></div>
@@ -1255,7 +1255,7 @@ body{top:0!important}
         <div class="prof-row"><span class="lbl">E-post</span><span id="prof-email" style="font-size:.85rem;color:var(--m)">–</span></div>
         <div class="prof-row"><span class="lbl">Telefon <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-phone" placeholder="07X-XXX XX XX" required></div>
         <div class="prof-row"><span class="lbl">Stad <span style="color:#DC2626">*</span></span><input class="edit-input" id="edit-city" placeholder="Stockholm" required></div>
-        <div class="prof-row"><span class="lbl">Timpris</span>
+        <div class="prof-row" id="prof-row-timpris"><span class="lbl">Timpris</span>
           <div style="display:flex;align-items:center;gap:6px">
             <input class="edit-input" id="edit-rate" type="number" min="250" max="600">
             <span style="font-size:.82rem;color:var(--m)" title="Efter Spicks plattformsavgift (12–17% beroende på nivå)">kr/h · du behåller <strong style="color:var(--g)" id="edit-keep">– kr/h</strong></span>
@@ -1263,7 +1263,7 @@ body{top:0!important}
         </div>
         <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
         <div class="prof-row"><span class="lbl">🗣 Språk</span><span id="prof-languages" style="font-size:.85rem;color:var(--m)">–</span></div>
-        <div class="prof-row"><span class="lbl">📋 Erfarenhet</span><span id="prof-experience" style="font-size:.85rem;color:var(--m)">–</span></div>
+        <div class="prof-row" id="prof-row-erfarenhet"><span class="lbl">📋 Erfarenhet</span><span id="prof-experience" style="font-size:.85rem;color:var(--m)">–</span></div>
         <div style="margin-top:1rem">
           <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Mina tjänster</label>
           <div id="profile-services" style="display:flex;flex-wrap:wrap;gap:.5rem">
@@ -2202,6 +2202,55 @@ function applyPermissions(p) {
   var activeNav = document.querySelector('.nav-btn.active');
   if (activeNav && activeNav.style.display === 'none') switchTab('hem');
 }
+
+function applyOwnerOnlyView() {
+  if (!cleaner || !cleaner.owner_only) return;
+
+  // ── JAG-TAB: Byt texter ──
+  var profilTitle = document.getElementById('settings-profil-title');
+  if (profilTitle) profilTitle.textContent = 'Ditt konto';
+
+  var redigeraText = document.getElementById('sl-redigera-profil');
+  if (redigeraText) redigeraText.textContent = 'Redigera kontaktuppgifter';
+
+  var delaText = document.getElementById('sl-dela-profil');
+  if (delaText) delaText.textContent = 'Dela företagsprofil';
+
+  // ── JAG-TAB: Dölj irrelevanta sektioner ──
+  var arbeteSec = document.getElementById('settings-arbete-section');
+  if (arbeteSec) arbeteSec.style.display = 'none';
+
+  var tjansterSec = document.getElementById('settings-tjanster-section');
+  if (tjansterSec) tjansterSec.style.display = 'none';
+
+  // ── SV-PROFILE: Dölj timpris och erfarenhet ──
+  var timprisRow = document.getElementById('prof-row-timpris');
+  if (timprisRow) timprisRow.style.display = 'none';
+
+  var erfarenhetRow = document.getElementById('prof-row-erfarenhet');
+  if (erfarenhetRow) erfarenhetRow.style.display = 'none';
+
+  // ── HEM-TAB: Anpassa snabblänkar ──
+  var quickSchema = document.getElementById('quick-schema');
+  if (quickSchema) {
+    quickSchema.onclick = function() { switchTab('team'); };
+    quickSchema.querySelector('div:first-child').textContent = '👥';
+    quickSchema.querySelector('div:last-child').textContent = 'Team';
+  }
+
+  var quickProfil = document.getElementById('quick-profil');
+  if (quickProfil) {
+    quickProfil.querySelector('div:first-child').textContent = '👤';
+    quickProfil.querySelector('div:last-child').textContent = 'Kontaktinfo';
+  }
+
+  var quickDela = document.getElementById('quick-dela');
+  if (quickDela) {
+    quickDela.querySelector('div:first-child').textContent = '🔗';
+    quickDela.querySelector('div:last-child').textContent = 'Dela företag';
+  }
+}
+
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
 const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const MONTHLY_GOAL = 10000;
@@ -2473,12 +2522,18 @@ function loadPreferences() {
 // ── DELA PROFIL ──────────────────────────────────────
 function shareProfile() {
   if (!cleaner?.id) return;
-  const slug = cleaner.slug || cleaner.id;
-  const param = cleaner.slug ? 's' : 'id';
-  const url = `https://spick.se/s/${slug}`;
-  navigator.clipboard.writeText(url).then(() => {
+  // VD med företag → dela /f/ (företagsprofil), annars /s/ (personlig)
+  var url;
+  if (cleaner.is_company_owner && window._companyData && window._companyData.slug) {
+    url = 'https://spick.se/f/' + window._companyData.slug;
+  } else {
+    url = 'https://spick.se/s/' + (cleaner.slug || cleaner.id);
+  }
+  navigator.clipboard.writeText(url).then(function() {
+    localStorage.setItem('spick-profile-shared', '1');
     showToast('✅ Länk kopierad!');
-  }).catch(() => {
+    if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
+  }).catch(function() {
     prompt('Kopiera din profil-länk:', url);
   });
 }
@@ -2683,6 +2738,7 @@ async function loadCleanerByEmail(email, authUserId) {
   window._userRole = permResult.role;
   window._permissions = permResult.permissions;
   applyPermissions(permResult.permissions);
+  applyOwnerOnlyView();
 
   showScreen('app');
 
