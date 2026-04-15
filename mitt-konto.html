@@ -366,7 +366,13 @@ SB.auth.onAuthStateChange(function(event, session) {
     document.getElementById('loginSection').style.display = 'none';
     var magicSent = document.getElementById('magicSent');
     if (magicSent) magicSent.style.display = 'none';
-    loadPortalForUser(session.user.email);
+    loadPortalForUser(session.user.email).catch(function(err) {
+      console.error('[SPICK] Portal load failed:', err);
+      document.getElementById('portalSection').style.display = 'block';
+      document.getElementById('portalName').textContent = 'Välkommen!';
+      document.getElementById('portalEmail').textContent = session.user.email || '';
+      document.getElementById('bookingsList').innerHTML = '<div style="text-align:center;padding:2rem;color:#92400E"><p>Kunde inte ladda bokningar.</p><p><a href="" onclick="location.reload();return false" style="color:var(--g);font-weight:600">Ladda om sidan</a></p></div>';
+    });
     if (location.hash.includes('access_token')) {
       history.replaceState(null, '', location.pathname);
     }
@@ -463,6 +469,7 @@ async function verifyCustomerOtp() {
 
 // ── LOAD PORTAL ─────────────────────────────
 async function loadPortalForUser(email) {
+  try {
   // Use session token for RLS-compatible access
   var sessionToken = SPICK.SUPA_KEY;
   try {
@@ -474,6 +481,15 @@ async function loadPortalForUser(email) {
     { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + sessionToken } }
   );
   var bookings = bookingsRes.ok ? await bookingsRes.json() : [];
+  // Fallback: om autentiserad query ger 0, testa med anon + customer_email filter
+  if ((!Array.isArray(bookings) || !bookings.length) && sessionToken !== SPICK.SUPA_KEY) {
+    console.log('[SPICK] Auth query returned 0 — retrying with anon key');
+    var fallbackRes = await fetch(
+      SPICK.SUPA_URL + '/rest/v1/bookings?customer_email=eq.' + encodeURIComponent(email) + '&order=created_at.desc',
+      { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY } }
+    );
+    bookings = fallbackRes.ok ? await fallbackRes.json() : [];
+  }
   if (!Array.isArray(bookings) || !bookings.length) {
     showNoBookings(email);
     return;
@@ -493,6 +509,10 @@ async function loadPortalForUser(email) {
     });
   });
   showPortal(allBookings, email);
+  } catch(err) {
+    console.error('[SPICK] loadPortalForUser error:', err);
+    showNoBookings(email);
+  }
 }
 
 function showNoBookings(email) {
