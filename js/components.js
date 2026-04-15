@@ -82,7 +82,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
 .nav-login-menu a svg{width:18px;height:18px;color:#0F6E56;flex-shrink:0}
 /* FOOTER */
 footer{background:#080808;padding:4rem 5rem 2rem;}
-.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem;}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2rem;margin-bottom:3rem;max-width:1200px;margin-left:auto;margin-right:auto;}
 .footer-logo{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700;
   color:#1D9E75;margin-bottom:.75rem;}
 .footer-desc{font-size:.875rem;color:#5A5A55;line-height:1.7;max-width:260px;}
@@ -94,13 +94,14 @@ footer ul{list-style:none;display:flex;flex-direction:column;gap:.625rem;}
 footer a{font-size:.875rem;color:#6B6B65;text-decoration:none;transition:color .2s;}
 footer a:hover{color:#1D9E75;}
 .footer-bottom{border-top:1px solid #1A1A1A;padding-top:2rem;display:flex;
-  justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+  justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;max-width:1200px;margin:0 auto;}
 .footer-bottom p{font-size:.8rem;color:#3A3A35;}
 .footer-bottom-links{display:flex;gap:1.5rem;}
 .footer-bottom-links a{font-size:.8rem;color:#3A3A35;text-decoration:none;}
 .footer-bottom-links a:hover{color:#1D9E75;}
 @media(max-width:1024px){.footer-top{grid-template-columns:1fr 1fr;}
   .footer-top>:first-child{grid-column:1/-1;}}
+@media(max-width:768px){.footer-top{grid-template-columns:1fr 1fr;gap:1.5rem;}}
 @media(max-width:640px){footer{padding:3rem 1.5rem 2rem;}}
 /* === END SPICK GLOBAL NAV & FOOTER === */
   `;
