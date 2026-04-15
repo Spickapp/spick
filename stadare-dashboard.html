@@ -7894,6 +7894,33 @@ async function updateTeamMember(memberId) {
 
     if (error) throw new Error(error.message || 'Update failed');
 
+    // Spara per-tjänst-priser
+    try {
+      var priceEls = document.querySelectorAll('#team-svc-prices [data-price-svc]');
+      if (priceEls.length > 0) {
+        // Ta bort befintliga priser
+        await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + memberId, {
+          method: 'DELETE',
+          headers: _authHeaders()
+        });
+        // Skapa nya
+        for (var pi = 0; pi < priceEls.length; pi++) {
+          var pEl = priceEls[pi];
+          var pSvc = pEl.dataset.priceSvc;
+          var pPrice = parseInt(pEl.querySelector('input[type=number]').value) || 0;
+          var pSelect = pEl.querySelector('select');
+          var pType = pSelect ? pSelect.value : 'hourly';
+          if (pPrice > 0) {
+            await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
+              method: 'POST',
+              headers: Object.assign({}, _authHeaders(), {'Prefer': 'return=minimal'}),
+              body: JSON.stringify({ cleaner_id: memberId, service_type: pSvc, price_type: pType, price: pPrice })
+            });
+          }
+        }
+      }
+    } catch(e) { console.warn('Team member prices save:', e); }
+
     await saveTeamMemberSchedule(memberId);
     showToast('Ändringar sparade!');
     closeTeamModal();
