@@ -1898,6 +1898,10 @@ async function loadAvailableCleaners() {
     } else {
       cleaners = cleaners.filter(c => !c.owner_only);
     }
+    // Husdjursfilter: om kund har husdjur, uteslut städare som sagt "no"
+    if (state.hasPets) {
+      cleaners = cleaners.filter(c => c.pet_pref !== 'no');
+    }
     // Visa company-filter banner om aktivt
     if (preCompanyId && cleaners.length > 0) {
       var compName = cleaners[0].company_name || 'Företaget';
