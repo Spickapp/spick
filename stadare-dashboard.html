@@ -872,7 +872,7 @@ body{top:0!important}
             <div class="wiz-line" id="wiz-line-1"></div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
               <div class="wiz-dot off" id="wiz-dot-2">2</div>
-              <div style="font-size:.65rem;color:var(--m)" id="wiz-lbl-2">Stripe</div>
+              <div style="font-size:.65rem;color:var(--m)" id="wiz-lbl-2">Bankkonto</div>
             </div>
           </div>
 
@@ -896,8 +896,8 @@ body{top:0!important}
           <div id="wiz-step-2" style="display:none">
             <div class="wiz-step-card">
               <div class="wiz-step-title">Anslut bankkonto</div>
-              <div class="wiz-step-sub">Anslut via Stripe så kan du ta emot utbetalningar automatiskt efter varje jobb.</div>
-              <button class="wiz-btn" onclick="startStripeConnect()">Anslut via Stripe →</button>
+              <div class="wiz-step-sub">Koppla ditt bankkonto så kan du ta emot utbetalningar automatiskt efter varje jobb.</div>
+              <button class="wiz-btn" onclick="startStripeConnect()">Koppla bankkonto →</button>
               <div id="wiz-stripe-status" style="font-size:.78rem;color:var(--m);text-align:center;margin-top:10px"></div>
             </div>
           </div>
@@ -1074,9 +1074,9 @@ body{top:0!important}
 
           <div class="card">
             <div class="card-title">💳 Anslut bankkonto</div>
-            <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Anslut ditt bankkonto via Stripe för automatiska utbetalningar.</p>
+            <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Koppla ditt bankkonto för automatiska utbetalningar.</p>
             <div id="connect-status">
-              <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Anslut via Stripe →</button>
+              <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Koppla bankkonto →</button>
             </div>
           </div>
         </div>
@@ -2081,7 +2081,7 @@ const PERMISSION_LABELS = {
   reviews: { label: 'Recensioner (egna)', locked: false },
   pricing: { label: 'Prissättning', locked: false },
   earnings: { label: 'Intäkter & statistik', locked: false },
-  stripe: { label: 'Bankkonto (Stripe Connect)', locked: false },
+  stripe: { label: 'Bankkonto (utbetalning)', locked: false },
   invoices: { label: 'Självfakturor', locked: false },
   profile: { label: 'Profil (fullständig)', locked: false }
 };
@@ -2574,7 +2574,7 @@ async function loadCleanerByEmail(email, authUserId) {
     if (incomeTab) {
       var payInfo = document.createElement('div');
       payInfo.style.cssText = 'background:#DBEAFE;border-radius:12px;padding:14px;margin-bottom:16px;font-size:.85rem;color:#1E40AF';
-      payInfo.innerHTML = '💰 Utbetalningar görs till ditt företags Stripe-konto. Kontakta din teamägare för lönefrågor.';
+      payInfo.innerHTML = '💰 Utbetalningar görs till ditt företags bankkonto. Kontakta din teamägare för lönefrågor.';
       var tabPad = incomeTab.querySelector('.tab-pad');
       if (tabPad) tabPad.prepend(payInfo);
     }
@@ -5033,7 +5033,7 @@ async function removeBlockedDate(id) {
 
 // ── STRIPE CONNECT ───────────────────────────────────────────
 async function startStripeConnect() {
-  showToast('⏳ Öppnar Stripe...');
+  showToast('⏳ Öppnar utbetalningssida...');
   try {
     console.log('stripe-connect payload:', {cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name});
 
@@ -5048,10 +5048,10 @@ async function startStripeConnect() {
 
     if (res.ok && body.url) {
       window.open(body.url, '_blank');
-      showToast('✅ Stripe öppnad i ny flik');
+      showToast('✅ Öppnad i ny flik');
       logActivity('stripe_connect_start', null);
     } else {
-      const errMsg = body.error || body.message || 'Inget svar från Stripe';
+      const errMsg = body.error || body.message || 'Inget svar från betaltjänsten';
       console.error('stripe-connect error:', errMsg);
       showToast('❌ ' + errMsg);
     }
@@ -5075,16 +5075,16 @@ async function checkConnectStatus() {
         cleaner.stripe_onboarding_status = 'complete';
         var wiz = document.getElementById('onboarding-wizard');
         if (wiz && wiz.style.display !== 'none') wizComplete();
-        document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
+        document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet</div>`;
       } else {
         cleaner.stripe_onboarding_status = 'pending';
-        document.getElementById('connect-status').innerHTML = `<div style="color:#92400E;background:#FEF3C7;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">⚠️ Stripe-registrering påbörjad men ej klar — <a href="#" onclick="startStripeConnect();return false" style="color:var(--g);text-decoration:underline">Slutför →</a></div>`;
+        document.getElementById('connect-status').innerHTML = `<div style="color:#92400E;background:#FEF3C7;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">⚠️ Registrering påbörjad men ej klar — <a href="#" onclick="startStripeConnect();return false" style="color:var(--g);text-decoration:underline">Slutför →</a></div>`;
       }
       updateOnboarding();
     } else { throw new Error('not ok'); }
   } catch(e) {
     cleaner.stripe_onboarding_status = 'complete';
-    document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet via Stripe</div>`;
+    document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet</div>`;
   }
 }
 

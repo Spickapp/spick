@@ -260,7 +260,7 @@ serve(async (req) => {
                 <div style="width:28px;height:28px;border-radius:50%;background:#E8E8E4;color:#6B6960;font-size:13px;text-align:center;line-height:28px">📸</div>
                 <div style="width:2px;height:24px;background:#E8E8E4;margin:4px auto"></div>
               </td>
-              <td style="padding:4px 0 16px;font-size:14px;color:#6B6960">Ladda upp profilbild + koppla Stripe<br><span style="color:#9B9B95;font-size:13px">Tar 2 minuter i din dashboard</span></td>
+              <td style="padding:4px 0 16px;font-size:14px;color:#6B6960">Ladda upp profilbild + koppla bankkonto<br><span style="color:#9B9B95;font-size:13px">Tar 2 minuter i din dashboard</span></td>
             </tr>
             <tr>
               <td style="width:32px;vertical-align:top;padding:0 12px 0 0">
@@ -338,7 +338,7 @@ serve(async (req) => {
         <div class="card">
           <div class="row"><span class="lbl">Steg 1</span><span class="val"><a href="https://spick.se/stadare-dashboard.html" style="color:#0F6E56">Logga in</a> — ange din e-post, du får en 6-siffrig kod</span></div>
           <div class="row"><span class="lbl">Steg 2</span><span class="val"><a href="https://spick.se/stadare-guide.html" style="color:#0F6E56">Läs Appguiden</a> — hur du använder Spick (5 min)</span></div>
-          <div class="row"><span class="lbl">Steg 3</span><span class="val">Fyll i profil, bild, schema och anslut Stripe</span></div>
+          <div class="row"><span class="lbl">Steg 3</span><span class="val">Fyll i profil, bild, schema och koppla bankkonto</span></div>
         </div>
         <p>När din profil är komplett börjar du matcha med kunder automatiskt. 🚀</p>
         <a class="btn" href="https://spick.se/stadare-dashboard.html">Gå till min dashboard →</a>
