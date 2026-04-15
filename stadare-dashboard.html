@@ -1264,7 +1264,7 @@ body{top:0!important}
         <div class="prof-row"><span class="lbl">Bio</span><textarea class="edit-input" id="edit-bio" rows="4" maxlength="300" style="resize:none;font-size:.82rem;line-height:1.5" placeholder="Berätta kort om dig..."></textarea><div id="bio-counter" style="font-size:.7rem;color:var(--m);text-align:right;margin-top:2px">0/300</div></div>
         <div class="prof-row"><span class="lbl">🗣 Språk</span><span id="prof-languages" style="font-size:.85rem;color:var(--m)">–</span></div>
         <div class="prof-row" id="prof-row-erfarenhet"><span class="lbl">📋 Erfarenhet</span><span id="prof-experience" style="font-size:.85rem;color:var(--m)">–</span></div>
-        <div style="margin-top:1rem">
+        <div id="prof-services-section" style="margin-top:1rem">
           <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Mina tjänster</label>
           <div id="profile-services" style="display:flex;flex-wrap:wrap;gap:.5rem">
             <button type="button" class="svc-chip" data-svc="Hemstädning" onclick="toggleProfileSvc(this)">🏠 Hemstädning</button>
@@ -1272,10 +1272,14 @@ body{top:0!important}
             <button type="button" class="svc-chip" data-svc="Flyttstädning" onclick="toggleProfileSvc(this)">📦 Flyttstädning</button>
             <button type="button" class="svc-chip" data-svc="Fönsterputs" onclick="toggleProfileSvc(this)">🪟 Fönsterputs</button>
             <button type="button" class="svc-chip" data-svc="Kontorsstädning" onclick="toggleProfileSvc(this)">🏢 Kontorsstädning</button>
+            <button type="button" class="svc-chip" data-svc="Trappstädning" onclick="toggleProfileSvc(this)">🪜 Trappstädning</button>
+            <button type="button" class="svc-chip" data-svc="Skolstädning" onclick="toggleProfileSvc(this)">🏫 Skolstädning</button>
+            <button type="button" class="svc-chip" data-svc="Vårdstädning" onclick="toggleProfileSvc(this)">🏥 Vårdstädning</button>
+            <button type="button" class="svc-chip" data-svc="Hotell &amp; restaurang" onclick="toggleProfileSvc(this)">🏨 Hotell &amp; restaurang</button>
           </div>
           <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">Välj de tjänster du erbjuder. Kunder filtreras på detta.</div>
         </div>
-        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee">
+        <div id="prof-section-business" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee">
           <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Affärsuppgifter (självfakturering)</label>
           <div style="font-size:.72rem;color:#6B6960;margin-bottom:.75rem">Fyll i för att få korrekta självfakturor som bokföringsunderlag.</div>
           <div class="prof-field"><label>Firmanamn</label><input type="text" id="edit-business-name" placeholder="T.ex. Anna Andersson Städ"></div>
@@ -2268,6 +2272,34 @@ function applyOwnerOnlyView() {
   }
 }
 
+function applyTeamMemberView() {
+  // Bara för teammedlemmar (anställda i företag, ej VD)
+  if (!cleaner || !cleaner.company_id || cleaner.is_company_owner) return;
+
+  // ── SV-PROFILE: Dölj fält som VD hanterar ──
+
+  // Timpris + "du behåller" (VD sätter pris, ej teammedlem)
+  var timprisRow = document.getElementById('prof-row-timpris');
+  if (timprisRow) timprisRow.style.display = 'none';
+
+  // Erfarenhet (irrelevant för teammedlem)
+  var erfarenhetRow = document.getElementById('prof-row-erfarenhet');
+  if (erfarenhetRow) erfarenhetRow.style.display = 'none';
+
+  // Tjänster (VD hanterar via Team-tab)
+  var servicesSection = document.getElementById('prof-services-section');
+  if (servicesSection) {
+    servicesSection.innerHTML =
+      '<div style="font-size:.85rem;color:var(--m);padding:8px 0">' +
+      '🏢 Dina tjänster hanteras av din teamägare.' +
+      '</div>';
+  }
+
+  // Affärsuppgifter (irrelevant — teammedlem fakturerar inte)
+  var businessSection = document.getElementById('prof-section-business');
+  if (businessSection) businessSection.style.display = 'none';
+}
+
 let calMonth = new Date().getMonth(), calYear = new Date().getFullYear();
 const DAYS = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
 const MONTHLY_GOAL = 10000;
@@ -2795,6 +2827,7 @@ async function loadCleanerByEmail(email, authUserId) {
   window._permissions = permResult.permissions;
   applyPermissions(permResult.permissions);
   applyOwnerOnlyView();
+  applyTeamMemberView();
 
   showScreen('app');
 
@@ -5138,7 +5171,10 @@ async function saveProfile() {
   const city = document.getElementById('edit-city').value.trim();
   const rate = parseInt(document.getElementById('edit-rate').value) || 350;
   const bio = document.getElementById('edit-bio').value.trim();
-  const services = getSelectedProfileServices();
+  var services = getSelectedProfileServices();
+  // Om teammedlem (tjänster hanteras av VD) — behåll befintliga tjänster
+  var _isTM = cleaner && cleaner.company_id && !cleaner.is_company_owner;
+  if (_isTM) services = cleaner.services || [];
 
   if (name.length < 2) { showToast('Ange ditt namn'); return; }
   if (!/^0\d{8,11}$/.test(phone)) { showToast('Ange ett giltigt telefonnummer'); return; }
