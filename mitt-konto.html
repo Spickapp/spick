@@ -359,6 +359,7 @@ const SB = supabase.createClient(
 let currentEmail = '';
 let allBookings = [];
 let cancelBookingId = null;
+var _reviewedBookings = new Set();
 
 // ── AUTH STATE LISTENER ──────────────────────
 SB.auth.onAuthStateChange(function(event, session) {
@@ -638,7 +639,7 @@ function renderBookings(filter) {
 function bookingCard(b) {
   const date = b.date || b.scheduled_date || '';
   const time = b.time || b.scheduled_time || '';
-  const status = b.status || b.payment_status || 'ny';
+  const status = b.payment_status || b.status || 'ny';
   const price = b.total_price || 0;
   const rutPrice = b.rut ? Math.round(price * 0.5) : price;
 
@@ -646,19 +647,21 @@ function bookingCard(b) {
     'paid': 'Betald', 'pending': 'Inväntar betalning', 'ny': 'Ny',
     'confirmed': 'Bekräftad', 'bekräftad': 'Bekräftad',
     'completed': 'Genomförd', 'klar': 'Genomförd',
-    'cancelled': 'Avbokad', 'avbokad': 'Avbokad', 'failed': 'Misslyckad'
+    'cancelled': 'Avbokad', 'avbokad': 'Avbokad', 'failed': 'Misslyckad',
+    'refunded': 'Återbetald', 'pending_confirmation': 'Väntar på bekräftelse'
   }[status] || status;
 
   const statusClass = {
     'paid': 'status-paid', 'pending': 'status-pending', 'ny': 'status-ny',
     'confirmed': 'status-confirmed', 'bekräftad': 'status-confirmed',
     'completed': 'status-completed', 'klar': 'status-completed',
-    'cancelled': 'status-cancelled', 'avbokad': 'status-cancelled', 'failed': 'status-cancelled'
+    'cancelled': 'status-cancelled', 'avbokad': 'status-cancelled', 'failed': 'status-cancelled',
+    'refunded': 'status-cancelled', 'pending_confirmation': 'status-pending'
   }[status] || 'status-ny';
 
   const isPast = new Date(b.booking_date + 'T' + (b.booking_time || '23:59')) < new Date();
   const canCancel = !isPast && !['cancelled','avbokad','klar','completed'].includes(status);
-  const canReview = ['paid','completed','klar'].includes(status) && !b.review_requested;
+  const canReview = ['paid','completed','klar'].includes(status) && !_reviewedBookings.has(b.id);
   const dateStr = date ? new Date(date).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long'}) : '–';
 
   const cleanerHtml = b.cleaner_id ? `
@@ -680,7 +683,7 @@ function bookingCard(b) {
       ${cleanerHtml}
       <div class="bc-meta">
         <div class="bc-item"><span>📅</span> ${dateStr}</div>
-        <div class="bc-item"><span>🕐</span> ${escHtml(time || '–')}</div>
+        <div class="bc-item"><span>🕐</span> ${escHtml((time || '–').slice(0, 5))}</div>
         <div class="bc-item"><span>📍</span> ${escHtml(b.address || b.city || '–')}</div>
         <div class="bc-item"><span>⏱</span> ${parseInt(b.hours) || '–'} timmar</div>
       </div>
@@ -801,13 +804,17 @@ async function submitInlineReview() {
   btn.textContent = '⏳ Sparar...'; btn.disabled = true;
   const comment = document.getElementById('review-text').value.trim();
 
+  var reviewToken = SPICK.SUPA_KEY;
+  try {
+    var s = await SB.auth.getSession();
+    if (s.data.session) reviewToken = s.data.session.access_token;
+  } catch(e) {}
   const bkRes = await fetch(
     `${SPICK.SUPA_URL}/rest/v1/bookings?id=eq.${_reviewBid}&select=cleaner_id,cleaner_email,cleaner_name,customer_email,customer_name,service,date`,
     {
       headers: {
         'apikey': SPICK.SUPA_KEY,
-        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
-        'x-customer-email': currentEmail,
+        'Authorization': 'Bearer ' + reviewToken,
         'Accept': 'application/vnd.pgrst.object+json'
       }
     }
@@ -829,8 +836,9 @@ async function submitInlineReview() {
     // Uppdatera review_requested_at på bokningen
     await SB.from('bookings').update({ review_requested_at: new Date().toISOString() }).eq('id', _reviewBid);
     document.getElementById('reviewModal').style.display = 'none';
+    _reviewedBookings.add(_reviewBid);
     showToast('✅ Tack för ditt betyg! Det hjälper andra kunder.');
-    setTimeout(() => renderBookings('all'), 1000);
+    setTimeout(() => renderBookings('all'), 500);
   } else {
     spickToast('Fel: ' + error.message, 'error');
     btn.textContent = 'Skicka betyg ⭐'; btn.disabled = false;
