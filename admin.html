@@ -613,13 +613,13 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="kpi"><div class="kpi-val" id="payout-total">–</div><div class="kpi-lbl">Totalt att betala ut</div></div>
-        <div class="kpi"><div class="kpi-val" id="payout-provision">–</div><div class="kpi-lbl">Spicks provision (17%)</div></div>
+        <div class="kpi"><div class="kpi-val" id="payout-provision">–</div><div class="kpi-lbl">Spicks provision (12–17%)</div></div>
         <div class="kpi"><div class="kpi-val" id="payout-done">–</div><div class="kpi-lbl">Utbetalt denna månad</div></div>
       </div>
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Städare</th><th>Månad</th><th>Uppdrag</th><th>Brutto</th><th>Provision 17%</th><th>Netto till städare</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Städare</th><th>Månad</th><th>Uppdrag</th><th>Brutto</th><th>Provision</th><th>Netto till städare</th><th>Status</th><th></th></tr></thead>
             <tbody id="payouts-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
@@ -2298,7 +2298,7 @@ function renderCleaners() {
 
   document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => {
     const cleaner_jobs = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').length;
-    const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*0.83),0);
+    const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*(1-(b.commission_pct||17)/100)),0);
     const isPaused = c.status === 'pausad';
     const isSuspended = c.status === 'avstängd' || !c.is_approved;
     let statusBadge = '<span class="badge green"><span class="dot"></span> Aktiv</span>';
@@ -2478,9 +2478,9 @@ function renderPayouts() {
     pendingAlert.length ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:.75rem 1rem;font-size:.85rem;cursor:pointer" onclick="document.getElementById('booking-filter').value='paid';renderBookings()">⚠️ <strong>${pendingAlert.length}</strong> betalda bokningar saknar städare – <u>Tilldela nu</u></div>` : '',
     unpaidAlert.length ? `<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:.75rem 1rem;font-size:.85rem">🔴 <strong>${unpaidAlert.length}</strong> obetalda bokningar</div>` : ''
   ].join('');
-  const totalProvision = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * 0.17), 0);
-  const totalPayout = paidBookings.reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * 0.17)), 0);
-  const paidOut = paidBookings.filter(b => b.payout_status === 'paid').reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * 0.17)), 0);
+  const totalProvision = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * ((b.commission_pct||17)/100)), 0);
+  const totalPayout = paidBookings.reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * ((b.commission_pct||17)/100))), 0);
+  const paidOut = paidBookings.filter(b => b.payout_status === 'paid').reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * ((b.commission_pct||17)/100))), 0);
 
   document.getElementById('payout-total').textContent = totalPayout.toLocaleString('sv') + ' kr';
   document.getElementById('payout-provision').textContent = totalProvision.toLocaleString('sv') + ' kr';
@@ -2489,15 +2489,16 @@ function renderPayouts() {
   // Group by cleaner
   const byCleanerMap = {};
   paidBookings.forEach(b => {
-    if (!byCleanerMap[b.cleaner_id]) byCleanerMap[b.cleaner_id] = { count:0, total:0, allPaid:true };
+    if (!byCleanerMap[b.cleaner_id]) byCleanerMap[b.cleaner_id] = { count:0, total:0, provisionSum:0, allPaid:true };
     byCleanerMap[b.cleaner_id].count++;
     byCleanerMap[b.cleaner_id].total += (b.total_price || 0);
+    byCleanerMap[b.cleaner_id].provisionSum += Math.round((b.total_price || 0) * ((b.commission_pct || 17) / 100));
     if (b.payout_status !== 'paid') byCleanerMap[b.cleaner_id].allPaid = false;
   });
 
   const rows = Object.entries(byCleanerMap).map(([cid, info]) => {
     const cleaner = data.cleaners.find(c => c.id === cid);
-    const prov = Math.round(info.total * 0.17);
+    const prov = info.provisionSum;
     const net = Math.round(info.total) - prov;
     const statusBadge = info.allPaid ? '<span class="badge green">Utbetald</span>' : '<span class="badge yellow">Väntande</span>';
     return `<tr>
@@ -3575,7 +3576,7 @@ function showCleanerDetail(id) {
         // Sammanfattning av företagets bokningar
         var allMemberIds = [c.id].concat(members.map(function(m) { return m.id; }));
         var companyBookings = (data.bookings || []).filter(function(b) { return allMemberIds.indexOf(b.cleaner_id) !== -1 && b.payment_status === 'paid'; });
-        var companyEarned = companyBookings.reduce(function(s, b) { return s + Math.round((b.total_price || 0) * 0.83); }, 0);
+        var companyEarned = companyBookings.reduce(function(s, b) { return s + Math.round((b.total_price || 0) * (1 - (b.commission_pct || 17) / 100)); }, 0);
         var summEl = document.getElementById('admin-team-bookings-summary');
         if (summEl) {
           summEl.innerHTML = '<div style="font-size:.72rem;color:#6B7280;font-weight:600;margin-bottom:6px">FÖRETAGETS TOTALT</div>' +
