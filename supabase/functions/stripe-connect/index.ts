@@ -68,7 +68,6 @@ serve(async (req) => {
 
       // Bygg Stripe-parametrar baserat på om det är företag eller individ
       const isCompanyAccount = !!companyData;
-      const taxId = (companyData?.org_number || "").replace(/\D/g, "");
 
       const accountParams: Record<string, string> = {
         type: "express",
@@ -79,16 +78,14 @@ serve(async (req) => {
         "metadata[cleaner_id]": cleaner_id,
       };
 
-      if (isCompanyAccount && taxId.length >= 10) {
-        // VD med företag → business_type: company
+      if (isCompanyAccount) {
         accountParams.business_type = "company";
-        accountParams["company[name]"] = companyData!.name || "";
-        accountParams["company[tax_id]"] = taxId;
-        // Representant = VD (står som individ bakom företaget)
-        accountParams["individual[email]"] = email;
-        accountParams["individual[first_name]"] = name?.split(" ")[0] || "";
-        accountParams["individual[last_name]"] = name?.split(" ").slice(1).join(" ") || "";
-        accountParams["metadata[company_id]"] = cleanerRow!.company_id!;
+        accountParams["company[name]"] = companyData!.name!;
+        const taxId = (companyData!.org_number || "").replace(/[^0-9]/g, "");
+        if (taxId.length >= 10) {
+          accountParams["company[tax_id]"] = taxId;
+        }
+        console.log("[SPICK] Creating COMPANY Stripe account:", companyData!.name, taxId);
       } else {
         // Solo-städare → business_type: individual (som förut)
         accountParams.business_type = "individual";
