@@ -5800,7 +5800,6 @@ async function addTeamMember() {
 
     btn.textContent = '✅ Ansökan skickad!';
     btn.style.background = '#065F46';
-    showTeamMsg(fname + ' är tillagd. Spick-admin godkänner inom 24h, sedan får ' + fname + ' ett välkomstmejl.', false);
 
     // Spara per-tjänst-priser i application metadata
     try {
@@ -5821,6 +5820,29 @@ async function addTeamMember() {
             headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
             body: JSON.stringify({ notes: 'Priser: ' + svcPriceData.map(function(p) { return p.service_type + ': ' + p.price + ' ' + (p.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h'); }).join(', ') })
           });
+        }
+
+        // Auto-approve: VD-tillagda teammedlemmar godkänns direkt
+        try {
+          var autoRes = await fetch(SUPA_URL + '/functions/v1/auto-approve-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
+            body: JSON.stringify({ application_id: appId })
+          });
+          var autoData = await autoRes.json();
+          if (autoData.auto_approved) {
+            btn.textContent = '✅ Teammedlem tillagd!';
+            showTeamMsg(fname + ' är godkänd och redo att ta emot bokningar! Ett välkomstmejl har skickats.', false);
+            // Ladda om teamlistan efter kort delay (cleaner skapas async)
+            setTimeout(function() { renderTeam(); }, 2000);
+          } else {
+            btn.textContent = '✅ Ansökan skickad!';
+            showTeamMsg(fname + ' är tillagd. Spick-admin godkänner inom 24h, sedan får ' + fname + ' ett välkomstmejl.', false);
+          }
+        } catch(autoErr) {
+          console.warn('Auto-approve check failed, fallback to manual:', autoErr);
+          btn.textContent = '✅ Ansökan skickad!';
+          showTeamMsg(fname + ' är tillagd. Spick-admin godkänner inom 24h, sedan får ' + fname + ' ett välkomstmejl.', false);
         }
       }
     } catch(pe) { console.warn('Price save note:', pe); }

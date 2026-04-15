@@ -16,18 +16,25 @@ serve(async (req) => {
       return json({ error: "Unauthorized" }, 401, CORS);
     }
 
-    const authRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
-    });
-    if (!authRes.ok) return json({ error: "Invalid token" }, 401, CORS);
-    const authUser = await authRes.json();
+    // Tillåt internt anrop från auto-approve-check med service_role key
+    const isInternalServiceCall = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    const { data: adminRow } = await sb
-      .from("admin_users")
-      .select("id")
-      .eq("email", authUser.email)
-      .maybeSingle();
-    if (!adminRow) return json({ error: "Forbidden: inte admin" }, 403, CORS);
+    let authUser: { email?: string } | null = null;
+
+    if (!isInternalServiceCall) {
+      const authRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
+        headers: { Authorization: `Bearer ${token}`, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
+      });
+      if (!authRes.ok) return json({ error: "Invalid token" }, 401, CORS);
+      authUser = await authRes.json();
+
+      const { data: adminRow } = await sb
+        .from("admin_users")
+        .select("id")
+        .eq("email", authUser!.email)
+        .maybeSingle();
+      if (!adminRow) return json({ error: "Forbidden: inte admin" }, 403, CORS);
+    }
 
     // ── PARSE BODY ──────────────────────────────────────────
     const { application_id, action } = await req.json();
@@ -330,7 +337,7 @@ serve(async (req) => {
       await sb.from("cleaner_applications").update({
         status: "approved",
         approved_at: new Date().toISOString(),
-        reviewed_by: authUser.email,
+        reviewed_by: authUser?.email || "system:auto-approve",
       }).eq("id", application_id);
 
       // 5. Generate magic link for welcome email
@@ -481,7 +488,7 @@ serve(async (req) => {
       await sb.from("cleaner_applications").update({
         status: "rejected",
         rejected_at: new Date().toISOString(),
-        reviewed_by: authUser.email,
+        reviewed_by: authUser?.email || "system:auto-approve",
       }).eq("id", application_id);
 
       // Send rejection email
