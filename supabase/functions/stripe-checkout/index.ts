@@ -84,7 +84,8 @@ serve(async (req) => {
       cleanerData = data;
 
       if (cleanerData) {
-        commissionRate = customer_type === "foretag" ? 0.12 : 0.17;
+        // Städföretag betalar alltid 12%, solo beror på kundtyp
+        commissionRate = cleanerData.company_id ? 0.12 : (customer_type === "foretag" ? 0.12 : 0.17);
 
         if (cleanerData.company_id) {
           // Städare tillhör företag → pengar till företagsägaren

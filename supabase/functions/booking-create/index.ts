@@ -358,6 +358,11 @@ serve(async (req) => {
         .eq("id", cleaner.id)
         .single();
 
+      // Städföretag betalar alltid 12%
+      if (cleanerConnect?.company_id) {
+        commissionRate = 0.12;
+      }
+
       if (cleanerConnect?.company_id && !cleanerConnect.is_company_owner) {
         // Städare tillhör företag → pengar till företagsägaren
         const { data: owner } = await supabase
