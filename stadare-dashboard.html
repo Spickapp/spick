@@ -803,6 +803,22 @@ body{top:0!important}
         </div>
       </div>
 
+      <!-- VD Onboarding-checklist (bara för is_company_owner) -->
+      <div id="vd-onboarding-home" style="display:none;margin:0 16px 16px">
+        <div style="background:linear-gradient(135deg,#E1F5EE 0%,#DBEAFE 100%);border-radius:16px;padding:24px;border:1px solid rgba(15,110,86,.1)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <h3 style="font-size:1.1rem;font-weight:700;margin:0">🚀 Kom igång med Spick</h3>
+              <p id="vd-ob-progress-text" style="font-size:.82rem;color:var(--m);margin:4px 0 0">0 av 5 klart</p>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.6);border-radius:8px;height:6px;margin-bottom:18px;overflow:hidden">
+            <div id="vd-ob-progress-bar" style="height:100%;background:var(--g);border-radius:8px;width:0%;transition:width .5s ease"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px" id="vd-ob-steps"></div>
+        </div>
+      </div>
+
       <div id="home-stats" style="display:none;padding:0 16px;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div style="background:var(--w);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05)">
           <div style="font-size:.7rem;color:var(--m);text-transform:uppercase;letter-spacing:.04em">Denna vecka</div>
@@ -1861,6 +1877,19 @@ body{top:0!important}
         <div id="team-bio-count" style="font-size:11px;color:var(--gray-400);margin-top:4px;text-align:right">0/120</div>
       </div>
 
+      <!-- Fält 9b: Profilbild (bara vid redigering) -->
+      <div class="tm-form-group" id="team-avatar-section" style="display:none">
+        <label>Profilbild</label>
+        <div style="display:flex;align-items:center;gap:16px;margin-top:6px">
+          <div id="team-avatar-preview" style="width:64px;height:64px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:1.2rem;font-weight:700;color:var(--gray-400)">?</div>
+          <div>
+            <button type="button" onclick="document.getElementById('team-avatar-input').click()" style="padding:8px 16px;background:var(--spick-50);color:var(--g);border:1.5px solid var(--g);border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit">📷 Ladda upp foto</button>
+            <div id="team-avatar-status" style="font-size:.72rem;color:var(--m);margin-top:4px"></div>
+          </div>
+        </div>
+        <input type="file" id="team-avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+      </div>
+
       <!-- Fält 10: Schema -->
       <div class="tm-form-group" id="team-schedule-section">
         <label>Arbetsschema</label>
@@ -2750,6 +2779,7 @@ function renderHome() {
   updateHomeStats();
   updateBadge();
   updateOnboarding();
+  if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
   if (typeof updateGreetingSub === 'function') updateGreetingSub();
 }
 
@@ -2757,6 +2787,12 @@ function renderHome() {
 var _wizFile = null;
 
 function initWizard() {
+  // VD:ar får checklist i Hem-tab istället för solo-wizard
+  if (cleaner && cleaner.is_company_owner) {
+    var wiz0 = document.getElementById('onboarding-wizard');
+    if (wiz0) wiz0.style.display = 'none';
+    return;
+  }
   var wiz = document.getElementById('onboarding-wizard');
   if (!wiz) return;
 
@@ -3034,6 +3070,110 @@ function updateOnboarding() {
   } else {
     banner.style.display = 'none';
   }
+}
+
+// ── VD ONBOARDING-CHECKLIST (Hem-tab) ───────────────────────
+function updateVdOnboarding() {
+  var host = document.getElementById('vd-onboarding-home');
+  if (!host) return;
+  if (!cleaner || !cleaner.is_company_owner) { host.style.display = 'none'; return; }
+
+  var teamMembers = (window._teamMembers || []).filter(function(m){ return !m.is_company_owner; });
+  var teamDone = teamMembers.length > 0;
+  var pendingApps = (window._pendingTeamApps || []).length;
+  var teamPending = !teamDone && pendingApps > 0;
+
+  var stripeDone = cleaner.stripe_onboarding_complete === true
+    || cleaner.stripe_onboarding_status === 'complete';
+  var pricesDone = (window._companyPrices || []).length > 0;
+  var profileDone = !!(cleaner.avatar_url && window._companyData && window._companyData.description);
+  var shareDone = !!localStorage.getItem('spick-profile-shared');
+
+  var steps = [
+    { key:'profile', label:'Fyll i företagsprofil', desc:'Bio och profilbild', done:profileDone,
+      actionLabel:'Redigera profil →',
+      onClick:function(){ switchTab('team'); setTimeout(function(){ var el=document.getElementById('team-company-profile'); if(el) el.scrollIntoView({behavior:'smooth'}); },100); } },
+    { key:'team', label:'Lägg till team', desc:'Minst 1 teammedlem', done:teamDone, pending:teamPending,
+      actionLabel:'Gå till Team →',
+      onClick:function(){ switchTab('team'); } },
+    { key:'prices', label:'Sätt priser', desc:'Minst 1 tjänst med pris', done:pricesDone,
+      actionLabel:'Sätt priser →',
+      onClick:function(){ switchTab('team'); setTimeout(function(){ var el=document.getElementById('company-prices-section'); if(el) el.scrollIntoView({behavior:'smooth'}); },100); } },
+    { key:'bank', label:'Koppla bankkonto', desc:'För automatiska utbetalningar', done:stripeDone,
+      actionLabel:'Koppla bankkonto →',
+      onClick:function(){ startStripeConnect(); } },
+    { key:'share', label:'Dela din profil', desc:'Skicka länken till potentiella kunder', done:shareDone,
+      actionLabel:'📋 Kopiera länk',
+      onClick:function(){
+        var slug = (window._companyData && window._companyData.slug) || cleaner.slug;
+        var url = (window._companyData && window._companyData.slug)
+          ? 'https://spick.se/f/' + window._companyData.slug
+          : 'https://spick.se/s/' + cleaner.slug;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(function(){
+            localStorage.setItem('spick-profile-shared','1');
+            showToast('Länk kopierad! Dela den med potentiella kunder.');
+            updateVdOnboarding();
+          }).catch(function(){ prompt('Kopiera denna länk:', url); });
+        } else {
+          prompt('Kopiera denna länk:', url);
+        }
+      } }
+  ];
+
+  var doneCount = 0;
+  steps.forEach(function(s){ if (s.done) doneCount++; });
+
+  if (doneCount >= steps.length) {
+    host.style.opacity = '0';
+    setTimeout(function(){ host.style.display = 'none'; host.style.opacity = '1'; }, 400);
+    return;
+  }
+
+  host.style.display = '';
+
+  var progText = document.getElementById('vd-ob-progress-text');
+  if (progText) progText.textContent = doneCount + ' av ' + steps.length + ' klart';
+  var progBar = document.getElementById('vd-ob-progress-bar');
+  if (progBar) progBar.style.width = Math.round((doneCount/steps.length)*100) + '%';
+
+  var stepsHost = document.getElementById('vd-ob-steps');
+  if (!stepsHost) return;
+  stepsHost.innerHTML = '';
+
+  steps.forEach(function(s, i){
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.7);border-radius:12px';
+
+    var dot = document.createElement('div');
+    var dotBg = s.done ? '#D1FAE5' : (s.pending ? '#FEF3C7' : '#F3F4F6');
+    var dotColor = s.done ? '#065F46' : (s.pending ? '#92400E' : '#9CA3AF');
+    dot.style.cssText = 'width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem;font-weight:700;background:' + dotBg + ';color:' + dotColor;
+    dot.textContent = s.done ? '✓' : (s.pending ? '⏳' : (i+1));
+    row.appendChild(dot);
+
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+    var labelEl = document.createElement('div');
+    labelEl.style.cssText = 'font-weight:600;font-size:.88rem;color:' + (s.done ? '#065F46' : 'var(--gray-900)');
+    labelEl.textContent = s.label;
+    info.appendChild(labelEl);
+    var descEl = document.createElement('div');
+    descEl.style.cssText = 'font-size:.75rem;color:' + (s.done ? '#065F46' : (s.pending ? '#92400E' : 'var(--m)'));
+    descEl.textContent = s.done ? 'Klart ✓' : (s.pending ? 'Väntar på godkännande' : s.desc);
+    info.appendChild(descEl);
+    row.appendChild(info);
+
+    if (!s.done && !s.pending) {
+      var btn = document.createElement('button');
+      btn.style.cssText = 'padding:6px 14px;background:var(--spick-50);color:var(--g);border:1.5px solid var(--g);border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap';
+      btn.textContent = s.actionLabel;
+      btn.onclick = s.onClick;
+      row.appendChild(btn);
+    }
+
+    stepsHost.appendChild(row);
+  });
 }
 
 function switchLang(lang, btn) {
@@ -5081,10 +5221,12 @@ async function checkConnectStatus() {
         document.getElementById('connect-status').innerHTML = `<div style="color:#92400E;background:#FEF3C7;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">⚠️ Registrering påbörjad men ej klar — <a href="#" onclick="startStripeConnect();return false" style="color:var(--g);text-decoration:underline">Slutför →</a></div>`;
       }
       updateOnboarding();
+      if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
     } else { throw new Error('not ok'); }
   } catch(e) {
     cleaner.stripe_onboarding_status = 'complete';
     document.getElementById('connect-status').innerHTML = `<div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;font-weight:600">✅ Bankkonto anslutet</div>`;
+    if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
   }
 }
 
@@ -5390,6 +5532,14 @@ async function renderTeam() {
   _teamMembers = members || [];
   window._teamMembers = _teamMembers;
 
+  // Hämta pending ansökningar (för VD onboarding-checklistens team-steg)
+  if (window._isCompanyOwner) {
+    try {
+      const { data: pendingApps } = await R.select('cleaner_applications', 'select=id&status=eq.pending&invited_by_company_id=eq.' + cleaner.company_id);
+      window._pendingTeamApps = pendingApps || [];
+    } catch(e) { window._pendingTeamApps = []; }
+  }
+
   // Render VD permissions UI
   renderCompanyPermissions(window._companyConfig);
   renderPerCleanerPermissions(_teamMembers);
@@ -5409,16 +5559,22 @@ async function renderTeam() {
     const svcs = (m.services || []).map(s => `<span class="tm-svc-badge">${escHtml(s)}</span>`).join('');
     const petLabel = m.pet_pref === 'allergy' ? '<span style="font-size:11px;color:var(--danger)">Allergisk mot husdjur</span>'
       : m.pet_pref === 'avoid' ? '<span style="font-size:11px;color:var(--warning)">Undviker husdjur</span>' : '';
+    const avatarHtml = m.avatar_url
+      ? `<img src="${escHtml(m.avatar_url)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+      : `<div style="width:40px;height:40px;border-radius:50%;background:var(--spick-100);color:var(--g);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0">${escHtml(((m.first_name||'')[0]||'')+((m.last_name||'')[0]||''))}</div>`;
 
     return `<div class="tm-member-card ${isPaused ? 'paused' : ''}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div style="font-weight:600;font-size:.92rem">${escHtml(m.full_name || m.first_name + ' ' + (m.last_name||''))}</div>
-          <div style="font-size:.78rem;color:var(--gray-500);margin-top:2px">${escHtml(m.email || '')}${m.phone ? ' · ' + escHtml(m.phone) : ''}</div>
-          <div style="margin-top:4px">${statusDot} · ${m.completed_jobs || 0} uppdrag · ${m.hourly_rate || 350} kr/h</div>
-          ${svcs ? '<div style="margin-top:6px">' + svcs + '</div>' : ''}
-          ${petLabel ? '<div style="margin-top:4px">' + petLabel + '</div>' : ''}
-          ${m.bio ? '<div style="font-size:.78rem;color:var(--gray-500);margin-top:4px;font-style:italic">"' + escHtml(m.bio) + '"</div>' : ''}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="display:flex;gap:12px;flex:1;min-width:0">
+          ${avatarHtml}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:.92rem">${escHtml(m.full_name || m.first_name + ' ' + (m.last_name||''))}</div>
+            <div style="font-size:.78rem;color:var(--gray-500);margin-top:2px">${escHtml(m.email || '')}${m.phone ? ' · ' + escHtml(m.phone) : ''}</div>
+            <div style="margin-top:4px">${statusDot} · ${m.completed_jobs || 0} uppdrag · ${m.hourly_rate || 350} kr/h</div>
+            ${svcs ? '<div style="margin-top:6px">' + svcs + '</div>' : ''}
+            ${petLabel ? '<div style="margin-top:4px">' + petLabel + '</div>' : ''}
+            ${m.bio ? '<div style="font-size:.78rem;color:var(--gray-500);margin-top:4px;font-style:italic">"' + escHtml(m.bio) + '"</div>' : ''}
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -5428,11 +5584,9 @@ async function renderTeam() {
     </div>`;
   }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
 
-  // Visa onboarding-guide om teamet är tomt (0 icke-ägare-medlemmar)
+  // VD-onboarding-guide i Team-tab döljs — checklist i Hem-tab ersätter
   var obGuide = document.getElementById('vd-onboarding-guide');
-  if (obGuide) {
-    obGuide.style.display = nonOwner.length > 0 ? 'none' : '';
-  }
+  if (obGuide) obGuide.style.display = 'none';
 
   // Fetch team bookings
   const memberIds = _teamMembers.map(m => m.id);
@@ -5562,6 +5716,9 @@ async function renderTeam() {
     // No members — show empty state for reviews
     document.getElementById('team-reviews-list').innerHTML = '<div style="text-align:center;padding:24px 12px;color:var(--gray-400)"><div style="font-size:1.5rem;margin-bottom:8px">⭐</div><p style="font-size:.85rem;margin:0">Inga recensioner ännu</p></div>';
   }
+
+  // Uppdatera VD-checklist i Hem-tab när team/priser/profil har renderats
+  if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
 
   } catch(e) { console.error('[SPICK] renderTeam error:', e); }
 }
@@ -5724,6 +5881,13 @@ function resetTeamModal() {
   btn.textContent = 'Spara ändringar';
   _teamSelectedLangs = ['Svenska'];
   renderTeamLangs();
+  // Dölj avatar-sektion (bara vid redigering)
+  var avatarSec = document.getElementById('team-avatar-section');
+  if (avatarSec) avatarSec.style.display = 'none';
+  var avatarPrev = document.getElementById('team-avatar-preview');
+  if (avatarPrev) avatarPrev.innerHTML = '?';
+  var avatarStat = document.getElementById('team-avatar-status');
+  if (avatarStat) avatarStat.textContent = '';
 }
 
 async function toggleOwnerOnly(isOwner) {
@@ -7032,6 +7196,7 @@ async function saveCompanyProfile() {
     renderCompanyProfile(window._companyData);
     cancelCompanyEdit();
     showToast('F\u00f6retagsprofil sparad!');
+    if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
   } catch(e) { alert('Fel: ' + e.message); }
 }
 
@@ -7378,9 +7543,82 @@ async function editTeamMember(memberId) {
   btn.textContent = 'Spara ändringar';
   btn.onclick = () => updateTeamMember(memberId);
 
+  // Visa avatar-sektion (bara vid redigering, inte nytt)
+  var avatarSec = document.getElementById('team-avatar-section');
+  if (avatarSec) avatarSec.style.display = '';
+  var avatarPreview = document.getElementById('team-avatar-preview');
+  if (avatarPreview) {
+    if (member.avatar_url) {
+      avatarPreview.innerHTML = '<img src="' + member.avatar_url + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+    } else {
+      var initials = ((member.first_name || '')[0] || '') + ((member.last_name || '')[0] || '');
+      avatarPreview.innerHTML = initials.toUpperCase() || '?';
+    }
+  }
+  var avatarStatus = document.getElementById('team-avatar-status');
+  if (avatarStatus) avatarStatus.textContent = '';
+
   document.getElementById('add-member-modal').style.display = 'flex';
   loadTeamMemberSchedule(memberId);
 }
+
+// Team-avatar-upload: listener sätts en gång vid dokumentstart
+(function initTeamAvatarUpload() {
+  function bind() {
+    var input = document.getElementById('team-avatar-input');
+    if (!input || input._bound) return;
+    input._bound = true;
+    input.addEventListener('change', async function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var statusEl = document.getElementById('team-avatar-status');
+      var previewEl = document.getElementById('team-avatar-preview');
+      statusEl.textContent = '⏳ Laddar upp...';
+      statusEl.style.color = 'var(--m)';
+      try {
+        var resized = await resizeImage(file, 500);
+        previewEl.innerHTML = '<img src="' + URL.createObjectURL(resized) + '" alt="Preview" style="width:100%;height:100%;object-fit:cover">';
+
+        var sessionRes = await SB.auth.getSession();
+        var vdUserId = sessionRes.data && sessionRes.data.session ? sessionRes.data.session.user.id : null;
+        if (!vdUserId) { statusEl.textContent = '❌ Ej inloggad'; statusEl.style.color = '#DC2626'; return; }
+
+        var memberId = _editingTeamMemberId;
+        if (!memberId) { statusEl.textContent = '❌ Ingen medlem vald'; statusEl.style.color = '#DC2626'; return; }
+
+        // Upload till VD:ns storage-path (inga RLS-problem)
+        var filePath = vdUserId + '/team-' + memberId + '.webp';
+        var uploadRes = await SB.storage.from('avatars').upload(filePath, resized, {
+          contentType: 'image/webp',
+          upsert: true
+        });
+        if (uploadRes.error) throw new Error(uploadRes.error.message);
+
+        var urlRes = SB.storage.from('avatars').getPublicUrl(filePath);
+        var publicUrl = urlRes.data.publicUrl;
+
+        var updRes = await R.update('cleaners', { avatar_url: publicUrl }, 'id=eq.' + memberId);
+        if (updRes.error) throw new Error(updRes.error.message);
+
+        var member = (_teamMembers || []).find(function(m){ return m.id === memberId; });
+        if (member) member.avatar_url = publicUrl;
+
+        statusEl.textContent = '✅ Foto uppladdat!';
+        statusEl.style.color = '#065F46';
+      } catch(err) {
+        console.error('Team avatar upload error:', err);
+        statusEl.textContent = '❌ ' + (err.message || 'Uppladdning misslyckades');
+        statusEl.style.color = '#DC2626';
+      }
+      e.target.value = '';
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
 
 async function updateTeamMember(memberId) {
   const firstName = document.getElementById('team-fname').value.trim();
@@ -7748,14 +7986,16 @@ async function loadPricingModel() {
 }
 async function loadCompanyPrices() {
   console.log('loadCompanyPrices called, companyId:', window._companyId);
-  if (!window._companyId) { renderCompanyPrices([]); return; }
+  if (!window._companyId) { window._companyPrices = []; renderCompanyPrices([]); return; }
   try {
     var res = await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&order=service_type', { headers: _authHeaders() });
     var prices = await res.json();
     if (!Array.isArray(prices)) prices = [];
     console.log('loadCompanyPrices got', prices.length, 'prices');
+    window._companyPrices = prices;
     renderCompanyPrices(prices);
-  } catch(e) { console.warn('loadCompanyPrices error:', e); renderCompanyPrices([]); }
+    if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
+  } catch(e) { console.warn('loadCompanyPrices error:', e); window._companyPrices = []; renderCompanyPrices([]); }
 }
 
 function renderCompanyPrices(prices) {
