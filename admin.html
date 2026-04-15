@@ -1261,6 +1261,26 @@ SB.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
+// ── ROBUST FALLBACK: Ladda data oavsett auth-callback-timing ──
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    var app = document.getElementById('app');
+    var kpi = document.getElementById('kpi-revenue');
+    if (app && app.style.display !== 'none' && kpi && kpi.textContent === '–') {
+      console.log('[SPICK] Auto-retry 2s: loadAll');
+      loadAll().catch(function(e) { console.warn('Auto-retry 2s failed:', e); });
+    }
+  }, 2000);
+  setTimeout(function() {
+    var app = document.getElementById('app');
+    var kpi = document.getElementById('kpi-revenue');
+    if (app && app.style.display !== 'none' && kpi && kpi.textContent === '–') {
+      console.log('[SPICK] Auto-retry 5s: loadAll');
+      loadAll().catch(function(e) { console.warn('Auto-retry 5s failed:', e); });
+    }
+  }, 5000);
+});
+
 let _adminOtpEmail = '';
 
 async function sendOtp() {
@@ -1824,12 +1844,14 @@ function renderActionCards() {
 
   // 4. Onboarding ofärdiga (INFO)
   var onboarding = data.cleaners.filter(function(c) {
-    return c.is_approved && (c.status === 'onboarding' || c.stripe_onboarding_status !== 'complete');
+    var isTeamMember = c.company_id && !c.is_company_owner;
+    var stripeNeeded = isTeamMember ? false : c.stripe_onboarding_status !== 'complete';
+    return c.is_approved && (c.status === 'onboarding' || stripeNeeded);
   });
   if (onboarding.length) {
     var items4 = onboarding.slice(0, 3).map(function(c) {
       var missing = [];
-      if (c.stripe_onboarding_status !== 'complete') missing.push('Stripe');
+      if (c.stripe_onboarding_status !== 'complete' && !(c.company_id && !c.is_company_owner)) missing.push('Stripe');
       if (!c.has_fskatt) missing.push('F-skatt');
       return '<div class="action-card-item"><span>' + escHtml(c.full_name || '?') + ' — saknar: ' + missing.join(', ') + '</span><button class="action-btn gray" onclick="showPage(\'onboarding\')">Visa</button></div>';
     }).join('');
@@ -1889,7 +1911,9 @@ function renderOnboardPipeline() {
   if (!wrap || !el) return;
 
   var pipeline = data.cleaners.filter(function(c) {
-    return c.is_approved && (c.status === 'onboarding' || c.stripe_onboarding_status !== 'complete' || !c.has_fskatt);
+    var isTeamMember = c.company_id && !c.is_company_owner;
+    var stripeNeeded = isTeamMember ? false : c.stripe_onboarding_status !== 'complete';
+    return c.is_approved && (c.status === 'onboarding' || stripeNeeded || !c.has_fskatt);
   });
 
   if (!pipeline.length) { wrap.style.display = 'none'; return; }
@@ -1899,7 +1923,7 @@ function renderOnboardPipeline() {
     var steps = [
       { label: 'Godkänd', done: true },
       { label: 'F-skatt', done: !!c.has_fskatt },
-      { label: 'Stripe', done: c.stripe_onboarding_status === 'complete' },
+      { label: 'Stripe', done: (c.company_id && !c.is_company_owner) || c.stripe_onboarding_status === 'complete' },
       { label: 'Profil', done: !!(c.bio && c.services && c.services.length > 0 && c.home_address) },
       { label: 'Aktiv', done: c.status === 'aktiv' }
     ];
@@ -2305,13 +2329,13 @@ function renderCleaners() {
     if (isSuspended) statusBadge = '<span class="badge red">⛔ Avstängd</span>';
     else if (isPaused) statusBadge = '<span class="badge yellow">⏸ Pausad</span>';
     else if (c.status === 'onboarding') {
-      var _obSteps = [!!c.avatar_url, !!(c.bio && c.bio.length > 5), !!(c.availability_schedule), c.stripe_onboarding_status === 'complete'];
+      var _obSteps = [!!c.avatar_url, !!(c.bio && c.bio.length > 5), !!(c.availability_schedule), (c.company_id && !c.is_company_owner) || c.stripe_onboarding_status === 'complete'];
       var _obDone = _obSteps.filter(Boolean).length;
       statusBadge = '<span class="badge" style="background:#DBEAFE;color:#1E40AF">\ud83d\ude80 ' + _obDone + '/4</span>';
     }
 
     const hasFskatt = c.fskatt_confirmed || c.verified || c.has_fskatt;
-    const stripeOk = c.stripe_onboarding_status === 'complete';
+    const stripeOk = (c.company_id && !c.is_company_owner) || c.stripe_onboarding_status === 'complete';
 
     var isTeamMember = c.company_id && !c.is_company_owner;
     var teamCount = c.is_company_owner ? data.cleaners.filter(function(m) { return m.company_id === c.company_id && m.id !== c.id; }).length : 0;
