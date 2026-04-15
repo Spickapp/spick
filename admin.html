@@ -1873,7 +1873,7 @@ function renderTodayTimeline() {
   if (!el) return;
   var today = new Date().toISOString().split('T')[0];
   var todayBookings = data.bookings.filter(function(b) {
-    return b.booking_date === today && b.status !== 'cancelled' && b.status !== 'avbokad';
+    return b.booking_date === today && b.payment_status === 'paid' && b.status !== 'cancelled' && b.status !== 'avbokad';
   }).sort(function(a, b) {
     return (a.booking_time || '09:00').localeCompare(b.booking_time || '09:00');
   });
