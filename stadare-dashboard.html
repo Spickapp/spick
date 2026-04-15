@@ -965,15 +965,15 @@ body{top:0!important}
       <!-- Quick Actions -->
       <div id="quick-actions" style="padding:8px 16px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div id="quick-schema" onclick="switchTab('kalender')" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
-          <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
+          <div style="font-size:1.3rem;margin-bottom:4px">📅</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Schema</div>
         </div>
         <div id="quick-profil" onclick="switchTab('inst');setTimeout(function(){openSubView('sv-profile')},200)" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
-          <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
+          <div style="font-size:1.3rem;margin-bottom:4px">👤</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Profil</div>
         </div>
         <div id="quick-dela" onclick="shareProfile()" style="background:var(--w);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,.05);text-align:center;cursor:pointer">
-          <div style="font-size:1.3rem;margin-bottom:4px">☀️</div>
+          <div style="font-size:1.3rem;margin-bottom:4px">🔗</div>
           <div style="font-size:.72rem;color:var(--m);font-weight:500">Dela profil</div>
         </div>
       </div>
@@ -2188,12 +2188,29 @@ function applyPermissions(p) {
     });
   }
 
-  // Home tab earnings cards — hide if no earnings permission
+  // Home tab earnings cards — for employees without earnings permission:
+  // hide kr amounts, promote uppdrag count as main number
   if (!p.earnings) {
-    var weekEarn = document.getElementById('home-week-earn');
-    if (weekEarn) { var card = weekEarn.closest('.stat-card'); if (card) card.style.display = 'none'; }
-    var monthEarn = document.getElementById('home-month-earn');
-    if (monthEarn) { var card2 = monthEarn.closest('.stat-card'); if (card2) card2.style.display = 'none'; }
+    var weekEarnEl = document.getElementById('home-week-earn');
+    var monthEarnEl = document.getElementById('home-month-earn');
+    var weekJobsEl = document.getElementById('home-week-jobs');
+    var monthJobsEl = document.getElementById('home-month-jobs');
+    // Dölj kr-beloppen
+    if (weekEarnEl) weekEarnEl.style.display = 'none';
+    if (monthEarnEl) monthEarnEl.style.display = 'none';
+    // Promota uppdragsräknaren till huvudsiffra (samma stil som kr-elementet)
+    if (weekJobsEl) {
+      weekJobsEl.style.fontSize = '1.2rem';
+      weekJobsEl.style.fontWeight = '700';
+      weekJobsEl.style.color = 'var(--g)';
+      weekJobsEl.style.marginTop = '2px';
+    }
+    if (monthJobsEl) {
+      monthJobsEl.style.fontSize = '1.2rem';
+      monthJobsEl.style.fontWeight = '700';
+      monthJobsEl.style.color = 'var(--g)';
+      monthJobsEl.style.marginTop = '2px';
+    }
     var prognosCard = document.getElementById('prognos-card');
     if (prognosCard) prognosCard.style.display = 'none';
   }
@@ -2661,6 +2678,45 @@ async function loadCleanerByEmail(email, authUserId) {
       payInfo.innerHTML = '💰 Utbetalningar görs till ditt företags bankkonto. Kontakta din teamägare för lönefrågor.';
       var tabPad = incomeTab.querySelector('.tab-pad');
       if (tabPad) tabPad.prepend(payInfo);
+
+      // Dölj solo-inkomstinnehåll (provision, trappstege, timpris — misleading för anställda)
+      var soloInkomst = document.getElementById('solo-inkomst-content');
+      if (soloInkomst) soloInkomst.style.display = 'none';
+
+      // Lägg till arbetsstatistik-kort (uppdrag + timmar, inga kr)
+      var workCard = document.createElement('div');
+      workCard.id = 'team-member-work-stats';
+      workCard.style.cssText = 'background:var(--w);border-radius:14px;padding:20px;margin-top:12px';
+      workCard.innerHTML =
+        '<div style="font-weight:600;font-size:.95rem;margin-bottom:12px">Dina uppdrag</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div style="text-align:center;padding:16px;background:#F0FDF4;border-radius:12px">' +
+            '<div style="font-size:1.4rem;font-weight:700;color:var(--g)" id="tm-completed-count">' + (cleaner.completed_jobs || 0) + '</div>' +
+            '<div style="font-size:.72rem;color:var(--m);margin-top:2px">Slutförda uppdrag</div>' +
+          '</div>' +
+          '<div style="text-align:center;padding:16px;background:#F0FDF4;border-radius:12px">' +
+            '<div style="font-size:1.4rem;font-weight:700;color:var(--g)" id="tm-worked-hours">0h</div>' +
+            '<div style="font-size:.72rem;color:var(--m);margin-top:2px">Arbetade timmar</div>' +
+          '</div>' +
+        '</div>';
+      if (tabPad) tabPad.appendChild(workCard);
+
+      // Populera arbetade timmar från bokningar (fire-and-forget)
+      (async function() {
+        try {
+          var { data: doneBookings } = await R.select('bookings',
+            'select=actual_hours&cleaner_id=eq.' + cleaner.id + '&status=eq.klar');
+          if (doneBookings && doneBookings.length > 0) {
+            var totalHours = doneBookings.reduce(function(s, b) {
+              return s + (parseFloat(b.actual_hours) || 0);
+            }, 0);
+            var hoursEl = document.getElementById('tm-worked-hours');
+            if (hoursEl) hoursEl.textContent = totalHours.toFixed(1) + 'h';
+            var countEl = document.getElementById('tm-completed-count');
+            if (countEl) countEl.textContent = doneBookings.length;
+          }
+        } catch(e) { console.warn('Team member work stats:', e); }
+      })();
     }
   }
 
