@@ -68,7 +68,7 @@ serve(async (req) => {
 
     // 1. Hämta alla team-medlemmar (ej VD)
     const { data: teamMembers, error: memberErr } = await sb.from("cleaners")
-      .select("id, full_name, phone, company_id")
+      .select("id, full_name, phone, email, company_id")
       .not("company_id", "is", null)
       .eq("is_company_owner", false);
 
@@ -107,24 +107,41 @@ serve(async (req) => {
         companyJobs[member.company_id].jobs.push({ ...b, cleaner_name: member.full_name || "Städare" });
       }
 
+      // Generera magic link per teammedlem (mönster från admin-approve-cleaner)
+      let magicLink = "https://spick.se/team-jobb.html"; // fallback
+      if (member.email) {
+        try {
+          const { data: linkData } = await sb.auth.admin.generateLink({
+            type: "magiclink",
+            email: member.email,
+            options: { redirectTo: "https://spick.se/team-jobb.html" },
+          });
+          if (linkData?.properties?.action_link) {
+            magicLink = linkData.properties.action_link;
+          }
+        } catch (e) {
+          console.warn("Magic link generation failed for", member.email, (e as Error).message);
+        }
+      }
+
       // Bygg SMS-meddelande
-      const firstName = (member.full_name || "Hej").split(" ")[0];
       let message: string;
 
       if (memberBookings.length === 1) {
         const b = memberBookings[0];
         message =
-          `Spick: Hej ${firstName}! Du har ett jobb ${dateLabel} kl ${b.booking_time || "09:00"} — ` +
-          `${b.service_type || "Städning"} hos ${b.customer_name || "kund"}, ${b.customer_address || ""}. ` +
-          `Detaljer i appen: spick.se/stadare-dashboard.html`;
+          `Spick: Jobb ${dateLabel} kl ${b.booking_time || "09:00"} 🧹\n` +
+          `📍 ${(b.customer_address || "").substring(0, 45)}\n` +
+          `👤 ${(b.customer_name || "").split(" ")[0]}\n` +
+          `→ ${magicLink}`;
       } else {
         const jobLines = memberBookings
           .sort((a, b) => (a.booking_time || "").localeCompare(b.booking_time || ""))
           .map((b) => `- kl ${b.booking_time || "09:00"} ${b.customer_address || ""}`)
           .join("\n");
         message =
-          `Spick: Hej ${firstName}! Du har ${memberBookings.length} jobb ${dateLabel}:\n${jobLines}\n` +
-          `Detaljer i appen: spick.se/stadare-dashboard.html`;
+          `Spick: ${memberBookings.length} jobb ${dateLabel} 🧹\n${jobLines}\n` +
+          `→ ${magicLink}`;
       }
 
       const sent = await sendSms(member.phone, message);
@@ -161,7 +178,7 @@ serve(async (req) => {
 
         const message =
           `Spick Team: Hej ${firstName}! Ditt team har ${jobs.length} jobb ${dateLabel}:\n${summary}\n` +
-          `Översikt: spick.se/stadare-dashboard.html`;
+          `Alla har fått SMS ✅`;
 
         const sent = await sendSms(vd.phone, message);
         if (sent) vdSent.push({ company_id: vd.company_id, name: vd.full_name || "", jobs: jobs.length });

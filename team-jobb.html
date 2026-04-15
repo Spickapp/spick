@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0F6E56">
+  <title>Spick — Mina jobb</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --green: #0F6E56;
+      --green-light: #D1FAE5;
+      --blue: #2563EB;
+      --blue-light: #DBEAFE;
+      --yellow: #F59E0B;
+      --yellow-light: #FEF3C7;
+      --red: #DC2626;
+      --red-light: #FEE2E2;
+      --gray-50: #F9FAFB;
+      --gray-100: #F3F4F6;
+      --gray-200: #E5E7EB;
+      --gray-400: #9CA3AF;
+      --gray-500: #6B7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --radius: 16px;
+      --shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #F7F7F5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: var(--gray-900);
+    }
+    .wrap {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 16px 14px 40px;
+      min-height: 100vh;
+    }
+    /* Header */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .logo {
+      font-family: Georgia, serif;
+      font-size: 22px; font-weight: 700; color: var(--green);
+      letter-spacing: -.5px;
+    }
+    .date {
+      font-size: 15px; font-weight: 600; color: var(--gray-500);
+    }
+    .greet {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--green-light); color: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px;
+      overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .greet .name { font-size: 17px; font-weight: 600; }
+    /* Job card */
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 16px 16px 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--gray-200);
+      position: relative;
+    }
+    .card.pending { border-left-color: var(--yellow); }
+    .card.confirmed { border-left-color: var(--green); }
+    .card.pagar { border-left-color: var(--blue); }
+    .card.done {
+      background: var(--gray-50);
+      padding: 10px 14px;
+      border-left-color: var(--gray-400);
+      box-shadow: none;
+    }
+    .card-row {
+      display: flex; align-items: center;
+      font-size: 15px; line-height: 1.4;
+      margin: 5px 0;
+      color: var(--gray-900);
+    }
+    .card-row.big { font-size: 18px; font-weight: 700; margin-top: 0; }
+    .card-row .ico {
+      display: inline-block; width: 24px; text-align: center;
+      margin-right: 8px; font-size: 16px;
+    }
+    .card-row a { color: var(--blue); text-decoration: none; }
+    .countdown {
+      display: inline-block;
+      background: var(--blue-light); color: var(--blue);
+      font-size: 13px; font-weight: 600;
+      padding: 3px 9px; border-radius: 12px;
+      margin-top: 6px;
+    }
+    .timer {
+      display: inline-block;
+      background: var(--blue-light); color: var(--blue);
+      font-size: 15px; font-weight: 700;
+      padding: 4px 12px; border-radius: 12px;
+      margin-top: 6px;
+    }
+    .earn {
+      color: var(--green); font-weight: 700;
+    }
+    /* Button row */
+    .btn-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-top: 12px;
+    }
+    .btn-full { display: block; width: 100%; margin-top: 12px; }
+    .btn {
+      border: 0; border-radius: 12px;
+      height: 56px;
+      font-size: 17px; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px;
+      transition: opacity .15s ease, transform .1s ease;
+      text-decoration: none;
+      font-family: inherit;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; }
+    .btn-ok { background: var(--green); color: #fff; }
+    .btn-no { background: var(--red); color: #fff; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-map { background: var(--gray-100); color: var(--gray-900); }
+    .done-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; color: var(--gray-500);
+    }
+    .done-row .check { color: var(--green); font-weight: 700; font-size: 16px; }
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+    }
+    .empty .big-ico { font-size: 72px; }
+    .empty .txt { font-size: 18px; color: var(--gray-500); margin-top: 12px; }
+    .empty .sub { font-size: 14px; color: var(--gray-400); margin-top: 6px; }
+    /* No session */
+    .no-session {
+      text-align: center;
+      padding: 80px 24px;
+    }
+    .no-session .lk { font-size: 80px; }
+    .no-session .msg { font-size: 20px; color: var(--gray-700); margin-top: 16px; font-weight: 500; }
+    .no-session .sub { font-size: 14px; color: var(--gray-400); margin-top: 8px; }
+    /* Footer */
+    .footer {
+      margin-top: 28px;
+      text-align: center;
+    }
+    .footer .call {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px;
+      background: #fff; border-radius: 100px;
+      box-shadow: var(--shadow);
+      color: var(--gray-900);
+      text-decoration: none;
+      font-size: 15px; font-weight: 600;
+    }
+    .footer .tiny {
+      margin-top: 20px;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      color: var(--gray-400);
+      opacity: .5;
+    }
+    /* Spinner */
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      margin: 48px auto;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--red); color: #fff;
+      padding: 12px 20px; border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(220,38,38,.3);
+      font-size: 14px; font-weight: 500;
+      max-width: 90%;
+      z-index: 999;
+      animation: slide-up .3s ease;
+    }
+    .toast.ok { background: var(--green); box-shadow: 0 4px 20px rgba(15,110,86,.3); }
+    @keyframes slide-up {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="wrap">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="js/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script>
+    var sb = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+    var currentSession = null;
+    var cleanerData = null;
+    var jobsData = [];
+    var vdPhone = null;
+    var vdName = null;
+    var timerInterval = null;
+
+    var app = document.getElementById('app');
+
+    function escHtml(s) {
+      if (s == null) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function toast(msg, ok) {
+      var el = document.createElement('div');
+      el.className = 'toast' + (ok ? ' ok' : '');
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(function() { el.remove(); }, 3000);
+    }
+
+    function fmtDate(d) {
+      return d.getDate() + '/' + (d.getMonth() + 1);
+    }
+
+    function fmtCountdown(target) {
+      var diff = target - new Date();
+      if (diff <= 0) return 'Nu';
+      var hrs = Math.floor(diff / 3600000);
+      var min = Math.floor((diff % 3600000) / 60000);
+      if (hrs > 24) return 'Imorgon';
+      if (hrs > 0) return 'Om ' + hrs + 'h ' + min + 'min';
+      return 'Om ' + min + 'min';
+    }
+
+    function fmtElapsed(start) {
+      var diff = new Date() - start;
+      if (diff <= 0) return '0min';
+      var hrs = Math.floor(diff / 3600000);
+      var min = Math.floor((diff % 3600000) / 60000);
+      if (hrs > 0) return hrs + 'h ' + min + 'min';
+      return min + 'min';
+    }
+
+    async function init() {
+      // Låt Supabase processa magic link hash
+      await new Promise(function(r) { setTimeout(r, 200); });
+
+      var sessRes = await sb.auth.getSession();
+      var session = sessRes && sessRes.data ? sessRes.data.session : null;
+
+      if (!session) {
+        showNoSession();
+        return;
+      }
+      currentSession = session;
+
+      // Hämta cleaner-profil
+      var clRes = await sb.from('cleaners')
+        .select('id, full_name, first_name, avatar_url, company_id, phone')
+        .eq('auth_user_id', session.user.id)
+        .limit(1);
+      var cleaners = clRes.data;
+
+      if (!cleaners || cleaners.length === 0) {
+        showError('Kunde inte hitta din profil.');
+        return;
+      }
+      cleanerData = cleaners[0];
+
+      // Hämta VD:ns telefon
+      if (cleanerData.company_id) {
+        var coRes = await sb.from('companies')
+          .select('owner_cleaner_id')
+          .eq('id', cleanerData.company_id)
+          .limit(1);
+        if (coRes.data && coRes.data[0]) {
+          var vdRes = await sb.from('cleaners')
+            .select('phone, first_name, full_name')
+            .eq('id', coRes.data[0].owner_cleaner_id)
+            .limit(1);
+          if (vdRes.data && vdRes.data[0]) {
+            vdPhone = vdRes.data[0].phone;
+            vdName = vdRes.data[0].first_name || (vdRes.data[0].full_name || '').split(' ')[0];
+          }
+        }
+      }
+
+      await loadJobs();
+      render();
+    }
+
+    async function loadJobs() {
+      var today = new Date().toISOString().slice(0, 10);
+      var tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+      var res = await sb.from('bookings')
+        .select('id, booking_date, booking_time, booking_hours, customer_address, customer_name, service_type, status, total_price, commission_pct, checkin_time, checkout_time, completed_at, checked_in_at, actual_hours')
+        .eq('cleaner_id', cleanerData.id)
+        .in('booking_date', [today, tomorrow])
+        .not('status', 'in', '(cancelled,avbokad)')
+        .order('booking_date', { ascending: true })
+        .order('booking_time', { ascending: true });
+
+      jobsData = res.data || [];
+    }
+
+    function showNoSession() {
+      app.innerHTML =
+        '<div class="no-session">' +
+          '<div class="logo" style="font-size:32px;margin-bottom:24px">Spick</div>' +
+          '<div class="lk">🔗</div>' +
+          '<div class="msg">Öppna länken i ditt SMS</div>' +
+          '<div class="sub">spick.se</div>' +
+        '</div>';
+    }
+
+    function showError(msg) {
+      app.innerHTML =
+        '<div class="no-session">' +
+          '<div class="logo" style="font-size:32px;margin-bottom:24px">Spick</div>' +
+          '<div class="lk">⚠️</div>' +
+          '<div class="msg">' + escHtml(msg) + '</div>' +
+        '</div>';
+    }
+
+    function renderHeader() {
+      var today = new Date();
+      var initials = ((cleanerData.first_name || cleanerData.full_name || '?').charAt(0) || '?').toUpperCase();
+      var name = cleanerData.first_name || (cleanerData.full_name || '').split(' ')[0] || 'Städare';
+      var avatarHtml = cleanerData.avatar_url
+        ? '<img src="' + escHtml(cleanerData.avatar_url) + '" alt="">'
+        : escHtml(initials);
+      return '' +
+        '<div class="header">' +
+          '<div class="logo">Spick</div>' +
+          '<div class="date">' + fmtDate(today) + '</div>' +
+        '</div>' +
+        '<div class="greet">' +
+          '<div class="avatar">' + avatarHtml + '</div>' +
+          '<div class="name">Hej ' + escHtml(name) + '</div>' +
+        '</div>';
+    }
+
+    function renderJobCard(job) {
+      var addr = job.customer_address || '';
+      var name = job.customer_name || '';
+      var firstName = name.split(' ')[0];
+      var time = (job.booking_time || '09:00').slice(0, 5);
+      var hrs = job.booking_hours || 0;
+      var mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(addr);
+      var cardHtml;
+
+      // STATUS 1: VÄNTAR PÅ SVAR
+      if (job.status === 'pending_confirmation') {
+        var commissionPct = job.commission_pct || 17;
+        var earn = Math.round((job.total_price || 0) * (1 - commissionPct / 100));
+        cardHtml =
+          '<div class="card pending" data-id="' + escHtml(job.id) + '">' +
+            '<div class="card-row big"><span class="ico">🕐</span>kl ' + escHtml(time) + '</div>' +
+            '<div class="card-row"><span class="ico">📍</span>' + escHtml(addr) + '</div>' +
+            '<div class="card-row"><span class="ico">👤</span>' + escHtml(firstName) + '</div>' +
+            '<div class="card-row"><span class="ico">🧹</span>' + escHtml(hrs) + 'h</div>' +
+            '<div class="card-row"><span class="ico">💰</span><span class="earn">' + earn + ' kr</span></div>' +
+            '<div class="btn-row">' +
+              '<button class="btn btn-ok" data-act="accept">✅ OK</button>' +
+              '<button class="btn btn-no" data-act="reject">❌ NEJ</button>' +
+            '</div>' +
+          '</div>';
+      }
+      // STATUS 2: BEKRÄFTAT — INTE BÖRJAT
+      else if (job.status === 'confirmed' || job.status === 'bekräftad') {
+        var jobDate = new Date(job.booking_date + 'T' + time + ':00');
+        var today = new Date().toISOString().slice(0, 10);
+        var countdownHtml = job.booking_date === today
+          ? '<div class="countdown">' + escHtml(fmtCountdown(jobDate)) + '</div>'
+          : '';
+        cardHtml =
+          '<div class="card confirmed" data-id="' + escHtml(job.id) + '">' +
+            '<div class="card-row big"><span class="ico">🕐</span>kl ' + escHtml(time) + '</div>' +
+            '<div class="card-row"><span class="ico">📍</span><a href="' + mapsUrl + '" target="_blank">' + escHtml(addr) + '</a></div>' +
+            '<div class="card-row"><span class="ico">👤</span>' + escHtml(firstName) + '</div>' +
+            countdownHtml +
+            '<div class="btn-row">' +
+              '<a class="btn btn-map" href="' + mapsUrl + '" target="_blank">📍 KARTA</a>' +
+              '<button class="btn btn-blue" data-act="checkin">▶️ START</button>' +
+            '</div>' +
+          '</div>';
+      }
+      // STATUS 3: PÅGÅR
+      else if (job.status === 'pågår') {
+        var startTime = job.checkin_time || job.checked_in_at;
+        var elapsedHtml = startTime
+          ? '<div class="timer" data-start="' + escHtml(startTime) + '">⏱️ ' + escHtml(fmtElapsed(new Date(startTime))) + '</div>'
+          : '';
+        cardHtml =
+          '<div class="card pagar" data-id="' + escHtml(job.id) + '">' +
+            '<div class="card-row big"><span class="ico">🕐</span>Start ' + escHtml(time) + '</div>' +
+            '<div class="card-row"><span class="ico">📍</span>' + escHtml(addr) + '</div>' +
+            elapsedHtml +
+            '<button class="btn btn-ok btn-full" data-act="done">✅ KLAR</button>' +
+          '</div>';
+      }
+      // STATUS 4: KLART
+      else if (job.status === 'klar') {
+        var hDisp = job.actual_hours ? parseFloat(job.actual_hours).toFixed(1) + 'h' : (hrs + 'h');
+        cardHtml =
+          '<div class="card done" data-id="' + escHtml(job.id) + '">' +
+            '<div class="done-row">' +
+              '<span class="check">✓</span>' +
+              '<span>' + escHtml(time) + ' — ' + escHtml(addr.substring(0, 30)) + ' — ' + escHtml(hDisp) + '</span>' +
+            '</div>' +
+          '</div>';
+      } else {
+        // fallback
+        cardHtml =
+          '<div class="card" data-id="' + escHtml(job.id) + '">' +
+            '<div class="card-row big"><span class="ico">🕐</span>kl ' + escHtml(time) + '</div>' +
+            '<div class="card-row"><span class="ico">📍</span>' + escHtml(addr) + '</div>' +
+          '</div>';
+      }
+      return cardHtml;
+    }
+
+    function renderFooter() {
+      var phoneHtml = vdPhone
+        ? '<a class="call" href="tel:' + escHtml(vdPhone) + '">📞 ' + escHtml(vdName || 'Chef') + '</a>'
+        : '';
+      return '<div class="footer">' + phoneHtml + '<div class="tiny">Spick</div></div>';
+    }
+
+    function render() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+      var headerHtml = renderHeader();
+      var bodyHtml;
+
+      if (!jobsData || jobsData.length === 0) {
+        var today = new Date().toISOString().slice(0, 10);
+        var tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+        var tomorrowJobs = jobsData.filter(function(j) { return j.booking_date === tomorrow; });
+        var sub = tomorrowJobs.length > 0
+          ? '<div class="sub">Men du har ' + tomorrowJobs.length + ' jobb imorgon</div>'
+          : '';
+        bodyHtml =
+          '<div class="empty">' +
+            '<div class="big-ico">☀️</div>' +
+            '<div class="txt">Inga jobb</div>' +
+            sub +
+          '</div>';
+      } else {
+        bodyHtml = jobsData.map(renderJobCard).join('');
+      }
+
+      app.innerHTML = headerHtml + bodyHtml + renderFooter();
+
+      // Wire upp knappar
+      app.querySelectorAll('.card').forEach(function(cardEl) {
+        var id = cardEl.getAttribute('data-id');
+        cardEl.querySelectorAll('[data-act]').forEach(function(btn) {
+          btn.addEventListener('click', function() { handleAction(id, btn.getAttribute('data-act')); });
+        });
+      });
+
+      // Live timer för pågår-kort
+      var timerEls = app.querySelectorAll('.timer[data-start]');
+      if (timerEls.length) {
+        timerInterval = setInterval(function() {
+          timerEls.forEach(function(el) {
+            var start = new Date(el.getAttribute('data-start'));
+            el.textContent = '⏱️ ' + fmtElapsed(start);
+          });
+        }, 60000);
+      }
+    }
+
+    async function handleAction(bookingId, action) {
+      var btns = app.querySelectorAll('.card[data-id="' + bookingId + '"] button');
+      btns.forEach(function(b) { b.disabled = true; });
+
+      try {
+        if (action === 'accept' || action === 'reject') {
+          var res = await fetch(SPICK.SUPA_URL + '/functions/v1/cleaner-booking-response', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SPICK.SUPA_KEY,
+              'Authorization': 'Bearer ' + currentSession.access_token
+            },
+            body: JSON.stringify({ booking_id: bookingId, action: action })
+          });
+          if (!res.ok) {
+            var err = await res.json().catch(function() { return {}; });
+            throw new Error(err.error || 'Kunde inte uppdatera');
+          }
+          toast(action === 'accept' ? 'Accepterat ✅' : 'Nekat', true);
+        } else if (action === 'checkin') {
+          await doCheckin(bookingId);
+          toast('Incheckad ✅', true);
+        } else if (action === 'done') {
+          await doCheckout(bookingId);
+          toast('Klarmarkerat ✅', true);
+        }
+        await loadJobs();
+        render();
+      } catch (e) {
+        toast(e.message || 'Fel — försök igen');
+        btns.forEach(function(b) { b.disabled = false; });
+      }
+    }
+
+    async function doCheckin(bookingId) {
+      var patchData = { checkin_time: new Date().toISOString(), status: 'pågår' };
+      if (navigator.geolocation) {
+        try {
+          var pos = await new Promise(function(res, rej) {
+            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 });
+          });
+          patchData.checkin_lat = pos.coords.latitude;
+          patchData.checkin_lng = pos.coords.longitude;
+        } catch (e) { /* GPS saknas, fortsätt */ }
+      }
+      var r = await sb.from('bookings').update(patchData).eq('id', bookingId);
+      if (r.error) throw r.error;
+    }
+
+    async function doCheckout(bookingId) {
+      var now = new Date();
+      var job = jobsData.find(function(j) { return j.id === bookingId; });
+      var patchData = {
+        checkout_time: now.toISOString(),
+        status: 'klar',
+        completed_at: now.toISOString()
+      };
+      if (job && (job.checkin_time || job.checked_in_at)) {
+        var start = new Date(job.checkin_time || job.checked_in_at);
+        patchData.actual_hours = Math.round((now - start) / 3600000 * 10) / 10;
+      }
+      if (navigator.geolocation) {
+        try {
+          var pos = await new Promise(function(res, rej) {
+            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 });
+          });
+          patchData.checkout_lat = pos.coords.latitude;
+          patchData.checkout_lng = pos.coords.longitude;
+        } catch (e) {}
+      }
+      var r = await sb.from('bookings').update(patchData).eq('id', bookingId);
+      if (r.error) throw r.error;
+    }
+
+    // Gå
+    init().catch(function(e) {
+      console.error('Init-fel:', e);
+      showError('Kunde inte ladda sidan.');
+    });
+  </script>
+</body>
+</html>
