@@ -61,7 +61,7 @@ serve(async (req) => {
         "individual[email]": email,
         "individual[first_name]": name?.split(" ")[0] || "",
         "individual[last_name]":  name?.split(" ").slice(1).join(" ") || "",
-        "settings[payouts][schedule][interval]": "manual",
+        "settings[payouts][schedule][interval]": "daily",
         "metadata[cleaner_id]": cleaner_id,
       });
 
