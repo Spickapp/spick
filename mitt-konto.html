@@ -193,28 +193,41 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       <input type="email" id="emailInput" placeholder="din@email.se" autocomplete="email">
     </div>
     <button class="btn-primary" id="loginBtn" onclick="login()">
-      Skicka inloggningslänk →
+      Skicka inloggningskod →
     </button>
     <p style="font-size:.75rem;color:var(--m);text-align:center;margin-top:1rem;line-height:1.6">
-      Vi skickar en säker inloggningslänk till din e-post. Inget lösenord krävs.
+      Vi skickar en säker inloggningskod till din e-post. Inget lösenord krävs.
     </p>
   </div>
 </div>
 
-<!-- MAGIC LINK SENT -->
+<!-- OTP KOD-VERIFIERING -->
 <div id="magicSent" style="display:none;text-align:center;padding:2rem 1rem;max-width:420px;margin:5rem auto">
   <div style="font-size:2.5rem;margin-bottom:16px">📧</div>
   <h2 style="font-family:'Playfair Display',serif;margin-bottom:8px">Kolla din e-post</h2>
-  <p style="color:#6B6960;margin-bottom:24px">
-    Vi har skickat en inloggningslänk till<br>
+  <p style="color:#6B6960;margin-bottom:8px">
+    Vi har skickat en inloggningskod till<br>
     <strong id="magicEmail"></strong>
   </p>
-  <p style="font-size:.85rem;color:#6B6960">
-    Klicka på länken i mailet för att logga in.<br>Länken gäller i 1 timme.
+  <p style="font-size:.85rem;color:#6B6960;margin-bottom:20px">
+    Ange den 6-siffriga koden nedan. Koden gäller i 10 minuter.
   </p>
-  <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <button onclick="login()" style="padding:10px 20px;border:1.5px solid #E8E8E4;border-radius:100px;background:none;cursor:pointer;font-family:inherit">Skicka igen</button>
-    <button onclick="document.getElementById('magicSent').style.display='none';document.getElementById('loginSection').style.display='block'" style="padding:10px 20px;border:1.5px solid #E8E8E4;border-radius:100px;background:none;cursor:pointer;font-family:inherit">Ändra e-post</button>
+  <div style="max-width:280px;margin:0 auto">
+    <input type="text" id="otp-code" inputmode="numeric" autocomplete="one-time-code"
+      maxlength="6" placeholder="• • • • • •"
+      style="width:100%;text-align:center;font-size:1.8rem;letter-spacing:.5rem;padding:14px;border:2px solid #E8E8E4;border-radius:12px;font-family:inherit;outline:none;transition:border-color .2s"
+      onfocus="this.style.borderColor='#0F6E56'"
+      onblur="this.style.borderColor='#E8E8E4'"
+      oninput="if(this.value.length===6)verifyCustomerOtp()">
+    <div id="otp-error" style="display:none;color:#DC2626;font-size:.82rem;margin-top:8px;font-weight:600"></div>
+    <button onclick="verifyCustomerOtp()" id="otp-verify-btn"
+      style="width:100%;margin-top:12px;padding:14px;background:#0F6E56;color:#fff;border:none;border-radius:100px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
+      Verifiera →
+    </button>
+  </div>
+  <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <button onclick="login()" style="padding:10px 20px;border:1.5px solid #E8E8E4;border-radius:100px;background:none;cursor:pointer;font-family:inherit;font-size:.85rem">Skicka ny kod</button>
+    <button onclick="document.getElementById('magicSent').style.display='none';document.getElementById('loginSection').style.display='block'" style="padding:10px 20px;border:1.5px solid #E8E8E4;border-radius:100px;background:none;cursor:pointer;font-family:inherit;font-size:.85rem">Ändra e-post</button>
   </div>
 </div>
 
@@ -367,7 +380,8 @@ window.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// ── LOGIN (Magic Link) ──────────────────────
+var _customerOtpEmail = '';
+// ── LOGIN (OTP Kod) ──────────────────────
 async function login() {
   var email = document.getElementById('emailInput').value.trim().toLowerCase();
   if (!email || !email.includes('@')) {
@@ -380,6 +394,7 @@ async function login() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spin"></div> Skickar...';
   document.getElementById('loginError').classList.remove('show');
+  _customerOtpEmail = email;
 
   var result = await SB.auth.signInWithOtp({
     email: email,
@@ -387,10 +402,10 @@ async function login() {
   });
 
   btn.disabled = false;
-  btn.innerHTML = 'Skicka inloggningslänk →';
+  btn.innerHTML = 'Skicka inloggningskod →';
 
   if (result.error) {
-    document.getElementById('loginError').textContent = 'Kunde inte skicka länk: ' + result.error.message;
+    document.getElementById('loginError').textContent = 'Kunde inte skicka kod: ' + result.error.message;
     document.getElementById('loginError').classList.add('show');
     return;
   }
@@ -402,7 +417,47 @@ async function login() {
     var emailEl = document.getElementById('magicEmail');
     if (emailEl) emailEl.textContent = email;
   } else {
-    spickToast('Inloggningslänk skickad till ' + email, 'success', 6000);
+    spickToast('Inloggningskod skickad till ' + email, 'success', 6000);
+  }
+}
+
+async function verifyCustomerOtp() {
+  var code = document.getElementById('otp-code').value.trim();
+  var errEl = document.getElementById('otp-error');
+  errEl.style.display = 'none';
+
+  if (code.length < 6 || !/^\d+$/.test(code)) {
+    errEl.textContent = 'Ange den 6-siffriga koden från mejlet.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  var btn = document.getElementById('otp-verify-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifierar...';
+
+  try {
+    var result = await SB.auth.verifyOtp({
+      email: _customerOtpEmail,
+      token: code,
+      type: 'email'
+    });
+
+    if (result.error) {
+      errEl.textContent = 'Fel kod — kontrollera och försök igen.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Verifiera →';
+      return;
+    }
+
+    // Lyckad verifiering — onAuthStateChange hanterar resten
+    btn.textContent = '✅ Inloggad!';
+  } catch(e) {
+    errEl.textContent = 'Något gick fel. Försök igen.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Verifiera →';
   }
 }
 
