@@ -101,14 +101,8 @@ serve(async (req) => {
       return json({ error: "Föreslagen städare är inte aktiv" }, 409, CORS);
     }
 
-    // ── KVALITETSCHECK: avg_rating-differens ──────────
-    const prevRating = Number(previousCleaner.avg_rating) || 0;
-    const newRating = Number(newCleaner.avg_rating) || 0;
-    // Om föregående har betyg OCH ny har sämre än 0.3 under → varna
-    const qualityGap = prevRating > 0 && newRating > 0 && (prevRating - newRating) > 0.3;
-
     // ── KOLLA AUTO-DELEGATION-PREFERENS ───────────────
-    // Per-booking override trumfar profil-default
+    // Kundens explicita val styr. Per-booking override trumfar profil-default.
     let autoDelegation = booking.auto_delegation_enabled;
     if (autoDelegation === null || autoDelegation === undefined) {
       // Hämta kundens default
@@ -120,8 +114,9 @@ serve(async (req) => {
       autoDelegation = customerProfile?.auto_delegation_enabled || false;
     }
 
-    // Om kvalitetsgap: kräv alltid kundgodkännande (override auto-delegation)
-    const requireCustomerApproval = qualityGap || !autoDelegation;
+    // Kund A (aktiv) → kundgodkännande alltid
+    // Kund B (passiv, auto-delegation) → direkt tilldelning
+    const requireCustomerApproval = !autoDelegation;
 
     // ── UPPDATERA BOKNING ─────────────────────────────
     const now = new Date().toISOString();
@@ -148,7 +143,6 @@ serve(async (req) => {
           <p>Tyvärr kunde den ursprungliga städaren inte ta din bokning. Företaget har föreslagit en ersättare:</p>
           ${card([
             ["Ny städare", esc(newCleaner.full_name)],
-            ["Betyg", newRating > 0 ? `⭐ ${newRating.toFixed(1)}` : "Ny städare"],
             ["Datum & tid", `${formatDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
             ["Tjänst", esc(booking.service_type || "Städning")],
             ["Pris", `${booking.total_price} kr (oförändrat)`],
@@ -181,7 +175,7 @@ serve(async (req) => {
       }
 
       log("info", "company-propose-substitute", "Proposal sent to customer", {
-        booking_id, new_cleaner_id, vd: vdCleaner.id, quality_gap: qualityGap
+        booking_id, new_cleaner_id, vd: vdCleaner.id
       });
 
       return json({
@@ -224,7 +218,6 @@ serve(async (req) => {
           <p>Den ursprungliga städaren kunde inte ta din bokning. Vi har automatiskt tilldelat en annan städare från samma företag:</p>
           ${card([
             ["Ny städare", esc(newCleaner.full_name)],
-            ["Betyg", newRating > 0 ? `⭐ ${newRating.toFixed(1)}` : "Ny"],
             ["Datum & tid", `${formatDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
             ["Pris", `${booking.total_price} kr (oförändrat)`],
           ])}

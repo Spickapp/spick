@@ -106,23 +106,10 @@ serve(async (req) => {
           continue;
         }
 
-        // Kvalitetsfilter: ≥ previous - 0.3
-        const prevRating = Number(prevCleaner.avg_rating) || 0;
-        const qualified = candidates.filter((c) => {
-          if (prevRating === 0) return true; // Inget tidigare betyg = alla OK
-          const cRating = Number(c.avg_rating) || 0;
-          if (cRating === 0) return false; // Nya städare accepteras inte i auto-delegation
-          return (prevRating - cRating) <= 0.3;
-        });
-
-        if (qualified.length === 0) {
-          results.push({ booking_id: booking.id, action: "no_qualified_candidates" });
-          continue;
-        }
-
+        // Candidates är redan sorterade på avg_rating desc (bästa först)
+        // Ingen hård kvalitetsgräns — kund valde auto-delegation och litar på företagets val
         // TODO i framtida sprint: kolla availability + takenNow för candidates
-        // För nu: välj högst betyg
-        const chosen = qualified[0];
+        const chosen = candidates[0];
 
         // Anropa company-propose-substitute internt (som VD)
         // För att göra detta enkelt, uppdaterar vi bokningen direkt här

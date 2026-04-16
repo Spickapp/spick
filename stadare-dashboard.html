@@ -1803,10 +1803,6 @@ body{top:0!important}
         <div id="propose-candidates-list" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto"></div>
       </div>
 
-      <div id="propose-quality-warning" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:12px;margin-bottom:12px;font-size:.82rem;color:#78350F">
-        ⚠️ <strong>Kvalitetsvarning:</strong> Denna städare har betydligt lägre betyg än originalet. Kunden får godkänna innan bokningen bekräftas.
-      </div>
-
       <div style="display:flex;gap:8px;margin-top:16px">
         <button onclick="closeProposeModal()" style="flex:1;background:#F3F4F6;color:#374151;border:none;padding:14px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Avbryt</button>
         <button id="propose-confirm-btn" onclick="confirmProposal()" disabled style="flex:2;background:var(--g);color:#fff;border:none;padding:14px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;min-height:48px;opacity:.5">Skicka förslag</button>
@@ -9187,13 +9183,6 @@ async function openProposeModal(bookingId) {
   _currentProposalBooking = booking;
   _currentProposalCleanerId = null;
 
-  // Hämta ursprungsstädarens avg_rating
-  var prevRating = 0;
-  try {
-    var prevRes = await R.selectSingle('cleaners', 'select=avg_rating&id=eq.' + booking.cleaner_id);
-    prevRating = Number(prevRes.data?.avg_rating) || 0;
-  } catch(e) {}
-
   // Hämta alla aktiva teammedlemmar (utom originalet)
   var teamRes = await R.selectList('cleaners',
     'select=id,full_name,avg_rating,is_active,status,is_approved' +
@@ -9211,8 +9200,7 @@ async function openProposeModal(bookingId) {
     info.innerHTML = '<strong>' + escHtml(_currentProposalBooking.customer_name || 'Kund') + '</strong><br>' +
       escHtml(_currentProposalBooking.service_type || 'Städning') + ' • ' +
       escHtml(formatReassignmentDate(_currentProposalBooking.booking_date)) + ' kl ' +
-      escHtml((_currentProposalBooking.booking_time || '').substring(0,5)) + '<br>' +
-      '<span style="color:#6B7280;font-size:.82rem">Ursprungligt betyg: ' + (prevRating > 0 ? '⭐ ' + prevRating.toFixed(1) : 'inget') + '</span>';
+      escHtml((_currentProposalBooking.booking_time || '').substring(0,5));
   }
 
   var list = document.getElementById('propose-candidates-list');
@@ -9223,13 +9211,11 @@ async function openProposeModal(bookingId) {
       var html = '';
       candidates.forEach(function(c) {
         var cRating = Number(c.avg_rating) || 0;
-        var qualityGap = prevRating > 0 && cRating > 0 && (prevRating - cRating) > 0.3;
         var ratingText = cRating > 0 ? '⭐ ' + cRating.toFixed(1) : 'Ny städare';
-        var warnIcon = qualityGap ? ' ⚠️' : '';
-        html += '<label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--gray-200);border-radius:10px;cursor:pointer;transition:all .15s" data-rating-gap="' + (qualityGap ? '1' : '0') + '">';
-        html += '<input type="radio" name="candidate" value="' + c.id + '" data-rating-gap="' + (qualityGap ? '1' : '0') + '" style="accent-color:var(--g)">';
+        html += '<label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--gray-200);border-radius:10px;cursor:pointer;transition:all .15s">';
+        html += '<input type="radio" name="candidate" value="' + c.id + '" style="accent-color:var(--g)">';
         html += '<div style="flex:1">';
-        html += '<div style="font-weight:600;font-size:.92rem">' + escHtml(c.full_name) + warnIcon + '</div>';
+        html += '<div style="font-weight:600;font-size:.92rem">' + escHtml(c.full_name) + '</div>';
         html += '<div style="font-size:.78rem;color:#6B7280">' + ratingText + '</div>';
         html += '</div>';
         html += '</label>';
@@ -9239,8 +9225,6 @@ async function openProposeModal(bookingId) {
       list.querySelectorAll('input[name="candidate"]').forEach(function(input) {
         input.addEventListener('change', function(e) {
           _currentProposalCleanerId = e.target.value;
-          var gap = e.target.dataset.ratingGap === '1';
-          document.getElementById('propose-quality-warning').style.display = gap ? 'block' : 'none';
           var btn = document.getElementById('propose-confirm-btn');
           btn.disabled = false;
           btn.style.opacity = '1';
@@ -9256,8 +9240,6 @@ function closeProposeModal() {
   document.getElementById('propose-substitute-modal').style.display = 'none';
   _currentProposalBooking = null;
   _currentProposalCleanerId = null;
-  var warn = document.getElementById('propose-quality-warning');
-  if (warn) warn.style.display = 'none';
   var btn = document.getElementById('propose-confirm-btn');
   if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
   var msg = document.getElementById('propose-msg');
