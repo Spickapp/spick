@@ -689,6 +689,20 @@ body{top:0!important}
 #toggle-company-pricing:checked + span{background:var(--g)!important}
 #toggle-company-pricing:checked + span + #pricing-model-knob{left:22px!important}
 #toggle-individual-ratings:checked + span + #rating-toggle-knob{left:22px!important}
+
+/* Manual booking wizard */
+.mb-steps { display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:20px; }
+.mb-step-circle { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; transition:all .2s; }
+.mb-step-active { background:var(--g); color:#fff; }
+.mb-step-done { background:var(--g); color:#fff; }
+.mb-step-future { background:#E5E7EB; color:#9CA3AF; }
+.mb-step-line { width:40px; height:2px; background:#E5E7EB; }
+.mb-step-line.done { background:var(--g); }
+.mb-ct-btn, .mb-freq-btn { padding:8px 16px; border:1.5px solid #E5E7EB; background:#fff; border-radius:8px; font-size:.82rem; cursor:pointer; font-family:inherit; transition:all .15s; }
+.mb-ct-btn.active, .mb-freq-btn.active { background:var(--g); color:#fff; border-color:var(--g); }
+.mb-freq-group { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.mb-step-label { font-size:.72rem; color:var(--m); margin-top:4px; text-align:center; min-width:48px; }
+.mb-step-label.active { color:var(--g); font-weight:600; }
 </style>
 <script src="js/config.js"></script>
 <script src="js/commission.js"></script>
@@ -1744,47 +1758,177 @@ body{top:0!important}
     </div>
   </div>
 
-  <!-- MANUAL BOOKING MODAL -->
+  <!-- MANUAL BOOKING MODAL — 3-stegs wizard -->
   <div id="manual-booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeManualBooking()">
-    <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="font-size:1.1rem;font-weight:700">Lägg till jobb manuellt</h3>
-        <button onclick="closeManualBooking()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--m)">✕</button>
+    <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:520px;width:100%;margin:40px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 style="font-size:1.15rem;font-weight:700">Nytt uppdrag</h3>
+        <button onclick="closeManualBooking()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--m);min-width:44px;min-height:44px">✕</button>
       </div>
-      <p style="font-size:.82rem;color:var(--m);margin-bottom:16px">Skapa en bokning och skicka betalningsförfrågan till kunden via mejl.</p>
-      <div class="tm-form-group"><label>Kundens namn *</label><input type="text" id="mb-name" class="tm-input" placeholder="Anna Svensson"></div>
-      <div class="tm-form-group"><label>Kundens e-post *</label><input type="email" id="mb-email" class="tm-input" placeholder="anna@example.com"></div>
-      <div class="tm-form-group"><label>Kundens telefon</label><input type="tel" id="mb-phone" class="tm-input" placeholder="070 123 45 67"></div>
-      <div class="tm-form-group" style="position:relative"><label>Adress *</label><input type="text" id="mb-address" class="tm-input" placeholder="Storgatan 1, Stockholm" autocomplete="off" oninput="mbAddrSearch(this.value)" onfocus="if(this.value.length>2)mbAddrSearch(this.value)"><div id="mb-addr-list" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1.5px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;max-height:200px;overflow-y:auto"></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="tm-form-group"><label>Datum *</label><input type="date" id="mb-date" class="tm-input"></div>
-        <div class="tm-form-group"><label>Tid *</label><input type="time" id="mb-time" class="tm-input" value="09:00"></div>
+
+      <!-- Steg-indikator -->
+      <div class="mb-steps">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div id="mb-circle-1" class="mb-step-circle mb-step-active">1</div>
+          <div id="mb-label-1" class="mb-step-label active">Kund</div>
+        </div>
+        <div id="mb-line-1" class="mb-step-line" style="margin:0 4px;align-self:flex-start;margin-top:13px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div id="mb-circle-2" class="mb-step-circle mb-step-future">2</div>
+          <div id="mb-label-2" class="mb-step-label">Jobb</div>
+        </div>
+        <div id="mb-line-2" class="mb-step-line" style="margin:0 4px;align-self:flex-start;margin-top:13px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div id="mb-circle-3" class="mb-step-circle mb-step-future">3</div>
+          <div id="mb-label-3" class="mb-step-label">Pris</div>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="tm-form-group"><label>Antal timmar *</label><input type="number" id="mb-hours" class="tm-input" value="3" min="1" max="12" step="0.5"></div>
-        <div class="tm-form-group"><label>Tjänst</label>
-          <select id="mb-service" class="tm-input" style="padding:8px 12px" onchange="updateManualPrice()">
-            <option>Hemstädning</option><option>Storstädning</option><option>Flyttstädning</option><option>Fönsterputs</option><option>Kontorsstädning</option><option>Trappstädning</option><option>Skolstädning</option><option>Vårdstädning</option><option>Hotell & restaurang</option>
+
+      <!-- STEG 1 — KUND -->
+      <div id="mb-step-1" style="display:block">
+        <div class="tm-form-group">
+          <label style="display:block;margin-bottom:6px;font-size:.82rem">Kundtyp</label>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="mb-ct-btn active" data-type="privat" onclick="setMbCustomerType('privat')">Privat</button>
+            <button type="button" class="mb-ct-btn" data-type="foretag" onclick="setMbCustomerType('foretag')">Företag</button>
+          </div>
+        </div>
+        <input type="hidden" id="mb-customer-type" value="privat">
+
+        <div class="tm-form-group"><label>Namn *</label><input type="text" id="mb-name" class="tm-input" placeholder="Anna Svensson"></div>
+        <div class="tm-form-group"><label>E-post *</label><input type="email" id="mb-email" class="tm-input" placeholder="anna@example.com"></div>
+        <div class="tm-form-group"><label>Telefon</label><input type="tel" id="mb-phone" class="tm-input" placeholder="070 123 45 67"></div>
+
+        <!-- Privat-fält (RUT) -->
+        <div id="mb-privat-fields" style="display:block">
+          <div class="tm-form-group">
+            <label>Personnummer</label>
+            <input type="text" id="mb-pnr" class="tm-input" placeholder="YYYYMMDD-XXXX">
+            <small style="color:var(--m);font-size:.75rem">Krävs för RUT-avdrag</small>
+          </div>
+        </div>
+
+        <!-- Företags-fält -->
+        <div id="mb-foretag-fields" style="display:none">
+          <div class="tm-form-group"><label>Företagsnamn *</label><input type="text" id="mb-business-name" class="tm-input" placeholder="Acme AB"></div>
+          <div class="tm-form-group"><label>Org.nummer</label><input type="text" id="mb-org-number" class="tm-input" placeholder="XXXXXX-XXXX"></div>
+          <div class="tm-form-group"><label>Referens / kontaktperson</label><input type="text" id="mb-business-ref" class="tm-input" placeholder="Anna Svensson"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button type="button" onclick="mbNextStep()" style="padding:12px 24px;background:var(--g);color:#fff;border:none;border-radius:var(--radius-full);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Nästa →</button>
+        </div>
+      </div>
+
+      <!-- STEG 2 — JOBB -->
+      <div id="mb-step-2" style="display:none">
+        <div class="tm-form-group" style="position:relative">
+          <label>Adress *</label>
+          <input type="text" id="mb-address" class="tm-input" placeholder="Storgatan 1, Stockholm" autocomplete="off" oninput="mbAddrSearch(this.value)" onfocus="if(this.value.length>2)mbAddrSearch(this.value)">
+          <div id="mb-addr-list" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1.5px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:99;max-height:200px;overflow-y:auto"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="tm-form-group"><label>Datum *</label><input type="date" id="mb-date" class="tm-input"></div>
+          <div class="tm-form-group"><label>Tid *</label><input type="time" id="mb-time" class="tm-input" value="09:00"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="tm-form-group"><label>Antal timmar *</label><input type="number" id="mb-hours" class="tm-input" value="3" min="1" max="12" step="0.5"></div>
+          <div class="tm-form-group"><label>Tjänst</label>
+            <select id="mb-service" class="tm-input" style="padding:8px 12px">
+              <option>Hemstädning</option><option>Storstädning</option><option>Flyttstädning</option><option>Fönsterputs</option><option>Kontorsstädning</option><option>Trappstädning</option><option>Skolstädning</option><option>Vårdstädning</option><option>Hotell &amp; restaurang</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tm-form-group">
+          <label style="display:block;margin-bottom:6px;font-size:.82rem">Frekvens</label>
+          <div class="mb-freq-group">
+            <button type="button" class="mb-freq-btn active" data-freq="once" onclick="setMbFrequency('once')">Engångs</button>
+            <button type="button" class="mb-freq-btn" data-freq="weekly" onclick="setMbFrequency('weekly')">Varje vecka</button>
+            <button type="button" class="mb-freq-btn" data-freq="biweekly" onclick="setMbFrequency('biweekly')">Varannan vecka</button>
+            <button type="button" class="mb-freq-btn" data-freq="monthly" onclick="setMbFrequency('monthly')">Varje månad</button>
+          </div>
+        </div>
+
+        <div class="tm-form-group"><label>Tilldela städare *</label>
+          <select id="mb-cleaner" class="tm-input" style="padding:8px 12px"></select>
+        </div>
+
+        <div class="tm-form-group"><label>Nyckelhantering</label>
+          <select id="mb-key-type" class="tm-input" style="padding:8px 12px" onchange="var v=this.value;document.getElementById('mb-key-info-wrap').style.display=(v==='open'?'none':'block')">
+            <option value="open">Öppen dörr</option>
+            <option value="code">Portkod</option>
+            <option value="box">Nyckelskåp</option>
+            <option value="mat">Under mattan</option>
+            <option value="other">Annat</option>
           </select>
         </div>
-      </div>
-      <div class="tm-form-group"><label>Tilldela städare *</label>
-        <select id="mb-cleaner" class="tm-input" style="padding:8px 12px"></select>
-      </div>
-      <div style="background:#F0FAF6;border-radius:10px;padding:12px 16px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;font-size:.88rem">
-          <span>Pris (betalas av kund)</span>
-          <strong id="mb-price-display">0 kr</strong>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--m);margin-top:4px">
-          <span>Varav RUT-avdrag (50%)</span>
-          <span id="mb-rut-display">0 kr</span>
+        <div class="tm-form-group" id="mb-key-info-wrap" style="display:none"><label>Nyckelinfo</label><input type="text" id="mb-key-info" class="tm-input" placeholder="Portkod: 1234 / Nyckelskåp vid entrén"></div>
+
+        <div class="tm-form-group"><label>Notis till städare</label><textarea id="mb-notes" class="tm-input" maxlength="500" rows="2" placeholder="Ex. katt finns, undvik parfym"></textarea></div>
+
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px">
+          <button type="button" onclick="mbPrevStep()" style="padding:12px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:var(--radius-full);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">← Tillbaka</button>
+          <button type="button" onclick="mbNextStep()" style="padding:12px 24px;background:var(--g);color:#fff;border:none;border-radius:var(--radius-full);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Nästa →</button>
         </div>
       </div>
-      <button id="mb-submit-btn" onclick="submitManualBooking()" style="width:100%;padding:14px;background:var(--g);color:#fff;border:none;border-radius:var(--radius-full);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;min-height:52px">
-        Skapa bokning & skicka betalningslänk
-      </button>
-      <p id="mb-msg" style="font-size:.8rem;margin-top:8px;text-align:center;display:none"></p>
+
+      <!-- STEG 3 — PRIS & BEKRÄFTA -->
+      <div id="mb-step-3" style="display:none">
+        <div style="background:#F0FAF6;border-radius:12px;padding:16px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:6px">
+            <span>Beräknat totalpris</span>
+            <strong id="mb-price-total">0 kr</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--m);margin-bottom:6px">
+            <span>Varav RUT-avdrag (50%)</span>
+            <span id="mb-price-rut">0 kr</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.95rem;padding-top:8px;border-top:1px solid #CFE8DB;margin-top:4px">
+            <span><strong>Kunden betalar</strong></span>
+            <strong id="mb-price-net" style="color:var(--g)">0 kr</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--m);margin-top:8px">
+            <span>Spicks provision</span>
+            <span id="mb-price-comm">17% = 0 kr</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--m);margin-top:2px">
+            <span>Underleverantören får</span>
+            <span id="mb-price-cleaner">0 kr</span>
+          </div>
+        </div>
+
+        <div class="tm-form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem">
+            <input type="checkbox" id="mb-override-toggle" onchange="updateManualPrice()"> Anpassa pris
+          </label>
+        </div>
+        <div class="tm-form-group" id="mb-override-row" style="display:none">
+          <label>Nytt totalpris (kr)</label>
+          <input type="number" id="mb-override-price" class="tm-input" min="100" placeholder="t.ex. 1500" oninput="updateManualPrice()">
+          <small style="color:var(--m);font-size:.75rem">Minimipris 100 kr. Alla parter skalas proportionellt.</small>
+        </div>
+
+        <div class="tm-form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem">
+            <input type="checkbox" id="mb-send-email" checked>
+            <span id="mb-send-email-label">Skicka betalningslänk via mejl till kunden</span>
+          </label>
+        </div>
+
+        <div id="mb-sub-info" style="display:none;background:#FEF3C7;border-radius:10px;padding:10px 14px;font-size:.8rem;color:#92400E;margin-bottom:14px">
+          Prenumeration skapas. Kunden behöver registrera betalkort — vi skickar instruktioner via mejl.
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px">
+          <button type="button" onclick="mbPrevStep()" style="padding:12px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:var(--radius-full);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">← Tillbaka</button>
+          <button id="mb-submit-btn" onclick="submitManualBooking()" style="padding:12px 24px;background:var(--g);color:#fff;border:none;border-radius:var(--radius-full);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;min-height:48px">Skapa uppdrag ✓</button>
+        </div>
+      </div>
+
+      <p id="mb-msg" style="font-size:.82rem;margin-top:12px;text-align:center;display:none"></p>
     </div>
   </div>
 
@@ -6219,22 +6363,132 @@ document.addEventListener("click", function(e) {
   }
 });
 
+// ═══ MANUAL BOOKING — 3-stegs wizard ═══
+var _mbStep = 1;
+var _mbMaxStep = 3;
+
 function openManualBooking() {
-  // Set default date to today
+  // Reset
+  _mbStep = 1;
   _mbLat = null; _mbLng = null;
   document.getElementById('mb-date').value = new Date().toISOString().slice(0,10);
+  // Rensa alla fält
+  ['mb-name','mb-email','mb-phone','mb-pnr','mb-business-name','mb-org-number','mb-business-ref','mb-address','mb-key-info','mb-notes','mb-override-price'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  // Override reset
+  var overrideToggle = document.getElementById('mb-override-toggle');
+  if (overrideToggle) overrideToggle.checked = false;
+  var sendEmailCb = document.getElementById('mb-send-email');
+  if (sendEmailCb) sendEmailCb.checked = true;
+  // Defaults
+  setMbCustomerType('privat');
+  setMbFrequency('once');
   // Populate cleaner dropdown
   var sel = document.getElementById('mb-cleaner');
   sel.innerHTML = (_teamMembers || []).filter(function(m) { return m.is_approved || m.status === 'aktiv'; }).map(function(m) {
     return '<option value="' + m.id + '">' + escHtml(m.full_name || '') + ' (' + (m.hourly_rate || 350) + ' kr/h)</option>';
   }).join('');
   updateManualPrice();
+  showMbStep(1);
   document.getElementById('manual-booking-modal').style.display = 'flex';
 }
 
 function closeManualBooking() {
   document.getElementById('manual-booking-modal').style.display = 'none';
-  document.getElementById('mb-msg').style.display = 'none';
+  var msgEl = document.getElementById('mb-msg');
+  if (msgEl) msgEl.style.display = 'none';
+}
+
+function showMbStep(step) {
+  _mbStep = step;
+  for (var i = 1; i <= _mbMaxStep; i++) {
+    var el = document.getElementById('mb-step-' + i);
+    if (el) el.style.display = (i === step) ? 'block' : 'none';
+  }
+  // Uppdatera steg-indikator
+  for (var j = 1; j <= _mbMaxStep; j++) {
+    var circle = document.getElementById('mb-circle-' + j);
+    var label = document.getElementById('mb-label-' + j);
+    if (circle) {
+      if (j < step) { circle.className = 'mb-step-circle mb-step-done'; circle.textContent = '✓'; }
+      else if (j === step) { circle.className = 'mb-step-circle mb-step-active'; circle.textContent = String(j); }
+      else { circle.className = 'mb-step-circle mb-step-future'; circle.textContent = String(j); }
+    }
+    if (label) {
+      label.className = 'mb-step-label' + (j === step ? ' active' : '');
+    }
+    if (j < _mbMaxStep) {
+      var line = document.getElementById('mb-line-' + j);
+      if (line) line.className = 'mb-step-line' + (j < step ? ' done' : '');
+    }
+  }
+  // Uppdatera pris i steg 3
+  if (step === 3) updateManualPrice();
+}
+
+function mbNextStep() {
+  if (_mbStep === 1) {
+    var name = document.getElementById('mb-name').value.trim();
+    var email = document.getElementById('mb-email').value.trim();
+    if (!name || !email) { mbShowMsg('Fyll i namn och e-post', true); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { mbShowMsg('Ogiltig e-postadress', true); return; }
+    var ct = getMbCustomerType();
+    if (ct === 'foretag') {
+      var bn = document.getElementById('mb-business-name').value.trim();
+      if (!bn) { mbShowMsg('Fyll i företagsnamn', true); return; }
+    }
+    mbHideMsg();
+    showMbStep(2);
+  } else if (_mbStep === 2) {
+    var address = document.getElementById('mb-address').value.trim();
+    var date = document.getElementById('mb-date').value;
+    var cleanerId = document.getElementById('mb-cleaner').value;
+    if (!address || !date || !cleanerId) { mbShowMsg('Fyll i adress, datum och städare', true); return; }
+    mbHideMsg();
+    showMbStep(3);
+  }
+}
+
+function mbPrevStep() {
+  if (_mbStep > 1) showMbStep(_mbStep - 1);
+}
+
+function setMbCustomerType(type) {
+  document.querySelectorAll('.mb-ct-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+  var hidden = document.getElementById('mb-customer-type');
+  if (hidden) hidden.value = type;
+  var privatFields = document.getElementById('mb-privat-fields');
+  var foretagFields = document.getElementById('mb-foretag-fields');
+  if (privatFields) privatFields.style.display = type === 'privat' ? 'block' : 'none';
+  if (foretagFields) foretagFields.style.display = type === 'foretag' ? 'block' : 'none';
+}
+
+function getMbCustomerType() {
+  var active = document.querySelector('.mb-ct-btn.active');
+  return active ? active.dataset.type : 'privat';
+}
+
+function setMbFrequency(freq) {
+  document.querySelectorAll('.mb-freq-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.freq === freq);
+  });
+  var subInfo = document.getElementById('mb-sub-info');
+  if (subInfo) subInfo.style.display = freq === 'once' ? 'none' : 'block';
+  var emailLabel = document.getElementById('mb-send-email-label');
+  if (emailLabel) {
+    emailLabel.textContent = freq === 'once'
+      ? 'Skicka betalningslänk via mejl till kunden'
+      : 'Skicka bekräftelse via mejl till kunden';
+  }
+}
+
+function getMbFrequency() {
+  var active = document.querySelector('.mb-freq-btn.active');
+  return active ? active.dataset.freq : 'once';
 }
 
 function updateManualPrice() {
@@ -6242,18 +6496,46 @@ function updateManualPrice() {
   var cleanerId = document.getElementById('mb-cleaner').value;
   var member = (_teamMembers || []).find(function(m) { return m.id === cleanerId; });
   var rate = member ? (member.hourly_rate || 350) : 350;
-  var price = Math.round(hours * rate);
-  document.getElementById('mb-price-display').textContent = price + ' kr';
-  // RUT-raden visas bara för hushållsnära tjänster
   var svc = document.getElementById('mb-service').value;
-  var rutDisplay = document.getElementById('mb-rut-display');
-  var rutRow = rutDisplay.parentElement;
-  if (isRutEligible(svc)) {
-    rutRow.style.display = '';
-    rutDisplay.textContent = Math.round(price * 0.5) + ' kr';
-  } else {
-    rutRow.style.display = 'none';
+  var customerType = getMbCustomerType();
+  var isCompanyCleaner = (typeof cleaner !== 'undefined' && cleaner && cleaner.company_id) ? true : false;
+  var commPct = (customerType === 'foretag' || isCompanyCleaner) ? 12 : 17;
+
+  var total = Math.round(hours * rate);
+  var useRut = (customerType === 'privat') && isRutEligible(svc);
+  var rutAmount = useRut ? Math.floor(total * 0.5) : 0;
+  var netPrice = total - rutAmount;
+  var commSek = Math.round(total * commPct / 100);
+  var cleanerTotal = total - commSek;
+
+  // Override?
+  var overrideToggle = document.getElementById('mb-override-toggle');
+  var overrideInput = document.getElementById('mb-override-price');
+  var overrideRow = document.getElementById('mb-override-row');
+  if (overrideToggle && overrideToggle.checked && overrideInput) {
+    if (overrideRow) overrideRow.style.display = 'block';
+    var op = parseInt(overrideInput.value) || 0;
+    if (op >= 100) {
+      total = op;
+      rutAmount = useRut ? Math.floor(total * 0.5) : 0;
+      netPrice = total - rutAmount;
+      commSek = Math.round(total * commPct / 100);
+      cleanerTotal = total - commSek;
+    }
+  } else if (overrideRow) {
+    overrideRow.style.display = 'none';
   }
+
+  // Uppdatera UI
+  var el = function(id) { return document.getElementById(id); };
+  if (el('mb-price-total')) el('mb-price-total').textContent = total + ' kr';
+  if (el('mb-price-rut')) {
+    el('mb-price-rut').textContent = '-' + rutAmount + ' kr';
+    el('mb-price-rut').parentElement.style.display = useRut ? 'flex' : 'none';
+  }
+  if (el('mb-price-net')) el('mb-price-net').textContent = netPrice + ' kr';
+  if (el('mb-price-comm')) el('mb-price-comm').textContent = commPct + '% = ' + commSek + ' kr';
+  if (el('mb-price-cleaner')) el('mb-price-cleaner').textContent = cleanerTotal + ' kr';
 }
 
 async function submitManualBooking() {
@@ -6266,23 +6548,42 @@ async function submitManualBooking() {
   var hours = parseFloat(document.getElementById('mb-hours').value) || 3;
   var service = document.getElementById('mb-service').value;
   var cleanerId = document.getElementById('mb-cleaner').value;
-  var msgEl = document.getElementById('mb-msg');
+  var customerType = getMbCustomerType();
+  var frequency = getMbFrequency();
+  var keyTypeEl = document.getElementById('mb-key-type');
+  var keyInfoEl = document.getElementById('mb-key-info');
+  var notesEl = document.getElementById('mb-notes');
+  var pnrEl = document.getElementById('mb-pnr');
+  var bNameEl = document.getElementById('mb-business-name');
+  var orgEl = document.getElementById('mb-org-number');
+  var refEl = document.getElementById('mb-business-ref');
+  var keyType = keyTypeEl ? keyTypeEl.value : 'open';
+  var keyInfo = keyInfoEl ? keyInfoEl.value.trim() : '';
+  var notes = notesEl ? notesEl.value.trim() : '';
+  var pnr = pnrEl ? pnrEl.value.trim() : '';
+  var businessName = bNameEl ? bNameEl.value.trim() : '';
+  var orgNumber = orgEl ? orgEl.value.trim() : '';
+  var businessRef = refEl ? refEl.value.trim() : '';
 
-  if (!name || !email || !address || !date || !cleanerId) {
-    msgEl.textContent = 'Fyll i alla obligatoriska fält'; msgEl.style.color = '#DC2626'; msgEl.style.display = 'block';
-    return;
+  var sendEmailCb = document.getElementById('mb-send-email');
+  var sendEmailChecked = sendEmailCb ? sendEmailCb.checked : true;
+  var overrideToggle = document.getElementById('mb-override-toggle');
+  var overridePrice = null;
+  if (overrideToggle && overrideToggle.checked) {
+    overridePrice = parseInt(document.getElementById('mb-override-price').value) || null;
   }
 
-  // Konfliktkontroll: jämför mot befintliga calendar_events för vald städare + datum.
-  // TZ-säkert via evDate/evHour/evMinute (hanterar UTC→CET korrekt).
+  var paymentMode = (frequency === 'once') ? 'stripe_checkout' : 'stripe_subscription';
+
+  // Konfliktkontroll (bevara befintlig logik)
   var _bookStartH = parseInt((time || '09:00').split(':')[0], 10);
-  var _bookEndH   = _bookStartH + hours;
+  var _bookEndH = _bookStartH + hours;
   var _conflicts = (_ganttTeamEvents || []).filter(function(ev) {
     if (ev.cleaner_id !== cleanerId || evDate(ev.start_at) !== date) return false;
-    var evStartH   = evHour(ev.start_at);
-    var evEndH     = evHour(ev.end_at);
-    var evEndM     = evMinute(ev.end_at);
-    var evEndDec   = evEndH + evEndM / 60;
+    var evStartH = evHour(ev.start_at);
+    var evEndH = evHour(ev.end_at);
+    var evEndM = evMinute(ev.end_at);
+    var evEndDec = evEndH + evEndM / 60;
     return (_bookStartH < evEndDec && _bookEndH > evStartH);
   });
   if (_conflicts.length > 0) {
@@ -6295,80 +6596,102 @@ async function submitManualBooking() {
   }
 
   var btn = document.getElementById('mb-submit-btn');
-  btn.disabled = true; btn.textContent = 'Skapar bokning...';
+  btn.disabled = true; btn.textContent = 'Skapar uppdrag...';
 
   try {
-    // Call booking-create Edge Function
+    var bodyData = {
+      name: name,
+      email: email,
+      phone: phone || null,
+      address: address,
+      customer_lat: _mbLat,
+      customer_lng: _mbLng,
+      date: date,
+      time: time || '09:00',
+      hours: hours,
+      service: service,
+      cleaner_id: cleanerId,
+      rut: (customerType === 'privat') && isRutEligible(service),
+      frequency: frequency,
+      customer_type: customerType,
+      key_type: keyType,
+      key_info: keyInfo || null,
+      customer_notes: notes || null,
+      manual_entry: true,
+      payment_mode: paymentMode,
+      send_email_to_customer: sendEmailChecked,
+      company_id: (typeof cleaner !== 'undefined' && cleaner && cleaner.company_id) || null,
+      auto_delegation_enabled: null
+    };
+
+    if (customerType === 'privat' && pnr) {
+      bodyData.customer_pnr = pnr;
+    }
+    if (customerType === 'foretag') {
+      bodyData.business_name = businessName || null;
+      bodyData.business_org_number = orgNumber || null;
+      bodyData.business_reference = businessRef || null;
+    }
+    if (overridePrice && overridePrice >= 100) {
+      bodyData.manual_override_price = overridePrice;
+    }
+
     var res = await fetch(SUPA_URL + '/functions/v1/booking-create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY },
-      body: JSON.stringify({
-        name: name,
-        email: email,
-        phone: phone || null,
-        address: address,
-        lat: _mbLat,
-        lng: _mbLng,
-        date: date,
-        time: time || '09:00',
-        hours: hours,
-        service: service,
-        cleaner_id: cleanerId,
-        rut: isRutEligible(service),
-        frequency: 'once',
-        manual_entry: true,
-        created_by_company: cleaner.company_id || null
-      })
+      body: JSON.stringify(bodyData)
     });
 
     var result = await res.json();
 
-    if (res.ok && result.url) {
-      // Send payment link to customer via email
-      await fetch(SUPA_URL + '/functions/v1/notify-new-application', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY },
-        body: JSON.stringify({
-          type: 'payment_request',
-          customer_name: name,
-          customer_email: email,
-          payment_url: result.url,
-          service: service,
-          date: date,
-          time: time,
-          price: result.customer_price || Math.round(hours * 350),
-          company_name: window._companyData ? window._companyData.name : 'Spick'
-        })
-      }).catch(function() {});
+    if (res.ok) {
+      if (paymentMode === 'stripe_subscription') {
+        mbShowMsg('✅ Prenumeration skapad! Bekräftelse skickad till ' + email, false);
+      } else if (result.url) {
+        mbShowMsg('✅ Uppdrag skapat! Betalningslänk skickad till ' + email, false);
+      } else {
+        mbShowMsg('✅ Uppdrag skapat!', false);
+      }
 
-      msgEl.textContent = '✅ Bokning skapad! Betalningslänk skickad till ' + email;
-      msgEl.style.color = '#065F46';
-      msgEl.style.display = 'block';
-      btn.textContent = '✅ Skickat!';
+      btn.textContent = '✅ Klart!';
       btn.style.background = '#065F46';
 
       setTimeout(function() {
         closeManualBooking();
         btn.disabled = false;
-        btn.textContent = 'Skapa bokning & skicka betalningslänk';
+        btn.textContent = 'Skapa uppdrag ✓';
         btn.style.background = '';
-        renderTeam();
+        if (typeof renderTeam === 'function') renderTeam();
       }, 3000);
     } else {
-      throw new Error(result.error || 'Kunde inte skapa bokning');
+      throw new Error(result.error || 'Kunde inte skapa uppdrag');
     }
   } catch(e) {
-    msgEl.textContent = 'Fel: ' + e.message;
-    msgEl.style.color = '#DC2626';
-    msgEl.style.display = 'block';
+    mbShowMsg('Fel: ' + e.message, true);
     btn.disabled = false;
-    btn.textContent = 'Skapa bokning & skicka betalningslänk';
+    btn.textContent = 'Skapa uppdrag ✓';
   }
 }
 
-// Auto-update price when hours or cleaner changes
+function mbShowMsg(text, isError) {
+  var el = document.getElementById('mb-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#DC2626' : '#065F46';
+  el.style.display = 'block';
+}
+function mbHideMsg() {
+  var el = document.getElementById('mb-msg');
+  if (el) el.style.display = 'none';
+}
+
+// Auto-update price
 document.addEventListener('change', function(e) {
-  if (e.target.id === 'mb-hours' || e.target.id === 'mb-cleaner') updateManualPrice();
+  var ids = ['mb-hours','mb-cleaner','mb-service','mb-override-price','mb-override-toggle'];
+  if (ids.indexOf(e.target.id) !== -1) updateManualPrice();
+});
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'mb-override-price') updateManualPrice();
 });
 
 // ── GANTT V2 MOTOR (Fas 2) ───────────────────────────────────
