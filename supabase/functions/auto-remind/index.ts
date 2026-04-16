@@ -5,6 +5,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
+import { notify } from "../_shared/notifications.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -366,6 +367,222 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
 
             await sb.from("bookings").update({ reminders_sent: [...alreadySent, "confirm_nudge_30"] }).eq("id", b.id);
             sent.push(`confirm_nudge_30:${b.id}`);
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // FAS 6: VD-SLA — awaiting_company_proposal (2h)
+      // ═══════════════════════════════════════════════════════
+      if (b.status === "awaiting_company_proposal" && b.rejected_at) {
+        const rejectedAt = new Date(b.rejected_at);
+        const minutesSinceReject = (now.getTime() - rejectedAt.getTime()) / 60_000;
+
+        // ── 1h nudge: påminn VD om det är bråttom ──
+        if (minutesSinceReject >= 60 && minutesSinceReject < 120 && !alreadySent.includes("vd_nudge_1h")) {
+          try {
+            // Hitta VD via previous cleaner's company
+            if (b.cleaner_id) {
+              const { data: prevCleaner } = await sb
+                .from("cleaners")
+                .select("company_id")
+                .eq("id", b.cleaner_id)
+                .maybeSingle();
+
+              if (prevCleaner?.company_id) {
+                const { data: company } = await sb
+                  .from("companies")
+                  .select("owner_cleaner_id, display_name, name")
+                  .eq("id", prevCleaner.company_id)
+                  .maybeSingle();
+
+                if (company?.owner_cleaner_id) {
+                  const { data: owner } = await sb
+                    .from("cleaners")
+                    .select("email, phone, full_name")
+                    .eq("id", company.owner_cleaner_id)
+                    .maybeSingle();
+
+                  if (owner) {
+                    await notify({
+                      cleaner_id: company.owner_cleaner_id,
+                      email: owner.email,
+                      phone: owner.phone || undefined,
+                      sms_message: `Spick: 1h kvar — föreslå ersättare för ${b.customer_name} ${b.booking_date}. Öppna: spick.se/stadare-dashboard`,
+                      push_type: "company_substitute_needed",
+                      push_data: {
+                        cleaner_name: b.cleaner_name || "En teammedlem",
+                        date: new Date(b.booking_date).toLocaleDateString("sv-SE"),
+                        booking_id: b.id,
+                      },
+                      in_app: {
+                        title: "⏰ 1h kvar — föreslå ersättare",
+                        body: `${b.customer_name} ${b.booking_date} — tiden går ut snart`,
+                        type: "company_substitute_needed",
+                        job_id: b.id,
+                      },
+                    });
+                  }
+                }
+              }
+            }
+
+            await sb.from("bookings").update({
+              reminders_sent: [...alreadySent, "vd_nudge_1h"]
+            }).eq("id", b.id);
+
+            sent.push(`vd_nudge_1h:${b.id}`);
+            console.log(JSON.stringify({ level: "info", fn: "auto-remind", msg: "VD 1h nudge sent", booking_id: b.id }));
+          } catch (err) {
+            console.error(JSON.stringify({ level: "error", fn: "auto-remind", msg: "VD nudge failed", booking_id: b.id, error: (err as Error).message }));
+          }
+        }
+
+        // ── 2h eskalering: VD svarade inte, försök auto-delegate eller släpp till kund ──
+        if (minutesSinceReject >= 120 && !alreadySent.includes("vd_timeout_2h")) {
+          try {
+            // Kolla kundens auto-delegation-preferens
+            let autoDelegation = b.auto_delegation_enabled;
+            if (autoDelegation === null || autoDelegation === undefined) {
+              const { data: profile } = await sb
+                .from("customer_profiles")
+                .select("auto_delegation_enabled")
+                .eq("email", b.customer_email)
+                .maybeSingle();
+              autoDelegation = profile?.auto_delegation_enabled || false;
+            }
+
+            let escalationAction = "released_to_customer";
+
+            if (autoDelegation) {
+              // Försök auto-delegate först
+              const autoRes = await fetch(`${SUPA_URL}/functions/v1/auto-delegate`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                },
+                body: JSON.stringify({ booking_id: b.id }),
+              });
+
+              if (autoRes.ok) {
+                const autoResult = await autoRes.json();
+                if (autoResult.results?.[0]?.action === "auto_delegated") {
+                  escalationAction = "auto_delegated";
+                }
+              }
+            }
+
+            // Om auto-delegate inte lyckades → eskalera till kundval
+            if (escalationAction !== "auto_delegated") {
+              await sb.from("bookings").update({
+                status: "awaiting_reassignment",
+                cleaner_id: null,
+                cleaner_name: null,
+                reminders_sent: [...alreadySent, "vd_timeout_2h"]
+              }).eq("id", b.id);
+
+              // Notifiera kund att välja själv
+              await notify({
+                email: b.customer_email,
+                phone: b.customer_phone || undefined,
+                sms_message: `Spick: Företaget hann inte tilldela ersättare för din städning ${b.booking_date}. Välj själv eller få pengarna tillbaka: spick.se/min-bokning.html?bid=${b.id}`,
+                push_type: "booking_rejected_by_cleaner",
+                push_data: {
+                  cleaner_name: b.cleaner_name || "Ersättare",
+                  date: new Date(b.booking_date).toLocaleDateString("sv-SE"),
+                  booking_id: b.id,
+                },
+              });
+
+              console.log(JSON.stringify({ level: "warn", fn: "auto-remind", msg: "VD 2h timeout — escalated to customer", booking_id: b.id }));
+            } else {
+              // Auto-delegate lyckades — bara markera reminder sent
+              await sb.from("bookings").update({
+                reminders_sent: [...alreadySent, "vd_timeout_2h"]
+              }).eq("id", b.id);
+
+              console.log(JSON.stringify({ level: "info", fn: "auto-remind", msg: "VD 2h timeout — auto-delegated", booking_id: b.id }));
+            }
+
+            sent.push(`vd_timeout_2h:${b.id}:${escalationAction}`);
+          } catch (err) {
+            console.error(JSON.stringify({ level: "error", fn: "auto-remind", msg: "VD timeout escalation failed", booking_id: b.id, error: (err as Error).message }));
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // FAS 6: Kund-SLA — awaiting_customer_approval (1h)
+      // ═══════════════════════════════════════════════════════
+      if (b.status === "awaiting_customer_approval" && b.reassignment_proposed_at) {
+        const proposedAt = new Date(b.reassignment_proposed_at);
+        const minutesSinceProposed = (now.getTime() - proposedAt.getTime()) / 60_000;
+
+        // ── 30min nudge: mild påminnelse ──
+        if (minutesSinceProposed >= 30 && minutesSinceProposed < 60 && !alreadySent.includes("customer_nudge_30m")) {
+          try {
+            // Hämta föreslagen städares namn för trevligare meddelande
+            let proposedName = "den föreslagna städaren";
+            if (b.reassignment_proposed_cleaner_id) {
+              const { data: proposed } = await sb
+                .from("cleaners")
+                .select("full_name")
+                .eq("id", b.reassignment_proposed_cleaner_id)
+                .maybeSingle();
+              if (proposed?.full_name) proposedName = proposed.full_name;
+            }
+
+            await notify({
+              email: b.customer_email,
+              phone: b.customer_phone || undefined,
+              sms_message: `Spick: Glöm inte bekräfta ${proposedName} för din städning ${b.booking_date}. 30 min kvar: spick.se/min-bokning.html?bid=${b.id}`,
+              push_type: "customer_proposal_pending",
+              push_data: {
+                cleaner_name: proposedName,
+                date: new Date(b.booking_date).toLocaleDateString("sv-SE"),
+                booking_id: b.id,
+              },
+            });
+
+            await sb.from("bookings").update({
+              reminders_sent: [...alreadySent, "customer_nudge_30m"]
+            }).eq("id", b.id);
+
+            sent.push(`customer_nudge_30m:${b.id}`);
+            console.log(JSON.stringify({ level: "info", fn: "auto-remind", msg: "Customer 30m nudge sent", booking_id: b.id }));
+          } catch (err) {
+            console.error(JSON.stringify({ level: "error", fn: "auto-remind", msg: "Customer nudge failed", booking_id: b.id, error: (err as Error).message }));
+          }
+        }
+
+        // ── 1h eskalering: kund svarade inte → tillbaka till kundval ──
+        if (minutesSinceProposed >= 60 && !alreadySent.includes("customer_timeout_1h")) {
+          try {
+            // Eskalera: kund kan välja själv från alla
+            await sb.from("bookings").update({
+              status: "awaiting_reassignment",
+              reassignment_proposed_cleaner_id: null,
+              reassignment_proposed_at: null,
+              reminders_sent: [...alreadySent, "customer_timeout_1h"]
+            }).eq("id", b.id);
+
+            // Notifiera kund
+            await notify({
+              email: b.customer_email,
+              phone: b.customer_phone || undefined,
+              sms_message: `Spick: Tiden för att bekräfta gick ut. Välj ersättare själv eller få pengarna tillbaka: spick.se/min-bokning.html?bid=${b.id}`,
+              push_type: "booking_rejected_by_cleaner",
+              push_data: {
+                date: new Date(b.booking_date).toLocaleDateString("sv-SE"),
+                booking_id: b.id,
+              },
+            });
+
+            sent.push(`customer_timeout_1h:${b.id}`);
+            console.log(JSON.stringify({ level: "warn", fn: "auto-remind", msg: "Customer 1h timeout — escalated", booking_id: b.id }));
+          } catch (err) {
+            console.error(JSON.stringify({ level: "error", fn: "auto-remind", msg: "Customer timeout failed", booking_id: b.id, error: (err as Error).message }));
           }
         }
       }
