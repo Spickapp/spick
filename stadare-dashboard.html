@@ -9671,7 +9671,7 @@ async function letCustomerChoose() {
     if (!token) throw new Error('Ingen session — logga in igen');
 
     // Anropa company-propose-substitute EF med let_customer_choose=true
-    // EF kör som service_role → bypasser booking_slots trigger-problem
+    // EF kör med admin-behörighet → bypasser booking_slots trigger-problem
     var res = await fetch(SUPA_URL + '/functions/v1/company-propose-substitute', {
       method: 'POST',
       headers: {
