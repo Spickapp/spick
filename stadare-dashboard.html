@@ -4336,15 +4336,35 @@ async function loadCalendarEvents() {
     var startStr = rangeStart.toISOString();
     var endStr   = rangeEnd.toISOString();
 
+    // ── VD: hämta events för hela teamet; solo: bara egna ──
+    var isVD = !!window._isCompanyOwner;
+    var teamIds = (window._teamMembers || []).map(function(m) { return m.id; });
+    // Inkludera VD själv också (kan vara aktiv städare i eget team)
+    if (cleaner && cleaner.id && teamIds.indexOf(cleaner.id) === -1) teamIds.push(cleaner.id);
+
+    var calEventsUrl, calAvailUrl;
+    if (isVD && teamIds.length > 0) {
+      var orFilter = teamIds.map(function(id) { return 'cleaner_id.eq.' + id; }).join(',');
+      calEventsUrl = SUPA_URL + '/rest/v1/calendar_events?or=(' + orFilter + ')' +
+        '&and=(start_at.gte.' + encodeURIComponent(startStr) +
+        ',start_at.lte.'       + encodeURIComponent(endStr) + ')' +
+        '&order=start_at.asc';
+      calAvailUrl  = SUPA_URL + '/rest/v1/cleaner_availability_v2?or=(' + orFilter + ')' +
+        '&is_active=eq.true&order=day_of_week.asc,start_time.asc';
+    } else {
+      calEventsUrl = SUPA_URL + '/rest/v1/calendar_events?cleaner_id=eq.' + cleaner.id +
+        '&start_at=gte.' + encodeURIComponent(startStr) +
+        '&end_at=lte.'   + encodeURIComponent(endStr) +
+        '&order=start_at.asc';
+      calAvailUrl  = SUPA_URL + '/rest/v1/cleaner_availability_v2?cleaner_id=eq.' + cleaner.id +
+        '&is_active=eq.true&order=day_of_week.asc,start_time.asc';
+    }
+
     var evRes, avRes;
     try {
       var pair = await Promise.all([
-        fetch(SUPA_URL + '/rest/v1/calendar_events?cleaner_id=eq.' + cleaner.id +
-          '&start_at=gte.' + encodeURIComponent(startStr) +
-          '&end_at=lte.'   + encodeURIComponent(endStr) +
-          '&order=start_at.asc', { headers: _authHeaders() }),
-        fetch(SUPA_URL + '/rest/v1/cleaner_availability_v2?cleaner_id=eq.' + cleaner.id +
-          '&is_active=eq.true&order=day_of_week.asc,start_time.asc', { headers: _authHeaders() })
+        fetch(calEventsUrl, { headers: _authHeaders() }),
+        fetch(calAvailUrl,  { headers: _authHeaders() })
       ]);
       evRes = pair[0]; avRes = pair[1];
     } catch(fetchErr) {
@@ -4586,20 +4606,50 @@ function showCalDayV2(day) {
   });
   var el = document.getElementById('cal-v2-detail');
   if (!el) return;
+
+  // VD: synka teamkalenderns datum + scroll
+  var isVD = !!window._isCompanyOwner;
+  var clickedDate = new Date(year, month, day);
+  var gantHint = '';
+  if (isVD) {
+    try {
+      _ganttDate = clickedDate;
+      if (_ganttMode !== 'day') {
+        _ganttMode = 'day';
+        var dayBtn = document.getElementById('gantt-mode-day');
+        var weekBtn = document.getElementById('gantt-mode-week');
+        if (dayBtn) dayBtn.classList.add('active');
+        if (weekBtn) weekBtn.classList.remove('active');
+      }
+      if (typeof loadGanttData === 'function') loadGanttData();
+    } catch(e) { console.warn('[SPICK] Could not sync Gantt:', e); }
+    gantHint = '<div style="margin-bottom:8px;padding:10px 14px;background:var(--spick-50);border-radius:10px;font-size:.82rem;color:var(--spick-700);cursor:pointer" onclick="var c=document.getElementById(\'team-calendar-card\');if(c)c.scrollIntoView({behavior:\'smooth\',block:\'start\'})">📅 Teamkalendern har synkats till denna dag — klicka här för att se detaljer ↓</div>';
+  }
+
   if (!dayEvs.length) {
-    el.innerHTML = '<div class="card" style="text-align:center;color:var(--m);font-size:.85rem;padding:16px">Inga h&auml;ndelser ' + day + '/' + (month + 1) + '</div>';
+    el.innerHTML = gantHint + '<div class="card" style="text-align:center;color:var(--m);font-size:.85rem;padding:16px">Inga h&auml;ndelser ' + day + '/' + (month + 1) + '</div>';
     return;
   }
-  el.innerHTML = dayEvs.map(function(ev) {
+
+  // Bygg map cleaner_id → namn för VD-vy
+  var teamMap = {};
+  (window._teamMembers || []).forEach(function(m) {
+    teamMap[m.id] = m.first_name || m.full_name || '';
+  });
+  if (cleaner && cleaner.id) teamMap[cleaner.id] = cleaner.first_name || cleaner.full_name || 'Du';
+
+  el.innerHTML = gantHint + dayEvs.map(function(ev) {
     var labels = { booking:'Bokning', blocked:'Blockerad', external:'Extern', travel:'Restid', break:'Paus' };
     var bgMap  = { booking:'#D1FAE5', blocked:'#FEE2E2', external:'#E0E7FF', travel:'#F3F4F6', break:'#FEF3C7' };
     var typeLabel = labels[ev.event_type] || '';
+    var cleanerName = isVD && ev.cleaner_id && teamMap[ev.cleaner_id] ? teamMap[ev.cleaner_id] : '';
     return '<div class="card" style="padding:12px 16px;margin-bottom:8px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<div style="min-width:0;flex:1">' +
         '<div style="font-weight:600;font-size:.88rem">' + escHtml(ev.title || typeLabel) + '</div>' +
         '<div style="font-size:.78rem;color:var(--m)">' + String(ev.start_at).slice(11,16) + '–' + String(ev.end_at).slice(11,16) +
-        (ev.address ? ' · ' + escHtml(ev.address) : '') + '</div>' +
+        (ev.address ? ' · ' + escHtml(ev.address) : '') +
+        (cleanerName ? ' · 👤 ' + escHtml(cleanerName) : '') + '</div>' +
       '</div>' +
       '<span style="font-size:.68rem;padding:2px 8px;border-radius:6px;background:' + (bgMap[ev.event_type] || '#F3F4F6') + '">' + typeLabel + '</span>' +
       '</div></div>';
@@ -5800,7 +5850,13 @@ function switchTab(tab) {
 
   if (tab === 'kalender') {
     if (window._isCompanyOwner) {
-      renderTeam();
+      // VD: populera _teamMembers via renderTeam, sedan ladda team-events
+      var teamPromise = renderTeam();
+      if (teamPromise && typeof teamPromise.then === 'function') {
+        teamPromise.then(function() { loadCalendarEvents(); });
+      } else {
+        setTimeout(loadCalendarEvents, 200);
+      }
     } else {
       loadCalendarEvents();
     }
