@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prenumeration aktiverad – Spick</title>
+<meta name="description" content="Ditt betalkort är registrerat. Din prenumeration hos Spick är aktiv.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://spick.se/prenumeration-tack.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico">
+<style>
+:root{--g:#0F6E56;--gm:#0A5240;--gr:#E1F5EE;--b:#1C1C1A;--m:#6B6960;--bg:#FAFAF8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--g);margin-bottom:32px;display:block;text-decoration:none}
+.card{background:#fff;border-radius:24px;padding:48px 40px;max-width:520px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+.check{width:80px;height:80px;background:var(--gr);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:2rem}
+h1{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--b);margin-bottom:8px}
+.sub{color:var(--m);font-size:1rem;margin-bottom:32px;line-height:1.6}
+.badge{display:inline-block;background:var(--gr);color:var(--g);padding:4px 12px;border-radius:100px;font-size:.8rem;font-weight:600;margin-bottom:20px}
+.details{background:var(--bg);border-radius:16px;padding:20px;margin-bottom:28px;text-align:left}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #EBEBEB;font-size:.9rem}
+.row:last-child{border:none;padding-bottom:0}
+.row .lbl{color:var(--m)}.row .val{font-weight:600;color:var(--b)}
+.btn{display:block;background:var(--g);color:#fff;padding:14px;border-radius:100px;font-size:1rem;font-weight:600;text-decoration:none;margin-bottom:12px;transition:background .2s}
+.btn:hover{background:var(--gm)}
+.btn-outline{display:block;border:1.5px solid var(--g);color:var(--g);padding:13px;border-radius:100px;font-size:.95rem;font-weight:600;text-decoration:none;transition:all .2s}
+.btn-outline:hover{background:var(--gr)}
+.foot{margin-top:28px;font-size:.78rem;color:var(--m)}
+.foot a{color:var(--g);text-decoration:none}
+</style>
+<script src="js/config.js"></script>
+</head>
+<body>
+<a href="index.html" class="logo">Spick</a>
+<div class="card">
+  <div class="check">✅</div>
+  <span class="badge">Kort registrerat</span>
+  <h1>Prenumeration aktiverad!</h1>
+  <p class="sub">Din prenumeration hos Spick är nu aktiv. Du debiteras automatiskt dagen innan varje städtillfälle.</p>
+
+  <div class="details" id="details" style="display:none">
+    <div class="row"><span class="lbl">Tjänst</span><span class="val" id="d-service">–</span></div>
+    <div class="row"><span class="lbl">Frekvens</span><span class="val" id="d-freq">–</span></div>
+    <div class="row"><span class="lbl">Nästa städning</span><span class="val" id="d-next">–</span></div>
+    <div class="row"><span class="lbl">Pris per tillfälle</span><span class="val" id="d-price">–</span></div>
+  </div>
+
+  <a href="index.html" class="btn">Tillbaka till spick.se →</a>
+  <a href="mitt-konto.html" class="btn-outline">Mitt konto</a>
+
+  <div class="foot">
+    Spick · <a href="mailto:hello@spick.se">hello@spick.se</a> · 559402-4522
+  </div>
+</div>
+
+<script>
+(async function() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var subId = params.get('sub');
+    if (!subId || typeof SPICK === 'undefined') return;
+
+    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/subscriptions?id=eq.' + encodeURIComponent(subId) + '&select=service_type,booking_hours,frequency,next_booking_date,hourly_rate,rut,manual_override_price', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY }
+    });
+    if (!res.ok) return;
+    var rows = await res.json();
+    var sub = rows && rows[0];
+    if (!sub) return;
+
+    var freqMap = { weekly: 'Varje vecka', biweekly: 'Varannan vecka', monthly: 'Varje månad' };
+    var total = sub.manual_override_price && sub.manual_override_price >= 100
+      ? sub.manual_override_price
+      : Math.round((sub.booking_hours || 3) * (sub.hourly_rate || 350));
+    var displayPrice = sub.rut ? Math.floor(total * 0.5) : total;
+    var rutText = sub.rut ? ' (efter RUT)' : '';
+
+    document.getElementById('d-service').textContent = (sub.service_type || '—') + ' · ' + (sub.booking_hours || '') + ' tim';
+    document.getElementById('d-freq').textContent = freqMap[sub.frequency] || sub.frequency || '—';
+    document.getElementById('d-next').textContent = sub.next_booking_date || '—';
+    document.getElementById('d-price').textContent = displayPrice + ' kr' + rutText;
+    document.getElementById('details').style.display = 'block';
+  } catch (e) {
+    // Tyst fel — detaljerna är bara en bonus
+  }
+})();
+</script>
+</body>
+</html>

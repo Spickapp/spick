@@ -201,6 +201,12 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
 
 // ── Betalning lyckades ─────────────────────────────────────────────────────
 async function handlePaymentSuccess(session: Record<string, unknown>) {
+  // ── Subscription setup (mode=setup) ────────────────
+  if (session.mode === 'setup' && (session.metadata as Record<string, string>)?.type === 'subscription_setup') {
+    await handleSubscriptionSetup(session);
+    return;
+  }
+
   const bookingId = (session.metadata as Record<string, string>)?.booking_id;
   const isRut = (session.metadata as Record<string, string>)?.rut === "true";
   const amountPaid = (session.amount_total as number) / 100;
@@ -607,6 +613,94 @@ async function capturePayment(bookingId: string) {
     }).eq("id", bookingId);
     console.log("✅ Betalning captured för bokning:", bookingId);
   }
+}
+
+// ── Subscription setup (kort-registrering) ────────────────────────────────
+async function handleSubscriptionSetup(session: Record<string, unknown>) {
+  const metadata = session.metadata as Record<string, string>;
+  const subscriptionId = metadata?.subscription_id;
+  const customerEmail = metadata?.customer_email;
+  const stripeCustomerId = session.customer as string;
+  const setupIntentId = session.setup_intent as string;
+
+  if (!subscriptionId || !setupIntentId) {
+    console.error("[SPICK] Missing subscription_id or setup_intent");
+    return;
+  }
+
+  // Hämta SetupIntent → PaymentMethod
+  const siRes = await fetch(`https://api.stripe.com/v1/setup_intents/${setupIntentId}`, {
+    headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+  });
+  const setupIntent = await siRes.json();
+  const paymentMethodId = setupIntent.payment_method;
+
+  // Hämta kort-detaljer
+  const pmRes = await fetch(`https://api.stripe.com/v1/payment_methods/${paymentMethodId}`, {
+    headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+  });
+  const pm = await pmRes.json();
+
+  // Sätt default payment method på Stripe Customer
+  await fetch(`https://api.stripe.com/v1/customers/${stripeCustomerId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      "invoice_settings[default_payment_method]": paymentMethodId,
+    }).toString(),
+  });
+
+  // Uppdatera customer_profiles
+  if (customerEmail) {
+    await sb.from("customer_profiles").upsert({
+      email: customerEmail,
+      stripe_customer_id: stripeCustomerId,
+      default_payment_method_id: paymentMethodId,
+      payment_method_last4: pm.card?.last4 || null,
+      payment_method_brand: pm.card?.brand || null,
+      payment_method_exp_month: pm.card?.exp_month || null,
+      payment_method_exp_year: pm.card?.exp_year || null,
+    }, { onConflict: "email" });
+  }
+
+  // Aktivera subscription
+  await sb.from("subscriptions").update({
+    status: "active",
+    setup_completed_at: new Date().toISOString(),
+    stripe_setup_intent_id: setupIntentId,
+  }).eq("id", subscriptionId);
+
+  // Skicka bekräftelsemejl
+  try {
+    const { data: sub } = await sb.from("subscriptions")
+      .select("customer_name, service_type, booking_hours, frequency, next_booking_date")
+      .eq("id", subscriptionId).single();
+
+    if (sub && customerEmail) {
+      const freqText = sub.frequency === "weekly" ? "varje vecka"
+        : sub.frequency === "biweekly" ? "varannan vecka" : "varje månad";
+
+      const emailHtml = wrap(`
+        <h2>Prenumeration aktiverad! ✅</h2>
+        <p>Hej ${esc((sub.customer_name || "").split(" ")[0])}!</p>
+        <p>Ditt kort är registrerat och din prenumeration hos <strong>Spick</strong> är nu aktiv.</p>
+        <p><strong>${esc(sub.service_type)}</strong> · ${sub.booking_hours} tim · ${freqText}</p>
+        <p>Nästa städning: <strong>${sub.next_booking_date}</strong></p>
+        <p style="font-size:13px;color:#6B6960;margin-top:16px">Ditt kort debiteras automatiskt dagen innan varje städtillfälle. Du kan avsluta prenumerationen när som helst genom att kontakta oss.</p>
+      `);
+
+      await sendEmail(customerEmail, "Prenumeration aktiverad — Spick", emailHtml);
+    }
+  } catch (e) { console.warn("[SPICK] Setup confirmation email failed:", e); }
+
+  console.log("[SPICK] Subscription setup completed:", {
+    subscriptionId,
+    stripeCustomerId,
+    paymentMethodId: paymentMethodId ? String(paymentMethodId).slice(-8) : null,
+  });
 }
 
 serve(async (req) => {

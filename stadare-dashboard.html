@@ -6599,72 +6599,118 @@ async function submitManualBooking() {
   btn.disabled = true; btn.textContent = 'Skapar uppdrag...';
 
   try {
-    var bodyData = {
-      name: name,
-      email: email,
-      phone: phone || null,
-      address: address,
-      customer_lat: _mbLat,
-      customer_lng: _mbLng,
-      date: date,
-      time: time || '09:00',
-      hours: hours,
-      service: service,
-      cleaner_id: cleanerId,
-      rut: (customerType === 'privat') && isRutEligible(service),
-      frequency: frequency,
-      customer_type: customerType,
-      key_type: keyType,
-      key_info: keyInfo || null,
-      customer_notes: notes || null,
-      manual_entry: true,
-      payment_mode: paymentMode,
-      send_email_to_customer: sendEmailChecked,
-      company_id: (typeof cleaner !== 'undefined' && cleaner && cleaner.company_id) || null,
-      auto_delegation_enabled: null
-    };
+    var res, result;
+    if (frequency === 'once') {
+      // ── Engångs-bokning via booking-create ──
+      var bodyData = {
+        name: name,
+        email: email,
+        phone: phone || null,
+        address: address,
+        customer_lat: _mbLat,
+        customer_lng: _mbLng,
+        date: date,
+        time: time || '09:00',
+        hours: hours,
+        service: service,
+        cleaner_id: cleanerId,
+        rut: (customerType === 'privat') && isRutEligible(service),
+        frequency: frequency,
+        customer_type: customerType,
+        key_type: keyType,
+        key_info: keyInfo || null,
+        customer_notes: notes || null,
+        manual_entry: true,
+        payment_mode: paymentMode,
+        send_email_to_customer: sendEmailChecked,
+        company_id: (typeof cleaner !== 'undefined' && cleaner && cleaner.company_id) || null,
+        auto_delegation_enabled: null
+      };
 
-    if (customerType === 'privat' && pnr) {
-      bodyData.customer_pnr = pnr;
-    }
-    if (customerType === 'foretag') {
-      bodyData.business_name = businessName || null;
-      bodyData.business_org_number = orgNumber || null;
-      bodyData.business_reference = businessRef || null;
-    }
-    if (overridePrice && overridePrice >= 100) {
-      bodyData.manual_override_price = overridePrice;
-    }
-
-    var res = await fetch(SUPA_URL + '/functions/v1/booking-create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY },
-      body: JSON.stringify(bodyData)
-    });
-
-    var result = await res.json();
-
-    if (res.ok) {
-      if (paymentMode === 'stripe_subscription') {
-        mbShowMsg('✅ Prenumeration skapad! Bekräftelse skickad till ' + email, false);
-      } else if (result.url) {
-        mbShowMsg('✅ Uppdrag skapat! Betalningslänk skickad till ' + email, false);
-      } else {
-        mbShowMsg('✅ Uppdrag skapat!', false);
+      if (customerType === 'privat' && pnr) {
+        bodyData.customer_pnr = pnr;
+      }
+      if (customerType === 'foretag') {
+        bodyData.business_name = businessName || null;
+        bodyData.business_org_number = orgNumber || null;
+        bodyData.business_reference = businessRef || null;
+      }
+      if (overridePrice && overridePrice >= 100) {
+        bodyData.manual_override_price = overridePrice;
       }
 
-      btn.textContent = '✅ Klart!';
-      btn.style.background = '#065F46';
+      res = await fetch(SUPA_URL + '/functions/v1/booking-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY },
+        body: JSON.stringify(bodyData)
+      });
+      result = await res.json();
 
-      setTimeout(function() {
-        closeManualBooking();
-        btn.disabled = false;
-        btn.textContent = 'Skapa uppdrag ✓';
-        btn.style.background = '';
-        if (typeof renderTeam === 'function') renderTeam();
-      }, 3000);
+      if (res.ok) {
+        if (result.url) {
+          mbShowMsg('✅ Uppdrag skapat! Betalningslänk skickad till ' + email, false);
+        } else {
+          mbShowMsg('✅ Uppdrag skapat!', false);
+        }
+        btn.textContent = '✅ Klart!';
+        btn.style.background = '#065F46';
+        setTimeout(function() {
+          closeManualBooking();
+          btn.disabled = false;
+          btn.textContent = 'Skapa uppdrag ✓';
+          btn.style.background = '';
+          if (typeof renderTeam === 'function') renderTeam();
+        }, 3000);
+      } else {
+        throw new Error(result.error || 'Kunde inte skapa uppdrag');
+      }
     } else {
-      throw new Error(result.error || 'Kunde inte skapa uppdrag');
+      // ── Prenumeration via setup-subscription ──
+      res = await fetch(SUPA_URL + '/functions/v1/setup-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          phone: phone || null,
+          address: address,
+          city: '',
+          date: date,
+          time: time || '09:00',
+          hours: hours,
+          service: service,
+          cleaner_id: cleanerId,
+          cleaner_name: '',
+          frequency: frequency,
+          customer_type: customerType,
+          customer_pnr: (customerType === 'privat' && pnr) ? pnr : null,
+          business_name: businessName || null,
+          business_org_number: orgNumber || null,
+          business_reference: businessRef || null,
+          key_type: keyType,
+          key_info: keyInfo || null,
+          customer_notes: notes || null,
+          rut: (customerType === 'privat') && isRutEligible(service),
+          company_id: (typeof cleaner !== 'undefined' && cleaner && cleaner.company_id) || null,
+          manual_override_price: (overridePrice && overridePrice >= 100) ? overridePrice : null
+        })
+      });
+      result = await res.json();
+
+      if (res.ok) {
+        mbShowMsg('✅ Prenumeration skapad! Registreringslänk skickad till ' + email, false);
+        btn.textContent = '✅ Klart!';
+        btn.style.background = '#065F46';
+        setTimeout(function() {
+          closeManualBooking();
+          btn.disabled = false;
+          btn.textContent = 'Skapa uppdrag ✓';
+          btn.style.background = '';
+          if (typeof renderTeam === 'function') renderTeam();
+        }, 3000);
+      } else {
+        throw new Error(result.error || 'Kunde inte skapa prenumeration');
+      }
     }
   } catch(e) {
     mbShowMsg('Fel: ' + e.message, true);
