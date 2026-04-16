@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
+import { notify } from "../_shared/notifications.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
@@ -186,6 +187,19 @@ serve(async (req) => {
           <p>Frågor? Kontakta oss på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a>.</p>
         `);
         await sendEmail(customerEmail, `Din städare kunde inte ta uppdraget — välj ny`, html);
+
+        // Multi-kanal till kund (SMS + push)
+        await notify({
+          email: customerEmail,
+          phone: booking.customer_phone || undefined,
+          sms_message: `Spick: Din städare ${cleaner.full_name} kan inte ta bokningen ${formatDate(bookingDate)}. Välj ny eller få pengarna tillbaka: spick.se/min-bokning.html?bid=${booking_id}`,
+          push_type: "booking_rejected_by_cleaner",
+          push_data: {
+            cleaner_name: cleaner.full_name,
+            date: formatDate(bookingDate),
+            booking_id,
+          },
+        });
       }
 
       // Email to admin
@@ -247,6 +261,32 @@ serve(async (req) => {
                 </table>
                 <p style="color:#6B6960;font-size:14px">Om du inte svarar inom 2 timmar kommer kunden automatiskt få välja ersättare själv. Om ingen ersättare från ditt team kan hjälpa, kan du direkt släppa bokningen för kundval.</p>
               `));
+
+              // Multi-kanal notifikation till VD (SMS + push + in-app)
+              const { data: ownerPhone } = await sb
+                .from("cleaners")
+                .select("phone")
+                .eq("id", company.owner_cleaner_id)
+                .single();
+
+              await notify({
+                cleaner_id: company.owner_cleaner_id,
+                email: owner.email,
+                phone: ownerPhone?.phone || undefined,
+                sms_message: `Spick: ${cleaner.full_name} avböjde bokning för ${customerName} ${formatDate(bookingDate)}. Föreslå ersättare: spick.se/stadare-dashboard`,
+                push_type: "company_substitute_needed",
+                push_data: {
+                  cleaner_name: cleaner.full_name,
+                  date: formatDate(bookingDate),
+                  booking_id,
+                },
+                in_app: {
+                  title: "Ersättare behövs",
+                  body: `${cleaner.full_name} avböjde bokning för ${customerName} ${formatDate(bookingDate)}`,
+                  type: "company_substitute_needed",
+                  job_id: booking_id,
+                },
+              });
             }
           }
 

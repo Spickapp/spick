@@ -81,6 +81,36 @@ serve(async (req) => {
         body: `Din städning är imorgon kl ${data?.time || ""}`,
         url: "/min-bokning.html",
         icon: "/assets/icon-192.png"
+      },
+      company_substitute_needed: {
+        title: "🚨 Ersättare behövs",
+        body: `${data?.cleaner_name || "En teammedlem"} avböjde ${data?.date || "en bokning"}. Föreslå ersättare inom 2h.`,
+        url: "/stadare-dashboard.html#reassignment",
+        icon: "/assets/icon-192.png"
+      },
+      customer_proposal_pending: {
+        title: "📋 Ersättare föreslagen",
+        body: `${data?.cleaner_name || "En ny städare"} föreslås för din städning ${data?.date || ""}. Bekräfta inom 1h.`,
+        url: `/min-bokning.html?bid=${data?.booking_id || ""}`,
+        icon: "/assets/icon-192.png"
+      },
+      proposal_approved: {
+        title: "✅ Bokning bekräftad",
+        body: `Kunden godkände dig för bokningen ${data?.date || ""}.`,
+        url: "/stadare-dashboard.html",
+        icon: "/assets/icon-192.png"
+      },
+      auto_delegated: {
+        title: "🔄 Ny städare tilldelad",
+        body: `Din städning ${data?.date || ""} utförs av ${data?.cleaner_name || "en ny städare"} (automatiskt).`,
+        url: `/min-bokning.html?bid=${data?.booking_id || ""}`,
+        icon: "/assets/icon-192.png"
+      },
+      booking_rejected_by_cleaner: {
+        title: "⚠️ Städare avböjde",
+        body: `Din städare kunde inte ta bokningen ${data?.date || ""}. Välj ersättare eller få pengarna tillbaka.`,
+        url: `/min-bokning.html?bid=${data?.booking_id || ""}`,
+        icon: "/assets/icon-192.png"
       }
     };
 

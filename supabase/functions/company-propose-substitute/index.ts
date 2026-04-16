@@ -17,6 +17,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
+import { notify } from "../_shared/notifications.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -164,6 +165,19 @@ serve(async (req) => {
           </table>
           <p style="color:#6B6960;font-size:14px">Svara inom 1 timme. Efter det kan du välja själv eller få pengarna tillbaka.</p>
         `));
+
+        // SMS + push till kund
+        await notify({
+          email: booking.customer_email,
+          phone: booking.customer_phone || undefined,
+          sms_message: `Spick: ${newCleaner.full_name} föreslås ersätta din städare ${formatDate(booking.booking_date)}. Bekräfta inom 1h: spick.se/min-bokning.html?bid=${booking_id}`,
+          push_type: "customer_proposal_pending",
+          push_data: {
+            cleaner_name: newCleaner.full_name,
+            date: formatDate(booking.booking_date),
+            booking_id,
+          },
+        });
       }
 
       log("info", "company-propose-substitute", "Proposal sent to customer", {
@@ -217,6 +231,19 @@ serve(async (req) => {
           <p>Detta skedde enligt dina preferenser för automatisk hantering. Du kan ändra detta i dina kontoinställningar.</p>
           <p><a href="https://spick.se/min-bokning.html?bid=${booking_id}">Se din bokning →</a></p>
         `));
+
+        // Info-push + SMS till kund (ingen åtgärd krävs)
+        await notify({
+          email: booking.customer_email,
+          phone: booking.customer_phone || undefined,
+          sms_message: `Spick: Din städning ${formatDate(booking.booking_date)} utförs av ${newCleaner.full_name} (ersättare). Oförändrat pris och tid.`,
+          push_type: "auto_delegated",
+          push_data: {
+            cleaner_name: newCleaner.full_name,
+            date: formatDate(booking.booking_date),
+            booking_id,
+          },
+        });
       }
 
       // Mejl till ny städare
@@ -232,6 +259,31 @@ serve(async (req) => {
             ["Tjänst", esc(booking.service_type || "Städning")],
           ])}
         `));
+
+        // SMS + push + in-app till ny städare
+        const { data: newCleanerFull } = await sb
+          .from("cleaners")
+          .select("phone")
+          .eq("id", newCleaner.id)
+          .single();
+
+        await notify({
+          cleaner_id: newCleaner.id,
+          email: newCleaner.email,
+          phone: newCleanerFull?.phone || undefined,
+          sms_message: `Spick: Nytt uppdrag tilldelat! ${booking.customer_name} ${formatDate(booking.booking_date)} kl ${booking.booking_time}. Se detaljer: spick.se/stadare-dashboard`,
+          push_type: "proposal_approved",
+          push_data: {
+            date: formatDate(booking.booking_date),
+            booking_id,
+          },
+          in_app: {
+            title: "Nytt uppdrag tilldelat",
+            body: `${booking.customer_name} ${formatDate(booking.booking_date)} kl ${booking.booking_time}`,
+            type: "proposal_approved",
+            job_id: booking_id,
+          },
+        });
       }
 
       log("info", "company-propose-substitute", "Auto-delegation: directly confirmed", {

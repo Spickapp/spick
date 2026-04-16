@@ -18,6 +18,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
+import { notify } from "../_shared/notifications.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -101,6 +102,31 @@ serve(async (req) => {
             ["Adress", esc(booking.address || "-")],
           ])}
         `));
+
+        // SMS + push + in-app till städare
+        const { data: cleanerPhone } = await sb
+          .from("cleaners")
+          .select("phone")
+          .eq("id", newCleaner.id)
+          .single();
+
+        await notify({
+          cleaner_id: newCleaner.id,
+          email: newCleaner.email,
+          phone: cleanerPhone?.phone || undefined,
+          sms_message: `Spick: Kunden godkände dig för bokningen ${formatDate(booking.booking_date)} kl ${booking.booking_time}. Du har ett bekräftat uppdrag!`,
+          push_type: "proposal_approved",
+          push_data: {
+            date: formatDate(booking.booking_date),
+            booking_id,
+          },
+          in_app: {
+            title: "Bokning bekräftad",
+            body: `Kunden godkände dig för ${formatDate(booking.booking_date)}`,
+            type: "proposal_approved",
+            job_id: booking_id,
+          },
+        });
       }
 
       log("info", "customer-approve-proposal", "Proposal approved", { booking_id });
