@@ -4065,10 +4065,21 @@ function renderMyUpcomingJobs() {
 }
 
 function updateBadge() {
-  const open = jobs.filter(j => !j.cleaner_id);
-  const pendingConfirm = jobs.filter(j => j.cleaner_id === cleaner.id && j.status === 'pending_confirmation');
-  const count = open.length + pendingConfirm.length;
-  const badge = document.getElementById('nav-badge');
+  var count = 0;
+  var badge = document.getElementById('nav-badge');
+  if (!badge) return;
+
+  if (window._isCompanyOwner) {
+    // VD: räkna team-bokningar som väntar på bekräftelse
+    var teamB = window.data_teamBookings || [];
+    count = teamB.filter(function(b) { return b.status === 'pending_confirmation'; }).length;
+  } else {
+    // Solo-städare: öppna jobb + egna pending_confirmation
+    var open = jobs.filter(function(j) { return !j.cleaner_id; });
+    var pendingConfirm = jobs.filter(function(j) { return j.cleaner_id === cleaner.id && j.status === 'pending_confirmation'; });
+    count = open.length + pendingConfirm.length;
+  }
+
   if (count > 0) { badge.textContent = count; badge.style.display = 'block'; }
   else { badge.style.display = 'none'; }
 }
@@ -6110,9 +6121,20 @@ async function renderTeam() {
 
     // Split: today + upcoming + past
     var today = new Date().toISOString().slice(0,10);
-    var todayBookings = teamBookings.filter(function(b) { return b.booking_date === today; });
-    var upcomingBookings = teamBookings.filter(function(b) { return b.booking_date > today; });
+    var CANCELLED_STATUSES = ['cancelled', 'avbokad', 'rejected'];
+    var isCancelled = function(b) { return CANCELLED_STATUSES.indexOf(b.status) !== -1; };
+
+    // Aktiva bokningar (exkl. avbokade) för Idag + Kommande
+    var todayBookings = teamBookings.filter(function(b) { return b.booking_date === today && !isCancelled(b); });
+    var upcomingBookings = teamBookings.filter(function(b) { return b.booking_date > today && !isCancelled(b); });
+
+    // Tidigare: inkl. avbokade (för historik) men med visuell markering
     var pastBookings = teamBookings.filter(function(b) { return b.booking_date < today; }).slice(0,5);
+
+    // Avbokade idag+framåt (senaste 5) — egen sektion
+    var cancelledBookings = teamBookings.filter(function(b) {
+      return b.booking_date >= today && isCancelled(b);
+    }).slice(0, 5);
 
     function renderTeamBookingCard(b) {
       var stLabel = stMap[b.status] || b.status || '\u2013';
@@ -6132,7 +6154,10 @@ async function renderTeam() {
           '</div>' +
           '<div id="reassign-' + b.id + '" style="display:none;margin-top:6px"></div>';
       }
-      return '<div style="background:var(--w);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)">' +
+      var isCancelledCard = ['cancelled', 'avbokad', 'rejected'].indexOf(b.status) !== -1;
+      var cardStyle = 'background:var(--w);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)';
+      if (isCancelledCard) { cardStyle += ';opacity:.65;background:#FAFAFA'; }
+      return '<div style="' + cardStyle + '">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
           '<div>' +
             '<strong style="font-size:.88rem">' + escHtml(b.customer_name || '\u2013') + '</strong>' +
@@ -6166,6 +6191,10 @@ async function renderTeam() {
       html += '<div style="font-size:.78rem;font-weight:700;color:var(--m);text-transform:uppercase;margin:12px 0 8px">Tidigare</div>';
       html += pastBookings.map(renderTeamBookingCard).join('');
     }
+    if (cancelledBookings.length > 0) {
+      html += '<div style="font-size:.78rem;font-weight:700;color:#DC2626;text-transform:uppercase;margin:12px 0 8px">⊘ Avbokade</div>';
+      html += cancelledBookings.map(renderTeamBookingCard).join('');
+    }
     document.getElementById('team-bookings-list').innerHTML = html || '<p style="color:var(--gray-500);font-size:.85rem">Inga bokningar ännu.</p>';
 
     // Team stats
@@ -6174,9 +6203,14 @@ async function renderTeam() {
     document.getElementById('team-total-earn').textContent = Math.round(totalEarn).toLocaleString('sv') + ' kr';
     document.getElementById('team-total-jobs').textContent = totalJobs;
     data_teamBookings = teamBookings;
+    window.data_teamBookings = teamBookings;  // För updateBadge()
+    if (typeof updateBadge === 'function') updateBadge();
     calInit();
     // Value metrics
-    var rutTotal = teamBookings.filter(function(b) { return b.total_price; }).reduce(function(s,b) { return s + (b.total_price * 0.5); }, 0);
+    // RUT-estimat: exkludera avbokade bokningar
+    var rutTotal = teamBookings.filter(function(b) {
+      return b.total_price && !isCancelled(b);
+    }).reduce(function(s,b) { return s + (b.total_price * 0.5); }, 0);
     document.getElementById('team-rut-total').textContent = Math.round(rutTotal).toLocaleString('sv') + ' kr';
     // Estimated time saved: 15 min per booking (admin, invoicing, scheduling)
     var timeSaved = Math.round(totalJobs * 0.25 * 10) / 10;
