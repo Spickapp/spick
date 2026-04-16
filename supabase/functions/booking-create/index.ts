@@ -95,7 +95,7 @@ serve(async (req) => {
     if (cleaner_id) {
       const { data, error } = await supabase
         .from("cleaners")
-        .select("id, full_name, avg_rating, completed_jobs, home_lat, home_lng, phone, hourly_rate")
+        .select("id, full_name, avg_rating, completed_jobs, home_lat, home_lng, phone, hourly_rate, company_id, is_company_owner")
         .eq("id", cleaner_id)
         .eq("is_approved", true)
         .eq("is_active", true)
@@ -110,7 +110,7 @@ serve(async (req) => {
       // Alla aktiva städare, sorterade på rating
       const { data } = await supabase
         .from("cleaners")
-        .select("id, full_name, avg_rating, completed_jobs, home_lat, home_lng, phone, hourly_rate")
+        .select("id, full_name, avg_rating, completed_jobs, home_lat, home_lng, phone, hourly_rate, company_id, is_company_owner")
         .eq("is_approved", true)
         .eq("is_active", true)
         .order("avg_rating", { ascending: false })
@@ -120,6 +120,28 @@ serve(async (req) => {
         return json(503, { error: "Inga städare tillgängliga just nu" });
       }
       cleaner = data[0];
+    }
+
+    // ── 2b. HÄMTA FÖRETAGSNAMN om städaren tillhör ett företag ──
+    // Bugg #2: Använd format "Personnamn (Företag)" för teammedlemmar
+    // Solo-städare: bara personnamn
+    let displayName: string = cleaner.full_name;
+    if (cleaner.company_id) {
+      try {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("display_name, name")
+          .eq("id", cleaner.company_id)
+          .single();
+        if (company) {
+          const companyName = company.display_name || company.name;
+          if (companyName) {
+            displayName = `${cleaner.full_name} (${companyName})`;
+          }
+        }
+      } catch (_) {
+        // Fallback till personnamn om company-fetch misslyckas — icke-kritiskt
+      }
     }
 
     const cleanerTier: "standard" | "top" =
@@ -225,7 +247,7 @@ serve(async (req) => {
             url: sess.url,
             booking_id: existingBooking.id,
             customer_price: netPrice,
-            cleaner_name: cleaner.full_name || cleaner_name,
+            cleaner_name: displayName || cleaner_name,
             deduplicated: true,
           });
         }
@@ -253,7 +275,7 @@ serve(async (req) => {
       rut_amount: useRut ? Math.round(rutDeduction) : 0,
       frequency: frequency || "once",
       cleaner_id: cleaner.id,
-      cleaner_name: cleaner.full_name || cleaner_name,
+      cleaner_name: displayName || cleaner_name,
       square_meters: sqm || null,
       notes: customer_notes || null,
       ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
@@ -282,6 +304,21 @@ serve(async (req) => {
     if (insertErr) {
       console.error("Booking insert failed:", insertErr);
       return json(500, { error: "Kunde inte skapa bokning" });
+    }
+
+    // ── 8b. UPSERT CUSTOMER_PROFILE (Bugg #3) ─────
+    // Säkerställ att customer_profiles-tabellen hålls synkad med nya bokningar.
+    // UNIQUE constraint på email (customer_profiles_email_key) gör onConflict säkert.
+    // Non-blocking: fel här får INTE stoppa bokningen.
+    try {
+      await supabase.from("customer_profiles").upsert({
+        email: email,
+        name: name,
+        phone: phone || null,
+        address: address || null,
+      }, { onConflict: "email", ignoreDuplicates: false });
+    } catch (profileErr) {
+      console.warn("customer_profiles upsert failed (non-critical):", (profileErr as Error).message);
     }
 
     // ── 9. LOGGA RABATTANVÄNDNING ──────────────────
@@ -404,7 +441,7 @@ serve(async (req) => {
         booking_id: bookingId,
         url: `${BASE_URL}/tack.html?bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}`,
         customer_price: netPrice,
-        cleaner_name: cleaner.full_name || cleaner_name,
+        cleaner_name: displayName || cleaner_name,
         paid_with_credit: true,
       });
     }
@@ -416,7 +453,7 @@ serve(async (req) => {
     params.append("customer_email", email);
     params.append(
       "success_url",
-      `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}&address=${encodeURIComponent(address || "")}&time=${encodeURIComponent(time || "")}&cleaner_name=${encodeURIComponent(cleaner.full_name || cleaner_name || "")}&price=${stripeAmount}`
+      `${BASE_URL}/tack.html?session_id={CHECKOUT_SESSION_ID}&bid=${bookingId}&service=${encodeURIComponent(service)}&date=${encodeURIComponent(date)}&address=${encodeURIComponent(address || "")}&time=${encodeURIComponent(time || "")}&cleaner_name=${encodeURIComponent(displayName || cleaner_name || "")}&price=${stripeAmount}`
     );
     params.append("cancel_url", `${BASE_URL}/boka.html?cancelled=1`);
 
@@ -424,7 +461,7 @@ serve(async (req) => {
     params.append("metadata[booking_id]", bookingId);
     params.append("metadata[booking_type]", "instant");
     params.append("metadata[cleaner_id]", cleaner.id);
-    params.append("metadata[cleaner_name]", (cleaner.full_name || cleaner_name || "").slice(0, 100));
+    params.append("metadata[cleaner_name]", (displayName || cleaner_name || "").slice(0, 100));
     params.append("metadata[commission_pct]", String(pricing.commissionPct));
     params.append("metadata[net_margin_pct]", String(pricing.netMarginPct));
     if (address) params.append("metadata[address]", address.slice(0, 200));
@@ -442,7 +479,7 @@ serve(async (req) => {
     params.append("line_items[0][price_data][unit_amount]", String(amountOre));
 
     let productName = `${service} – ${validHours} timmar`;
-    let productDesc = `Städdatum: ${date}. Städare: ${cleaner.full_name || cleaner_name || "Tilldelas"}`;
+    let productDesc = `Städdatum: ${date}. Städare: ${displayName || cleaner_name || "Tilldelas"}`;
     if (useRut) productDesc = `Pris inkl. 50% RUT-avdrag. ${productDesc}`;
     if (pricing.discountPct > 0) productDesc += `. Rabatt: ${pricing.discountPct}%`;
 
@@ -514,7 +551,7 @@ serve(async (req) => {
       session_id: session.id,
       booking_id: bookingId,
       customer_price: netPrice,
-      cleaner_name: cleaner.full_name || cleaner_name,
+      cleaner_name: displayName || cleaner_name,
       discount_applied: pricing.discountPct > 0 ? `${pricing.discountPct}%` : null,
       credit_applied: pricing.creditApplied > 0 ? pricing.creditApplied : null,
     });
