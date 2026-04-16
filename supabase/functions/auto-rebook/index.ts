@@ -1,18 +1,21 @@
-// auto-rebook — Skapar nästa bokning för aktiva prenumerationer
-// =============================================================
-// Triggas dagligen via cron (eller manuellt via POST)
+// auto-rebook — Skapar bokningar för aktiva prenumerationer
+// ═══════════════════════════════════════════════════════════
+// Triggas dagligen 07:00 CET via GitHub Actions
 //
-// Flöde per prenumeration:
-//   1. Hitta aktiva subscriptions med next_booking_date = idag
-//   2. Skapa bokning via booking-create Edge Function
-//   3. Skicka betalningslänk till kund via e-post
-//   4. Uppdatera next_booking_date till nästa förekomst
-//   5. Öka total_bookings
-// =============================================================
+// Flöde:
+//   1. Hitta active subscriptions med next_booking_date <= idag+7
+//   2. Dedup-check (undvik dubbletter)
+//   3. Skapa bokning via booking-create (payment_mode='stripe_subscription')
+//   4. Skicka påminnelse-email till kund
+//   5. Uppdatera next_booking_date
+//
+// Kopplar till:
+//   - booking-create EF (FAS 2) — skapar bokningen
+//   - charge-subscription-booking EF (FAS 7) — debiterar dagen innan
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders, log, sendEmail } from "../_shared/email.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -23,104 +26,179 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  const json = (s: number, d: unknown) => new Response(JSON.stringify(d), {
+    status: s, headers: { ...CORS, "Content-Type": "application/json" }
+  });
 
   try {
-    // Bestäm datum att processa (default: idag)
-    const body = await req.json().catch(() => ({}));
-    const targetDate = body.date || new Date().toISOString().split("T")[0];
+    await req.json().catch(() => ({}));
 
-    log("info", "auto-rebook", "Starting", { targetDate });
+    // Datum att processa (default: 7 dagar framåt)
+    const today = new Date();
+    const horizon = new Date(today);
+    horizon.setDate(horizon.getDate() + 7);
+    const horizonStr = horizon.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
 
-    // 1. Hämta aktiva prenumerationer med next_booking_date = targetDate
+    log("info", "auto-rebook", "Starting", { today: todayStr, horizon: horizonStr });
+
+    // 1. Hämta aktiva subscriptions med next_booking_date <= horizon
     const { data: subs, error: subErr } = await supabase
       .from("subscriptions")
       .select("*")
-      .eq("status", "aktiv")
-      .eq("next_booking_date", targetDate);
+      .eq("status", "active")
+      .lte("next_booking_date", horizonStr)
+      .not("next_booking_date", "is", null);
 
     if (subErr) {
-      log("error", "auto-rebook", "Failed to fetch subscriptions", { error: subErr.message });
-      return new Response(JSON.stringify({ error: subErr.message }), {
-        status: 500,
-        headers: { ...CORS, "Content-Type": "application/json" },
-      });
+      log("error", "auto-rebook", "Fetch failed", { error: subErr.message });
+      return json(500, { error: subErr.message });
     }
 
     if (!subs || subs.length === 0) {
-      log("info", "auto-rebook", "No subscriptions due today", { targetDate });
-      return new Response(JSON.stringify({ processed: 0, date: targetDate }), {
-        status: 200,
-        headers: { ...CORS, "Content-Type": "application/json" },
-      });
+      log("info", "auto-rebook", "No subscriptions due", { horizon: horizonStr });
+      return json(200, { processed: 0, horizon: horizonStr });
     }
 
-    const results: any[] = [];
+    const results: Array<Record<string, unknown>> = [];
 
     for (const sub of subs) {
       try {
         const result = await processSubscription(supabase, sub);
         results.push({ id: sub.id, customer: sub.customer_name, ...result });
-      } catch (e: any) {
-        log("error", "auto-rebook", `Failed for ${sub.id}`, { error: e.message });
-        results.push({ id: sub.id, customer: sub.customer_name, error: e.message });
+      } catch (e: unknown) {
+        const msg = (e as Error).message || "Unknown error";
+        log("error", "auto-rebook", `Failed for ${sub.id}`, { error: msg });
+        results.push({ id: sub.id, customer: sub.customer_name, error: msg });
       }
     }
 
-    log("info", "auto-rebook", "Complete", { processed: results.length });
+    log("info", "auto-rebook", "Complete", {
+      processed: results.length,
+      ok: results.filter((r) => r.status === "ok").length,
+      skipped: results.filter((r) => r.status === "skipped").length,
+      failed: results.filter((r) => r.error).length,
+    });
 
-    return new Response(JSON.stringify({ processed: results.length, date: targetDate, results }), {
-      status: 200,
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    log("error", "auto-rebook", "Fatal error", { error: err.message });
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    return json(200, { processed: results.length, horizon: horizonStr, results });
+  } catch (err: unknown) {
+    log("error", "auto-rebook", "Fatal", { error: (err as Error).message });
+    return json(500, { error: (err as Error).message });
   }
 });
 
-function addDaysISO(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
+// ── Beräkna nästa datum baserat på frekvens ──────────────────
+function nextDate(current: string, frequency: string): string {
+  const [y, m, d] = current.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + days);
+
+  if (frequency === "weekly") {
+    dt.setUTCDate(dt.getUTCDate() + 7);
+  } else if (frequency === "biweekly") {
+    dt.setUTCDate(dt.getUTCDate() + 14);
+  } else {
+    // monthly: samma dag nästa månad (hanterar 31→28 etc.)
+    const targetDay = dt.getUTCDate();
+    dt.setUTCMonth(dt.getUTCMonth() + 1);
+    // Om månaden "spillde över" (t.ex. 31 jan → 3 mars), backa
+    if (dt.getUTCDate() !== targetDay) {
+      dt.setUTCDate(0); // sista dagen i föregående månad
+    }
+  }
+
   return dt.toISOString().slice(0, 10);
 }
 
-async function processSubscription(supabase: any, sub: any) {
-  // Dubbel-körningsskydd: verifiera att next_booking_date fortfarande matchar
+// ── Processa en subscription ─────────────────────────────────
+async function processSubscription(supabase: ReturnType<typeof createClient>, sub: Record<string, unknown>) {
+  let bookingDate = sub.next_booking_date as string;
+  const freq = sub.frequency as string;
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  // ── Hantera förfallna datum (om auto-rebook missat körningar) ──
+  // Avancera till nästa framtida datum UTAN att skapa bokningar för det förflutna
+  let skippedPast = 0;
+  while (bookingDate < todayStr) {
+    bookingDate = nextDate(bookingDate, freq);
+    skippedPast++;
+  }
+  if (skippedPast > 0) {
+    log("warn", "auto-rebook", `Skipped ${skippedPast} past dates for sub ${sub.id}`, {
+      original: sub.next_booking_date,
+      advanced_to: bookingDate,
+    });
+    // Uppdatera next_booking_date till framtida datum
+    await supabase.from("subscriptions").update({
+      next_booking_date: bookingDate,
+      updated_at: new Date().toISOString(),
+    }).eq("id", sub.id as string);
+  }
+
+  // Kolla om bokningsdatum är inom horizon (7 dagar)
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 7);
+  const horizonStr = horizon.toISOString().slice(0, 10);
+  if (bookingDate > horizonStr) {
+    return { status: "skipped", reason: "not within horizon yet", next_date: bookingDate };
+  }
+
+  // Dedup: finns redan bokning för denna sub + datum?
+  const { data: existing } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("subscription_id", sub.id as string)
+    .eq("booking_date", bookingDate)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    // Bokning finns redan — uppdatera next_booking_date ändå
+    const next = nextDate(bookingDate, freq);
+    await supabase.from("subscriptions").update({
+      next_booking_date: next,
+      updated_at: new Date().toISOString(),
+    }).eq("id", sub.id as string);
+    return { status: "skipped", reason: "booking already exists", next_date: next };
+  }
+
+  // Dubbelkörningsskydd: verifiera att next_booking_date inte ändrats
   const { data: fresh } = await supabase
     .from("subscriptions")
     .select("next_booking_date")
-    .eq("id", sub.id)
+    .eq("id", sub.id as string)
     .single();
 
-  if (!fresh || fresh.next_booking_date !== sub.next_booking_date) {
+  if (!fresh || fresh.next_booking_date !== bookingDate) {
     return { status: "skipped", reason: "already processed" };
   }
 
-  // 1. Hitta nästa tillgänglig tid
-  const bookingDate = sub.next_booking_date;
-  const bookingTime = sub.preferred_time || "09:00";
-  const hours = sub.hours || 3;
-
-  // 2. Skapa bokning via booking-create Edge Function
+  // ── Skapa bokning via booking-create EF ──────────────────
   const bookingPayload = {
     name: sub.customer_name,
     email: sub.customer_email,
     phone: sub.customer_phone || null,
-    address: sub.address,
+    address: sub.customer_address || null,
     date: bookingDate,
-    time: bookingTime,
-    hours: hours,
-    service: sub.service || "Hemstädning",
-    cleaner_id: sub.preferred_cleaner_id || null,
-    rut: sub.rut !== false,
+    time: (sub.preferred_time as string) || "09:00",
+    hours: (sub.booking_hours as number) || 3,
+    service: sub.service_type || "Hemstädning",
+    cleaner_id: sub.cleaner_id || null,
+    rut: sub.rut === true,
     frequency: sub.frequency,
     customer_notes: sub.customer_notes || null,
+    key_type: sub.key_type || "open",
     key_info: sub.key_info || null,
-    recurring_from_subscription: sub.id,
+    customer_type: sub.customer_type || "privat",
+    business_name: sub.business_name || null,
+    business_org_number: sub.business_org_number || null,
+    business_reference: sub.business_reference || null,
+    company_id: sub.company_id || null,
+    auto_delegation_enabled: sub.auto_delegation_enabled,
+    manual_override_price: sub.manual_override_price || null,
+    // V1.0: subscription-specifika fält
+    payment_mode: "stripe_subscription",
+    subscription_id: sub.id,
+    send_email_to_customer: false, // auto-rebook hanterar email
+    manual_entry: false,
   };
 
   const createRes = await fetch(`${SUPABASE_URL}/functions/v1/booking-create`, {
@@ -135,75 +213,91 @@ async function processSubscription(supabase: any, sub: any) {
 
   const createResult = await createRes.json();
 
-  if (!createRes.ok || !createResult.url) {
-    throw new Error(createResult.error || "booking-create failed: " + JSON.stringify(createResult));
+  if (!createRes.ok || !createResult.booking_id) {
+    throw new Error(createResult.error || "booking-create failed");
   }
 
-  // 3. Skicka betalningslänk till kund
-  const paymentUrl = createResult.url;
-  const firstName = (sub.customer_name || "").split(" ")[0] || "Kund";
-  const freqLabel = sub.frequency === "weekly" ? "veckovis" : "varannan vecka";
-  const serviceLabel = sub.service || "hemstädning";
+  // ── Skicka påminnelse-email ────────────────────────────────
+  const freqText = freq === "weekly"
+    ? "veckovis"
+    : freq === "biweekly"
+      ? "varannan vecka"
+      : "månadsvis";
+  const hours = (sub.booking_hours as number) || 3;
+  const serviceType = (sub.service_type as string) || "Hemstädning";
+  const firstName = ((sub.customer_name as string) || "").split(" ")[0] || "Kund";
+  const bookingTime = (sub.preferred_time as string) || "09:00";
+  const useRut = sub.rut === true && sub.customer_type !== "foretag";
+  const rate = (sub.hourly_rate as number) || 350;
+  let totalPrice = Math.round(hours * rate);
+  if (sub.manual_override_price && (sub.manual_override_price as number) >= 100) {
+    totalPrice = sub.manual_override_price as number;
+  }
+  const displayPrice = useRut ? Math.floor(totalPrice * 0.5) : totalPrice;
+
+  // Hitta företagsnamn
+  let companyName = "Spick";
+  if (sub.company_id) {
+    const { data: co } = await supabase
+      .from("companies")
+      .select("display_name, name")
+      .eq("id", sub.company_id as string)
+      .maybeSingle();
+    if (co) companyName = (co.display_name || co.name) as string;
+  }
 
   try {
+    const dateObj = new Date(bookingDate + "T00:00:00");
+    const dateStr = dateObj.toLocaleDateString("sv-SE", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+
+    const emailHtml = wrap(`
+      <h2>Påminnelse: Din ${freqText}a städning</h2>
+      <p>Hej ${firstName}!</p>
+      <p>Din ${freqText}a städning hos <strong>Spick</strong> är schemalagd.</p>
+      ${
+      card([
+        ["Tjänst", serviceType + " · " + hours + " tim"],
+        ["Datum", dateStr],
+        ["Tid", bookingTime],
+        ["Adress", (sub.customer_address as string) || "—"],
+        ["Utförs av", companyName],
+        ["Pris", displayPrice + " kr" + (useRut ? " (efter RUT)" : "")],
+      ])
+    }
+      <p style="font-size:13px;color:#6B6960;margin-top:16px">Ditt kort debiteras automatiskt dagen innan. Du behöver inte göra något.</p>
+      <p style="font-size:13px;color:#6B6960">Vill du ändra eller pausa? <a href="${BASE_URL}/mitt-konto.html" style="color:#0F6E56">Hantera prenumeration</a></p>
+    `);
+
     await sendEmail(
-      sub.customer_email,
-      `Dags för din ${freqLabel}a ${serviceLabel.toLowerCase()} — Spick`,
-      `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-          <div style="text-align:center;margin-bottom:24px">
-            <span style="font-family:serif;font-size:1.8rem;font-weight:700;color:#0F6E56">Spick</span>
-          </div>
-          <p style="font-size:15px;line-height:1.6">Hej ${firstName}!</p>
-          <p style="font-size:15px;line-height:1.6">
-            Det &auml;r dags f&ouml;r din ${freqLabel}a ${serviceLabel.toLowerCase()}.
-            ${sub.cleaner_name ? "Din st&auml;dare <strong>" + sub.cleaner_name + "</strong> &auml;r redo." : ""}
-          </p>
-          <div style="background:#F0FDF4;border-radius:12px;padding:16px;margin:20px 0;text-align:center">
-            <div style="font-size:.85rem;color:#065F46;margin-bottom:4px">${bookingDate} kl ${bookingTime}</div>
-            <div style="font-size:1.3rem;font-weight:700;color:#0F6E56">${serviceLabel} &middot; ${hours}h</div>
-          </div>
-          <p style="font-size:14px;line-height:1.6;color:#666">
-            Klicka nedan f&ouml;r att bekr&auml;fta och betala. Samma adress och st&auml;dare som senast.
-          </p>
-          <div style="text-align:center;margin:24px 0">
-            <a href="${paymentUrl}" style="display:inline-block;background:#0F6E56;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;font-size:15px">
-              Bekr&auml;fta &amp; betala &rarr;
-            </a>
-          </div>
-          <p style="font-size:13px;color:#999;text-align:center">
-            Vill du pausa eller avsluta? <a href="${BASE_URL}/mitt-konto.html" style="color:#0F6E56">Hantera prenumeration</a>
-          </p>
-          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-          <p style="font-size:11px;color:#bbb;text-align:center">Spick &middot; hello@spick.se &middot; spick.se</p>
-        </div>
-      `
+      sub.customer_email as string,
+      `Påminnelse: ${serviceType} ${dateStr} — Spick`,
+      emailHtml,
     );
-  } catch (emailErr: any) {
-    log("warn", "auto-rebook", "Email failed (non-critical)", { sub_id: sub.id, error: emailErr.message });
+  } catch (emailErr) {
+    log("warn", "auto-rebook", "Email failed", {
+      sub_id: sub.id,
+      error: (emailErr as Error).message,
+    });
   }
 
-  // 4. Beräkna nästa booking_date
-  const daysToAdd = sub.frequency === "weekly" ? 7
-    : (sub.frequency === "biweekly" || sub.frequency === "varannan-vecka") ? 14
-    : 30;
-  const nextBookingDate = addDaysISO(bookingDate, daysToAdd);
+  // ── Uppdatera subscription ─────────────────────────────────
+  const next = nextDate(bookingDate, freq);
 
-  // 5. Uppdatera prenumerationen
-  await supabase
-    .from("subscriptions")
-    .update({
-      next_booking_date: nextBookingDate,
-      total_bookings: (sub.total_bookings || 0) + 1,
-      last_booking_id: createResult.booking_id || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", sub.id);
+  await supabase.from("subscriptions").update({
+    next_booking_date: next,
+    total_bookings_created: ((sub.total_bookings_created as number) || 0) + 1,
+    last_booking_id: createResult.booking_id,
+    updated_at: new Date().toISOString(),
+  }).eq("id", sub.id as string);
 
   return {
     status: "ok",
     booking_id: createResult.booking_id,
-    payment_url: paymentUrl,
-    next_date: nextBookingDate,
+    booking_date: bookingDate,
+    next_date: next,
   };
 }
