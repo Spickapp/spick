@@ -322,6 +322,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
       <div class="nav-section">Support & Kvalitet</div>
       <div class="nav-item" onclick="showPage('support')"><span class="icon">🎫</span>Supportärenden <span class="badge-count" id="badge-support">0</span></div>
+      <div class="nav-item" onclick="showPage('reassignments')"><span class="icon">🔄</span>Ersättarärenden <span class="badge-count" id="badge-reassign">0</span></div>
       <div class="nav-item" onclick="showPage('quality')"><span class="icon">⚡</span>Kvalitet & Risk</div>
 
       <div class="nav-section">Administration</div>
@@ -529,6 +530,57 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
       <div class="card">
         <div id="pending-list"><div class="loading"><div class="spin"></div></div></div>
+      </div>
+    </div>
+
+    <!-- FAS 7: REASSIGNMENTS MONITORING -->
+    <div class="page" id="page-reassignments">
+      <div class="page-header">
+        <div class="page-title">Ersättarärenden 🔄</div>
+        <div class="page-sub">Övervaka reassignment-flöden och företagens prestation</div>
+      </div>
+
+      <div id="reassign-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+        <div class="card" style="padding:16px">
+          <div style="font-size:.78rem;color:#6B6960;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Aktiva</div>
+          <div id="stat-active" style="font-size:1.8rem;font-weight:700;color:#E24B4A">0</div>
+          <div style="font-size:.72rem;color:#6B6960">pågående ärenden</div>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="font-size:.78rem;color:#6B6960;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Auto-delegerade (30d)</div>
+          <div id="stat-auto" style="font-size:1.8rem;font-weight:700;color:#0F6E56">0</div>
+          <div style="font-size:.72rem;color:#6B6960" id="stat-auto-pct">—</div>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="font-size:.78rem;color:#6B6960;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">VD-timeouts (30d)</div>
+          <div id="stat-vd-timeout" style="font-size:1.8rem;font-weight:700;color:#EF9F27">0</div>
+          <div style="font-size:.72rem;color:#6B6960">svarade inte inom 2h</div>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="font-size:.78rem;color:#6B6960;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kund-timeouts (30d)</div>
+          <div id="stat-cust-timeout" style="font-size:1.8rem;font-weight:700;color:#EF9F27">0</div>
+          <div style="font-size:.72rem;color:#6B6960">svarade inte inom 1h</div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0;font-size:1rem;font-weight:700">Företag (senaste 30 dagar)</h3>
+          <button class="btn btn-outline btn-sm" onclick="renderReassignments()">↻ Uppdatera</button>
+        </div>
+        <div id="reassign-companies" style="overflow-x:auto"></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="filter-chips" id="reassign-chips">
+            <button class="filter-chip active" onclick="setReassignFilter('active',this)">Aktiva <span class="chip-count" id="chip-reassign-active">0</span></button>
+            <button class="filter-chip" onclick="setReassignFilter('timeout',this)">Timeat ut <span class="chip-count" id="chip-reassign-timeout">0</span></button>
+            <button class="filter-chip" onclick="setReassignFilter('auto',this)">Auto-delegerade <span class="chip-count" id="chip-reassign-auto">0</span></button>
+            <button class="filter-chip" onclick="setReassignFilter('all',this)">Alla <span class="chip-count" id="chip-reassign-all">0</span></button>
+          </div>
+        </div>
+        <div id="reassignments-list"><div class="loading"><div class="spin"></div></div></div>
       </div>
     </div>
 
@@ -1661,6 +1713,7 @@ function showPage(id) {
   if (id === 'inbox') setTimeout(loadInbox, 100);
   if (id === 'self-invoices') loadSelfInvoices();
   if (id === 'company-wizard') cwInit();
+  if (id === 'reassignments') renderReassignments();
 }
 
 // ── LOAD ALL DATA ─────────────────────────────────────
@@ -5579,6 +5632,314 @@ function cwFinish() {
   showPage('cleaners');
 }
 
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// FAS 7: Reassignment monitoring
+// ═══════════════════════════════════════════════════════════════
+
+window._reassignFilter = 'active';
+window._reassignData = [];
+window._reassignCleaners = {};
+window._reassignCompanies = {};
+
+function setReassignFilter(filter, btn) {
+  window._reassignFilter = filter;
+  document.querySelectorAll('#reassign-chips .filter-chip').forEach(c => c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderReassignmentsList();
+}
+
+async function renderReassignments() {
+  try {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: bookings, error } = await SB
+      .from('bookings')
+      .select('id, status, customer_name, customer_email, cleaner_id, cleaner_name, rejected_at, rejection_reason, reassignment_proposed_cleaner_id, reassignment_proposed_at, reassignment_proposed_by, reassignment_attempts, auto_delegation_enabled, booking_date, booking_time, total_price, reminders_sent, created_at')
+      .or(`rejected_at.gte.${cutoff},status.in.(awaiting_company_proposal,awaiting_customer_approval,auto_reassigning)`)
+      .order('rejected_at', { ascending: false, nullsFirst: false });
+
+    if (error) {
+      console.error('[reassignments] fetch error:', error);
+      document.getElementById('reassignments-list').innerHTML = '<div style="padding:20px;color:#E24B4A">Kunde inte ladda ärenden: ' + escHtml(error.message || '') + '</div>';
+      return;
+    }
+
+    window._reassignData = bookings || [];
+
+    // Ladda cleaner + company-info
+    const cleanerIds = new Set();
+    window._reassignData.forEach(b => {
+      if (b.cleaner_id) cleanerIds.add(b.cleaner_id);
+      if (b.reassignment_proposed_cleaner_id) cleanerIds.add(b.reassignment_proposed_cleaner_id);
+      if (b.reassignment_proposed_by) cleanerIds.add(b.reassignment_proposed_by);
+    });
+
+    let cleanerMap = {};
+    let companyMap = {};
+    if (cleanerIds.size > 0) {
+      const { data: cleaners } = await SB
+        .from('cleaners')
+        .select('id, full_name, company_id')
+        .in('id', Array.from(cleanerIds));
+      (cleaners || []).forEach(c => { cleanerMap[c.id] = c; });
+
+      const companyIds = new Set((cleaners || []).filter(c => c.company_id).map(c => c.company_id));
+      if (companyIds.size > 0) {
+        const { data: companies } = await SB
+          .from('companies')
+          .select('id, name, display_name, slug')
+          .in('id', Array.from(companyIds));
+        (companies || []).forEach(c => { companyMap[c.id] = c; });
+      }
+    }
+
+    window._reassignCleaners = cleanerMap;
+    window._reassignCompanies = companyMap;
+
+    renderReassignmentStats();
+    renderReassignmentCompanies();
+    renderReassignmentsList();
+    updateReassignBadge();
+  } catch (e) {
+    console.error('[reassignments] error:', e);
+  }
+}
+
+function renderReassignmentStats() {
+  const data = window._reassignData || [];
+  const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+  const active = data.filter(b =>
+    ['awaiting_company_proposal', 'awaiting_customer_approval', 'auto_reassigning'].includes(b.status)
+  ).length;
+
+  const recent = data.filter(b => b.rejected_at && new Date(b.rejected_at).getTime() >= cutoff30d);
+
+  const vdTimeouts = recent.filter(b => (b.reminders_sent || []).includes('vd_timeout_2h')).length;
+  const custTimeouts = recent.filter(b => (b.reminders_sent || []).includes('customer_timeout_1h')).length;
+
+  const autoDelegated = recent.filter(b =>
+    b.status === 'confirmed' &&
+    (b.reassignment_attempts || 0) > 0 &&
+    !b.reassignment_proposed_at
+  ).length;
+
+  const totalCompleted = recent.filter(b =>
+    ['confirmed', 'completed', 'klar'].includes(b.status)
+  ).length;
+
+  const autoPct = totalCompleted > 0 ? Math.round(autoDelegated / totalCompleted * 100) : 0;
+
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-auto').textContent = autoDelegated;
+  document.getElementById('stat-auto-pct').textContent = totalCompleted > 0 ? autoPct + '% av ' + totalCompleted + ' avslutade' : '—';
+  document.getElementById('stat-vd-timeout').textContent = vdTimeouts;
+  document.getElementById('stat-cust-timeout').textContent = custTimeouts;
+}
+
+function renderReassignmentCompanies() {
+  const data = window._reassignData || [];
+  const cleaners = window._reassignCleaners || {};
+  const companies = window._reassignCompanies || {};
+
+  const byCompany = {};
+  data.forEach(b => {
+    if (!b.cleaner_id) return;
+    const c = cleaners[b.cleaner_id];
+    if (!c?.company_id) return;
+    const co = companies[c.company_id];
+    if (!co) return;
+
+    if (!byCompany[c.company_id]) {
+      byCompany[c.company_id] = {
+        name: co.display_name || co.name,
+        slug: co.slug,
+        total: 0,
+        autoDelegated: 0,
+        vdTimeouts: 0,
+        custTimeouts: 0,
+        responseTimes: [],
+      };
+    }
+
+    const bc = byCompany[c.company_id];
+    bc.total++;
+
+    if (b.status === 'confirmed' && b.reassignment_attempts > 0 && !b.reassignment_proposed_at) {
+      bc.autoDelegated++;
+    }
+    if ((b.reminders_sent || []).includes('vd_timeout_2h')) bc.vdTimeouts++;
+    if ((b.reminders_sent || []).includes('customer_timeout_1h')) bc.custTimeouts++;
+
+    if (b.rejected_at && b.reassignment_proposed_at) {
+      const ms = new Date(b.reassignment_proposed_at).getTime() - new Date(b.rejected_at).getTime();
+      bc.responseTimes.push(ms);
+    }
+  });
+
+  const rows = Object.values(byCompany).sort((a, b) => b.total - a.total);
+
+  if (rows.length === 0) {
+    document.getElementById('reassign-companies').innerHTML = '<div style="padding:20px;text-align:center;color:#6B6960">Inga ärenden senaste 30 dagarna.</div>';
+    return;
+  }
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="border-bottom:1px solid #E5E7EB;text-align:left">';
+  html += '<th style="padding:8px 12px;font-weight:600">Företag</th>';
+  html += '<th style="padding:8px 12px;font-weight:600;text-align:right">Ärenden</th>';
+  html += '<th style="padding:8px 12px;font-weight:600;text-align:right">Auto-deleg.</th>';
+  html += '<th style="padding:8px 12px;font-weight:600;text-align:right">VD-timeout</th>';
+  html += '<th style="padding:8px 12px;font-weight:600;text-align:right">Kund-timeout</th>';
+  html += '<th style="padding:8px 12px;font-weight:600;text-align:right">Snitt svarstid</th>';
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(r => {
+    const avgMs = r.responseTimes.length > 0 ? r.responseTimes.reduce((a, b) => a + b, 0) / r.responseTimes.length : 0;
+    const avgMin = Math.round(avgMs / 60000);
+    const timeoutWarn = r.total > 0 && (r.vdTimeouts + r.custTimeouts) / r.total > 0.3;
+
+    html += '<tr style="border-bottom:1px solid #F3F4F6' + (timeoutWarn ? ';background:#FEF3C7' : '') + '">';
+    html += '<td style="padding:8px 12px"><a href="foretag.html#' + escHtml(r.slug || '') + '" target="_blank" style="color:#0F6E56;text-decoration:none;font-weight:500">' + escHtml(r.name) + '</a></td>';
+    html += '<td style="padding:8px 12px;text-align:right">' + r.total + '</td>';
+    html += '<td style="padding:8px 12px;text-align:right;color:#0F6E56;font-weight:500">' + r.autoDelegated + '</td>';
+    html += '<td style="padding:8px 12px;text-align:right;color:' + (r.vdTimeouts > 0 ? '#EF9F27' : '#6B6960') + '">' + r.vdTimeouts + '</td>';
+    html += '<td style="padding:8px 12px;text-align:right;color:' + (r.custTimeouts > 0 ? '#EF9F27' : '#6B6960') + '">' + r.custTimeouts + '</td>';
+    html += '<td style="padding:8px 12px;text-align:right">' + (avgMin > 0 ? avgMin + ' min' : '—') + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('reassign-companies').innerHTML = html;
+}
+
+function renderReassignmentsList() {
+  const data = window._reassignData || [];
+  const filter = window._reassignFilter || 'active';
+  const cleaners = window._reassignCleaners || {};
+  const companies = window._reassignCompanies || {};
+
+  let filtered = data;
+  if (filter === 'active') {
+    filtered = data.filter(b => ['awaiting_company_proposal', 'awaiting_customer_approval', 'auto_reassigning'].includes(b.status));
+  } else if (filter === 'timeout') {
+    filtered = data.filter(b => {
+      const rs = b.reminders_sent || [];
+      return rs.includes('vd_timeout_2h') || rs.includes('customer_timeout_1h');
+    });
+  } else if (filter === 'auto') {
+    filtered = data.filter(b => b.status === 'confirmed' && b.reassignment_attempts > 0 && !b.reassignment_proposed_at);
+  }
+
+  document.getElementById('chip-reassign-active').textContent = data.filter(b => ['awaiting_company_proposal', 'awaiting_customer_approval', 'auto_reassigning'].includes(b.status)).length;
+  document.getElementById('chip-reassign-timeout').textContent = data.filter(b => (b.reminders_sent || []).includes('vd_timeout_2h') || (b.reminders_sent || []).includes('customer_timeout_1h')).length;
+  document.getElementById('chip-reassign-auto').textContent = data.filter(b => b.status === 'confirmed' && b.reassignment_attempts > 0 && !b.reassignment_proposed_at).length;
+  document.getElementById('chip-reassign-all').textContent = data.length;
+
+  if (filtered.length === 0) {
+    document.getElementById('reassignments-list').innerHTML = '<div style="padding:40px;text-align:center;color:#6B6960"><div style="font-size:2rem;margin-bottom:8px">🎉</div><div>Inga ärenden matchar filtret.</div></div>';
+    return;
+  }
+
+  const statusEmojis = {
+    awaiting_company_proposal: '⏳',
+    awaiting_customer_approval: '🔔',
+    auto_reassigning: '🔄',
+    confirmed: '✅',
+    awaiting_reassignment: '🔄',
+    avbokad: '❌',
+    cancelled: '❌',
+    refunded: '↩️',
+    timed_out: '⏰',
+  };
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="border-bottom:1px solid #E5E7EB;text-align:left">';
+  html += '<th style="padding:10px 12px;font-weight:600">Status</th>';
+  html += '<th style="padding:10px 12px;font-weight:600">Kund</th>';
+  html += '<th style="padding:10px 12px;font-weight:600">Företag</th>';
+  html += '<th style="padding:10px 12px;font-weight:600">Avböjde → Föreslagen</th>';
+  html += '<th style="padding:10px 12px;font-weight:600">Tid sedan</th>';
+  html += '<th style="padding:10px 12px;font-weight:600">Auto-del.</th>';
+  html += '<th style="padding:10px 12px;font-weight:600">Åtgärd</th>';
+  html += '</tr></thead><tbody>';
+
+  filtered.forEach(b => {
+    const prev = b.cleaner_id ? cleaners[b.cleaner_id] : null;
+    const proposed = b.reassignment_proposed_cleaner_id ? cleaners[b.reassignment_proposed_cleaner_id] : null;
+    const companyId = prev?.company_id;
+    const company = companyId ? companies[companyId] : null;
+    const statusEmoji = statusEmojis[b.status] || '•';
+    const rs = b.reminders_sent || [];
+    const hasTimeout = rs.includes('vd_timeout_2h') || rs.includes('customer_timeout_1h');
+
+    let timeSince = '—';
+    if (b.rejected_at) {
+      const mins = Math.floor((Date.now() - new Date(b.rejected_at).getTime()) / 60000);
+      if (mins < 60) timeSince = mins + ' min';
+      else if (mins < 1440) timeSince = Math.floor(mins / 60) + 'h ' + (mins % 60) + 'min';
+      else timeSince = Math.floor(mins / 1440) + 'd';
+    }
+
+    const autoDel = b.auto_delegation_enabled === true ? '✓' : b.auto_delegation_enabled === false ? '✗' : '—';
+
+    html += '<tr style="border-bottom:1px solid #F3F4F6' + (hasTimeout ? ';background:#FEF3C7' : '') + '">';
+    html += '<td style="padding:10px 12px">' + statusEmoji + ' <span style="font-size:.78rem">' + escHtml(b.status) + '</span></td>';
+    html += '<td style="padding:10px 12px">' + escHtml(b.customer_name || '—') + '</td>';
+    html += '<td style="padding:10px 12px">' + (company ? escHtml(company.display_name || company.name) : '—') + '</td>';
+    html += '<td style="padding:10px 12px;font-size:.82rem">' + escHtml(prev?.full_name || '?') + ' → ' + escHtml(proposed?.full_name || '?') + '</td>';
+    html += '<td style="padding:10px 12px;font-size:.82rem">' + timeSince + '</td>';
+    html += '<td style="padding:10px 12px;text-align:center">' + autoDel + '</td>';
+    html += '<td style="padding:10px 12px"><a href="#" onclick="viewBookingDetails(\'' + b.id + '\');return false" style="color:#0F6E56;text-decoration:none;font-size:.82rem">Visa →</a></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('reassignments-list').innerHTML = html;
+}
+
+function updateReassignBadge() {
+  const data = window._reassignData || [];
+  const active = data.filter(b =>
+    ['awaiting_company_proposal', 'awaiting_customer_approval', 'auto_reassigning'].includes(b.status)
+  ).length;
+
+  const badge = document.getElementById('badge-reassign');
+  if (badge) {
+    badge.textContent = active;
+    badge.style.display = active > 0 ? 'inline-block' : 'none';
+  }
+}
+
+function viewBookingDetails(bookingId) {
+  if (typeof openBookingModal === 'function') {
+    openBookingModal(bookingId);
+  } else if (typeof viewBooking === 'function') {
+    viewBooking(bookingId);
+  } else {
+    showPage('bookings');
+    setTimeout(() => {
+      const row = document.querySelector('[data-booking-id="' + bookingId + '"]');
+      if (row) row.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+  }
+}
+
+// Ladda badge vid sidladdning
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (typeof renderReassignments === 'function') {
+      renderReassignments();
+    }
+  }, 2000);
+});
+
+// Auto-refresh var 60:e sekund när sidan är synlig
+setInterval(() => {
+  if (typeof page !== 'undefined' && page === 'reassignments' && document.visibilityState === 'visible') {
+    renderReassignments();
+  }
+}, 60000);
 </script>
 <script src="js/feedback.js" defer></script>
 </body>
