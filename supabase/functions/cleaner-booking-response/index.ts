@@ -123,15 +123,39 @@ serve(async (req) => {
     // REJECT
     // ════════════════════════════════════════════════════════
     if (action === "reject") {
-      // ── Set awaiting_reassignment — give customer 24h to pick new cleaner ──
-      await sb.from("bookings").update({
-        status: "awaiting_reassignment",
+      // ── FAS 2: Avgör om detta är företag eller solo ──
+      // Om avböjande cleaner tillhör ett företag → awaiting_company_proposal
+      // VD får hantera. Kund vet inget än.
+      // Om solo → awaiting_reassignment (befintligt flöde)
+
+      const isCompanyBooking = !!cleaner.company_id;
+      const newStatus = isCompanyBooking ? "awaiting_company_proposal" : "awaiting_reassignment";
+
+      // Bevara cleaner_id och cleaner_name för företagsbokningar
+      // (VD behöver se vem som avböjde och var bokningen var tilldelad)
+      const updateFields: Record<string, unknown> = {
+        status: newStatus,
         rejected_at: new Date().toISOString(),
         rejection_reason: reason || null,
         admin_notes: `rejected_by:${cleaner.id}`,
-        cleaner_id: null,
-        cleaner_name: null,
-      }).eq("id", booking_id);
+      };
+
+      if (!isCompanyBooking) {
+        // Solo: nollställ cleaner så kund kan välja ny
+        updateFields.cleaner_id = null;
+        updateFields.cleaner_name = null;
+      }
+      // För företagsbokningar: behåll cleaner_id som "sist tilldelad"
+      // VD kommer att sätta ny cleaner_id via company-propose-substitute
+
+      await sb.from("bookings").update(updateFields).eq("id", booking_id);
+
+      log("info", "cleaner-booking-response", `Booking ${newStatus}`, {
+        booking_id,
+        cleaner_id: cleaner.id,
+        is_company: isCompanyBooking,
+        company_id: cleaner.company_id || null
+      });
 
       // ── NO immediate refund — customer gets 24h to rebook ──
       // Auto-refund handled by auto-remind after 24h if still awaiting_reassignment
@@ -140,7 +164,7 @@ serve(async (req) => {
       const refundUrl = `https://spick.se/min-bokning.html?bid=${booking_id}&action=refund`;
 
       // Email to customer — choose new cleaner or get refund
-      if (customerEmail) {
+      if (customerEmail && !isCompanyBooking) {
         const html = wrap(`
           <h2>Din städare kunde tyvärr inte ta uppdraget</h2>
           <p>Hej ${esc(customerName)},</p>
@@ -177,8 +201,80 @@ serve(async (req) => {
         <p>Kunden har fått mejl med alternativ att välja ny städare eller begära återbetalning. Auto-refund efter 24h.</p>
       `));
 
-      log("info", "cleaner-booking-response", "Booking rejected — awaiting reassignment", { booking_id, cleaner_id: cleaner.id });
-      return json({ success: true, message: "Bokning avböjd. Kunden har fått mejl med alternativ." }, 200, CORS);
+      // ── FAS 2: Notifiera VD om detta var en företagsbokning ──
+      let companyName: string | null = null;
+      if (isCompanyBooking && cleaner.company_id) {
+        try {
+          const { data: company } = await sb
+            .from("companies")
+            .select("display_name, name, owner_cleaner_id")
+            .eq("id", cleaner.company_id)
+            .single();
+
+          if (company) {
+            companyName = company.display_name || company.name;
+          }
+
+          if (company?.owner_cleaner_id) {
+            const { data: owner } = await sb
+              .from("cleaners")
+              .select("email, full_name")
+              .eq("id", company.owner_cleaner_id)
+              .single();
+
+            if (owner?.email) {
+              const dashboardUrl = "https://spick.se/stadare-dashboard.html";
+
+              await sendEmail(owner.email, `[Spick] Ersättare behövs: ${esc(customerName)} ${formatDate(bookingDate)}`, wrap(`
+                <h2>Städare avböjde — du behöver föreslå ersättare</h2>
+                <p>Hej ${esc(owner.full_name)},</p>
+                <p><strong>${esc(cleaner.full_name)}</strong> har avböjt en bokning för ditt företag. Du behöver föreslå en ersättare från ditt team inom 2 timmar.</p>
+                ${card([
+                  ["Kund", esc(customerName)],
+                  ["Tjänst", esc(serviceType)],
+                  ["Datum & tid", `${formatDate(bookingDate)} kl ${esc(booking.booking_time)}`],
+                  ["Adress", esc(booking.address || "-")],
+                  ["Pris", `${booking.total_price} kr`],
+                  ["Avböjare", esc(cleaner.full_name)],
+                  ["Anledning", esc(reason || "Ingen angiven")],
+                ])}
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">
+                  <tr>
+                    <td style="padding:8px">
+                      <a href="${dashboardUrl}" style="display:block;background:#0F6E56;color:#fff;padding:16px 24px;border-radius:12px;text-decoration:none;text-align:center;font-weight:700;font-size:16px">Öppna Spick-dashboard →</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="color:#6B6960;font-size:14px">Om du inte svarar inom 2 timmar kommer kunden automatiskt få välja ersättare själv. Om ingen ersättare från ditt team kan hjälpa, kan du direkt släppa bokningen för kundval.</p>
+              `));
+            }
+          }
+
+          // Admin-kopia för övervakning
+          await sendEmail(ADMIN, `[Spick admin] Företagsbokning avböjd — ${companyName || cleaner.company_id}`, wrap(`
+            <h2>Företagsbokning avböjd av teammedlem</h2>
+            ${card([
+              ["Avböjare", esc(cleaner.full_name)],
+              ["Företag", esc(companyName || String(cleaner.company_id))],
+              ["Bokning", `${esc(serviceType)} ${formatDate(bookingDate)}`],
+              ["Kund", esc(customerName)],
+              ["Status", "awaiting_company_proposal"],
+            ])}
+            <p>VD har 2h att föreslå ersättare. Efter det eskaleras till awaiting_reassignment automatiskt.</p>
+          `));
+        } catch (notifyErr) {
+          log("error", "cleaner-booking-response", "Failed to notify company owner", {
+            error: (notifyErr as Error).message,
+            company_id: cleaner.company_id
+          });
+        }
+      }
+
+      log("info", "cleaner-booking-response", `Booking rejected — ${newStatus}`, { booking_id, cleaner_id: cleaner.id });
+      const msg = isCompanyBooking
+        ? "Bokning avböjd. VD har notifierats för att föreslå ersättare."
+        : "Bokning avböjd. Kunden har fått mejl med alternativ.";
+      return json({ success: true, message: msg }, 200, CORS);
     }
 
     return json({ error: "Ogiltig action" }, 400, CORS);
