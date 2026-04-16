@@ -8132,11 +8132,29 @@ async function ownerRejectBooking(bookingId, cleanerId) {
 
 async function ownerCancelBooking(bookingId) {
   if (!confirm('\u00c4r du s\u00e4ker p\u00e5 att du vill avboka?')) return;
+
+  // Hämta customer_email från cachad booking (för kund-flödet i EF)
+  // VD/admin bypassas via JWT i EF:en men email är bra att skicka om möjligt
+  var booking = (data_teamBookings || window.data_teamBookings || []).find(function(b) {
+    return b.id === bookingId;
+  });
+
   try {
+    // Använd inloggad användares JWT (admin/VD får bypass i EF:en)
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SPICK.SUPA_KEY;
+
     var res = await fetch(SUPA_URL + '/functions/v1/booking-cancel-v2', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
-      body: JSON.stringify({ booking_id: bookingId, customer_email: 'admin@spick.se' })
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SPICK.SUPA_KEY,
+        Authorization: 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        booking_id: bookingId,
+        customer_email: booking && booking.customer_email ? booking.customer_email : ''
+      })
     });
     var result = await res.json();
     if (res.ok && result.success) {
