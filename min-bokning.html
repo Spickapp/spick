@@ -151,6 +151,9 @@ const email = params.get('email');
 const statusMap = {
   paid: ['paid','✅ Bekräftad och betald'],
   awaiting_reassignment: ['pending','🔄 Din städare avböjde — välj ny nedan'],
+  awaiting_company_proposal: ['pending','⏳ Företaget söker ersättare'],
+  awaiting_customer_approval: ['pending','🔔 Bekräfta föreslagen städare'],
+  auto_reassigning: ['pending','🔄 Tilldelar ny städare automatiskt'],
   pending: ['pending','⏳ Väntar på betalning'],
   failed: ['cancelled','❌ Betalning misslyckades'],
   expired: ['cancelled','⏰ Bokning utgången'],
@@ -204,7 +207,24 @@ async function load() {
     requestRefund(b);
   }
   window._booking = b;
-  if (b.status === 'awaiting_reassignment') { hideIrrelevantSections(); }
+  // ── FAS 5: Awaiting customer approval ──
+  if (b.status === 'awaiting_customer_approval') {
+    loadProposalApprovalUI(b);
+  }
+  // ── FAS 5: Awaiting company proposal (info only) ──
+  if (b.status === 'awaiting_company_proposal') {
+    showCompanySearchingUI(b);
+  }
+  // Handle email-link actions
+  if (params.get('action') === 'approve_proposal' && b.status === 'awaiting_customer_approval') {
+    respondToProposal(b, 'approve');
+  }
+  if (params.get('action') === 'reject_proposal' && b.status === 'awaiting_customer_approval') {
+    respondToProposal(b, 'reject');
+  }
+  if (b.status === 'awaiting_reassignment' || b.status === 'awaiting_customer_approval' || b.status === 'awaiting_company_proposal') {
+    hideIrrelevantSections();
+  }
   if (b.payment_status === 'refunded' || b.status === 'cancelled') { hideForRefunded(b); }
   // Visa åtgärdsknappar
   const actBtns = document.getElementById('action-btns');
@@ -632,6 +652,139 @@ async function cancelBooking(id) {
   } catch (e) {
     console.error('Cancel error:', e);
     alert('Fel vid avbokning. Kontakta hello@spick.se');
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+// FAS 5: AUTO-DELEGATION — KUND-UI FÖR PROPOSAL-FLÖDE
+// ═════════════════════════════════════════════════════════════
+
+async function loadProposalApprovalUI(b) {
+  if (!b.reassignment_proposed_cleaner_id) {
+    console.warn('[proposal] missing proposed cleaner id');
+    return;
+  }
+
+  const { data: cd } = await SB
+    .from('v_cleaners_for_booking')
+    .select('full_name, avg_rating, review_count, avatar_url, bio, city, company_display_name, company_name')
+    .eq('id', b.reassignment_proposed_cleaner_id)
+    .maybeSingle();
+
+  const proposed = cd;
+
+  const proposedAt = b.reassignment_proposed_at ? new Date(b.reassignment_proposed_at) : new Date();
+  const deadlineMs = proposedAt.getTime() + 60 * 60 * 1000;
+  const remainingMs = Math.max(0, deadlineMs - Date.now());
+  const remainingMin = Math.floor(remainingMs / 60000);
+
+  const container = document.createElement('div');
+  container.id = 'proposal-approval-ui';
+  container.style.cssText = 'background:#EFF6FF;border:2px solid #3B82F6;border-radius:14px;padding:20px;margin:20px 0';
+
+  const avatar = proposed?.avatar_url
+    ? `<img src="${escHtml(proposed.avatar_url)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover">`
+    : `<div style="width:64px;height:64px;border-radius:50%;background:#DBEAFE;color:#1E40AF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.5rem">${escHtml((proposed?.full_name || '?').slice(0,1))}</div>`;
+
+  // FIX-4: Matchar resten av plattformen
+  const rating = Number(proposed?.avg_rating) || 0;
+  const reviewCount = Number(proposed?.review_count) || 0;
+  const hasRatings = rating > 0 && reviewCount > 0;
+
+  // FIX-5: Varumärkes-konsekvens
+  const ratingDisplay = hasRatings
+    ? `<span style="color:#F59E0B;font-weight:700">⭐ ${rating.toFixed(1)}</span> <span style="color:#6B6960;font-size:.82rem">(${reviewCount} betyg)</span>`
+    : '<span style="color:#6B6960">Ny på Spick</span>';
+
+  const companyName = proposed?.company_display_name || proposed?.company_name || '';
+  const companyLine = companyName ? `<div style="font-size:.78rem;color:#6B6960">Från ${escHtml(companyName)}</div>` : '';
+
+  container.innerHTML = `
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:.82rem;color:#1E40AF;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Företaget föreslår ersättare</div>
+      <h3 style="font-family:Playfair Display,serif;font-size:1.3rem;margin:0">Bekräfta din nya städare</h3>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        ${avatar}
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:2px">${escHtml(proposed?.full_name || 'Städare')}</div>
+          <div style="margin-bottom:4px">${ratingDisplay}</div>
+          ${companyLine}
+          ${proposed?.city ? `<div style="font-size:.78rem;color:#6B6960">${escHtml(proposed.city)}</div>` : ''}
+        </div>
+      </div>
+      ${proposed?.bio ? `<div style="font-size:.82rem;color:#6B6960;padding-top:10px;border-top:1px solid #F3F4F6;font-style:italic">"${escHtml(proposed.bio)}"</div>` : ''}
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px;margin-bottom:14px;font-size:.85rem">
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6B6960">Datum</span><span style="font-weight:600">${new Date(b.date).toLocaleDateString('sv-SE', {weekday:'long',day:'numeric',month:'long'})}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6B6960">Tid</span><span style="font-weight:600">${escHtml(b.time.slice(0,5))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6B6960">Pris</span><span style="font-weight:600">${b.total_price} kr (oförändrat)</span></div>
+    </div>
+    <div style="text-align:center;font-size:.8rem;color:#6B6960;margin-bottom:14px">
+      ⏱ ${remainingMin > 0 ? `Svara inom ${remainingMin} min` : 'Svarstid snart slut'}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="respondToProposal(window._booking, 'approve')" style="padding:14px;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;font-family:inherit">✓ Ja, bra!</button>
+      <button onclick="respondToProposal(window._booking, 'reject')" style="padding:14px;background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit">Föreslå någon annan</button>
+      <button onclick="respondToProposal(window._booking, 'choose_self')" style="padding:12px;background:transparent;color:#6B6960;border:none;font-size:.85rem;cursor:pointer;font-family:inherit;text-decoration:underline">Jag väljer själv istället</button>
+      <button onclick="respondToProposal(window._booking, 'refund')" style="padding:12px;background:transparent;color:#DC2626;border:none;font-size:.85rem;cursor:pointer;font-family:inherit;text-decoration:underline">Avboka och få pengarna tillbaka</button>
+    </div>
+  `;
+
+  document.getElementById('content').appendChild(container);
+}
+
+function showCompanySearchingUI(b) {
+  const container = document.createElement('div');
+  container.style.cssText = 'background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:12px;padding:20px;margin:20px 0;text-align:center';
+  container.innerHTML = `
+    <div style="font-size:2rem;margin-bottom:10px">🔍</div>
+    <h3 style="font-family:Playfair Display,serif;margin-bottom:8px">Företaget söker ersättare åt dig</h3>
+    <p style="color:#6B6960;margin-bottom:14px;font-size:.9rem">En teammedlem kunde inte ta din städning. Företaget hanterar det och föreslår en ersättare inom kort.</p>
+    <p style="color:#92400E;font-size:.82rem;font-weight:600">Du behöver inte göra något just nu. Vi hör av oss så fort ersättare är föreslagen.</p>
+  `;
+  document.getElementById('content').appendChild(container);
+}
+
+async function respondToProposal(b, decision) {
+  const confirmText = {
+    approve: 'Bekräfta att du godkänner den föreslagna städaren?',
+    reject: 'Avböj förslaget? Företaget får föreslå en annan.',
+    choose_self: 'Välj ersättare själv istället? Du kommer se en lista.',
+    refund: 'Avboka bokningen och få pengarna tillbaka?',
+  };
+
+  if (!confirm(confirmText[decision] || 'Bekräfta val?')) return;
+
+  try {
+    // FIX-3: SPICK.SUPA_URL och SPICK.SUPA_KEY (globala i filen)
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/customer-approve-proposal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY
+      },
+      body: JSON.stringify({
+        booking_id: b.id,
+        customer_email: b.customer_email || b.email,
+        decision: decision,
+      }),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      alert(result.error || 'Något gick fel. Försök igen eller kontakta support.');
+      return;
+    }
+
+    alert(result.message || 'Tack för ditt svar!');
+    window.location.reload();
+  } catch (e) {
+    console.error('[respondToProposal]', e);
+    alert('Nätverksfel — försök igen.');
   }
 }
 

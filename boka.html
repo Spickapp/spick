@@ -675,6 +675,22 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
         <div class="sum-rut-note" id="s-rut-note"></div>
       </div>
 
+      <!-- FAS 5: Auto-delegation val (visas bara för företagsbokningar) -->
+      <div id="auto-delegation-section" style="display:none;background:#F0F9FF;border:1.5px solid #BAE0FA;border-radius:10px;padding:14px;margin:1rem 0;font-size:.875rem">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <input type="checkbox" id="auto-delegation-checkbox" style="margin-top:3px;accent-color:#0F6E56;cursor:pointer;flex-shrink:0;width:18px;height:18px">
+          <label for="auto-delegation-checkbox" style="cursor:pointer;flex:1">
+            <div style="font-weight:600;margin-bottom:4px;color:#0F6E56">Låt företaget sköta ersättare åt mig</div>
+            <div style="color:#6B6960;font-size:.82rem;line-height:1.45">
+              Om din städare får förhinder skickar <span id="auto-del-company-name">företaget</span> automatiskt en annan teammedlem. Du får ett meddelande — inget att godkänna.
+            </div>
+            <div style="color:#6B6960;font-size:.75rem;margin-top:6px">
+              💡 Du kan ändra detta senare i dina kontoinställningar eller per bokning.
+            </div>
+          </label>
+        </div>
+      </div>
+
       <div class="trust-list">
         <div class="trust-item">Trygg betalning via kort eller Klarna</div>
         <div class="trust-item">Avbokning gratis upp till 24h innan</div>
@@ -2698,6 +2714,7 @@ function goStep4() {
 
   buildConfirmSummary();
   setStep(4);
+  setupAutoDelegationUI();
 }
 
 function buildConfirmSummary() {
@@ -2726,6 +2743,53 @@ function buildConfirmSummary() {
       </div>
       ${state.customerType === 'foretag' ? '<div style="font-size:.78rem;color:var(--m)">Exkl. moms</div>' : (useRut ? '<div style="font-size:.78rem;color:#0F6E56">Inkl. 50% RUT-avdrag</div>' : '')}
     </div>`;
+}
+
+// ── FAS 5: AUTO-DELEGATION UI-SETUP ──────────────────────────────────────────
+async function setupAutoDelegationUI() {
+  const section = document.getElementById('auto-delegation-section');
+  if (!section) return;
+
+  // Försök hitta cleaner från state.availableCleaners först
+  let selectedCleaner = (state.availableCleaners || []).find(c => c.id === state.cleanerId);
+
+  // FIX-1+2: Om direktlänk-flöde (availableCleaners tom), hämta cleaner separat
+  if (!selectedCleaner && state.cleanerId) {
+    try {
+      const res = await fetch(
+        `${SUPA}/rest/v1/v_cleaners_for_booking?id=eq.${state.cleanerId}&select=id,company_id,company_name,company_display_name`,
+        {headers: H}
+      );
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows[0]) selectedCleaner = rows[0];
+    } catch (e) {
+      console.warn('setupAutoDelegationUI: fetch failed', e);
+    }
+  }
+
+  const isCompanyBooking = !!(selectedCleaner && selectedCleaner.company_id);
+
+  if (!isCompanyBooking) {
+    section.style.display = 'none';
+    return;
+  }
+
+  const companyName = selectedCleaner.company_display_name || selectedCleaner.company_name || 'företaget';
+  const nameSpan = document.getElementById('auto-del-company-name');
+  if (nameSpan) nameSpan.textContent = companyName;
+
+  section.style.display = 'block';
+
+  // Förifyll från kundprofil
+  if (state.email) {
+    try {
+      const r = await fetch(`${SUPA}/rest/v1/customer_profiles?select=auto_delegation_enabled&email=eq.${encodeURIComponent(state.email)}`, {headers: H});
+      const rows = await r.json();
+      if (rows && rows[0] && rows[0].auto_delegation_enabled === true) {
+        document.getElementById('auto-delegation-checkbox').checked = true;
+      }
+    } catch (e) { /* ignore */ }
+  }
 }
 
 // ── STEG 4: BETALA ────────────────────────────────────────────────────────────
@@ -2808,6 +2872,12 @@ async function doBook() {
         key_info: state.keyType === 'open'
           ? 'Dörren är olåst'
           : (state.keyType === 'code' ? 'Portkod: ' : state.keyType === 'key' ? 'Nyckel: ' : 'Porttelefon: ') + (state.keyInfo || ''),
+        auto_delegation_enabled: (function() {
+          const cb = document.getElementById('auto-delegation-checkbox');
+          const section = document.getElementById('auto-delegation-section');
+          if (!cb || !section || section.style.display === 'none') return undefined;
+          return cb.checked;
+        })(),
       })
     });
     if (!bcRes.ok) {

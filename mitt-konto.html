@@ -290,6 +290,23 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
       </div>
       <div class="field"><label>E-post</label><input type="email" id="pfEmail" disabled style="background:var(--gr);cursor:not-allowed"></div>
       <div class="field"><label>Stad</label><input type="text" id="pfCity" placeholder="Din stad"></div>
+
+      <!-- FAS 5: Auto-delegation preferens -->
+      <div style="background:#F0F9FF;border:1.5px solid #BAE0FA;border-radius:10px;padding:16px;margin-top:1rem;margin-bottom:1rem">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="pfAutoDelegation" style="margin-top:3px;accent-color:#0F6E56;cursor:pointer;flex-shrink:0;width:18px;height:18px">
+          <div>
+            <div style="font-weight:600;margin-bottom:4px;color:#0F6E56;font-size:.9rem">Automatisk ersättarhantering</div>
+            <div style="color:#6B6960;font-size:.82rem;line-height:1.45">
+              Om din städare får förhinder skickar företaget automatiskt en ersättare. Ingen åtgärd krävs från dig.
+            </div>
+            <div style="color:#6B6960;font-size:.75rem;margin-top:6px">
+              💡 Gäller bara för bokningar hos företag (inte solostädare). Kan ändras per bokning.
+            </div>
+          </div>
+        </label>
+      </div>
+
       <div class="save-row">
         <button class="save-btn" onclick="saveProfile()">Spara ändringar</button>
     <!-- RADERA KONTO-SEKTION -->
@@ -556,6 +573,17 @@ function showPortal(bookings, email) {
   document.getElementById('pfPhone').value = bookings[0]?.phone || '';
   document.getElementById('pfCity').value = bookings[0]?.city || '';
 
+  // FAS 5: Ladda auto-delegation-preferens
+  SB.from('customer_profiles')
+    .select('auto_delegation_enabled')
+    .eq('email', email)
+    .maybeSingle()
+    .then(({ data }) => {
+      const cb = document.getElementById('pfAutoDelegation');
+      if (cb) cb.checked = !!(data && data.auto_delegation_enabled);
+    })
+    .catch(() => { /* ignore */ });
+
   renderBookings('all');
   showNextBookingBanner(bookings);
 }
@@ -772,9 +800,17 @@ async function saveProfile() {
   const name = document.getElementById('pfName').value.trim();
   const phone = document.getElementById('pfPhone').value.trim();
   const city = document.getElementById('pfCity').value.trim();
+  const autoDelegation = document.getElementById('pfAutoDelegation')?.checked || false;
+
   await SB.from('customer_profiles').upsert({
-    email: currentEmail, name, phone, city, updated_at: new Date().toISOString()
+    email: currentEmail,
+    name,
+    phone,
+    city,
+    auto_delegation_enabled: autoDelegation,
+    updated_at: new Date().toISOString()
   }, { onConflict: 'email' });
+
   document.getElementById('saveToast').classList.add('show');
   setTimeout(() => document.getElementById('saveToast').classList.remove('show'), 3000);
 }

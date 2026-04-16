@@ -80,6 +80,7 @@ serve(async (req) => {
       business_name,
       business_org_number,
       business_reference,
+      auto_delegation_enabled,
     } = body;
 
     // Required fields
@@ -299,6 +300,7 @@ serve(async (req) => {
       business_name: business_name || null,
       business_org_number: business_org_number || null,
       business_reference: business_reference || null,
+      auto_delegation_enabled: auto_delegation_enabled === true ? true : (auto_delegation_enabled === false ? false : null),
     });
 
     if (insertErr) {
@@ -311,12 +313,19 @@ serve(async (req) => {
     // UNIQUE constraint på email (customer_profiles_email_key) gör onConflict säkert.
     // Non-blocking: fel här får INTE stoppa bokningen.
     try {
-      await supabase.from("customer_profiles").upsert({
+      const profileData: Record<string, unknown> = {
         email: email,
         name: name,
         phone: phone || null,
         address: address || null,
-      }, { onConflict: "email", ignoreDuplicates: false });
+      };
+      if (auto_delegation_enabled === true || auto_delegation_enabled === false) {
+        profileData.auto_delegation_enabled = auto_delegation_enabled;
+      }
+      await supabase.from("customer_profiles").upsert(profileData, {
+        onConflict: "email",
+        ignoreDuplicates: false
+      });
     } catch (profileErr) {
       console.warn("customer_profiles upsert failed (non-critical):", (profileErr as Error).message);
     }
