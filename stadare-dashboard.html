@@ -8514,8 +8514,32 @@ async function toggleMemberStatus(memberId, newStatus) {
   if (!confirm(newStatus === 'inactive' ? 'Pausa denna teammedlem?' : 'Aktivera denna teammedlem?')) return;
   const isActive = newStatus !== 'inactive';
   await R.update('cleaners', { status: newStatus, is_active: isActive }, `id=eq.${memberId}`);
+
+  // ── FAS 9: Pausa prenumerationer vid inaktivering ──
+  if (!isActive && cleaner.company_id) {
+    try {
+      var subRes = await fetch(SUPA_URL + '/rest/v1/subscriptions?cleaner_id=eq.' + memberId + '&company_id=eq.' + cleaner.company_id + '&status=eq.active', {
+        headers: _authHeaders()
+      });
+      var activeSubs = await subRes.json();
+      if (activeSubs && activeSubs.length > 0) {
+        await fetch(SUPA_URL + '/rest/v1/subscriptions?cleaner_id=eq.' + memberId + '&company_id=eq.' + cleaner.company_id + '&status=eq.active', {
+          method: 'PATCH',
+          headers: _authHeaders(),
+          body: JSON.stringify({
+            status: 'paused',
+            paused_at: new Date().toISOString(),
+            pause_reason: 'cleaner_deactivated'
+          })
+        });
+        showToast(activeSubs.length + ' prenumeration(er) pausade');
+      }
+    } catch (e) { console.warn('Subscription turnover failed:', e); }
+  }
+
   renderTeam();
-  showToast(newStatus === 'inactive' ? 'Teammedlem pausad' : 'Teammedlem aktiverad');
+  if (typeof loadSubscriptions === 'function') loadSubscriptions();
+  showToast(!isActive ? 'Teammedlem pausad' : 'Teammedlem aktiverad');
 }
 
 // ── TEAM INVITE ───────────────────────────────────────────
