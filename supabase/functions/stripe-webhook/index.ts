@@ -703,6 +703,122 @@ async function handleSubscriptionSetup(session: Record<string, unknown>) {
   });
 }
 
+// ── DISPUTE-HANTERING ──────────────────────────────────────────
+
+async function findBookingByPaymentIntent(piId: string) {
+  // Kolla BÅDA PI-kolumnerna (checkout vs subscription-charge)
+  const { data: b1 } = await sb
+    .from("bookings")
+    .select("id, customer_name, customer_email, total_price, cleaner_id, booking_date")
+    .eq("payment_intent_id", piId)
+    .limit(1);
+  if (b1 && b1.length > 0) return b1[0];
+
+  const { data: b2 } = await sb
+    .from("bookings")
+    .select("id, customer_name, customer_email, total_price, cleaner_id, booking_date")
+    .eq("stripe_payment_intent_id", piId)
+    .limit(1);
+  return b2?.[0] || null;
+}
+
+async function handleDisputeCreated(dispute: Record<string, unknown>) {
+  const piId = dispute.payment_intent as string;
+  if (!piId) { console.warn("[SPICK] No payment_intent in dispute"); return; }
+
+  const booking = await findBookingByPaymentIntent(piId);
+  if (!booking) {
+    console.warn("[SPICK] No booking found for PI", piId);
+    return;
+  }
+
+  const amountSek = Math.round((dispute.amount as number || 0) / 100);
+  const reason = (dispute.reason as string) || "unknown";
+
+  await sb.from("bookings").update({
+    dispute_status: "pending",
+    dispute_opened_at: new Date().toISOString(),
+    dispute_amount_sek: amountSek,
+    dispute_reason: reason,
+  }).eq("id", booking.id);
+
+  // Öka städarens tvist-räknare
+  if (booking.cleaner_id) {
+    try {
+      const { data: cl } = await sb.from("cleaners")
+        .select("disputes_count_total")
+        .eq("id", booking.cleaner_id)
+        .single();
+      if (cl) {
+        await sb.from("cleaners").update({
+          disputes_count_total: (cl.disputes_count_total || 0) + 1
+        }).eq("id", booking.cleaner_id);
+      }
+    } catch (e) { console.warn("[SPICK] Failed to update cleaner stats:", (e as Error).message); }
+  }
+
+  // Notifiera admin
+  await sendEmail(ADMIN,
+    `⚠️ Tvist öppnad: ${esc(booking.customer_name)} — ${amountSek} kr`,
+    wrap(`
+      <h2>Stripe-tvist öppnad ⚠️</h2>
+      <p><strong>Kund:</strong> ${esc(booking.customer_name)}</p>
+      <p><strong>Belopp:</strong> ${amountSek} kr</p>
+      <p><strong>Orsak:</strong> ${esc(reason)}</p>
+      <p><strong>Bokning:</strong> ${booking.booking_date} (${booking.id.slice(0,8)})</p>
+      <p style="color:#DC2626;font-weight:600">Åtgärd krävs inom 7 dagar.</p>
+      <p>Logga in på <a href="https://dashboard.stripe.com/disputes" style="color:#0F6E56">Stripe Dashboard</a> för att besvara tvisten.</p>
+    `)
+  );
+
+  console.log("[SPICK] Dispute created:", { bookingId: booking.id, amount: amountSek, reason });
+}
+
+async function handleDisputeClosed(dispute: Record<string, unknown>) {
+  const piId = dispute.payment_intent as string;
+  if (!piId) return;
+
+  const booking = await findBookingByPaymentIntent(piId);
+  if (!booking) return;
+
+  const won = (dispute.status as string) === "won";
+  const newStatus = won ? "won" : "lost";
+
+  await sb.from("bookings").update({
+    dispute_status: newStatus,
+  }).eq("id", booking.id);
+
+  // Om förlorad: öka cleaner disputes_count_lost + clawback
+  if (!won && booking.cleaner_id) {
+    try {
+      const { data: cl } = await sb.from("cleaners")
+        .select("disputes_count_lost, clawback_balance_sek")
+        .eq("id", booking.cleaner_id)
+        .single();
+      if (cl) {
+        await sb.from("cleaners").update({
+          disputes_count_lost: (cl.disputes_count_lost || 0) + 1,
+          clawback_balance_sek: (cl.clawback_balance_sek || 0) + (booking.total_price || 0),
+        }).eq("id", booking.cleaner_id);
+      }
+    } catch (e) { console.warn("[SPICK] Failed to update cleaner lost stats:", (e as Error).message); }
+  }
+
+  // Notifiera admin
+  await sendEmail(ADMIN,
+    `${won ? '✅ Tvist vunnen' : '❌ Tvist förlorad'}: ${esc(booking.customer_name)}`,
+    wrap(`
+      <h2>Tvist avslutad ${won ? '✅' : '❌'}</h2>
+      <p><strong>Resultat:</strong> ${won ? 'Vunnen — pengarna behålls' : 'Förlorad — kunden får tillbaka pengarna'}</p>
+      <p><strong>Kund:</strong> ${esc(booking.customer_name)}</p>
+      <p><strong>Bokning:</strong> ${booking.booking_date} (${booking.id.slice(0,8)})</p>
+      ${!won ? '<p style="color:#DC2626">Clawback: ' + (booking.total_price || 0) + ' kr tillagd på städarens balans.</p>' : ''}
+    `)
+  );
+
+  console.log("[SPICK] Dispute closed:", { bookingId: booking.id, won, newStatus });
+}
+
 serve(async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -754,6 +870,12 @@ serve(async (req) => {
         break;
       case "charge.refunded":
         await handleRefund(event.data.object as Record<string, unknown>);
+        break;
+      case "charge.dispute.created":
+        await handleDisputeCreated(event.data.object as Record<string, unknown>);
+        break;
+      case "charge.dispute.closed":
+        await handleDisputeClosed(event.data.object as Record<string, unknown>);
         break;
       default:
         console.log("Unhandled event:", event.type);
