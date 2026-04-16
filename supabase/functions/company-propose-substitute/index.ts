@@ -53,9 +53,12 @@ serve(async (req) => {
     }
 
     // ── PARSE INPUT ──────────────────────────────────
-    const { booking_id, new_cleaner_id } = await req.json();
-    if (!booking_id || !new_cleaner_id) {
-      return json({ error: "booking_id och new_cleaner_id krävs" }, 400, CORS);
+    const { booking_id, new_cleaner_id, let_customer_choose } = await req.json();
+    if (!booking_id) {
+      return json({ error: "booking_id krävs" }, 400, CORS);
+    }
+    if (!let_customer_choose && !new_cleaner_id) {
+      return json({ error: "new_cleaner_id krävs (eller let_customer_choose=true)" }, 400, CORS);
     }
 
     // ── FETCH BOOKING ─────────────────────────────────
@@ -68,6 +71,127 @@ serve(async (req) => {
     if (!booking) return json({ error: "Bokning hittades inte" }, 404, CORS);
     if (booking.status !== "awaiting_company_proposal") {
       return json({ error: `Bokning har status ${booking.status}, kan inte föreslå ersättare` }, 409, CORS);
+    }
+
+    // ── FAS A (BUG #7 FIX): LET CUSTOMER CHOOSE FLÖDE ──
+    if (let_customer_choose) {
+      try {
+        // Audit: verifiera att bokningens cleaner tillhör VDs företag
+        if (booking.cleaner_id) {
+          const { data: prevCleaner } = await sb
+            .from("cleaners")
+            .select("company_id")
+            .eq("id", booking.cleaner_id)
+            .maybeSingle();
+
+          if (prevCleaner?.company_id && prevCleaner.company_id !== vdCleaner.company_id) {
+            return json({ error: "Bokningen tillhör inte ditt företag" }, 403, CORS);
+          }
+        }
+
+        // Uppdatera bokning → awaiting_reassignment, rensa cleaner
+        await sb.from("bookings").update({
+          status: "awaiting_reassignment",
+          cleaner_id: null,
+          cleaner_name: null,
+          reassignment_proposed_cleaner_id: null,
+          reassignment_proposed_at: null,
+          reassignment_proposed_by: vdCleaner.id,
+          reassignment_attempts: (booking.reassignment_attempts || 0) + 1,
+        }).eq("id", booking_id);
+
+        // Förbered notifikationsdata
+        const customerFirstName = (booking.customer_name || "Kund").split(" ")[0];
+        const bookingDate = formatDate(booking.booking_date);
+        const bookingTime = (booking.booking_time || "").slice(0, 5);
+        const chooseUrl = `https://spick.se/min-bokning.html?bid=${booking_id}`;
+
+        // Push + SMS + in-app till kund
+        try {
+          await notify({
+            email: undefined,
+            phone: booking.customer_phone || undefined,
+            sms_message: `Spick: Företaget hann inte hitta ersättare för din städning ${bookingDate} ${bookingTime}. Välj själv: ${chooseUrl}`,
+            push_type: "booking_rejected_by_cleaner",
+            push_data: {
+              cleaner_name: "Ersättare",
+              date: bookingDate,
+              booking_id: booking_id,
+            },
+            in_app: {
+              title: "Välj ersättare för din bokning",
+              body: `Din städning ${bookingDate} ${bookingTime} behöver en ny städare.`,
+              type: "booking_rejected_by_cleaner",
+              job_id: booking_id,
+            },
+          });
+        } catch (notifyErr) {
+          console.warn("[let-customer-choose] notify failed:", (notifyErr as Error).message);
+        }
+
+        // Email till kund
+        if (booking.customer_email) {
+          try {
+            await sendEmail(
+              booking.customer_email,
+              "Välj ersättare för din städning",
+              wrap(`
+                <h2>Hej ${esc(customerFirstName)}!</h2>
+                <p>Ditt städföretag hann tyvärr inte hitta en ersättare för din städning.</p>
+                ${card([
+                  ["Tjänst", esc(booking.service_type || "Hemstädning")],
+                  ["Datum", esc(bookingDate)],
+                  ["Tid", `kl ${esc(bookingTime)}`],
+                  ["Adress", esc(booking.customer_address || "")],
+                ])}
+                <p>Du kan välja en annan städare själv — eller få pengarna tillbaka om ingen passar.</p>
+                <p style="text-align:center;margin:24px 0">
+                  <a href="${chooseUrl}" style="display:inline-block;padding:14px 28px;background:#0F6E56;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Välj ersättare →</a>
+                </p>
+                <p style="color:#6B6960;font-size:.9rem;margin-top:24px">Frågor? Kontakta oss på hello@spick.se</p>
+              `)
+            );
+          } catch (emailErr) {
+            console.warn("[let-customer-choose] customer email failed:", (emailErr as Error).message);
+          }
+        }
+
+        // Admin-kopia
+        try {
+          await sendEmail(
+            ADMIN,
+            `[Admin] VD släppte bokning till kundval: ${booking_id.slice(0, 8)}`,
+            wrap(`
+              <h3>VD släppte ersättare till kundval</h3>
+              ${card([
+                ["VD", `${esc(vdCleaner.full_name)} (${esc(vdCleaner.email)})`],
+                ["Företag ID", esc(vdCleaner.company_id)],
+                ["Bokning", esc(booking_id)],
+                ["Kund", `${esc(booking.customer_name || "")} (${esc(booking.customer_email || "")})`],
+                ["Datum & tid", `${esc(bookingDate)} kl ${esc(bookingTime)}`],
+                ["Tidigare städare", esc(booking.cleaner_name || "(okänd)")],
+                ["Avböj-anledning", esc(booking.rejection_reason || "(ej angiven)")],
+              ])}
+              <p>Bokningen är nu i status <code>awaiting_reassignment</code>. Kunden kan välja själv från alla tillgängliga städare.</p>
+            `)
+          );
+        } catch (adminErr) {
+          console.warn("[let-customer-choose] admin email failed:", (adminErr as Error).message);
+        }
+
+        log("info", "company-propose-substitute", "VD released to customer choice", {
+          booking_id, vd: vdCleaner.id, company_id: vdCleaner.company_id
+        });
+
+        return json({
+          success: true,
+          status: "awaiting_reassignment",
+          message: "Bokningen är nu tillgänglig för kundval. Kunden är notifierad."
+        }, 200, CORS);
+      } catch (err) {
+        console.error("[let-customer-choose] Unexpected error:", (err as Error).message);
+        return json({ error: "Kunde inte slutföra. Försök igen." }, 500, CORS);
+      }
     }
 
     // ── VERIFIERA ATT BOKNINGEN TILLHÖR VD:NS FÖRETAG ──

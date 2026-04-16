@@ -9290,46 +9290,61 @@ async function confirmProposal() {
 
 async function letCustomerChoose() {
   if (!_currentProposalBooking) return;
-  if (!confirm('Låt kunden välja ersättare själv? Bokningen flyttas till "välj-själv"-läge.')) return;
+  if (!confirm('Låt kunden välja ersättare själv? Bokningen flyttas till "välj-själv"-läge och kunden notifieras.')) return;
 
   var msg = document.getElementById('propose-msg');
+  var btnLet = document.querySelector('[onclick*="letCustomerChoose"]');
+  if (btnLet) btnLet.disabled = true;
+
   try {
     var sessRes = await SB.auth.getSession();
     var token = sessRes?.data?.session?.access_token;
     if (!token) throw new Error('Ingen session — logga in igen');
 
-    // Uppdatera direkt via REST (status = awaiting_reassignment)
-    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + _currentProposalBooking.id, {
-      method: 'PATCH',
+    // Anropa company-propose-substitute EF med let_customer_choose=true
+    // EF kör som service_role → bypasser booking_slots trigger-problem
+    var res = await fetch(SUPA_URL + '/functions/v1/company-propose-substitute', {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPA_KEY,
         'Authorization': 'Bearer ' + token,
-        'Prefer': 'return=minimal'
       },
       body: JSON.stringify({
-        status: 'awaiting_reassignment',
-        cleaner_id: null,
-        cleaner_name: null
+        booking_id: _currentProposalBooking.id,
+        let_customer_choose: true,
       })
     });
-    if (!res.ok) throw new Error('Kunde inte uppdatera bokning');
 
-    msg.style.display = 'block';
-    msg.style.color = 'var(--g)';
-    msg.textContent = 'Kunden kan nu välja själv.';
-    showToast('✓ Kunden får välja själv');
+    var result = await res.json();
 
-    setTimeout(function() {
-      closeProposeModal();
-      loadPendingReassignments();
-    }, 1200);
-  } catch(e) {
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Kunde inte uppdatera bokning');
+    }
+
     if (msg) {
       msg.style.display = 'block';
-      msg.style.color = 'var(--danger)';
-      msg.textContent = 'Fel: ' + e.message;
+      msg.style.color = 'var(--g)';
+      msg.textContent = result.message || 'Kunden kan nu välja själv.';
     }
+
+    if (typeof showToast === 'function') {
+      showToast('✓ Kunden får välja själv');
+    }
+
+    setTimeout(function() {
+      if (typeof closeProposeModal === 'function') closeProposeModal();
+      if (typeof loadPendingReassignments === 'function') loadPendingReassignments();
+    }, 800);
+
+  } catch (e) {
+    console.error('[letCustomerChoose]', e);
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.color = 'var(--r)';
+      msg.textContent = e.message || 'Något gick fel. Försök igen.';
+    }
+    if (btnLet) btnLet.disabled = false;
   }
 }
 
