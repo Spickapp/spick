@@ -9105,7 +9105,7 @@ async function loadPendingReassignments() {
   try {
     // Hämta bokningar som väntar på VD:s förslag för detta företag
     // Filtrera på cleaner_id som tillhör företaget
-    var teamRes = await R.selectList('cleaners', 'select=id&company_id=eq.' + window._companyId);
+    var teamRes = await R.select('cleaners', 'select=id&company_id=eq.' + window._companyId);
     var teamIds = (teamRes.data || []).map(function(c){ return c.id; });
     if (teamIds.length === 0) {
       _pendingReassignments = [];
@@ -9114,7 +9114,7 @@ async function loadPendingReassignments() {
     }
 
     var inClause = teamIds.map(function(id){ return '"' + id + '"'; }).join(',');
-    var bookingsRes = await R.selectList('bookings',
+    var bookingsRes = await R.select('bookings',
       'select=id,customer_name,customer_email,booking_date,booking_time,service_type,total_price,cleaner_id,reassignment_attempts,auto_delegation_enabled' +
       '&status=eq.awaiting_company_proposal' +
       '&cleaner_id=in.(' + inClause + ')' +
@@ -9184,7 +9184,7 @@ async function openProposeModal(bookingId) {
   _currentProposalCleanerId = null;
 
   // Hämta alla aktiva teammedlemmar (utom originalet)
-  var teamRes = await R.selectList('cleaners',
+  var teamRes = await R.select('cleaners',
     'select=id,full_name,avg_rating,is_active,status,is_approved' +
     '&company_id=eq.' + window._companyId +
     '&is_active=eq.true' +
