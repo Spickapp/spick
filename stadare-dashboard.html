@@ -887,6 +887,20 @@ body{top:0!important}
         </div>
       </div>
 
+      <!-- Prenumerationer (VD only) -->
+      <div id="subs-section" style="display:none;margin:0 16px 16px">
+        <div style="background:var(--w);border-radius:12px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-weight:600;font-size:.92rem">🔄 Prenumerationer</div>
+            <span id="subs-count" style="font-size:.78rem;color:var(--gray-500);background:var(--gray-100);padding:2px 8px;border-radius:10px">0</span>
+          </div>
+          <div id="subs-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div id="subs-empty" style="display:none;text-align:center;padding:20px;color:var(--gray-400);font-size:.85rem">
+            Inga prenumerationer ännu.<br>Skapa via <strong>Nytt uppdrag</strong>-knappen med frekvens.
+          </div>
+        </div>
+      </div>
+
       <!-- Onboarding Checklist -->
       <div class="card" id="onboarding-checklist" style="display:none"></div>
 
@@ -3121,6 +3135,141 @@ function renderHome() {
   updateOnboarding();
   if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
   if (typeof updateGreetingSub === 'function') updateGreetingSub();
+  if (typeof loadSubscriptions === 'function') loadSubscriptions();
+}
+
+// ── PRENUMERATION CRUD (FAS 8) ──────────────────────────────
+
+async function loadSubscriptions() {
+  if (!window._isCompanyOwner) return;
+  var section = document.getElementById('subs-section');
+  if (!section) return;
+  section.style.display = 'block';
+
+  try {
+    var companyId = cleaner.company_id;
+    if (!companyId) return;
+
+    var res = await fetch(SUPA_URL + '/rest/v1/subscriptions?company_id=eq.' + companyId + '&order=created_at.desc&limit=50', {
+      headers: _authHeaders()
+    });
+    if (!res.ok) { console.warn('loadSubscriptions HTTP', res.status); return; }
+    var subs = await res.json();
+
+    var list = document.getElementById('subs-list');
+    var empty = document.getElementById('subs-empty');
+    var countEl = document.getElementById('subs-count');
+
+    var activeSubs = (subs || []).filter(function(s) { return s.status === 'active' || s.status === 'pending_setup'; });
+    countEl.textContent = activeSubs.length + ' aktiva';
+
+    if (!subs || subs.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = subs.map(function(s) {
+      var statusMap = {
+        'active': { label: '✅ Aktiv', color: '#065F46' },
+        'pending_setup': { label: '⏳ Väntar på kort', color: '#92400E' },
+        'paused': { label: '⏸️ Pausad', color: '#B45309' },
+        'cancelled': { label: '❌ Avslutad', color: '#991B1B' }
+      };
+      var st = statusMap[s.status] || { label: s.status, color: '#6B7280' };
+
+      var freqMap = { weekly: 'Varje vecka', biweekly: 'Varannan vecka', monthly: 'Varje månad' };
+      var freqLabel = freqMap[s.frequency] || s.frequency || '—';
+
+      // Varning om pausad pga städarbyte
+      var turnoverWarning = '';
+      if (s.status === 'paused' && s.pause_reason === 'cleaner_deactivated') {
+        turnoverWarning = '<div style="background:#FEF3C7;border-radius:8px;padding:8px 10px;font-size:.78rem;color:#92400E;margin-top:4px">⚠️ Pausad: Städaren är inte längre aktiv. Tilldela ny städare och återuppta.</div>';
+      }
+      if (s.status === 'paused' && s.pause_reason === 'payment_failed_3x') {
+        turnoverWarning = '<div style="background:#FEE2E2;border-radius:8px;padding:8px 10px;font-size:.78rem;color:#991B1B;margin-top:4px">💳 Pausad: Betalning misslyckades 3 gånger. Kunden behöver uppdatera sitt kort.</div>';
+      }
+
+      var actions = '';
+      if (s.status === 'active') {
+        actions = '<button onclick="subAction(\'pause\',\'' + s.id + '\')" style="font-size:.75rem;padding:5px 10px;border:1px solid #D97706;color:#D97706;background:none;border-radius:6px;cursor:pointer;font-family:inherit">Pausa</button>'
+          + ' <button onclick="subAction(\'cancel\',\'' + s.id + '\')" style="font-size:.75rem;padding:5px 10px;border:1px solid #DC2626;color:#DC2626;background:none;border-radius:6px;cursor:pointer;font-family:inherit">Avsluta</button>';
+      } else if (s.status === 'paused') {
+        actions = '<button onclick="subAction(\'resume\',\'' + s.id + '\')" style="font-size:.75rem;padding:5px 10px;border:1px solid #065F46;color:#065F46;background:none;border-radius:6px;cursor:pointer;font-family:inherit">Återuppta</button>'
+          + ' <button onclick="subAction(\'cancel\',\'' + s.id + '\')" style="font-size:.75rem;padding:5px 10px;border:1px solid #DC2626;color:#DC2626;background:none;border-radius:6px;cursor:pointer;font-family:inherit">Avsluta</button>';
+      }
+
+      var priceDisplay = '';
+      var rate = s.hourly_rate || 350;
+      var hours = s.booking_hours || 3;
+      var total = s.manual_override_price || Math.round(rate * hours);
+      if (s.rut === true && s.customer_type !== 'foretag') {
+        priceDisplay = Math.floor(total * 0.5) + ' kr (efter RUT)';
+      } else {
+        priceDisplay = total + ' kr';
+      }
+
+      return '<div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px;background:#fff">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+        + '<div>'
+        + '<div style="font-weight:600;font-size:.88rem">' + escHtml(s.customer_name || '—') + '</div>'
+        + '<div style="font-size:.78rem;color:' + st.color + ';margin-top:2px">' + st.label + '</div>'
+        + '</div>'
+        + '<div style="text-align:right">'
+        + '<div style="font-size:.78rem;color:var(--gray-500)">' + freqLabel + '</div>'
+        + '<div style="font-size:.82rem;font-weight:600;margin-top:2px">' + priceDisplay + '</div>'
+        + '</div></div>'
+        + '<div style="font-size:.78rem;color:var(--gray-500);margin-top:6px">'
+        + escHtml(s.service_type || 'Hemstädning') + ' · ' + hours + ' tim · '
+        + escHtml(s.cleaner_name || '—')
+        + (s.next_booking_date ? ' · Nästa: ' + s.next_booking_date : '')
+        + '</div>'
+        + turnoverWarning
+        + (actions ? '<div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">' + actions + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } catch (e) {
+    console.warn('loadSubscriptions failed:', e);
+  }
+}
+
+async function subAction(action, id) {
+  var msgs = {
+    pause: 'Pausa denna prenumeration? Inga nya bokningar skapas under pausen.',
+    resume: 'Återuppta denna prenumeration?',
+    cancel: 'Avsluta denna prenumeration permanent? Detta kan inte ångras.'
+  };
+  if (!confirm(msgs[action])) return;
+
+  var patchData = {};
+  if (action === 'pause') {
+    patchData = { status: 'paused', paused_at: new Date().toISOString(), pause_reason: 'manual_vd' };
+  } else if (action === 'resume') {
+    // Nästa bokningsdatum: 7 dagar framåt (ger auto-rebook tid att skapa bokning)
+    var next = new Date();
+    next.setDate(next.getDate() + 7);
+    patchData = {
+      status: 'active',
+      paused_at: null,
+      pause_reason: null,
+      next_booking_date: next.toISOString().slice(0, 10),
+      consecutive_failures: 0
+    };
+  } else if (action === 'cancel') {
+    patchData = { status: 'cancelled', cancelled_at: new Date().toISOString(), cancel_reason: 'manual_vd' };
+  }
+
+  try {
+    await fetch(SUPA_URL + '/rest/v1/subscriptions?id=eq.' + id, {
+      method: 'PATCH',
+      headers: _authHeaders(),
+      body: JSON.stringify(patchData)
+    });
+    loadSubscriptions();
+  } catch (e) {
+    alert('Fel: ' + e.message);
+  }
 }
 
 // ── ONBOARDING WIZARD ────────────────────────────────────────
