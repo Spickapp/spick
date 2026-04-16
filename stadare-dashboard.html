@@ -7684,15 +7684,17 @@ async function bdAccept() {
 
 async function bdReject() {
   if (!_bdBookingId) return;
+  var id = _bdBookingId;
+  var booking = (data_teamBookings || []).find(function(b) { return b.id === id; });
   closeBD();
-  var booking = (data_teamBookings || []).find(function(b) { return b.id === _bdBookingId; });
-  ownerRejectBooking(_bdBookingId, booking ? booking.cleaner_id : '');
+  ownerRejectBooking(id, booking ? booking.cleaner_id : '');
 }
 
 async function bdCancel() {
   if (!_bdBookingId) return;
+  var id = _bdBookingId;
   closeBD();
-  ownerCancelBooking(_bdBookingId);
+  ownerCancelBooking(id);
 }
 
 async function bdMarkDone() {
