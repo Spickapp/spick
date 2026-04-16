@@ -293,6 +293,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .tab-content{display:none}
 .tab-content.active{display:block;animation:fadeIn .2s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-alert{0%,100%{box-shadow:0 4px 12px rgba(245,158,11,.15)}50%{box-shadow:0 4px 20px rgba(245,158,11,.4)}}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .sk{background:linear-gradient(90deg,var(--gray-100) 25%,var(--gray-200) 50%,var(--gray-100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:var(--radius-md);margin-bottom:10px}
 .tab-pad{padding:20px}
@@ -1377,6 +1378,20 @@ body{top:0!important}
     <!-- ═══ TAB: TEAM (only visible for company owners) ═══ -->
     <div class="tab-content" id="tab-team">
       <div class="tab-pad">
+        <!-- ═══ ERSÄTTARE BEHÖVS (visas bara vid aktiva ärenden) ═══ -->
+        <div id="reassignment-section" style="display:none;margin-bottom:20px">
+          <div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:2px solid #F59E0B;border-radius:16px;padding:20px;box-shadow:0 4px 12px rgba(245,158,11,.15);animation:pulse-alert 2s ease-in-out infinite">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span style="font-size:1.5rem">🚨</span>
+              <div>
+                <h3 style="font-size:1.1rem;font-weight:700;color:#92400E">Ersättare behövs</h3>
+                <p style="font-size:.82rem;color:#78350F;margin-top:2px"><span id="reassignment-count">0</span> bokning(ar) väntar på din åtgärd</p>
+              </div>
+            </div>
+            <div id="reassignment-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+        </div>
+
         <!-- Onboarding guide (visas bara om teamet är tomt) -->
         <div id="vd-onboarding-guide" style="display:none">
           <div style="background:linear-gradient(135deg,#E1F5EE,#DBEAFE);border-radius:16px;padding:28px;margin-bottom:16px">
@@ -1773,6 +1788,36 @@ body{top:0!important}
     </div>
   </div>
 
+  <!-- ═══ PROPOSE SUBSTITUTE MODAL ═══ -->
+  <div id="propose-substitute-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeProposeModal()">
+    <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:520px;width:100%;margin:40px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:1.15rem;font-weight:700">Föreslå ersättare</h3>
+        <button onclick="closeProposeModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;padding:4px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:var(--gray-500)">✕</button>
+      </div>
+
+      <div id="propose-booking-info" style="background:#F9FAFB;border-radius:12px;padding:14px;margin-bottom:16px;font-size:.88rem"></div>
+
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-weight:600;font-size:.88rem;margin-bottom:8px">Välj ersättare från ditt team</label>
+        <div id="propose-candidates-list" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto"></div>
+      </div>
+
+      <div id="propose-quality-warning" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:12px;margin-bottom:12px;font-size:.82rem;color:#78350F">
+        ⚠️ <strong>Kvalitetsvarning:</strong> Denna städare har betydligt lägre betyg än originalet. Kunden får godkänna innan bokningen bekräftas.
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="closeProposeModal()" style="flex:1;background:#F3F4F6;color:#374151;border:none;padding:14px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Avbryt</button>
+        <button id="propose-confirm-btn" onclick="confirmProposal()" disabled style="flex:2;background:var(--g);color:#fff;border:none;padding:14px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;min-height:48px;opacity:.5">Skicka förslag</button>
+      </div>
+
+      <button onclick="letCustomerChoose()" style="width:100%;margin-top:10px;background:none;color:var(--m);border:1px solid var(--gray-200);padding:10px;border-radius:10px;font-weight:500;cursor:pointer;font-family:inherit;font-size:.82rem">Låt kunden välja ersättare själv</button>
+
+      <p id="propose-msg" style="font-size:.8rem;margin-top:10px;text-align:center;display:none"></p>
+    </div>
+  </div>
+
   <!-- ADD/EDIT TEAM MEMBER MODAL -->
   <div id="add-member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeTeamModal()">
     <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
@@ -1950,7 +1995,10 @@ body{top:0!important}
       <span>Inkomst</span>
     </button>
     <button class="nav-btn" id="nav-team" onclick="switchTab('team')">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span class="ni-wrap">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span id="nav-team-badge" class="nbadge" style="display:none">0</span>
+      </span>
       <span>Team</span>
     </button>
     <button class="nav-btn" id="nav-inst" onclick="switchTab('inst')">
@@ -2811,7 +2859,11 @@ async function loadCleanerByEmail(email, authUserId) {
   window._companyId = cleaner.company_id || null;
   window._isCompanyOwner = !!cleaner.is_company_owner;
   showTeamTab();
-  if (window._isCompanyOwner) setupVDNavigation();
+  if (window._isCompanyOwner) {
+    setupVDNavigation();
+    if (typeof loadPendingReassignments === 'function') loadPendingReassignments();
+    if (typeof startReassignmentRefresh === 'function') startReassignmentRefresh();
+  }
 
   // ── Rollbaserad behörighetshantering ──
   var companyConfig = null;
@@ -5469,7 +5521,12 @@ function switchTab(tab) {
 
   if (tab === 'inst') { loadMyInvoices(); }
 
-  if (tab === 'team') { renderTeam(); if (typeof loadTasks === 'function') loadTasks(); if (typeof loadVdInvoices === 'function') loadVdInvoices(); }
+  if (tab === 'team') {
+    renderTeam();
+    if (typeof loadTasks === 'function') loadTasks();
+    if (typeof loadVdInvoices === 'function') loadVdInvoices();
+    if (window._isCompanyOwner && typeof loadPendingReassignments === 'function') loadPendingReassignments();
+  }
 }
 
 function showToast(msg) {
@@ -9036,6 +9093,270 @@ async function loadVdInvoices() {
     console.error('loadVdInvoices error:', e);
     el.innerHTML = '<div style="text-align:center;padding:20px;color:#6B6960;font-size:.88rem">Inga självfakturor ännu. Fakturor genereras automatiskt efter slutförda uppdrag.</div>';
   }
+}
+
+// ═════════════════════════════════════════════════════════════
+// AUTO-DELEGATION — VD UI för ersättarhantering (Fas 4)
+// ═════════════════════════════════════════════════════════════
+
+var _pendingReassignments = [];
+var _currentProposalBooking = null;
+var _currentProposalCleanerId = null;
+var _reassignmentRefreshTimer = null;
+
+async function loadPendingReassignments() {
+  if (!window._isCompanyOwner || !window._companyId) return;
+  try {
+    // Hämta bokningar som väntar på VD:s förslag för detta företag
+    // Filtrera på cleaner_id som tillhör företaget
+    var teamRes = await R.selectList('cleaners', 'select=id&company_id=eq.' + window._companyId);
+    var teamIds = (teamRes.data || []).map(function(c){ return c.id; });
+    if (teamIds.length === 0) {
+      _pendingReassignments = [];
+      renderReassignmentSection();
+      return;
+    }
+
+    var inClause = teamIds.map(function(id){ return '"' + id + '"'; }).join(',');
+    var bookingsRes = await R.selectList('bookings',
+      'select=id,customer_name,customer_email,booking_date,booking_time,service_type,total_price,cleaner_id,reassignment_attempts,auto_delegation_enabled' +
+      '&status=eq.awaiting_company_proposal' +
+      '&cleaner_id=in.(' + inClause + ')' +
+      '&order=booking_date.asc'
+    );
+    _pendingReassignments = bookingsRes.data || [];
+    renderReassignmentSection();
+  } catch(e) {
+    console.error('loadPendingReassignments error:', e);
+  }
+}
+
+function renderReassignmentSection() {
+  var sec = document.getElementById('reassignment-section');
+  var list = document.getElementById('reassignment-list');
+  var count = document.getElementById('reassignment-count');
+  var badge = document.getElementById('nav-team-badge');
+  if (!sec || !list || !count) return;
+
+  var n = _pendingReassignments.length;
+  count.textContent = n;
+
+  if (badge) {
+    if (n > 0) { badge.textContent = n; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+  }
+
+  if (n === 0) {
+    sec.style.display = 'none';
+    return;
+  }
+  sec.style.display = 'block';
+
+  var html = '';
+  _pendingReassignments.forEach(function(b) {
+    var dt = formatReassignmentDate(b.booking_date);
+    var tm = (b.booking_time || '').substring(0,5);
+    html += '<div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(245,158,11,.3)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:700;font-size:.95rem;color:#111827">' + escHtml(b.customer_name || 'Kund') + '</div>';
+    html += '<div style="font-size:.8rem;color:#6B7280;margin-top:2px">' + escHtml(b.service_type || 'Städning') + ' • ' + escHtml(dt) + ' kl ' + escHtml(tm) + '</div>';
+    html += '<div style="font-size:.75rem;color:#92400E;margin-top:4px">' + escHtml(String(b.total_price || 0)) + ' kr';
+    if (b.auto_delegation_enabled) html += ' • 🟢 Auto-delegation på';
+    if ((b.reassignment_attempts || 0) > 0) html += ' • Försök ' + b.reassignment_attempts;
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    html += '<button onclick="openProposeModal(\'' + b.id + '\')" style="width:100%;background:var(--g);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.88rem;min-height:44px">Föreslå ersättare</button>';
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function formatReassignmentDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    var d = new Date(dateStr);
+    return d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+  } catch(e) { return dateStr; }
+}
+
+async function openProposeModal(bookingId) {
+  var booking = _pendingReassignments.find(function(b){ return b.id === bookingId; });
+  if (!booking) return;
+  _currentProposalBooking = booking;
+  _currentProposalCleanerId = null;
+
+  // Hämta ursprungsstädarens avg_rating
+  var prevRating = 0;
+  try {
+    var prevRes = await R.selectSingle('cleaners', 'select=avg_rating&id=eq.' + booking.cleaner_id);
+    prevRating = Number(prevRes.data?.avg_rating) || 0;
+  } catch(e) {}
+
+  // Hämta alla aktiva teammedlemmar (utom originalet)
+  var teamRes = await R.selectList('cleaners',
+    'select=id,full_name,avg_rating,is_active,status,is_approved' +
+    '&company_id=eq.' + window._companyId +
+    '&is_active=eq.true' +
+    '&status=eq.aktiv' +
+    '&is_approved=eq.true' +
+    '&id=neq.' + booking.cleaner_id +
+    '&order=avg_rating.desc'
+  );
+  var candidates = teamRes.data || [];
+
+  var info = document.getElementById('propose-booking-info');
+  if (info) {
+    info.innerHTML = '<strong>' + escHtml(_currentProposalBooking.customer_name || 'Kund') + '</strong><br>' +
+      escHtml(_currentProposalBooking.service_type || 'Städning') + ' • ' +
+      escHtml(formatReassignmentDate(_currentProposalBooking.booking_date)) + ' kl ' +
+      escHtml((_currentProposalBooking.booking_time || '').substring(0,5)) + '<br>' +
+      '<span style="color:#6B7280;font-size:.82rem">Ursprungligt betyg: ' + (prevRating > 0 ? '⭐ ' + prevRating.toFixed(1) : 'inget') + '</span>';
+  }
+
+  var list = document.getElementById('propose-candidates-list');
+  if (list) {
+    if (candidates.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7280;font-size:.88rem">Inga andra aktiva teammedlemmar tillgängliga.</div>';
+    } else {
+      var html = '';
+      candidates.forEach(function(c) {
+        var cRating = Number(c.avg_rating) || 0;
+        var qualityGap = prevRating > 0 && cRating > 0 && (prevRating - cRating) > 0.3;
+        var ratingText = cRating > 0 ? '⭐ ' + cRating.toFixed(1) : 'Ny städare';
+        var warnIcon = qualityGap ? ' ⚠️' : '';
+        html += '<label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--gray-200);border-radius:10px;cursor:pointer;transition:all .15s" data-rating-gap="' + (qualityGap ? '1' : '0') + '">';
+        html += '<input type="radio" name="candidate" value="' + c.id + '" data-rating-gap="' + (qualityGap ? '1' : '0') + '" style="accent-color:var(--g)">';
+        html += '<div style="flex:1">';
+        html += '<div style="font-weight:600;font-size:.92rem">' + escHtml(c.full_name) + warnIcon + '</div>';
+        html += '<div style="font-size:.78rem;color:#6B7280">' + ratingText + '</div>';
+        html += '</div>';
+        html += '</label>';
+      });
+      list.innerHTML = html;
+
+      list.querySelectorAll('input[name="candidate"]').forEach(function(input) {
+        input.addEventListener('change', function(e) {
+          _currentProposalCleanerId = e.target.value;
+          var gap = e.target.dataset.ratingGap === '1';
+          document.getElementById('propose-quality-warning').style.display = gap ? 'block' : 'none';
+          var btn = document.getElementById('propose-confirm-btn');
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        });
+      });
+    }
+  }
+
+  document.getElementById('propose-substitute-modal').style.display = 'flex';
+}
+
+function closeProposeModal() {
+  document.getElementById('propose-substitute-modal').style.display = 'none';
+  _currentProposalBooking = null;
+  _currentProposalCleanerId = null;
+  var warn = document.getElementById('propose-quality-warning');
+  if (warn) warn.style.display = 'none';
+  var btn = document.getElementById('propose-confirm-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  var msg = document.getElementById('propose-msg');
+  if (msg) msg.style.display = 'none';
+}
+
+async function confirmProposal() {
+  if (!_currentProposalBooking || !_currentProposalCleanerId) return;
+  var msg = document.getElementById('propose-msg');
+  var btn = document.getElementById('propose-confirm-btn');
+  btn.disabled = true; btn.style.opacity = '.5'; btn.textContent = 'Skickar…';
+
+  try {
+    var sessRes = await SB.auth.getSession();
+    var token = sessRes?.data?.session?.access_token;
+    if (!token) throw new Error('Ingen session — logga in igen');
+
+    var res = await fetch(SUPA_URL + '/functions/v1/company-propose-substitute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        booking_id: _currentProposalBooking.id,
+        new_cleaner_id: _currentProposalCleanerId
+      })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Okänt fel');
+
+    msg.style.display = 'block';
+    msg.style.color = 'var(--g)';
+    msg.textContent = data.message || 'Förslag skickat!';
+    showToast('✓ Förslag skickat');
+
+    setTimeout(function() {
+      closeProposeModal();
+      loadPendingReassignments();
+    }, 1200);
+  } catch(e) {
+    msg.style.display = 'block';
+    msg.style.color = 'var(--danger)';
+    msg.textContent = 'Fel: ' + e.message;
+    btn.disabled = false; btn.style.opacity = '1'; btn.textContent = 'Skicka förslag';
+  }
+}
+
+async function letCustomerChoose() {
+  if (!_currentProposalBooking) return;
+  if (!confirm('Låt kunden välja ersättare själv? Bokningen flyttas till "välj-själv"-läge.')) return;
+
+  var msg = document.getElementById('propose-msg');
+  try {
+    var sessRes = await SB.auth.getSession();
+    var token = sessRes?.data?.session?.access_token;
+    if (!token) throw new Error('Ingen session — logga in igen');
+
+    // Uppdatera direkt via REST (status = awaiting_reassignment)
+    var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + _currentProposalBooking.id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        status: 'awaiting_reassignment',
+        cleaner_id: null,
+        cleaner_name: null
+      })
+    });
+    if (!res.ok) throw new Error('Kunde inte uppdatera bokning');
+
+    msg.style.display = 'block';
+    msg.style.color = 'var(--g)';
+    msg.textContent = 'Kunden kan nu välja själv.';
+    showToast('✓ Kunden får välja själv');
+
+    setTimeout(function() {
+      closeProposeModal();
+      loadPendingReassignments();
+    }, 1200);
+  } catch(e) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.color = 'var(--danger)';
+      msg.textContent = 'Fel: ' + e.message;
+    }
+  }
+}
+
+// Auto-refresh var 30:e sekund
+function startReassignmentRefresh() {
+  if (_reassignmentRefreshTimer) clearInterval(_reassignmentRefreshTimer);
+  _reassignmentRefreshTimer = setInterval(function() {
+    if (window._isCompanyOwner) loadPendingReassignments();
+  }, 30000);
 }
 
 </script>
