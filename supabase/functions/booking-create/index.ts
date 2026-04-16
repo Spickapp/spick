@@ -16,10 +16,13 @@
 //
 // Klienten skickar:
 //   { name, email, phone, address, date, time, hours, service,
-//     cleaner_id?, discount_code?, rut?, frequency?, ... }
+//     cleaner_id?, discount_code?, rut?, frequency?,
+//     manual_override_price?, payment_mode?, send_email_to_customer?,
+//     company_id?, subscription_id?, manual_entry? }
 //
 // Servern returnerar:
-//   { url, booking_id, customer_price, cleaner_name }
+//   { url, booking_id, customer_price, cleaner_name }        — stripe_checkout
+//   { booking_id, payment_mode, customer_price, cleaner_name } — stripe_subscription
 // =============================================================
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -30,7 +33,7 @@ import {
   getAvailableCredit,
   calculateBooking,
 } from "../_shared/pricing-engine.ts";
-import { corsHeaders, encryptPnr } from "../_shared/email.ts";
+import { corsHeaders, encryptPnr, sendEmail, wrap, card } from "../_shared/email.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -81,7 +84,18 @@ serve(async (req) => {
       business_org_number,
       business_reference,
       auto_delegation_enabled,
+      // ── V1.0: Manuell bokning + Subscription ──
+      manual_override_price,     // integer | null — VD-satt totalpris
+      payment_mode,              // 'stripe_checkout' | 'stripe_subscription' (default: 'stripe_checkout')
+      send_email_to_customer,    // boolean — skicka mejl till kund
+      company_id,                // uuid — VD:s företag (vid manuell bokning)
+      subscription_id,           // uuid — om genererad av subscription-engine
+      manual_entry,              // boolean — flagga för manuella bokningar
     } = body;
+
+    // Validera payment_mode (CHECK constraint i DB)
+    const validPaymentModes = ['stripe_checkout', 'stripe_subscription'];
+    const effectivePaymentMode = validPaymentModes.includes(payment_mode) ? payment_mode : 'stripe_checkout';
 
     // Required fields
     if (!name || !email || !date || !time || !hours || !service) {
@@ -213,6 +227,31 @@ serve(async (req) => {
       });
     }
 
+    // ── 6b. PRIS-OVERRIDE (manuell bokning från VD) ──────────
+    // Modell A: proportionell skalning — alla tar samma procentuella hit
+    let overrideActive = false;
+    if (manual_override_price && Number(manual_override_price) >= 100) {
+      overrideActive = true;
+      const op = Math.round(Number(manual_override_price));
+      const originalTotal = pricing.customerTotal;
+      if (originalTotal > 0) {
+        const ratio = op / originalTotal;
+        pricing.customerTotal = op;
+        pricing.customerPricePerHour = Math.round(pricing.customerPricePerHour * ratio * 100) / 100;
+        pricing.cleanerTotal = Math.round(pricing.cleanerTotal * ratio);
+        pricing.cleanerPricePerHour = Math.round(pricing.cleanerPricePerHour * ratio * 100) / 100;
+        pricing.spickGross = Math.round(pricing.spickGross * ratio);
+        pricing.stripeFee = Math.round(pricing.stripeFee * ratio * 100) / 100;
+        pricing.spickNet = pricing.spickGross - pricing.stripeFee;
+        pricing.netMarginPct = op > 0
+          ? Math.round((pricing.spickNet / op) * 1000) / 10
+          : 0;
+      }
+      console.log("[SPICK] Override price:", { override: op, ratio: op / originalTotal, cleanerTotal: pricing.cleanerTotal, spickGross: pricing.spickGross });
+    } else if (manual_override_price && Number(manual_override_price) > 0 && Number(manual_override_price) < 100) {
+      return json(400, { error: "Minimipris är 100 kr" });
+    }
+
     // ── 7. RUT-BERÄKNING ───────────────────────────
     const useRut = !!rut && customer_type !== 'foretag';
     const rutDeduction = useRut
@@ -301,6 +340,12 @@ serve(async (req) => {
       business_org_number: business_org_number || null,
       business_reference: business_reference || null,
       auto_delegation_enabled: auto_delegation_enabled === true ? true : (auto_delegation_enabled === false ? false : null),
+
+      // ── V1.0: Payment mode + Override + Subscription + RUT ──
+      payment_mode: effectivePaymentMode,
+      subscription_id: subscription_id || null,
+      manual_override_price: overrideActive ? Math.round(Number(manual_override_price)) : null,
+      rut_application_status: (!!rut && customer_type !== 'foretag') ? 'pending' : 'not_applicable',
     });
 
     if (insertErr) {
@@ -392,6 +437,60 @@ serve(async (req) => {
         },
       });
     } catch (_) {} // Non-critical
+
+    // ═══════════════════════════════════════════════════
+    // GREN: stripe_subscription — bokning utan direkt betalning
+    // Charge sker senare via charge-subscription-booking EF
+    // ═══════════════════════════════════════════════════
+    if (effectivePaymentMode === 'stripe_subscription') {
+      await supabase
+        .from("bookings")
+        .update({
+          status: "confirmed",
+          payment_status: "awaiting_charge",
+          confirmed_at: new Date().toISOString(),
+        })
+        .eq("id", bookingId);
+
+      // Email till kund (bekräftelse utan betalningslänk)
+      if (send_email_to_customer && email) {
+        try {
+          let companyName = "Spick";
+          if (cleaner.company_id) {
+            const { data: co } = await supabase
+              .from("companies")
+              .select("display_name, name")
+              .eq("id", cleaner.company_id)
+              .maybeSingle();
+            if (co) companyName = co.display_name || co.name;
+          }
+
+          const emailHtml = wrap(`
+            <h2>Bekräftelse: Din prenumeration</h2>
+            <p>Hej ${name.split(' ')[0]}!</p>
+            <p>Din återkommande städning hos <strong>Spick</strong> är bekräftad.</p>
+            ${card([
+              ['Tjänst', service + ' · ' + validHours + ' tim'],
+              ['Datum', new Date(date).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })],
+              ['Tid', time],
+              ['Adress', address || '—'],
+              ['Utförs av', companyName],
+              ['Pris', netPrice + ' kr' + (useRut ? ' (efter RUT)' : '')]
+            ])}
+            <p style="font-size:13px;color:#6B6960;margin-top:16px">Betalning dras automatiskt innan varje städtillfälle. Du kan hantera din prenumeration via länken i kommande bokningsbekräftelser.</p>
+          `);
+
+          await sendEmail(email, 'Bekräftelse: Prenumeration hos Spick', emailHtml);
+        } catch (e) { console.warn("Subscription email failed:", e); }
+      }
+
+      return json(200, {
+        booking_id: bookingId,
+        payment_mode: effectivePaymentMode,
+        customer_price: netPrice,
+        cleaner_name: displayName || cleaner_name,
+      });
+    }
 
     // ── 11b. STRIPE CONNECT: Hämta mottagarens konto ──
     let destinationAccountId: string | null = null;
@@ -537,6 +636,41 @@ serve(async (req) => {
         payment_intent_id: session.payment_intent,
       })
       .eq("id", bookingId);
+
+    // ── Email med betalningslänk (om begärt) ──────────
+    if (send_email_to_customer && email && session.url) {
+      try {
+        let companyName = "Spick";
+        if (cleaner.company_id) {
+          const { data: co } = await supabase
+            .from("companies")
+            .select("display_name, name")
+            .eq("id", cleaner.company_id)
+            .maybeSingle();
+          if (co) companyName = co.display_name || co.name;
+        }
+
+        const rutText = useRut ? ' (inkl. RUT-avdrag)' : '';
+        const emailHtml = wrap(`
+          <h2>Betala för din städning</h2>
+          <p>Hej ${name.split(' ')[0]}!</p>
+          <p>En städning har bokats åt dig hos <strong>Spick</strong>.</p>
+          ${card([
+            ['Tjänst', service + ' · ' + validHours + ' tim'],
+            ['Datum', new Date(date).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })],
+            ['Tid', time],
+            ['Adress', address || '—'],
+            ['Utförs av', companyName],
+            ['Pris', netPrice + ' kr' + rutText]
+          ])}
+          <p>Betala tryggt med kort eller Klarna:</p>
+          <p><a href="${session.url}" class="btn">Betala nu →</a></p>
+          <p style="font-size:13px;color:#6B6960;margin-top:24px">Länken är giltig i 24 timmar. Bokningen bekräftas automatiskt efter betalning.</p>
+        `);
+
+        await sendEmail(email, 'Betala för din städning hos Spick', emailHtml);
+      } catch (e) { console.warn("Payment link email failed:", e); }
+    }
 
     // ── Logga provision i commission_log ────────────
     if (destinationAccountId) {
