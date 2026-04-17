@@ -174,6 +174,15 @@ SELECT DISTINCT commission_pct FROM bookings;
 - **Vad:** 64 HTML → komponentbaserat (Astro).
 - **Status:** Framtid. Inte akut.
 
+### P2-8 — Språk-picker Modell E (cleaners.languages + companies.languages)
+
+- **Vad:** Sökbar multi-select för språk, sparat som jsonb ISO 639-1-koder på både `cleaners` och `companies`. Central `/js/languages.js` (37 språk), återanvändbar `/components/language-picker.html`. Filtrering i `find_nearby_cleaners` RPC.
+- **Syfte:** Kund kan välja språk i bokningsflödet. Företagsprofil visar team-unionen (om `allow_customer_choice=true`) eller VD-satt pitch (om false).
+- **Tid:** 4-6h (7 faser: audit → data → JS → UI-integration → visning → matchning → test).
+- **Status:** Planerad vecka 17, efter Solid Service-piloten.
+- **Full spec:** [`/docs/backlog/sprak-modell-E-plan.md`](backlog/sprak-modell-E-plan.md) — innehåller datamodell, SQL-migration, UI-komponent, 8 låsta beslut, 4 öppna frågor, testplan, risker.
+- **Blockerar:** Inget aktivt. Zivar-demo 2026-04-19 använder nuvarande språk-UI (Google Translate client-side).
+
 ---
 
 ## P3 — Backlog
