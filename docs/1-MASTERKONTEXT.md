@@ -12,7 +12,7 @@
 
 - Kunder bokar betygsatta städare direkt.
 - Städare sätter egna priser (250–600 kr/h).
-- Spick tar 17% provision (Smart Trappstege 17% → 12% för företag / Top-tier).
+- **Spick tar 12% provision på alla bokningar** (uppdaterad 2026-04-17, tidigare 17%/12% trappstege). Konfigurerbart via `platform_settings.commission_standard`.
 - RUT-avdrag 50%.
 - Städarna är egenföretagare med F-skatt eller underleverantörer till företag.
 
@@ -141,57 +141,89 @@ mitt-konto.html / boka.html  →  setup-subscription EF (kortregistrering)
 
 ## Provision och priser
 
-### Format-regel (verifierat via Dag 1-audit, 32 träffar)
+### Affärsmodell 2026-04-17
 
-**Alla commission-värden i DB och kod är i PROCENT-format (17 = 17%).**
+**12% provision på ALLA bokningar** — oavsett kund-typ (privat/företag) eller städare-tier.
 
-- `bookings.commission_pct` = `17`
-- `cleaners.commission_rate` = `17` eller `12` (trots att schema-default är `0.17`)
-- `companies.commission_rate` = `17`
-- `commission_log.commission_pct` = `17`
-- `pricing-engine.ts` konstanter: `COMMISSION_STANDARD=17`, `COMMISSION_TOP=14`
+### Single source of truth: `platform_settings`
 
-**Koden MÅSTE dividera med 100 innan Stripe-beräkning.**
+`platform_settings`-tabellen är sanning för commission och priser. All kod ska läsa därifrån, aldrig hårdkoda värden som `0.17`, `0.12`, `0.83`, `349`, `399`.
 
-### Verifieringsstatus per 2026-04-17
+**Nuvarande live-värden per 2026-04-17:**
+
+| key | value | Beskrivning |
+|-----|-------|-------------|
+| `commission_standard` | `12` | Provision för ALLA bokningar (%). Initial seed var 17 enligt migration 20260401000001 rad 24, men live-värdet har uppdaterats till 12. |
+| `commission_top` | `12` | Reserverad för framtida top-tier-belöning. Lika med standard just nu. |
+| `base_price_per_hour` | `399` | Standardpris per timme |
+| `subscription_price` | `349` | Prenumerationspris |
+| `commission_change_log` | audit-array | Historik över commission-ändringar |
+
+### Regler för kod
+
+**SKA:**
+```ts
+const { data } = await sb.from('platform_settings')
+  .select('value').eq('key', 'commission_standard').single();
+const commissionPct = parseFloat(data.value);      // 12
+const commissionRate = commissionPct / 100;         // 0.12 för Stripe
+```
+
+**FÅR INTE:**
+- Hårdkoda `0.17`, `0.12`, `17`, `12`, `0.83`, `0.88`, `349`, `399` som konstanter.
+- Läsa `cleaners.commission_rate` eller `companies.commission_rate` för pricing-beräkning — dessa fält har historiskt data-inkonsistens (blandade format: `17`, `12`, `0.17`, `0`) och ska IGNORERAS av ny kod.
+
+### Kodställen att fixa i Dag 2
+
+| Kodställe | Problem |
+|-----------|---------|
+| `booking-create/index.ts:497` | Hårdkodar `0.17`/`0.12` istället för att läsa `platform_settings` |
+| `stripe-checkout/index.ts:88` | Samma — men EF är DÖD KOD, raderas i Dag 2 |
+| `stadare-uppdrag.html:637` | Läser obefintligt fält `booking.commission_rate` — BUG 3, snabbfix |
+| `auto-remind/index.ts:119,155,361,673` | Hårdkodar `*0.83` i email |
+| `notify/index.ts:212,332-333` | Samma hårdkod |
+| `stadare-dashboard.html:9080` | Hårdkodar `0.12` fallback |
+
+### Korrekta läsningar (referens)
 
 | Kodställe | Format-hantering |
 |-----------|------------------|
-| `charge-subscription-booking:188-190` | ✅ KORREKT — läser `booking.commission_pct`, /100 |
-| `faktura.html:121,205` | ✅ KORREKT — `commissionPct \|\| 17`, /100 |
+| `charge-subscription-booking:188-190` | ✅ REFERENSIMPL — läser `booking.commission_pct`, /100 |
+| `faktura.html:121,205` | ✅ KORREKT (lagrar dock hårdkodad fallback `\|\| 17`) |
 | `team-jobb.html:382-383` | ✅ KORREKT |
 | `admin.html:2378,2558` | ✅ KORREKT |
 | `generate-self-invoice:190-191` | ✅ KORREKT |
-| `booking-create:497` | 🔴 BUG 1 — hårdkodar `commissionRate = 0.17`/`0.12`, ignorerar DB |
-| `stripe-checkout:88` | 🔴 BUG 1 — samma hårdkod |
-| `stadare-uppdrag.html:637` | 🔴 BUG 3 — läser fel fält (`commission_rate` finns ej på bookings) |
-| `auto-remind.ts`, `notify.ts` | 🟡 BUG 2 — hårdkodar `*0.83` i email |
-| `stadare-dashboard.html:9080` | 🟡 BUG 4 — hårdkodar 0.12 fallback |
 
-**Sammanfattat:** INKONSISTENT. Se [`/docs/dag2-planering/commission-audit-2026-04-17.md`](dag2-planering/commission-audit-2026-04-17.md) för full tabell.
+**Full rapport:** [`/docs/dag2-planering/commission-audit-2026-04-17.md`](dag2-planering/commission-audit-2026-04-17.md).
 
-### Smart Trappstege (commission_tier)
+### Historiska bokningar (testdata)
 
-- `new` → 17%
-- `established` → 15%
-- `professional` → 13%
-- `elite` → 12%
-- `top` (pricing-engine) → 14%
+De 26 bokningar som finns i prod per 2026-04-17 har `commission_pct=17` — testdata innan 12%-beslutet. Accepteras as-is. Nya bokningar ska ha `12` via kod som läser `platform_settings`.
 
-**⚠️ Obs:** `pricing-engine.ts` definierar `COMMISSION_TOP=14` men `booking-create:497` hårdkodar 0.17 för Stripe — mismatch om någon cleaner är `tier=top`. Per 2026-04-17 verkar ingen cleaner ha `tier=top` (SQL ej körd, men ingen känd indikation).
+### Smart Trappstege (deprecated)
+
+Tidigare `commission_tier` (new=17%, established=15%, professional=13%, elite=12%) är parkerad. Alla betalar 12% just nu. `tier`-fältet finns kvar i schema men används inte för beräkning.
 
 ---
 
 ## Kritiska DB-regler
 
+### platform_settings är single source of truth
+
+All kod ska läsa commission och priser från `platform_settings`, aldrig hårdkoda värden som `0.17`, `0.12`, `349`, `399`.
+
+### cleaners.commission_rate och companies.commission_rate IGNORERAS av ny kod
+
+Dessa fält har historiskt data-inkonsistens (blandade format: `17`, `12`, `0.17`, `0`). Värdena ska inte användas för pricing-beräkning. Läs från `platform_settings` istället. Fälten kan normaliseras/tas bort senare när `calendar_events`-överlapp-buggen (P1) är fixad och UPDATE på bookings-tabellen fungerar igen.
+
 ### use_company_pricing-flaggan
 
-Kräver att **booking-create** och **stripe-checkout** BÅDA läser flaggan. Om bara ett ställe läser flaggan → latent bug som aktiveras när flaggan blir `true`.
+Kräver att **booking-create** läser den (pre-Dag 2 gör den EJ). Om bara frontend läser flaggan → latent bug när `use_company_pricing` sätts till `true` (Rafa-case).
 
 **Status 2026-04-17:**
 - `boka.html` ✅ läser
-- `stripe-checkout` ✅ läser (rad 123-127), men DÖD KOD
-- `booking-create` 🔴 **LÄSER EJ** — detta är kärnan i Dag 2-fix
+- `stripe-checkout` ✅ läser — men DÖD KOD, raderas i Dag 2
+- `booking-create` 🔴 **LÄSER EJ** — kärnan i Dag 2-fix (Väg B)
 - `foretag.html` 🟡 ignorerar flaggan (listningssida)
 
 **Konsekvens idag:** Rafas flagga (`use_company_pricing=false`) får INTE sättas till `true` förrän Dag 2-fix deployats. Om flaggan sätts nu → DB.total_price ≠ Stripe amount → data-inkonsistens.

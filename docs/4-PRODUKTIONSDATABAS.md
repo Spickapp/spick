@@ -30,9 +30,9 @@
 
 **Prissättning:**
 - `hourly_rate` integer (default 350, min 250, max 600)
-- `commission_rate` numeric (**PROCENT-format, 17 eller 12, trots schema-default `0.17`**)
-- `commission_tier` text (`new`, `established`, `professional`, `elite`)
-- `tier` text (generell tier, används av pricing-engine — `standard` eller `top`)
+- `commission_rate` numeric ⚠️ **SKA IGNORERAS AV NY KOD.** Historisk data-inkonsistens: blandade värden (`17`, `12`, `0.17`, `0`). Schema-default är `0.17` men rader lagras oftast som procent. Använd `platform_settings.commission_standard` istället (är `12` per 2026-04-17).
+- `commission_tier` text (`new`, `established`, `professional`, `elite`) — deprecated sedan 12%-beslutet.
+- `tier` text (`standard` eller `top`) — deprecated sedan 12%-beslutet. Parkerad i schema.
 
 **Status-fält (4 st, delvis överlappande):**
 | Fält | Default | Syfte | Var det används |
@@ -89,7 +89,7 @@
 - `description` text
 
 **Prissättning:**
-- `commission_rate` numeric (**PROCENT-format, 17 eller 12 — INTE `commission_override`**)
+- `commission_rate` numeric ⚠️ **SKA IGNORERAS AV NY KOD.** Samma historiska inkonsistens som `cleaners.commission_rate`. Använd `platform_settings.commission_standard` (INTE `commission_override` — det fältet existerar inte).
 - `use_company_pricing` boolean (default false) — ⚠️ kritisk flagga, se `7-ARKITEKTUR-SANNING.md`
 
 **Kundbokningsbeteenden:**
@@ -146,7 +146,7 @@ ORDER BY ordinal_position;
 - `base_price_per_hour` numeric
 - `customer_price_per_hour` numeric
 - `cleaner_price_per_hour` numeric
-- `commission_pct` integer (**PROCENT-format, 17 eller 14 för Top-tier**)
+- `commission_pct` integer (**PROCENT-format**). Historiska 26 rader har `17`; nya bokningar ska ha `12` via kod som läser `platform_settings.commission_standard`.
 - `discount_pct` integer
 - `discount_code` text
 - `spick_gross_sek` integer
@@ -178,6 +178,62 @@ ORDER BY ordinal_position;
 **Viktig notering om `total_price`:**
 Sparas av `booking-create` vid skapande. `stripe-checkout` EF (DÖD KOD) räknade oberoende — om DB och Stripe diverger är det latent bug. Pre-Dag 2 **faktiskt aktiv bugg**: `booking-create` läser fel prissättningskälla när `use_company_pricing=true`.
 
+### Triggers på `bookings` (viktigt vid UPDATE-operationer)
+
+| Trigger | Timing | Funktion |
+|---------|--------|----------|
+| `trg_auto_convert_referral` | UPDATE AFTER | `auto_convert_referral()` |
+| `trg_booking_to_calendar` | INSERT/UPDATE/DELETE AFTER | `sync_booking_to_calendar()` ⚠️ kan kasta fel vid överlapp |
+| `trg_booking_id` | INSERT BEFORE | `generate_booking_id()` |
+| `trg_sync_booking` | INSERT BEFORE | `sync_booking_to_portal()` |
+| `trg_sync_booking_slot` | INSERT/UPDATE AFTER | `sync_booking_to_slot()` |
+| `trg_sync_booking_status` | UPDATE BEFORE | `fn_sync_booking_status()` |
+
+**⚠️ Varning (P1-bug):** `trg_booking_to_calendar` triggas vid VARJE UPDATE på `bookings` (även om bara ett fält ändras). Funktionen `sync_booking_to_calendar()` försöker upsert till `calendar_events` som har `no_booking_overlap`-constraint. Om två befintliga bokningar överlappar → constraint-violation → UPDATE rullas tillbaka.
+
+**Konsekvens idag:** 8 par överlappande testbokningar i prod blockerar legitima UPDATE-operationer (t.ex. batch-update av `commission_pct`). Se `3-TODOLIST-v2.md` P1-1 för fix-alternativ.
+
+**Källa:** `supabase/migrations/20260414000001_calendar_events.sql:64-66, 215, 273`.
+
+---
+
+### `platform_settings` (single source of truth för pricing)
+
+Nyckel-värde-tabell som sanning för commission, priser och systemflaggor. All kod ska läsa härifrån istället för att hårdkoda värden.
+
+**Schema:**
+- `key` text PRIMARY KEY
+- `value` text (parseFloat eller JSON-parse i kod)
+- `updated_at` timestamptz
+
+**Kända nycklar per 2026-04-17:**
+
+| key | value (live) | value (migration-seed) | Beskrivning |
+|-----|--------------|------------------------|-------------|
+| `commission_standard` | `12` | `17` | Provision för ALLA bokningar (%) |
+| `commission_top` | `12` | `14` | Reserverad för framtida top-tier-belöning. Lika med standard just nu. |
+| `base_price_per_hour` | `399` | `399` | Standardpris per timme (fallback) |
+| `subscription_price` | `349` | `349` | Prenumerationspris |
+| `commission_change_log` | audit-array | — | Historik över commission-ändringar |
+| `auto_remind_last_run` | ISO-timestamp | — | Används av `auto-remind` + `health` EFs |
+
+**⚠️ Skillnad live vs migration:** Migration `20260401000001_sprint1_missing_tables.sql:24-25` har initial seed `commission_standard=17, commission_top=14`. Live-värdet har uppdaterats till `12/12` efter 12%-beslutet. SQL-verifiering:
+```sql
+SELECT key, value, updated_at FROM platform_settings
+WHERE key IN ('commission_standard', 'commission_top');
+```
+
+**RLS:**
+- `SELECT` tillåten för alla (`Public read platform_settings`).
+- `ALL` endast för `service_role`.
+
+**Användningsmönster:**
+```ts
+const { data } = await sb.from('platform_settings')
+  .select('value').eq('key', 'commission_standard').single();
+const commissionPct = parseFloat(data.value);
+```
+
 ---
 
 ### `commission_log`
@@ -189,7 +245,7 @@ Sparas av `booking-create` vid skapande. `stripe-checkout` EF (DÖD KOD) räknad
 - `commission_pct` integer (**PROCENT-format**)
 - `commission_amt` numeric (beloppet Spick tar)
 - `net_amount` numeric (städarens del)
-- `level_name` text (`Standard 17%`, `Företag 12%`, etc.)
+- `level_name` text (`Standard 17%`, `Företag 12%`, etc.) — legacy; nya loggas som `Standard 12%` efter Dag 2
 
 **⚠️ Inkonsistensrisk:** Pre-Dag 2 kan `commission_log.commission_pct` skilja sig från `bookings.commission_pct` för Top-tier cleaners (BUG 1). Se commission-audit-dokumentet.
 
@@ -398,30 +454,35 @@ Audit-logg för booking-flöden.
 
 1. **`customer_profiles` skev:** 1 rad trots 4 unika kunder i `bookings`. `booking-create` upsert-fix deployad men påverkar bara nya bokningar.
 2. **Avbokad + betald booking:** 1 bokning (april 2026) med `status='avbokad'` men `payment_status='paid'`. Data-cleanup behövs (manuell SQL).
-3. **Commission_rate schema-inkonsistens:** Schema-default `0.17` (decimal), men alla rader sparas som `17` (procent). `admin.html` har försvarskod `c.commission_rate < 1 ? ...` som antyder historiska decimal-rader kan existera. SQL-audit krävs: `SELECT COUNT(*) FROM cleaners WHERE commission_rate < 1;` → förväntat 0.
+3. **Commission-format inkonsistens (cleaners/companies):** `cleaners.commission_rate` och `companies.commission_rate` har blandade historiska värden (`17`, `12`, `0.17`, `0`). Schema-default `0.17` (decimal) + rader lagrade som `17` (procent) + tomma rader = tre format i samma kolumn. **Ska IGNORERAS av ny kod — läs från `platform_settings.commission_standard` istället.** Normaliseras senare (efter calendar_events-bug fixad — P1).
 4. **Pricing-path-divergens:** `booking-create` ignorerar `use_company_pricing`. Latent bug — Rafas flagga får INTE sättas till `true` pre-Dag 2-fix.
 5. **Koordinater saknas:** Daniella + Lizbeth (Rafas team) har NULL `home_lat`/`home_lng`. Väntar på Rafael.
+6. **8 par överlappande testbokningar (P1-bug för framtiden):** Blockerar UPDATE-operationer mot `bookings`-tabellen via trigger `trg_booking_to_calendar` → `no_booking_overlap`-constraint på `calendar_events`. Inte aktivt blockerande för Rafa-pilot men förhindrar t.ex. bulk-UPDATE av `commission_pct` från 17 till 12 på historiska bokningar. Se `3-TODOLIST-v2.md` P1-1.
 
 ---
 
 ## SQL-verifieringar att köra vid Dag 2-förberedelse
 
 ```sql
--- 1. Commission-format mix?
-SELECT COUNT(*) FROM cleaners WHERE commission_rate < 1;  -- förväntat: 0
+-- 1. platform_settings live-värden (kärnverifiering för Dag 2)
+SELECT key, value, updated_at FROM platform_settings
+WHERE key IN ('commission_standard', 'commission_top', 'base_price_per_hour', 'subscription_price');
+-- Förväntat: commission_standard=12, commission_top=12
 
--- 2. Top-tier cleaners (triggar BUG 1)?
-SELECT COUNT(*) FROM cleaners WHERE tier = 'top';  -- förväntat: 0
+-- 2. Commission-format mix i cleaners (data-kvalitet)
+SELECT commission_rate, COUNT(*) FROM cleaners
+GROUP BY commission_rate ORDER BY commission_rate;
+-- Förväntat: mix av 17, 12, 0.17, 0 — bekräftar att fältet ska ignoreras
 
--- 3. All commission_pct = 17 i bookings?
-SELECT DISTINCT commission_pct FROM bookings;  -- förväntat: [17]
+-- 3. All commission_pct i historiska bookings
+SELECT DISTINCT commission_pct FROM bookings;  -- förväntat: [17] (testdata)
 
 -- 4. Mismatch mellan bookings och commission_log?
 SELECT b.id, b.commission_pct AS b_pct, cl.commission_pct AS log_pct
 FROM bookings b LEFT JOIN commission_log cl ON cl.booking_id=b.id
 WHERE b.commission_pct <> cl.commission_pct;  -- förväntat: tomt resultat
 
--- 5. Companies-schema (verifiera att advancerade compliance-fält finns)
+-- 5. Companies-schema (verifiera advancerade compliance-fält)
 SELECT column_name, data_type FROM information_schema.columns
 WHERE table_name = 'companies' ORDER BY ordinal_position;
 
@@ -432,4 +493,20 @@ WHERE table_name = 'v_cleaners_for_booking' ORDER BY ordinal_position;
 -- 7. Avbokade + betalda bokningar
 SELECT id, booking_date, status, payment_status, total_price
 FROM bookings WHERE status='avbokad' AND payment_status='paid';
+
+-- 8. Överlappande bokningar (P1-bug som blockerar UPDATE)
+SELECT COUNT(*) FROM (
+  SELECT a.id FROM bookings a JOIN bookings b
+    ON a.cleaner_id = b.cleaner_id
+    AND a.id < b.id
+    AND a.booking_date = b.booking_date
+    AND a.booking_time < (b.booking_time + (b.booking_hours || ' hours')::interval)
+    AND (a.booking_time + (a.booking_hours || ' hours')::interval) > b.booking_time
+) overlaps;
+-- Förväntat: 8 par per 2026-04-17
+
+-- 9. Triggers på bookings
+SELECT trigger_name, event_manipulation, action_timing
+FROM information_schema.triggers WHERE event_object_table = 'bookings';
+-- Förväntat: 6 triggers (se triggerlistan ovan)
 ```

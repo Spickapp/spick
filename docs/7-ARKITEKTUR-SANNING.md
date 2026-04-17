@@ -44,8 +44,15 @@ Pricing hanteras på **14 platser** — 4 skrivande (authoritative), 10 läsande
 ### Gemensam helper
 
 - **Pre-Dag 2:** Inte existerande.
-- **Post-Dag 2 (planerat):** [`supabase/functions/_shared/pricing-resolver.ts`](../supabase/functions/_shared/pricing-resolver.ts).
-- **Existerande helper som redan delas:** [`_shared/pricing-engine.ts`](../supabase/functions/_shared/pricing-engine.ts) — marginal/rabatt/kredit-motor (EJ pris-resolver).
+- **Post-Dag 2 (planerat):** [`supabase/functions/_shared/pricing-resolver.ts`](../supabase/functions/_shared/pricing-resolver.ts) — läser `platform_settings.commission_standard` + 3-lagers-pricing.
+- **Existerande helper som redan delas:** [`_shared/pricing-engine.ts`](../supabase/functions/_shared/pricing-engine.ts) — marginal/rabatt/kredit-motor. Bör uppdateras att läsa `platform_settings` (rad 5-6) istället för att hårdkoda `COMMISSION_STANDARD=17, COMMISSION_TOP=14`.
+
+### Checklista före pricing-ändring
+
+- [ ] Läser koden från `platform_settings`?
+- [ ] Hårdkodar koden `0.17`, `0.12`, `0.83`, `0.88`, `349`, `399`? → FEL, ska läsa platform_settings.
+- [ ] Läser koden `cleaners.commission_rate` eller `companies.commission_rate`? → FEL, fältet ska ignoreras.
+- [ ] Använder den nya koden `pricing-resolver.ts` helper? → JA, efter Dag 2.
 
 ---
 
@@ -83,38 +90,63 @@ boka.html (rad 2847)  →  POST booking-create EF
 
 ---
 
-## Commission-beräkning (32 träffar)
+## Commission — 12% överallt (Dag 1-beslut 2026-04-17)
 
-Alla ställen där commission hanteras:
+**Affärsmodellen:** 12% provision på ALLA bokningar, oavsett kund-typ eller städare.
+
+**Single source of truth:** `platform_settings.commission_standard = 12`
+
+**Läs så här i kod:**
+```typescript
+const { data } = await sb.from('platform_settings')
+  .select('value')
+  .eq('key', 'commission_standard')
+  .single();
+const commissionPct = parseFloat(data.value);   // 12
+const commissionRate = commissionPct / 100;     // 0.12 för Stripe
+```
+
+**ALDRIG:** Hårdkoda `0.17`, `0.12`, `17`, `12`, `0.83`, `0.88` som konstanter.
+
+**⚠️ `cleaners.commission_rate` och `companies.commission_rate`** har blandade historiska värden (`17`, `12`, `0.17`, `0`). **Dessa fält ska IGNORERAS av ny kod.** `platform_settings` är sanning. Normaliseras i P1-6 efter P1-1 är fixat.
+
+### Alla 32 ställen där commission hanteras
 
 | Ställe | Fil | Läsning | Skrivning | Status |
 |--------|-----|---------|-----------|--------|
-| pricing-engine | `_shared/pricing-engine.ts:5,9` | — | Returnerar `commissionPct` (14/17) | ✅ OK |
-| booking-create DB insert | `booking-create/index.ts:330,433` | `pricing.commissionPct` | `bookings.commission_pct` | ✅ OK |
-| booking-create Stripe fee | `booking-create/index.ts:497,603` | **HÅRDKODAD 0.17/0.12** | Stripe `application_fee_amount` | 🔴 **BUG 1** |
-| booking-create commission_log | `booking-create/index.ts:683` | `commissionRate * 100` | `commission_log.commission_pct` | ⚠️ Loggar hårdkodad 17 även om booking är Top-tier (14) |
-| stripe-checkout Stripe fee | `stripe-checkout/index.ts:74,88,231` | **HÅRDKODAD 0.17/0.12** | Stripe `application_fee_amount` | 🔴 **BUG 1** (men dead code) |
-| charge-subscription-booking | `charge-subscription-booking/index.ts:188-190` | `booking.commission_pct` /100 | Stripe `application_fee_amount` | ✅ **REFERENSIMPLEMENTATION** |
-| stripe-webhook | `stripe-webhook/index.ts` | — | `bookings.payment_status='paid'` + dispute-hantering | ✅ Ej commission-beräkning |
+| pricing-engine | `_shared/pricing-engine.ts:5,9` | Konstanter `COMMISSION_STANDARD=17, COMMISSION_TOP=14` (migration-seed) | Returnerar `commissionPct` | 🟡 Bör läsa från `platform_settings` (Dag 2) |
+| booking-create DB insert | `booking-create/index.ts:330,433` | `pricing.commissionPct` | `bookings.commission_pct` | 🟡 Indirekt — korrekt via pricing-engine |
+| booking-create Stripe fee | `booking-create/index.ts:497,603` | **HÅRDKODAD 0.17/0.12** | Stripe `application_fee_amount` | 🔴 **BUG 1** — ska läsa `platform_settings` |
+| booking-create commission_log | `booking-create/index.ts:683` | `commissionRate * 100` | `commission_log.commission_pct` | ⚠️ Loggar hårdkodad 17 |
+| ~~stripe-checkout~~ | ~~`stripe-checkout/index.ts:74,88,231`~~ | **HÅRDKODAD 0.17/0.12** | ~~Stripe fee~~ | ⚠️ **DÖD KOD — raderas i Dag 2** |
+| **charge-subscription-booking** | `charge-subscription-booking/index.ts:188-190` | `booking.commission_pct` /100 | Stripe `application_fee_amount` | ✅ **REFERENSIMPLEMENTATION** — dock läser från booking-raden, inte platform_settings. OK tills vidare. |
+| stripe-webhook | `stripe-webhook/index.ts` | — | Ingen commission-beräkning | ✅ Ej commission |
 | stripe-refund | `stripe-refund/index.ts` | `booking.total_price` | Refund | ✅ OK |
-| generate-self-invoice | `generate-self-invoice/index.ts:190-191` | `commission_log.commission_pct \|\| 17`, /100 | Fakturarad | ✅ OK |
-| admin-create-company | `admin-create-company/index.ts:59,106,205` | `body.commission_rate ?? 12` | `companies.commission_rate`, `cleaners.commission_rate` | ✅ OK (procent) |
-| admin-approve-cleaner | `admin-approve-cleaner/index.ts:148,272` | hårdkod 17 | `cleaners.commission_rate` | ✅ OK (procent) |
-| auto-remind emails | `auto-remind/index.ts:119,155,361,673` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** (kosmetisk) |
-| notify emails | `notify/index.ts:212,332-333` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** (kosmetisk) |
-| admin-UI visning | `admin.html:2378,2558,3501,3514,3629,3941,5467` | `commission_pct \|\| 17` /100. Har försvarskod för mixed format. | Admin-rapporter + edit | ✅ OK (robust) |
-| faktura.html | `faktura.html:121,205` | `commission_pct \|\| 17` /100 | Kundfaktura | ✅ OK |
+| generate-self-invoice | `generate-self-invoice/index.ts:190-191` | `commission_log.commission_pct \|\| 17` /100 | Fakturarad | ✅ OK (historisk-robust) |
+| admin-create-company | `admin-create-company/index.ts:59,106,205` | `body.commission_rate ?? 12` | `companies.commission_rate` | 🟡 Skriver till fält som ska ignoreras — ta bort i P1-6 |
+| admin-approve-cleaner | `admin-approve-cleaner/index.ts:148,272` | hårdkod 17 | `cleaners.commission_rate` | 🟡 Samma — ta bort i P1-6 |
+| auto-remind emails | `auto-remind/index.ts:119,155,361,673` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** — efter 12% ska vara `*0.88` (P1-5) |
+| notify emails | `notify/index.ts:212,332-333` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** (P1-5) |
+| admin-UI visning | `admin.html:2378,2558,3501,3514,3629,3941,5467` | `commission_pct \|\| 17` /100 + försvarskod för mixed format | Admin-rapporter | ✅ Robust mot historik |
+| faktura.html | `faktura.html:121,205` | `commission_pct \|\| 17` /100 | Kundfaktura | ✅ OK (historisk-robust) |
 | team-jobb | `team-jobb.html:382-383` | `commission_pct \|\| 17` /100 | Teammedlem-vy | ✅ OK |
-| stadare-uppdrag | `stadare-uppdrag.html:637-638` | **FEL FÄLT** — `booking.commission_rate` finns ej på bookings | Städare-vy ersättning | 🔴 **BUG 3** |
-| stadare-dashboard | `stadare-dashboard.html:9080,9083` | Hårdkodad `0.12` fallback | Städare-dashboard salary | 🟡 **BUG 4** (kosmetisk) |
+| stadare-uppdrag | `stadare-uppdrag.html:637-638` | **FEL FÄLT** — `booking.commission_rate` finns ej | Städare-vy | 🔴 **BUG 3** (P0-2 snabbfix) |
+| stadare-dashboard | `stadare-dashboard.html:9080,9083` | Hårdkodad `0.12` fallback | Salary-översikt | 🟡 **BUG 4** (P1-5) |
 
-**Format-regel:** ALLA värden är procent (17 = 17%). Koden måste konsekvent dividera med 100. Undantag: variabelnamn med `Rate` (t.ex. `commissionRate`) = decimal (0.17) efter /100-konvertering.
-
-**Referensimplementation:** `charge-subscription-booking/index.ts:188-190` är den korrekta implementationen. Kopiera dess mönster:
+**Post-Dag 2 referensimplementation (i pricing-resolver):**
 ```ts
-const commissionPct = Number(booking.commission_pct) || 17;
-const commissionRate = commissionPct / 100;
+const { data: settings } = await sb.from('platform_settings')
+  .select('value').eq('key', 'commission_standard').single();
+const commissionPct = parseFloat(settings.value);    // 12
+const commissionRate = commissionPct / 100;          // 0.12
 const applicationFee = Math.round(amountOre * commissionRate);
+```
+
+**Läs-från-booking-mönster (bakåtkompatibelt för historiska rader):**
+```ts
+// När booking redan har commission_pct lagrad (historiska)
+const commissionPct = Number(booking.commission_pct) || 12;  // fallback 12 efter 2026-04-17
+const commissionRate = commissionPct / 100;
 ```
 
 ---
