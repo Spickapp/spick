@@ -634,7 +634,8 @@ async function loadBooking() {
   var city = booking.city || '–';
   var hours = booking.booking_hours || booking.hours || 3;
   var price = booking.total_price || booking.price || 0;
-  var commissionRate = booking.commission_rate || 0.17;
+  var commissionPct = booking.commission_pct || 12;
+  var commissionRate = commissionPct / 100;
   var pay = Math.round(Number(price) * (1 - commissionRate));
 
   document.getElementById('headerTitle').textContent = svc;
