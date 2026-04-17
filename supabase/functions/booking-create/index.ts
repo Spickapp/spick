@@ -33,6 +33,7 @@ import {
   getAvailableCredit,
   calculateBooking,
 } from "../_shared/pricing-engine.ts";
+import { resolvePricing } from "../_shared/pricing-resolver.ts";
 import { corsHeaders, encryptPnr, sendEmail, wrap, card } from "../_shared/email.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
@@ -180,34 +181,25 @@ serve(async (req) => {
     // ── 5. BERÄKNA PRIS — PRICING ENGINE ───────────
     const settings = await loadSettings(supabase);
 
-    // Kolla per-tjänst-pris
-    let usePerSqm = false;
-    let perSqmRate = 0;
-    try {
-      const { data: svcPrices } = await supabase
-        .from("cleaner_service_prices")
-        .select("price, price_type")
-        .eq("cleaner_id", cleaner.id)
-        .eq("service_type", service.split(" + ")[0].trim())
-        .limit(1);
-      if (svcPrices && svcPrices.length > 0) {
-        if (svcPrices[0].price_type === "per_sqm" && sqm) {
-          usePerSqm = true;
-          perSqmRate = svcPrices[0].price;
-          // Override: total = rate × kvm, dividerat på timmar för att prismotor fungerar
-          settings.basePricePerHour = Math.round((perSqmRate * sqm) / validHours);
-        } else {
-          settings.basePricePerHour = svcPrices[0].price;
-        }
-      } else if (cleaner.hourly_rate && cleaner.hourly_rate > 0) {
-        settings.basePricePerHour = cleaner.hourly_rate;
-      }
-    } catch (e) {
-      console.warn("Service price lookup:", e);
-      if (cleaner.hourly_rate && cleaner.hourly_rate > 0) {
-        settings.basePricePerHour = cleaner.hourly_rate;
-      }
+    // Löser pris + commission via central pricing-resolver
+    // (respekterar companies.use_company_pricing, läser commission
+    //  från platform_settings.commission_standard)
+    const resolved = await resolvePricing(supabase, {
+      cleanerId: cleaner.id,
+      serviceType: service,
+    });
+    if (resolved.priceType === "per_sqm" && resolved.pricePerSqm && sqm) {
+      // Per_sqm: räkna om till hourly equivalent så pricing-engine fortsatt fungerar
+      settings.basePricePerHour = Math.round((resolved.pricePerSqm * sqm) / validHours);
+    } else if (resolved.basePricePerHour > 0) {
+      settings.basePricePerHour = resolved.basePricePerHour;
     }
+    console.log("[SPICK] Pricing resolved:", {
+      source: resolved.source,
+      priceType: resolved.priceType,
+      basePricePerHour: settings.basePricePerHour,
+      commissionPct: resolved.commissionPct,
+    });
 
     const pricing = calculateBooking(settings, {
       hours: validHours,
@@ -493,8 +485,10 @@ serve(async (req) => {
     }
 
     // ── 11b. STRIPE CONNECT: Hämta mottagarens konto ──
+    // Commission läses från resolved.commissionPct (platform_settings).
+    // customer_type är ej längre en faktor — 12% flat per 17 april 2026-beslutet.
     let destinationAccountId: string | null = null;
-    let commissionRate = customer_type === "foretag" ? 0.12 : 0.17;
+    const commissionRate = resolved.commissionPct / 100;
 
     {
       const { data: cleanerConnect } = await supabase
@@ -502,11 +496,6 @@ serve(async (req) => {
         .select("stripe_account_id, stripe_onboarding_status, company_id, is_company_owner")
         .eq("id", cleaner.id)
         .single();
-
-      // Städföretag betalar alltid 12%
-      if (cleanerConnect?.company_id) {
-        commissionRate = 0.12;
-      }
 
       if (cleanerConnect?.company_id && !cleanerConnect.is_company_owner) {
         // Städare tillhör företag → pengar till företagsägaren
@@ -683,7 +672,7 @@ serve(async (req) => {
           commission_pct: commissionRate * 100,
           commission_amt: commSek,
           net_amount: stripeAmount - commSek,
-          level_name: customer_type === "foretag" ? "Företag 12%" : "Standard 17%",
+          level_name: `Standard ${resolved.commissionPct}%`,
         });
       } catch (e) { console.warn("Commission log error:", e); }
     }
