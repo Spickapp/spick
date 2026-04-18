@@ -171,6 +171,49 @@ Samma sak på [index.ts:234](supabase/functions/admin-create-company/index.ts:23
 
 ---
 
+## Tillkommen 18 april sen kväll — cleaner-job-match dag-bugg
+
+**Fil:** [supabase/functions/cleaner-job-match/index.ts](supabase/functions/cleaner-job-match/index.ts)
+
+**Rader:**
+- [index.ts:25-29](supabase/functions/cleaner-job-match/index.ts:25) — `dayOfWeek()`-funktionen returnerar 0=mån, 6=sön
+- [index.ts:42](supabase/functions/cleaner-job-match/index.ts:42) — `scoreAvailability` använder värdet
+- [index.ts:47](supabase/functions/cleaner-job-match/index.ts:47) — jämför `a.day_of_week === dow` mot `v_cleaner_availability_int` (som är ISO 1-7)
+- [index.ts:59](supabase/functions/cleaner-job-match/index.ts:59) — indexerar intern svensk dag-array (internt konsekvent, ej bugg)
+- [index.ts:182-183](supabase/functions/cleaner-job-match/index.ts:182) — `scorePreferences` bedömer helg (`dow >= 5`); fungerar internt eftersom båda sidor använder 0=mån
+
+**Bugg:** `dayOfWeek()` producerar 0=mån..6=sön. Ingen annan fil i kodbasen använder denna konvention.
+- `boka.html` använder JS (0=sön..6=lör) → efter Fas 0.5-fix ISO (1=mån..7=sön) vid jämförelse
+- `stadare-dashboard.html` konverterar till ISO via `dowV2`
+- `cleaner_availability_v2` / `v_cleaner_availability_int` = ISO 1-7
+
+**Påverkan:** Bekräftat aktiv. Anropas i bokningsflödet från [boka.html:1978](boka.html:1978) för sortering av städarresultat. Eftersom konventionen är shiftad en dag mot DB:
+- Mån-jobb: `dow=0` jämförs mot `day_of_week=1` → `false` → `scoreAvailability=0`
+- Tis-jobb: `dow=1` vs `day_of_week=2` → `false` → 0
+- ... samtliga dagar träffas, inte bara söndag.
+- Effekt: alla cleaners får `availability=0` i matchning → disqualifiers-check rad 233 returnerar 0 totalpoäng. Bokningsflödet räddas av `include_below_threshold: true` + lokal sort-fallback, men EF:ens sort-förstärkning fungerar inte alls.
+
+**Åtgärd:**
+1. Ändra [index.ts:28](supabase/functions/cleaner-job-match/index.ts:28) till ISO: `return day === 0 ? 7 : day;`
+2. Uppdatera interna beroenden som antar 0-indexering:
+   - Rad 59: `schedule[days[dow]]` → `schedule[days[dow - 1]]` (eller byt till 0-indexerad array mapping)
+   - Rad 183: `dow >= 5` → `dow >= 6` (lör=6, sön=7 i ISO)
+3. Deploy EF och verifiera via [smoke.spec.ts A05](tests/smoke.spec.ts:97)
+4. Manuell test: boka mån + sön → bekräfta att cleaner-sortering ändras i EF-svar
+
+**Prioritet:** P1 vecka 1. Bekräftat aktivt bruk i produktion, påverkar alla dagar (inte bara söndag).
+
+**Effort:** 30 min inklusive deploy + smoke.
+
+**Relaterad Regel #28-observation:** Spick har 3 dag-konventioner i produktion:
+1. JS `getDay()` (0=sön..6=lör)
+2. ISO (1=mån..7=sön) — `cleaner_availability_v2`
+3. `cleaner-job-match` intern (0=mån..6=sön)
+
+Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konventioner kvar (JS i rå data, ISO i DB). Vecka 2-3 kan en central `jsDayToIso(date)`-wrapper övervägas för att undvika framtida konvention-blandning.
+
+---
+
 ## Total vecka 1-insats
 
 | Uppgift | Effort | Status |
