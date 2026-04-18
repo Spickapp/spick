@@ -139,7 +139,12 @@ Scope växte från "1-2h admin-refaktor" till ~3-5h när grep avslöjade 4 filer
 
 ---
 
-## 0.5 — boka.html:1896 dag-numreringsbugg 🟢 KLAR (18 april sen kväll, commit fa8e4c0)
+## 0.5 — boka.html:1896 dag-numreringsbugg 🟡 KOD-VERIFIERAD (18 april sen kväll, commit fa8e4c0)
+
+**Verifieringsnivå:** Kod-verifierad + indirekt empiriskt via cleaner-job-match (commit b7c9c8b, samma konverteringsmönster, 12/12 vardagar + 7/12 helg bekräftat mot prod).
+
+Direkt empirisk test mot boka.html söndag ej genomförd — nuvarande testdata skulle ge endast 1 matchande cleaner (Farhad), vilket ger svagt bevis. Planerad efter Zivars status→aktiv på 19 april-mötet. Se [docs/verifications/2026-04-18-fas-0.5-sondagmatchning.md](docs/verifications/2026-04-18-fas-0.5-sondagmatchning.md).
+
 
 **Källa:** [Arkitekturplan v2](docs/planning/spick-arkitekturplan-v2.md) Del 2 #13
 
@@ -156,7 +161,10 @@ Alternativt normalisera v2-data vid query.
 
 ---
 
-## 0.6 — Wizard default mån-sön (inte bara mån-fre) 🟢 KLAR (18 april sen kväll, commit 6fcf987)
+## 0.6 — Wizard default mån-sön (inte bara mån-fre) 🟡 INDIREKT VERIFIERAD (18 april sen kväll, commit 6fcf987)
+
+**Verifieringsnivå:** Kod-verifierad + indirekt empiriskt via dublett-wizard-test. När Solid Service Sverige AB skapades två gånger fick varje ny VD + team exakt 7 v2-rader (dow 1-7) direkt efter wizard-submit — bekräftar att `for (let day = 1; day <= 7; day++)`-loopen körs. Se även [wizard-duplicate-company-name.md](docs/backlog/wizard-duplicate-company-name.md) för dublett-bugg som upptäcktes samtidigt.
+
 
 **Källa:** Arkitekturplan v2 Del 2 #19
 
@@ -170,7 +178,10 @@ Samma sak på [index.ts:234](supabase/functions/admin-create-company/index.ts:23
 
 ---
 
-## 0.7 — Wizard kräver VD-hemadress + geokodar 🟢 KLAR (18 april sen kväll, commit 6fcf987)
+## 0.7 — Wizard kräver VD-hemadress + geokodar 🟢 EMPIRISKT VERIFIERAD (18 april kväll, commit 6fcf987)
+
+**Verifieringsnivå:** Empirisk — valideringstoast `"VD hemadress krävs"` triggades när adress lämnades tom i Wizarden. Server-side-validering (admin-create-company/index.ts:40-43) bekräftad via faktisk 400-response. Google Places-geokodning testad och returnerade koordinater.
+
 
 **Källa:** Arkitekturplan v2 Del 2 #18 (Zivar krävde manuell fix)
 
@@ -238,9 +249,9 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
 | 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
-| 0.5 — Dag-numrering | 15 min | 🟢 Klar (commit fa8e4c0) |
-| 0.6 — Wizard mån-sön | 5 min | 🟢 Klar (commit 6fcf987) |
-| 0.7 — Wizard VD-adress | 30 min | 🟢 Klar (commit 6fcf987) |
+| 0.5 — Dag-numrering | 15 min | 🟡 Kod-verifierad (commit fa8e4c0), indirekt empiri via b7c9c8b |
+| 0.6 — Wizard mån-sön | 5 min | 🟡 Indirekt verifierad (commit 6fcf987, dublett-wizard-test) |
+| 0.7 — Wizard VD-adress | 30 min | 🟢 Empiriskt verifierad (commit 6fcf987, toast-trigger) |
 | Cleaner-job-match dag-bugg | 30 min | 🟡 P1 måndag morgon (dok i commit 43b0783) |
 | **Total** | **5-8h** | 5/7 klara före vecka 1 startar |
 
@@ -267,9 +278,9 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 🟢 **Klara:**
 - ✅ 0.1 RLS-audit (commit 552e2f6)
 - ✅ 0.3 cleaner_email bonusbugg (commit fb9f4e9 + migration 20260418) — se [incidentrapport](docs/incidents/2026-04-18-cleaner-email-phone-missing-columns.md)
-- ✅ 0.5 boka.html dag-numrering (commit fa8e4c0)
-- ✅ 0.6 Wizard mån-sön (commit 6fcf987)
-- ✅ 0.7 Wizard VD-adress (commit 6fcf987)
+- 🟡 0.5 boka.html dag-numrering (commit fa8e4c0, kod-verifierad + indirekt empiri via b7c9c8b)
+- 🟡 0.6 Wizard mån-sön (commit 6fcf987, indirekt verifierad via dublett-wizard-test)
+- ✅ 0.7 Wizard VD-adress (commit 6fcf987, empiriskt verifierad med valideringstoast)
 
 ⏳ **Återstår:**
 - ⏳ 0.2 Dokumentera resterande prod-policies (måndag em, 3-5h)
@@ -280,3 +291,23 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
 Kvar: 0.2 + cleaner-job-match (0.4a klar, 0.4b flyttad till Fas 1).
+
+---
+
+## Status total
+
+**Fas 0 vecka 1 är ~95% klar — endast 0.2 (dokumentera resterande prod-policies) återstår.**
+
+Alla kritiska kodbuggar (0.3, 0.4a, 0.5, 0.6, 0.7, cleaner-job-match) är åtgärdade och deployade till prod. Verifieringsnivån varierar:
+- 🟢 Empiriskt verifierat i prod: 0.1, 0.3, 0.4a, 0.7, cleaner-job-match
+- 🟡 Kod-verifierat + indirekt empiri: 0.5, 0.6
+
+Blockerare för full empirisk verifiering av 0.5/0.6 är testdata-begränsning (endast 1 cleaner aktiv på söndag). Löses efter Zivar-mötet 19 april när Solid Service aktiveras.
+
+Relaterade fynd för senare fas:
+- [Solid Service-status-blockerare](docs/incidents/2026-04-18-solid-service-onboarding-status-blocker.md) — förhandling på mötet 19 april
+- [Wizard dublett-namn](docs/backlog/wizard-duplicate-company-name.md) — Fas 1
+- [UNIQUE-constraint v2](docs/backlog/unique-constraint-v2-availability.md) — P2
+- [AR.upsert-bugg admin.html:3286](docs/backlog/admin-html-ar-upsert-bugg.md) — P1 separat
+- [cleaner_email denormalisering](docs/backlog/tech-debt-fas3.md) — Fas 3
+- [v_cleaner_availability_int legacy](docs/incidents/2026-04-18-v2-missing-grants.md) — flaggad under 0.2-audit
