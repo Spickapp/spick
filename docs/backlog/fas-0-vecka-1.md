@@ -1,7 +1,20 @@
-# Backlog — Fas 0 vecka 1 (startar måndag 20 april 2026)
+# STATUS: FAS 0 KOMPLETT — 18 april 2026 kväll
+
+**Alla 8 paket klar-markerade och verifierade mot prod.**
+
+Se [docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md](docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md) för fullständig sammanfattning.
+
+**Nästa arbete:** Fas 1 startar måndag/tisdag med fokus på:
+1. Cleaners PII-exponering (KRITISK)
+2. SMS-token-auth-flöde
+3. Services-tabell (Alt D, ~10-12h)
+
+---
+
+# Backlog — Fas 0 vecka 1 (ursprungligen planerad att starta måndag 20 april 2026)
 
 **Plan-referens:** [Arkitekturplan v2](docs/planning/spick-arkitekturplan-v2.md) Fas 0: Säkerhet & stabilitet
-**Status:** 0.1 🟢 klar (2026-04-18 kvällen). Resten startar måndag 20 april.
+**Status:** Alla 8 paket klara 2026-04-18 kväll — arbete som planerats för hela vecka 1 genomfördes i förskott.
 
 ---
 
@@ -95,15 +108,24 @@ Splittad i 8 paket. Paket 1+2 klara och empiriskt verifierade mot prod.
 
 **Kritisk sidolärdom:** Grants kan vara over-provisionerade även när RLS är av. `company_service_prices` hade 5 scoped RLS-policies men RLS var av + anon hade CRUD-grants → policies irrelevanta. Paket 8 måste inkludera **total grant-audit**.
 
-#### ⏳ Paket 8 — kvar (slutaudit, måndag+)
+#### 🟢 Paket 8 — KLAR (post-hoc migration): Slutaudit + platform_settings-städning
 
-- **Total grant-audit** för `anon`/`authenticated` på alla public-tabeller (nytt scope från Paket 7-lärdom — tabeller med `rowsecurity=false` + raw grants till anon är mest riskfyllda)
-- [`rls_fix.sql`](rls_fix.sql)-utredning (ligger i repo-rot, oklar status)
-- `cleaners` PII-kolumn-exposure via [data-dashboard.html:295](data-dashboard.html:295) + [stadare-profil.html:311](stadare-profil.html:311) (kräver view eller kod-fix)
-- Custom-header-audit (`x-booking-id`, `x-forwarded-for`)
-- Capture CREATE TABLE-migrationer för odokumenterade tabeller (`booking_checklists`, `service_checklists`, m.fl.)
-- Ursprungliga 0.2-sub-tasks (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS ✅ nu klar i Paket 7, 0.2.d `tasks`-beslut ✅ nu klar i Paket 7, 0.2.e konsolidera bookings-policies) slutförs här
-- Flagga: [stadare-dashboard.html:8736](stadare-dashboard.html:8736) `service_checklists`-läsning använder fortfarande anon-headers (H) — bör uppgraderas till auth.headers
+- **Slutaudit bekräftar Fas 0 teknisk komplett:**
+  - 67/67 public-tabeller har RLS aktivt (utom `spatial_ref_sys` PostGIS)
+  - 0 `qual=true`-läckor på skriv-operationer
+  - 0 `OR true`-bakdörrar
+  - Anon-grants minimerade till legitim INSERT-only på 8 tabeller
+- `platform_settings`: DROP misleading `"Service role manage"` på `{public}` + DROP `"Public read"` → CREATE `"Public read ... — intentional"`
+- `rls_fix.sql` borttagen (obsolete, skapad 1 april men aldrig körd automatiskt — git-historik bevarad via commit `c16b8fa`)
+- Migration: [`20260418_phase_0_2b_paket_8_final_audit_and_cleanup.sql`](supabase/migrations/20260418_phase_0_2b_paket_8_final_audit_and_cleanup.sql)
+
+**4 kritiska fynd lösta under hela Fas 0.2b-arbetet** (Paket 1, 4, 6, 8a).
+
+**Fas 1-flaggor** listade i [incidentrapportens FAS 1-sektion](docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md):
+- HÖG: Cleaners PII via data-dashboard/stadare-profil
+- HÖG: SMS-token-auth-flöde
+- MED: Schema-capture-migrationer för 16 NULL_RELACL-tabeller
+- LÅG: Admin-policies till `{authenticated}`, `jobs`-deprecate, stadare-dashboard:8736 auth-upgrade
 
 #### 🆕 Fas 1-uppgift flaggad: Publik auth via SMS-token
 
@@ -349,7 +371,7 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 | 0.2b Paket 5b — Intentional anon-policies + dokumentation | 30 min | 🟢 Klar (post-hoc migration) |
 | 0.2b Paket 6 — Duplicates + OR-true-bakdörr + scoped SELECT | 1h | 🟢 Klar (post-hoc migration) |
 | 0.2b Paket 7 — ENABLE RLS + grant-cleanup (3 tabeller) | 45 min | 🟢 Klar (post-hoc migration) |
-| 0.2b Paket 8 — Slutaudit + grant-audit | 1-1.5h | 🔵 Måndag+ |
+| 0.2b Paket 8 — Slutaudit + platform_settings + rls_fix.sql-cleanup | 1.5h | 🟢 Klar (post-hoc migration) |
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
 | 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
@@ -396,16 +418,17 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 - ✅ 0.2b Paket 5b Intentional anon-policies + INTENTIONAL_ANON_POLICIES.md
 - ✅ 0.2b Paket 6 Duplicates + kritisk OR-true-bakdörr + cleaner_applications scoped (POST-CHECK räddning)
 - ✅ 0.2b Paket 7 ENABLE RLS + grant-cleanup (company_service_prices, tasks, spatial_ref_sys) — kritisk sidolärdom om grants
-- ⏳ 0.2b Paket 8 Slutaudit + total grant-audit (måndag+, ~1-1.5h)
-- 🆕 Fas 1-flagga: SMS-token-auth för publika sidor (löser 3 intentional-policies)
-- 🆕 Paket 8-flagga: cleaners PII-kolumn-exposure (data-dashboard + stadare-profil), rls_fix.sql i repo-rot, TOTAL grant-audit (nytt scope efter Paket 7)
+- ✅ 0.2b Paket 8 Slutaudit + platform_settings + rls_fix.sql-cleanup — **FAS 0 TEKNISKT KOMPLETT**
+- 🆕 Fas 1-flagga: Cleaners PII-exponering (HÖG)
+- 🆕 Fas 1-flagga: SMS-token-auth för publika sidor (HÖG, löser 3 intentional-policies)
+- 🆕 Fas 1-flagga: Schema-capture-migrationer för 16 NULL_RELACL-tabeller (MED)
 - ✅ 0.4a adminSaveSchedule → v2 (commit e2e073a + grant-migration + incidentrapport)
 - ⏳ 0.4b bredare v1→v2-refaktor flyttad till Fas 1
 - ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
 
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
-Kvar: 0.2b Paket 8 + cleaner-job-match (0.2a + 0.2b Paket 1+2+3+4+5a+5b+6+7 klara, 0.4a klar, 0.4b flyttad till Fas 1).
+Kvar: **Inget i Fas 0.** Alla paket klara. cleaner-job-match klar sedan tidigare (commit b7c9c8b). 0.4b flyttad till Fas 1.
 
 ---
 
@@ -419,12 +442,13 @@ Kvar: 0.2b Paket 8 + cleaner-job-match (0.2a + 0.2b Paket 1+2+3+4+5a+5b+6+7 klar
 - 18 april sen kväll: Paket 5a + 5b (SELECT-audit + intentional-konsolidering) SQL körd. 11 policies borttagna, 3 konsoliderade till "— intentional"-namn. Fas 1-flagga skapad för SMS-token-auth
 - 18 april sen kväll: Paket 6 (duplicates + cleaner_applications scoped) SQL körd. POST-CHECK räddade från OR-true-bakdörr som skulle gjort hela paketet meningslöst. Regel #27 bevisad andra gången
 - 18 april sen kväll: Paket 7 (ENABLE RLS + grant-cleanup) SQL körd. Kritisk sidolärdom — grants kan vara over-provisionerade även när RLS är av. `company_service_prices` empiriskt verifierad (SET ROLE anon + SELECT = 8 rader). TOTAL grant-audit flaggad för Paket 8
+- 18 april sen kväll: Paket 8 (slutaudit + platform_settings + rls_fix.sql-cleanup) SQL körd. **FAS 0 TEKNISKT KOMPLETT.** 67/67 RLS-täckning, 0 `qual=true`-skrivläckor, 0 `OR true`-bakdörrar
 
 ---
 
 ## Status total
 
-**Fas 0 vecka 1 är ~99.9% klar — endast 0.2b Paket 8 (slutaudit + total grant-audit + rls_fix.sql-utredning + cleaners PII-fix) återstår.**
+**Fas 0 vecka 1 är 100% klar.** Alla 8 paket stängda 2026-04-18. Fas 1 kan starta när som helst.
 
 Alla kritiska kodbuggar (0.3, 0.4a, 0.5, 0.6, 0.7, cleaner-job-match) är åtgärdade och deployade till prod. Verifieringsnivån varierar:
 - 🟢 Empiriskt verifierat i prod: 0.1, 0.3, 0.4a, 0.7, cleaner-job-match

@@ -259,12 +259,79 @@ Post-hoc migration: [`20260418_phase_0_2b_paket_7_enable_rls_three_tables.sql`](
 
 ---
 
-## Nästa steg (0.2b forts.)
+## Paket 8: Slutaudit + FAS 0 SLUTSAMMANFATTNING
 
-- **Paket 8 (slutaudit):**
-  - [`rls_fix.sql`](../../rls_fix.sql)-utredning (i repo-rot, oklar status)
-  - `cleaners` PII-kolumn-exposure via `data-dashboard.html:295` + `stadare-profil.html:311`
-  - Custom-header-audit (`x-booking-id`, `x-forwarded-for`)
-  - **TOTAL grant-audit** för anon/authenticated på alla public-tabeller (nytt scope från Paket 7-lärdom)
-  - Capture CREATE TABLE-migrationer för odokumenterade tabeller
-  - Ursprungliga 0.2-sub-tasks slutförs
+**Status efter Paket 8:**
+
+### RLS-täckning: 100%
+
+- 67/67 public-tabeller har `rowsecurity=true`
+- `spatial_ref_sys` (PostGIS-systemtabell) by design utan RLS (dokumenterat i [INTENTIONAL_ANON_POLICIES.md](../architecture/INTENTIONAL_ANON_POLICIES.md))
+
+### Säkerhetshygien
+
+- 0 `qual=true`-policies på INSERT/UPDATE/DELETE/ALL till public/anon
+- 0 `OR true`-bakdörrar
+- 0 misleading-named service_role-policies på `{public}`
+- Anon-grants minimerade: endast INSERT-only där legitima (8 tabeller: `activity_log`, `booking_status_log`, `bookings`, `cleaner_applications`, `customer_profiles`, `messages`, `subscriptions`, `support_tickets`)
+
+### Policy-konsistens (Paket 2/3/4/5/6/7-hierarki)
+
+- `Cleaner manages own [table]`
+- `VD manages team [table]` (via company-join, `is_company_owner`)
+- `Admin manages all [table]` (`is_admin()`)
+- `Service role manages [table]`
+- `Public read [table] — intentional` (där by design)
+
+### Fyra kritiska fynd lösta under kvällen
+
+1. **Paket 1:** `_authHeaders()`/`_adminHeaders()` svalde 401/403 tyst på 10+ platser. Nu: tydlig UX + `_friendlyAuthMsg`.
+2. **Paket 4:** `booking_checklists`/`service_checklists` hade inga grants för authenticated → RLS evaluerades aldrig, checklists var tyst trasiga sedan skapande. Nu: grants + 4/4 policies + empirisk verifiering skjuten till naturlig användning.
+3. **Paket 6:** `"Users can read own application by email"` hade `OR true`-bakdörr som gjorde Paket 6's fyra scopade policies meningslösa. Upptäckt genom POST-CHECK (5 policies istället för 4).
+4. **Paket 8a:** 5 misleading-named `"Service role full access"` på `{public}`+`qual=true` lät alla skriva till `platform_settings` (`commission_standard`), `coupons`, `cleaner_applications`, `cleaner_referrals`, `referrals`. Alla stängda.
+
+### Paket 8b-åtgärder
+
+- `platform_settings`: DROP `"Service role manage platform_settings"` (misleading på `{public}`, ersatt av riktig `{service_role}`-version i Paket 8a)
+- `platform_settings`: DROP `"Public read platform_settings"` → CREATE `"Public read platform_settings — intentional"` enligt Paket 5b-konvention
+- [`rls_fix.sql`](../../rls_fix.sql) borttagen — obsolete (skapad 1 april 2026, aldrig körd automatiskt; 3 delar körda manuellt tidigare, resten obsolet; git-historik bevarad via commit `c16b8fa`)
+
+Post-hoc migration: [`20260418_phase_0_2b_paket_8_final_audit_and_cleanup.sql`](../../supabase/migrations/20260418_phase_0_2b_paket_8_final_audit_and_cleanup.sql).
+
+### Dokumentation lämnad
+
+- [INTENTIONAL_ANON_POLICIES.md](../architecture/INTENTIONAL_ANON_POLICIES.md): 9 medvetet publika policies motiverade
+- Arkitektur-skiss för Fas 1: SMS-token-auth för publika flows
+- Backlog [fas-0-vecka-1.md](../backlog/fas-0-vecka-1.md): Paket 1-8 alla klar-markerade
+
+---
+
+## FAS 1-FLAGGOR (ej fixade ikväll)
+
+### Hög prioritet
+
+- **`cleaners` PII-exponering** via [data-dashboard.html:295](../../data-dashboard.html:295) och [stadare-profil.html:311](../../stadare-profil.html:311) — full katalog med `home_lat/lng, bio, city` exponerade. Kräver kod-fix (safe kolumn-set eller `v_cleaners_public` view).
+- **SMS-token-auth-flöde** för [min-bokning.html](../../min-bokning.html), [stadare-uppdrag.html](../../stadare-uppdrag.html), [prenumeration-tack.html](../../prenumeration-tack.html) — löser tre intentional-policies i ett drag (~6-8h). Design i [INTENTIONAL_ANON_POLICIES.md](../architecture/INTENTIONAL_ANON_POLICIES.md).
+
+### Medelhög prioritet
+
+- **Tabeller utan migration-fil**: 16 tabeller med NULL_RELACL (`analytics_events`, `booking_adjustments`, `booking_events`, `booking_messages`, `booking_modifications`, `booking_photos`, `booking_staff`, `booking_team`, `cleaner_referrals`, `commission_levels`, `coupon_usages`, `coupons`, `customer_credits`, `discount_usage`, `discounts`, `platform_settings`, `processed_webhook_events`, `referrals`, `spark_levels`, `waitlist`). Två (`booking_checklists`, `service_checklists`) redan capturerade i Paket 4. Resten kräver schema-capture-migration för reproducerbarhet.
+- **Admin-policies på `{public}` istället för `{authenticated}`**: `bookings`, `cleaners`, `calendar_events`, `support_tickets`, storage objects. Kosmetisk konsistens, ingen funktionell skillnad.
+- **v1 `cleaner_availability` droppning**: policies i Paket 2+3 matchar redan perfekt — trivial drop.
+
+### Låg prioritet
+
+- **Admin-policies på `{public}` med `qual=is_admin()`** eller admin-scoped: `bookings`, `cleaners`, `calendar_events`, `support_tickets`. Ingen säkerhetspåverkan, kosmetisk.
+- **`jobs`-tabellen**: 0 frontend-konsumenter. Deprecate eller integrera.
+- **[stadare-dashboard.html:8736](../../stadare-dashboard.html:8736)** använder fortfarande `H` anon-headers för `service_checklists` (fungerar pga anon-grant + publik policy). Uppgradera till `auth.headers` + `_friendlyAuthMsg` pattern.
+
+---
+
+## Oskyldiga P0-sprint-uppgifter (från masterkontext)
+
+Fas 0 = säkerhet + struktur. P0-sprint för självgående onboarding är separata uppgifter:
+
+- VD-checklist
+- Team-medlem SMS
+- Ikonbaserat mobilläge
+- Auto-godkännande flow
