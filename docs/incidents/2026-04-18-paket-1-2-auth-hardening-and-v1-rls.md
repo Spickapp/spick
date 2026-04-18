@@ -74,8 +74,41 @@ Paket 1 + Paket 2 tillsammans bevisade att auth-hardening fångar tomma sessions
 
 ---
 
+## Paket 3: cleaner_availability_v2 RLS-konsistens (kompletterar Paket 2)
+
+### Problem
+
+v2 hade inga qual=true-skriv-läckor men policies var på `{public}`-roll istället för specifika roller. Plus saknad VD-team-policy för framtida UI som riktar mot v2.
+
+### Fix kördes mot prod
+
+1. **DROP** 4 befintliga policies (kosmetisk omskrivning till rätt roller):
+   - `"Admin can manage availability"`
+   - `"Authenticated users manage own availability_v2"`
+   - `"Service role manages availability_v2"`
+   - `"Anon can read availability_v2"`
+2. **CREATE** 5 nya policies med matching hierarki till v1:
+   - `"Cleaner manages own availability_v2"` (authenticated)
+   - `"VD manages team availability_v2"` (authenticated, NY policy)
+   - `"Admin manages all availability_v2"` (authenticated)
+   - `"Service role manages availability_v2"` (service_role)
+   - `"Public read availability_v2"` (anon, authenticated)
+
+Post-hoc migration: [`20260418_phase_0_2b_paket_3_cleaner_availability_v2_rls.sql`](../../supabase/migrations/20260418_phase_0_2b_paket_3_cleaner_availability_v2_rls.sql).
+
+### Empiriskt verifierat mot prod
+
+Admin via `adminSaveSchedule` skriver till Test Testssons v2-rader:
+- `DELETE /rest/v1/cleaner_availability_v2` → **204**
+- `POST /rest/v1/cleaner_availability_v2` → **201**
+- Toast: `"Schema sparat!"`
+- v2-rader bytte ID (bekräftas implicit av lyckad DELETE+INSERT)
+
+v1 och v2 har nu samma policy-struktur. När Fas 1 droppar v1 är v2 redo med identiska patterns.
+
+---
+
 ## Nästa steg (0.2b forts.)
 
-- **Paket 3:** `cleaner_availability_v2` RLS-skärpning (matching hierarki till Paket 2)
 - **Paket 4:** `booking_checklists` — kod-fix redan klar i Paket 1, behöver RLS-skärpning
 - **Paket 5–8:** kvarvarande SELECT-läckor (60+) + 3 tabeller utan RLS (flaggat i tidigare audit)

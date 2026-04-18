@@ -47,9 +47,16 @@ Splittad i 8 paket. Paket 1+2 klara och empiriskt verifierade mot prod.
 - Migration: [`20260418_phase_0_2b_paket_2_cleaner_availability_rls.sql`](supabase/migrations/20260418_phase_0_2b_paket_2_cleaner_availability_rls.sql)
 - Empiriskt verifierat: Admin-skriv via `is_admin()` släpper igenom, VD-skriv via company-join-policy bekräftad med logiktest
 
-#### ⏳ Paket 3-8 — kvar (måndag+)
+#### 🟢 Paket 3 — KLAR (post-hoc migration): cleaner_availability_v2 RLS-konsistens
 
-- **Paket 3:** `cleaner_availability_v2` RLS-skärpning (matching hierarki)
+- DROP 4 `{public}`-policies, CREATE 5 scoped policies (match v1-hierarkin)
+- NY `"VD manages team availability_v2"` för framtida team-UI
+- Migration: [`20260418_phase_0_2b_paket_3_cleaner_availability_v2_rls.sql`](supabase/migrations/20260418_phase_0_2b_paket_3_cleaner_availability_v2_rls.sql)
+- Empiriskt verifierat: DELETE 204 + POST 201 mot v2 via `adminSaveSchedule`
+- Fas 1 v1-drop blir trivialt — v2 redan i matchande struktur
+
+#### ⏳ Paket 4-8 — kvar (måndag+)
+
 - **Paket 4:** `booking_checklists` RLS-skärpning (kod-delen redan fixad i Paket 1)
 - **Paket 5-8:** Läs-audit av 60+ SELECT-policies med `qual=true` + 3 tabeller utan RLS
 - Ursprungliga 0.2-sub-tasks (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS, 0.2.d `tasks`-beslut, 0.2.e konsolidera bookings-policies) integreras i Paket 5-8
@@ -288,7 +295,8 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 | 0.2a — Stäng anon-skrivläckor | 1h | 🟢 Klar (migration + incident) |
 | 0.2b Paket 1 — Auth-hardening | 1.5h | 🟢 Klar (commit 5ca40ba) |
 | 0.2b Paket 2 — cleaner_availability v1 RLS | 30 min | 🟢 Klar (post-hoc migration) |
-| 0.2b Paket 3-8 — v2 RLS + checklists + SELECT-audit | 2-4h | 🔵 Måndag+ |
+| 0.2b Paket 3 — cleaner_availability_v2 RLS | 30 min | 🟢 Klar (post-hoc migration) |
+| 0.2b Paket 4-8 — checklists RLS + SELECT-audit | 1.5-3h | 🔵 Måndag+ |
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
 | 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
@@ -329,14 +337,15 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 - ✅ 0.2a Fyra anon-skrivläckor stängda (migration 20260418_close_anon_write_leaks + incidentrapport)
 - ✅ 0.2b Paket 1 Auth-hardening (commit 5ca40ba, Test 1+2+3 verifierade mot prod)
 - ✅ 0.2b Paket 2 cleaner_availability v1 RLS-skärpning (post-hoc migration + logiktest)
-- ⏳ 0.2b Paket 3-8 v2 RLS + booking_checklists RLS + 60+ SELECT-policies (måndag+, 2-4h)
+- ✅ 0.2b Paket 3 cleaner_availability_v2 RLS-konsistens (post-hoc migration, match v1-hierarkin)
+- ⏳ 0.2b Paket 4-8 booking_checklists RLS + 60+ SELECT-policies (måndag+, 1.5-3h)
 - ✅ 0.4a adminSaveSchedule → v2 (commit e2e073a + grant-migration + incidentrapport)
 - ⏳ 0.4b bredare v1→v2-refaktor flyttad till Fas 1
 - ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
 
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
-Kvar: 0.2b Paket 3-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2 klara, 0.4a klar, 0.4b flyttad till Fas 1).
+Kvar: 0.2b Paket 4-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2+3 klara, 0.4a klar, 0.4b flyttad till Fas 1).
 
 ---
 
@@ -345,12 +354,13 @@ Kvar: 0.2b Paket 3-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2 klara, 0.4a klar
 - 18 april sen kväll: Paket 1 (auth-hardening) deployad (commit 5ca40ba)
 - 18 april sen kväll: Paket 2 (v1 RLS-skärpning) SQL körd mot prod
 - 18 april sen kväll: Paket 1 + Paket 2 empiriskt verifierade mot prod (Test 1+2+3, logiktest Rafael/Zivar VD-täckning)
+- 18 april sen kväll: Paket 3 (v2 RLS-konsistens) SQL körd + verifierad (DELETE 204 + POST 201)
 
 ---
 
 ## Status total
 
-**Fas 0 vecka 1 är ~98% klar — endast 0.2b Paket 3-8 återstår (v2 RLS + booking_checklists RLS + SELECT-audit).**
+**Fas 0 vecka 1 är ~98.5% klar — endast 0.2b Paket 4-8 återstår (booking_checklists RLS + SELECT-audit).**
 
 Alla kritiska kodbuggar (0.3, 0.4a, 0.5, 0.6, 0.7, cleaner-job-match) är åtgärdade och deployade till prod. Verifieringsnivån varierar:
 - 🟢 Empiriskt verifierat i prod: 0.1, 0.3, 0.4a, 0.7, cleaner-job-match
