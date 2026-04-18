@@ -23,9 +23,11 @@ const MIN_SCORE = 40; // Jobb under detta döljs
 // ── HJÄLPFUNKTIONER ──────────────────────────────────
 
 function dayOfWeek(dateStr: string): number {
+  // ISO 8601: 1=mån..7=sön. Samma konvention som cleaner_availability_v2
+  // och v_cleaner_availability_int i prod.
   const d = new Date(dateStr);
-  const day = d.getDay(); // 0=sön, 1=mån...
-  return day === 0 ? 6 : day - 1; // 0=mån, 6=sön
+  const day = d.getDay(); // JS: 0=sön..6=lör
+  return day === 0 ? 7 : day;
 }
 
 function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -56,7 +58,7 @@ function scoreAvailability(cleaner: any, booking: any): number {
   // Fallback: JSON-schema
   if (schedule && typeof schedule === 'object') {
     const days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
-    const dayData = schedule[days[dow]];
+    const dayData = schedule[days[dow - 1]];
     if (!dayData || dayData.active === false) return 0;
     return 1.0;
   }
@@ -180,7 +182,7 @@ function scorePreferences(cleaner: any, booking: any): number {
   }
   
   const dow = dayOfWeek(booking.date);
-  const isWeekend = dow >= 5;
+  const isWeekend = dow >= 6;
   if (isWeekend) {
     checks++;
     if (prefs.weekend_ok) matches++; else score -= 0.3;
@@ -301,9 +303,12 @@ serve(async (req) => {
       });
     }
 
-    // Hämta tillgänglighet för alla städare (v_cleaner_availability_int returnerar day_of_week som integer)
+    // Hämta tillgänglighet för alla städare.
+    // cleaner_availability_v2 är sanningskällan (Wizard + boka.html + stadare-dashboard skriver dit).
+    // day_of_week är ISO 1-7. Legacy-viewen v_cleaner_availability_int baseras på v1-booleans
+    // som bara täcker 7 av 12 aktiva cleaners + saknar GRANT till service_role.
     const cleanerIds = cleaners.map(c => c.id);
-    const { data: availability } = await sb.from("v_cleaner_availability_int")
+    const { data: availability } = await sb.from("cleaner_availability_v2")
       .select("cleaner_id, day_of_week, is_active, start_time, end_time")
       .in("cleaner_id", cleanerIds);
 
