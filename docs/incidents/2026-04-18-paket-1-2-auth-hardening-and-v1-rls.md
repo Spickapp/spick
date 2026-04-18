@@ -203,7 +203,68 @@ POST-CHECK räddade oss från tyst regression. Efter 4 DROP + 4 CREATE verkade a
 
 ---
 
+## Paket 7: ENABLE RLS på tre tabeller
+
+**Scope:** 3 tabeller med `rowsecurity=false` identifierade i P.1-rapport.
+
+### `company_service_prices` (aktivt använd)
+
+Tabellen saknade RLS trots 5 befintliga policies — policies utvärderades aldrig. Dessutom hade anon full CRUD-grant (INSERT/UPDATE/DELETE/TRUNCATE).
+
+Åtgärder:
+- REVOKE INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER från anon (behåll SELECT för publik läsning via [boka.html:790](../../boka.html:790) + [foretag.html:371](../../foretag.html:371))
+- DROP `"Admin can manage company prices"` (dublett av authenticated-version)
+- DROP `"Anyone can insert company prices"` (**LÄCKA** — fri skrivning till anon)
+- DROP `"Anyone can read company prices"` (ersätts med intentional-namngivning)
+- CREATE `"Public read company_service_prices — intentional"`
+- CREATE `"Service role manages company_service_prices"` (för Wizard + stripe-checkout + pricing-resolver)
+- ALTER TABLE ENABLE ROW LEVEL SECURITY
+
+Behåller VD + Admin-policies från Fas 0.2a (redan korrekt scoped).
+
+**Empiriskt verifierat:**
+```sql
+SET LOCAL ROLE anon;
+SELECT COUNT(*) FROM company_service_prices;
+-- = 8 rader
+```
+Publik SELECT fungerar efter RLS-aktivering. 8 rader speglar nuvarande företag i prod.
+
+### `tasks` (intern, ej publik)
+
+Tabellen saknade RLS helt. Aktivt använd av stadare-dashboard (VD:s att-göra-lista, [rad 9421-9542](../../stadare-dashboard.html:9421)).
+
+Åtgärder:
+- REVOKE ALL från anon (0 publika konsumenter, 0 EF-konsumenter)
+- CREATE 4 scoped policies:
+  - `"Cleaner manages own tasks"` — via `assigned_to` OR `created_by`
+  - `"VD manages team tasks"` — via `company_id`
+  - `"Admin manages all tasks"` — via `is_admin()`
+  - `"Service role manages tasks"` — service role
+- ALTER TABLE ENABLE ROW LEVEL SECURITY
+
+**Empirisk verifiering:** Skjuts till naturlig användning (0 rader idag — VD skapar första task naturligt, Paket 1 synliggör eventuella fel via toast).
+
+### `spatial_ref_sys` (PostGIS-systemtabell)
+
+Read-only konstanter för koordinatreferens-system (WGS84, SWEREF99 TM, etc). Ingen RLS behövs. Dokumenterad i [`INTENTIONAL_ANON_POLICIES.md`](../architecture/INTENTIONAL_ANON_POLICIES.md) som "by design utan RLS".
+
+Post-hoc migration: [`20260418_phase_0_2b_paket_7_enable_rls_three_tables.sql`](../../supabase/migrations/20260418_phase_0_2b_paket_7_enable_rls_three_tables.sql).
+
+### Kritisk sidolärdom
+
+**Grants kan vara over-provisionerade även när RLS är av.** Hela kvällen har vi fokuserat på RLS-policies, men Paket 7 visade att vi även måste auditera raw grants på tabell-nivå. `company_service_prices` hade 5 korrekt scopade RLS-policies — men grants gjorde dem irrelevanta eftersom anon kunde skriva/läsa direkt utan RLS-utvärdering.
+
+**Förslag för Paket 8:** komplett grant-audit på alla tabeller för anon/authenticated, sido-vid-sido med RLS-status. Tabeller med `rowsecurity=false` OCH raw grants till anon är de mest riskfyllda.
+
+---
+
 ## Nästa steg (0.2b forts.)
 
-- **Paket 7:** 3 tabeller utan RLS
-- **Paket 8:** Slutaudit inkl [`rls_fix.sql`](../../rls_fix.sql)-utredning + cleaners PII-kolumn-exposure + custom-header-audit
+- **Paket 8 (slutaudit):**
+  - [`rls_fix.sql`](../../rls_fix.sql)-utredning (i repo-rot, oklar status)
+  - `cleaners` PII-kolumn-exposure via `data-dashboard.html:295` + `stadare-profil.html:311`
+  - Custom-header-audit (`x-booking-id`, `x-forwarded-for`)
+  - **TOTAL grant-audit** för anon/authenticated på alla public-tabeller (nytt scope från Paket 7-lärdom)
+  - Capture CREATE TABLE-migrationer för odokumenterade tabeller
+  - Ursprungliga 0.2-sub-tasks slutförs

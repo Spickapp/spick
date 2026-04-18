@@ -89,6 +89,32 @@ Namngivningskonvention: policies som listas här ska ha suffix `— intentional`
 
 ---
 
+## `company_service_prices` — Public read — intentional
+
+**Flöde:** [boka.html:790](../../boka.html:790) (kund ser företagspriser vid val), [foretag.html:371](../../foretag.html:371) (publik företagssida visar priser).
+
+**Exponeras:** `service_type`, `price`, `price_type` per företag.
+
+**Ingen PII:** bara prissättning.
+
+**Mitigation:** Company-IDs är uuids. Anon kan lista men utan `company_id`-filter får de ett aggregat som inte är känsligt. Skrivningar är REVOKE:ade från anon (Paket 7) — endast VD/Admin/Service kan modifiera.
+
+**Omprövas:** Fas 1 — kan skärpas om företag vill privatisera priser (ex. enterprise-kunder). Idag är prissättning publik by design för kund-transparens.
+
+---
+
+## `spatial_ref_sys` — Ingen RLS (by design)
+
+**Typ:** PostGIS-systemtabell med koordinatreferens-system.
+
+**Innehåll:** Read-only konstanter (WGS84, SWEREF99 TM, etc).
+
+**Varför ingen RLS:** Inga känsliga data, systemtabell, read-only (`rowsecurity=false` är korrekt). Matchar PostGIS default setup — att tvinga RLS på denna skulle potentiellt bryta spatial queries.
+
+**Omprövas:** Aldrig — systemtabell.
+
+---
+
 ## `ratings` — "Public read"
 
 **Flöde:** [stadare-profil.html:414](../../stadare-profil.html:414) (publik profil-visning), [admin.html:4833](../../admin.html:4833) (statistik).
