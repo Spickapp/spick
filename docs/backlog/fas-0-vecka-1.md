@@ -112,15 +112,30 @@ cleaner_phone: targetCleaner?.phone || null,
 
 **Källa:** [Admin-impersonation-audit](docs/audits/2026-04-19-admin-impersonation-vs-editing.md) Fynd 3
 
-**Bug:** [admin.html:3968-3969](admin.html:3968) läser/skriver `cleaner_availability` (v1). Wizard + boka.html + stadare-dashboard använder `cleaner_availability_v2`. Admin-editeringen har 0 effekt.
+**Bug:** [admin.html:3968-3969](admin.html:3968) läser/skriver `cleaner_availability` (v1). Wizard + boka.html + stadare-dashboard använder `cleaner_availability_v2`. Admin-editeringen har 0 effekt på moderna läsare.
 
-**Fix-komplexitet:** Ej trivial. Strukturen skiljer:
-- v1: 1 rad per cleaner med `day_mon`/`day_tue`/...-booleans
-- v2: 1-N rader per cleaner med `day_of_week smallint`
+**Fix-komplexitet:** Splittad i två delar efter scope-verifiering 18 april kväll.
 
-Se [nytt-jobb-matchar-bugg.md](docs/audits/2026-04-19-nytt-jobb-matchar-bugg.md) och min tidigare STOPP-rapport för struktur-skillnader.
+### 0.4a 🟢 KLAR (18 april sen kväll, commit e2e073a + GRANT-migration)
 
-**Effort:** 1-2h. Kräver UI-omskrivning av `adminEditSchedule` + `adminSaveSchedule`.
+Sync `adminSaveSchedule` till BÅDE v1 (oförändrat) OCH v2 (nytt). DELETE + INSERT-pattern eftersom UNIQUE(cleaner_id, day_of_week) saknas idag. Mappar `day_mon..day_sun` → ISO 1-7.
+
+Empiriskt verifierat mot prod med testcleaner Test Testsson (19f74217…):
+- 5 v2-rader bytte alla IDs via DELETE+INSERT (bevis för att patch gick igenom, inte bara no-op)
+- 0 dubletter i hela `cleaner_availability_v2`
+- Network: GET 200 → PATCH 204 → DELETE 204 → POST 201
+
+**Rotorsak upptäckt under verifiering:** `authenticated` saknade INSERT/UPDATE/DELETE-grants på v2. Fix: `GRANT INSERT, UPDATE, DELETE ON cleaner_availability_v2 TO authenticated`. Se [incidentrapport](docs/incidents/2026-04-18-v2-missing-grants.md) och [post-hoc migration](supabase/migrations/20260418_grant_v2_writes_to_authenticated.sql).
+
+### 0.4b ⏳ FLYTTAD till Fas 1
+
+Bredare v1→v2-refaktor för:
+- `stadare-dashboard.html` (egen schedule + team-CRUD, 6 operationer)
+- `foretag.html` (publik "tillgänglig idag")
+- `stadare-profil.html` (publik profil)
+- `admin-approve-cleaner/index.ts` (synk default-tider till 08-20 mån-sön som Fas 0.6)
+
+Scope växte från "1-2h admin-refaktor" till ~3-5h när grep avslöjade 4 filer utöver admin.html med v1-beroende. Flyttad till Fas 1 för att inte blockera vecka 1.
 
 ---
 
@@ -221,7 +236,8 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 | 0.1 — RLS-audit | 4h | 🟢 Klar (commit 552e2f6) |
 | 0.2 — Dokumentera resterande policies | 3-5h | 🔵 Måndag em |
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
-| 0.4 — Admin schedule v1→v2 | 1-2h | 🔵 Onsdag |
+| 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
+| 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
 | 0.5 — Dag-numrering | 15 min | 🟢 Klar (commit fa8e4c0) |
 | 0.6 — Wizard mån-sön | 5 min | 🟢 Klar (commit 6fcf987) |
 | 0.7 — Wizard VD-adress | 30 min | 🟢 Klar (commit 6fcf987) |
@@ -239,7 +255,7 @@ Eftersom 0.3/0.5/0.6/0.7 är klara redan 18 april, blir veckoplanen:
 3. **Måndag eftermiddag (3-5h):** 0.2 — RLS-dokumentation (policies + is_admin + company_service_prices + tasks + bookings-konsolidering)
 
 Onsdag:
-1. **Morgon (1-2h):** 0.4 — Admin schedule-editor v1→v2-refaktor
+1. **Morgon:** Bara 0.2 kvar från onsdag-planen (0.4a redan klar 18 april)
 2. **Eftermiddag:** Review + buffer för oväntade issues
 
 Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
@@ -257,9 +273,10 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 
 ⏳ **Återstår:**
 - ⏳ 0.2 Dokumentera resterande prod-policies (måndag em, 3-5h)
-- ⏳ 0.4 Admin schedule-editor v1→v2 (onsdag, 1-2h)
+- ✅ 0.4a adminSaveSchedule → v2 (commit e2e073a + grant-migration + incidentrapport)
+- ⏳ 0.4b bredare v1→v2-refaktor flyttad till Fas 1
 - ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
 
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
-Kvar: 0.2 + 0.4 + cleaner-job-match.
+Kvar: 0.2 + cleaner-job-match (0.4a klar, 0.4b flyttad till Fas 1).
