@@ -3967,7 +3967,53 @@ async function saveCleanerFromAdmin() {
 
 // ── ADMIN AVATAR UPLOAD ──────────────────────────────
 function adminEditSchedule(){var el=document.getElementById('admin-cleaner-schedule');if(!el||!currentCleanerId)return;var days=[['day_mon','Mån'],['day_tue','Tis'],['day_wed','Ons'],['day_thu','Tor'],['day_fri','Fre'],['day_sat','Lör'],['day_sun','Sön']];el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px" id="admin-sched-days">'+days.map(function(d){return'<button type="button" class="adb" data-day="'+d[0]+'" onclick="this.classList.toggle(\'on\')" style="padding:4px 10px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:inherit;background:#fff">'+d[1]+'</button>'}).join('')+'</div><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><select id="asc-s" style="padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem"><option>07:00</option><option selected>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option></select><span>\u2013</span><select id="asc-e" style="padding:4px 8px;border:1.5px solid #E8E8E4;border-radius:8px;font-size:.82rem"><option>15:00</option><option>16:00</option><option selected>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option></select></div><button onclick="adminSaveSchedule()" style="padding:6px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Spara</button><style>.adb.on{background:#DBEAFE!important;border-color:#3B82F6!important;color:#1E40AF;font-weight:600}</style>';AR.select('cleaner_availability','select=*&cleaner_id=eq.'+currentCleanerId).then(function(r){var a=(r.data&&r.data[0])||{};document.querySelectorAll('#admin-sched-days .adb').forEach(function(b){if(a[b.dataset.day]!==false)b.classList.add('on')});if(a.start_time)document.getElementById('asc-s').value=a.start_time.slice(0,5);if(a.end_time)document.getElementById('asc-e').value=a.end_time.slice(0,5)})}
-async function adminSaveSchedule(){var d={};document.querySelectorAll('#admin-sched-days .adb').forEach(function(b){d[b.dataset.day]=b.classList.contains('on')});var p=Object.assign({},d,{cleaner_id:currentCleanerId,start_time:document.getElementById('asc-s').value,end_time:document.getElementById('asc-e').value});var ex=await AR.select('cleaner_availability','select=id&cleaner_id=eq.'+currentCleanerId);if(ex.data&&ex.data.length>0){await AR.update('cleaner_availability',p,'cleaner_id=eq.'+currentCleanerId)}else{await AR.insert('cleaner_availability',p)}showToast('Schema sparat!');showCleanerDetail(currentCleanerId)}
+async function adminSaveSchedule(){
+  var d = {};
+  document.querySelectorAll('#admin-sched-days .adb').forEach(function(b){
+    d[b.dataset.day] = b.classList.contains('on')
+  });
+  var p = Object.assign({}, d, {
+    cleaner_id: currentCleanerId,
+    start_time: document.getElementById('asc-s').value,
+    end_time:   document.getElementById('asc-e').value
+  });
+  // v1 (oförändrat — booleans per dag, 1 rad per cleaner)
+  var ex = await AR.select('cleaner_availability','select=id&cleaner_id=eq.'+currentCleanerId);
+  if (ex.data && ex.data.length > 0) {
+    await AR.update('cleaner_availability', p, 'cleaner_id=eq.'+currentCleanerId);
+  } else {
+    await AR.insert('cleaner_availability', p);
+  }
+  // v2-sync (Fas 0.4a — DELETE + INSERT, ISO 1-7, 1 rad per aktiv dag).
+  // Saknar UNIQUE(cleaner_id,day_of_week)-constraint idag, så delete+insert
+  // undviker race med upsert. Se docs/backlog/unique-constraint-v2-availability.md.
+  var v2Ok = true;
+  try {
+    var dayMap = {day_mon:1, day_tue:2, day_wed:3, day_thu:4, day_fri:5, day_sat:6, day_sun:7};
+    var v2Rows = Object.keys(dayMap)
+      .filter(function(k){ return d[k] === true; })
+      .map(function(k){
+        return {
+          cleaner_id: currentCleanerId,
+          day_of_week: dayMap[k],
+          start_time: p.start_time,
+          end_time:   p.end_time,
+          is_active:  true
+        };
+      });
+    var delRes = await AR.del('cleaner_availability_v2', 'cleaner_id=eq.' + currentCleanerId);
+    if (delRes.error) throw new Error(delRes.error.message || 'v2 DELETE failed');
+    if (v2Rows.length > 0) {
+      var insRes = await AR.insert('cleaner_availability_v2', v2Rows);
+      if (insRes.error) throw new Error(insRes.error.message || 'v2 INSERT failed');
+    }
+  } catch (e) {
+    v2Ok = false;
+    console.warn('[adminSaveSchedule] v2-sync misslyckades:', e && e.message);
+  }
+  showToast(v2Ok ? 'Schema sparat!' : 'Schema sparat (v2-sync misslyckades, kontakta support)');
+  showCleanerDetail(currentCleanerId);
+}
 function loadCleanerBookings(cid){var el=document.getElementById('admin-cleaner-bookings');if(!el)return;var bs=(data.bookings||[]).filter(function(b){return b.cleaner_id===cid}).sort(function(a,b){return(b.booking_date||'').localeCompare(a.booking_date||'')}).slice(0,20);var cnt=document.getElementById('admin-bookings-count');if(cnt)cnt.textContent='('+bs.length+')';if(!bs.length){el.innerHTML='<span style="font-style:italic">Inga bokningar</span>';return}var sm={confirmed:'Bekr\u00e4ftad',pending_confirmation:'V\u00e4ntar',completed:'Klar',klar:'Klar',cancelled:'Avbokad'};var sc={confirmed:'#065F46',pending_confirmation:'#92400E',completed:'#065F46',klar:'#065F46',cancelled:'#DC2626'};el.innerHTML=bs.map(function(b){var s=sm[b.status]||b.status||'\u2013';return'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:.82rem">'+escHtml(b.customer_name||'\u2013')+'</strong><div style="font-size:.72rem;color:#6B6960">'+(b.booking_date||'')+' '+(b.booking_time||'').slice(0,5)+' \u00b7 '+escHtml(b.service_type||'')+'</div></div><div style="text-align:right"><span style="font-size:.72rem;color:'+(sc[b.status]||'#6B6960')+';font-weight:600">'+s+'</span>'+(b.total_price?'<div style="font-size:.82rem;font-weight:700;color:var(--g)">'+b.total_price+' kr</div>':'')+'</div></div>'}).join('')}
 
 async function adminUploadAvatar(cleanerId) {
