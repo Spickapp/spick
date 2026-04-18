@@ -16,6 +16,28 @@ Levererat söndag kväll 19 april:
 
 ## 0.2 — Dokumentera återstående odokumenterade prod-policies
 
+Splittad i 0.2a (KLAR 18 april kväll) + 0.2b (skjuten till måndag).
+
+### 0.2a 🟢 KLAR — stäng fyra anon-skrivläckor (18 april sen kväll)
+
+Under RLS-audit samma kväll upptäcktes 4 policies med `qual=true` som tillät anon-skrivningar. Stängda i prod + post-hoc migration skriven.
+
+- Migration: [`20260418_close_anon_write_leaks_phase_0_2a.sql`](supabase/migrations/20260418_close_anon_write_leaks_phase_0_2a.sql)
+- Incidentrapport: [`docs/incidents/2026-04-18-anon-write-leaks-closed.md`](docs/incidents/2026-04-18-anon-write-leaks-closed.md)
+
+Stängda: `company_service_prices` UPDATE+DELETE, `companies` UPDATE, `booking_slots` UPDATE. Ersatta med VD-skopade + Admin-policies + service_role där applicable. Frontend-grep bekräftade noll regression-risk innan stängning.
+
+### 0.2b ⏳ SKJUTEN TILL MÅNDAG — läs-audit + kod-fix + SELECT-policies
+
+Bredare audit som kräver kod-ändringar innan RLS kan stängas, samt 60+ SELECT-läckor:
+
+- **Läs-audit av 60+ SELECT-policies** till `{public}` med `qual=true` (konsolidering + RLS-skärpning)
+- **`cleaner_availability` v1 "Cleaners can manage own availability"** `qual=true FOR ALL` — kräver kod-fix först (Rafael + stadare-dashboard använder den, regression skulle bryta schema-redigering)
+- **`booking_checklists`** — [stadare-dashboard.html:8717](stadare-dashboard.html:8717) och [:8784](stadare-dashboard.html:8784) skickar med anon-headers, måste ändras till `_authHeaders()` innan RLS stängs
+- Delar av ursprungliga 0.2-sub-tasks nedan (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS, 0.2.d `tasks`-beslut, 0.2.e konsolidera bookings-policies)
+
+### 0.2 sub-tasks (ursprungliga, tillhör nu 0.2b)
+
 **Mål:** Stäng alla Regel #27-brott där prod-policies saknar migration-filer.
 
 ### 0.2.a — Capture `is_admin()`-funktion till repo
@@ -245,7 +267,8 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 | Uppgift | Effort | Status |
 |---------|--------|--------|
 | 0.1 — RLS-audit | 4h | 🟢 Klar (commit 552e2f6) |
-| 0.2 — Dokumentera resterande policies | 3-5h | 🔵 Måndag em |
+| 0.2a — Stäng anon-skrivläckor | 1h | 🟢 Klar (migration + incident) |
+| 0.2b — Läs-audit + kod-fix + SELECT-policies | 3-5h | 🔵 Måndag em |
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
 | 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
@@ -263,7 +286,7 @@ Eftersom 0.3/0.5/0.6/0.7 är klara redan 18 april, blir veckoplanen:
 
 1. **Måndag morgon (2-3h):** Cleaner-job-match dag-bugg (P1, se separat sektion) — rad 28 + rad 59 + rad 183-fix + deploy + smoke
 2. **Måndag middag (30 min):** Verifiera produktion med testbokning (mån + sön + tis för att bekräfta matchning)
-3. **Måndag eftermiddag (3-5h):** 0.2 — RLS-dokumentation (policies + is_admin + company_service_prices + tasks + bookings-konsolidering)
+3. **Måndag eftermiddag (3-5h):** 0.2b — läs-audit (60+ SELECT-policies) + cleaner_availability v1-kod-fix + booking_checklists-kod-fix + ursprungliga 0.2 sub-tasks (is_admin, admin-SELECT, tasks-beslut, bookings-konsolidering)
 
 Onsdag:
 1. **Morgon:** Bara 0.2 kvar från onsdag-planen (0.4a redan klar 18 april)
@@ -283,20 +306,21 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 - ✅ 0.7 Wizard VD-adress (commit 6fcf987, empiriskt verifierad med valideringstoast)
 
 ⏳ **Återstår:**
-- ⏳ 0.2 Dokumentera resterande prod-policies (måndag em, 3-5h)
+- ✅ 0.2a Fyra anon-skrivläckor stängda (migration 20260418_close_anon_write_leaks + incidentrapport)
+- ⏳ 0.2b Läs-audit + cleaner_availability/booking_checklists-kod-fix + 60+ SELECT-policies (måndag em, 3-5h)
 - ✅ 0.4a adminSaveSchedule → v2 (commit e2e073a + grant-migration + incidentrapport)
 - ⏳ 0.4b bredare v1→v2-refaktor flyttad till Fas 1
 - ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
 
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
-Kvar: 0.2 + cleaner-job-match (0.4a klar, 0.4b flyttad till Fas 1).
+Kvar: 0.2b + cleaner-job-match (0.2a klar, 0.4a klar, 0.4b flyttad till Fas 1).
 
 ---
 
 ## Status total
 
-**Fas 0 vecka 1 är ~95% klar — endast 0.2 (dokumentera resterande prod-policies) återstår.**
+**Fas 0 vecka 1 är ~97% klar — endast 0.2b (läs-audit + kod-fix + 60+ SELECT-policies) återstår.**
 
 Alla kritiska kodbuggar (0.3, 0.4a, 0.5, 0.6, 0.7, cleaner-job-match) är åtgärdade och deployade till prod. Verifieringsnivån varierar:
 - 🟢 Empiriskt verifierat i prod: 0.1, 0.3, 0.4a, 0.7, cleaner-job-match
