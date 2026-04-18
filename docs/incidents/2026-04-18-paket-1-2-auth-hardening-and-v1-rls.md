@@ -144,6 +144,66 @@ Skjuts till naturlig användning — nästa gång Rafa eller Daniella markerar e
 
 ---
 
+## Paket 6: Duplicerade policies + OR-true-bakdörr
+
+**Scope:** 6 tabeller med dubletter. Oväntat kritiskt fynd under POST-CHECK.
+
+### Exakta dubletter (behåll 1 per cluster)
+
+- `blocked_times`: 3 `qual=true` SELECT → 1 `"Public read blocked_times — intentional"`
+- `booking_slots`: 3 `qual=true` SELECT → 1 `"Public read booking_slots — intentional"`
+- `companies`: `"Service role full access on companies"` + `"Owner can read own company"` borttagna (överflödiga)
+- `customer_profiles`: `"Owner updates own profile"` UPDATE-dublett borttagen
+
+### `cleaner_applications` SKÄRPNING + OR-true-bakdörr
+
+Tidigare hade `cleaner_applications` tre SELECT-läckor:
+
+1. `"Anyone can read applications"` (`qual=true`) — droppad
+2. `"Service role can read all applications"` (misleading-named, `qual=true` till public) — droppad
+3. **`"Users can read own application by email"`** — hittades under POST-CHECK
+
+Punkt 3 hade `qual`:
+
+```sql
+(email = auth.jwt() ->> 'email')
+OR (email = current_setting('request.headers')::json ->> 'x-user-email')
+OR true
+```
+
+Den sista `OR true` gjorde policyn effektivt `USING(true)` — **alla fyra nya scopade policies jag skapade i Paket 6 var meningslösa förrän denna bakdörr droppades**.
+
+Verifierat via grep-audit att ingen frontend-kod skickar `x-user-email`-header (0 träffar i HTML/JS/TS). Policy droppad. POST-CHECK 3 bekräftar 0 andra `OR true`-mönster i prod-RLS.
+
+Nya policies efter skärpning:
+
+- `"Cleaner reads own application"` — `email = auth.jwt() ->> 'email'`
+- `"VD reads team applications"` — `invited_by_company_id` via company-join
+- `"Admin reads all applications"` — `is_admin()`
+- `"Service role reads applications"` — service_role
+
+Post-hoc migration: [`20260418_phase_0_2b_paket_6_duplicate_consolidation.sql`](../../supabase/migrations/20260418_phase_0_2b_paket_6_duplicate_consolidation.sql).
+
+### `jobs` (0 frontend-konsumenter)
+
+Tidigare: 3 `qual=true` SELECT-policies (Anon/Auth/Cleaner).
+Grep-audit bekräftade: tabellen används inte från frontend.
+Nu: Admin ALL + Service role ALL + Cleaner SELECT egna.
+Flaggad för Fas 1-beslut (deprecate eller integrera).
+
+### Flaggat för senare (utanför Paket 6-scope)
+
+- **`cleaners`-tabellen läcker PII** via [data-dashboard.html:295](../../data-dashboard.html:295) (`select=*` på godkända) och [stadare-profil.html:311](../../stadare-profil.html:311) (full katalog med `home_lat/lng, bio, city`). Kräver kod-fix (safe kolumn-set eller `v_cleaners_public` view) — **hög prioritet**.
+- [`rls_fix.sql`](../../rls_fix.sql) finns i repo-rot utanför `supabase/migrations/` — oklar status (körd eller ej mot prod?). Flaggad för Paket 8-audit.
+- Andra custom-header-policies (`x-booking-id` i `bookings`, `x-forwarded-for` i `rate_limits`) är troligen legitima men bör auditas i Paket 8.
+
+### Regel #27-lärdom (andra gången denna session)
+
+POST-CHECK räddade oss från tyst regression. Efter 4 DROP + 4 CREATE verkade allt OK tills POST-CHECK 1 visade 5 policies istället för 4. Den 5:e hade varit `OR true`-bakdörr som gjort hela Paket 6 meningslös. **Alltid POST-CHECK efter DROP/CREATE.**
+
+---
+
 ## Nästa steg (0.2b forts.)
 
-- **Paket 5–8:** kvarvarande SELECT-läckor (60+) + 3 tabeller utan RLS + capture CREATE TABLE-migrationer för odokumenterade tabeller (flaggat i tidigare audit)
+- **Paket 7:** 3 tabeller utan RLS
+- **Paket 8:** Slutaudit inkl [`rls_fix.sql`](../../rls_fix.sql)-utredning + cleaners PII-kolumn-exposure + custom-header-audit
