@@ -250,7 +250,7 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 
 🟢 **Klara:**
 - ✅ 0.1 RLS-audit (commit 552e2f6)
-- ✅ 0.3 cleaner_email bonusbugg (commit fb9f4e9)
+- ✅ 0.3 cleaner_email bonusbugg (commit fb9f4e9 + migration 20260418) — se [incidentrapport](docs/incidents/2026-04-18-cleaner-email-phone-missing-columns.md)
 - ✅ 0.5 boka.html dag-numrering (commit fa8e4c0)
 - ✅ 0.6 Wizard mån-sön (commit 6fcf987)
 - ✅ 0.7 Wizard VD-adress (commit 6fcf987)
