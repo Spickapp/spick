@@ -81,11 +81,19 @@ serve(async (req) => {
     // ACCEPT
     // ════════════════════════════════════════════════════════
     if (action === "accept") {
+      // Regel #28: Hämta alltid target-cleaner's email/phone, inte inloggad användares
+      // Detta gör flödet homogent för både solo-accept och VD-accept
+      const { data: targetCleaner } = await sb
+        .from("cleaners")
+        .select("email, phone")
+        .eq("id", booking.cleaner_id)
+        .maybeSingle();
+
       await sb.from("bookings").update({
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
-        cleaner_email: cleaner.email || null,
-        cleaner_phone: cleaner.phone || null,
+        cleaner_email: targetCleaner?.email || null,
+        cleaner_phone: targetCleaner?.phone || null,
       }).eq("id", booking_id);
 
       // Email to customer
