@@ -2231,10 +2231,40 @@ var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönster
 function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
 
 // ── REST helpers — bypass SB.from() to avoid navigator.locks deadlock ──
-function _authHeaders() {
+// Legacy-formen: returnerar bara headers, fallback till ANON_KEY om ej inloggad.
+// Alla befintliga callers i filen använder denna (konsekvent med tidigare beteende).
+function _authHeadersLegacy() {
   const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
   const token = raw ? (JSON.parse(raw).access_token || ANON_KEY) : ANON_KEY;
   return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
+}
+
+// Nya formen: returnerar { headers, isAuthenticated } så att nya callers kan
+// vägra skriva om sessionen har gått ut. Robust parsing (currentSession/session-fallback).
+function _authHeaders() {
+  const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+  let token = null;
+  try {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      token = parsed.access_token || parsed.currentSession?.access_token || parsed.session?.access_token || null;
+    }
+  } catch(e) { token = null; }
+  const isAuthenticated = !!token;
+  const finalToken = token || ANON_KEY;
+  return {
+    headers: { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+finalToken },
+    isAuthenticated: isAuthenticated
+  };
+}
+
+// Översätter HTTP-status till användarvänligt meddelande för toast.
+function _friendlyAuthMsg(status) {
+  if (status === 401) return 'Din session har gått ut — ladda om sidan och logga in igen.';
+  if (status === 403) return 'Du saknar behörighet för denna åtgärd.';
+  if (status === 409) return 'Konflikt (posten finns redan).';
+  if (status === 404) return 'Resursen hittades inte.';
+  return 'Nätverksfel (HTTP ' + status + ')';
 }
 function logActivity(action, meta) {
   try {
@@ -2247,40 +2277,41 @@ function logActivity(action, meta) {
 }
 const R = {
   async select(table, query='') {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, { headers: _authHeaders() });
-    if (!r.ok) return { data: null, error: { message: `HTTP ${r.status}` } };
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, { headers: _authHeadersLegacy() });
+    if (!r.ok) return { data: null, error: { status: r.status, message: _friendlyAuthMsg(r.status) } };
     return { data: await r.json(), error: null };
   },
   async selectSingle(table, query='') {
     const res = await R.select(table, query + '&limit=1');
-    return { data: res.data?.[0] || null, error: res.data?.[0] ? null : (res.error || { message: 'Not found' }) };
+    if (res.error) return { data: null, error: res.error };
+    return { data: res.data?.[0] || null, error: res.data?.[0] ? null : { status: 404, message: 'Not found' } };
   },
   async update(table, data, matchQuery) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${matchQuery}`, {
-      method: 'PATCH', headers: { ..._authHeaders(), 'Prefer':'return=minimal' },
+      method: 'PATCH', headers: { ..._authHeadersLegacy(), 'Prefer':'return=minimal' },
       body: JSON.stringify(data)
     });
-    return { error: r.ok ? null : { message: `HTTP ${r.status}` } };
+    return { error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   },
   async insert(table, data) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
-      method: 'POST', headers: { ..._authHeaders(), 'Prefer':'return=minimal' },
+      method: 'POST', headers: { ..._authHeadersLegacy(), 'Prefer':'return=minimal' },
       body: JSON.stringify(data)
     });
-    return { error: r.ok ? null : { message: `HTTP ${r.status}`, code: r.status === 409 ? '23505' : '' } };
+    return { error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status), code: r.status === 409 ? '23505' : '' } };
   },
   async upsert(table, data, conflictCol) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?on_conflict=${conflictCol}`, {
-      method: 'POST', headers: { ..._authHeaders(), 'Prefer':'resolution=merge-duplicates,return=minimal' },
+      method: 'POST', headers: { ..._authHeadersLegacy(), 'Prefer':'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(data)
     });
-    return { error: r.ok ? null : { message: `HTTP ${r.status}` } };
+    return { error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   },
   async del(table, matchQuery) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${matchQuery}`, {
-      method: 'DELETE', headers: { ..._authHeaders(), 'Prefer':'return=minimal' }
+      method: 'DELETE', headers: { ..._authHeadersLegacy(), 'Prefer':'return=minimal' }
     });
-    return { error: r.ok ? null : { message: `HTTP ${r.status}` } };
+    return { error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   }
 };
 
@@ -2864,7 +2895,7 @@ async function loadCleanerByEmail(email, authUserId) {
   // Uppdatera last_active_at tyst i bakgrunden
   fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
     method: 'PATCH',
-    headers: _authHeaders(),
+    headers: _authHeadersLegacy(),
     body: JSON.stringify({ last_active_at: new Date().toISOString() })
   }).catch(function(){});
 
@@ -3153,7 +3184,7 @@ async function loadSubscriptions() {
     if (!companyId) return;
 
     var res = await fetch(SUPA_URL + '/rest/v1/subscriptions?company_id=eq.' + companyId + '&order=created_at.desc&limit=50', {
-      headers: _authHeaders()
+      headers: _authHeadersLegacy()
     });
     if (!res.ok) { console.warn('loadSubscriptions HTTP', res.status); return; }
     var subs = await res.json();
@@ -3265,7 +3296,7 @@ async function subAction(action, id) {
   try {
     await fetch(SUPA_URL + '/rest/v1/subscriptions?id=eq.' + id, {
       method: 'PATCH',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify(patchData)
     });
     loadSubscriptions();
@@ -3450,7 +3481,7 @@ function wizComplete() {
     try {
       var res = await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
         method: 'PATCH',
-        headers: _authHeaders(),
+        headers: _authHeadersLegacy(),
         body: JSON.stringify({ status: 'aktiv' })
       });
       if (res.ok) {
@@ -3907,7 +3938,7 @@ async function heroMarkDone() {
     }
     var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid, {
       method: 'PATCH',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify(patchData)
     });
     if (res.ok) {
@@ -4365,8 +4396,8 @@ async function loadCalendarEvents() {
     var evRes, avRes;
     try {
       var pair = await Promise.all([
-        fetch(calEventsUrl, { headers: _authHeaders() }),
-        fetch(calAvailUrl,  { headers: _authHeaders() })
+        fetch(calEventsUrl, { headers: _authHeadersLegacy() }),
+        fetch(calAvailUrl,  { headers: _authHeadersLegacy() })
       ]);
       evRes = pair[0]; avRes = pair[1];
     } catch(fetchErr) {
@@ -5748,7 +5779,7 @@ async function startStripeConnect() {
 
     const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
       method: 'POST',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify({action:'onboard_cleaner', cleaner_id: cleaner.id, email: cleaner._email, name: cleaner.full_name})
     });
 
@@ -5775,7 +5806,7 @@ async function checkConnectStatus() {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/stripe-connect`, {
       method:'POST',
-      headers:_authHeaders(),
+      headers:_authHeadersLegacy(),
       body:JSON.stringify({action:'check_status',cleaner_id:cleaner.id})
     });
     if (res?.ok) {
@@ -5978,12 +6009,12 @@ async function savePricing() {
         // Ta bort befintligt pris först
         await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + cleaner.id + '&service_type=eq.' + encodeURIComponent(svc), {
           method: 'DELETE',
-          headers: _authHeaders()
+          headers: _authHeadersLegacy()
         });
         // Skapa nytt
         var res = await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
           method: 'POST',
-          headers: Object.assign({}, _authHeaders(), {'Prefer': 'return=minimal'}),
+          headers: Object.assign({}, _authHeadersLegacy(), {'Prefer': 'return=minimal'}),
           body: JSON.stringify({ cleaner_id: cleaner.id, service_type: svc, price_type: priceType, price: price })
         });
         if (!res.ok) {
@@ -6392,7 +6423,7 @@ async function addTeamMember() {
 
     var res = await fetch(SUPA_URL + '/rest/v1/cleaner_applications', {
       method: 'POST',
-      headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=representation'}),
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type': 'application/json', 'Prefer': 'return=representation'}),
       body: JSON.stringify(appData)
     });
 
@@ -6420,7 +6451,7 @@ async function addTeamMember() {
           // Spara i application notes för admin att se
           await fetch(SUPA_URL + '/rest/v1/cleaner_applications?id=eq.' + appId, {
             method: 'PATCH',
-            headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
+            headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
             body: JSON.stringify({ notes: 'Priser: ' + svcPriceData.map(function(p) { return p.service_type + ': ' + p.price + ' ' + (p.price_type === 'per_sqm' ? 'kr/kvm' : 'kr/h'); }).join(', ') })
           });
         }
@@ -6520,7 +6551,7 @@ async function toggleOwnerOnly(isOwner) {
   try {
     await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
       method: 'PATCH',
-      headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
       body: JSON.stringify({ owner_only: isOwner })
     });
     cleaner.owner_only = isOwner;
@@ -7050,9 +7081,9 @@ async function loadGanttData() {
       fetch(SUPA_URL + '/rest/v1/calendar_events?or=(' + idFilter + ')' +
         '&and=(start_at.gte.' + encodeURIComponent(startISO) +
         ',start_at.lte.'      + encodeURIComponent(endISO) + ')' +
-        '&order=start_at.asc', { headers: _authHeaders() }),
+        '&order=start_at.asc', { headers: _authHeadersLegacy() }),
       fetch(SUPA_URL + '/rest/v1/cleaner_availability_v2?or=(' + idFilter + ')' +
-        '&is_active=eq.true&order=day_of_week.asc,start_time.asc', { headers: _authHeaders() })
+        '&is_active=eq.true&order=day_of_week.asc,start_time.asc', { headers: _authHeadersLegacy() })
     ]);
     _ganttTeamEvents = pair[0] && pair[0].ok ? await pair[0].json() : [];
     _ganttTeamAvail  = pair[1] && pair[1].ok ? await pair[1].json() : [];
@@ -8040,7 +8071,7 @@ async function saveCompanyProfile() {
   try {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
       method: 'PATCH',
-      headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
       body: JSON.stringify({ name: name, description: bio, display_name: displayName, display_name: document.getElementById('cp-display-name').value.trim() || null })
     });
     var displayName = document.getElementById('cp-display-name').value.trim() || null;
@@ -8075,7 +8106,7 @@ async function ownerReassignBooking(bookingId, newCleanerId, newCleanerName) {
     var member = _teamMembers.find(function(m) { return m.id === newCleanerId; });
     var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bookingId, {
       method: 'PATCH',
-      headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type': 'application/json', 'Prefer': 'return=minimal'}),
       body: JSON.stringify({
         cleaner_id: newCleanerId,
         cleaner_name: member ? member.full_name : newCleanerName,
@@ -8169,29 +8200,53 @@ async function ownerCancelBooking(bookingId) {
 }
 
 async function loadTeamMemberSchedule(cid) {
+  var auth = _authHeaders();
+  if (!auth.isAuthenticated) {
+    showToast('Din session har gått ut — logga in igen');
+    return;
+  }
   try {
-    var r = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid + '&limit=1', { headers: _authHeaders() });
-    var d = r.ok ? await r.json() : [];
+    var r = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid + '&limit=1', { headers: auth.headers });
+    if (!r.ok) {
+      showToast('❌ Kunde inte ladda team-schema: ' + _friendlyAuthMsg(r.status));
+      return;
+    }
+    var d = await r.json();
     var a = d[0] || {};
     document.querySelectorAll('#team-days .tm-chip').forEach(function(b) { b.classList.toggle('active', a[b.dataset.day] !== false); });
     if (a.start_time) document.getElementById('team-start-time').value = a.start_time.slice(0,5);
     if (a.end_time) document.getElementById('team-end-time').value = a.end_time.slice(0,5);
-  } catch(e) { console.warn('Load schedule:', e); }
+  } catch(e) {
+    console.warn('Load schedule:', e);
+    showToast('❌ Kunde inte ladda team-schema (nätverksfel)');
+  }
 }
 
 async function saveTeamMemberSchedule(cid) {
+  var auth = _authHeaders();
+  if (!auth.isAuthenticated) {
+    showToast('Din session har gått ut — logga in igen');
+    return;
+  }
   var days = {};
   document.querySelectorAll('#team-days .tm-chip').forEach(function(b) { days[b.dataset.day] = b.classList.contains('active'); });
   var p = Object.assign({}, days, { cleaner_id: cid, start_time: document.getElementById('team-start-time').value, end_time: document.getElementById('team-end-time').value });
   try {
-    var cr = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid + '&limit=1', { headers: _authHeaders() });
-    var ex = cr.ok ? await cr.json() : [];
+    var cr = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid + '&limit=1', { headers: auth.headers });
+    if (!cr.ok) throw new Error(_friendlyAuthMsg(cr.status));
+    var ex = await cr.json();
+    var writeRes;
     if (ex.length > 0) {
-      await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid, { method: 'PATCH', headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}), body: JSON.stringify(p) });
+      writeRes = await fetch(SUPA_URL + '/rest/v1/cleaner_availability?cleaner_id=eq.' + cid, { method: 'PATCH', headers: Object.assign({}, auth.headers, {'Prefer':'return=minimal'}), body: JSON.stringify(p) });
     } else {
-      await fetch(SUPA_URL + '/rest/v1/cleaner_availability', { method: 'POST', headers: Object.assign({}, _authHeaders(), {'Content-Type':'application/json','Prefer':'return=minimal'}), body: JSON.stringify(p) });
+      writeRes = await fetch(SUPA_URL + '/rest/v1/cleaner_availability', { method: 'POST', headers: Object.assign({}, auth.headers, {'Prefer':'return=minimal'}), body: JSON.stringify(p) });
     }
-  } catch(e) { console.warn('Save schedule:', e); }
+    if (!writeRes.ok) throw new Error(_friendlyAuthMsg(writeRes.status));
+    showToast('Team-schema sparat');
+  } catch(e) {
+    console.warn('Save team schedule:', e);
+    showToast('❌ ' + (e.message || 'Okänt fel vid sparande'));
+  }
 }
 
 function toggleTeamSvc(btn) {
@@ -8365,7 +8420,7 @@ async function editTeamMember(memberId) {
   _editingTeamMemberId = memberId;
   // Ladda medlemmens egna priser
   try {
-    var priceRes = await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + memberId + '&select=*', { headers: _authHeaders() });
+    var priceRes = await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + memberId + '&select=*', { headers: _authHeadersLegacy() });
     _editingMemberPrices = priceRes.ok ? await priceRes.json() : [];
   } catch(e) { _editingMemberPrices = []; }
 
@@ -8584,7 +8639,7 @@ async function updateTeamMember(memberId) {
         // Ta bort befintliga priser
         await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices?cleaner_id=eq.' + memberId, {
           method: 'DELETE',
-          headers: _authHeaders()
+          headers: _authHeadersLegacy()
         });
         // Skapa nya
         for (var pi = 0; pi < priceEls.length; pi++) {
@@ -8596,7 +8651,7 @@ async function updateTeamMember(memberId) {
           if (pPrice > 0) {
             await fetch(SUPA_URL + '/rest/v1/cleaner_service_prices', {
               method: 'POST',
-              headers: Object.assign({}, _authHeaders(), {'Prefer': 'return=minimal'}),
+              headers: Object.assign({}, _authHeadersLegacy(), {'Prefer': 'return=minimal'}),
               body: JSON.stringify({ cleaner_id: memberId, service_type: pSvc, price_type: pType, price: pPrice })
             });
           }
@@ -8631,13 +8686,13 @@ async function toggleMemberStatus(memberId, newStatus) {
   if (!isActive && cleaner.company_id) {
     try {
       var subRes = await fetch(SUPA_URL + '/rest/v1/subscriptions?cleaner_id=eq.' + memberId + '&company_id=eq.' + cleaner.company_id + '&status=eq.active', {
-        headers: _authHeaders()
+        headers: _authHeadersLegacy()
       });
       var activeSubs = await subRes.json();
       if (activeSubs && activeSubs.length > 0) {
         await fetch(SUPA_URL + '/rest/v1/subscriptions?cleaner_id=eq.' + memberId + '&company_id=eq.' + cleaner.company_id + '&status=eq.active', {
           method: 'PATCH',
-          headers: _authHeaders(),
+          headers: _authHeadersLegacy(),
           body: JSON.stringify({
             status: 'paused',
             paused_at: new Date().toISOString(),
@@ -8701,8 +8756,17 @@ async function loadChecklist(bookingId, serviceType, companyId) {
     }
     if (!template) return null;
 
-    // Kolla om det redan finns en booking_checklist
-    var existRes = await fetch(SUPA + '/rest/v1/booking_checklists?booking_id=eq.' + bookingId + '&limit=1', { headers: H });
+    // Kolla om det redan finns en booking_checklist (authenticated — VD/städare egen)
+    var auth = _authHeaders();
+    if (!auth.isAuthenticated) {
+      showToast('Din session har gått ut — logga in igen');
+      return null;
+    }
+    var existRes = await fetch(SUPA + '/rest/v1/booking_checklists?booking_id=eq.' + bookingId + '&limit=1', { headers: auth.headers });
+    if (!existRes.ok) {
+      showToast('❌ Kunde inte ladda checklista: ' + _friendlyAuthMsg(existRes.status));
+      return null;
+    }
     var existing = await existRes.json();
 
     if (existing && existing.length > 0) {
@@ -8716,13 +8780,18 @@ async function loadChecklist(bookingId, serviceType, companyId) {
 
     var insertRes = await fetch(SUPA + '/rest/v1/booking_checklists', {
       method: 'POST',
-      headers: Object.assign({}, H, { 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+      headers: Object.assign({}, auth.headers, { Prefer: 'return=representation' }),
       body: JSON.stringify({ booking_id: bookingId, checklist_id: template.id, items: items })
     });
+    if (!insertRes.ok) {
+      showToast('❌ Kunde inte skapa checklista: ' + _friendlyAuthMsg(insertRes.status));
+      return null;
+    }
     var inserted = await insertRes.json();
     return Array.isArray(inserted) ? inserted[0] : inserted;
   } catch (e) {
     console.warn('loadChecklist error:', e);
+    showToast('❌ Checklista-fel (nätverk)');
     return null;
   }
 }
@@ -8779,14 +8848,30 @@ async function toggleChecklistItem(idx, bookingId, checklistId) {
   if (!cl) return;
   cl.items[idx].checked = !cl.items[idx].checked;
 
-  // Update DB
+  // Update DB (authenticated — städare markerar egen checklista)
+  var auth = _authHeaders();
+  if (!auth.isAuthenticated) {
+    showToast('Din session har gått ut — logga in igen');
+    cl.items[idx].checked = !cl.items[idx].checked; // återställ optimistisk toggle
+    return;
+  }
   try {
-    await fetch(SUPA + '/rest/v1/booking_checklists?id=eq.' + checklistId, {
+    var res = await fetch(SUPA + '/rest/v1/booking_checklists?id=eq.' + checklistId, {
       method: 'PATCH',
-      headers: Object.assign({}, H, { 'Content-Type': 'application/json' }),
+      headers: auth.headers,
       body: JSON.stringify({ items: cl.items })
     });
-  } catch (e) { console.warn('checklist update:', e); }
+    if (!res.ok) {
+      cl.items[idx].checked = !cl.items[idx].checked; // återställ optimistisk toggle
+      showToast('❌ Kunde inte spara checklista: ' + _friendlyAuthMsg(res.status));
+      return;
+    }
+  } catch (e) {
+    cl.items[idx].checked = !cl.items[idx].checked; // återställ optimistisk toggle
+    console.warn('checklist update:', e);
+    showToast('❌ Checklista-sparning misslyckades (nätverk)');
+    return;
+  }
 
   // Re-render
   var compId = cleaner.company_id || null;
@@ -8840,7 +8925,7 @@ async function toggleIndividualRatings(checked, silent) {
   try {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId, {
       method: 'PATCH',
-      headers: Object.assign({}, _authHeaders(), { Prefer: 'return=minimal' }),
+      headers: Object.assign({}, _authHeadersLegacy(), { Prefer: 'return=minimal' }),
       body: JSON.stringify({ show_individual_ratings: checked })
     });
     if (!silent) showToast(checked ? 'Individuella betyg visas' : 'Bara f\u00f6retagsbetyg visas');
@@ -8851,7 +8936,7 @@ async function toggleIndividualRatings(checked, silent) {
 async function loadRatingToggle() {
   if (!window._companyId) return;
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId + '&select=show_individual_ratings', { headers: _authHeaders() });
+    var res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId + '&select=show_individual_ratings', { headers: _authHeadersLegacy() });
     var rows = await res.json();
     if (rows && rows[0]) {
       var checked = rows[0].show_individual_ratings !== false;
@@ -8885,7 +8970,7 @@ async function togglePricingModel(useCompany, silent) {
   try {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId, {
       method: 'PATCH',
-      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
       body: JSON.stringify({ use_company_pricing: useCompany })
     });
     if (!silent) showToast(useCompany ? 'Enhetspriser aktiverade' : 'Individuella priser aktiverade');
@@ -8895,7 +8980,7 @@ async function togglePricingModel(useCompany, silent) {
 async function loadPricingModel() {
   if (!window._companyId) return;
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId + '&select=use_company_pricing', { headers: _authHeaders() });
+    var res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + window._companyId + '&select=use_company_pricing', { headers: _authHeadersLegacy() });
     var rows = await res.json();
     if (rows && rows[0]) {
       var useCompany = rows[0].use_company_pricing === true;
@@ -8909,7 +8994,7 @@ async function loadCompanyPrices() {
   console.log('loadCompanyPrices called, companyId:', window._companyId);
   if (!window._companyId) { window._companyPrices = []; renderCompanyPrices([]); return; }
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&order=service_type', { headers: _authHeaders() });
+    var res = await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&order=service_type', { headers: _authHeadersLegacy() });
     var prices = await res.json();
     if (!Array.isArray(prices)) prices = [];
     console.log('loadCompanyPrices got', prices.length, 'prices');
@@ -8967,7 +9052,7 @@ async function saveCompanyPrices() {
       if (!price || price <= 0) {
         // Delete if exists
         await fetch(SUPA_URL + '/rest/v1/company_service_prices?company_id=eq.' + window._companyId + '&service_type=eq.' + encodeURIComponent(svc), {
-          method: 'DELETE', headers: _authHeaders()
+          method: 'DELETE', headers: _authHeadersLegacy()
         });
         continue;
       }
@@ -8975,7 +9060,7 @@ async function saveCompanyPrices() {
       // Upsert
       await fetch(SUPA_URL + '/rest/v1/company_service_prices', {
         method: 'POST',
-        headers: Object.assign({}, _authHeaders(), {'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'}),
+        headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'}),
         body: JSON.stringify({ company_id: window._companyId, service_type: svc, price: price, price_type: priceType, updated_at: new Date().toISOString() })
       });
     }
@@ -9023,7 +9108,7 @@ async function loadSalaryReport() {
   var members = _teamMembers && _teamMembers.length ? _teamMembers : [];
   if (!members.length && window._companyId) {
     try {
-      var mRes = await fetch(SUPA_URL + '/rest/v1/cleaners?select=id,full_name,hourly_rate&company_id=eq.' + window._companyId, { headers: _authHeaders() });
+      var mRes = await fetch(SUPA_URL + '/rest/v1/cleaners?select=id,full_name,hourly_rate&company_id=eq.' + window._companyId, { headers: _authHeadersLegacy() });
       members = await mRes.json();
       if (!Array.isArray(members)) members = [];
     } catch(e) { members = []; }
@@ -9045,8 +9130,8 @@ async function loadSalaryReport() {
     var cUrl = SUPA_URL + '/rest/v1/commission_log?select=booking_id,cleaner_id,gross_amount,net_amount,commission_amt,commission_pct'
       + '&cleaner_id=in.(' + idFilter + ')';
     var results = await Promise.all([
-      fetch(bUrl, { headers: _authHeaders() }).then(function(r) { return r.json(); }),
-      fetch(cUrl, { headers: _authHeaders() }).then(function(r) { return r.json(); })
+      fetch(bUrl, { headers: _authHeadersLegacy() }).then(function(r) { return r.json(); }),
+      fetch(cUrl, { headers: _authHeadersLegacy() }).then(function(r) { return r.json(); })
     ]);
     bookings = Array.isArray(results[0]) ? results[0] : [];
     commissions = Array.isArray(results[1]) ? results[1] : [];
@@ -9210,7 +9295,7 @@ async function doCheckin() {
     }
     var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid, {
       method: 'PATCH',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify(patchData)
     });
     if (res.ok) {
@@ -9256,7 +9341,7 @@ async function doCheckout() {
     }
     var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid, {
       method: 'PATCH',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify(patchData)
     });
     if (res.ok) {
@@ -9279,7 +9364,7 @@ async function attestBooking(bookingId, btnEl) {
   try {
     var res = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bookingId, {
       method: 'PATCH',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify({ attest_status: 'attested', attested_at: new Date().toISOString() })
     });
     if (res.ok) {
@@ -9307,7 +9392,7 @@ async function attestAllForCleaner(cleanerId) {
     for (var i = 0; i < unattested.length; i++) {
       await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + unattested[i].id, {
         method: 'PATCH',
-        headers: _authHeaders(),
+        headers: _authHeadersLegacy(),
         body: JSON.stringify({ attest_status: 'attested', attested_at: new Date().toISOString() })
       });
     }
@@ -9333,7 +9418,7 @@ async function loadTasks() {
   }
 
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/tasks?' + query, { headers: _authHeaders() });
+    var res = await fetch(SUPA_URL + '/rest/v1/tasks?' + query, { headers: _authHeadersLegacy() });
     var tasks = await res.json();
     if (!Array.isArray(tasks)) tasks = [];
     renderTasks(tasks, isVD);
@@ -9392,13 +9477,13 @@ function renderTasks(tasks, isVD) {
 
 async function toggleTaskStatus(taskId) {
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId + '&select=status', { headers: _authHeaders() });
+    var res = await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId + '&select=status', { headers: _authHeadersLegacy() });
     var rows = await res.json();
     var current = (rows && rows[0]) ? rows[0].status : 'pending';
     var newStatus = current === 'done' ? 'pending' : 'done';
     await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId, {
       method: 'PATCH',
-      headers: _authHeaders(),
+      headers: _authHeadersLegacy(),
       body: JSON.stringify({ status: newStatus })
     });
     loadTasks();
@@ -9410,7 +9495,7 @@ async function deleteTask(taskId) {
   try {
     await fetch(SUPA_URL + '/rest/v1/tasks?id=eq.' + taskId, {
       method: 'DELETE',
-      headers: _authHeaders()
+      headers: _authHeadersLegacy()
     });
     showToast('Uppgift borttagen');
     loadTasks();
@@ -9456,7 +9541,7 @@ async function createTask() {
     };
     var res = await fetch(SUPA_URL + '/rest/v1/tasks', {
       method: 'POST',
-      headers: Object.assign({}, _authHeaders(), { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
       body: JSON.stringify(data)
     });
     if (res.ok) {

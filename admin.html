@@ -1224,7 +1224,9 @@ const SB = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY, {
 const ANON_KEY = SPICK.SUPA_KEY;
 
 // REST helpers — bypass SB.from() to avoid SDK deadlock
-async function _adminHeaders() {
+// Legacy-formen: returnerar bara headers, fallback till ANON_KEY om ej inloggad.
+// Alla befintliga AR-anrop använder denna.
+async function _adminHeadersLegacy() {
   let token = _sessionToken || ANON_KEY;
   if (token === ANON_KEY) {
     try {
@@ -1237,30 +1239,60 @@ async function _adminHeaders() {
   }
   return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+token };
 }
+
+// Nya formen: returnerar { headers, isAuthenticated } så nya callers kan
+// vägra skriva om sessionen har gått ut.
+async function _adminHeaders() {
+  let token = _sessionToken || null;
+  if (!token) {
+    try {
+      var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        token = parsed.access_token || parsed.currentSession?.access_token || parsed.session?.access_token || null;
+      }
+    } catch(e) { token = null; }
+  }
+  const isAuthenticated = !!token;
+  const finalToken = token || ANON_KEY;
+  return {
+    headers: { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+finalToken },
+    isAuthenticated: isAuthenticated
+  };
+}
+
+// Översätter HTTP-status till användarvänligt meddelande för toast.
+function _friendlyAuthMsg(status) {
+  if (status === 401) return 'Din session har gått ut — ladda om sidan och logga in igen.';
+  if (status === 403) return 'Du saknar behörighet för denna åtgärd.';
+  if (status === 409) return 'Konflikt (posten finns redan).';
+  if (status === 404) return 'Resursen hittades inte.';
+  return 'Nätverksfel (HTTP ' + status + ')';
+}
 const AR = {
   async select(table, query) {
-    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + (query||''), { headers: await _adminHeaders() });
-    return { data: r.ok ? await r.json() : [], error: r.ok ? null : { message: 'HTTP ' + r.status } };
+    const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + (query||''), { headers: await _adminHeadersLegacy() });
+    return { data: r.ok ? await r.json() : [], error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   },
   async update(table, data, matchQuery) {
     const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + matchQuery, {
-      method: 'PATCH', headers: { ...await _adminHeaders(), 'Prefer':'return=minimal' },
+      method: 'PATCH', headers: { ...await _adminHeadersLegacy(), 'Prefer':'return=minimal' },
       body: JSON.stringify(data)
     });
-    return { error: r.ok ? null : { message: 'HTTP ' + r.status } };
+    return { error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   },
   async insert(table, data) {
     const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table, {
-      method: 'POST', headers: { ...await _adminHeaders(), 'Prefer':'return=representation' },
+      method: 'POST', headers: { ...await _adminHeadersLegacy(), 'Prefer':'return=representation' },
       body: JSON.stringify(data)
     });
-    return { data: r.ok ? await r.json() : null, error: r.ok ? null : { message: 'HTTP ' + r.status } };
+    return { data: r.ok ? await r.json() : null, error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   },
   async del(table, matchQuery) {
     const r = await fetch(SPICK.SUPA_URL + '/rest/v1/' + table + '?' + matchQuery, {
-      method: 'DELETE', headers: { ...await _adminHeaders(), 'Prefer':'return=minimal' }
+      method: 'DELETE', headers: { ...await _adminHeadersLegacy(), 'Prefer':'return=minimal' }
     });
-    return { error: r.ok ? null : { message: 'HTTP ' + r.status } };
+    return { error: r.ok ? null : { status: r.status, message: _friendlyAuthMsg(r.status) } };
   }
 };
 
@@ -3977,12 +4009,21 @@ async function adminSaveSchedule(){
     start_time: document.getElementById('asc-s').value,
     end_time:   document.getElementById('asc-e').value
   });
-  // v1 (oförändrat — booleans per dag, 1 rad per cleaner)
+  // v1 (booleans per dag, 1 rad per cleaner). Paket 1: error-check tillagd.
   var ex = await AR.select('cleaner_availability','select=id&cleaner_id=eq.'+currentCleanerId);
+  if (ex.error) {
+    showToast('❌ v1-sync misslyckades: ' + ex.error.message);
+    return;
+  }
+  var v1Res;
   if (ex.data && ex.data.length > 0) {
-    await AR.update('cleaner_availability', p, 'cleaner_id=eq.'+currentCleanerId);
+    v1Res = await AR.update('cleaner_availability', p, 'cleaner_id=eq.'+currentCleanerId);
   } else {
-    await AR.insert('cleaner_availability', p);
+    v1Res = await AR.insert('cleaner_availability', p);
+  }
+  if (v1Res.error) {
+    showToast('❌ v1-sync misslyckades: ' + v1Res.error.message);
+    return;
   }
   // v2-sync (Fas 0.4a — DELETE + INSERT, ISO 1-7, 1 rad per aktiv dag).
   // Saknar UNIQUE(cleaner_id,day_of_week)-constraint idag, så delete+insert
@@ -5551,7 +5592,7 @@ async function cwSubmit() {
   btn.textContent = 'Skapar företag...';
   try {
     var payload = cwCollectData();
-    var headers = await _adminHeaders();
+    var headers = await _adminHeadersLegacy();
     var res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-create-company', {
       method: 'POST',
       headers: headers,
