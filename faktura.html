@@ -79,7 +79,7 @@ async function loadInvoice() {
     // Hämta städarinfo
     let cleanerData = null;
     if (b.cleaner_id) {
-      const cRes = await fetch(SUPA + '/rest/v1/cleaners?id=eq.' + b.cleaner_id + '&select=full_name,email,phone,hourly_rate,company_id', { headers: H });
+      const cRes = await fetch(SUPA + '/rest/v1/cleaners?id=eq.' + b.cleaner_id + '&select=full_name,hourly_rate,company_id', { headers: H });
       const cArr = await cRes.json();
       if (cArr && cArr.length) cleanerData = cArr[0];
     }
@@ -209,7 +209,7 @@ function renderCleanerInvoice(b, cleaner, company) {
   const spickGross = b.spick_gross_sek || Math.round(priceBeforeRut * commissionPct / 100);
   const cleanerPayout = priceBeforeRut - spickGross;
   const cleanerName = cleaner ? cleaner.full_name : (b.cleaner_name || 'Städare');
-  const cleanerEmail = cleaner ? cleaner.email : '';
+  const cleanerEmail = b.cleaner_email || '';
   const companyName = company ? (company.display_name || company.name) : null;
   const companyOrg = company ? company.org_number : null;
 

@@ -292,7 +292,7 @@ async function loadAll() {
   // Parallell hämtning av all data
   const [bookings, cleaners, events, sessions, customers] = await Promise.all([
     fetch(`${SUPA_URL}/rest/v1/bookings?select=*&order=created_at.desc&limit=100`, { headers: h }).then(r => r.json()).catch(() => []),
-    fetch(`${SUPA_URL}/rest/v1/cleaners?status=eq.godkänd&select=*`, { headers: h }).then(r => r.json()).catch(() => []),
+    fetch(`${SUPA_URL}/rest/v1/cleaners?status=eq.godkänd&select=full_name,city,avg_rating,review_count`, { headers: h }).then(r => r.json()).catch(() => []),
     fetch(`${SUPA_URL}/rest/v1/analytics_events?select=*&order=created_at.desc&limit=500`, { headers: h }).then(r => r.json()).catch(() => []),
     fetch(`${SUPA_URL}/rest/v1/user_sessions?select=*&order=created_at.desc&limit=200`, { headers: h }).then(r => r.json()).catch(() => []),
     fetch(`${SUPA_URL}/rest/v1/customer_profiles?select=*`, { headers: h }).then(r => r.json()).catch(() => []),
