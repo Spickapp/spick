@@ -1354,8 +1354,10 @@ async function goStep2() {
       setStep(2); await loadAvailableCleaners(); return;
     }
     // 4. Verifiera dag-tillgänglighet + ej blockerad + ej bokad (med overlap)
-    const dow = new Date(state.date + 'T00:00:00').getDay();
-    const cleanerAvailToday = state.availability.some(a => 
+    // JS getDay() ger 0-6 (0=sön). cleaner_availability_v2.day_of_week är ISO 1-7 (7=sön).
+    const jsDay = new Date(state.date + 'T00:00:00').getDay();
+    const dow = jsDay === 0 ? 7 : jsDay;
+    const cleanerAvailToday = state.availability.some(a =>
       a.cleaner_id === state.cleanerId && a.day_of_week === dow
     );
     const cleanerBlockedToday = Array.isArray(state.blocked) && state.blocked.some(b => 
@@ -1847,7 +1849,9 @@ async function loadAvailableCleaners() {
   wrap.innerHTML = '<div class="loading-pulse"><div class="pulse"></div><div class="pulse"></div><div class="pulse"></div></div>';
   document.getElementById('step2-sub').textContent = ((state.services && state.services.length > 1) ? state.services.join(' + ') : state.service) + ' · ' + formatDate(state.date) + ' kl. ' + state.time;
   try {
-    const dow = new Date(state.date + 'T00:00:00').getDay();
+    // JS getDay() ger 0-6 (0=sön). cleaner_availability_v2.day_of_week är ISO 1-7 (7=sön).
+    const jsDay = new Date(state.date + 'T00:00:00').getDay();
+    const dow = jsDay === 0 ? 7 : jsDay;
     let cleaners;
     // Radius-matchning: använd find_nearby_cleaners RPC om lat/lng finns
     if (state.lat && state.lng) {
