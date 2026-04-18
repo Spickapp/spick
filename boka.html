@@ -1922,7 +1922,7 @@ async function loadAvailableCleaners() {
     try {
       var cleanerIds = cleaners.map(function(c) { return c.id; }).join(',');
       if (cleanerIds) {
-        var payRes = await fetch(SUPA + '/rest/v1/cleaners?select=id,company_id,is_company_owner,stripe_onboarding_status,status&id=in.(' + cleanerIds + ')', {headers: H});
+        var payRes = await fetch(SUPA + '/rest/v1/v_cleaners_public?select=id,company_id,is_company_owner,stripe_onboarding_status,status&id=in.(' + cleanerIds + ')', {headers: H});
         var payData = payRes.ok ? await payRes.json() : [];
 
         // Bygg set av företag vars VD har komplett Stripe

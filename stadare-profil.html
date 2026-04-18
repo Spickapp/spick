@@ -308,7 +308,7 @@ async function loadProfile() {
   if (!slug && !id) { showError('Ingen städare angiven. <a href="boka.html" style="color:var(--g)">Boka städning →</a>'); return; }
 
   // 1. Fetch cleaner
-  var url = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,company_id,is_company_owner&is_approved=eq.true&';
+  var url = SUPA + '/rest/v1/v_cleaners_public?select=id,slug,full_name,city,bio,hourly_rate,avg_rating,review_count,services,avatar_url,identity_verified,pet_pref,elevator_pref,is_approved,member_since,languages,service_radius_km,completed_jobs,company_id,is_company_owner&is_approved=eq.true&';
   if (slug) url += 'slug=eq.' + encodeURIComponent(slug);
   else url += 'id=eq.' + encodeURIComponent(id);
 
@@ -333,7 +333,7 @@ async function loadProfile() {
 
     // Hämta teammedlemmar
     try {
-      var tmRes = await fetch(SUPA + '/rest/v1/cleaners?select=id,slug,full_name,avatar_url,avg_rating,review_count,services,bio,completed_jobs&company_id=eq.' + c.company_id + '&is_approved=eq.true&id=neq.' + c.id + '&apikey=' + KEY, {headers: H});
+      var tmRes = await fetch(SUPA + '/rest/v1/v_cleaners_public?select=id,slug,full_name,avatar_url,avg_rating,review_count,services,bio,completed_jobs&company_id=eq.' + c.company_id + '&is_approved=eq.true&id=neq.' + c.id + '&apikey=' + KEY, {headers: H});
       _teamMembers = tmRes.ok ? await tmRes.json() : [];
     } catch(e) {}
   }
@@ -605,7 +605,7 @@ async function loadProfile() {
 
   // 5. Similar cleaners (nearby, same city)
   try {
-    var simUrl = SUPA + '/rest/v1/cleaners?select=id,slug,full_name,city,avg_rating,company_id,is_company_owner,owner_only&is_approved=eq.true&id=neq.' + c.id + '&owner_only=neq.true&limit=6&apikey=' + KEY;
+    var simUrl = SUPA + '/rest/v1/v_cleaners_public?select=id,slug,full_name,city,avg_rating,company_id,is_company_owner,owner_only&is_approved=eq.true&id=neq.' + c.id + '&owner_only=neq.true&limit=6&apikey=' + KEY;
     if (c.city) simUrl += '&city=ilike.' + encodeURIComponent(c.city);
     if (c.company_id) simUrl += '&or=(company_id.is.null,company_id.neq.' + c.company_id + ')';
     var simRes = await fetch(simUrl, {headers: H});

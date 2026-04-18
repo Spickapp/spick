@@ -352,7 +352,7 @@ async function init() {
     document.documentElement.style.setProperty('--accent3', colors.bg);
 
     // Hämta teammedlemmar
-    var mr = await fetch(SU + '/rest/v1/cleaners?select=id,full_name,first_name,bio,avatar_url,services,hourly_rate,avg_rating,review_count,completed_jobs,status,owner_only,city&company_id=eq.' + co.id + '&is_approved=eq.true', { headers: H });
+    var mr = await fetch(SU + '/rest/v1/v_cleaners_public?select=id,full_name,first_name,bio,avatar_url,services,hourly_rate,avg_rating,review_count,completed_jobs,status,owner_only,city&company_id=eq.' + co.id + '&is_approved=eq.true', { headers: H });
     var members = await mr.json() || [];
     var active = members.filter(function(m) { return !m.owner_only && m.status !== 'pausad'; });
 
