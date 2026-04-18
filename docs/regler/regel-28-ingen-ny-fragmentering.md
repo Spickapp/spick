@@ -182,5 +182,5 @@ Utan stor refactor. Bara genom disciplin.
 - Regel #26 — primärkälla-verifiering efter "fungerar"
 - Regel #27 — primärkälla-verifiering innan "bygga"
 - `/docs/audits/2026-04-18-servicetyp-flexibilitet.md` — bevis för dagens fragmentering
-- `/docs/planning/spick-arkitekturplan-v1.md` — vad centraliserat Spick 
-  ser ut (aspirerande)
+- `/docs/planning/spick-arkitekturplan-v2.md` — konkret 10-14 veckors 
+  hybrid refactor-plan, förankrad i dagens 29 verifierade fynd.
