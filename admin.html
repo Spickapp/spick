@@ -1075,15 +1075,16 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <div class="cw-field"><label>E-post (för login) *</label><input id="cw-owner-email" type="email" placeholder="anna@example.se"></div>
             <div class="cw-field"><label>Telefon</label><input id="cw-owner-phone" type="tel" placeholder="070-000 00 00"></div>
             <div class="cw-field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input id="cw-owner-only" type="checkbox" checked onchange="cwToggleOwnerOnly()"> <span>Städar ej (admin only)</span></label></div>
-            <div class="cw-field cw-field-full" id="cw-owner-address-wrap" style="display:none">
-              <label>Hemadress</label>
+            <div class="cw-field cw-field-full" id="cw-owner-address-wrap">
+              <label>Hemadress *</label>
               <div style="position:relative">
                 <input id="cw-owner-address" type="text" placeholder="Storgatan 1, Stockholm" oninput="cwAddrSearch(this.value, 'owner')" autocomplete="off">
                 <div id="cw-owner-addr-list" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;z-index:10;width:100%"></div>
               </div>
+              <div style="font-size:.78rem;color:var(--m);margin-top:4px">Välj adress från listan så att koordinater sparas (krävs för matchning).</div>
             </div>
           </div>
-          <div id="cw-owner-only-hint" style="font-size:.85rem;color:var(--m);margin-top:8px">VD hanterar bara teamet och tar inte emot egna bokningar.</div>
+          <div id="cw-owner-only-hint" style="font-size:.85rem;color:var(--m);margin-top:8px">VD hanterar bara teamet och tar inte emot egna bokningar. Hemadress krävs ändå för bolagets registrerade säte.</div>
         </div>
 
         <!-- Steg 3: Tjänster & priser -->
@@ -5127,14 +5128,11 @@ function cwUpdateEmploymentHint() {
 
 function cwToggleOwnerOnly() {
   var cb = document.getElementById('cw-owner-only');
-  var wrap = document.getElementById('cw-owner-address-wrap');
   var hint = document.getElementById('cw-owner-only-hint');
   if (cb.checked) {
-    wrap.style.display = 'none';
-    hint.textContent = 'VD hanterar bara teamet och tar inte emot egna bokningar.';
+    hint.textContent = 'VD hanterar bara teamet och tar inte emot egna bokningar. Hemadress krävs ändå för bolagets registrerade säte.';
   } else {
-    wrap.style.display = '';
-    hint.textContent = 'VD kan själv ta emot bokningar som städare.';
+    hint.textContent = 'VD kan själv ta emot bokningar som städare. Hemadress används för geografisk matchning.';
   }
 }
 
@@ -5195,11 +5193,15 @@ function cwValidate(step) {
   if (step === 2) {
     var oName = document.getElementById('cw-owner-name').value.trim();
     var oEmail = document.getElementById('cw-owner-email').value.trim();
+    var oAddr = document.getElementById('cw-owner-address').value.trim();
     mark('cw-owner-name', !oName);
     mark('cw-owner-email', !oEmail || !/.+@.+\..+/.test(oEmail));
+    mark('cw-owner-address', !oAddr || !window._cwOwnerLat || !window._cwOwnerLng);
     if (!oName) errors.push('VD namn krävs');
     if (!oEmail) errors.push('VD e-post krävs');
     if (oEmail && !/.+@.+\..+/.test(oEmail)) errors.push('Ogiltig VD-e-post');
+    if (!oAddr) errors.push('VD hemadress krävs');
+    if (oAddr && (!window._cwOwnerLat || !window._cwOwnerLng)) errors.push('Välj VD-adressen från listan så att koordinater sparas');
   }
   if (step === 3) {
     var anyChecked = CW_SERVICES_CATALOG.some(function(s) { return s.checked; });
@@ -5469,9 +5471,9 @@ function cwCollectData() {
     owner_email: document.getElementById('cw-owner-email').value.trim(),
     owner_phone: document.getElementById('cw-owner-phone').value.trim() || undefined,
     owner_only: ownerOnly,
-    owner_address: ownerOnly ? undefined : document.getElementById('cw-owner-address').value.trim(),
-    owner_lat: ownerOnly ? undefined : (window._cwOwnerLat || null),
-    owner_lng: ownerOnly ? undefined : (window._cwOwnerLng || null),
+    owner_address: document.getElementById('cw-owner-address').value.trim(),
+    owner_lat: window._cwOwnerLat || null,
+    owner_lng: window._cwOwnerLng || null,
     services: activeSvcs,
     team_members: cwTeamMembers.map(function(m) {
       var memberServices = Object.keys(m.services).filter(function(t) { return m.services[t].enabled; });

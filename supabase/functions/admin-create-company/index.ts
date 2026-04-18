@@ -37,6 +37,10 @@ serve(async (req) => {
     // ── Validering ──
     if (!body.company_name) return json(400, { error: "Företagsnamn krävs" });
     if (!body.owner_name || !body.owner_email) return json(400, { error: "VD namn och e-post krävs" });
+    if (!body.owner_address) return json(400, { error: "VD hemadress krävs" });
+    if (body.owner_lat == null || body.owner_lng == null) {
+      return json(400, { error: "VD koordinater krävs — välj adress från Google Places-listan" });
+    }
 
     const createdIds: { companyId?: string; ownerCleanerId?: string; ownerAuthId?: string; memberIds: string[]; memberAuthIds: string[] } = {
       memberIds: [], memberAuthIds: []
@@ -137,13 +141,13 @@ serve(async (req) => {
       }
     }
 
-    // ── 7. Skapa VD availability (default mån-fre 08-17) ──
-    for (let day = 1; day <= 5; day++) {
+    // ── 7. Skapa VD availability (default mån-sön 08-20) ──
+    for (let day = 1; day <= 7; day++) {
       await sb.from("cleaner_availability_v2").insert({
         cleaner_id: ownerCleaner.id,
         day_of_week: day,
         start_time: "08:00",
-        end_time: "17:00",
+        end_time: "20:00",
         is_active: true,
       });
     }
@@ -230,13 +234,13 @@ serve(async (req) => {
           }
         }
 
-        // 8g. Default availability (mån-fre 08-17)
-        for (let day = 1; day <= 5; day++) {
+        // 8g. Default availability (mån-sön 08-20)
+        for (let day = 1; day <= 7; day++) {
           await sb.from("cleaner_availability_v2").insert({
             cleaner_id: mCleaner.id,
             day_of_week: day,
             start_time: "08:00",
-            end_time: "17:00",
+            end_time: "20:00",
             is_active: true,
           });
         }
