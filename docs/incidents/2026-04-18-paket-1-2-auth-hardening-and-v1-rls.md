@@ -108,7 +108,42 @@ v1 och v2 har nu samma policy-struktur. När Fas 1 droppar v1 är v2 redo med id
 
 ---
 
+## Paket 4: booking_checklists + service_checklists grants + RLS
+
+### Kritiskt fynd
+
+Båda tabellerna saknade grants för `authenticated`/`anon`/`service_role`. Endast `postgres` hade rättigheter. Detta betydde att befintliga RLS-policies **aldrig utvärderades** — `42501 permission denied` triggades på grant-nivå innan RLS ens kördes.
+
+### Symptom i prod
+
+- `booking_checklists` hade **0 rader** sedan tabellen skapades
+- Inga checklists har någonsin kunnat skapas från frontend
+- Städares checkbox-klick i stadare-dashboard svaldes tyst (före Paket 1)
+- Paket 1 gör nu eventuella fel synliga via toast
+
+### Kördes mot prod
+
+1. `GRANT SELECT/INSERT/UPDATE/DELETE TO authenticated` på båda
+2. `GRANT ALL TO service_role` på båda
+3. `GRANT SELECT TO anon` på `service_checklists` (mallar är publika)
+4. **DROP** 3 oanvändbara policies på `booking_checklists` (`"Anon read booking_checklists"`, `"Auth insert booking_checklists"`, `"Auth update booking_checklists"`)
+5. **DROP** `"Anon read checklists"` på `service_checklists`
+6. **CREATE** 4 policies `booking_checklists`: Cleaner-own (via booking-join), VD-team, Admin, Service role
+7. **CREATE** 4 policies `service_checklists`: Public-read, VD-own (via company-id), Admin, Service role
+
+Post-hoc migration: [`20260418_phase_0_2b_paket_4_checklists_grants_and_rls.sql`](../../supabase/migrations/20260418_phase_0_2b_paket_4_checklists_grants_and_rls.sql).
+
+### Empirisk verifiering
+
+Skjuts till naturlig användning — nästa gång Rafa eller Daniella markerar en bokning som klar. Paket 1 (`_friendlyAuthMsg` + auth-guard) gör eventuella fel tydligt synliga via toast snarare än att svälja dem.
+
+### Backlog flaggat
+
+- [`stadare-dashboard.html:8736`](../../stadare-dashboard.html:8736) (`service_checklists`-läsning) använder fortfarande `H` anon-headers utan `res.ok`-check. Fungerar efter Paket 4 (anon har grant på `service_checklists`) men bör uppgraderas till `auth.headers` + `_friendlyAuthMsg` i Paket 5+.
+- **Båda tabellerna saknade ursprunglig CREATE TABLE-migration** — odokumenterade prod-artefakter (Regel #27-brott). Paket 8 (slutaudit) ska fånga alla sådana.
+
+---
+
 ## Nästa steg (0.2b forts.)
 
-- **Paket 4:** `booking_checklists` — kod-fix redan klar i Paket 1, behöver RLS-skärpning
-- **Paket 5–8:** kvarvarande SELECT-läckor (60+) + 3 tabeller utan RLS (flaggat i tidigare audit)
+- **Paket 5–8:** kvarvarande SELECT-läckor (60+) + 3 tabeller utan RLS + capture CREATE TABLE-migrationer för odokumenterade tabeller (flaggat i tidigare audit)
