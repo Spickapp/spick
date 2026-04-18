@@ -1,13 +1,19 @@
-# STATUS: FAS 0 KOMPLETT — 18 april 2026 kväll
+# STATUS: FAS 0 KOMPLETT + FAS 1.1 CLEANERS PII LOCKDOWN KOMPLETT
+# 19 april 2026 tidig morgon
 
-**Alla 8 paket klar-markerade och verifierade mot prod.**
+**Fas 0:** 8/8 paket klara (18 april kväll) — se [2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md](docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md)
 
-Se [docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md](docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md) för fullständig sammanfattning.
+**Fas 1.1:** 3/3 steg klara (19 april tidig morgon) — se [2026-04-19-fas-1-1-cleaners-pii-lockdown.md](docs/incidents/2026-04-19-fas-1-1-cleaners-pii-lockdown.md)
+- Cleaners PII DB-enforcerat via `v_cleaners_public` view
+- 8 publika SELECT-anrop migrerade (6 filer)
+- REVOKE + DROP publika policies klar
+- Empiriskt verifierat: anon får `42501` på `cleaners`, `12 rader` på `v_cleaners_public`
 
-**Nästa arbete:** Fas 1 startar måndag/tisdag med fokus på:
-1. Cleaners PII-exponering (KRITISK)
-2. SMS-token-auth-flöde
-3. Services-tabell (Alt D, ~10-12h)
+**Nästa:** Fas 1.2 — SMS-token-auth-flöde för publika sidor (`min-bokning`, `stadare-uppdrag`, `prenumeration-tack`) — löser 3 intentional-policies i ett drag.
+
+Ytterligare Fas 1-arbete:
+- Services-tabell (Alt D, ~10-12h)
+- Schema-capture-migrationer för 16 NULL_RELACL-tabeller
 
 ---
 
