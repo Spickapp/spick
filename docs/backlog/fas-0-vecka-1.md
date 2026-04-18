@@ -27,14 +27,32 @@ Under RLS-audit samma kväll upptäcktes 4 policies med `qual=true` som tillät 
 
 Stängda: `company_service_prices` UPDATE+DELETE, `companies` UPDATE, `booking_slots` UPDATE. Ersatta med VD-skopade + Admin-policies + service_role där applicable. Frontend-grep bekräftade noll regression-risk innan stängning.
 
-### 0.2b ⏳ SKJUTEN TILL MÅNDAG — läs-audit + kod-fix + SELECT-policies
+### 0.2b — pågående (Paket 1+2 klara 18 april kväll, Paket 3-8 kvar)
 
-Bredare audit som kräver kod-ändringar innan RLS kan stängas, samt 60+ SELECT-läckor:
+Splittad i 8 paket. Paket 1+2 klara och empiriskt verifierade mot prod.
 
-- **Läs-audit av 60+ SELECT-policies** till `{public}` med `qual=true` (konsolidering + RLS-skärpning)
-- **`cleaner_availability` v1 "Cleaners can manage own availability"** `qual=true FOR ALL` — kräver kod-fix först (Rafael + stadare-dashboard använder den, regression skulle bryta schema-redigering)
-- **`booking_checklists`** — [stadare-dashboard.html:8717](stadare-dashboard.html:8717) och [:8784](stadare-dashboard.html:8784) skickar med anon-headers, måste ändras till `_authHeaders()` innan RLS stängs
-- Delar av ursprungliga 0.2-sub-tasks nedan (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS, 0.2.d `tasks`-beslut, 0.2.e konsolidera bookings-policies)
+#### 🟢 Paket 1 — KLAR (commit 5ca40ba): Auth-hardening i frontend
+
+- `_authHeaders()` / `_adminHeaders()` returnerar `{headers, isAuthenticated}` (back-compat via Legacy-variant)
+- R/AR-klienter returnerar `{status, message}` i error (via `_friendlyAuthMsg`)
+- `saveTeamMemberSchedule`, `loadChecklist`, `toggleChecklistItem`, `adminSaveSchedule` v1-block — auth-check + toast vid 401/403
+- `booking_checklists` anon-headers ersatta med `auth.headers` (kod-delen av Paket 4)
+- Empiriskt verifierat Test 1+2+3 (se [incidentrapport](docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md))
+
+#### 🟢 Paket 2 — KLAR (post-hoc migration): cleaner_availability v1 RLS-skärpning
+
+- DROP 1 skriv-läcka + 2 SELECT-dubletter
+- CREATE VD + Admin + konsoliderad publik SELECT-policy
+- `"Cleaner sees own availability"` behålls
+- Migration: [`20260418_phase_0_2b_paket_2_cleaner_availability_rls.sql`](supabase/migrations/20260418_phase_0_2b_paket_2_cleaner_availability_rls.sql)
+- Empiriskt verifierat: Admin-skriv via `is_admin()` släpper igenom, VD-skriv via company-join-policy bekräftad med logiktest
+
+#### ⏳ Paket 3-8 — kvar (måndag+)
+
+- **Paket 3:** `cleaner_availability_v2` RLS-skärpning (matching hierarki)
+- **Paket 4:** `booking_checklists` RLS-skärpning (kod-delen redan fixad i Paket 1)
+- **Paket 5-8:** Läs-audit av 60+ SELECT-policies med `qual=true` + 3 tabeller utan RLS
+- Ursprungliga 0.2-sub-tasks (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS, 0.2.d `tasks`-beslut, 0.2.e konsolidera bookings-policies) integreras i Paket 5-8
 
 ### 0.2 sub-tasks (ursprungliga, tillhör nu 0.2b)
 
@@ -268,7 +286,9 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 |---------|--------|--------|
 | 0.1 — RLS-audit | 4h | 🟢 Klar (commit 552e2f6) |
 | 0.2a — Stäng anon-skrivläckor | 1h | 🟢 Klar (migration + incident) |
-| 0.2b — Läs-audit + kod-fix + SELECT-policies | 3-5h | 🔵 Måndag em |
+| 0.2b Paket 1 — Auth-hardening | 1.5h | 🟢 Klar (commit 5ca40ba) |
+| 0.2b Paket 2 — cleaner_availability v1 RLS | 30 min | 🟢 Klar (post-hoc migration) |
+| 0.2b Paket 3-8 — v2 RLS + checklists + SELECT-audit | 2-4h | 🔵 Måndag+ |
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
 | 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
@@ -307,20 +327,30 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 
 ⏳ **Återstår:**
 - ✅ 0.2a Fyra anon-skrivläckor stängda (migration 20260418_close_anon_write_leaks + incidentrapport)
-- ⏳ 0.2b Läs-audit + cleaner_availability/booking_checklists-kod-fix + 60+ SELECT-policies (måndag em, 3-5h)
+- ✅ 0.2b Paket 1 Auth-hardening (commit 5ca40ba, Test 1+2+3 verifierade mot prod)
+- ✅ 0.2b Paket 2 cleaner_availability v1 RLS-skärpning (post-hoc migration + logiktest)
+- ⏳ 0.2b Paket 3-8 v2 RLS + booking_checklists RLS + 60+ SELECT-policies (måndag+, 2-4h)
 - ✅ 0.4a adminSaveSchedule → v2 (commit e2e073a + grant-migration + incidentrapport)
 - ⏳ 0.4b bredare v1→v2-refaktor flyttad till Fas 1
 - ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
 
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
-Kvar: 0.2b + cleaner-job-match (0.2a klar, 0.4a klar, 0.4b flyttad till Fas 1).
+Kvar: 0.2b Paket 3-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2 klara, 0.4a klar, 0.4b flyttad till Fas 1).
+
+---
+
+## Tidslista 18 april kväll
+
+- 18 april sen kväll: Paket 1 (auth-hardening) deployad (commit 5ca40ba)
+- 18 april sen kväll: Paket 2 (v1 RLS-skärpning) SQL körd mot prod
+- 18 april sen kväll: Paket 1 + Paket 2 empiriskt verifierade mot prod (Test 1+2+3, logiktest Rafael/Zivar VD-täckning)
 
 ---
 
 ## Status total
 
-**Fas 0 vecka 1 är ~97% klar — endast 0.2b (läs-audit + kod-fix + 60+ SELECT-policies) återstår.**
+**Fas 0 vecka 1 är ~98% klar — endast 0.2b Paket 3-8 återstår (v2 RLS + booking_checklists RLS + SELECT-audit).**
 
 Alla kritiska kodbuggar (0.3, 0.4a, 0.5, 0.6, 0.7, cleaner-job-match) är åtgärdade och deployade till prod. Verifieringsnivån varierar:
 - 🟢 Empiriskt verifierat i prod: 0.1, 0.3, 0.4a, 0.7, cleaner-job-match
