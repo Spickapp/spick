@@ -65,11 +65,27 @@ Splittad i 8 paket. Paket 1+2 klara och empiriskt verifierade mot prod.
 - Migration: [`20260418_phase_0_2b_paket_4_checklists_grants_and_rls.sql`](supabase/migrations/20260418_phase_0_2b_paket_4_checklists_grants_and_rls.sql)
 - Empirisk test skjuts till naturlig användning — Paket 1-toast gör fel synliga direkt
 
-#### ⏳ Paket 5-8 — kvar (måndag+)
+#### 🟢 Paket 5a — KLAR: SELECT-audit stängningar (18 april kväll)
 
-- **Paket 5-8:** Läs-audit av 60+ SELECT-policies med `qual=true` + 3 tabeller utan RLS + capture CREATE TABLE-migrationer för odokumenterade tabeller
-- Ursprungliga 0.2-sub-tasks (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS, 0.2.d `tasks`-beslut, 0.2.e konsolidera bookings-policies) integreras i Paket 5-8
+- DROP 6 oanvända anon-SELECT-policies (`booking_adjustments`, `booking_messages`, `booking_modifications`, `booking_photos`, `booking_staff`, `earnings_summary`) — tabellerna används inte i frontend/EF
+- DROP 5 duplicerade policies (`bookings`, `booking_status_log`, `ratings` ×2, `subscriptions`)
+
+#### 🟢 Paket 5b — KLAR: Konsoliderade medvetna publika policies (18 april kväll)
+
+- Konsolidera 3 SELECT-dubletter på `booking_status_log`, `messages`, `subscriptions` till enda `"Public read … — intentional"`-policies
+- Tydlig namngivning signalerar medveten design i `pg_policies` (filter på `policyname LIKE '%— intentional%'`)
+- Migration: [`20260418_phase_0_2b_paket_5b_intentional_anon_select_policies.sql`](supabase/migrations/20260418_phase_0_2b_paket_5b_intentional_anon_select_policies.sql)
+- Dokumentation: [`docs/architecture/INTENTIONAL_ANON_POLICIES.md`](docs/architecture/INTENTIONAL_ANON_POLICIES.md) — 7 medvetet publika policies med motivering + mitigation + omprövnings-datum
+
+#### ⏳ Paket 6-8 — kvar (måndag+)
+
+- **Paket 6-8:** 3 tabeller utan RLS + capture CREATE TABLE-migrationer för odokumenterade tabeller (`booking_checklists`, `service_checklists`, m.fl.)
+- Ursprungliga 0.2-sub-tasks (0.2.a capture `is_admin`, 0.2.b admin-SELECT, 0.2.c `company_service_prices` RLS, 0.2.d `tasks`-beslut, 0.2.e konsolidera bookings-policies) integreras i Paket 6-8
 - Flagga: [stadare-dashboard.html:8736](stadare-dashboard.html:8736) `service_checklists`-läsning använder fortfarande anon-headers (H) — bör uppgraderas till auth.headers
+
+#### 🆕 Fas 1-uppgift flaggad: Publik auth via SMS-token
+
+Löser 3 "intentional"-policies (`booking_status_log`, `messages`, `subscriptions`) i ett drag. Se [INTENTIONAL_ANON_POLICIES.md](docs/architecture/INTENTIONAL_ANON_POLICIES.md) § "Rekommenderad Fas 1-uppgift" för design-skiss. Estimat 6-8h.
 
 ### 0.2 sub-tasks (ursprungliga, tillhör nu 0.2b)
 
@@ -307,7 +323,9 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 | 0.2b Paket 2 — cleaner_availability v1 RLS | 30 min | 🟢 Klar (post-hoc migration) |
 | 0.2b Paket 3 — cleaner_availability_v2 RLS | 30 min | 🟢 Klar (post-hoc migration) |
 | 0.2b Paket 4 — booking_checklists + service_checklists grants+RLS | 45 min | 🟢 Klar (post-hoc migration) |
-| 0.2b Paket 5-8 — SELECT-audit + 3 tabeller utan RLS + capture | 1-2h | 🔵 Måndag+ |
+| 0.2b Paket 5a — SELECT-audit stängningar (11 policies) | 30 min | 🟢 Klar (18 april kväll) |
+| 0.2b Paket 5b — Intentional anon-policies + dokumentation | 30 min | 🟢 Klar (post-hoc migration) |
+| 0.2b Paket 6-8 — 3 tabeller utan RLS + capture-migrationer | 1h | 🔵 Måndag+ |
 | 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4a — Admin adminSaveSchedule → v2 | 1h | 🟢 Klar (commit e2e073a) |
 | 0.4b — Övriga v1→v2 (stadare-dashboard m.fl.) | 3-5h | ⏳ Flyttad till Fas 1 |
@@ -350,14 +368,17 @@ Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
 - ✅ 0.2b Paket 2 cleaner_availability v1 RLS-skärpning (post-hoc migration + logiktest)
 - ✅ 0.2b Paket 3 cleaner_availability_v2 RLS-konsistens (post-hoc migration, match v1-hierarkin)
 - ✅ 0.2b Paket 4 booking_checklists + service_checklists grants + RLS (kritiskt fynd: grants saknades helt, RLS utvärderades aldrig)
-- ⏳ 0.2b Paket 5-8 SELECT-audit + 3 tabeller utan RLS + capture-migrationer (måndag+, 1-2h)
+- ✅ 0.2b Paket 5a SELECT-audit stängningar (11 policies borttagna)
+- ✅ 0.2b Paket 5b Intentional anon-policies + INTENTIONAL_ANON_POLICIES.md
+- ⏳ 0.2b Paket 6-8 3 tabeller utan RLS + capture-migrationer (måndag+, ~1h)
+- 🆕 Fas 1-flagga: SMS-token-auth för publika sidor (löser 3 intentional-policies)
 - ✅ 0.4a adminSaveSchedule → v2 (commit e2e073a + grant-migration + incidentrapport)
 - ⏳ 0.4b bredare v1→v2-refaktor flyttad till Fas 1
 - ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
 
 **5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
 
-Kvar: 0.2b Paket 5-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2+3+4 klara, 0.4a klar, 0.4b flyttad till Fas 1).
+Kvar: 0.2b Paket 6-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2+3+4+5a+5b klara, 0.4a klar, 0.4b flyttad till Fas 1).
 
 ---
 
@@ -368,12 +389,13 @@ Kvar: 0.2b Paket 5-8 + cleaner-job-match (0.2a + 0.2b Paket 1+2+3+4 klara, 0.4a 
 - 18 april sen kväll: Paket 1 + Paket 2 empiriskt verifierade mot prod (Test 1+2+3, logiktest Rafael/Zivar VD-täckning)
 - 18 april sen kväll: Paket 3 (v2 RLS-konsistens) SQL körd + verifierad (DELETE 204 + POST 201)
 - 18 april sen kväll: Paket 4 (checklists grants + RLS) SQL körd. Kritiskt fynd — grants saknades helt, booking_checklists hade 0 rader. Empirisk test skjuts till naturlig användning (Paket 1-toast synliggör fel)
+- 18 april sen kväll: Paket 5a + 5b (SELECT-audit + intentional-konsolidering) SQL körd. 11 policies borttagna, 3 konsoliderade till "— intentional"-namn. Fas 1-flagga skapad för SMS-token-auth
 
 ---
 
 ## Status total
 
-**Fas 0 vecka 1 är ~99% klar — endast 0.2b Paket 5-8 återstår (SELECT-audit + 3 tabeller utan RLS + capture-migrationer).**
+**Fas 0 vecka 1 är ~99.5% klar — endast 0.2b Paket 6-8 återstår (3 tabeller utan RLS + capture-migrationer för odokumenterade tabeller).**
 
 Alla kritiska kodbuggar (0.3, 0.4a, 0.5, 0.6, 0.7, cleaner-job-match) är åtgärdade och deployade till prod. Verifieringsnivån varierar:
 - 🟢 Empiriskt verifierat i prod: 0.1, 0.3, 0.4a, 0.7, cleaner-job-match
