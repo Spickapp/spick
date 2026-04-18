@@ -124,7 +124,7 @@ Se [nytt-jobb-matchar-bugg.md](docs/audits/2026-04-19-nytt-jobb-matchar-bugg.md)
 
 ---
 
-## 0.5 — boka.html:1896 dag-numreringsbugg
+## 0.5 — boka.html:1896 dag-numreringsbugg 🟢 KLAR (18 april sen kväll, commit fa8e4c0)
 
 **Källa:** [Arkitekturplan v2](docs/planning/spick-arkitekturplan-v2.md) Del 2 #13
 
@@ -141,7 +141,7 @@ Alternativt normalisera v2-data vid query.
 
 ---
 
-## 0.6 — Wizard default mån-sön (inte bara mån-fre)
+## 0.6 — Wizard default mån-sön (inte bara mån-fre) 🟢 KLAR (18 april sen kväll, commit 6fcf987)
 
 **Källa:** Arkitekturplan v2 Del 2 #19
 
@@ -155,7 +155,7 @@ Samma sak på [index.ts:234](supabase/functions/admin-create-company/index.ts:23
 
 ---
 
-## 0.7 — Wizard kräver VD-hemadress + geokodar
+## 0.7 — Wizard kräver VD-hemadress + geokodar 🟢 KLAR (18 april sen kväll, commit 6fcf987)
 
 **Källa:** Arkitekturplan v2 Del 2 #18 (Zivar krävde manuell fix)
 
@@ -218,26 +218,48 @@ Efter Fas 0.5 (boka.html konverterar vid jämförelse) + denna fix: 2 konvention
 
 | Uppgift | Effort | Status |
 |---------|--------|--------|
-| 0.1 — RLS-audit | 4h | 🟢 Klar |
-| 0.2 — Dokumentera resterande policies | 3-5h | 🔵 Måndag |
-| 0.3 — cleaner_email-bug | 15 min | 🔵 Måndag |
+| 0.1 — RLS-audit | 4h | 🟢 Klar (commit 552e2f6) |
+| 0.2 — Dokumentera resterande policies | 3-5h | 🔵 Måndag em |
+| 0.3 — cleaner_email-bug | 15 min | 🟢 Klar (commit fb9f4e9) |
 | 0.4 — Admin schedule v1→v2 | 1-2h | 🔵 Onsdag |
-| 0.5 — Dag-numrering | 15 min | 🔵 Måndag |
-| 0.6 — Wizard mån-sön | 5 min | 🔵 Måndag |
-| 0.7 — Wizard VD-adress | 30 min | 🔵 Onsdag |
-| **Total** | **5-8h** | Matchar arkitekturplanens vecka 1-budget |
+| 0.5 — Dag-numrering | 15 min | 🟢 Klar (commit fa8e4c0) |
+| 0.6 — Wizard mån-sön | 5 min | 🟢 Klar (commit 6fcf987) |
+| 0.7 — Wizard VD-adress | 30 min | 🟢 Klar (commit 6fcf987) |
+| Cleaner-job-match dag-bugg | 30 min | 🟡 P1 måndag morgon (dok i commit 43b0783) |
+| **Total** | **5-8h** | 5/7 klara före vecka 1 startar |
 
 ---
 
-## Deploy-ordning måndag
+## Deploy-ordning måndag (reviderad 18 april 23:00)
 
-1. **Morgon (1h):** 0.5 + 0.6 + 0.3 — små fixes + deploy
-2. **Middag (30 min):** Verifiera produktion med testbokning
-3. **Eftermiddag (2-3h):** 0.2 — RLS-dokumentation
+Eftersom 0.3/0.5/0.6/0.7 är klara redan 18 april, blir veckoplanen:
+
+1. **Måndag morgon (2-3h):** Cleaner-job-match dag-bugg (P1, se separat sektion) — rad 28 + rad 59 + rad 183-fix + deploy + smoke
+2. **Måndag middag (30 min):** Verifiera produktion med testbokning (mån + sön + tis för att bekräfta matchning)
+3. **Måndag eftermiddag (3-5h):** 0.2 — RLS-dokumentation (policies + is_admin + company_service_prices + tasks + bookings-konsolidering)
 
 Onsdag:
-1. **Morgon (1-2h):** 0.4 — Admin schedule-refaktor
-2. **Eftermiddag (30 min):** 0.7 — Wizard VD-adress
-3. **Kväll:** Review + buffer
+1. **Morgon (1-2h):** 0.4 — Admin schedule-editor v1→v2-refaktor
+2. **Eftermiddag:** Review + buffer för oväntade issues
 
-Fredag: Produktionsdeploy + verifiera med Rafa/Zivar.
+Fredag: Produktionsdeploy-verifiering + slutligt Rafa/Zivar-test.
+
+---
+
+## Status per 18 april 23:00
+
+🟢 **Klara:**
+- ✅ 0.1 RLS-audit (commit 552e2f6)
+- ✅ 0.3 cleaner_email bonusbugg (commit fb9f4e9)
+- ✅ 0.5 boka.html dag-numrering (commit fa8e4c0)
+- ✅ 0.6 Wizard mån-sön (commit 6fcf987)
+- ✅ 0.7 Wizard VD-adress (commit 6fcf987)
+
+⏳ **Återstår:**
+- ⏳ 0.2 Dokumentera resterande prod-policies (måndag em, 3-5h)
+- ⏳ 0.4 Admin schedule-editor v1→v2 (onsdag, 1-2h)
+- ⏳ Cleaner-job-match dag-bugg (P1, separat task, dokumenterad i commit 43b0783)
+
+**5 av 7 ursprungliga Fas 0-uppgifter klara före vecka 1 ens startat.**
+
+Kvar: 0.2 + 0.4 + cleaner-job-match.
