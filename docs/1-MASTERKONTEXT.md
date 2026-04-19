@@ -1,8 +1,18 @@
 # 1 — Spick Masterkontext
 
-> **Senast uppdaterad:** 2026-04-17 efter Dag 1-audit.  
+> **Senast uppdaterad:** 2026-04-19 (arkitekturplan v3 aktiverad).  
 > **Ersätter:** `docs/SPICK_KONTEXT.md` (från 2026-03-23, föråldrad — Netlify-referenser mm).  
 > **Syfte:** Startdokument för framtida Claude-sessioner. Läs denna + CLAUDE.md först.
+
+---
+
+## Aktiv arkitekturplan
+
+**v3** — `docs/planning/spick-arkitekturplan-v3.md` (committad 19 apr 2026, commit d4e149f).
+13 faser, 26 veckor, GA-kandidat 1 nov 2026, EU-deadline 2 dec 2026.
+v2 finns kvar som historik i samma mapp.
+
+Vid session-start: läs v3 från repot. Memory är hypotes, v3 är sanning (Regel #29).
 
 ---
 
