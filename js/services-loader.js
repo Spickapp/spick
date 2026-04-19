@@ -44,7 +44,13 @@
       var btn = document.createElement('button');
       btn.className = 'svc-btn';
       btn.setAttribute('data-svc', s.label_sv);
-      btn.setAttribute('onclick', "selectService('" + s.label_sv.replace(/'/g, "\\'") + "','','','')");
+      (function(svc) {
+        btn.addEventListener('click', function() {
+          if (typeof selectService === 'function') {
+            selectService(svc.label_sv, '', '', '');
+          }
+        });
+      })(s);
       if (isB2B) {
         btn.id = b2bId;
         btn.style.display = 'none';
