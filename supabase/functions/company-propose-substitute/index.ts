@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -104,7 +105,13 @@ serve(async (req) => {
         const customerFirstName = (booking.customer_name || "Kund").split(" ")[0];
         const bookingDate = formatDate(booking.booking_date);
         const bookingTime = (booking.booking_time || "").slice(0, 5);
-        const chooseUrl = `https://spick.se/min-bokning.html?bid=${booking_id}`;
+        const chooseUrl = await generateMagicShortUrl({
+          email: booking.customer_email,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}`,
+          scope: "booking",
+          resource_id: booking_id,
+          ttl_hours: 24,
+        });
 
         // Push + SMS + in-app till kund
         try {
@@ -257,8 +264,20 @@ serve(async (req) => {
       }).eq("id", booking_id);
 
       // Mejla kund för godkännande
-      const approveUrl = `https://spick.se/min-bokning.html?bid=${booking_id}&action=approve_proposal`;
-      const rejectUrl = `https://spick.se/min-bokning.html?bid=${booking_id}&action=reject_proposal`;
+      const approveUrl = await generateMagicShortUrl({
+        email: booking.customer_email,
+        redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}&action=approve_proposal`,
+        scope: "booking",
+        resource_id: booking_id,
+        ttl_hours: 168,
+      });
+      const rejectUrl = await generateMagicShortUrl({
+        email: booking.customer_email,
+        redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}&action=reject_proposal`,
+        scope: "booking",
+        resource_id: booking_id,
+        ttl_hours: 168,
+      });
 
       if (booking.customer_email) {
         await sendEmail(booking.customer_email, `Ny städare föreslagen — bekräfta inom 1h`, wrap(`
@@ -285,10 +304,17 @@ serve(async (req) => {
         `));
 
         // SMS + push till kund
+        const smsLink = await generateMagicShortUrl({
+          email: booking.customer_email,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}`,
+          scope: "booking",
+          resource_id: booking_id,
+          ttl_hours: 24,
+        });
         await notify({
           email: booking.customer_email,
           phone: booking.customer_phone || undefined,
-          sms_message: `Spick: ${newCleaner.full_name} föreslås ersätta din städare ${formatDate(booking.booking_date)}. Bekräfta inom 1h: spick.se/min-bokning.html?bid=${booking_id}`,
+          sms_message: `Spick: ${newCleaner.full_name} föreslås ersätta din städare ${formatDate(booking.booking_date)}. Bekräfta inom 1h: ${smsLink}`,
           push_type: "customer_proposal_pending",
           push_data: {
             cleaner_name: newCleaner.full_name,
@@ -336,6 +362,13 @@ serve(async (req) => {
 
       // Info-mejl till kund (inget att godkänna)
       if (booking.customer_email) {
+        const infoEmailLink = await generateMagicShortUrl({
+          email: booking.customer_email,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}`,
+          scope: "booking",
+          resource_id: booking_id,
+          ttl_hours: 168,
+        });
         await sendEmail(booking.customer_email, `Din städning har en ny städare`, wrap(`
           <h2>Information: ny städare för din bokning</h2>
           <p>Hej ${esc(booking.customer_name)},</p>
@@ -346,7 +379,7 @@ serve(async (req) => {
             ["Pris", `${booking.total_price} kr (oförändrat)`],
           ])}
           <p>Detta skedde enligt dina preferenser för automatisk hantering. Du kan ändra detta i dina kontoinställningar.</p>
-          <p><a href="https://spick.se/min-bokning.html?bid=${booking_id}">Se din bokning →</a></p>
+          <p><a href="${infoEmailLink}">Se din bokning →</a></p>
         `));
 
         // Info-push + SMS till kund (ingen åtgärd krävs)

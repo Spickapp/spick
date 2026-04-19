@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 const sb = createClient(
   "https://urjeijcncsyuletprydy.supabase.co",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -154,6 +155,13 @@ serve(async (req) => {
       const hasRut = (r.rut_amount > 0) || r.rut;
       const rut = hasRut ? `<div class="badge">✓ RUT-avdrag aktivt – du betalar ${price.toLocaleString("sv")} kr</div>` : "";
 
+      const dashboardLink = await generateMagicShortUrl({
+        email: email || undefined,
+        redirect_to: `https://spick.se/mitt-konto.html`,
+        scope: "dashboard",
+        ttl_hours: 24,
+      });
+
       if (email) await sendEmail(email, `✅ Bokningsbekräftelse – ${esc(service)} ${date}`, wrap(`
         <h2>Din bokning är bekräftad! 🎉</h2>
         <p>Hej ${name.split(" ")[0]}! Vi återkommer med bekräftelse och en tilldelad städare inom 2 timmar.</p>
@@ -167,7 +175,7 @@ serve(async (req) => {
         </div>
         ${rut}
         <p style="font-size:13px;color:#9B9B95;margin-top:16px">💳 Betala via Swish till städaren efter godkänd städning. Gratis avbokning upp till 24h före.</p>
-        <a class="btn" href="https://spick.se/min-bokning.html?email=${encodeURIComponent(email || "")}">Följ din bokning →</a>
+        <a class="btn" href="${dashboardLink}">Följ din bokning →</a>
       `));
 
       await sendEmail(ADMIN, `🔔 NY BOKNING: ${esc(name)} – ${esc(service)} ${date}`, wrap(`
@@ -354,7 +362,15 @@ serve(async (req) => {
       const date = r.booking_date || r.date || "Imorgon";
       const address = r.customer_address || r.address || "–";
       const service = r.service_type || r.service || "Hemstädning";
-      if (email) await sendEmail(email, `⏰ Påminnelse: Städning imorgon kl ${time}`, wrap(`
+      if (email) {
+        const reminderLink = await generateMagicShortUrl({
+          email: email,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${r.booking_id || r.id || ""}`,
+          scope: "booking",
+          resource_id: String(r.booking_id || r.id || ""),
+          ttl_hours: 168,
+        });
+        await sendEmail(email, `⏰ Påminnelse: Städning imorgon kl ${time}`, wrap(`
         <h2>Påminnelse om din städning 🧹</h2>
         <p>Hej ${(r.customer_name || r.name || "").split(" ")[0]}! Din städning är imorgon.</p>
         <div class="card">
@@ -363,8 +379,9 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Tjänst</span><span class="val">${esc(service)}</span></div>
         </div>
         <p style="font-size:13px;color:#9B9B95">Behöver du avboka? Det är gratis upp till 24h före.</p>
-        <a class="btn" href="https://spick.se/min-bokning.html">Hantera bokning →</a>
+        <a class="btn" href="${reminderLink}">Hantera bokning →</a>
       `));
+      }
     }
 
     // ── BETYGSFÖRFRÅGAN ───────────────────────────────────────
@@ -589,6 +606,13 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
       const cleanerName = esc(r.cleaner_name || "Din städare");
       const custEmail = r.customer_email;
       if (custEmail) {
+        const bookingLink = await generateMagicShortUrl({
+          email: custEmail || undefined,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${esc(r.booking_id || "")}`,
+          scope: "booking",
+          resource_id: String(r.booking_id || ""),
+          ttl_hours: 168,
+        });
         await sendEmail(custEmail, "Din städare är på plats!", wrap(`
           <h2>${cleanerName} har börjat städa!</h2>
           <p>Hej ${custName}! Din städare har checkat in och påbörjat städningen.</p>
@@ -596,7 +620,7 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
             <div class="row"><span class="lbl">Datum</span><span class="val">${esc(r.date || "")}</span></div>
             <div class="row"><span class="lbl">Tid</span><span class="val">${esc(r.time || "")}</span></div>
           </div>
-          <a href="https://spick.se/min-bokning.html?bid=${esc(r.booking_id || "")}" class="btn">Se din bokning</a>
+          <a href="${bookingLink}" class="btn">Se din bokning</a>
         `));
       }
     }
@@ -606,11 +630,18 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
       const custName = esc(r.customer_name || "Hej").split(" ")[0];
       const cleanerName = esc(r.cleaner_name || "din städare");
       if (custEmail) {
+        const cancelledLink = await generateMagicShortUrl({
+          email: custEmail || undefined,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${esc(r.booking_id || "")}`,
+          scope: "booking",
+          resource_id: String(r.booking_id || ""),
+          ttl_hours: 168,
+        });
         await sendEmail(custEmail, "Din städare har avbokat — vi hittar en ny!", wrap(`
           <h2>Tyvärr har ${cleanerName} behövt avboka</h2>
           <p>Hej ${custName}, vi letar redan efter en ny städare åt dig och återkommer så snart som möjligt.</p>
           <p>Om vi inte hittar en ersättare återbetalas du automatiskt.</p>
-          <a href="https://spick.se/min-bokning.html?bid=${esc(r.booking_id || "")}" class="btn">Se din bokning</a>
+          <a href="${cancelledLink}" class="btn">Se din bokning</a>
           <p style="font-size:13px;margin-top:12px">Frågor? <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
         `));
       }
