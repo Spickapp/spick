@@ -172,26 +172,56 @@ Deno.serve(async (req) => {
     
     const authUserId = authData.user.id;
     
-    // ── Skapa company ──
-    const companySlug = slugify(company_name.trim());
-    const { data: company, error: compErr } = await sb
-      .from("companies")
-      .insert({
-        name: company_name.trim(),
-        org_number: orgFormatted,
-        slug: companySlug,
-        commission_rate: commissionRate,
-        self_signup: true,
-        onboarding_status: "pending_stripe",
-      })
-      .select("id")
-      .single();
-    
-    if (compErr || !company) {
-      log("error", "company-self-signup", "Company insert failed", { error: compErr?.message });
-      // Rollback: radera auth-user
+    // ── Skapa company (med slug-konflikt-retry) ──
+    const baseSlug = slugify(company_name.trim());
+    let company: { id: string } | null = null;
+    let lastCompErr: { message: string } | null = null;
+
+    // Försök upp till 10 gånger med suffix -2, -3, ... om slug-konflikt
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const trySlug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
+
+      const result = await sb
+        .from("companies")
+        .insert({
+          name: company_name.trim(),
+          org_number: orgFormatted,
+          slug: trySlug,
+          commission_rate: commissionRate,
+          self_signup: true,
+          onboarding_status: "pending_stripe",
+        })
+        .select("id")
+        .single();
+
+      if (!result.error) {
+        company = result.data;
+        break;
+      }
+
+      // Om inte slug-conflict → abort, inte worth retry
+      if (!result.error.message?.includes("companies_slug_key")) {
+        lastCompErr = result.error;
+        break;
+      }
+
+      // Slug-conflict → try nästa
+      log("info", "company-self-signup", "Slug conflict, retrying", {
+        attempt: attempt + 1,
+        tried_slug: trySlug
+      });
+    }
+
+    if (!company) {
+      log("error", "company-self-signup", "Company insert failed", {
+        error: lastCompErr?.message ?? "slug conflict after 10 attempts"
+      });
+      // Rollback: radera auth-user (ingen company skapad — ingen FK-issue)
       await sb.auth.admin.deleteUser(authUserId).catch(() => {});
-      return json(CORS, 500, { error: "company_create_failed", detail: compErr?.message });
+      return json(CORS, 500, {
+        error: "company_create_failed",
+        detail: lastCompErr?.message ?? "slug_conflict_unresolvable"
+      });
     }
     
     // ── Skapa cleaner (VD) ──
@@ -226,18 +256,34 @@ Deno.serve(async (req) => {
     
     if (cleanErr || !cleaner) {
       log("error", "company-self-signup", "Cleaner insert failed, rolling back", { error: cleanErr?.message });
-      // Rollback
+      // Rollback company-raden (ingen owner_cleaner_id satt än här, ingen cirkel — säkert att radera direkt)
       await sb.from("companies").delete().eq("id", company.id);
       await sb.auth.admin.deleteUser(authUserId).catch(() => {});
       return json(CORS, 500, { error: "cleaner_create_failed", detail: cleanErr?.message });
     }
     
     // ── Uppdatera company med owner_cleaner_id ──
-    await sb
+    // OBS: efter denna UPDATE existerar cirkulär FK (company.owner_cleaner_id → cleaner.id
+    //      och cleaner.company_id → company.id). Framtida rollback kräver att owner_cleaner_id
+    //      sätts till NULL FÖRST, sedan DELETE cleaner, sedan DELETE company.
+    const { error: ownerErr } = await sb
       .from("companies")
       .update({ owner_cleaner_id: cleaner.id })
       .eq("id", company.id);
-    
+
+    if (ownerErr) {
+      log("error", "company-self-signup", "Failed to set owner_cleaner_id", {
+        error: ownerErr.message,
+        company_id: company.id,
+        cleaner_id: cleaner.id,
+      });
+      // Rollback: radera cleaner + company + auth-user (ingen cirkel ännu)
+      await sb.from("cleaners").delete().eq("id", cleaner.id);
+      await sb.from("companies").delete().eq("id", company.id);
+      await sb.auth.admin.deleteUser(authUserId).catch(() => {});
+      return json(CORS, 500, { error: "owner_link_failed", detail: ownerErr.message });
+    }
+
     // ── Skapa cleaner_applications-rad (historik) ──
     await sb.from("cleaner_applications").insert({
       full_name: vd_name.trim(),
