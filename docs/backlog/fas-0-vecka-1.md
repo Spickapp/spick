@@ -1,5 +1,5 @@
-# STATUS: FAS 0 KOMPLETT + FAS 1.1 CLEANERS PII LOCKDOWN KOMPLETT
-# 19 april 2026 tidig morgon
+# STATUS: FAS 0 KOMPLETT + FAS 1.1 KOMPLETT + FAS 1.2 DESIGN KLAR
+# 19 april 2026 fm
 
 **Fas 0:** 8/8 paket klara (18 april kväll) — se [2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md](docs/incidents/2026-04-18-paket-1-2-auth-hardening-and-v1-rls.md)
 
@@ -9,11 +9,19 @@
 - REVOKE + DROP publika policies klar
 - Empiriskt verifierat: anon får `42501` på `cleaners`, `12 rader` på `v_cleaners_public`
 
-**Nästa:** Fas 1.2 — SMS-token-auth-flöde för publika sidor (`min-bokning`, `stadare-uppdrag`, `prenumeration-tack`) — löser 3 intentional-policies i ett drag.
+**Fas 1.2 design-dag (19 april fm):**
+- Unified Identity Architecture dokumenterad i [`docs/architecture/fas-1-2-unified-identity-architecture.md`](docs/architecture/fas-1-2-unified-identity-architecture.md)
+- 4 migrations-utkast förberedda i [`supabase/migrations/drafts/fas-1-2/`](supabase/migrations/drafts/fas-1-2/)
+- V1-V14 prod-verifiering klar (08:00-09:15)
+- **Fynd:** customers-tabell har 19 rader (14 testdata + 5 dubletter), **0 kodkonsumenter**
+- **Fynd:** customer_profiles har 1 rad (Farre), saknar auth_user_id-länk
+- **Backfill-plan:** UPDATE Farre + INSERT Clara + INSERT Derin
+- **Customers DROP:** säker, ingen data-förlust
 
-Ytterligare Fas 1-arbete:
-- Services-tabell (Alt D, ~10-12h)
-- Schema-capture-migrationer för 16 NULL_RELACL-tabeller
+**Nästa:**
+- **Dag 2:** DB-migrationer mot prod + 4 EF:er (public-auth-link, public-auth-exchange, customer-upsert, customer-check-auto-delegation)
+- **Dag 3:** SMS-callsites migrering + frontend /m/:code
+- **Dag 4:** RLS-skärpning + kund-dashboard + customers DROP
 
 ---
 
