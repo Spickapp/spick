@@ -15,7 +15,6 @@ const PUBLIC_BASE_URL = "https://spick.se";
 
 const sb = createClient(SUPA_URL, SERVICE_KEY);
 
-// Base62 alphabet för shortcodes (8 tecken = 62^8 = ~218 trillion kombinationer)
 const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 function generateShortcode(length = 8): string {
@@ -51,8 +50,10 @@ async function auditLog(event: {
 }
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: CORS });
   }
 
   try {
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     if (!email || !redirect_to || !scope) {
       return new Response(
         JSON.stringify({ error: "email, redirect_to, scope required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify({ error: "generateLink failed", detail: linkErr?.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
       }));
       return new Response(
         JSON.stringify({ error: "shortcode insert failed", detail: insertErr.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -178,7 +179,7 @@ Deno.serve(async (req) => {
         short_code: shortCode,
         expires_at: expiresAt,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   } catch (e) {
     console.error(JSON.stringify({
@@ -189,7 +190,7 @@ Deno.serve(async (req) => {
     }));
     return new Response(
       JSON.stringify({ error: "Internal error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });

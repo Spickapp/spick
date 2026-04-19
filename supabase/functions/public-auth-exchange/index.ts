@@ -5,7 +5,6 @@
 //
 // Input:  { short_code, ip_address?, user_agent? }
 // Output: { action_link, scope, resource_id }
-//         (frontend följer action_link för att få session via Supabase)
 // ═══════════════════════════════════════════════════════════════
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
@@ -38,8 +37,10 @@ async function auditLog(event: {
 }
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: CORS });
   }
 
   try {
@@ -49,11 +50,10 @@ Deno.serve(async (req) => {
     if (!short_code) {
       return new Response(
         JSON.stringify({ error: "short_code required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
-    // 1. Hämta shortcode
     const { data: code, error: codeErr } = await sb
       .from("magic_link_shortcodes")
       .select("*")
@@ -71,11 +71,10 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify({ error: "Invalid or expired link" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
-    // 2. Verifiera expiry
     if (new Date(code.expires_at) < new Date()) {
       await auditLog({
         event_type: "magic_link_expired",
@@ -89,11 +88,10 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify({ error: "Link expired" }),
-        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 410, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
-    // 3. Verifiera single-use
     if (code.single_use && code.used_at) {
       await auditLog({
         event_type: "magic_link_reuse_attempt",
@@ -107,11 +105,10 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify({ error: "Link already used" }),
-        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 410, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
-    // 4. Markera som använd
     await sb
       .from("magic_link_shortcodes")
       .update({
@@ -121,7 +118,6 @@ Deno.serve(async (req) => {
       })
       .eq("code", short_code);
 
-    // 5. Logga användning
     await auditLog({
       event_type: "magic_link_used",
       user_email: code.email,
@@ -132,15 +128,13 @@ Deno.serve(async (req) => {
       success: true,
     });
 
-    // 6. Returnera action_link (Supabase magic-link URL)
-    // Frontend följer denna URL → Supabase etablerar session → redirectar till redirect_to
     return new Response(
       JSON.stringify({
         action_link: code.full_redirect_url,
         scope: code.scope,
         resource_id: code.resource_id,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   } catch (e) {
     console.error(JSON.stringify({
@@ -151,7 +145,7 @@ Deno.serve(async (req) => {
     }));
     return new Response(
       JSON.stringify({ error: "Internal error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });

@@ -7,13 +7,7 @@
 //
 // Input:  { email, source, name?, phone?, address?, city?, 
 //           auto_delegation_enabled?, utm_source?, source_page? }
-// Output: { customer_profile_id, auth_user_id, is_new_customer }
-//
-// Sources:
-// - "booking"        -> booking-create EF (efter betalning)
-// - "lead-capture"   -> stad-landing-sidor + betyg.html
-// - "profile-save"   -> mitt-konto.html (user sparar profile)
-// - "rating"         -> (framtid: separat rating-flöde)
+// Output: { customer_profile_id, auth_user_id, is_new_customer, is_new_auth_user }
 // ═══════════════════════════════════════════════════════════════
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
@@ -45,8 +39,10 @@ async function auditLog(event: {
 }
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: CORS });
   }
 
   try {
@@ -66,7 +62,7 @@ Deno.serve(async (req) => {
     if (!email || !source) {
       return new Response(
         JSON.stringify({ error: "email and source required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -74,7 +70,7 @@ Deno.serve(async (req) => {
     if (!validSources.includes(source)) {
       return new Response(
         JSON.stringify({ error: `source must be one of: ${validSources.join(", ")}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -146,14 +142,12 @@ Deno.serve(async (req) => {
       upsertPayload.auto_delegation_enabled = auto_delegation_enabled;
     }
 
-    // Sätt auth_user_id om vi har det (fix för befintlig bugg där det alltid varit NULL)
     if (authUserId) {
       upsertPayload.auth_user_id = authUserId;
     }
 
-    // Om ny rad — sätt defaults
     if (isNewCustomer) {
-      if (!upsertPayload.name) upsertPayload.name = ""; // NOT NULL
+      if (!upsertPayload.name) upsertPayload.name = "";
       upsertPayload.created_at = new Date().toISOString();
       upsertPayload.total_bookings = 0;
     }
@@ -180,13 +174,10 @@ Deno.serve(async (req) => {
       }));
       return new Response(
         JSON.stringify({ error: "upsert failed", detail: upsertErr.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
-    // ═══════════════════════════════════════════════════════
-    // STEG 5: Returnera
-    // ═══════════════════════════════════════════════════════
     return new Response(
       JSON.stringify({
         customer_profile_id: upserted?.id,
@@ -194,7 +185,7 @@ Deno.serve(async (req) => {
         is_new_customer: isNewCustomer,
         is_new_auth_user: isNewAuthUser,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   } catch (e) {
     console.error(JSON.stringify({
@@ -205,7 +196,7 @@ Deno.serve(async (req) => {
     }));
     return new Response(
       JSON.stringify({ error: "Internal error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });

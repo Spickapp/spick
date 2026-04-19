@@ -2,14 +2,8 @@
 // SPICK – customer-check-auto-delegation (Fas 1.2)
 // Bool-endpoint för boka.html — ersätter rå customer_profiles SELECT.
 //
-// Syfte: skyddar customer_profiles PII genom att exponera endast 
-// auto_delegation_enabled via EF istället för direkt tabellaccess.
-//
-// Input:  { email }
+// Input:  { email } (POST) eller ?email= (GET)
 // Output: { auto_delegation_enabled: boolean | null, is_registered: boolean }
-//
-// Returnerar null om kund inte hittas (ingen info läcker).
-// Returnerar is_registered=true bara om kunden har customer_profiles-rad.
 // ═══════════════════════════════════════════════════════════════
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
@@ -20,12 +14,13 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPA_URL, SERVICE_KEY);
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: CORS });
   }
 
   try {
-    // Stöd både GET (query-param) och POST (JSON body)
     let email: string | undefined;
 
     if (req.method === "GET") {
@@ -37,14 +32,14 @@ Deno.serve(async (req) => {
     } else {
       return new Response(
         JSON.stringify({ error: "Use GET or POST" }),
-        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 405, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
     if (!email) {
       return new Response(
         JSON.stringify({ error: "email required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -64,7 +59,7 @@ Deno.serve(async (req) => {
       {
         status: 200,
         headers: {
-          ...corsHeaders,
+          ...CORS,
           "Content-Type": "application/json",
           "Cache-Control": "no-store",
         },
@@ -79,7 +74,7 @@ Deno.serve(async (req) => {
     }));
     return new Response(
       JSON.stringify({ error: "Internal error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });
