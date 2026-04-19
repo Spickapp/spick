@@ -309,6 +309,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-item" onclick="showPage('cleaners')"><span class="icon">🧹</span>Städare</div>
       <div class="nav-item" onclick="showPage('applications')"><span class="icon">📋</span>Ansökningar <span class="badge-count" id="badge-apps">0</span></div>
       <div class="nav-item" onclick="showPage('onboarding')"><span class="icon">🚀</span>Onboarding <span class="badge-count" id="badge-onboard">0</span></div>
+      <div class="nav-item" onclick="showPage('pending-companies')"><span class="icon">🏢</span>Företagsansökningar <span class="badge-count" id="badge-pending-cos">0</span></div>
       <div class="nav-item" onclick="showPage('company-wizard')"><span class="icon">🏢</span>Nytt företag</div>
       
       <div class="nav-section">Kunder</div>
@@ -1037,6 +1038,27 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
     </div>
 
+    <!-- ══════════════ PENDING COMPANIES ══════════════ -->
+    <div class="page" id="page-pending-companies" style="display:none">
+      <div style="padding:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+          <div>
+            <h1 style="margin:0;font-size:28px">Företagsansökningar</h1>
+            <p style="color:#6B6960;margin:4px 0 0;font-size:14px">Företag som väntar på godkännande (self-signup + legacy)</p>
+          </div>
+          <button onclick="loadPendingCompanies()" style="padding:8px 16px;background:#F7F7F5;border:1px solid #E8E8E4;border-radius:8px;cursor:pointer">🔄 Ladda om</button>
+        </div>
+
+        <div id="pendingCompaniesList" style="display:grid;gap:16px"></div>
+
+        <div id="pendingCompaniesEmpty" style="display:none;text-align:center;padding:48px;color:#6B6960;background:#fff;border-radius:14px;border:1px solid #E8E8E4">
+          <div style="font-size:48px;margin-bottom:8px">🎉</div>
+          <p>Inga pending företagsansökningar</p>
+        </div>
+      </div>
+    </div>
+    <!-- END PENDING COMPANIES -->
+
     <!-- ── COMPANY WIZARD ─────────────────────────────── -->
     <div class="page" id="page-company-wizard">
       <div class="page-header">
@@ -1647,6 +1669,199 @@ async function doLogout() {
   await SB.auth.signOut();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════
+// PENDING COMPANIES (Dag 5)
+// ═══════════════════════════════════════════════
+let pendingCompanies = [];
+
+async function loadPendingCompanies() {
+  try {
+    const rows = await AR.select('companies',
+      'select=*,owner:cleaners!owner_cleaner_id(id,full_name,email,phone,stripe_onboarding_status,is_approved)&' +
+      'onboarding_status=in.(pending_stripe,pending_team,pending_admin_verify)&' +
+      'order=created_at.desc'
+    );
+
+    pendingCompanies = rows || [];
+    renderPendingCompanies();
+
+    // Badge
+    const badge = document.getElementById('badge-pending-cos');
+    if (badge) badge.textContent = pendingCompanies.length || '';
+  } catch (e) {
+    console.error('[pending-cos] Load failed', e);
+  }
+}
+
+function renderPendingCompanies() {
+  const listEl = document.getElementById('pendingCompaniesList');
+  const emptyEl = document.getElementById('pendingCompaniesEmpty');
+
+  if (!pendingCompanies.length) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+
+  listEl.innerHTML = pendingCompanies.map(c => {
+    const owner = c.owner || {};
+    const stripeOk = owner.stripe_onboarding_status === 'complete';
+    const isSelf = c.self_signup;
+    const created = c.created_at ? new Date(c.created_at).toLocaleDateString('sv-SE') : '?';
+    const badge = isSelf
+      ? '<span style="background:#DBEAFE;color:#1E40AF;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600">Self-signup</span>'
+      : '<span style="background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600">Admin-skapat</span>';
+
+    return `
+      <div style="background:#fff;border:1px solid #E8E8E4;border-radius:14px;padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">
+          <div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <h3 style="margin:0;font-size:18px">${escHtml(c.name)}</h3>
+              ${badge}
+            </div>
+            <div style="color:#6B6960;font-size:13px">
+              Org.nr ${escHtml(c.org_number || '?')} · Skapad ${created}
+            </div>
+          </div>
+          <span style="padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600;background:${c.onboarding_status === 'pending_team' ? '#DCFCE7' : '#FEF3C7'};color:${c.onboarding_status === 'pending_team' ? '#166534' : '#D97706'}">
+            ${escHtml(c.onboarding_status)}
+          </span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;background:#F7F7F5;border-radius:10px;margin-bottom:16px;font-size:13px">
+          <div>
+            <div style="color:#6B6960;font-size:11px;text-transform:uppercase;font-weight:600">VD</div>
+            <div style="font-weight:500">${escHtml(owner.full_name || '–')}</div>
+            <div style="color:#6B6960">${escHtml(owner.email || '')}</div>
+            <div style="color:#6B6960">${escHtml(owner.phone || '')}</div>
+          </div>
+          <div>
+            <div style="color:#6B6960;font-size:11px;text-transform:uppercase;font-weight:600">Stripe</div>
+            <div style="font-weight:500">${stripeOk ? '✅ Klart' : '⏳ ' + (owner.stripe_onboarding_status || 'ej startad')}</div>
+            ${!stripeOk ? `<button onclick="genStripeLink('${owner.id}')" style="margin-top:4px;padding:4px 8px;background:#fff;border:1px solid #E8E8E4;border-radius:6px;font-size:12px;cursor:pointer">Generera länk</button>` : ''}
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button onclick="approveCompany('${c.id}')" style="flex:1;padding:10px;background:#0F6E56;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">✅ Godkänn</button>
+          <button onclick="rejectCompany('${c.id}','${escHtml(c.name)}')" style="flex:1;padding:10px;background:#fff;color:#991B1B;border:1px solid #FCA5A5;border-radius:8px;font-weight:600;cursor:pointer">❌ Avslå</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function approveCompany(companyId) {
+  const notes = prompt('Valfritt meddelande till VD (lämna tomt för standard-email):', '');
+  if (notes === null) return;  // cancelled
+
+  if (!confirm('Godkänn företag och skicka välkomst-email?')) return;
+
+  try {
+    const session = await getAdminSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-approve-company`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify({ company_id: companyId, notes: notes || undefined }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      alert('Godkännande misslyckades: ' + (data.error || res.status));
+      return;
+    }
+
+    alert(`${data.company_name} godkändes!`);
+    await loadPendingCompanies();
+  } catch (e) {
+    alert('Fel: ' + e.message);
+  }
+}
+
+async function rejectCompany(companyId, companyName) {
+  const reason = prompt(`Anledning för avslag av "${companyName}" (skickas till VD):`, '');
+  if (!reason || reason.length < 5) {
+    if (reason !== null) alert('Anledning måste vara minst 5 tecken');
+    return;
+  }
+
+  if (!confirm(`Avslå ${companyName}? VD får email med din anledning.`)) return;
+
+  try {
+    const session = await getAdminSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-reject-company`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify({ company_id: companyId, reason }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      alert('Avslag misslyckades: ' + (data.error || res.status));
+      return;
+    }
+
+    alert(`${data.company_name} avslaget.`);
+    await loadPendingCompanies();
+  } catch (e) {
+    alert('Fel: ' + e.message);
+  }
+}
+
+async function genStripeLink(cleanerId) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'refresh_account_link', cleaner_id: cleanerId }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      navigator.clipboard?.writeText(data.url);
+      alert(`Stripe-länk kopierad till urklipp!\n\n${data.url}`);
+    } else {
+      alert('Kunde inte generera länk: ' + (data.error || 'okänt fel'));
+    }
+  } catch (e) {
+    alert('Fel: ' + e.message);
+  }
+}
+
+// Helper — hämta admin-session från localStorage
+async function getAdminSession() {
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session) throw new Error('Ej inloggad');
+  return data.session;
+}
+
+// Hook into existing load-flow
+const _origLoadAll = typeof loadAll === 'function' ? loadAll : null;
+if (_origLoadAll) {
+  window.loadAll = async function() {
+    await _origLoadAll();
+    await loadPendingCompanies();
+  };
+}
+
+// Realtime-subscribe
+if (typeof supabase !== 'undefined') {
+  supabase
+    .channel('pending-companies-changes')
+    .on('postgres_changes', {event:'*',schema:'public',table:'companies'}, () => {
+      loadPendingCompanies();
+    })
+    .subscribe();
 }
 
 // ── ONBOARDING PIPELINE ──────────────────────────────
