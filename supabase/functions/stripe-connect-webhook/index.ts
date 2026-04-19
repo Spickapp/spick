@@ -157,12 +157,14 @@ async function handleAccountUpdated(event: StripeAccountEvent): Promise<void> {
       );
     }
     
-    // Uppdatera company.onboarding_status om VD blev complete
+    // Uppdatera company.onboarding_status OCH stripe_account_id om VD blev complete
+    // (Bugfix 2026-04-19: säkerhetsnät om onboard_cleaner-synken missade.)
     if (cleaner.is_company_owner && cleaner.company_id) {
       await sb
         .from("companies")
         .update({
-          onboarding_status: "pending_team",  // nästa steg: bjuda in team
+          stripe_account_id: accountId,                // ← NY: synka till company
+          onboarding_status: "pending_team",
           updated_at: new Date().toISOString(),
         })
         .eq("id", cleaner.company_id);
@@ -199,15 +201,15 @@ async function handleAccountUpdated(event: StripeAccountEvent): Promise<void> {
 // ─────────────────────────────────────────────────────────
 async function handleDeauthorized(event: StripeAccountEvent): Promise<void> {
   const accountId = event.account ?? event.data.object.id;
-  
+
   const { data: cleaner } = await sb
     .from("cleaners")
-    .select("id, full_name, email, phone")
+    .select("id, full_name, email, phone, company_id, is_company_owner")
     .eq("stripe_account_id", accountId)
     .maybeSingle();
-  
+
   if (!cleaner) return;
-  
+
   await sb
     .from("cleaners")
     .update({
@@ -215,7 +217,27 @@ async function handleDeauthorized(event: StripeAccountEvent): Promise<void> {
       updated_at: new Date().toISOString(),
     })
     .eq("id", cleaner.id);
-  
+
+  // Om VD deauthade: markera company som suspenderat.
+  // (Bugfix 2026-04-19: undvik zombie-state där cleaner är deauth men company OK.)
+  if (cleaner.is_company_owner && cleaner.company_id) {
+    await sb
+      .from("companies")
+      .update({
+        onboarding_status: "suspended",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", cleaner.company_id);
+
+    console.warn(JSON.stringify({
+      level: "warn",
+      fn: "stripe-connect-webhook/handleDeauthorized",
+      msg: "Company suspended due to VD deauth",
+      cleaner_id: cleaner.id,
+      company_id: cleaner.company_id,
+    }));
+  }
+
   console.warn(JSON.stringify({
     level: "warn",
     fn: "stripe-connect-webhook",

@@ -105,11 +105,31 @@ serve(async (req) => {
         stripe_onboarding_status: "pending",
       }).eq("id", cleaner_id);
 
+      // Om VD av företag: synka stripe_account_id till companies-raden också.
+      // (Bugfix 2026-04-19: Solid Service saknade företags-Stripe-ID.)
+      if (isCompanyAccount && cleanerRow?.company_id) {
+        const { error: compErr } = await sb.from("companies").update({
+          stripe_account_id: account.id,
+          updated_at: new Date().toISOString(),
+        }).eq("id", cleanerRow.company_id);
+
+        if (compErr) {
+          console.error(JSON.stringify({
+            level: "error",
+            fn: "stripe-connect/onboard_cleaner",
+            msg: "Failed to sync stripe_account_id to companies",
+            company_id: cleanerRow.company_id,
+            error: compErr.message,
+          }));
+          // Lös inte throw — cleaner-raden är redan uppdaterad, kritisk fel ej blockerande
+        }
+      }
+
       // Skapa onboarding-länk (städaren fyller i sina uppgifter)
       const link = await stripe("/account_links", "POST", {
         account: account.id,
-        refresh_url: `${BASE_URL}/portal?stripe=refresh`,
-        return_url:  `${BASE_URL}/portal?stripe=success`,
+        refresh_url: `${BASE_URL}/stadare-dashboard.html?stripe=refresh`,
+        return_url:  `${BASE_URL}/stadare-dashboard.html?stripe=success`,
         type: "account_onboarding",
       });
 
