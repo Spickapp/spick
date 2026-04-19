@@ -573,12 +573,10 @@ function showPortal(bookings, email) {
   document.getElementById('pfPhone').value = bookings[0]?.phone || '';
   document.getElementById('pfCity').value = bookings[0]?.city || '';
 
-  // FAS 5: Ladda auto-delegation-preferens
-  SB.from('customer_profiles')
-    .select('auto_delegation_enabled')
-    .eq('email', email)
-    .maybeSingle()
-    .then(({ data }) => {
+  // FAS 5: Ladda auto-delegation-preferens (Fas 1.2: via customer-check-auto-delegation EF)
+  fetch(SPICK.SUPA_URL+'/functions/v1/customer-check-auto-delegation?email='+encodeURIComponent(email))
+    .then(r => r.json())
+    .then(data => {
       const cb = document.getElementById('pfAutoDelegation');
       if (cb) cb.checked = !!(data && data.auto_delegation_enabled);
     })
