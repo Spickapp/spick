@@ -336,6 +336,58 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <span class="svc-desc">Hotell & restauranger · 2-6h</span>
           </button>
           </div>
+          <script>
+          // F1 Dag 2C.2: DB-driven service-buttons render
+          // When F1_USE_DB_SERVICES=true, replace hardcoded buttons with DB render.
+          // Fallback: hardcoded buttons (above) are used as-is.
+          (function() {
+            if (!window.SPICK_SERVICES_READY) return;
+            window.SPICK_SERVICES_READY.then(function(r) {
+              if (!window.SPICK_FLAGS || !window.SPICK_FLAGS.F1_USE_DB_SERVICES) return;
+              var grid = document.getElementById('svc-grid');
+              var services = window.SPICK_SERVICES && window.SPICK_SERVICES.services;
+              if (!grid || !services || services.length === 0) return;
+              grid.innerHTML = '';
+              services.forEach(function(s) {
+                var uc = s.ui_config || {};
+                var emoji = uc.emoji || '';
+                var desc = uc.desc_sv || '';
+                var isPopular = uc.is_popular === true;
+                var b2bId = uc.b2b_id || '';
+                var isB2B = !!b2bId;
+                var btn = document.createElement('button');
+                btn.className = 'svc-btn';
+                btn.setAttribute('data-svc', s.label_sv);
+                btn.setAttribute('onclick', "selectService('" + s.label_sv.replace(/'/g, "\\'") + "','','','')");
+                if (isB2B) {
+                  btn.id = b2bId;
+                  btn.style.display = 'none';
+                }
+                if (isPopular) btn.style.position = 'relative';
+                if (isPopular) {
+                  var badge = document.createElement('span');
+                  badge.style.cssText = 'position:absolute;top:-8px;right:-8px;background:#F59E0B;color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.02em';
+                  badge.textContent = 'POPULÄRAST';
+                  btn.appendChild(badge);
+                }
+                var iconSpan = document.createElement('span');
+                iconSpan.className = 'svc-icon';
+                iconSpan.textContent = emoji;
+                var nameSpan = document.createElement('span');
+                nameSpan.className = 'svc-name';
+                nameSpan.textContent = s.label_sv;
+                var descSpan = document.createElement('span');
+                descSpan.className = 'svc-desc';
+                descSpan.textContent = desc;
+                btn.appendChild(iconSpan);
+                btn.appendChild(nameSpan);
+                btn.appendChild(descSpan);
+                grid.appendChild(btn);
+              });
+              console.log('[F1] Rendered ' + services.length + ' services from DB');
+            }).catch(function(e) { console.error('[F1] render failed:', e); });
+          })();
+          </script>
           <div id="svc-error" class="field-error" style="display:none;margin-bottom:.75rem">⚠ Välj en tjänst för att fortsätta</div>
           <div id="multi-svc-hint" style="font-size:.72rem;color:var(--m);text-align:center;margin-top:8px;display:none">Flera tjänster valda — timpris baseras på huvudtjänsten</div>
           <div id="svc-detail"></div>
