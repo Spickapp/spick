@@ -1,0 +1,24 @@
+﻿<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>F1 Dag 2A test</title></head>
+<body>
+  <h1>F1 Dag 2A smoke-test</h1>
+  <pre id="result">Laddar...</pre>
+  <script src="js/config.js"></script>
+  <script src="js/services-loader.js"></script>
+  <script>
+    window.SPICK_SERVICES_READY.then(r => {
+      const out = {
+        loaderResult: r,
+        flags: window.SPICK_FLAGS,
+        servicesCount: window.SPICK_SERVICES.services?.length || 0,
+        addonsKeys: Object.keys(window.SPICK_SERVICES.addons || {}),
+        rutLabelsFunc: typeof window.SPICK_SERVICES.rutLabels,
+        b2bLabelsFunc: typeof window.SPICK_SERVICES.b2bLabels,
+        getByKeyFunc: typeof window.SPICK_SERVICES.getByKey
+      };
+      document.getElementById('result').textContent = JSON.stringify(out, null, 2);
+    });
+  </script>
+</body>
+</html>
