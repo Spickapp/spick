@@ -18,11 +18,17 @@
 <script src="js/supabase.min.js"></script>
 <script>
 async function joinWaitlist(city, email){
-  // Spara i Supabase + notifiera via edge function (säkert, ingen API-nyckel i frontend)
-  await fetch(SPICK.SUPA_URL+'/rest/v1/customer_profiles',{
+  // Fas 1.2: customer-upsert EF hanterar auth.users + audit-log + PII-skydd
+  await fetch(SPICK.SUPA_URL+'/functions/v1/customer-upsert',{
     method:'POST',
-    headers:{'Content-Type':'application/json','apikey':SPICK.SUPA_KEY,'Authorization':'Bearer '+SPICK.SUPA_KEY,'Prefer':'return=minimal'},
-    body:JSON.stringify({email,city,utm_source:'waitlist'})
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      email,
+      source:'lead-capture',
+      city,
+      utm_source:'waitlist',
+      source_page:city
+    })
   }).catch(()=>{});
   await fetch(SPICK.SUPA_URL+'/functions/v1/notify',{
     method:'POST',
