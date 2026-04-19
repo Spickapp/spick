@@ -1,0 +1,35 @@
+-- ============================================================
+-- F1 Dag 2C.3: Soft-delete Premiumstadning from services
+-- ============================================================
+-- Written: 2026-04-19
+-- Fas: F1 Dag 2C i arkitekturplan v3
+--
+-- CONTEXT
+-- Premiumstadning was seeded as a standalone service in
+-- 20260419_f1_dag1_services_tables.sql. Business decision
+-- (2026-04-19): Premium is not a separate service but a
+-- modifier/upgrade to other services (e.g. extra thorough
+-- Hemstadning). Belongs in F3 pricing-rules / service_addons,
+-- not as a standalone row.
+--
+-- SOLUTION
+-- Soft-delete: active=false. Row remains in DB for audit trail,
+-- hidden from anon reads via RLS policy (SELECT active=true).
+-- Reversible: UPDATE services SET active=true WHERE key='premiumstadning'.
+--
+-- Already deployed to Studio 2026-04-19 (ad-hoc UPDATE).
+-- This migration versionizes the change (Regel #27).
+--
+-- Premiumstadning re-examination deferred to F3 (pricing):
+--   - Option: add as addon via service_addons table
+--   - Option: add as pricing modifier +30% to base rate
+-- ============================================================
+
+UPDATE public.services SET active = false WHERE key = 'premiumstadning';
+
+-- Post-check (already verified in Studio 2026-04-19):
+--   SET LOCAL ROLE anon;
+--   SELECT COUNT(*) FROM services;
+--   RESET ROLE;
+--   -- Result: 10 (down from 11 when Premium was active)
+-- ============================================================
