@@ -209,6 +209,75 @@ serve(async (req) => {
       });
     }
 
+    // ── 3b. Generera ny account_link för EXISTERANDE Stripe-konto ──
+    //        Används när cleaner behöver slutföra eller uppdatera onboarding
+    //        UTAN att skapa nytt account.
+    if (action === "refresh_account_link") {
+      const { cleaner_id } = params;
+
+      if (!cleaner_id) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "cleaner_id required" }),
+          { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Hämta befintligt Stripe-konto-ID
+      const { data: cleaner } = await sb.from("cleaners")
+        .select("stripe_account_id, email, full_name")
+        .eq("id", cleaner_id)
+        .maybeSingle();
+
+      if (!cleaner) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "cleaner_not_found" }),
+          { status: 404, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!cleaner.stripe_account_id) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "no_stripe_account",
+            hint: "Use action=onboard_cleaner to create Stripe account first"
+          }),
+          { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Generera ny account_link mot EXISTERANDE account
+      const link = await stripe("/account_links", "POST", {
+        account: cleaner.stripe_account_id,
+        refresh_url: `${BASE_URL}/stadare-dashboard.html?stripe=refresh`,
+        return_url:  `${BASE_URL}/stadare-dashboard.html?stripe=success`,
+        type: "account_onboarding",
+      });
+
+      if (!link.url) {
+        console.error(JSON.stringify({
+          level: "error",
+          fn: "stripe-connect/refresh_account_link",
+          error: link.error ?? "unknown",
+          account_id: cleaner.stripe_account_id,
+        }));
+        return new Response(
+          JSON.stringify({ ok: false, error: "stripe_error", detail: link.error }),
+          { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          url: link.url,
+          account_id: cleaner.stripe_account_id,
+          expires_at: link.expires_at,
+        }),
+        { status: 200, headers: { ...CORS, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── 3. Hämta onboarding-status för städare ────────────────
     if (action === "check_status") {
       const { cleaner_id } = params;
