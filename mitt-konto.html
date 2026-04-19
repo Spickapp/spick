@@ -802,14 +802,18 @@ async function saveProfile() {
   const city = document.getElementById('pfCity').value.trim();
   const autoDelegation = document.getElementById('pfAutoDelegation')?.checked || false;
 
-  await SB.from('customer_profiles').upsert({
-    email: currentEmail,
-    name,
-    phone,
-    city,
-    auto_delegation_enabled: autoDelegation,
-    updated_at: new Date().toISOString()
-  }, { onConflict: 'email' });
+  await fetch(SPICK.SUPA_URL+'/functions/v1/customer-upsert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: currentEmail,
+      source: 'profile-save',
+      name,
+      phone,
+      city,
+      auto_delegation_enabled: autoDelegation
+    })
+  });
 
   document.getElementById('saveToast').classList.add('show');
   setTimeout(() => document.getElementById('saveToast').classList.remove('show'), 3000);
