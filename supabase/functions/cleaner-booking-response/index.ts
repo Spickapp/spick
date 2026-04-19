@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
@@ -169,8 +170,20 @@ serve(async (req) => {
       // ── NO immediate refund — customer gets 24h to rebook ──
       // Auto-refund handled by auto-remind after 24h if still awaiting_reassignment
 
-      const rebookUrl = `https://spick.se/min-bokning.html?bid=${booking_id}`;
-      const refundUrl = `https://spick.se/min-bokning.html?bid=${booking_id}&action=refund`;
+      const rebookUrl = await generateMagicShortUrl({
+        email: customerEmail,
+        redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}`,
+        scope: "booking",
+        resource_id: booking_id,
+        ttl_hours: 168,
+      });
+      const refundUrl = await generateMagicShortUrl({
+        email: customerEmail,
+        redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}&action=refund`,
+        scope: "booking",
+        resource_id: booking_id,
+        ttl_hours: 168,
+      });
 
       // Email to customer — choose new cleaner or get refund
       if (customerEmail && !isCompanyBooking) {
@@ -197,10 +210,17 @@ serve(async (req) => {
         await sendEmail(customerEmail, `Din städare kunde inte ta uppdraget — välj ny`, html);
 
         // Multi-kanal till kund (SMS + push)
+        const smsLink = await generateMagicShortUrl({
+          email: customerEmail,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}`,
+          scope: "booking",
+          resource_id: booking_id,
+          ttl_hours: 24,
+        });
         await notify({
           email: customerEmail,
           phone: booking.customer_phone || undefined,
-          sms_message: `Spick: Din städare ${cleaner.full_name} kan inte ta bokningen ${formatDate(bookingDate)}. Välj ny eller få pengarna tillbaka: spick.se/min-bokning.html?bid=${booking_id}`,
+          sms_message: `Spick: Din städare ${cleaner.full_name} kan inte ta bokningen ${formatDate(bookingDate)}. Välj ny eller få pengarna tillbaka: ${smsLink}`,
           push_type: "booking_rejected_by_cleaner",
           push_data: {
             cleaner_name: cleaner.full_name,

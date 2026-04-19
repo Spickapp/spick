@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -96,6 +97,13 @@ serve(async (req) => {
         const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(b.customer_address || "")}`;
 
         // Till kund
+        const emailMagicLink = await generateMagicShortUrl({
+          email: b.customer_email,
+          redirect_to: `https://spick.se/min-bokning.html?bid=${b.id}`,
+          scope: "booking",
+          resource_id: b.id,
+          ttl_hours: 168,
+        });
         await mail(b.customer_email,
           `⏰ Påminnelse: Städning imorgon kl ${b.booking_time || "09:00"}`,
           wrap(`<h2>Din städning är imorgon! 🧹</h2>
@@ -110,7 +118,7 @@ serve(async (req) => {
 <div class="info">💡 Se till att städaren kan komma in. Lämna kod eller nyckel vid behov.</div>
 <div style="background:#FEF3C7;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px;color:#92400E">${(() => { const mi = getMaterialInfo(b.service_type); return `${mi.emoji} <strong>Material:</strong> ${mi.customer}`; })()}</div>
 <p>Avboka gratis senast kl ${b.booking_time||"09:00"} idag – skriv till <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
-<a href="https://spick.se/min-bokning.html?bid=${b.id}" class="btn">Visa min bokning →</a>`));
+<a href="${emailMagicLink}" class="btn">Visa min bokning →</a>`));
 
         // Till städare
         if (b.cleaner_email || b.cleaners?.email) {
@@ -483,10 +491,17 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
               }).eq("id", b.id);
 
               // Notifiera kund att välja själv
+              const smsLink1 = await generateMagicShortUrl({
+                email: b.customer_email,
+                redirect_to: `https://spick.se/min-bokning.html?bid=${b.id}`,
+                scope: "booking",
+                resource_id: b.id,
+                ttl_hours: 24,
+              });
               await notify({
                 email: b.customer_email,
                 phone: b.customer_phone || undefined,
-                sms_message: `Spick: Företaget hann inte tilldela ersättare för din städning ${b.booking_date}. Välj själv eller få pengarna tillbaka: spick.se/min-bokning.html?bid=${b.id}`,
+                sms_message: `Spick: Företaget hann inte tilldela ersättare för din städning ${b.booking_date}. Välj själv eller få pengarna tillbaka: ${smsLink1}`,
                 push_type: "booking_rejected_by_cleaner",
                 push_data: {
                   cleaner_name: b.cleaner_name || "Ersättare",
@@ -533,10 +548,17 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
               if (proposed?.full_name) proposedName = proposed.full_name;
             }
 
+            const smsLink2 = await generateMagicShortUrl({
+              email: b.customer_email,
+              redirect_to: `https://spick.se/min-bokning.html?bid=${b.id}`,
+              scope: "booking",
+              resource_id: b.id,
+              ttl_hours: 24,
+            });
             await notify({
               email: b.customer_email,
               phone: b.customer_phone || undefined,
-              sms_message: `Spick: Glöm inte bekräfta ${proposedName} för din städning ${b.booking_date}. 30 min kvar: spick.se/min-bokning.html?bid=${b.id}`,
+              sms_message: `Spick: Glöm inte bekräfta ${proposedName} för din städning ${b.booking_date}. 30 min kvar: ${smsLink2}`,
               push_type: "customer_proposal_pending",
               push_data: {
                 cleaner_name: proposedName,
@@ -568,10 +590,17 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
             }).eq("id", b.id);
 
             // Notifiera kund
+            const smsLink3 = await generateMagicShortUrl({
+              email: b.customer_email,
+              redirect_to: `https://spick.se/min-bokning.html?bid=${b.id}`,
+              scope: "booking",
+              resource_id: b.id,
+              ttl_hours: 24,
+            });
             await notify({
               email: b.customer_email,
               phone: b.customer_phone || undefined,
-              sms_message: `Spick: Tiden för att bekräfta gick ut. Välj ersättare själv eller få pengarna tillbaka: spick.se/min-bokning.html?bid=${b.id}`,
+              sms_message: `Spick: Tiden för att bekräfta gick ut. Välj ersättare själv eller få pengarna tillbaka: ${smsLink3}`,
               push_type: "booking_rejected_by_cleaner",
               push_data: {
                 date: new Date(b.booking_date).toLocaleDateString("sv-SE"),
