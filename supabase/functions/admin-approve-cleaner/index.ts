@@ -113,6 +113,25 @@ serve(async (req) => {
         ? `${baseSlug}-${slugExisting.length + 1}`
         : baseSlug;
 
+      // ── Läs commission från platform_settings (Regel #28 — ingen hardkodning)
+      const { data: commissionSetting } = await sb
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "commission_standard")
+        .maybeSingle();
+
+      const commissionRate = Number(commissionSetting?.value ?? 12);
+
+      if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 50) {
+        log("error", "admin-approve-cleaner", "Invalid commission from platform_settings", {
+          raw: commissionSetting?.value
+        });
+        return new Response(
+          JSON.stringify({ error: "invalid_commission_config" }),
+          { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+
       // 3. Create cleaner row — copy ALL fields from application
       // services: keep as-is if already array (jsonb), otherwise split string
       const svcs = Array.isArray(app.services)
@@ -145,7 +164,7 @@ serve(async (req) => {
         is_approved: true,
         auth_user_id: authUserId,
         tier: "new",
-        commission_rate: 17,
+        commission_rate: commissionRate,
         status: "onboarding",
         slug,
 
@@ -269,7 +288,7 @@ serve(async (req) => {
             name: app.company_name,
             org_number: app.org_number || null,
             owner_cleaner_id: cleanerId,
-            commission_rate: 17,
+            commission_rate: commissionRate,
             slug: companySlug,
           }).select("id").single();
 
