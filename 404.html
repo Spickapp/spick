@@ -20,13 +20,26 @@ if (location.pathname.startsWith('/f/')) {
     location.replace(url);
   }
 }
-// Routing: /m/:code -> PKCE-flow via public-auth-exchange + auth/v1/verify
+// DEBUG Routing: /m/:code -> visualiserad PKCE-flow
 if (location.pathname.startsWith('/m/')) {
   var code = location.pathname.replace(/^\/m\//, '').replace(/\/$/, '');
   if (code) {
-    // Anon-key duplicerad fran js/config.js (public, safe to expose)
     var SUPA_URL = 'https://urjeijcncsyuletprydy.supabase.co';
     var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyamVpamNuY3N5dWxldHByeWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzIyNDQsImV4cCI6MjA4OTg0ODI0NH0.CH5MSMaWTBfkuzZQOBKgxu-B6Vfy8w9DLh49WPU1Vd0';
+
+    // Skapa debug-panel
+    var panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#000;color:#0f0;padding:20px;font-family:monospace;font-size:14px;z-index:99999;max-height:100vh;overflow:auto;white-space:pre-wrap;';
+    document.body.appendChild(panel);
+
+    function log(msg) {
+      var line = '[' + new Date().toISOString().slice(11, 23) + '] ' + msg;
+      panel.textContent += line + '\n';
+      console.log(line);
+    }
+
+    log('STEG 1: Kör /m/:code-flow för code=' + code);
+    log('SUPA_KEY finns: ' + (SUPA_KEY && SUPA_KEY !== '__SPICK_ANON_KEY__' ? 'JA ('+SUPA_KEY.slice(0,20)+'...)' : 'NEJ — placeholder kvar!'));
 
     fetch(SUPA_URL + '/functions/v1/public-auth-exchange', {
       method: 'POST',
@@ -34,48 +47,81 @@ if (location.pathname.startsWith('/m/')) {
       body: JSON.stringify({ short_code: code, user_agent: navigator.userAgent })
     })
     .then(function(r) {
+      log('STEG 2: public-auth-exchange HTTP ' + r.status);
       if (!r.ok) return r.json().then(function(err) { throw new Error(err.error || 'exchange_failed'); });
       return r.json();
     })
     .then(function(d) {
+      log('STEG 3: Exchange response har action_link? ' + (d.action_link ? 'JA' : 'NEJ'));
       if (!d.action_link) throw new Error('no_action_link');
+      log('STEG 3b: action_link=' + d.action_link.slice(0, 80) + '...');
+
       var actionUrl = new URL(d.action_link);
       var token = actionUrl.searchParams.get('token');
       var redirectTo = actionUrl.searchParams.get('redirect_to');
+
+      log('STEG 4: token extraherad (' + (token ? token.slice(0, 20) + '...' : 'TOM!') + ')');
+      log('STEG 4b: redirect_to=' + redirectTo);
+
       if (!token || !redirectTo) throw new Error('malformed_action_link');
+
+      log('STEG 5: POST till /auth/v1/verify...');
+
       return fetch(SUPA_URL + '/auth/v1/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
         body: JSON.stringify({ token_hash: token, type: 'magiclink' })
       }).then(function(vr) {
-        if (!vr.ok) return vr.json().then(function(e) { throw new Error(e.error_code || e.msg || 'verify_failed'); });
+        log('STEG 6: verify HTTP ' + vr.status);
+        if (!vr.ok) return vr.json().then(function(e) {
+          log('STEG 6-ERR: verify failed body=' + JSON.stringify(e));
+          throw new Error(e.error_code || e.msg || 'verify_failed');
+        });
         return vr.json();
       }).then(function(session) {
-        localStorage.setItem(
-          'sb-urjeijcncsyuletprydy-auth-token',
-          JSON.stringify({
-            access_token: session.access_token,
-            token_type: session.token_type || 'bearer',
-            expires_in: session.expires_in,
-            expires_at: session.expires_at,
-            refresh_token: session.refresh_token,
-            user: session.user,
-            provider_token: null,
-            provider_refresh_token: null
-          })
-        );
-        location.replace(redirectTo);
+        log('STEG 7: verify OK. Har access_token? ' + (session.access_token ? 'JA ('+session.access_token.slice(0,20)+'...)' : 'NEJ!'));
+        log('STEG 7b: Har refresh_token? ' + (session.refresh_token ? 'JA' : 'NEJ!'));
+        log('STEG 7c: User email=' + (session.user && session.user.email));
+
+        var sessionData = {
+          access_token: session.access_token,
+          token_type: session.token_type || 'bearer',
+          expires_in: session.expires_in,
+          expires_at: session.expires_at,
+          refresh_token: session.refresh_token,
+          user: session.user,
+          provider_token: null,
+          provider_refresh_token: null
+        };
+
+        log('STEG 8: Sparar session i localStorage...');
+        try {
+          localStorage.setItem('sb-urjeijcncsyuletprydy-auth-token', JSON.stringify(sessionData));
+          log('STEG 8-OK: setItem körde utan error');
+        } catch (e) {
+          log('STEG 8-ERR: setItem failade: ' + e.message);
+          throw e;
+        }
+
+        // Verifiera direkt
+        var readBack = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+        log('STEG 9: Läs tillbaka: ' + (readBack ? 'FINNS (' + readBack.length + ' chars)' : 'BORTA!'));
+        log('STEG 10: Väntar 10 sekunder innan redirect (så du ser output)...');
+        log('—');
+        log('Redirectar till: ' + redirectTo);
+
+        setTimeout(function() {
+          // Verifiera EN gång till innan redirect
+          var final = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+          log('STEG 11 (pre-redirect): sb-token finns? ' + (final ? 'JA' : 'NEJ'));
+          location.replace(redirectTo);
+        }, 10000);
       });
     })
     .catch(function(e) {
-      var msg = (e && e.message) ? e.message : 'unknown';
-      if (msg.indexOf('expired') >= 0 || msg.indexOf('used') >= 0 || msg.indexOf('Invalid') >= 0 || msg.indexOf('otp_expired') >= 0) {
-        location.replace('/boka.html?error=expired_link');
-      } else if (msg.indexOf('malformed') >= 0 || msg.indexOf('no_action_link') >= 0) {
-        location.replace('/boka.html?error=malformed_link');
-      } else {
-        location.replace('/boka.html?error=network');
-      }
+      log('CATCH: ' + (e && e.message ? e.message : 'unknown error'));
+      log('—');
+      log('Stoppar (ingen redirect) för att du kan läsa felet.');
     });
   }
 }
