@@ -8,6 +8,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, decryptPnr } from "../_shared/email.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPABASE_URL         = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -96,6 +97,15 @@ async function sendRutConfirmation(booking: Record<string, unknown>, claimId: st
 
   if (!email) return;
 
+  // Email magic-link (Fas 1.2) — single-use, 168h TTL
+  const emailMagicLink = await generateMagicShortUrl({
+    email: email,
+    redirect_to: `https://spick.se/min-bokning.html?bid=${booking.id}`,
+    scope: "booking",
+    resource_id: String(booking.id),
+    ttl_hours: 168,
+  });
+
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 body{margin:0;padding:0;background:#F7F7F5;font-family:'DM Sans',Arial,sans-serif}
 .wrap{max-width:580px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.07)}
@@ -123,7 +133,7 @@ p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
       <div class="row"><span class="lbl">Du betalade</span><span class="val" style="color:#0F6E56;font-size:18px">${Number(booking.total_price).toLocaleString("sv")} kr ✓</span></div>
     </div>
     <p style="font-size:13px;color:#9B9B95">Skatteverket hanterar RUT-ansökan och betalar ut ${rutBelopp.toLocaleString("sv")} kr direkt till Spick. Processen tar normalt 1–5 bankdagar.</p>
-    <a class="btn" href="https://spick.se/min-bokning.html">Följ din bokning →</a>
+    <a class="btn" href="${emailMagicLink}">Följ din bokning →</a>
   </div>
   <div class="footer">Spick · 559402-4522 · hello@spick.se · spick.se</div>
 </div></body></html>`;

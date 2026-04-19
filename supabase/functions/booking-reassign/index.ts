@@ -9,6 +9,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -134,6 +135,14 @@ serve(async (req) => {
 
     // Email to customer — confirmation
     if (customer_email) {
+      // Email magic-link (Fas 1.2) — single-use, 168h TTL
+      const emailMagicLink = await generateMagicShortUrl({
+        email: customer_email,
+        redirect_to: `https://spick.se/min-bokning.html?bid=${booking_id}`,
+        scope: "booking",
+        resource_id: booking_id,
+        ttl_hours: 168,
+      });
       await sendEmail(customer_email, `Ny städare tilldelad — ${cleaner.full_name}`, wrap(`
         <h2>Ny städare tilldelad! 🧹</h2>
         <p>Hej ${esc(booking.customer_name || "")},</p>
@@ -144,7 +153,7 @@ serve(async (req) => {
           ["Tid", bookingTime],
           ["Ny städare", esc(cleaner.full_name)],
         ])}
-        <p><a href="https://spick.se/min-bokning.html?bid=${booking_id}" style="color:#0F6E56;font-weight:600">Se bokningsstatus →</a></p>
+        <p><a href="${emailMagicLink}" style="color:#0F6E56;font-weight:600">Se bokningsstatus →</a></p>
       `));
     }
 

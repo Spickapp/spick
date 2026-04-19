@@ -19,6 +19,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
+import { sendMagicSms, generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
 const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
@@ -331,6 +332,15 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const address = booking.customer_address || "";
   const matInfo = getMaterialInfo(service);
 
+  // Email magic-link (Fas 1.2) — single-use, 168h TTL
+  const emailMagicLink = await generateMagicShortUrl({
+    email: booking.customer_email,
+    redirect_to: `https://spick.se/min-bokning.html?bid=${bookingId}`,
+    scope: "booking",
+    resource_id: bookingId,
+    ttl_hours: 168,
+  });
+
   // ── 1. Bekräftelsemail till kund ────────────────────────────
   const customerHtml = autoConfirm
     ? wrap(`
@@ -356,7 +366,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   <div class="step"><div class="step-num">2</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
 </div>
 ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin:16px 0"><p style="margin:0;font-size:14px;color:#0F6E56">🏦 <strong>RUT-avdrag:</strong> Vi ansöker automatiskt om ditt RUT-avdrag hos Skatteverket. Du behöver inte göra något.</p></div>` : ""}
-<a href="https://spick.se/min-bokning.html?bid=${bookingId}" class="btn">Visa min bokning →</a>
+<a href="${emailMagicLink}" class="btn">Visa min bokning →</a>
 <hr class="divider">
 <p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
 <p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
@@ -385,7 +395,7 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
   <div class="step"><div class="step-num">3</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
 </div>
 ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin:16px 0"><p style="margin:0;font-size:14px;color:#0F6E56">🏦 <strong>RUT-avdrag:</strong> Vi ansöker automatiskt om ditt RUT-avdrag hos Skatteverket. Du behöver inte göra något.</p></div>` : ""}
-<a href="https://spick.se/min-bokning.html?bid=${bookingId}" class="btn">Visa min bokning →</a>
+<a href="${emailMagicLink}" class="btn">Visa min bokning →</a>
 <hr class="divider">
 <p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
 <p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
@@ -396,13 +406,21 @@ ${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin
       : `Bokning mottagen – ${service} den ${date} ⏳`,
     customerHtml);
 
-  // SMS-bekräftelse
-  await sendSms(
-    booking.customer_phone,
-    autoConfirm
-      ? `Spick: Bokning bekräftad ✅ ${service} den ${date} kl ${time} med ${cleaner?.full_name || "din städare"}. Se bokningen: https://spick.se/min-bokning.html?bid=${booking.id}`
-      : `Spick: Bokning mottagen ⏳ ${service} den ${date} kl ${time}. Din städare bekräftar inom 90 min. Se bokningen: https://spick.se/min-bokning.html?bid=${booking.id}`
-  );
+  // SMS-bekräftelse med magic-link (Fas 1.2)
+  if (booking.customer_phone) {
+    await sendMagicSms({
+      phone: booking.customer_phone,
+      email: booking.customer_email,
+      redirect_to: `https://spick.se/min-bokning.html?bid=${booking.id}`,
+      scope: "booking",
+      resource_id: booking.id,
+      ttl_hours: 168,
+      sms_template: (link) =>
+        autoConfirm
+          ? `Spick: Bokning bekräftad ✅ ${service} den ${date} kl ${time} med ${cleaner?.full_name || "din städare"}. Se bokningen: ${link}`
+          : `Spick: Bokning mottagen ⏳ ${service} den ${date} kl ${time}. Din städare bekräftar inom 90 min. Se bokningen: ${link}`,
+    });
+  }
 
   // ── 2. Notifiera städaren ────────────────────────────────────
   if (cleaner) {
