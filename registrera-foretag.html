@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrera företag — Spick</title>
+<meta name="description" content="Registrera ditt städföretag på Spick. Org.nr, VD-uppgifter och F-skatt — sedan är du igång.">
+
+<link rel="canonical" href="https://spick.se/registrera-foretag.html">
+<link rel="icon" type="image/png" href="favicon.png">
+
+<!-- Fonts -->
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" as="style">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --g:#0F6E56; --gm:#1D9E75; --gp:#E1F5EE; --gl:#9FE1CB; --gd:#085041;
+  --b:#0E0E0E; --t:#1C1C1A; --m:#6B6960; --bg:#F7F7F5; --border:#E8E8E4;
+  --w:#fff; --gold:#F5C842; --r:14px; --err:#DC2626;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height:1.2;font-weight:700}
+
+.page-header{
+  background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);
+  color:var(--w);padding:3.5rem 1.5rem 2.5rem;text-align:center;
+}
+.page-header h1{color:var(--w);font-size:clamp(1.75rem, 4vw, 2.5rem);margin-bottom:0.5rem}
+.page-header p{opacity:0.9;font-size:1.0625rem}
+
+.container{max-width:640px;margin:-2rem auto 4rem;padding:0 1.5rem;position:relative}
+.card{
+  background:var(--w);border:1px solid var(--border);border-radius:var(--r);
+  padding:2.5rem 2rem;box-shadow:0 12px 40px rgba(0,0,0,0.06);
+}
+
+/* Progress bar */
+.progress{display:flex;gap:0.5rem;margin-bottom:2.5rem}
+.progress-step{
+  flex:1;height:4px;background:var(--border);border-radius:2px;transition:background 0.3s;
+}
+.progress-step.active{background:var(--g)}
+.progress-step.current{background:var(--gm)}
+
+/* Form */
+.step-title{font-size:1.5rem;margin-bottom:0.5rem}
+.step-desc{color:var(--m);margin-bottom:2rem;font-size:0.9375rem}
+
+.field{margin-bottom:1.25rem}
+.field label{display:block;font-weight:500;margin-bottom:0.5rem;font-size:0.9375rem}
+.field input, .field select, .field textarea{
+  width:100%;padding:0.875rem 1rem;font-size:1rem;
+  border:1px solid var(--border);border-radius:10px;
+  font-family:'DM Sans',sans-serif;background:var(--w);
+  transition:border-color 0.15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus{
+  outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--gp);
+}
+.field input[disabled]{background:var(--bg);color:var(--m);cursor:not-allowed}
+.field-hint{font-size:0.8125rem;color:var(--m);margin-top:0.375rem}
+.field-error{font-size:0.8125rem;color:var(--err);margin-top:0.375rem;display:none}
+.field.has-error input{border-color:var(--err)}
+.field.has-error .field-error{display:block}
+
+.checkbox{display:flex;align-items:start;gap:0.625rem;margin-bottom:0.875rem;cursor:pointer}
+.checkbox input{width:18px;height:18px;margin-top:0.25rem;flex-shrink:0;accent-color:var(--g)}
+.checkbox span{font-size:0.9375rem;color:var(--t)}
+.checkbox a{color:var(--g);text-decoration:underline}
+
+/* Buttons */
+.btn-row{display:flex;gap:0.75rem;margin-top:2rem}
+.btn{
+  padding:0.9375rem 1.5rem;border-radius:10px;
+  font-family:'DM Sans',sans-serif;font-weight:600;font-size:1rem;
+  border:none;cursor:pointer;transition:all 0.2s;flex:1;
+  display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;
+}
+.btn-primary{background:var(--g);color:var(--w)}
+.btn-primary:hover:not(:disabled){background:var(--gd)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-secondary{background:var(--bg);color:var(--t);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+
+/* Review step */
+.review-item{
+  display:flex;justify-content:space-between;padding:0.75rem 0;
+  border-bottom:1px solid var(--border);
+}
+.review-item:last-child{border-bottom:none}
+.review-label{color:var(--m);font-size:0.9375rem}
+.review-value{font-weight:500;text-align:right;max-width:60%;word-break:break-word}
+
+/* Alert */
+.alert{
+  padding:1rem 1.25rem;border-radius:10px;margin-bottom:1.5rem;font-size:0.9375rem;
+}
+.alert-info{background:var(--gp);color:var(--gd);border:1px solid var(--gl)}
+.alert-error{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+
+/* Success state */
+.success-icon{
+  width:80px;height:80px;margin:0 auto 1.5rem;
+  background:var(--gp);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:2.5rem;
+}
+.success-title{text-align:center;margin-bottom:1rem}
+.success-desc{text-align:center;color:var(--m);margin-bottom:2rem}
+
+.spinner{
+  display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);
+  border-top-color:var(--w);border-radius:50%;animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:600px){
+  .card{padding:1.75rem 1.5rem}
+  .btn-row{flex-direction:column-reverse}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV (injected by components.js) -->
+
+<div class="page-header">
+  <h1>Registrera ditt företag</h1>
+  <p>Cirka 5 minuter. Inga kort krävs.</p>
+</div>
+
+<div class="container">
+  <div class="card">
+    
+    <div class="progress">
+      <div class="progress-step current" id="progStep1"></div>
+      <div class="progress-step" id="progStep2"></div>
+      <div class="progress-step" id="progStep3"></div>
+      <div class="progress-step" id="progStep4"></div>
+    </div>
+    
+    <!-- STEP 1: Company info -->
+    <div id="step1" class="step">
+      <h2 class="step-title">Företagsuppgifter</h2>
+      <p class="step-desc">Vi behöver information om ditt företag.</p>
+      
+      <div class="field">
+        <label for="orgNumber">Organisationsnummer *</label>
+        <input type="text" id="orgNumber" placeholder="556677-1234" autocomplete="off" maxlength="11">
+        <div class="field-hint">10 siffror, med eller utan bindestreck</div>
+        <div class="field-error">Ange ett giltigt organisationsnummer</div>
+      </div>
+      
+      <div class="field">
+        <label for="companyName">Företagsnamn *</label>
+        <input type="text" id="companyName" placeholder="Exempel Städ AB" autocomplete="organization">
+        <div class="field-error">Ange företagsnamn</div>
+      </div>
+      
+      <div class="field">
+        <label>
+          <input type="checkbox" id="hasFskatt" style="margin-right:0.5rem">
+          Företaget har F-skatt
+        </label>
+        <div class="field-hint">Krävs för att vara partner hos Spick</div>
+      </div>
+      
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goStep2()">Fortsätt →</button>
+      </div>
+    </div>
+    
+    <!-- STEP 2: VD info -->
+    <div id="step2" class="step" style="display:none">
+      <h2 class="step-title">Dina kontaktuppgifter</h2>
+      <p class="step-desc">Du som registrerar företaget måste vara firmatecknare.</p>
+      
+      <div class="field">
+        <label for="vdName">Ditt fullständiga namn *</label>
+        <input type="text" id="vdName" placeholder="Förnamn Efternamn" autocomplete="name">
+        <div class="field-error">Ange fullständigt namn</div>
+      </div>
+      
+      <div class="field">
+        <label for="vdEmail">E-post *</label>
+        <input type="email" id="vdEmail" placeholder="din@epost.se" autocomplete="email">
+        <div class="field-hint">Vi skickar bokningar och utbetalningsinfo hit</div>
+        <div class="field-error">Ange en giltig e-postadress</div>
+      </div>
+      
+      <div class="field">
+        <label for="vdPhone">Mobilnummer *</label>
+        <input type="tel" id="vdPhone" placeholder="070-123 45 67" autocomplete="tel">
+        <div class="field-hint">För SMS-notiser vid nya bokningar</div>
+        <div class="field-error">Ange ett giltigt mobilnummer</div>
+      </div>
+      
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep1()">← Tillbaka</button>
+        <button class="btn btn-primary" onclick="goStep3()">Fortsätt →</button>
+      </div>
+    </div>
+    
+    <!-- STEP 3: Review + consent -->
+    <div id="step3" class="step" style="display:none">
+      <h2 class="step-title">Granska och godkänn</h2>
+      <p class="step-desc">Kontrollera att allt stämmer innan du skickar in.</p>
+      
+      <div style="background:var(--bg);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.5rem">
+        <div class="review-item">
+          <span class="review-label">Organisationsnummer</span>
+          <span class="review-value" id="revOrg"></span>
+        </div>
+        <div class="review-item">
+          <span class="review-label">Företagsnamn</span>
+          <span class="review-value" id="revCompany"></span>
+        </div>
+        <div class="review-item">
+          <span class="review-label">F-skatt</span>
+          <span class="review-value" id="revFskatt"></span>
+        </div>
+        <div class="review-item">
+          <span class="review-label">Firmatecknare</span>
+          <span class="review-value" id="revName"></span>
+        </div>
+        <div class="review-item">
+          <span class="review-label">E-post</span>
+          <span class="review-value" id="revEmail"></span>
+        </div>
+        <div class="review-item">
+          <span class="review-label">Telefon</span>
+          <span class="review-value" id="revPhone"></span>
+        </div>
+      </div>
+      
+      <label class="checkbox">
+        <input type="checkbox" id="consentTerms">
+        <span>Jag godkänner <a href="uppdragsavtal.html" target="_blank">uppdragsavtalet</a> och <a href="kundvillkor.html" target="_blank">plattformsvillkoren</a>.</span>
+      </label>
+      
+      <label class="checkbox">
+        <input type="checkbox" id="consentGdpr">
+        <span>Jag godkänner <a href="integritetspolicy.html" target="_blank">integritetspolicyn</a> och behandling av mina personuppgifter enligt GDPR.</span>
+      </label>
+      
+      <label class="checkbox">
+        <input type="checkbox" id="consentAuthority">
+        <span>Jag bekräftar att jag är firmatecknare för detta företag och har rätt att registrera det på Spick.</span>
+      </label>
+      
+      <div id="submitError" class="alert alert-error" style="display:none;margin-top:1.5rem"></div>
+      
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep2()">← Tillbaka</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitRegistration()" disabled>Skicka in registrering</button>
+      </div>
+    </div>
+    
+    <!-- STEP 4: Success -->
+    <div id="step4" class="step" style="display:none">
+      <div class="success-icon">✓</div>
+      <h2 class="step-title success-title">Registrering mottagen!</h2>
+      <p class="success-desc">Vi verifierar ditt företag inom 1 arbetsdag. Under tiden kan du slutföra din Stripe-registrering.</p>
+      
+      <div class="alert alert-info">
+        <strong>Nästa steg:</strong> Klicka nedan för att slutföra din Stripe-registrering så att utbetalningar kan starta.
+      </div>
+      
+      <div class="btn-row">
+        <a href="#" id="stripeOnboardingLink" class="btn btn-primary" style="text-decoration:none">
+          Slutför Stripe-registrering →
+        </a>
+      </div>
+      
+      <p style="text-align:center;margin-top:1.5rem;font-size:0.875rem;color:var(--m)">
+        Bekräftelse har skickats till <span id="confirmEmail" style="font-weight:500"></span>
+      </p>
+    </div>
+    
+  </div>
+</div>
+
+<!-- FOOTER (injected by components.js) -->
+
+<script src="js/supabase.min.js" defer></script>
+<script src="js/config.js"></script>
+<script src="js/components.js" defer></script>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+const state = {
+  step: 1,
+  orgNumber: '',
+  companyName: '',
+  hasFskatt: false,
+  vdName: '',
+  vdEmail: '',
+  vdPhone: '',
+};
+
+// ─────────────────────────────────────────────
+// Validation helpers
+// ─────────────────────────────────────────────
+function validateOrgNumber(v){
+  const cleaned = v.replace(/[^0-9]/g, '');
+  return cleaned.length === 10;
+}
+function validateEmail(v){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+function validatePhone(v){
+  const cleaned = v.replace(/[^0-9+]/g, '');
+  return cleaned.length >= 10;
+}
+function cleanOrgNumber(v){
+  const d = v.replace(/[^0-9]/g, '').slice(0,10);
+  return d.length === 10 ? `${d.slice(0,6)}-${d.slice(6)}` : d;
+}
+function cleanPhone(v){
+  let c = v.replace(/[^0-9+]/g, '');
+  if (c.startsWith('0')) c = '+46' + c.slice(1);
+  return c;
+}
+
+// ─────────────────────────────────────────────
+// Step navigation
+// ─────────────────────────────────────────────
+function showStep(n){
+  [1,2,3,4].forEach(i => {
+    document.getElementById('step'+i).style.display = i === n ? '' : 'none';
+    const prog = document.getElementById('progStep'+i);
+    prog.classList.remove('current','active');
+    if (i < n) prog.classList.add('active');
+    else if (i === n) prog.classList.add('current');
+  });
+  state.step = n;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showError(fieldId, message){
+  const field = document.getElementById(fieldId).closest('.field');
+  field.classList.add('has-error');
+  if (message) field.querySelector('.field-error').textContent = message;
+}
+function clearError(fieldId){
+  document.getElementById(fieldId).closest('.field').classList.remove('has-error');
+}
+
+function goStep1(){ showStep(1); }
+
+function goStep2(){
+  let ok = true;
+  
+  const orgRaw = document.getElementById('orgNumber').value.trim();
+  if (!validateOrgNumber(orgRaw)) { showError('orgNumber'); ok = false; }
+  else { clearError('orgNumber'); state.orgNumber = cleanOrgNumber(orgRaw); }
+  
+  const companyName = document.getElementById('companyName').value.trim();
+  if (!companyName || companyName.length < 2) { showError('companyName'); ok = false; }
+  else { clearError('companyName'); state.companyName = companyName; }
+  
+  state.hasFskatt = document.getElementById('hasFskatt').checked;
+  
+  if (ok) showStep(2);
+}
+
+function goStep3(){
+  let ok = true;
+  
+  const name = document.getElementById('vdName').value.trim();
+  if (!name || name.split(' ').length < 2) { showError('vdName'); ok = false; }
+  else { clearError('vdName'); state.vdName = name; }
+  
+  const email = document.getElementById('vdEmail').value.trim().toLowerCase();
+  if (!validateEmail(email)) { showError('vdEmail'); ok = false; }
+  else { clearError('vdEmail'); state.vdEmail = email; }
+  
+  const phone = document.getElementById('vdPhone').value.trim();
+  if (!validatePhone(phone)) { showError('vdPhone'); ok = false; }
+  else { clearError('vdPhone'); state.vdPhone = cleanPhone(phone); }
+  
+  if (ok) {
+    // Fyll i review
+    document.getElementById('revOrg').textContent = state.orgNumber;
+    document.getElementById('revCompany').textContent = state.companyName;
+    document.getElementById('revFskatt').textContent = state.hasFskatt ? 'Ja' : 'Nej — behöver hjälp';
+    document.getElementById('revName').textContent = state.vdName;
+    document.getElementById('revEmail').textContent = state.vdEmail;
+    document.getElementById('revPhone').textContent = state.vdPhone;
+    showStep(3);
+  }
+}
+
+// Enable submit-knapp endast när alla checkboxar är ikryssade
+function updateSubmitBtn(){
+  const terms = document.getElementById('consentTerms').checked;
+  const gdpr = document.getElementById('consentGdpr').checked;
+  const auth = document.getElementById('consentAuthority').checked;
+  document.getElementById('submitBtn').disabled = !(terms && gdpr && auth);
+}
+
+// ─────────────────────────────────────────────
+// Submit
+// ─────────────────────────────────────────────
+async function submitRegistration(){
+  const btn = document.getElementById('submitBtn');
+  const errBox = document.getElementById('submitError');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Skickar...';
+  errBox.style.display = 'none';
+  
+  try {
+    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/company-self-signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: window.SPICK.SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + window.SPICK.SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        org_number: state.orgNumber,
+        company_name: state.companyName,
+        has_fskatt: state.hasFskatt,
+        vd_name: state.vdName,
+        vd_email: state.vdEmail,
+        vd_phone: state.vdPhone,
+        consent_terms: true,
+        consent_gdpr: true,
+        consent_authority: true,
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || 'Registrering misslyckades. Kontakta support@spick.se om problemet kvarstår.');
+    }
+    
+    // Success → visa step 4 med Stripe-länk
+    document.getElementById('confirmEmail').textContent = state.vdEmail;
+    if (data.stripe_onboarding_url) {
+      document.getElementById('stripeOnboardingLink').href = data.stripe_onboarding_url;
+    } else {
+      document.getElementById('stripeOnboardingLink').style.display = 'none';
+    }
+    showStep(4);
+    
+  } catch (err) {
+    console.error('Signup error:', err);
+    errBox.textContent = err.message || 'Ett fel uppstod. Försök igen.';
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Skicka in registrering';
+  }
+}
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  ['consentTerms','consentGdpr','consentAuthority'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateSubmitBtn);
+  });
+  
+  // Format org.nr while typing
+  document.getElementById('orgNumber').addEventListener('input', (e) => {
+    const d = e.target.value.replace(/[^0-9]/g, '').slice(0,10);
+    e.target.value = d.length > 6 ? `${d.slice(0,6)}-${d.slice(6)}` : d;
+  });
+});
+</script>
+
+</body>
+</html>

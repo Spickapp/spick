@@ -119,6 +119,7 @@ const NAV_HTML = `
   <a href="${P}blogg/" class="nl">Blogg</a>
   <a href="${P}priser.html" class="nl">Priser</a>
   <a href="${P}foretag.html" class="nl">För företag</a>
+  <a href="${P}bli-foretag.html" class="nl">Bli partner</a>
   <div class="nav-login">
     <button class="nav-login-toggle" onclick="this.parentElement.classList.toggle('open')">Logga in <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg></button>
     <div class="nav-login-menu">
@@ -141,6 +142,7 @@ const MOB_HTML = `
     <a href="${P}tjanster.html">Tjänster</a>
     <a href="${P}foretag.html">För företag</a>
     <a href="${P}bli-stadare.html">Bli städare</a>
+    <a href="${P}bli-foretag.html">Bli partner</a>
     <a href="${P}mitt-konto.html">Mina bokningar</a>
     <a href="${P}stadare-dashboard.html">Städarportalen</a>
     <a href="${P}boka.html" style="background:var(--g);color:#fff;border-radius:100px;text-align:center;padding:.75rem 1.5rem;border:none;">Boka nu →</a>
