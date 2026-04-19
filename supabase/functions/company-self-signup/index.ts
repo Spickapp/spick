@@ -217,8 +217,6 @@ Deno.serve(async (req) => {
         is_active: true,
         is_approved: false,  // admin verifierar innan aktiv
         has_fskatt: !!has_fskatt,
-        gdpr_consent: true,
-        gdpr_consent_at: new Date().toISOString(),
         commission_rate: commissionRate,
         services: ["Hemstädning"],  // default, VD uppdaterar
         service_radius_km: 30,
