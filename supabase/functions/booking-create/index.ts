@@ -345,26 +345,30 @@ serve(async (req) => {
       return json(500, { error: "Kunde inte skapa bokning" });
     }
 
-    // ── 8b. UPSERT CUSTOMER_PROFILE (Bugg #3) ─────
-    // Säkerställ att customer_profiles-tabellen hålls synkad med nya bokningar.
-    // UNIQUE constraint på email (customer_profiles_email_key) gör onConflict säkert.
-    // Non-blocking: fel här får INTE stoppa bokningen.
+    // ── 8b. UPSERT CUSTOMER_PROFILE via customer-upsert EF (Fas 1.2) ─────
+    // Delegerar till customer-upsert for att sakerstalla auth.users-koppling +
+    // audit-log. Non-blocking: fel far INTE stoppa bokningen.
     try {
-      const profileData: Record<string, unknown> = {
-        email: email,
-        name: name,
+      const payload: Record<string, unknown> = {
+        email,
+        source: "booking",
+        name,
         phone: phone || null,
         address: address || null,
       };
       if (auto_delegation_enabled === true || auto_delegation_enabled === false) {
-        profileData.auto_delegation_enabled = auto_delegation_enabled;
+        payload.auto_delegation_enabled = auto_delegation_enabled;
       }
-      await supabase.from("customer_profiles").upsert(profileData, {
-        onConflict: "email",
-        ignoreDuplicates: false
+      await fetch(`${Deno.env.get("SUPABASE_URL") ?? "https://urjeijcncsyuletprydy.supabase.co"}/functions/v1/customer-upsert`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+        },
+        body: JSON.stringify(payload),
       });
     } catch (profileErr) {
-      console.warn("customer_profiles upsert failed (non-critical):", (profileErr as Error).message);
+      console.warn("customer-upsert call failed (non-critical):", (profileErr as Error).message);
     }
 
     // ── 9. LOGGA RABATTANVÄNDNING ──────────────────

@@ -2787,9 +2787,9 @@ async function setupAutoDelegationUI() {
   // Förifyll från kundprofil
   if (state.email) {
     try {
-      const r = await fetch(`${SUPA}/rest/v1/customer_profiles?select=auto_delegation_enabled&email=eq.${encodeURIComponent(state.email)}`, {headers: H});
-      const rows = await r.json();
-      if (rows && rows[0] && rows[0].auto_delegation_enabled === true) {
+      const r = await fetch(`${SUPA}/functions/v1/customer-check-auto-delegation?email=${encodeURIComponent(state.email)}`);
+      const data = await r.json();
+      if (data && data.auto_delegation_enabled === true) {
         document.getElementById('auto-delegation-checkbox').checked = true;
       }
     } catch (e) { /* ignore */ }
