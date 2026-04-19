@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Företagsdashboard — Spick</title>
+<meta name="robots" content="noindex,nofollow">
+
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" as="style">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --g:#0F6E56; --gm:#1D9E75; --gp:#E1F5EE; --gl:#9FE1CB; --gd:#085041;
+  --b:#0E0E0E; --t:#1C1C1A; --m:#6B6960; --bg:#F7F7F5; --border:#E8E8E4;
+  --w:#fff; --gold:#F5C842; --r:14px; --err:#DC2626; --warn:#D97706;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height:1.2;font-weight:700}
+
+.page-header{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);color:var(--w);padding:3rem 1.5rem 2rem}
+.page-header-inner{max-width:1000px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:0.25rem}
+.page-header .sub{opacity:0.9;font-size:1rem}
+
+.container{max-width:1000px;margin:-1.5rem auto 4rem;padding:0 1.5rem;position:relative}
+
+.card{background:var(--w);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,0.04)}
+.card h2{font-size:1.25rem;margin-bottom:1rem;font-family:'DM Sans',sans-serif;font-weight:600}
+
+/* Checklist */
+.checklist{display:grid;gap:0.75rem}
+.checklist-item{display:flex;align-items:center;gap:0.875rem;padding:0.875rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.checklist-item.done{background:var(--gp);border-color:var(--gl)}
+.checklist-item.pending{background:#FEF3C7;border-color:#FCD34D}
+.check-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;flex-shrink:0}
+.checklist-item.done .check-icon{background:var(--g);color:var(--w)}
+.checklist-item.pending .check-icon{background:var(--warn);color:var(--w)}
+.checklist-label{flex:1}
+.checklist-label strong{display:block;font-size:0.9375rem}
+.checklist-label small{color:var(--m);font-size:0.8125rem}
+.checklist-cta{padding:0.5rem 1rem;background:var(--g);color:var(--w);border:none;border-radius:8px;font-family:inherit;font-size:0.875rem;font-weight:500;cursor:pointer;text-decoration:none}
+.checklist-cta:hover{background:var(--gd)}
+
+/* Team grid */
+.team-list{display:grid;gap:0.75rem}
+.team-member{display:grid;grid-template-columns:48px 1fr auto;gap:1rem;align-items:center;padding:1rem;border:1px solid var(--border);border-radius:10px}
+.team-avatar{width:48px;height:48px;border-radius:50%;background:var(--gp);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--gd);font-size:1rem}
+.team-info strong{display:block}
+.team-info small{color:var(--m);font-size:0.8125rem}
+.team-status{padding:0.25rem 0.75rem;border-radius:100px;font-size:0.75rem;font-weight:600}
+.team-status.active{background:var(--gp);color:var(--gd)}
+.team-status.pending{background:#FEF3C7;color:var(--warn)}
+.team-status.invited{background:#DBEAFE;color:#1E40AF}
+
+.invite-form{display:grid;gap:0.75rem;margin-top:1rem;padding:1.25rem;background:var(--bg);border-radius:10px;border:1px dashed var(--border)}
+.invite-form input{padding:0.75rem 1rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.9375rem}
+.invite-form .row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+.invite-form button{padding:0.875rem 1.25rem;background:var(--g);color:var(--w);border:none;border-radius:8px;font-family:inherit;font-weight:600;cursor:pointer}
+.invite-form button:hover:not(:disabled){background:var(--gd)}
+.invite-form button:disabled{opacity:0.5;cursor:not-allowed}
+
+.empty{text-align:center;padding:2rem 1rem;color:var(--m)}
+
+.alert{padding:1rem 1.25rem;border-radius:10px;font-size:0.9375rem;margin-bottom:1rem}
+.alert-info{background:var(--gp);color:var(--gd);border:1px solid var(--gl)}
+.alert-error{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+.alert-success{background:var(--gp);color:var(--gd);border:1px solid var(--gl)}
+
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:var(--w);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.loading-overlay{display:flex;justify-content:center;padding:3rem}
+.loading-overlay .spinner{border-color:var(--border);border-top-color:var(--g);width:32px;height:32px}
+
+@media (max-width:600px){
+  .invite-form .row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV (injected by components.js) -->
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1 id="companyName">Företagsdashboard</h1>
+    <div class="sub" id="companySub">Laddar…</div>
+  </div>
+</div>
+
+<div class="container">
+  
+  <!-- Loading state -->
+  <div id="loadingState" class="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+  
+  <!-- Main content -->
+  <div id="mainContent" style="display:none">
+    
+    <!-- VD-checklist -->
+    <div class="card" id="checklistCard">
+      <h2>Kom igång med ditt företag</h2>
+      <div class="checklist" id="checklist">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+    
+    <!-- Team -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h2 style="margin:0">Mitt team</h2>
+        <span style="color:var(--m);font-size:0.875rem" id="teamCount"></span>
+      </div>
+      
+      <div id="teamList" class="team-list">
+        <!-- Filled dynamically -->
+      </div>
+      
+      <div id="teamEmpty" class="empty" style="display:none">
+        Inga teammedlemmar än. Bjud in din första städare nedan.
+      </div>
+      
+      <div class="invite-form" id="inviteForm">
+        <strong style="font-size:0.9375rem">Bjud in ny teammedlem</strong>
+        <small style="color:var(--m)">De får ett SMS med en länk för att slutföra sin registrering</small>
+        
+        <div class="row">
+          <input type="text" id="inviteName" placeholder="För- och efternamn">
+          <input type="tel" id="invitePhone" placeholder="07X-XXX XX XX">
+        </div>
+        
+        <div id="inviteAlert" class="alert" style="display:none"></div>
+        
+        <button id="inviteBtn" onclick="sendInvite()">
+          Skicka inbjudan
+        </button>
+      </div>
+    </div>
+    
+    <!-- Kvick-nav -->
+    <div class="card">
+      <h2>Övriga verktyg</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.75rem;margin-top:1rem">
+        <a href="stadare-dashboard.html" style="padding:1rem;background:var(--bg);border-radius:10px;text-decoration:none;color:var(--t);border:1px solid var(--border);text-align:center;font-weight:500">
+          📅 Dashboard
+        </a>
+        <a href="admin.html" style="padding:1rem;background:var(--bg);border-radius:10px;text-decoration:none;color:var(--t);border:1px solid var(--border);text-align:center;font-weight:500">
+          🛠 Admin
+        </a>
+      </div>
+    </div>
+    
+  </div>
+  
+</div>
+
+<!-- FOOTER (injected by components.js) -->
+
+<script src="js/supabase.min.js" defer></script>
+<script src="js/config.js"></script>
+<script src="js/components.js" defer></script>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+const state = {
+  session: null,
+  cleaner: null,
+  company: null,
+  status: null,
+  team: [],
+  invites: [],
+};
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function initial(name) {
+  const p = (name || '').split(/\s+/).filter(Boolean);
+  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || '?';
+}
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+async function init() {
+  // 1. Session
+  const { data: sessData } = await window.supabase.auth.getSession();
+  if (!sessData?.session) {
+    window.location.href = '/mitt-konto.html?returnTo=foretag-dashboard.html';
+    return;
+  }
+  state.session = sessData.session;
+  
+  // 2. Ladda VD's cleaner + company via REST (RLS guard: authenticated ser egen rad)
+  const authHeaders = {
+    apikey: window.SPICK.SUPABASE_ANON_KEY,
+    Authorization: 'Bearer ' + state.session.access_token,
+  };
+  
+  try {
+    const cRes = await fetch(
+      `${window.SPICK.SUPABASE_URL}/rest/v1/cleaners?auth_user_id=eq.${state.session.user.id}&select=id,full_name,company_id,is_company_owner,stripe_onboarding_status`,
+      { headers: authHeaders }
+    );
+    const cRows = await cRes.json();
+    
+    if (!Array.isArray(cRows) || cRows.length === 0) {
+      throw new Error('no_cleaner_row');
+    }
+    
+    state.cleaner = cRows[0];
+    
+    if (!state.cleaner.is_company_owner || !state.cleaner.company_id) {
+      alert('Denna sida är endast för företagsägare. Omdirigerar…');
+      window.location.href = '/stadare-dashboard.html';
+      return;
+    }
+    
+    // 3. Ladda company via RPC (får onboarding-status + team-count + mer i en query)
+    const rpcRes = await fetch(
+      `${window.SPICK.SUPABASE_URL}/rest/v1/rpc/get_company_onboarding_status`,
+      {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_company_id: state.cleaner.company_id }),
+      }
+    );
+    state.status = await rpcRes.json();
+    
+    document.getElementById('companyName').textContent = state.status.company_name || 'Företagsdashboard';
+    document.getElementById('companySub').textContent = `Org.nr ${state.status.onboarding_status}`;
+    
+    // 4. Ladda team + pending invites
+    await loadTeam();
+    
+    // 5. Rendera
+    renderChecklist();
+    renderTeam();
+    
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
+    
+  } catch (e) {
+    console.error('[foretag-dashboard] Init failed', e);
+    document.getElementById('loadingState').innerHTML = `
+      <div style="text-align:center;color:var(--err)">
+        <p>Kunde inte ladda företagsdata.</p>
+        <p><a href="/mitt-konto.html" style="color:var(--g)">Logga in igen</a></p>
+      </div>
+    `;
+  }
+}
+
+async function loadTeam() {
+  const authHeaders = {
+    apikey: window.SPICK.SUPABASE_ANON_KEY,
+    Authorization: 'Bearer ' + state.session.access_token,
+  };
+  
+  // Team (accepterade cleaners)
+  const tRes = await fetch(
+    `${window.SPICK.SUPABASE_URL}/rest/v1/cleaners?company_id=eq.${state.cleaner.company_id}&is_company_owner=eq.false&select=id,full_name,email,phone,stripe_onboarding_status,status`,
+    { headers: authHeaders }
+  );
+  state.team = await tRes.json();
+  
+  // Pending invites
+  const iRes = await fetch(
+    `${window.SPICK.SUPABASE_URL}/rest/v1/cleaner_applications?invited_by_company_id=eq.${state.cleaner.company_id}&status=eq.invited&select=id,full_name,invited_phone,created_at`,
+    { headers: authHeaders }
+  );
+  state.invites = await iRes.json();
+}
+
+// ─────────────────────────────────────────────
+// Checklist
+// ─────────────────────────────────────────────
+function renderChecklist() {
+  const s = state.status;
+  if (!s) return;
+  
+  const items = [
+    {
+      done: s.company_verified,
+      label: 'Företagsuppgifter',
+      help: 'Organisationsnummer och namn registrerade',
+    },
+    {
+      done: s.vd_stripe_complete,
+      label: 'Stripe-registrering',
+      help: s.vd_stripe_complete ? 'Klar — utbetalningar aktiva' : 'Slutför din Stripe-onboarding för att få betalt',
+      cta: s.vd_stripe_complete ? null : { label: 'Slutför Stripe', action: 'stripe' },
+    },
+    {
+      done: s.team_members_count > 0,
+      label: 'Team',
+      help: `${s.team_members_count} teammedlemmar (varav ${s.team_members_stripe_complete} med Stripe klart)`,
+    },
+    {
+      done: s.service_prices_configured,
+      label: 'Tjänstepriser',
+      help: s.service_prices_configured ? 'Konfigurerat' : 'Sätt dina priser per tjänst',
+    },
+    {
+      done: s.first_booking_received,
+      label: 'Första bokning',
+      help: s.first_booking_received ? 'Ni har tagit emot första bokningen!' : 'Kommer när kunder börjar boka',
+    },
+  ];
+  
+  document.getElementById('checklist').innerHTML = items.map(i => `
+    <div class="checklist-item ${i.done ? 'done' : 'pending'}">
+      <div class="check-icon">${i.done ? '✓' : '!'}</div>
+      <div class="checklist-label">
+        <strong>${esc(i.label)}</strong>
+        <small>${esc(i.help)}</small>
+      </div>
+      ${i.cta ? `<button class="checklist-cta" onclick="handleChecklistCta('${i.cta.action}')">${esc(i.cta.label)}</button>` : ''}
+    </div>
+  `).join('');
+}
+
+async function handleChecklistCta(action) {
+  if (action === 'stripe') {
+    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/stripe-connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'refresh_account_link', cleaner_id: state.cleaner.id }),
+    });
+    const data = await res.json();
+    if (data.url) window.open(data.url, '_blank');
+    else alert('Kunde inte generera Stripe-länk. Kontakta support.');
+  }
+}
+
+// ─────────────────────────────────────────────
+// Team rendering
+// ─────────────────────────────────────────────
+function renderTeam() {
+  const listEl = document.getElementById('teamList');
+  const emptyEl = document.getElementById('teamEmpty');
+  
+  const all = [
+    ...state.team.map(m => ({ ...m, type: 'member' })),
+    ...state.invites.map(i => ({ ...i, type: 'invite', full_name: i.full_name, phone: i.invited_phone })),
+  ];
+  
+  document.getElementById('teamCount').textContent = `${state.team.length} aktiva, ${state.invites.length} inbjudna`;
+  
+  if (all.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+  
+  emptyEl.style.display = 'none';
+  
+  listEl.innerHTML = all.map(item => {
+    let statusLabel, statusClass;
+    if (item.type === 'invite') {
+      statusLabel = 'Inbjuden';
+      statusClass = 'invited';
+    } else if (item.stripe_onboarding_status === 'complete') {
+      statusLabel = 'Aktiv';
+      statusClass = 'active';
+    } else {
+      statusLabel = 'Väntar Stripe';
+      statusClass = 'pending';
+    }
+    
+    return `
+      <div class="team-member">
+        <div class="team-avatar">${esc(initial(item.full_name))}</div>
+        <div class="team-info">
+          <strong>${esc(item.full_name)}</strong>
+          <small>${esc(item.phone || item.email || '')}</small>
+        </div>
+        <div class="team-status ${statusClass}">${esc(statusLabel)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// Invite new member
+// ─────────────────────────────────────────────
+async function sendInvite() {
+  const nameEl = document.getElementById('inviteName');
+  const phoneEl = document.getElementById('invitePhone');
+  const btn = document.getElementById('inviteBtn');
+  const alertEl = document.getElementById('inviteAlert');
+  
+  const name = nameEl.value.trim();
+  const phone = phoneEl.value.trim();
+  
+  alertEl.style.display = 'none';
+  
+  if (!name || name.split(/\s+/).length < 2) {
+    alertEl.className = 'alert alert-error';
+    alertEl.textContent = 'Ange förnamn och efternamn';
+    alertEl.style.display = '';
+    return;
+  }
+  
+  if (!phone || phone.replace(/[^0-9+]/g, '').length < 10) {
+    alertEl.className = 'alert alert-error';
+    alertEl.textContent = 'Ange ett giltigt mobilnummer';
+    alertEl.style.display = '';
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Skickar...';
+  
+  try {
+    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/company-invite-member`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + state.session.access_token,
+      },
+      body: JSON.stringify({
+        member_name: name,
+        member_phone: phone,
+      }),
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || data.error || 'Kunde inte skicka inbjudan');
+    }
+    
+    // Success
+    alertEl.className = 'alert alert-success';
+    alertEl.textContent = `Inbjudan skickad till ${name}! SMS med länk skickat.`;
+    alertEl.style.display = '';
+    
+    nameEl.value = '';
+    phoneEl.value = '';
+    
+    // Reload team
+    await loadTeam();
+    renderTeam();
+    
+  } catch (e) {
+    alertEl.className = 'alert alert-error';
+    alertEl.textContent = e.message;
+    alertEl.style.display = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Skicka inbjudan';
+  }
+}
+
+// ─────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────
+const bootInterval = setInterval(() => {
+  if (window.supabase && window.SPICK) {
+    clearInterval(bootInterval);
+    init();
+  }
+}, 100);
+</script>
+
+</body>
+</html>

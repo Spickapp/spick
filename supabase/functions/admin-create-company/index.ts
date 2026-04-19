@@ -46,6 +46,20 @@ serve(async (req) => {
       memberIds: [], memberAuthIds: []
     };
 
+    // Läs commission från platform_settings (Regel #28)
+    const { data: commissionSetting } = await sb
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "commission_standard")
+      .maybeSingle();
+    const commissionRate = Number(commissionSetting?.value ?? 12);
+    if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 50) {
+      return new Response(
+        JSON.stringify({ error: "invalid_commission_config" }),
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── 1. Generera företagsslug ──
     const baseSlug = (body.company_name || "foretag")
       .toLowerCase()
@@ -60,7 +74,7 @@ serve(async (req) => {
       org_number: body.org_number || null,
       slug: companySlug,
       description: body.bio || null,
-      commission_rate: body.commission_rate ?? 12,
+      commission_rate: body.commission_rate ?? commissionRate,
       employment_model: body.employment_model || "employed",
     }).select("id").single();
 
@@ -107,7 +121,7 @@ serve(async (req) => {
       status: "onboarding",
       hourly_rate: body.services?.[0]?.price || 350,
       services: body.services?.map((s: { service_type: string }) => s.service_type) || [],
-      commission_rate: body.commission_rate ?? 12,
+      commission_rate: body.commission_rate ?? commissionRate,
       tier: "new",
       service_radius_km: 30,
       has_fskatt: true, // Företag har alltid F-skatt
@@ -206,7 +220,7 @@ serve(async (req) => {
           services: member.services || [],
           languages: member.languages || [],
           pet_pref: member.pet_pref || "ok",
-          commission_rate: body.commission_rate ?? 12,
+          commission_rate: body.commission_rate ?? commissionRate,
           tier: "new",
           has_fskatt: (body.employment_model === "employed"), // Anställda = F-skatt via företag
           avg_rating: 0,
