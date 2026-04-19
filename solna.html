@@ -226,8 +226,8 @@ async function joinWL(){
 
 async function loadLocalCleaners(){
   const city = 'Solna';
-  const {data} = await SB.from('cleaners')
-    .select('id,full_name,hourly_rate,avg_rating,review_count,city,bio,services,identity_verified,bonus_level')
+  const {data} = await SB.from('v_cleaners_public')
+    .select('id,full_name,hourly_rate,avg_rating,review_count,city,bio,services,identity_verified')
     .eq('is_approved',true)
     .ilike('city', city)
     .order('avg_rating', {ascending:false})

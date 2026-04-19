@@ -145,7 +145,7 @@ const id=new URLSearchParams(location.search).get('id');
 
 async function load(){
   if(!id){document.getElementById('content').innerHTML='<div class="loading">Ingen städare vald.</div>';return;}
-  const {data,error}=await SB.from('cleaners').select('*').eq('id',id).eq('is_approved',true).single();
+  const {data,error}=await SB.from('v_cleaners_public').select('*').eq('id',id).eq('is_approved',true).single();
   if(error||!data){document.getElementById('content').innerHTML='<div class="loading">Städaren hittades inte.</div>';return;}
   const c=data;
   const ini=(c.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
