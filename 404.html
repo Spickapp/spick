@@ -20,6 +20,41 @@ if (location.pathname.startsWith('/f/')) {
     location.replace(url);
   }
 }
+// Routing: /m/:code -> växla shortcode mot Supabase-session via public-auth-exchange
+if (location.pathname.startsWith('/m/')) {
+  var code = location.pathname.replace(/^\/m\//, '').replace(/\/$/, '');
+  if (code) {
+    fetch('https://urjeijcncsyuletprydy.supabase.co/functions/v1/public-auth-exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        short_code: code,
+        user_agent: navigator.userAgent
+      })
+    })
+    .then(function(r) {
+      if (!r.ok) {
+        return r.json().then(function(err) { throw new Error(err.error || 'exchange_failed'); });
+      }
+      return r.json();
+    })
+    .then(function(d) {
+      if (d.action_link) {
+        location.replace(d.action_link);
+      } else {
+        location.replace('/boka.html?error=no_action_link');
+      }
+    })
+    .catch(function(e) {
+      var msg = (e && e.message) ? e.message : 'unknown';
+      if (msg.indexOf('expired') >= 0 || msg.indexOf('used') >= 0 || msg.indexOf('Invalid') >= 0) {
+        location.replace('/boka.html?error=expired_link');
+      } else {
+        location.replace('/boka.html?error=network');
+      }
+    });
+  }
+}
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
