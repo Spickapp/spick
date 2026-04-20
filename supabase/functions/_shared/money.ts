@@ -40,6 +40,54 @@ export type CommissionContext = {
   completed_jobs?: number;
 };
 
+/**
+ * Commission-resultat per design-dok §4.1.
+ *
+ * pct = heltal-procent (ex. 12 betyder 12%), konsistent med
+ * platform_settings.commission_standard='12'.
+ *
+ * source beskriver var i hierarkin (§5) värdet kom från — används
+ * för audit-loggning och reconciliation.
+ */
+export type CommissionSource =
+  | 'platform_settings'
+  | 'company_override'
+  | 'cleaner_override'
+  | 'smart_trappstege'
+  | 'manual_override'
+  | 'fallback';
+
+export type CommissionTier = 'new' | 'established' | 'professional' | 'elite';
+
+export type CommissionResult = {
+  pct: number;
+  source: CommissionSource;
+  tier?: CommissionTier;
+};
+
+/**
+ * Smart Trappstege-tiers (spegel av js/commission.js:15-18).
+ *
+ * Proc-värden lagras som heltal här (17, 15, 13, 12) — konsistent
+ * med platform_settings.commission_standard-formatet. Frontend-filen
+ * js/commission.js använder decimal (0.17, 0.15) men är display-only.
+ *
+ * Thresholds = minsta antal completed_jobs för att kvalificera.
+ */
+const SMART_TRAPPSTEGE_TIERS: Array<{
+  id: CommissionTier;
+  pct: number;
+  threshold: number;
+}> = [
+  { id: 'new', pct: 17, threshold: 0 },
+  { id: 'established', pct: 15, threshold: 20 },
+  { id: 'professional', pct: 13, threshold: 50 },
+  { id: 'elite', pct: 12, threshold: 100 },
+];
+
+const FALLBACK_COMMISSION_PCT = 12;
+const DEFAULT_COMMISSION_KEY = 'commission_standard';
+
 export type PayoutBreakdown = {
   total_price_sek: number;
   commission_pct: number;
@@ -138,23 +186,104 @@ async function getSettingString(
 /**
  * Hamtar kommissions-procent for en given kontext.
  *
- * Hierarki (per design-dok §5):
- *   1. Smart Trappstege (om smart_trappstege_enabled=true)
- *      - Baserat pa cleaner.completed_jobs
- *   2. platform_settings.commission_standard (default)
+ * Hierarki (design-dok §5), implementerade steg markerade [✓]:
+ *   0. [✓] Feature flag money_layer_enabled — om 'false' kastas
+ *          MoneyLayerDisabled. Caller måste gate:a anrop.
+ *   1. [—] booking.commission_pct_override — kolumn saknas. Framtida.
+ *   2. [✓] Smart Trappstege — om platform_settings.smart_trappstege_enabled='true'
+ *          mappas cleaner.completed_jobs mot tier och returneras.
+ *          Fallback till platform_settings om completed_jobs saknas.
+ *   3. [—] cleaner.commission_pct — kolumn saknas. Framtida.
+ *   4. [—] company.commission_pct — kolumn saknas. Framtida.
+ *   5. [✓] platform_settings.commission_standard — huvudväg.
+ *   6. [✓] Hardcoded fallback 12 — vid DB-fel eller saknat värde.
  *
- * IGNORERAR:
- *   - cleaners.commission_rate (inkonsistent format, droppas Fas 1.10)
- *   - companies.commission_rate (samma)
+ * IGNORERAR (per design-dok §2.4 + Appendix C):
+ *   - cleaners.commission_rate (4 format i 17 rader, droppas F1.10)
+ *   - companies.commission_rate (0 egna värden, droppas F1.10)
  *
- * @returns commission_pct som heltal (ex. 12, 17)
- * @todo Fas 1.3: implementera
+ * @returns CommissionResult { pct, source, tier? } där pct är
+ *          heltal-procent (ex. 12 betyder 12%).
+ * @throws Error('MoneyLayerDisabled') om money_layer_enabled='false'.
  */
 export async function getCommission(
   supabase: SupabaseClient,
   context: CommissionContext
-): Promise<number> {
-  throw new Error('Not implemented yet (Fas 1.3)');
+): Promise<CommissionResult> {
+  // Steg 0: feature flag
+  if (!(await isMoneyLayerEnabled(supabase))) {
+    throw new Error('MoneyLayerDisabled');
+  }
+
+  // Steg 2: Smart Trappstege (om aktiverad)
+  const trappstegeResult = await _resolveSmartTrappstege(supabase, context);
+  if (trappstegeResult) {
+    return trappstegeResult;
+  }
+
+  // Steg 5 + 6: platform_settings.commission_standard, annars fallback
+  try {
+    const pct = await getSettingNumeric(supabase, DEFAULT_COMMISSION_KEY);
+    return { pct, source: 'platform_settings' };
+  } catch (_err) {
+    return { pct: FALLBACK_COMMISSION_PCT, source: 'fallback' };
+  }
+}
+
+/**
+ * Steg 2 i hierarkin: Smart Trappstege-lookup.
+ *
+ * Returnerar null om:
+ *   - smart_trappstege_enabled='false' (eller nyckel saknas)
+ *   - completed_jobs saknas både i context och på cleaner-rad
+ *
+ * När null returneras faller getCommission() tillbaka till steg 5.
+ */
+async function _resolveSmartTrappstege(
+  supabase: SupabaseClient,
+  context: CommissionContext
+): Promise<CommissionResult | null> {
+  let trappstegeEnabled: string;
+  try {
+    trappstegeEnabled = await getSettingString(
+      supabase,
+      'smart_trappstege_enabled'
+    );
+  } catch (_err) {
+    return null;
+  }
+  if (trappstegeEnabled !== 'true') {
+    return null;
+  }
+
+  let completedJobs = context.completed_jobs;
+  if (completedJobs === undefined && context.cleaner_id) {
+    const { data, error } = await supabase
+      .from('cleaners')
+      .select('completed_jobs, total_jobs')
+      .eq('id', context.cleaner_id)
+      .maybeSingle();
+    if (error || !data) return null;
+    completedJobs = Number(data.completed_jobs ?? data.total_jobs ?? 0);
+  }
+
+  if (completedJobs === undefined || Number.isNaN(completedJobs)) {
+    return null;
+  }
+
+  const tier = _pickTier(completedJobs);
+  return { pct: tier.pct, source: 'smart_trappstege', tier: tier.id };
+}
+
+/**
+ * Mappa completed_jobs → tier. Högsta tröskel som uppnås vinner.
+ */
+function _pickTier(completedJobs: number): (typeof SMART_TRAPPSTEGE_TIERS)[number] {
+  let selected = SMART_TRAPPSTEGE_TIERS[0];
+  for (const tier of SMART_TRAPPSTEGE_TIERS) {
+    if (completedJobs >= tier.threshold) selected = tier;
+  }
+  return selected;
 }
 
 /**
