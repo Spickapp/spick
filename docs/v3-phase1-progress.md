@@ -12,7 +12,7 @@
 |---------|----------:|-------------|:------:|---------|-----------|
 | §1.1 | 141 | `_shared/money.ts` skelett + helpers | ✓ | c21517d, 7236bee, 2cb48b8, 9813030, 8c1abe6, 7f04d69, f37b11e, 7827eeb, 51fd4e9 | Alla helpers klara (getCommission, calculatePayout, calculateRutSplit, triggerStripeTransfer) |
 | §1.2 | 142 | stripe-checkout:88 hardcoded → money.getCommission() | ⊘ SUPERSEDED | – | stripe-checkout EF är död kod (0 invocations 20 dgr Dashboard 20 apr + 0 callers grep). Aktiv betalningsväg är `booking-create` som redan läser commission från platform_settings (rad 184-201). §1.2 i praktiken avklarad via booking-create. |
-| §1.3 | 143 | stripe-connect:172 hardcoded 0.83 → money.calculatePayout() | ◯ Ej påbörjad | – | Verifiera först att stripe-connect EF är aktiv (undvik stripe-checkout-fälla) |
+| §1.3 | 143 | stripe-connect:172 hardcoded 0.83 → money.calculatePayout() | ✓ | d05321a | Raderade `payout_cleaner`-action (rad 140-230, 91 rader) istället för att migrera. 0 callers + bruten mot DB-schema (3 kolumner saknas: `stripe_transfer_id`, `payout_amount`, `paid_out_at`). Transfer-logiken finns i `money.ts::triggerStripeTransfer`. EF:n behålls aktiv för 6 onboarding-callers. |
 | §1.4 | 144 | admin.html:markPaid → EF, idempotency + transfer-verifiering | ✓ | adc50c7, 3d97029, eb898fe | swishPay borttaget samtidigt (eb898fe) |
 | §1.5 | 145 | Reconciliation-cron | ✓ | f403ec2, 945b9f8, 5bffaf1 | Auto-activation + auto-rollback i kod men ej i v3.md – hygien-task |
 | §1.6 | 146 | Stripe integration-test i CI (full booking → checkout → transfer → payout) | ◯ Ej påbörjad | – | Strukturellt viktigt för skalning |
@@ -25,10 +25,10 @@
 
 ## Sammanfattning
 
-- **Klart:** §1.1, §1.4, §1.5, §1.7 (4 av 10)
+- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7 (5 av 10)
 - **Superseded:** §1.2 (1 av 10) – verifierad mot produktionsdata 20 apr
 - **Delvis:** §1.10 (1 av 10)
-- **Ej påbörjad:** §1.3, §1.6, §1.8, §1.9 (4 av 10)
+- **Ej påbörjad:** §1.6, §1.8, §1.9 (3 av 10)
 
 ## Öppna plan-beslut
 

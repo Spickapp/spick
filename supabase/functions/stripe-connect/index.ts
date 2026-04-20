@@ -1,10 +1,15 @@
 /**
- * stripe-connect – Automatisk utbetalning till städare via Stripe Connect
+ * stripe-connect – Stripe Connect onboarding för städare
  *
- * Flöde:
- * 1. Städare onboardas med Stripe Express (Connect)
- * 2. Efter betald bokning: Spick håller 17% provision, betalar ut 83% till städaren
- * 3. Utbetalning sker automatiskt 1-2 bankdagar efter städning
+ * Actions:
+ * - onboard_cleaner: Skapar Stripe Express-konto + account_link
+ * - check_status: Kollar onboarding-status (details_submitted + charges_enabled)
+ * - refresh_account_link: Ny account_link för existerande konto (om onboarding avbrutits)
+ *
+ * Transfer-logik (utbetalning till städare efter bokning) ligger i
+ * _shared/money.ts::triggerStripeTransfer (§1.1-infrastruktur, aktiverad
+ * via §1.4 admin-mark-payouts-paid EF). Tidigare payout_cleaner-action
+ * här var död kod (0 callers, bruten mot DB-schema) och raderades i §1.3.
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -138,98 +143,8 @@ serve(async (req) => {
       });
     }
 
-    // ── 2. Betala ut till städare efter genomförd städning ────
-    if (action === "payout_cleaner") {
-      const { booking_id } = params;
 
-      // Hämta bokning + städare
-      const { data: booking } = await sb.from("bookings").select("*, cleaners(stripe_account_id, full_name, email)").eq("id", booking_id).single();
-
-      if (!booking) throw new Error("Bokning hittades inte");
-      if (booking.payout_status === "paid") {
-        return new Response(JSON.stringify({ ok: false, reason: "Redan utbetald" }), {
-          headers: { "Content-Type": "application/json", ...CORS },
-        });
-      }
-
-      const cleaner         = booking.cleaners;
-      let stripeAccountId = cleaner?.stripe_account_id;
-
-      // If cleaner belongs to a company, use company's Stripe account
-      if (!stripeAccountId && booking.cleaner_id) {
-        const { data: fullCleaner } = await sb.from("cleaners").select("company_id").eq("id", booking.cleaner_id).single();
-        if (fullCleaner?.company_id) {
-          const { data: company } = await sb.from("companies").select("stripe_account_id").eq("id", fullCleaner.company_id).single();
-          if (company?.stripe_account_id) {
-            stripeAccountId = company.stripe_account_id;
-          }
-        }
-      }
-
-      if (!stripeAccountId) throw new Error("Städaren saknar Stripe-konto");
-
-      const totalKr      = Number(booking.total_price);       // fulla priset i kronor
-      const cleanerShare = Math.round(totalKr * 0.83);      // 83% till städaren i kronor
-      const cleanerOre   = cleanerShare * 100;               // konvertera till öre
-
-      // Skapa transfer till städarens Stripe-konto
-      const transfer = await stripe("/transfers", "POST", {
-        amount: cleanerOre,
-        currency: "sek",
-        destination: stripeAccountId,
-        description: `Spick bokning ${booking_id} – ${booking.service_type || "Städning"} ${booking.booking_date || ""}`,
-        "metadata[booking_id]": booking_id,
-        "metadata[cleaner_id]": booking.cleaner_id,
-      });
-
-      if (transfer.error) throw new Error(transfer.error.message);
-
-      // Uppdatera bokning
-      await sb.from("bookings").update({
-        payout_status:    "paid",
-        payout_amount:    cleanerShare,
-        stripe_transfer_id: transfer.id,
-        paid_out_at:      new Date().toISOString(),
-      }).eq("id", booking_id);
-
-      // Mail till städaren
-      if (cleaner?.email) {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: FROM,
-            to: cleaner.email,
-            subject: `💰 Utbetalning ${cleanerShare.toLocaleString("sv")} kr – Spick`,
-            html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#F7F7F5;padding:32px">
-<div style="max-width:520px;margin:auto;background:#fff;border-radius:16px;padding:32px">
-  <h2 style="color:#0F6E56">Utbetalning skickad! 💰</h2>
-  <p>Hej ${cleaner.full_name?.split(" ")[0]}!</p>
-  <p>Din ersättning för bokning ${booking.booking_date || ""} har skickats till ditt bankkonto.</p>
-  <div style="background:#F7F7F5;border-radius:12px;padding:20px;margin:16px 0">
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4">
-      <span style="color:#9B9B95">Tjänst</span><span style="font-weight:600">${booking.service_type || "Hemstädning"}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4">
-      <span style="color:#9B9B95">Datum</span><span style="font-weight:600">${booking.booking_date || "–"}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:12px 0">
-      <span style="color:#9B9B95">Utbetalt</span><span style="font-weight:700;color:#0F6E56;font-size:18px">${cleanerShare.toLocaleString("sv")} kr ✓</span>
-    </div>
-  </div>
-  <p style="font-size:13px;color:#9B9B95">Pengarna når ditt konto inom 1–2 bankdagar.</p>
-  <a href="${BASE_URL}/portal" style="display:inline-block;background:#0F6E56;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;font-weight:600">Se mina utbetalningar →</a>
-</div></body></html>`,
-          }),
-        });
-      }
-
-      return new Response(JSON.stringify({ ok: true, transfer_id: transfer.id, amount: cleanerShare }), {
-        headers: { "Content-Type": "application/json", ...CORS },
-      });
-    }
-
-    // ── 3b. Generera ny account_link för EXISTERANDE Stripe-konto ──
+    // ── 2. Generera ny account_link för EXISTERANDE Stripe-konto ──
     //        Används när cleaner behöver slutföra eller uppdatera onboarding
     //        UTAN att skapa nytt account.
     if (action === "refresh_account_link") {
