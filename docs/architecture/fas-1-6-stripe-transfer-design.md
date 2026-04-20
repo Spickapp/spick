@@ -143,6 +143,62 @@ CREATE INDEX idx_payout_audit_created ON payout_audit_log(created_at);
 
 **Varför inte `payout_status` här:** Separation of concerns. F1.6 = transfer skickas. F1.7 = admin markerar som betalt (verifierar transfer). Förhindrar race där UI visar "paid" innan reconciliation bekräftat.
 
+### 3.6 Stripe mode isolation (Fas 1.6.1, EJ i 1.6)
+
+**Beslut:** Fas 1.6 implementeras med Stripe-mocks i tester. Riktig integration mot Stripe test mode skjuts till Fas 1.6.1.
+
+**Motivation:**
+
+- Spick kör Stripe LIVE i prod idag (`STRIPE_SECRET_KEY=sk_live_xxx`).
+- Att byta till test-nycklar bryter Rafael/Zivar-onboarding + kund-bokningar (live-kunder mittens Sverige).
+- Behöver mode-isolation så live + test samexisterar utan cross-contamination.
+
+**Planerad implementation i Fas 1.6.1 (2-3h scope):**
+
+1. Ny `platform_setting`:
+   ```sql
+   INSERT INTO platform_settings (key, value)
+   VALUES ('stripe_mode', 'live') ON CONFLICT DO NOTHING;
+   ```
+   Global default, kan overrides per cleaner.
+
+2. Ny `cleaner`-kolumn:
+   ```sql
+   ALTER TABLE cleaners ADD COLUMN is_test_account boolean DEFAULT false;
+   ```
+   Per-cleaner override. Test-cleaners (`farrehagge+test7` m.fl.) flaggas som `is_test_account=true`.
+
+3. Dubbla secrets i Supabase:
+   - `STRIPE_SECRET_KEY` (befintlig, `sk_live_xxx`)
+   - `STRIPE_SECRET_KEY_TEST` (ny, `sk_test_xxx`)
+
+4. Ny helper i `_shared/stripe-client.ts` (ny fil):
+   ```ts
+   export function getStripeClient(cleaner: Cleaner): Stripe {
+     const useTestMode = cleaner.is_test_account === true;
+     const apiKey = useTestMode
+       ? Deno.env.get('STRIPE_SECRET_KEY_TEST')
+       : Deno.env.get('STRIPE_SECRET_KEY');
+     return new Stripe(apiKey, { apiVersion: '2023-10-16' });
+   }
+   ```
+
+5. Alla EFs som rör Stripe läser mode via denna helper. `money.ts` → `getStripeClient(cleaner)` i `triggerStripeTransfer`.
+
+**Staging-ambition (Fas 10 Observability):**
+
+Långsiktigt korrekt lösning är separat Supabase-project för staging. Det kräver:
+- Ny project i Supabase Dashboard
+- Separate env-variabler
+- Deploy-pipeline
+
+Ej scope för Fas 1.6.x. Flaggat för Fas 10.
+
+**Konsekvens för Fas 1.6-tester:**
+- Deno-tester i 1.6: full coverage med Stripe-mocks (15 scenarier).
+- Integration-tester: skjuts till 1.6.1 efter mode-isolation klar.
+- CI-pipeline oförändrad i 1.6.
+
 ---
 
 ## 4. API-signatur
@@ -269,38 +325,57 @@ Ingen prod-impact i F1.6.
 14. Dubbel-anrop (samma idempotency_key) → 2:a returnerar existing entry
 15. Company-cleaner: destination = company-owner's `stripe_account_id`
 
-### 9.2 Integration-test (Stripe test mode)
+### 9.2 Integration-test — **flyttat till Fas 1.6.1**
 
-E2E: full booking → payment (Stripe test card) → triggerStripeTransfer → verifiera `tr_xxx` i Stripe Dashboard.
+E2E mot Stripe test mode (full booking → test-card → triggerStripeTransfer → verifiera `tr_xxx`) kräver mode-isolation (§3.6). Skjuts till Fas 1.6.1 när:
 
-**Beroende:** Stripe test-konto aktivt (se §11 öppna frågor).
+- `STRIPE_SECRET_KEY_TEST` är satt i Supabase Secrets
+- `getStripeClient(cleaner)` väljer test-nyckel baserat på `is_test_account`-flagga
+- Minst en test-cleaner har `stripe_account_id` genererat via test mode
+
+I Fas 1.6 ersätts integration-testet av Deno-mocks (§9.1) — 15 scenarier täcker alla error-paths deterministiskt utan nätverksberoende.
 
 ---
 
-## 10. Scope för F1.6-implementation
+## 10. Scope — split F1.6 + F1.6.1
+
+### 10.1 Fas 1.6 (4-6h, mocks-only)
 
 | Artefakt | Rad-estimat |
 |----------|-------------|
 | `money.triggerStripeTransfer` + error-klasser | ~250 rader |
-| `_shared/stripe.ts` (återanvändbar `stripe()`-helper) | ~40 rader |
+| `_shared/stripe.ts` (återanvändbar `stripe()`-helper, **mode-agnostisk**) | ~40 rader |
 | `20260421_f1_6_payout_attempts.sql` | ~30 rader |
 | `20260421_f1_6_payout_audit_log.sql` | ~30 rader |
-| Seed `payout_trigger_mode` (inline i migration eller separat) | ~5 rader |
-| `_tests/money/stripe-transfer.test.ts` | ~400 rader (15 tester + mock) |
-| Integration-test (valfri) | ~100 rader |
+| Seed `payout_trigger_mode='immediate'` | ~5 rader |
+| `_tests/money/stripe-transfer.test.ts` (15 mock-scenarier) | ~400 rader |
 | Design-dok §4.4 uppdatering | +40 rader |
-| **Total** | **~900 rader** |
+| **Total F1.6** | **~800 rader** |
+
+### 10.2 Fas 1.6.1 (2-3h, mode-isolation + integration)
+
+| Artefakt | Rad-estimat |
+|----------|-------------|
+| `_shared/stripe-client.ts` (`getStripeClient(cleaner)`) | ~50 rader |
+| Migration `stripe_mode`-seed + `cleaners.is_test_account`-kolumn | ~20 rader |
+| Refactor `money.triggerStripeTransfer` att använda `getStripeClient` | ~15 rader |
+| `_tests/money/stripe-transfer-integration.test.ts` (4 scenarier) | ~200 rader |
+| `STRIPE_SECRET_KEY_TEST`-setup i Supabase Secrets (manuellt) | 0 rader |
+| **Total F1.6.1** | **~285 rader** |
 
 ---
 
-## 11. Öppna frågor till Farhad
+## 11. Beslut 2026-04-20 (Farhads svar)
 
-1. **Stripe test-account:** Är `acct_test_xxx` aktivt och har test-cleaner onboardat? Krävs för §9.2 integration-test.
-2. **Stripe API-version:** Nuvarande pin `2023-10-16` är 2+ år gammal. Uppgradera till senaste stable (~`2025-xx-xx`) i F1.6 eller behålla tills Fas 8? **Rekommendation:** behåll `2023-10-16` i F1.6 för minimal risk, uppgradera i separat sprint.
-3. **Manuell transfer-trigger i F1.6 eller F1.7?** Admin kan behöva trigga transfer för testbokning innan `markPayoutPaid`-EF finns. **Alternativ:**
-   - **A:** F1.6 exporterar endast money.ts-funktionen, admin-knapp väntar till F1.7. (Minimal scope)
-   - **B:** F1.6 inkluderar ny EF `trigger-payout-manual` som wrappar money.ts. (Större scope +1-2h)
-4. **`escrow_enabled`-toggle timing:** Aktiveras i F1.9 tillsammans med `money_layer_enabled`, eller senare i Fas 8? **Rekommendation:** F1.9 för att få end-to-end-verifiering före Fas 8.
+1. **Stripe test-account:** Test-API-nycklar finns (`pk_test_51TEsG3FQW3kXx`, `sk_test_51TEsG3FQW3kXx`). Test-cleaners i DB (`farrehagge+test7`, `farrehagge-test7`) saknar `stripe_account_id` — behöver onboardas via test mode. **Integration-test-setup skjuts till Fas 1.6.1.**
+
+2. **Stripe API-version:** Behåll `2023-10-16` i Fas 1.6. Uppgradering till senaste stable hanteras i **Fas 2 (migrations-sanering)** som separat sprint.
+
+3. **Manuell transfer-trigger:** **Skjuts till Fas 1.7** (`markPayoutPaid`-EF). F1.6 exporterar endast `money.triggerStripeTransfer()` — ingen EF-wrapper.
+
+4. **Flag-aktivering (tvåstegs):**
+   - **Fas 1.9:** `money_layer_enabled='true'` + `payout_trigger_mode='immediate'` (end-to-end-verifiering utan escrow).
+   - **Fas 8:** `escrow_enabled='true'` + `payout_trigger_mode='on_attest'` (full escrow-flöde).
 
 ---
 
@@ -315,4 +390,4 @@ E2E: full booking → payment (Stripe test card) → triggerStripeTransfer → v
 
 ---
 
-**Slut.** Nästa steg: Farhad bekräftar §3.1-3.4 beslut + §11 öppna frågor. Sedan F1.6-implementation i separat session.
+**Slut.** §3.1-3.6 beslutade, §11 besvarad 2026-04-20. Nästa steg: F1.6-implementation (mocks-only, 4-6h) i separat session → F1.6.1 (mode-isolation + integration, 2-3h) därefter.
