@@ -738,11 +738,16 @@ function syncRutToggleVisibility() {
   }
 }
 
+// ── SAFETY FALLBACK ──────────────────────────────────────────────────────────
+// Säker fallback när DB-kedjan bryts. Ej default-pris, ej business-konfig.
+// Primärväg: service_price (DB) > cleaner.hourly_rate (DB) > SAFETY_FALLBACK_RATE
+const SAFETY_FALLBACK_RATE = 350;
+
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state = {
   service: '', hours: 3, sqm: 0,
   date: '', time: '',
-  cleanerId: null, cleanerName: '', cleanerRate: 350, cleanerCity: '',
+  cleanerId: null, cleanerName: '', cleanerRate: SAFETY_FALLBACK_RATE, cleanerCity: '',
   frequency: 'once', frequencyDiscount: 0,
   useRut: true, pnr: '',
   keyType: '', keyInfo: '',
@@ -808,7 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(e => console.warn('[SPICK] Company fetch failed:', e));
   }
   const preCleanerName = p.get('name') ? decodeURIComponent(p.get('name')) : '';
-  const preRate        = +(p.get('rate') || 350);
+  const preRate        = +(p.get('rate') || SAFETY_FALLBACK_RATE);
   // Validera UUID-format (skydda mot SQL-injection via Supabase REST)
   const isUUID = preCleanerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(preCleanerId);
   if (isUUID) {
@@ -934,7 +939,7 @@ function setStep(n) {
       document.getElementById('s3-date').textContent = state.date || '–';
       document.getElementById('s3-time').textContent = state.time || '–';
       document.getElementById('s3-cleaner').textContent = state.cleanerName ? '🧹 ' + state.cleanerName : '';
-      var rate = state.cleanerRate || 350;
+      var rate = state.cleanerRate || SAFETY_FALLBACK_RATE;
       var hrs = state.hours || 3;
       var gross = rate * hrs;
       document.getElementById('s3-price').textContent = gross + ' kr' + (state.customerType === 'privat' && document.getElementById('rut-knob')?.classList.contains('on') ? ' (RUT: ' + Math.floor(gross * 0.5) + ' kr)' : '');
@@ -1332,7 +1337,7 @@ async function goStep2() {
       const verified = await verifyRes.json();
       if (!Array.isArray(verified) || verified.length === 0) {
         // Städare finns inte / ej godkänd — rensa
-        state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = 350;
+        state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = SAFETY_FALLBACK_RATE;
         setStep(2); await loadAvailableCleaners(); return;
       }
       const cl = verified[0];
@@ -1341,14 +1346,14 @@ async function goStep2() {
         ? ((state.services && state.services.length) ? state.services.every(function(sv){return cl.services.some(function(s){return s.toLowerCase().includes(sv.toLowerCase().slice(0,3))})}) : cl.services.some(s => s.toLowerCase().includes(state.service.toLowerCase().slice(0,3))))
         : true; // Om inga tjänster listade, acceptera
       if (!svcMatch) {
-        state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = 350;
+        state.cleanerId = null; state.cleanerName = ''; state.cleanerRate = SAFETY_FALLBACK_RATE;
         setStep(2); await loadAvailableCleaners(); return;
       }
       // 3. Uppdatera state med DB-data (inte URL som kan manipuleras)
       state.cleanerName = (cl.company_display_name || cl.company_name)
         ? (cl.company_display_name || cl.company_name) + ' — ' + (cl.full_name || '').split(' ')[0]
         : cl.full_name;
-      state.cleanerRate = cl.hourly_rate || 350;
+      state.cleanerRate = cl.hourly_rate || SAFETY_FALLBACK_RATE;
       state.cleanerCity = cl.city || '';
     } catch(e) {
       // DB-koll misslyckades — fortsätt till steg 2 som fallback
@@ -1381,7 +1386,7 @@ async function goStep2() {
     // Inte tillgänglig — rensa pre-val och visa steg 2 med alternativ
     state.cleanerId = null;
     state.cleanerName = '';
-    state.cleanerRate = 350;
+    state.cleanerRate = SAFETY_FALLBACK_RATE;
   }
   setStep(2);
   await loadAvailableCleaners();
@@ -1972,7 +1977,7 @@ async function loadAvailableCleaners() {
       filterBanner.innerHTML = '<span><strong>' + escHtml(compName) + '</strong> \u2014 ' + cleaners.length + ' st\u00e4dare</span><a href="boka.html" style="color:#1E40AF;font-size:.78rem;font-weight:600">Visa alla st\u00e4dare \u2192</a>';
     }
     // Sortera: betyg → antal uppdrag → pris (lokal fallback)
-    cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||350) - (b.hourly_rate||350));
+    cleaners.sort((a,b) => (b.avg_rating||0) - (a.avg_rating||0) || (b.review_count||0) - (a.review_count||0) || (a.hourly_rate||SAFETY_FALLBACK_RATE) - (b.hourly_rate||SAFETY_FALLBACK_RATE));
 
     // Optimera sortering via matchningsmotorn (optional – fallback till lokal om EF misslyckas)
     try {
@@ -2018,7 +2023,7 @@ async function loadAvailableCleaners() {
           }
         }
       if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
-      return sp ? sp.price : (cl.hourly_rate || 350);
+      return sp ? sp.price : (cl.hourly_rate || SAFETY_FALLBACK_RATE);
     });
     var hasPerSqm = cleaners.some(function(cl) {
       var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
@@ -2075,7 +2080,7 @@ async function loadAvailableCleaners() {
           }
         }
         if (sp && sp.price_type === 'per_sqm' && state.sqm) return sp.price * state.sqm;
-        return sp ? sp.price : (cl.hourly_rate || 350);
+        return sp ? sp.price : (cl.hourly_rate || SAFETY_FALLBACK_RATE);
       });
       var hasPerSqm = cleaners.some(function(cl) {
         var _primarySvc = (state.services && state.services.length) ? state.services[0] : state.service;
@@ -2166,7 +2171,7 @@ function renderCleaners(cleaners) {
     var totalReviews = cleaners.reduce(function(s,c){return s+(c.review_count||0)},0);
     var hasRatings = avgRating > 0 && totalReviews > 0;
     var svcPrice = bestCleaner._servicePrices && bestCleaner._servicePrices.find(function(p){return p.service_type===state.service});
-    var rate = svcPrice ? svcPrice.price : (bestCleaner.hourly_rate || 350);
+    var rate = svcPrice ? svcPrice.price : (bestCleaner.hourly_rate || SAFETY_FALLBACK_RATE);
     var isPricePerSqm = svcPrice && svcPrice.price_type === 'per_sqm';
     var rutRate = Math.floor(rate * 0.5);
     var ini = compDisplayName.split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase();
@@ -2221,7 +2226,7 @@ function renderCleaners(cleaners) {
     const col = COLORS[(cl.full_name||'').charCodeAt(0) % COLORS.length];
     var svcPrice = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
     var isPricePerSqm = svcPrice && svcPrice.price_type === 'per_sqm';
-    var rate = svcPrice ? svcPrice.price : (cl.hourly_rate || 350);
+    var rate = svcPrice ? svcPrice.price : (cl.hourly_rate || SAFETY_FALLBACK_RATE);
     var rutRate = Math.floor(rate * 0.5);
     const hasRatings = cl.avg_rating != null && cl.review_count > 0 && (!(window.preCompanyId && window.companyShowIndividualRatings === false));
     const services = Array.isArray(cl.services) ? cl.services.slice(0,3) : typeof cl.services === 'string' ? cl.services.split(',').slice(0,3).map(s=>s.trim()).filter(Boolean) : [];
@@ -2322,7 +2327,7 @@ function renderCleaners(cleaners) {
       state.cleanerName = (preSelected.company_display_name || preSelected.company_name)
         ? (preSelected.company_display_name || preSelected.company_name) + ' — ' + (preSelected.full_name || '').split(' ')[0]
         : preSelected.full_name;
-      state.cleanerRate = preSelected.hourly_rate || 350;
+      state.cleanerRate = preSelected.hourly_rate || SAFETY_FALLBACK_RATE;
       state.cleanerCity = preSelected.city || '';
       updateSidebar();
       // Visa "Fortsätt"-knapp
@@ -2336,7 +2341,7 @@ function renderCleaners(cleaners) {
       const oldName = state.cleanerName || 'Din valda städare';
       state.cleanerId = null;
       state.cleanerName = '';
-      state.cleanerRate = 350;
+      state.cleanerRate = SAFETY_FALLBACK_RATE;
       state.cleanerCity = '';
       updateSidebar();
       // Visa info-banner ovanför listan
@@ -2412,7 +2417,7 @@ function selectCleaner(cl, cardEl) {
   // Per-tjänst-pris
   var _sp = cl._servicePrices && cl._servicePrices.find(function(p) { return p.service_type === state.service; });
   state._isPricePerSqm = _sp && _sp.price_type === 'per_sqm';
-  state.cleanerRate = _sp ? _sp.price : (cl.hourly_rate || 350);
+  state.cleanerRate = _sp ? _sp.price : (cl.hourly_rate || SAFETY_FALLBACK_RATE);
   // Dölj range-hint, visa städarens faktiska pris
   const prh = document.getElementById('price-range-hint');
   if (prh) prh.style.display = 'none';
