@@ -2567,6 +2567,12 @@ function getKeepRate() {
   return window.SPICK_COMMISSION.keepRate;
 }
 
+function getCommissionRate() {
+  if (!window.SPICK_COMMISSION)
+    throw new Error('getCommissionRate anropad före loadCommissionSettings');
+  return window.SPICK_COMMISSION.commissionPct / 100;
+}
+
 // ── INIT ────────────────────────────────────────────────────
 async function init() {
   const errEl = document.getElementById('login-err');
@@ -9179,7 +9185,7 @@ async function loadSalaryReport() {
     var comm = 0;
     bs.forEach(function(b) {
       var cl = commMap[b.id];
-      comm += cl ? (parseFloat(cl.commission_amt) || 0) : Math.round(((parseFloat(b.total_price) || 0) * 0.12) * 100) / 100;
+      comm += cl ? (parseFloat(cl.commission_amt) || 0) : Math.round(((parseFloat(b.total_price) || 0) * getCommissionRate()) * 100) / 100;
     });
     var net = gross - comm;
     var commPct = gross > 0 ? Math.round((comm / gross) * 100) : 12;
