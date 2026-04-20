@@ -355,33 +355,56 @@ export async function triggerStripeTransfer(
 
 **Obs:** I Fas 1 är denna **inte aktiv** — destination charges i `stripe-checkout` levererar redan pengarna vid betalning. Funktionen byggs men med flag-guard: `if (!await isEscrowEnabled(sb)) throw new Error('escrow_not_enabled')`. Aktiveras i Fas 8 när `separate-charges-and-transfers`-refactor körs.
 
-### 4.5 `markPayoutPaid(bookingId)` — Ny EF-callable (ersätter admin.html:markPaid)
+### 4.5 `markPayoutPaid(bookingId)` — Bekräftar + uppdaterar bookings
+
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** (Fas 1.7).
+
+**Artefakter:**
+- Implementation: [`money.ts:markPayoutPaid`](../../supabase/functions/_shared/money.ts)
+- Tester: [`_tests/money/mark-payout-paid.test.ts`](../../supabase/functions/_tests/money/mark-payout-paid.test.ts) (12 scenarier)
 
 ```ts
 export async function markPayoutPaid(
-  sb: SupabaseClient,
-  bookingId: string,
-  params: {
-    adminEmail: string;          // för audit
-    verifyStripeTransfer?: boolean; // default true i Fas 8, false i Fas 1
-    idempotencyKey?: string;
+  supabase: SupabaseClient,
+  booking_id: string,
+  opts?: {
+    skip_stripe_verify?: boolean;  // bypass GET /transfers/{id}-verifiering
+    admin_user_id?: string;        // audit-trail (details.admin_user_id)
+    force?: boolean;               // trigger + mark i en operation
+    _stripeRequest?: StripeRequestFn;  // DI för tester
   }
-): Promise<{
-  alreadyPaid: boolean;
-  payoutDate: string;
-  auditLogId: string;
-}>
+): Promise<PayoutAuditEntry>
 ```
 
-**Kontroll-flöde:**
+**Separation of concerns** (Fas 1.6 §3.5):
+- Fas 1.6 `triggerStripeTransfer`: skickar pengar via Stripe `/transfers`
+- Fas 1.7 `markPayoutPaid`: bekräftar transfer + uppdaterar `bookings`
 
-1. Idempotency: slå upp `payout_audit_log` på `idempotency_key`. Om finns → returnera `alreadyPaid=true`.
-2. Verifiera booking: `payment_status='paid'`, `payout_status IS NULL`, `cleaner_id NOT NULL`.
-3. (Fas 8) Verifiera Stripe Transfer existerar och matchar beräknat belopp.
-4. UPDATE `bookings SET payout_status='paid', payout_date=now()` — atomiskt med INSERT i `payout_audit_log`.
-5. Logga event `payout_marked_paid` (Fas 6 event-system).
+**Kontroll-flöde (10 steg):**
 
-**Ersätter:** [admin.html:4478-4502](../../admin.html:4478) som idag gör direkt PATCH med anon-nyckel.
+1. Feature flag (`money_layer_enabled`) — `MoneyLayerDisabled` om inaktiv.
+2. Fetch booking — `BookingNotFound` om saknas. Validera `payment_status='paid'`.
+3. Idempotency: om `payout_status='paid'` + audit finns → return existing entry. Self-healing om audit saknas (legacy-markPaid från admin.html).
+4. Fetch senaste `payout_attempts`:
+   - Saknas + `!force` → `PayoutPreconditionError`
+   - Saknas + `force=true` → kör `triggerStripeTransfer()` + rekursiv `markPayoutPaid()`
+   - `status !== 'paid'` → `PayoutPreconditionError`
+5. Fetch cleaner (för `getStripeClient` mode-selection).
+6. (Om `!skip_stripe_verify`) Verifiera Stripe Transfer via GET `/transfers/{id}`:
+   - `reversed === true` → `PayoutVerificationError`
+   - `amount !== expected_ore` → `PayoutVerificationError`
+7. UPDATE `bookings SET payout_status='paid', payout_date=now()` — `PayoutUpdateError` vid fel.
+8. INSERT `payout_audit_log` (`action='payout_confirmed'`, `severity='info'`).
+9. Return `PayoutAuditEntry` (status='paid').
+
+**Error-klasser** (nya i Fas 1.7):
+- `PayoutPreconditionError` — precond brytna
+- `PayoutVerificationError` — Stripe mismatch eller reversal
+- `PayoutUpdateError` — DB-fel vid bookings-update eller audit-insert
+
+**Idempotent:** safe att köra flera gånger. Rekursiv `force`-variant terminerar pga idempotency-check i steg 3 / attempt-check i steg 4.
+
+**Ersätter:** [admin.html:4478-4502](../../admin.html:4478) som idag gör direkt PATCH med anon-nyckel. Konsument-migrering sker i Fas 1.10.
 
 ### 4.6 `reconcilePayouts()` — Daglig cron
 

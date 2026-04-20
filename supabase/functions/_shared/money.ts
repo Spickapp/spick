@@ -182,6 +182,39 @@ export class TransferReversedError extends Error {
   }
 }
 
+/**
+ * Fas 1.7: kastas nar pre-conditions for markPayoutPaid() ar brutna
+ * (payment_status, attempt-state, saknad cleaner, saknad attempt).
+ */
+export class PayoutPreconditionError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`PayoutPreconditionError: ${message}`);
+    this.name = 'PayoutPreconditionError';
+  }
+}
+
+/**
+ * Fas 1.7: kastas nar Stripe Transfer-verifiering misslyckas
+ * (transfer reversed, amount mismatch, GET /transfers failar).
+ */
+export class PayoutVerificationError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`PayoutVerificationError: ${message}`);
+    this.name = 'PayoutVerificationError';
+  }
+}
+
+/**
+ * Fas 1.7: kastas vid DB-fel under bookings-uppdatering eller
+ * audit_log-insert. Inte retry-bar — kraver manuell granskning.
+ */
+export class PayoutUpdateError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`PayoutUpdateError: ${message}`);
+    this.name = 'PayoutUpdateError';
+  }
+}
+
 export type PayoutBreakdown = {
   total_price_sek: number;
   commission_pct: number;
@@ -1011,7 +1044,7 @@ async function _logTransferFailure(
 function _mapAuditLogToEntry(row: any): PayoutAuditEntry {
   const action = String(row.action ?? '');
   const status: PayoutAuditEntry['status'] =
-    action === 'transfer_created'
+    action === 'transfer_created' || action === 'payout_confirmed'
       ? 'paid'
       : action === 'transfer_failed' || action === 'transfer_reversed'
       ? 'failed'
@@ -1029,16 +1062,269 @@ function _mapAuditLogToEntry(row: any): PayoutAuditEntry {
 /**
  * Markera payout som betald (ersatter admin.html:4478 fake markPaid).
  *
- * IDEMPOTENT — safe att kora flera ganger med samma booking_id.
- * Verifierar Stripe Transfer INNAN DB-uppdatering.
+ * Primarkalla: docs/architecture/money-layer.md §4.5 + v3.1-plan F1.7.
  *
- * @todo Fas 1.7: implementera
+ * Separation of concerns (§3.5):
+ *   - Fas 1.6 triggerStripeTransfer: skickar pengar via Stripe /transfers
+ *   - Fas 1.7 markPayoutPaid: bekraftar transfer + uppdaterar bookings
+ *
+ * Flode (10 steg):
+ *   1. Feature flag (money_layer_enabled)
+ *   2. Fetch booking + validera payment_status='paid'
+ *   3. Idempotency: om payout_status='paid' → return existing audit
+ *   4. Fetch senaste payout_attempt
+ *      - Om ingen + !force → PayoutPreconditionError
+ *      - Om ingen + force=true → trigger transfer + rekursiv markPayoutPaid
+ *      - Om status != 'paid' → PayoutPreconditionError
+ *   5. Fetch cleaner for getStripeClient()
+ *   6. Verifiera Stripe Transfer (om !skip_stripe_verify):
+ *      - GET /transfers/{id}
+ *      - Check reversed-flag
+ *      - Verify amount matches
+ *   7. Update bookings.payout_status='paid' + payout_date=now()
+ *   8. Insert payout_audit_log (action='payout_confirmed')
+ *   9. Return PayoutAuditEntry
+ *
+ * IDEMPOTENT — safe att kora flera ganger med samma booking_id.
+ * Self-healing: om payout_status='paid' men ingen audit → skapar audit nu.
+ *
+ * @throws MoneyLayerDisabled — money_layer_enabled='false'
+ * @throws BookingNotFound — booking_id finns ej
+ * @throws PayoutPreconditionError — payment_status, attempt-state,
+ *         eller saknad cleaner blockerar
+ * @throws PayoutVerificationError — Stripe transfer reversed eller
+ *         amount mismatch
+ * @throws PayoutUpdateError — DB-fel under bookings-update eller audit-insert
  */
 export async function markPayoutPaid(
   supabase: SupabaseClient,
-  booking_id: string
+  booking_id: string,
+  opts?: {
+    skip_stripe_verify?: boolean;
+    admin_user_id?: string;
+    force?: boolean;
+    _stripeRequest?: StripeRequestFn;
+  }
 ): Promise<PayoutAuditEntry> {
-  throw new Error('Not implemented yet (Fas 1.7)');
+  // Steg 1: feature flag
+  if (!(await isMoneyLayerEnabled(supabase))) {
+    throw new MoneyLayerDisabled();
+  }
+
+  // Steg 2: fetch booking + validera
+  const { data: booking, error: bErr } = await supabase
+    .from('bookings')
+    .select(
+      'id, total_price, payment_status, payout_status, cleaner_id'
+    )
+    .eq('id', booking_id)
+    .maybeSingle();
+
+  if (bErr || !booking) {
+    throw new BookingNotFound(booking_id);
+  }
+
+  if (booking.payment_status !== 'paid') {
+    throw new PayoutPreconditionError(
+      `Cannot mark payout paid: payment_status='${booking.payment_status}'`,
+      { booking_id, payment_status: booking.payment_status }
+    );
+  }
+
+  // Steg 3: idempotency — om redan paid, returnera existing audit
+  if (booking.payout_status === 'paid') {
+    const { data: existing } = await supabase
+      .from('payout_audit_log')
+      .select('booking_id, stripe_transfer_id, amount_sek, action, created_at')
+      .eq('booking_id', booking_id)
+      .eq('action', 'payout_confirmed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) return _mapAuditLogToEntry(existing);
+
+    // Self-healing: payout_status='paid' men ingen audit — fortsatt
+    // och skapa audit nu (datakorruption fran legacy markPaid).
+    console.warn(
+      `[money.ts] Data drift: payout_status=paid but no audit for ${booking_id} — self-healing`
+    );
+  }
+
+  // Steg 4: fetch senaste payout_attempt
+  const { data: attempts } = await supabase
+    .from('payout_attempts')
+    .select(
+      'id, stripe_transfer_id, status, amount_sek, destination_account_id, attempt_count'
+    )
+    .eq('booking_id', booking_id)
+    .order('attempt_count', { ascending: false })
+    .limit(1);
+
+  const attempt = attempts?.[0];
+
+  if (!attempt) {
+    if (!opts?.force) {
+      throw new PayoutPreconditionError(
+        'No payout_attempt found. Run triggerStripeTransfer first or use force=true',
+        { booking_id }
+      );
+    }
+    // Force-mode: trigger transfer + rekursiv markPayoutPaid.
+    // Rekursionen terminerar pga attempt nu finns i steg 4 nasta varv.
+    await triggerStripeTransfer(supabase, booking_id, {
+      force: true,
+      _stripeRequest: opts?._stripeRequest,
+    });
+    return markPayoutPaid(supabase, booking_id, opts);
+  }
+
+  if (attempt.status !== 'paid') {
+    throw new PayoutPreconditionError(
+      `Latest payout_attempt has status='${attempt.status}', must be 'paid'`,
+      { booking_id, attempt_id: attempt.id, status: attempt.status }
+    );
+  }
+
+  // Steg 5: fetch cleaner for getStripeClient
+  const { data: cleaner, error: cErr } = await supabase
+    .from('cleaners')
+    .select('id, is_test_account, stripe_account_id')
+    .eq('id', booking.cleaner_id)
+    .maybeSingle();
+
+  if (cErr || !cleaner) {
+    throw new PayoutPreconditionError('Cleaner not found', {
+      booking_id,
+      cleaner_id: booking.cleaner_id,
+    });
+  }
+
+  // Steg 6: verifiera Stripe Transfer
+  if (!opts?.skip_stripe_verify) {
+    if (!attempt.stripe_transfer_id) {
+      throw new PayoutPreconditionError(
+        'Attempt marked paid but no stripe_transfer_id',
+        { booking_id, attempt_id: attempt.id }
+      );
+    }
+
+    let globalStripeMode: string | null = null;
+    try {
+      globalStripeMode = await getSettingString(supabase, 'stripe_mode');
+    } catch (_e) {
+      globalStripeMode = 'live';
+    }
+    const stripeClient = getStripeClient({
+      is_test_account: cleaner.is_test_account ?? false,
+      global_stripe_mode: globalStripeMode,
+    });
+    const stripeReq = opts?._stripeRequest ?? defaultStripeRequest;
+
+    let stripeResp;
+    try {
+      stripeResp = await stripeReq(
+        `/transfers/${attempt.stripe_transfer_id}`,
+        'GET',
+        {},
+        { apiKey: stripeClient.apiKey }
+      );
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      throw new PayoutVerificationError(
+        `Failed to verify Stripe transfer: ${errMsg}`,
+        { booking_id, stripe_transfer_id: attempt.stripe_transfer_id }
+      );
+    }
+
+    if (!stripeResp.ok) {
+      throw new PayoutVerificationError(
+        `Stripe ${stripeResp.status}: ${stripeResp.body?.error?.message ?? 'unknown'}`,
+        {
+          booking_id,
+          stripe_transfer_id: attempt.stripe_transfer_id,
+          stripe_status: stripeResp.status,
+        }
+      );
+    }
+
+    if (stripeResp.body?.reversed === true) {
+      throw new PayoutVerificationError(
+        'Stripe transfer has been reversed',
+        {
+          booking_id,
+          stripe_transfer_id: attempt.stripe_transfer_id,
+          amount_reversed: stripeResp.body.amount_reversed,
+        }
+      );
+    }
+
+    const expectedOre = attempt.amount_sek * 100;
+    if (stripeResp.body?.amount !== expectedOre) {
+      throw new PayoutVerificationError(
+        `Amount mismatch: expected ${expectedOre} ore, got ${stripeResp.body?.amount}`,
+        {
+          booking_id,
+          stripe_transfer_id: attempt.stripe_transfer_id,
+          expected: expectedOre,
+          actual: stripeResp.body?.amount,
+        }
+      );
+    }
+  }
+
+  // Steg 7: update bookings
+  const payoutDate = new Date().toISOString();
+  const { error: updateErr } = await supabase
+    .from('bookings')
+    .update({
+      payout_status: 'paid',
+      payout_date: payoutDate,
+    })
+    .eq('id', booking_id);
+
+  if (updateErr) {
+    throw new PayoutUpdateError(
+      `Failed to update bookings: ${updateErr.message}`,
+      { booking_id, error: updateErr.message }
+    );
+  }
+
+  // Steg 8: insert payout_audit_log
+  const auditDetails = {
+    attempt_id: attempt.id,
+    attempt_count: attempt.attempt_count,
+    stripe_transfer_id: attempt.stripe_transfer_id,
+    amount_sek: attempt.amount_sek,
+    destination_account_id: attempt.destination_account_id,
+    payout_date: payoutDate,
+    admin_user_id: opts?.admin_user_id ?? null,
+    verified_via_stripe: !opts?.skip_stripe_verify,
+  };
+
+  const { data: auditEntry, error: auditErr } = await supabase
+    .from('payout_audit_log')
+    .insert({
+      booking_id,
+      action: 'payout_confirmed',
+      severity: 'info',
+      amount_sek: attempt.amount_sek,
+      stripe_transfer_id: attempt.stripe_transfer_id,
+      details: auditDetails,
+      created_at: payoutDate,
+    })
+    .select('booking_id, stripe_transfer_id, amount_sek, action, created_at')
+    .single();
+
+  if (auditErr || !auditEntry) {
+    throw new PayoutUpdateError(
+      `Failed to insert payout_audit_log: ${auditErr?.message ?? 'unknown'}`,
+      { booking_id, error: auditErr?.message }
+    );
+  }
+
+  // Steg 9: return
+  return _mapAuditLogToEntry(auditEntry);
 }
 
 /**
