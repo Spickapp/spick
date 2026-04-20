@@ -705,6 +705,7 @@ body{top:0!important}
 .mb-step-label.active { color:var(--g); font-weight:600; }
 </style>
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico">
@@ -2545,34 +2546,6 @@ var _adminPreloadedCleaner = null;
 // Blockera auth-listener från att köra auto-load medan admin-checken pågår
 if (_viewAsId) { _cleanerLoadStarted = true; }
 
-// ── COMMISSION (platform_settings.commission_standard, Fas 1.10.4) ───
-async function loadCommissionSettings() {
-  const r = await fetch(
-    SPICK.SUPA_URL + '/rest/v1/platform_settings?key=eq.commission_standard&select=value',
-    { headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY } }
-  );
-  if (!r.ok) throw new Error('platform_settings fetch failed: HTTP ' + r.status);
-  const rows = await r.json();
-  if (!Array.isArray(rows) || rows.length === 0)
-    throw new Error('commission_standard saknas i platform_settings');
-  const pct = Number(rows[0].value);
-  if (!Number.isFinite(pct) || pct < 0 || pct > 100)
-    throw new Error('ogiltigt commission_standard: ' + rows[0].value);
-  window.SPICK_COMMISSION = { keepRate: (100 - pct) / 100, commissionPct: pct };
-}
-
-function getKeepRate() {
-  if (!window.SPICK_COMMISSION)
-    throw new Error('getKeepRate anropad före loadCommissionSettings');
-  return window.SPICK_COMMISSION.keepRate;
-}
-
-function getCommissionRate() {
-  if (!window.SPICK_COMMISSION)
-    throw new Error('getCommissionRate anropad före loadCommissionSettings');
-  return window.SPICK_COMMISSION.commissionPct / 100;
-}
-
 // ── INIT ────────────────────────────────────────────────────
 async function init() {
   const errEl = document.getElementById('login-err');
@@ -2914,7 +2887,7 @@ async function loadCleanerByEmail(email, authUserId) {
 
   cleaner = data;
   cleaner._email = email;
-  await loadCommissionSettings();
+  await window.SPICK_COMMISSION_READY;
   logActivity('login', { email: email });
 
   // Uppdatera last_active_at tyst i bakgrunden
