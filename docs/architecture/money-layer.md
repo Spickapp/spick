@@ -108,7 +108,7 @@ SQL-queries kördes 2026-04-20 mot prod. Output + analys finns i **Appendix C**.
 | `money_layer_enabled` | `'false'` | Huvud-flagga §8. Sätts `'true'` efter 21d parallell-verifiering. |
 | `smart_trappstege_enabled` | `'false'` | §5 steg 2. Aktiverar payout-impact i F1.7 (om beslut=ja). |
 | `escrow_enabled` | `'false'` | §4.4 + §14. Aktiveras i Fas 8. |
-| `rut_pct` | `'0.50'` | §4.3. 50% RUT-avdrag standard. |
+| `rut_pct` | `'50'` | §4.3. 50% RUT-avdrag. Heltal-procent — konsistent med `commission_standard`. |
 | `rut_yearly_cap_kr` | `'75000'` | §4.3. Skatteverket-cap 2026. |
 | `reconciliation_alert_threshold_kr` | `'1'` | §8. Minsta belopp-diff för Slack-alert. |
 
@@ -232,7 +232,9 @@ export async function calculateRutSplit(
 ): Promise<RutSplit>
 ```
 
-**Källa:** `platform_settings.rut_yearly_cap_kr` (default 75000), `platform_settings.rut_pct` (default 0.50), `services.rut_eligible` (framtida Fas 4). RUT-historik slår upp i `bookings` summering för kund året. Recurring-serier som korsar årsskifte hanteras per-bokning, inte per-serie (Fas 5 interop).
+**Källa:** `platform_settings.rut_yearly_cap_kr` (default `'75000'`), `platform_settings.rut_pct` (default `'50'`), `services.rut_eligible` (framtida Fas 4). RUT-historik slår upp i `bookings` summering för kund året. Recurring-serier som korsar årsskifte hanteras per-bokning, inte per-serie (Fas 5 interop).
+
+**Not om format:** `rut_pct` lagras som **heltal-procent** (`'50'`) i `platform_settings`, konsistent med `commission_standard` (`'12'`). Implementation dividerar med 100 vid beräkning: `rutAmountKr = Math.floor(grossKr * rutPct / 100)`. Detta mönster gör framtida procent-nycklar tydliga (`stripe_fee_pct`, `dispute_resolution_pct`). `Math.floor` används för RUT-belopp (Skatteverket-säkert, konservativt mot overclaim).
 
 ### 4.4 `triggerStripeTransfer(booking)` — Separate-transfer (Fas 8 escrow)
 
@@ -555,7 +557,7 @@ CREATE TABLE payout_audit_log (
 | 3 | `platform_settings.smart_trappstege_enabled` finns? | Nej. | F1.2 seed:ar `'false'`. |
 | 4 | `platform_settings.money_layer_enabled` finns? | Nej. | F1.2 seed:ar `'false'`. |
 | 5 | `platform_settings.escrow_enabled` finns? | Nej. | F1.2 seed:ar `'false'`. |
-| 6 | `platform_settings.rut_pct` finns? | Nej. | F1.2 seed:ar `'0.50'`. |
+| 6 | `platform_settings.rut_pct` finns? | Nej. | F1.2 seed:ar `'50'` (heltal-procent, konsistent med `commission_standard`). |
 | 7 | `bookings.spick_gross_sek` finns? | **Ja** (numeric). | F1.2 skriver ner värde vid bokningsskapande. |
 | 8 | `bookings.dispute_amount_sek` finns? | **Ja** (int, Fas 8-förberedelse). | money.ts stödjer från F1.2. |
 | 9 | `bookings.manual_override_price` finns? | **Ja** (int). | money.ts respekterar override om satt (ny §5 steg 0). |
