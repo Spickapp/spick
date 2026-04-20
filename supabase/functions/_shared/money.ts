@@ -26,6 +26,7 @@
  */
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
+import { stripeRequest as defaultStripeRequest, type StripeRequestFn } from './stripe.ts';
 
 // ============================================================
 // Types
@@ -142,6 +143,41 @@ export class RutSplitError extends Error {
   constructor(message: string, public details: Record<string, unknown>) {
     super(message);
     this.name = 'RutSplitError';
+  }
+}
+
+/**
+ * Kastas nar pre-conditions for triggerStripeTransfer() ar brutna
+ * (payment_status, onboarding_status, destination_account, etc.).
+ * Inte retry-bar.
+ */
+export class TransferPreconditionError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`TransferPreconditionError: ${message}`);
+    this.name = 'TransferPreconditionError';
+  }
+}
+
+/**
+ * Kastas nar Stripe avvisar eller retries ar uttomda.
+ * Details innehaller Stripe-svaret.
+ */
+export class TransferFailedError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`TransferFailedError: ${message}`);
+    this.name = 'TransferFailedError';
+  }
+}
+
+/**
+ * Kastas nar DB-write failar efter Stripe-success. Reversal
+ * (stripe.transfers.createReversal) har korts for att undvika
+ * dubbel-utbetalning. Kritisk incident - admin-alert i F1.10.
+ */
+export class TransferReversedError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`TransferReversedError: ${message}`);
+    this.name = 'TransferReversedError';
   }
 }
 
