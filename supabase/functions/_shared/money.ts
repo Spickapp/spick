@@ -1017,21 +1017,23 @@ export async function triggerStripeTransfer(
         { apiKey, idempotencyKey: `reverse-${idempotencyKey}` }
       );
       // Best-effort audit-log av reversal (kan failar igen, vi sväljer)
-      await supabase
-        .from('payout_audit_log')
-        .insert({
-          booking_id,
-          action: 'transfer_reversed',
-          severity: 'critical',
-          amount_sek: payout.cleaner_payout_sek,
-          stripe_transfer_id: stripeTransferId,
-          details: {
-            reason: 'db_write_failed_after_stripe_success',
-            db_error: errMsg,
-          },
-        })
-        .then(() => {})
-        .catch(() => {});
+      try {
+        await supabase
+          .from('payout_audit_log')
+          .insert({
+            booking_id,
+            action: 'transfer_reversed',
+            severity: 'critical',
+            amount_sek: payout.cleaner_payout_sek,
+            stripe_transfer_id: stripeTransferId,
+            details: {
+              reason: 'db_write_failed_after_stripe_success',
+              db_error: errMsg,
+            },
+          });
+      } catch {
+        // swallow — best-effort
+      }
     } catch (reversalErr) {
       throw new TransferReversedError(
         `Reversal attempt also failed: ${reversalErr instanceof Error ? reversalErr.message : String(reversalErr)}`,
@@ -1067,28 +1069,32 @@ async function _logTransferFailure(
   errorMsg: string
 ): Promise<void> {
   const completedAt = new Date().toISOString();
-  await supabase
-    .from('payout_attempts')
-    .update({
-      status: 'failed',
-      error_message: errorMsg,
-      completed_at: completedAt,
-    })
-    .eq('id', attemptId)
-    .then(() => {})
-    .catch(() => {});
+  try {
+    await supabase
+      .from('payout_attempts')
+      .update({
+        status: 'failed',
+        error_message: errorMsg,
+        completed_at: completedAt,
+      })
+      .eq('id', attemptId);
+  } catch {
+    // swallow — best-effort
+  }
 
-  await supabase
-    .from('payout_audit_log')
-    .insert({
-      booking_id: bookingId,
-      action: 'transfer_failed',
-      severity: 'alert',
-      amount_sek: amountSek,
-      details: { error: errorMsg, attempt_count: attemptCount },
-    })
-    .then(() => {})
-    .catch(() => {});
+  try {
+    await supabase
+      .from('payout_audit_log')
+      .insert({
+        booking_id: bookingId,
+        action: 'transfer_failed',
+        severity: 'alert',
+        amount_sek: amountSek,
+        details: { error: errorMsg, attempt_count: attemptCount },
+      });
+  } catch {
+    // swallow — best-effort
+  }
 }
 
 /**
