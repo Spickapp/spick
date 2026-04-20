@@ -8,20 +8,29 @@
 
 ## Status per sub-fas
 
-| Sub-fas | v3.md rad | Beskrivning | Status | Commits | Kommentar |
+| Sub-fas | v3.md rad | Beskrivning | Status | Ändring | Kommentar |
 |---------|----------:|-------------|:------:|---------|-----------|
-| §1.1 | 141 | `_shared/money.ts` skelett + helpers | ✓ | c21517d, 7236bee, 2cb48b8, 9813030, 8c1abe6, 7f04d69, f37b11e, 7827eeb, 51fd4e9 | Alla helpers klara (getCommission, calculatePayout, calculateRutSplit, triggerStripeTransfer) |
+| §1.1 | 141 | `_shared/money.ts` skelett + helpers | ✓ | Alla helpers implementerade | getCommission, calculatePayout, calculateRutSplit, triggerStripeTransfer |
 | §1.2 | 142 | stripe-checkout:88 hardcoded → money.getCommission() | ⊘ SUPERSEDED | – | stripe-checkout EF är död kod (0 invocations 20 dgr Dashboard 20 apr + 0 callers grep). Aktiv betalningsväg är `booking-create` som redan läser commission från platform_settings (rad 184-201). §1.2 i praktiken avklarad via booking-create. |
-| §1.3 | 143 | stripe-connect:172 hardcoded 0.83 → money.calculatePayout() | ✓ | d05321a | Raderade `payout_cleaner`-action (rad 140-230, 91 rader) istället för att migrera. 0 callers + bruten mot DB-schema (3 kolumner saknas: `stripe_transfer_id`, `payout_amount`, `paid_out_at`). Transfer-logiken finns i `money.ts::triggerStripeTransfer`. EF:n behålls aktiv för 6 onboarding-callers. |
-| §1.4 | 144 | admin.html:markPaid → EF, idempotency + transfer-verifiering | ✓ | adc50c7, 3d97029, eb898fe | swishPay borttaget samtidigt (eb898fe) |
-| §1.5 | 145 | Reconciliation-cron | ✓ | f403ec2, 945b9f8, 5bffaf1 | Auto-activation + auto-rollback i kod men ej i v3.md – hygien-task |
+| §1.3 | 143 | stripe-connect:172 hardcoded 0.83 → money.calculatePayout() | ✓ | payout_cleaner-action raderad (91 rader) | 0 callers + bruten mot DB-schema (3 kolumner saknas). Transfer-logiken finns i `money.ts::triggerStripeTransfer`. EF:n behålls aktiv för 6 onboarding-callers. |
+| §1.4 | 144 | admin.html:markPaid → EF, idempotency + transfer-verifiering | ✓ | markPaid → EF, swishPay borttagen | Idempotency + Stripe transfer-verifiering via `money.ts` |
+| §1.5 | 145 | Reconciliation-cron | ✓ | Reconciliation-cron aktiverad | Auto-activation + auto-rollback i kod men ej i v3.md – hygien-task |
 | §1.6 | 146 | Stripe integration-test i CI (full booking → checkout → transfer → payout) | ◯ Ej påbörjad | – | Strukturellt viktigt för skalning |
-| §1.7 | 147 | `js/commission.js` arkivering eller integrering | ✓ | 5cce033, 641226e | Arkiverad (display-only). Läckage-fix 641226e fångade stadare-dashboard.html:9182. Nya helpers getKeepRate() + getCommissionRate() på plats. |
+| §1.7 | 147 | `js/commission.js` arkivering eller integrering | ✓ | commission.js arkiverad, helpers getKeepRate + getCommissionRate | Display-only Smart Trappstege (INAKTIV i prod). Läckage-fix fångade stadare-dashboard.html:9182. |
 | §1.8 | 148 | Hardcoded hourly-priser (349/350/399) → platform_settings | ◯ Ej påbörjad | – | v3 listar 3 filer (admin/bli-stadare/join-team). boka.html (17 träffar) utanför planen – **plan-beslut #1 väntar**. |
 | §1.9 | 149 | faktura.html commission_pct‖17-fallback → money.getCommission() | ◯ Ej påbörjad | – | Scope-verifiering 20 apr: 15 hardcoded commission-ställen i 7 frontend-filer (utvidgning utöver faktura.html). |
-| §1.10 | 150 | Dokumentera money-layer i docs/architecture/money-layer.md | ◑ Delvis | – | Fil existerar, refererar till code-snippets som ändrats i §1.4/§1.7. Behöver uppdateras. |
+| §1.10 | 150 | Dokumentera money-layer i docs/architecture/money-layer.md | ◑ Delvis | Delvis dokumenterad | Fil existerar, refererar till code-snippets som ändrats i §1.4/§1.7. Behöver uppdateras. |
 
 **Status-symboler:** ✓ klar · ◯ ej påbörjad · ◑ delvis · ⊘ superseded
+
+## Git-historik
+
+Commits per sub-fas hittas via:
+```bash
+git log --grep="§1.X" --oneline
+```
+
+Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `§X.Y (v3.md:rad): beskrivning`.
 
 ## Sammanfattning
 
