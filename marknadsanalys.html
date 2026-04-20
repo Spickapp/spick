@@ -3,6 +3,7 @@
 <head>
 <script>if(top!==self){top.location=self.location}</script>
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
 <script>
 // AUTH GUARD – dölj sidan tills session är verifierad
 document.documentElement.style.display='none';
@@ -966,8 +967,8 @@ function calc() {
 
   const adjRate   = rate * freq;
   const rutPrice  = adjRate / 2;
-  const cleanerPh = adjRate * 0.83;
-  const spickPh   = adjRate * 0.17;
+  const cleanerPh = adjRate * getKeepRate();
+  const spickPh   = adjRate * getCommissionRate();
   const wClean    = cleanerPh * hours;
   const mClean    = wClean * 4.33;
   const mSpick    = spickPh * hours * 4.33;
@@ -1007,7 +1008,7 @@ function calc() {
   rec.innerHTML = recText || '';
   rec.style.display = recText ? 'block' : 'none';
 }
-calc();
+SPICK_COMMISSION_READY.then(calc);
 </script>
 
 </body>

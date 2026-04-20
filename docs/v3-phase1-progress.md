@@ -18,7 +18,7 @@
 | §1.6 | 146 | Stripe integration-test i CI (full booking → checkout → transfer → payout) | ◯ Ej påbörjad | – | Strukturellt viktigt för skalning |
 | §1.7 | 147 | `js/commission.js` arkivering eller integrering | ✓ | commission.js arkiverad, helpers getKeepRate + getCommissionRate | Display-only Smart Trappstege (INAKTIV i prod). Läckage-fix fångade stadare-dashboard.html:9182. |
 | §1.8 | 148 | Hardcoded hourly-priser (349/350/399) → platform_settings | ◯ Ej påbörjad | – | v3 listar 3 filer (admin/bli-stadare/join-team). boka.html (17 träffar) utanför planen – **plan-beslut #1 väntar**. |
-| §1.9 | 149 | faktura.html commission_pct‖17-fallback → money.getCommission() | ◯ Ej påbörjad | – | Scope-verifiering 20 apr: 15 hardcoded commission-ställen i 7 frontend-filer (utvidgning utöver faktura.html). |
+| §1.9 | 149 | faktura.html commission_pct‖17-fallback → money.getCommission() | ✓ | commission-helpers.js + 17 ställen centraliserade i 7 filer | §1.9a infrastruktur + §1.9b applicering. Helpers: getKeepRate, getCommissionRate, getCommissionPct. Konsumenter: admin.html, faktura.html, stadare-dashboard.html, stadare-uppdrag.html, team-jobb.html, marknadsanalys.html, registrera-stadare.html, rekrytera.html. |
 | §1.10 | 150 | Dokumentera money-layer i docs/architecture/money-layer.md | ◑ Delvis | Delvis dokumenterad | Fil existerar, refererar till code-snippets som ändrats i §1.4/§1.7. Behöver uppdateras. |
 
 **Status-symboler:** ✓ klar · ◯ ej påbörjad · ◑ delvis · ⊘ superseded
@@ -34,10 +34,10 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 
 ## Sammanfattning
 
-- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7 (5 av 10)
+- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7, §1.9 (6 av 10)
 - **Superseded:** §1.2 (1 av 10) – verifierad mot produktionsdata 20 apr
 - **Delvis:** §1.10 (1 av 10)
-- **Ej påbörjad:** §1.6, §1.8, §1.9 (3 av 10)
+- **Ej påbörjad:** §1.6, §1.8 (2 av 10)
 
 ## Öppna plan-beslut
 

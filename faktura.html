@@ -6,6 +6,7 @@
 <title>Faktura – Spick</title>
 <meta name="robots" content="noindex">
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--g:#0F6E56;--t:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--bg:#F7F7F5}
@@ -58,6 +59,7 @@ const KEY = SPICK.SUPA_KEY;
 const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
 
 async function loadInvoice() {
+  await window.SPICK_COMMISSION_READY;
   const params = new URLSearchParams(location.search);
   const bid = params.get('bid') || params.get('id');
   const type = params.get('type') || 'customer'; // customer or cleaner
@@ -118,7 +120,7 @@ function renderCustomerInvoice(b, cleaner, company) {
   const rutAmount = b.rut_amount || 0;
   const totalPrice = b.total_price || 0;
   const priceBeforeRut = totalPrice + rutAmount;
-  const commissionPct = b.commission_pct || 17;
+  const commissionPct = b.commission_pct || getCommissionPct();
   const hours = b.booking_hours || 3;
   const rate = b.base_price_per_hour || b.customer_price_per_hour || Math.round(priceBeforeRut / hours);
   const serviceName = b.service_type || 'Hemstädning';
@@ -202,7 +204,7 @@ function renderCustomerInvoice(b, cleaner, company) {
 function renderCleanerInvoice(b, cleaner, company) {
   const invoiceNr = 'SF-' + (b.id || '').slice(0, 8).toUpperCase();
   const hours = b.booking_hours || 3;
-  const commissionPct = b.commission_pct || 17;
+  const commissionPct = b.commission_pct || getCommissionPct();
   const totalPrice = b.total_price || 0;
   const rutAmount = b.rut_amount || 0;
   const priceBeforeRut = totalPrice + rutAmount;

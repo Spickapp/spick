@@ -21,6 +21,7 @@
 <link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
 
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
 <script src="js/components.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -301,7 +302,7 @@ function updateDynamicTexts() {
   var radiusEl = document.getElementById('cleaner-radius');
   if (priceEl) {
     var rate = parseInt(priceEl.value) || 350;
-    var net = Math.round(rate * 0.83);
+    var net = Math.round(rate * getKeepRate());
     var priceDisplayEl = document.getElementById('priceDisplay');
     if (priceDisplayEl) priceDisplayEl.textContent = rate;
     var hint = document.getElementById('priceHint');
@@ -1231,7 +1232,7 @@ document.getElementById('cleaner-radius')?.addEventListener('input', function() 
 // ── PRICE SLIDER ────────────────────────────
 document.getElementById('priceInput')?.addEventListener('input', function() {
   var rate = parseInt(this.value) || 350;
-  var net = Math.round(rate * 0.83);
+  var net = Math.round(rate * getKeepRate());
   document.getElementById('priceDisplay').textContent = rate;
   if (_currentLang === 'ar') {
     document.getElementById('priceHint').textContent = 'تحتفظ بـ ' + net + ' كرونة/ساعة (83%)';

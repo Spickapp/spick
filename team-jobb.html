@@ -216,6 +216,7 @@
 
   <script src="js/supabase.min.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/commission-helpers.js"></script>
   <script>
     var sb = supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
     var currentSession = null;
@@ -271,6 +272,7 @@
     async function init() {
       // Låt Supabase processa magic link hash
       await new Promise(function(r) { setTimeout(r, 200); });
+      await window.SPICK_COMMISSION_READY;
 
       var sessRes = await sb.auth.getSession();
       var session = sessRes && sessRes.data ? sessRes.data.session : null;
@@ -379,7 +381,7 @@
 
       // STATUS 1: VÄNTAR PÅ SVAR
       if (job.status === 'pending_confirmation') {
-        var commissionPct = job.commission_pct || 17;
+        var commissionPct = job.commission_pct || getCommissionPct();
         var earn = Math.round((job.total_price || 0) * (1 - commissionPct / 100));
         cardHtml =
           '<div class="card pending" data-id="' + escHtml(job.id) + '">' +

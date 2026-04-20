@@ -119,6 +119,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://spick.se/stadare-uppdrag.html">
   <script src="js/config.js"></script>
+  <script src="js/commission-helpers.js"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico">
@@ -621,6 +622,7 @@ function sendQuick(btn) {
 // ── LADDA BOKNING ─────────────────────────
 async function loadBooking() {
   if (!BOOKING_ID) return;
+  await window.SPICK_COMMISSION_READY;
   const res = await fetch(
     `${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}&select=*`,
     { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }}
@@ -634,7 +636,7 @@ async function loadBooking() {
   var city = booking.city || '–';
   var hours = booking.booking_hours || booking.hours || 3;
   var price = booking.total_price || booking.price || 0;
-  var commissionPct = booking.commission_pct || 12;
+  var commissionPct = booking.commission_pct || getCommissionPct();
   var commissionRate = commissionPct / 100;
   var pay = Math.round(Number(price) * (1 - commissionRate));
 

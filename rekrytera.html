@@ -187,24 +187,24 @@ function cookieChoice(accept) {
 function calcIncome(){
   var h=+document.getElementById('hours').value;
   var r=+document.getElementById('rate').value;
-  var wk=Math.round(h*r*0.83);
+  var wk=Math.round(h*r*getKeepRate());
   var mo=Math.round(wk*4.3);
   document.getElementById('hours-lbl').textContent=h+'h/vecka';
   document.getElementById('rate-lbl').textContent=r+' kr/h';
   document.getElementById('cr-rate').textContent=r+' kr/h';
   var rows=document.querySelectorAll('.cv');
-  if(rows[1]) rows[1].textContent=Math.round(r*0.83)+' kr/h';
+  if(rows[1]) rows[1].textContent=Math.round(r*getKeepRate())+' kr/h';
   if(rows[2]) rows[2].textContent=wk.toLocaleString('sv')+' kr/vecka';
   if(rows[3]) rows[3].textContent=mo.toLocaleString('sv')+' kr/månad';
 }
-calcIncome();
+window.addEventListener('load', () => SPICK_COMMISSION_READY.then(calcIncome));
 
 // Interaktiv kalkylator
 function updateCalc() {
   const rate  = parseInt(document.getElementById('calc-rate')?.value)  || 350;
   const hours = parseInt(document.getElementById('calc-hours')?.value) || 15;
   const gross = rate * hours;
-  const fee   = Math.round(gross * 0.17);
+  const fee   = Math.round(gross * getCommissionRate());
   const net   = gross - fee;
   const hoursLbl = document.getElementById('calc-hours-lbl');
   const grossEl  = document.getElementById('calc-gross');
@@ -219,6 +219,7 @@ document.getElementById('calc-rate')?.addEventListener('input', updateCalc);
 document.getElementById('calc-hours')?.addEventListener('input', updateCalc);
 </script>
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
 <script src="js/components.js" defer></script>
 </body></html>
 

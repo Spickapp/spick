@@ -262,6 +262,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 </style>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico">
@@ -2259,6 +2260,7 @@ if (Notification && Notification.permission === 'default') {
 }
 
 async function loadAll() {
+  await window.SPICK_COMMISSION_READY;
   ['kpi-skel-1','kpi-skel-2','kpi-skel-3','kpi-skel-4'].forEach(id => {
     const el = document.getElementById(id); if (el) el.remove();
   });
@@ -2623,7 +2625,7 @@ function renderCleaners() {
 
   document.getElementById('cleaners-tbody').innerHTML = filtered.length ? filtered.map(c => {
     const cleaner_jobs = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').length;
-    const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*(1-(b.commission_pct||17)/100)),0);
+    const cleaner_earn = data.bookings.filter(b => b.cleaner_id === c.id && b.payment_status === 'paid').reduce((s,b) => s+Math.round((b.total_price||0)*(1-(b.commission_pct||getCommissionPct())/100)),0);
     const isPaused = c.status === 'pausad';
     const isSuspended = c.status === 'avstängd' || !c.is_approved;
     let statusBadge = '<span class="badge green"><span class="dot"></span> Aktiv</span>';
@@ -2803,9 +2805,9 @@ function renderPayouts() {
     pendingAlert.length ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:.75rem 1rem;font-size:.85rem;cursor:pointer" onclick="document.getElementById('booking-filter').value='paid';renderBookings()">⚠️ <strong>${pendingAlert.length}</strong> betalda bokningar saknar städare – <u>Tilldela nu</u></div>` : '',
     unpaidAlert.length ? `<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:.75rem 1rem;font-size:.85rem">🔴 <strong>${unpaidAlert.length}</strong> obetalda bokningar</div>` : ''
   ].join('');
-  const totalProvision = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * ((b.commission_pct||17)/100)), 0);
-  const totalPayout = paidBookings.reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * ((b.commission_pct||17)/100))), 0);
-  const paidOut = paidBookings.filter(b => b.payout_status === 'paid').reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * ((b.commission_pct||17)/100))), 0);
+  const totalProvision = paidBookings.reduce((s,b) => s + Math.round((b.total_price||0) * ((b.commission_pct||getCommissionPct())/100)), 0);
+  const totalPayout = paidBookings.reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * ((b.commission_pct||getCommissionPct())/100))), 0);
+  const paidOut = paidBookings.filter(b => b.payout_status === 'paid').reduce((s,b) => s + ((b.total_price||0) - Math.round((b.total_price||0) * ((b.commission_pct||getCommissionPct())/100))), 0);
 
   document.getElementById('payout-total').textContent = totalPayout.toLocaleString('sv') + ' kr';
   document.getElementById('payout-provision').textContent = totalProvision.toLocaleString('sv') + ' kr';
@@ -2817,7 +2819,7 @@ function renderPayouts() {
     if (!byCleanerMap[b.cleaner_id]) byCleanerMap[b.cleaner_id] = { count:0, total:0, provisionSum:0, allPaid:true };
     byCleanerMap[b.cleaner_id].count++;
     byCleanerMap[b.cleaner_id].total += (b.total_price || 0);
-    byCleanerMap[b.cleaner_id].provisionSum += Math.round((b.total_price || 0) * ((b.commission_pct || 17) / 100));
+    byCleanerMap[b.cleaner_id].provisionSum += Math.round((b.total_price || 0) * ((b.commission_pct || getCommissionPct()) / 100));
     if (b.payout_status !== 'paid') byCleanerMap[b.cleaner_id].allPaid = false;
   });
 
@@ -3900,7 +3902,7 @@ function showCleanerDetail(id) {
         // Sammanfattning av företagets bokningar
         var allMemberIds = [c.id].concat(members.map(function(m) { return m.id; }));
         var companyBookings = (data.bookings || []).filter(function(b) { return allMemberIds.indexOf(b.cleaner_id) !== -1 && b.payment_status === 'paid'; });
-        var companyEarned = companyBookings.reduce(function(s, b) { return s + Math.round((b.total_price || 0) * (1 - (b.commission_pct || 17) / 100)); }, 0);
+        var companyEarned = companyBookings.reduce(function(s, b) { return s + Math.round((b.total_price || 0) * (1 - (b.commission_pct || getCommissionPct()) / 100)); }, 0);
         var summEl = document.getElementById('admin-team-bookings-summary');
         if (summEl) {
           summEl.innerHTML = '<div style="font-size:.72rem;color:#6B7280;font-weight:600;margin-bottom:6px">FÖRETAGETS TOTALT</div>' +
