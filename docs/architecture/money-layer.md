@@ -189,27 +189,71 @@ export async function getCommission(
 
 ### 4.2 `calculatePayout(booking)` — Payout-beräkning
 
+**Status:** Implementerad F1.4 ([commit efter 9813030](../../supabase/functions/_shared/money.ts)). Pure function, ingen DB-write. Per Farhads beslut 2026-04-20: Stripe destination charges-modell, **Spick betalar Stripe-fees** (dras från `spick_net`).
+
 ```ts
-interface PayoutBreakdown {
-  totalPriceKr: number;          // kundens totala pris inkl. RUT
-  priceBeforeRutKr: number;      // totalPrice + rut_amount
-  commissionPct: number;
-  commissionKr: number;          // Spick-andel (avrundad SEK)
-  cleanerPayoutKr: number;       // städarens/företagets utbetalning (SEK)
-  stripeFeeKr: number;           // från bookings.stripe_fee_sek eller beräknad
-  destinationAccountId: string | null;  // Stripe Connect account
-  destinationOwnerType: 'solo_cleaner' | 'company';
-  rutAmountKr: number;
-  source: CommissionResult;       // inkludera commission source för audit
-}
+// Faktiskt implementerat (snake_case, konsistent med bookings-schema)
+export type PayoutBreakdown = {
+  total_price_sek: number;
+  commission_pct: number;
+  commission_sek: number;
+  stripe_fee_sek: number;
+  cleaner_payout_sek: number;
+  spick_gross_sek: number;
+  spick_net_sek: number;
+};
 
 export async function calculatePayout(
-  sb: SupabaseClient,
-  bookingId: string
+  supabase: SupabaseClient,
+  booking_id: string
 ): Promise<PayoutBreakdown>
 ```
 
-**Avrundning:** Spick-andel avrundas med `Math.round()`. Cleaner-utbetalning = `priceBeforeRut - commission` (exakt, inga öres-drift). All matematik i SEK (heltal). Öre-konvertering sker endast vid Stripe-anrop.
+**Not om scope:** F1.4 håller typen minimal (7 fält). Utökning med `destinationAccountId`, `rutAmountKr`, `source` sker först när triggerStripeTransfer (F1.6) + RUT-integration (F1.5) behöver dem. Fragmentering undviks — fält läggs till per konsument, inte spekulativt.
+
+**Formel (Stripe destination charges, Spick betalar fees):**
+
+```
+commission_sek     = round(total_price * commission_pct / 100)
+stripe_fee_sek     = bookings.stripe_fee_sek ?? 0
+cleaner_payout_sek = total_price − commission_sek
+spick_gross_sek    = commission_sek
+spick_net_sek      = commission_sek − stripe_fee_sek
+```
+
+**Invariant (verifieras varje anrop):**
+
+```
+cleaner_payout_sek + spick_net_sek + stripe_fee_sek === total_price
+```
+
+Matematiskt en identitet. Invariant-check fångar data-korruption (NaN-propagering) som inte fångas av typ-validering.
+
+**Frozen commission:** `bookings.commission_pct` är sanning. Satt vid bokningsskapande (F1.3 `getCommission()` i `booking-create`). `calculatePayout()` räknar aldrig om — endast fallback till `getCommission()` om kolumnen är NULL (legacy-data). Plattformen-ändring av `commission_standard` påverkar ALDRIG befintliga bokningar.
+
+**Fallback-beteenden (med `console.warn`):**
+
+| Scenario | Beteende |
+|----------|----------|
+| `stripe_fee_sek` NULL | Default 0. Vanligt för gamla bokningar pre-F1.2. |
+| `commission_pct` NULL | Fallback till `getCommission(ctx)`. Borde ej inträffa efter F1.2. |
+
+**Error-typer (alla exporterade):**
+
+| Klass | När |
+|-------|-----|
+| `MoneyLayerDisabled` | `money_layer_enabled='false'`. Caller faller tillbaka till legacy. |
+| `BookingNotFound` | `booking_id` finns ej. Fel booking_id från caller. |
+| `PayoutCalculationError` | Ogiltigt `total_price` (NULL/0/negativ/NaN), icke-numeriskt `commission_pct`/`stripe_fee_sek`, eller bruten invariant. Innehåller `details`-object med full kontext. |
+
+**Avrundning:** Endast commission använder `Math.round()`. Cleaner-utbetalning = `total − commission` (exakt, inga öres-drift). All matematik i SEK (heltal). Öre-konvertering sker endast vid Stripe-anrop i F1.6.
+
+**Testning:** [`supabase/functions/_tests/money/payout-calculation.test.ts`](../../supabase/functions/_tests/money/payout-calculation.test.ts) täcker 12 scenarier (feature flag, booking not found, 3 invalid-input-fall, 4 happy paths inkl. rounding, 2 fallback-warn-fall, 1 data-korruption). Kör med:
+
+```bash
+deno test --no-check --allow-net=deno.land,esm.sh --allow-read --allow-env \
+  supabase/functions/_tests/money/
+```
 
 ### 4.3 `calculateRutSplit(amount, eligible)` — RUT-split
 

@@ -88,6 +88,42 @@ const SMART_TRAPPSTEGE_TIERS: Array<{
 const FALLBACK_COMMISSION_PCT = 12;
 const DEFAULT_COMMISSION_KEY = 'commission_standard';
 
+// ============================================================
+// Error-klasser
+// ============================================================
+
+/**
+ * Kastas nar money_layer_enabled='false' eller nyckel saknas.
+ * Caller ska fanga och falla tillbaka till legacy-kodvag.
+ */
+export class MoneyLayerDisabled extends Error {
+  constructor() {
+    super('MoneyLayerDisabled');
+    this.name = 'MoneyLayerDisabled';
+  }
+}
+
+/**
+ * Kastas nar booking_id inte hittas i bookings-tabellen.
+ */
+export class BookingNotFound extends Error {
+  constructor(public booking_id: string) {
+    super(`BookingNotFound: ${booking_id}`);
+    this.name = 'BookingNotFound';
+  }
+}
+
+/**
+ * Kastas vid data-korruption eller bruten invariant under payout-
+ * berakning. Details-object innehaller all kontext for debug.
+ */
+export class PayoutCalculationError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(message);
+    this.name = 'PayoutCalculationError';
+  }
+}
+
 export type PayoutBreakdown = {
   total_price_sek: number;
   commission_pct: number;
@@ -212,7 +248,7 @@ export async function getCommission(
 ): Promise<CommissionResult> {
   // Steg 0: feature flag
   if (!(await isMoneyLayerEnabled(supabase))) {
-    throw new Error('MoneyLayerDisabled');
+    throw new MoneyLayerDisabled();
   }
 
   // Steg 2: Smart Trappstege (om aktiverad)
@@ -287,15 +323,142 @@ function _pickTier(completedJobs: number): (typeof SMART_TRAPPSTEGE_TIERS)[numbe
 }
 
 /**
- * Beraknar payout-struktur for en booking.
+ * Beraknar payout-struktur for en booking — pure function, ingen DB-write.
  *
- * @todo Fas 1.4: implementera
+ * Primarkalla: docs/architecture/money-layer.md §4.2
+ * Per Farhads beslut 2026-04-20: Stripe destination charges-modell,
+ * Spick betalar Stripe-fees (dras fran spick_net).
+ *
+ * Formel:
+ *   commission_sek     = round(total_price * commission_pct / 100)
+ *   stripe_fee_sek     = bookings.stripe_fee_sek ?? 0
+ *   cleaner_payout_sek = total_price - commission_sek
+ *   spick_gross_sek    = commission_sek
+ *   spick_net_sek      = commission_sek - stripe_fee_sek
+ *
+ * Invariant:
+ *   cleaner_payout_sek + spick_net_sek + stripe_fee_sek === total_price
+ *
+ * Frozen commission:
+ *   bookings.commission_pct ar sanning (satt vid bokningsskapande).
+ *   getCommission() anropas endast om commission_pct saknas (legacy-data).
+ *
+ * @throws MoneyLayerDisabled — om money_layer_enabled='false'
+ * @throws BookingNotFound — om booking_id ej finns
+ * @throws PayoutCalculationError — ogiltigt total_price, data-korruption
+ *         eller bruten invariant
  */
 export async function calculatePayout(
   supabase: SupabaseClient,
   booking_id: string
 ): Promise<PayoutBreakdown> {
-  throw new Error('Not implemented yet (Fas 1.4)');
+  // Steg 0: feature flag
+  if (!(await isMoneyLayerEnabled(supabase))) {
+    throw new MoneyLayerDisabled();
+  }
+
+  // Fetch booking
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .select(
+      'total_price, commission_pct, stripe_fee_sek, cleaner_id, company_id, customer_type'
+    )
+    .eq('id', booking_id)
+    .maybeSingle();
+
+  if (error || !booking) {
+    throw new BookingNotFound(booking_id);
+  }
+
+  // Validera total_price: NULL / 0 / negativ / icke-numeriskt
+  if (booking.total_price === null || booking.total_price === undefined) {
+    throw new PayoutCalculationError(
+      `Invalid total_price (null) for booking ${booking_id}`,
+      { booking_id, total_price: booking.total_price }
+    );
+  }
+  const totalPrice = Number(booking.total_price);
+  if (Number.isNaN(totalPrice) || totalPrice <= 0) {
+    throw new PayoutCalculationError(
+      `Invalid total_price for booking ${booking_id}: ${booking.total_price}`,
+      { booking_id, total_price: booking.total_price }
+    );
+  }
+
+  // Commission: bookings.commission_pct (sanning) med getCommission()-fallback
+  let commissionPct: number;
+  if (booking.commission_pct === null || booking.commission_pct === undefined) {
+    console.warn(
+      `[money.ts] commission_pct NULL for booking ${booking_id}, falling back to getCommission()`
+    );
+    const ctx: CommissionContext = {
+      booking_id,
+      cleaner_id: booking.cleaner_id ?? undefined,
+      company_id: booking.company_id ?? null,
+      customer_type: booking.customer_type ?? undefined,
+    };
+    const result = await getCommission(supabase, ctx);
+    commissionPct = result.pct;
+  } else {
+    commissionPct = Number(booking.commission_pct);
+    if (Number.isNaN(commissionPct)) {
+      throw new PayoutCalculationError(
+        `Non-numeric commission_pct for booking ${booking_id}: ${booking.commission_pct}`,
+        { booking_id, commission_pct: booking.commission_pct }
+      );
+    }
+  }
+
+  // Stripe-fee: default 0 om NULL (gamla bokningar)
+  let stripeFeeSek: number;
+  if (booking.stripe_fee_sek === null || booking.stripe_fee_sek === undefined) {
+    console.warn(
+      `[money.ts] stripe_fee_sek NULL for booking ${booking_id}, defaulting to 0`
+    );
+    stripeFeeSek = 0;
+  } else {
+    stripeFeeSek = Number(booking.stripe_fee_sek);
+    if (Number.isNaN(stripeFeeSek)) {
+      throw new PayoutCalculationError(
+        `Non-numeric stripe_fee_sek for booking ${booking_id}: ${booking.stripe_fee_sek}`,
+        { booking_id, stripe_fee_sek: booking.stripe_fee_sek }
+      );
+    }
+  }
+
+  // Formel
+  const commissionSek = Math.round((totalPrice * commissionPct) / 100);
+  const cleanerPayoutSek = totalPrice - commissionSek;
+  const spickGrossSek = commissionSek;
+  const spickNetSek = commissionSek - stripeFeeSek;
+
+  // Invariant: cleaner + spick_net + fee === total_price
+  const sum = cleanerPayoutSek + spickNetSek + stripeFeeSek;
+  if (sum !== totalPrice) {
+    throw new PayoutCalculationError(
+      `Payout invariant broken for booking ${booking_id}: ${sum} !== ${totalPrice}`,
+      {
+        booking_id,
+        sum,
+        total_price: totalPrice,
+        cleaner_payout_sek: cleanerPayoutSek,
+        spick_net_sek: spickNetSek,
+        stripe_fee_sek: stripeFeeSek,
+        commission_sek: commissionSek,
+        commission_pct: commissionPct,
+      }
+    );
+  }
+
+  return {
+    total_price_sek: totalPrice,
+    commission_pct: commissionPct,
+    commission_sek: commissionSek,
+    stripe_fee_sek: stripeFeeSek,
+    cleaner_payout_sek: cleanerPayoutSek,
+    spick_gross_sek: spickGrossSek,
+    spick_net_sek: spickNetSek,
+  };
 }
 
 /**
