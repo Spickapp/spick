@@ -2835,8 +2835,7 @@ function renderPayouts() {
       <td class="text-g">${net.toLocaleString('sv')} kr</td>
       <td>${statusBadge}</td>
       <td style="white-space:nowrap">${info.allPaid ? '' : `
-      <button class="btn btn-primary btn-sm" onclick="markPaid('${cid}')">Markera betald</button>
-      ${cleaner?.phone ? `<button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="swishPay('${cleaner.phone}','${net}','${cleaner?.full_name||''}','${cid}')">Swish</button>` : ''}`}
+      <button class="btn btn-primary btn-sm" onclick="markPaid('${cid}', this)">Markera betald</button>`}
     </td>
     </tr>`;
   });
@@ -4458,46 +4457,72 @@ function exportCSV() {
   a.click();
 }
 
-function swishPay(phone, amount, name, cleanerId) {
-  // Öppna Swish-appen direkt med förifyllt belopp
-  const swishUrl = `swish://payment?phone=${phone}&amount=${amount}&message=${encodeURIComponent('Spick utbetalning ' + name)}&currency=SEK`;
-  window.open(swishUrl, '_blank');
-  // Fallback: kopiera info
-  navigator.clipboard?.writeText(`Swish: ${phone}
-Belopp: ${amount} kr
-Meddelande: Spick utbetalning ${name}`).catch(()=>{});
-  if (cleanerId) {
-    setTimeout(function() {
-      if (confirm('Genomförde du Swish-betalningen? Om ja, markerar vi den som betald.')) {
-        markPaid(cleanerId);
-      }
-    }, 3000);
+async function markPaid(cleanerId, btnEl) {
+  const d = new Date();
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+
+  const eligible = (data.bookings || []).filter(b =>
+    b.cleaner_id === cleanerId &&
+    b.payment_status === 'paid' &&
+    b.payout_status == null &&
+    (b.booking_date || '') >= monthStart
+  );
+
+  if (eligible.length === 0) {
+    showToast('Inga obetalda bokningar denna månad');
+    return;
   }
-}
 
-async function markPaid(cleanerId) {
-  if (!confirm('Markera alla väntande utbetalningar som genomförda för denna städare?')) return;
+  const oldest = eligible.reduce((m, b) => (b.booking_date < m ? b.booking_date : m), eligible[0].booking_date);
 
-  var now = new Date().toISOString();
-  var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  if (!confirm(`Markera ${eligible.length} bokningar (äldsta: ${oldest})?`)) return;
+
+  const origText = btnEl?.textContent;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ Bearbetar…'; }
+
+  let token = ANON_KEY;
+  try {
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    if (raw) {
+      const p = JSON.parse(raw);
+      token = p.access_token || p.currentSession?.access_token || p.session?.access_token || ANON_KEY;
+    }
+  } catch(e) {}
+
+  const bookingIds = eligible.map(b => b.id);
+  let shouldReload = false;
 
   try {
-    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/bookings?cleaner_id=eq.' + cleanerId + '&payment_status=eq.paid&payout_status=is.null&booking_date=gte.' + monthStart, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SPICK.SUPA_KEY,
-        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ payout_status: 'paid', payout_date: now })
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-mark-payouts-paid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': ANON_KEY },
+      body: JSON.stringify({ cleaner_id: cleanerId, booking_ids: bookingIds })
     });
 
-    showToast('Utbetalning markerad som genomförd');
-    loadAdminData();
+    const body = await res.json().catch(() => ({}));
+
+    if (res.status === 401 || res.status === 403) {
+      showToast('Session utgången / ingen admin-behörighet');
+    } else if (res.status === 412) {
+      showToast('Money-layer inaktiverad i platform_settings');
+    } else if (!res.ok) {
+      showToast('Fel: ' + (body.error || body.message || ('HTTP ' + res.status)));
+    } else {
+      const { success = 0, failed = 0, skipped = 0, total_bookings = 0, results = [] } = body;
+      if (failed === 0 && skipped === 0 && success === total_bookings) {
+        showToast(`✓ ${success} utbetalningar markerade`);
+      } else {
+        showToast(`✓ ${success} · ✗ ${failed} · ↻ ${skipped}`);
+        console.table(results);
+      }
+      if (success > 0 || skipped > 0) shouldReload = true;
+    }
   } catch(err) {
     console.error('markPaid error:', err);
-    showToast('Kunde inte markera utbetalning');
+    showToast('Fel: ' + err.message);
+  } finally {
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = origText; }
+    if (shouldReload) loadAdminData();
   }
 }
 
