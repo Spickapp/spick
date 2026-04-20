@@ -35,7 +35,7 @@ Alla fil:rad-referenser verifierade i commit `c9038ee` (2026-04-20).
 
 | # | Fil:rad | Kod | Klass |
 |---|---------|-----|-------|
-| 1 | [stripe-checkout/index.ts:88](../../supabase/functions/stripe-checkout/index.ts:88) | `commissionRate = company_id ? 0.12 : (customer_type === "foretag" ? 0.12 : 0.17)` | 🔴 LIVE i checkout-flöde |
+| 1 | ~~stripe-checkout/index.ts:88~~ | ~~`commissionRate = company_id ? 0.12 : (customer_type === "foretag" ? 0.12 : 0.17)`~~ | ❌ RADERAD 2026-04-21 (§1.2 SUPERSEDED). booking-create bär betalningen. |
 | 2 | [stripe-connect/index.ts:172](../../supabase/functions/stripe-connect/index.ts:172) | `Math.round(totalKr * 0.83)` | 🔴 Död kod (`payout_cleaner`-action) |
 | 3 | [js/commission.js:15](../../js/commission.js:15) | `rate: 0.17, keep: 0.83` (tier "new") | 🟡 Display-only Trappstege |
 | 4 | [js/commission.js:16](../../js/commission.js:16) | `rate: 0.15, keep: 0.85` (tier "established") | 🟡 Display-only Trappstege |
@@ -55,7 +55,7 @@ Alla fil:rad-referenser verifierade i commit `c9038ee` (2026-04-20).
 ```
 Kund betalar
    ↓
-stripe-checkout:88           ← HARDCODED 0.12/0.17
+booking-create:604 (stripe-checkout raderad 2026-04-21, §1.2 SUPERSEDED)
    ↓
 Stripe destination charge    ← pengar direkt till cleaners Connect-konto
    ↓

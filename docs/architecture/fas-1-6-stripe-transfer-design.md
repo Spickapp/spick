@@ -1,6 +1,8 @@
 # Fas 1.6 Design — `triggerStripeTransfer()`
 
 **Fas:** F1.6 i arkitekturplan v3.1
+
+> **Not 2026-04-21:** stripe-checkout raderad i §1.2 SUPERSEDED (0 invocations + 0 callers). Design-dokumentets referenser till stripe-checkout är historisk kontext. Aktiv betalningsväg: `booking-create:604`.
 **Skriven:** 2026-04-20
 **Primärkälla för F1.6-implementation (nästa session)**
 **Beroenden:** F1.3-F1.5 klara (commits 9813030, 8c1abe6, 7f04d69).

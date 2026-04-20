@@ -23,10 +23,9 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | Analytics | GA4 (G-CP115M45TT) + Meta Pixel + Microsoft Clarity (w1ep5s1zm6) |
 | PWA | Service Worker (stale-while-revalidate) + manifest.json |
 
-## Edge Functions (15 st)
+## Edge Functions (14 st)
 | Funktion | Syfte | Auth |
 |----------|-------|------|
-| stripe-checkout | Skapar Stripe session, server-side prisberäkning, booking-verifiering | Anon |
 | stripe-webhook | Betalningsbekräftelse, auto-tilldelning, email, idempotency | Stripe sig |
 | cleanup-stale | Rensar pending >30min (cron var 15 min) | CRON_SECRET |
 | auto-remind | Bokningspåminnelser (cron var 30 min) | CRON_SECRET |

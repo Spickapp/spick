@@ -11,7 +11,7 @@
 | Sub-fas | v3.md rad | Beskrivning | Status | Ändring | Kommentar |
 |---------|----------:|-------------|:------:|---------|-----------|
 | §1.1 | 141 | `_shared/money.ts` skelett + helpers | ✓ | Alla helpers implementerade | getCommission, calculatePayout, calculateRutSplit, triggerStripeTransfer |
-| §1.2 | 142 | stripe-checkout:88 hardcoded → money.getCommission() | ⊘ SUPERSEDED | – | stripe-checkout EF är död kod (0 invocations 20 dgr Dashboard 20 apr + 0 callers grep). Aktiv betalningsväg är `booking-create` som redan läser commission från platform_settings (rad 184-201). §1.2 i praktiken avklarad via booking-create. |
+| §1.2 | 142 | stripe-checkout:88 hardcoded → money.getCommission() | ⊘ SUPERSEDED | stripe-checkout raderad 2026-04-21 + v3.md-not tillagd | stripe-checkout EF var död kod (0 invocations 20 dgr + 0 callers). Katalog raderad. CI-workflows och docs-Tier1 uppdaterade. booking-create:604 bär betalningen och läser commission från platform_settings. Tier2-docs (historiska snapshots) orörda. EF undeploy kvar som manuell åtgärd. |
 | §1.3 | 143 | stripe-connect:172 hardcoded 0.83 → money.calculatePayout() | ✓ | payout_cleaner-action raderad (91 rader) | 0 callers + bruten mot DB-schema (3 kolumner saknas). Transfer-logiken finns i `money.ts::triggerStripeTransfer`. EF:n behålls aktiv för 6 onboarding-callers. |
 | §1.4 | 144 | admin.html:markPaid → EF, idempotency + transfer-verifiering | ✓ | markPaid → EF, swishPay borttagen | Idempotency + Stripe transfer-verifiering via `money.ts` |
 | §1.5 | 145 | Reconciliation-cron | ✓ | Reconciliation-cron aktiverad | Auto-activation + auto-rollback i kod men ej i v3.md – hygien-task |
@@ -52,13 +52,6 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 **Kontext:** v3 §2.7 (rad 181) listar 8 fix-skript för arkivering. §4.10 (rad 252) listar 2. Totalt **18 fix-skript** i repo-rot. 10 saknas i planen: fix-b2b-trust.js, fix-calcvar.js, fix-company-heading.js, fix-company-prices.js, fix-div.js, fix-multi2.js, fix-multi5.js, fix-notes.js, fix-pricing-model.js, fix-rating-toggle.js, fix-team-prices.js.
 
 **Beslut behövs:** utöka §2.7-lista eller separat cleanup-fas.
-
-**Väntar:** Farhad.
-
-### 3. stripe-checkout radering – nu eller efter v3.md-uppdatering?
-**Kontext:** 0 invocations senaste 20 dgr + 0 callers. Verifierat dött 20 apr. v3 §1.2 säger migrera – progress-filen markerar SUPERSEDED.
-
-**Beslut behövs:** radera `supabase/functions/stripe-checkout/` + undeploy från Supabase nu, eller vänta tills v3.md §1.2 formellt uppdateras.
 
 **Väntar:** Farhad.
 

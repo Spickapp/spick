@@ -140,6 +140,7 @@ Slutförd 18-19 april 2026. Se v2-planen för detaljer.
 
 - **1.1** Skapa `_shared/money.ts` med funktioner: `getCommission(context)`, `calculatePayout(booking)`, `calculateRutSplit(amount, eligible)`, `triggerStripeTransfer(booking)`. Alla läser från `platform_settings`.
 - **1.2** Migrera `stripe-checkout:88` hardcoded `0.12`/`0.17` → `money.getCommission({customer_type, company_id})`.
+  > **SUPERSEDED 2026-04-20:** Verifiering visade 0 invocations senaste 20 dgr + 0 callers. stripe-checkout raderad. booking-create:604 bär betalningen och använder redan platform_settings.commission_standard.
 - **1.3** Migrera `stripe-connect:172` hardcoded `0.83` → beräkning via `money.calculatePayout()`.
 - **1.4** Fixa `admin.html:markPaid()` att gå via ny EF `mark-payout-paid` som: (a) kontrollerar idempotency, (b) verifierar Stripe Transfer existerar, (c) sätter payout_status + payout_date. Ingen direkt PATCH mot DB.
 - **1.5** Skapa reconciliation-cron `payout-reconciliation` som dagligen: hämtar Stripe Transfer events, matchar mot `bookings.payout_status`, flaggar mismatch i `payout_audit_log`.

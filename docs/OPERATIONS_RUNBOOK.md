@@ -114,7 +114,6 @@ Dessa körs automatiskt via GitHub Actions:
 ### Edge Functions (15 st)
 | Funktion | Trigger | Auth |
 |----------|---------|------|
-| stripe-checkout | Frontend (boka.html) | Anon key |
 | stripe-webhook | Stripe webhook | Stripe signature |
 | cleanup-stale | Cron (15 min) | CRON_SECRET |
 | auto-remind | Cron (30 min) | CRON_SECRET |

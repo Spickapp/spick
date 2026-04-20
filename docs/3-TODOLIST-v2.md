@@ -22,7 +22,7 @@
 - **Commits (4 planerade):**
   1. `feat(pricing): shared pricing-resolver helper i _shared/` (läser platform_settings + 3-lagers)
   2. `refactor(booking-create): använd pricing-resolver + platform_settings` (ersätter rad 183-210 + 497)
-  3. `chore: radera stripe-checkout EF (död kod)` (efter verifiering 0 invocations)
+  3. ~~`chore: radera stripe-checkout EF (död kod)`~~ – **GJORT 2026-04-21** (§1.2 SUPERSEDED)
   4. `test: kör 6-scenario regression mot staging`
 - **Länk:** [`/docs/dag2-planering/pricing-fix-strategi-2026-04-17.md`](dag2-planering/pricing-fix-strategi-2026-04-17.md)
 
@@ -233,7 +233,7 @@ SELECT DISTINCT commission_pct FROM bookings;
 | Commission-BUG 1 i Dag 2? | **Ja** | Samma fil (`booking-create`). Löses via platform_settings-läsning. |
 | BUG 3 i Dag 2? | **Oberoende snabbfix** (P0-2) | 15-20 min, egen commit. Kan deployas före P0-1. |
 | Commission-BUG 2+4 i Dag 2? | **Nej — P1-5 senare** | Kosmetiska. Fixas när pricing-resolver helper finns (läs `platform_settings` därifrån). |
-| Radera stripe-checkout EF? | **I Dag 2 Väg B (commit 3)** | Kontrollera 0 invocations senaste 7 dagar först. Alla pricing-paths konsoliderade via helper. |
+| ~~Radera stripe-checkout EF?~~ | **GJORT 2026-04-21** (§1.2 SUPERSEDED) | 0 invocations verifierat 20 dgr + 0 callers. booking-create bär betalningen. |
 | Underleverantörsavtal-UI prio? | **Efter Dag 2 deploy** | Blockar Rafa-live, inte kodarbetet. |
 | SQL-audit före Dag 2? | **Ja** | 5 min. Verifiera att `platform_settings.commission_standard=12` live. |
 | Calendar_events-overlap (P1-1)? | **Efter Rafa-pilot** | Latent problem. Blockerar bulk-UPDATE men inte nya bokningar. |

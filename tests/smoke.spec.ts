@@ -82,18 +82,6 @@ test.describe('API Tests', () => {
     expect(res.status()).toBeLessThan(500);
   });
 
-  test('A04: stripe-checkout avvisar saknade fält', async ({ request }) => {
-    const res = await request.post(`${SUPA}/functions/v1/stripe-checkout`, {
-      headers: {
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${ANON_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      data: { booking_id: 'fake' }
-    });
-    expect(res.status()).toBeGreaterThanOrEqual(400);
-  });
-
   test('A05: cleaner-job-match svarar', async ({ request }) => {
     const res = await request.post(`${SUPA}/functions/v1/cleaner-job-match`, {
       headers: {

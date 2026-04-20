@@ -65,7 +65,7 @@ Pricing-logik finns på **14 ställen** i kodbasen (verifierat 2026-04-17). Fyra
 - `boka.html:2001-2099` — frontend preview (3-lagers hierarki)
 - `booking-create/index.ts:183-210` — server booking insert (⚠️ pre-Dag2 ignorerar `use_company_pricing`)
 - `setup-subscription/index.ts:96-100` — subscription setup (bara `hourly_rate`)
-- `stripe-checkout/index.ts:112-164` — **⚠️ DÖD KOD** (se Edge Functions-avsnitt)
+- ~~`stripe-checkout/index.ts:112-164`~~ — **raderad 2026-04-21** (§1.2 SUPERSEDED)
 
 **Vid ändring som påverkar pris — verifiera ALLA ställen, inte bara en.**  
 Se [`7-ARKITEKTUR-SANNING.md`](7-ARKITEKTUR-SANNING.md) för komplett lista.
@@ -105,7 +105,7 @@ mitt-konto.html / boka.html  →  setup-subscription EF (kortregistrering)
 | Funktion | Syfte | Status | Auth |
 |----------|-------|--------|------|
 | **booking-create** | **ENDA aktiva Stripe-integrerade EF för engångsbokningar.** Skapar booking-rad + Stripe checkout session (rad 611). Returnerar URL till frontend. | ✅ Aktiv | Anon |
-| **stripe-checkout** | ⚠️ **DÖD KOD** (verifierat 2026-04-17). Anropas inte från någon frontend- eller annan EF-fil. Har korrekt `use_company_pricing`-logik som flyttas till `_shared/pricing-resolver.ts` i Dag 2. **Kan raderas efter Dag 2-refaktor.** | ❌ Oanvänd | Anon |
+| ~~**stripe-checkout**~~ | **Raderad 2026-04-21** (§1.2 SUPERSEDED). Verifierat 0 invocations 20 dgr + 0 callers. booking-create bär betalningsflödet. | ❌ Raderad | – |
 | **stripe-webhook** | Betalningsbekräftelse, auto-tilldelning, email, idempotency (processed_webhook_events). | ✅ Aktiv | Stripe sig |
 | **setup-subscription** | Kortregistrering för prenumerationer. Separat flöde från engångsbokningar. | ✅ Aktiv | Anon |
 | **charge-subscription-booking** | Cron-triggad (dagen innan). Debiterar sparade kort för prenumerationsbokning. Läser `booking.commission_pct` korrekt (/100). | ✅ Aktiv | CRON_SECRET |
@@ -188,7 +188,7 @@ const commissionRate = commissionPct / 100;         // 0.12 för Stripe
 | Kodställe | Problem |
 |-----------|---------|
 | `booking-create/index.ts:497` | Hårdkodar `0.17`/`0.12` istället för att läsa `platform_settings` |
-| `stripe-checkout/index.ts:88` | Samma — men EF är DÖD KOD, raderas i Dag 2 |
+| ~~`stripe-checkout/index.ts:88`~~ | EF raderad 2026-04-21 (§1.2 SUPERSEDED) |
 | `stadare-uppdrag.html:637` | Läser obefintligt fält `booking.commission_rate` — BUG 3, snabbfix |
 | `auto-remind/index.ts:119,155,361,673` | Hårdkodar `*0.83` i email |
 | `notify/index.ts:212,332-333` | Samma hårdkod |
@@ -232,7 +232,7 @@ Kräver att **booking-create** läser den (pre-Dag 2 gör den EJ). Om bara front
 
 **Status 2026-04-17:**
 - `boka.html` ✅ läser
-- `stripe-checkout` ✅ läser — men DÖD KOD, raderas i Dag 2
+- ~~`stripe-checkout`~~ raderad 2026-04-21 (§1.2 SUPERSEDED)
 - `booking-create` 🔴 **LÄSER EJ** — kärnan i Dag 2-fix (Väg B)
 - `foretag.html` 🟡 ignorerar flaggan (listningssida)
 

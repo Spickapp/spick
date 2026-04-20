@@ -20,7 +20,7 @@ Pricing hanteras på **14 platser** — 4 skrivande (authoritative), 10 läsande
 | 2 | **Booking insert + Stripe session** | [booking-create/index.ts:183-210](../supabase/functions/booking-create/index.ts) | 🔴 BARA `cleaner_service_prices` + `cleaner.hourly_rate` | **LATENT BUG** — ignorerar `use_company_pricing` | DB **OCH** Stripe får fel belopp (konsekvent fel, inte mismatch — men fel jämfört med preview) |
 | 3 | Subscription checkout | [setup-subscription/index.ts:96-100](../supabase/functions/setup-subscription/index.ts) | 🟡 BARA `cleaner.hourly_rate` | LATENT | Subscription-pris låst till fel värde; auto-rebook kan räkna om med helt annat pris |
 | 4 | Manual override (VD/admin) | [booking-create/index.ts:230-253](../supabase/functions/booking-create/index.ts) | `manual_override_price` param + proportionell skalning | OK (explicit override) | Om override < 100 → error |
-| 5 | ~~stripe-checkout EF~~ | ~~[stripe-checkout/index.ts:112-164](../supabase/functions/stripe-checkout/index.ts)~~ | Korrekt 3-lagers — **MEN DÖD KOD** | ⚠️ **DÖD KOD** (verifierat 2026-04-17: `boka.html:2847` anropar bara `booking-create`) | **Ska raderas efter Dag 2-refaktor** |
+| 5 | ~~stripe-checkout EF~~ | ~~stripe-checkout/index.ts:112-164~~ | Korrekt 3-lagers — men oanvänd | ❌ **RADERAD 2026-04-21** (§1.2 SUPERSEDED). Verifierat 0 invocations 20 dgr + 0 callers. | – |
 
 ### Display (läser från DB, skriver ej)
 
@@ -38,7 +38,7 @@ Pricing hanteras på **14 platser** — 4 skrivande (authoritative), 10 läsande
 
 ### Varningar
 
-- **`stripe-checkout` EF kan se ut som pricing-sanning** (har korrekt `use_company_pricing`-logik) men är oanvänd. Använd **`booking-create`** och **`setup-subscription`** som referens.
+- ~~**`stripe-checkout` EF kan se ut som pricing-sanning**~~ — raderad 2026-04-21 (§1.2 SUPERSEDED). Använd **`booking-create`** och **`setup-subscription`** som referens.
 - **Dag 2-plan:** Skapa `supabase/functions/_shared/pricing-resolver.ts` som gemensam helper. Ersätt #2 och #3. Ta bort #5. `boka.html` (#1) kan exponeras via RPC senare.
 
 ### Gemensam helper
@@ -85,8 +85,8 @@ boka.html (rad 2847)  →  POST booking-create EF
 - `charge.dispute.created` — clawback.
 - `customer.subscription.*` — subscription livscykel.
 
-**⚠️ Oanvänd EF (ska raderas):**
-- **`stripe-checkout`** — förvirrande namn, inte kopplad till något flöde. "stripe_checkout" som sträng används dock som `payment_mode`-värde i `booking-create`.
+**✅ Raderad EF:**
+- ~~**`stripe-checkout`**~~ — raderad 2026-04-21 (§1.2 SUPERSEDED). "stripe_checkout" som sträng används dock som `payment_mode`-värde i `booking-create`.
 
 ---
 
@@ -118,7 +118,7 @@ const commissionRate = commissionPct / 100;     // 0.12 för Stripe
 | booking-create DB insert | `booking-create/index.ts:330,433` | `pricing.commissionPct` | `bookings.commission_pct` | 🟡 Indirekt — korrekt via pricing-engine |
 | booking-create Stripe fee | `booking-create/index.ts:497,603` | **HÅRDKODAD 0.17/0.12** | Stripe `application_fee_amount` | 🔴 **BUG 1** — ska läsa `platform_settings` |
 | booking-create commission_log | `booking-create/index.ts:683` | `commissionRate * 100` | `commission_log.commission_pct` | ⚠️ Loggar hårdkodad 17 |
-| ~~stripe-checkout~~ | ~~`stripe-checkout/index.ts:74,88,231`~~ | **HÅRDKODAD 0.17/0.12** | ~~Stripe fee~~ | ⚠️ **DÖD KOD — raderas i Dag 2** |
+| ~~stripe-checkout~~ | ~~`stripe-checkout/index.ts:74,88,231`~~ | ~~HÅRDKODAD 0.17/0.12~~ | ~~Stripe fee~~ | ✅ **RADERAD 2026-04-21** (§1.2 SUPERSEDED) |
 | **charge-subscription-booking** | `charge-subscription-booking/index.ts:188-190` | `booking.commission_pct` /100 | Stripe `application_fee_amount` | ✅ **REFERENSIMPLEMENTATION** — dock läser från booking-raden, inte platform_settings. OK tills vidare. |
 | stripe-webhook | `stripe-webhook/index.ts` | — | Ingen commission-beräkning | ✅ Ej commission |
 | stripe-refund | `stripe-refund/index.ts` | `booking.total_price` | Refund | ✅ OK |
