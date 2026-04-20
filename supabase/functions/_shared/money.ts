@@ -124,6 +124,27 @@ export class PayoutCalculationError extends Error {
   }
 }
 
+/**
+ * Kastas nar gross_sek inte ar positivt heltal i calculateRutSplit().
+ */
+export class InvalidRutAmount extends Error {
+  constructor(message: string) {
+    super(`InvalidRutAmount: ${message}`);
+    this.name = 'InvalidRutAmount';
+  }
+}
+
+/**
+ * Kastas vid data-korruption eller bruten invariant under RUT-split.
+ * Details-object innehaller all kontext for debug.
+ */
+export class RutSplitError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(message);
+    this.name = 'RutSplitError';
+  }
+}
+
 export type PayoutBreakdown = {
   total_price_sek: number;
   commission_pct: number;
@@ -462,26 +483,107 @@ export async function calculatePayout(
 }
 
 /**
- * Delar ett belopp i RUT-del (50%, Skatteverket 2026) och kund-del.
+ * Delar ett belopp i RUT-del och kund-del — pure function.
  *
- * Math.floor anvands for RUT-berakning (Skatteverket-sakert,
- * konservativt mot overclaim).
+ * Primarkalla: docs/architecture/money-layer.md §4.3
+ * Skatteverket 2026: RUT = 50% av arbetskostnad, tak 75000 kr/ar/person.
  *
- * Primarkalla: docs/architecture/money-layer.md §6
+ * Formel (heltal-procent, konsistent med commission_standard):
+ *   rut_amount_sek       = Math.floor(gross_sek * rut_pct / 100)
+ *   customer_paid_sek    = gross_sek - rut_amount_sek
+ *   rut_claim_amount_sek = rut_amount_sek
  *
- * @param gross_sek Brutto-belopp fore RUT
+ * Math.floor = Skatteverket-sakert, konservativt mot overclaim
+ * (aldrig runda UPP RUT-andelen).
+ *
+ * Invariant:
+ *   customer_paid_sek + rut_amount_sek === gross_sek
+ *
+ * Per-bokning cap-warning: om rut_amount > rut_yearly_cap_kr loggas
+ * varning. Ingen hard block — historisk kund-cap-check implementeras
+ * i F1.5.1 (kraver customer_id + SUM over ar).
+ *
+ * @param gross_sek Brutto-belopp fore RUT (arbetskostnad, heltal SEK)
  * @param eligible Ar tjansten RUT-grundande?
  *                 (Hemstadning, Storstadning, Flyttstadning,
  *                  Fonsterputs, Trappstadning = ja.
  *                  Kontorsstadning, Byggstadning = nej.)
- * @todo Fas 1.5: implementera
+ * @throws MoneyLayerDisabled om money_layer_enabled='false'
+ * @throws InvalidRutAmount om gross_sek <= 0
+ * @throws RutSplitError om invariant bruts (data-korruption / NaN-drift)
  */
 export async function calculateRutSplit(
   supabase: SupabaseClient,
   gross_sek: number,
   eligible: boolean
 ): Promise<RutSplit> {
-  throw new Error('Not implemented yet (Fas 1.5)');
+  // Steg 0: feature flag
+  if (!(await isMoneyLayerEnabled(supabase))) {
+    throw new MoneyLayerDisabled();
+  }
+
+  // Validering
+  if (gross_sek <= 0 || Number.isNaN(gross_sek)) {
+    throw new InvalidRutAmount(
+      `gross_sek must be positive, got ${gross_sek}`
+    );
+  }
+  if (gross_sek > 1_000_000) {
+    console.warn(
+      `[money.ts] calculateRutSplit: gross_sek=${gross_sek} is unusually high`
+    );
+  }
+
+  // Ej RUT-grundande tjanst → kund betalar allt
+  if (!eligible) {
+    return {
+      gross_sek,
+      rut_eligible: false,
+      rut_amount_sek: 0,
+      customer_paid_sek: gross_sek,
+      rut_claim_amount_sek: 0,
+    };
+  }
+
+  // Formel per platform_settings.rut_pct (default '50')
+  const rutPct = await getSettingNumeric(supabase, 'rut_pct');
+  const rutAmountSek = Math.floor((gross_sek * rutPct) / 100);
+  const customerPaidSek = gross_sek - rutAmountSek;
+  const rutClaimAmountSek = rutAmountSek;
+
+  // Invariant-check (fangar NaN-drift via Infinity/konstig rut_pct)
+  if (customerPaidSek + rutAmountSek !== gross_sek) {
+    throw new RutSplitError(
+      `RUT invariant broken: ${customerPaidSek} + ${rutAmountSek} !== ${gross_sek}`,
+      {
+        gross_sek,
+        rut_pct: rutPct,
+        rut_amount_sek: rutAmountSek,
+        customer_paid_sek: customerPaidSek,
+      }
+    );
+  }
+
+  // Mjuk warning om enskild bokning overstiger arligt tak
+  // (historisk kund-cap-enforcement i F1.5.1)
+  try {
+    const yearlyCap = await getSettingNumeric(supabase, 'rut_yearly_cap_kr');
+    if (rutAmountSek > yearlyCap) {
+      console.warn(
+        `[money.ts] calculateRutSplit: rut_amount=${rutAmountSek} exceeds yearly cap ${yearlyCap} — unusual`
+      );
+    }
+  } catch (_err) {
+    // rut_yearly_cap_kr saknas → inte blockera berakning
+  }
+
+  return {
+    gross_sek,
+    rut_eligible: true,
+    rut_amount_sek: rutAmountSek,
+    customer_paid_sek: customerPaidSek,
+    rut_claim_amount_sek: rutClaimAmountSek,
+  };
 }
 
 /**

@@ -255,30 +255,88 @@ deno test --no-check --allow-net=deno.land,esm.sh --allow-read --allow-env \
   supabase/functions/_tests/money/
 ```
 
-### 4.3 `calculateRutSplit(amount, eligible)` — RUT-split
+### 4.3 `calculateRutSplit(gross_sek, eligible)` — RUT-split
+
+**Status:** Implementerad F1.5 ([commit efter 8c1abe6](../../supabase/functions/_shared/money.ts)). Pure function, ingen DB-write. Skatteverket 2026: 50% av arbetskostnad, 75000 kr/år/person tak.
 
 ```ts
-interface RutSplit {
-  grossKr: number;        // total innan RUT
-  rutAmountKr: number;    // 50% upp till kvotgräns
-  customerPaysKr: number; // grossKr - rutAmountKr
-  remainingYearlyCapKr: number;  // hur mycket RUT-utrymme kvar
-}
+// Faktiskt implementerat (snake_case, pos-argument istället för params-objekt)
+export type RutSplit = {
+  gross_sek: number;
+  rut_eligible: boolean;
+  rut_amount_sek: number;
+  customer_paid_sek: number;
+  rut_claim_amount_sek: number;
+};
 
 export async function calculateRutSplit(
-  sb: SupabaseClient,
-  params: {
-    customerId: string;
-    grossKr: number;
-    serviceType: string;  // avgör eligibility
-    year?: number;
-  }
+  supabase: SupabaseClient,
+  gross_sek: number,
+  eligible: boolean
 ): Promise<RutSplit>
 ```
 
-**Källa:** `platform_settings.rut_yearly_cap_kr` (default `'75000'`), `platform_settings.rut_pct` (default `'50'`), `services.rut_eligible` (framtida Fas 4). RUT-historik slår upp i `bookings` summering för kund året. Recurring-serier som korsar årsskifte hanteras per-bokning, inte per-serie (Fas 5 interop).
+**Not om scope (Regel #28):** F1.5-signatur tar `eligible` som boolean — caller avgör RUT-grundande-status (idag via hardcodad service-lista i `booking-create`, framtida via `services.rut_eligible` i Fas 4). `customerId` / historisk cap-enforcement är F1.5.1 (se §4.3.1 nedan). Minimal yta nu, utökas per konsument.
 
-**Not om format:** `rut_pct` lagras som **heltal-procent** (`'50'`) i `platform_settings`, konsistent med `commission_standard` (`'12'`). Implementation dividerar med 100 vid beräkning: `rutAmountKr = Math.floor(grossKr * rutPct / 100)`. Detta mönster gör framtida procent-nycklar tydliga (`stripe_fee_pct`, `dispute_resolution_pct`). `Math.floor` används för RUT-belopp (Skatteverket-säkert, konservativt mot overclaim).
+**Formel (heltal-procent):**
+
+```
+rut_amount_sek       = Math.floor(gross_sek * rut_pct / 100)
+customer_paid_sek    = gross_sek − rut_amount_sek
+rut_claim_amount_sek = rut_amount_sek
+```
+
+`Math.floor` = Skatteverket-säkert (aldrig runda UPP RUT-andelen → 0 overclaim-risk). `rut_pct` lagras som **heltal-procent** (`'50'`) i `platform_settings`, konsistent med `commission_standard`-mönstret.
+
+**Invariant (verifieras varje anrop):**
+
+```
+customer_paid_sek + rut_amount_sek === gross_sek
+```
+
+Matematiskt en identitet. Invariant-check fångar NaN-drift (t.ex. `rut_pct='Infinity'` → rut=Infinity → customer=-Infinity → sum=NaN → throw).
+
+**Eligible-gren:** Om `eligible=false` returneras `rut_amount=0`, `customer_paid=gross`, oavsett `rut_pct`. Garanterat skydd för kontorsstädning/byggstädning.
+
+**Per-bokning cap-warning:** Om `rut_amount_sek > rut_yearly_cap_kr` loggas `console.warn`. Ingen hard block — historisk kund-cap-enforcement i §4.3.1.
+
+**Error-typer (alla exporterade):**
+
+| Klass | När |
+|-------|-----|
+| `MoneyLayerDisabled` | `money_layer_enabled='false'`. |
+| `InvalidRutAmount` | `gross_sek <= 0` eller NaN. |
+| `RutSplitError` | Bruten invariant (data-korruption i `rut_pct`). Innehåller `details`-object. |
+
+**Testning:** [`supabase/functions/_tests/money/rut-split.test.ts`](../../supabase/functions/_tests/money/rut-split.test.ts) täcker 14 scenarier (flag, eligible-gren, Math.floor-kanter 1/2/3/999, rut_pct=0/50/100, gross=0/negativ/>1M, rut_pct=Infinity invariant-brott, eligible=false override). 44 pass över hela money/-svit.
+
+### 4.3.1 Framtida: historisk kund-cap-enforcement (F1.5.1)
+
+F1.5 implementerar **per-bokning** soft-warning men INTE hard-enforcement av 75000 kr/år/person-taket. Skatteverket fångar överclaim vid deklaration — Spick kan inte tappa pengar på det.
+
+**Varför inte nu:** Kräver kund-cap-SUM över året, vilket kräver:
+- `customer_id` som säker identifierare (email/personnummer/auth_user_id?)
+- SELECT SUM(`rut_amount_sek`) FROM `bookings` WHERE customer=X AND year=N
+- Recurring-serie-interop (Fas 5): varje bokning räknas mot rätt år vid årsskifte
+
+**Implementeras i F1.5.1 när:**
+- Kund-identifierare är stabil (post-F4 Unified Identity eller motsvarande)
+- Primärkälla för `customer_id` på bookings verifierad mot prod-schema
+- Recurring-cron (Fas 5) är operationell så årsskifts-logik kan testas end-to-end
+
+**Signatur när implementerad:**
+
+```ts
+export async function calculateRutSplit(
+  supabase: SupabaseClient,
+  gross_sek: number,
+  eligible: boolean,
+  opts?: { customer_id?: string; year?: number }  // F1.5.1-utökning
+): Promise<RutSplit>
+// RutSplit får då extra fält: remaining_yearly_cap_kr, capped_this_booking
+```
+
+Nuvarande `opts`-lös signatur är framåt-kompatibel — befintliga callers behöver inte ändras när F1.5.1 landar.
 
 ### 4.4 `triggerStripeTransfer(booking)` — Separate-transfer (Fas 8 escrow)
 
