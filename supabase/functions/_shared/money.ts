@@ -506,7 +506,7 @@ export async function calculatePayout(
   const { data: booking, error } = await supabase
     .from('bookings')
     .select(
-      'total_price, commission_pct, stripe_fee_sek, cleaner_id, company_id, customer_type'
+      'total_price, commission_pct, stripe_fee_sek, cleaner_id, customer_type, cleaner:cleaners!bookings_cleaner_id_fkey(company_id)'
     )
     .eq('id', booking_id)
     .maybeSingle();
@@ -539,7 +539,7 @@ export async function calculatePayout(
     const ctx: CommissionContext = {
       booking_id,
       cleaner_id: booking.cleaner_id ?? undefined,
-      company_id: booking.company_id ?? null,
+      company_id: (booking.cleaner as { company_id?: string | null } | null)?.company_id ?? null,
       customer_type: booking.customer_type ?? undefined,
     };
     const result = await getCommission(supabase, ctx);
@@ -779,7 +779,7 @@ export async function triggerStripeTransfer(
   const { data: booking, error: bErr } = await supabase
     .from('bookings')
     .select(
-      'id, total_price, commission_pct, stripe_fee_sek, cleaner_id, company_id, customer_type, payment_status, payout_status'
+      'id, total_price, commission_pct, stripe_fee_sek, cleaner_id, customer_type, payment_status, payout_status'
     )
     .eq('id', booking_id)
     .maybeSingle();
