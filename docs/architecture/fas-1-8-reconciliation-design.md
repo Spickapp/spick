@@ -210,11 +210,15 @@ Ej i F1.8-scope.
 
 ## 10. Scope för Fas 1.8 implementation
 
-**I scope:**
-- `reconcilePayouts`-funktion i money.ts (~250 rader)
-- 2 nya error-klasser (`ReconcileConfigError`, `ReconcilePermissionError`)
-- 15 Deno-tester
-- Design-dok-uppdatering §4.6
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20**
+
+**Levererat:**
+- `reconcilePayouts`-funktion i [`money.ts`](../../supabase/functions/_shared/money.ts) (~280 rader)
+- Typer: `MismatchType`, `ReconciliationMismatch`, `ReconciliationReport` (exporterade)
+- 2 nya error-klasser: `ReconcileConfigError`, `ReconcilePermissionError`
+- `_sha256Hex` helper för run_id-generering
+- 15 Deno-tester i [`_tests/money/reconcile-payouts.test.ts`](../../supabase/functions/_tests/money/reconcile-payouts.test.ts)
+- Design-dok §4.6 uppdaterad
 
 **Utanför scope (F1.9):**
 - Edge Function deployment
@@ -222,7 +226,7 @@ Ej i F1.8-scope.
 - Integration-tester mot Stripe test mode
 - Webhook-alternativ (Fas 8 eller senare)
 
-**Totalt estimat F1.8:** 4-5h.
+**Test-resultat:** 100 pass + 4 ignored (85 pre-F1.8 + 15 nya).
 
 ---
 

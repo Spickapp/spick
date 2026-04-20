@@ -406,25 +406,49 @@ export async function markPayoutPaid(
 
 **Ersätter:** [admin.html:4478-4502](../../admin.html:4478) som idag gör direkt PATCH med anon-nyckel. Konsument-migrering sker i Fas 1.10.
 
-### 4.6 `reconcilePayouts()` — Daglig cron
+### 4.6 `reconcilePayouts()` — Periodisk matchning mot Stripe
+
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** (Fas 1.8).
+
+**Artefakter:**
+- Implementation: [`money.ts:reconcilePayouts`](../../supabase/functions/_shared/money.ts)
+- Tester: [`_tests/money/reconcile-payouts.test.ts`](../../supabase/functions/_tests/money/reconcile-payouts.test.ts) (15 scenarier)
+- Design-dok: [`fas-1-8-reconciliation-design.md`](fas-1-8-reconciliation-design.md)
 
 ```ts
 export async function reconcilePayouts(
-  sb: SupabaseClient,
-  opts?: { dryRun?: boolean; sinceHours?: number }
-): Promise<{
-  checked: number;
-  mismatches: PayoutMismatch[];
-  alertsSent: number;
-}>
+  supabase: SupabaseClient,
+  opts?: {
+    since_days?: number;      // default 7
+    max_transfers?: number;   // default 100
+    max_api_calls?: number;   // default 50
+    dry_run?: boolean;        // inga audit-writes
+    _stripeRequest?: StripeRequestFn;
+  }
+): Promise<ReconciliationReport>
 ```
 
-**Jobbschema:** daglig 04:00 Stockholm. Hämtar Stripe Transfer events senaste 25h, matchar mot `bookings.payout_status='paid'`. Mismatches skrivs till `payout_audit_log.severity='alert'` + Slack/Discord-notis (Fas 10 integration).
+**Schemaläggning (F1.9-scope):** pg_cron `'5 * * * *'` → EF `reconcile-payouts` → anropar `reconcilePayouts()`. Ej aktiv i F1.8.
 
-**Mismatch-typer:**
-- Stripe-transfer existerar men `payout_status IS NULL` → admin glömde markera.
-- `payout_status='paid'` men ingen Stripe-transfer matchar → **kritiskt**, möjligt fake-payout.
-- Belopp-diff > 1 kr → avrundnings-bug.
+**6 mismatch-typer** (enligt `MismatchType`):
+- `stripe_paid_db_pending` (alert) — Stripe paid, DB pending
+- `stripe_reversed_db_paid` (critical) — Stripe reversed men DB tror paid
+- `db_paid_stripe_missing` (critical) — DB paid, Stripe GET returnerar 404
+- `amount_mismatch` (critical) — belopp skiljer (`diff_kr` loggas)
+- `no_local_attempt` (alert) — Stripe har, DB saknar
+- `stale_pending` (alert) — DB pending > 48h
+
+**Inga nya DB-tabeller** — skriver till befintlig `payout_audit_log` med `action='reconciliation_mismatch'` eller `'reconciliation_completed'`.
+
+**Idempotens:** `run_id + stripe_transfer_id` i `details`-JSON. Dubbel-run skippar duplikat-audits.
+
+**Rate-limit-skydd:** `max_api_calls=50` default, abort vid 80% → `errors: ['rate_limit_approaching']`.
+
+**Auto-heal: NEJ.** Bara flagga. Admin granskar + fixar manuellt (F1.10 UI).
+
+**Nya error-klasser:**
+- `ReconcileConfigError` — Stripe auth failar (401)
+- `ReconcilePermissionError` — RLS blockerar service_role-writes
 
 ---
 

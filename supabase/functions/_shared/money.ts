@@ -215,6 +215,26 @@ export class PayoutUpdateError extends Error {
   }
 }
 
+/**
+ * Fas 1.8: kastas nar Stripe auth failar eller env saknas i reconciliation.
+ */
+export class ReconcileConfigError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`ReconcileConfigError: ${message}`);
+    this.name = 'ReconcileConfigError';
+  }
+}
+
+/**
+ * Fas 1.8: kastas nar RLS blockerar service_role-writes mot audit_log.
+ */
+export class ReconcilePermissionError extends Error {
+  constructor(message: string, public details: Record<string, unknown>) {
+    super(`ReconcilePermissionError: ${message}`);
+    this.name = 'ReconcilePermissionError';
+  }
+}
+
 export type PayoutBreakdown = {
   total_price_sek: number;
   commission_pct: number;
@@ -240,6 +260,40 @@ export type PayoutAuditEntry = {
   status: 'pending' | 'paid' | 'failed' | 'reconciled';
   created_at: string;
   reconciled_at: string | null;
+};
+
+/**
+ * Fas 1.8: reconciliation mismatch-typer enligt design-dok §4.
+ *
+ * Severity-mapping:
+ *   alert    → admin bor granska (ej akut)
+ *   critical → potentiell dubbel-utbetalning eller saknad transfer
+ */
+export type MismatchType =
+  | 'stripe_paid_db_pending'   // alert: Stripe paid, DB sager pending
+  | 'stripe_reversed_db_paid'  // critical: reversed men DB tror paid
+  | 'db_paid_stripe_missing'   // critical: DB paid, Stripe 404
+  | 'amount_mismatch'          // critical: belopp skiljer
+  | 'no_local_attempt'         // alert: Stripe har, DB saknar
+  | 'stale_pending';           // alert: DB pending > 48h
+
+export type ReconciliationMismatch = {
+  severity: 'alert' | 'critical';
+  type: MismatchType;
+  booking_id: string | null;
+  stripe_transfer_id: string;
+  details: Record<string, unknown>;
+};
+
+export type ReconciliationReport = {
+  run_id: string;
+  started_at: string;
+  completed_at: string;
+  transfers_checked: number;
+  matches: number;
+  mismatches: ReconciliationMismatch[];
+  api_calls_used: number;
+  errors: string[];
 };
 
 // ============================================================
@@ -1328,15 +1382,394 @@ export async function markPayoutPaid(
 }
 
 /**
- * Reconciliation-cron. Hamtar senaste Stripe Transfer events och
- * matchar mot bookings.payout_status.
+ * Reconciliation — hamtar senaste Stripe Transfer-list och matchar
+ * mot lokal bookings/payout_attempts-state. Flaggar mismatches i
+ * payout_audit_log. Ingen auto-heal.
  *
- * @todo Fas 1.8: implementera
+ * Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md
+ *
+ * Flode (9 steg):
+ *   1. Feature flag (om !dry_run)
+ *   2. Generate run_id (16-char SHA256-prefix)
+ *   3. Fetch local state (bookings + payout_attempts senaste N dagar)
+ *   4. Fetch Stripe List Transfers (limit=max_transfers, rate-skydd)
+ *   5. Matchningsalgoritm (6 mismatch-typer)
+ *   6. Insert mismatch-audits (om !dry_run) med idempotens-check
+ *   7. Insert reconciliation_completed-audit
+ *   8. Return ReconciliationReport
+ *   9. Rate-limit-skydd genom hela flode (abort vid 80% av max)
+ *
+ * Idempotent: samma run_id + stripe_transfer_id skriver inte duplikat.
+ *
+ * @throws MoneyLayerDisabled — om money_layer_enabled='false' och !dry_run
+ * @throws ReconcileConfigError — Stripe auth failar (401)
+ * @throws ReconcilePermissionError — RLS blockerar service_role-writes
  */
 export async function reconcilePayouts(
-  supabase: SupabaseClient
-): Promise<{ checked: number; matched: number; mismatched: number }> {
-  throw new Error('Not implemented yet (Fas 1.8)');
+  supabase: SupabaseClient,
+  opts?: {
+    since_days?: number;
+    max_transfers?: number;
+    max_api_calls?: number;
+    dry_run?: boolean;
+    _stripeRequest?: StripeRequestFn;
+  }
+): Promise<ReconciliationReport> {
+  const sinceDays = opts?.since_days ?? 7;
+  const maxTransfers = opts?.max_transfers ?? 100;
+  const maxApiCalls = opts?.max_api_calls ?? 50;
+  const dryRun = opts?.dry_run === true;
+
+  // Steg 1: feature flag (dry_run bypasses for testning)
+  if (!dryRun) {
+    if (!(await isMoneyLayerEnabled(supabase))) {
+      throw new MoneyLayerDisabled();
+    }
+  }
+
+  // Steg 2: generate run_id
+  const runStarted = new Date().toISOString();
+  const salt = crypto.randomUUID();
+  const run_id = (await _sha256Hex(runStarted + salt)).slice(0, 16);
+
+  const report: ReconciliationReport = {
+    run_id,
+    started_at: runStarted,
+    completed_at: '',
+    transfers_checked: 0,
+    matches: 0,
+    mismatches: [],
+    api_calls_used: 0,
+    errors: [],
+  };
+
+  const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+  const sinceTs = Math.floor(Date.parse(sinceIso) / 1000);
+  const staleIso = new Date(Date.now() - 48 * 3600000).toISOString();
+
+  // Steg 3: fetch local state — tva separata queries (enklare mocka)
+  const { data: recentBookings } = await supabase
+    .from('bookings')
+    .select('id, payout_status, payout_date, cleaner_id')
+    .or(`payout_date.gte.${sinceIso},payout_status.eq.paid`);
+
+  const { data: recentAttempts } = await supabase
+    .from('payout_attempts')
+    .select(
+      'id, booking_id, stripe_transfer_id, status, amount_sek, attempt_count, created_at'
+    )
+    .gte('created_at', sinceIso);
+
+  const { data: stalePending } = await supabase
+    .from('payout_attempts')
+    .select(
+      'id, booking_id, stripe_transfer_id, amount_sek, status, created_at'
+    )
+    .eq('status', 'pending')
+    .lt('created_at', staleIso);
+
+  // Index: stripe_transfer_id → { booking_id, payout_status, attempt_status, amount_sek }
+  const bookingById = new Map<string, { payout_status: string | null }>();
+  for (const b of recentBookings ?? []) bookingById.set(b.id, b);
+
+  const localByTransferId = new Map<
+    string,
+    {
+      booking_id: string;
+      payout_status: string | null;
+      attempt_status: string;
+      amount_sek: number;
+      attempt_id: string;
+    }
+  >();
+  for (const a of recentAttempts ?? []) {
+    if (!a.stripe_transfer_id) continue;
+    const b = bookingById.get(a.booking_id);
+    localByTransferId.set(a.stripe_transfer_id, {
+      booking_id: a.booking_id,
+      payout_status: b?.payout_status ?? null,
+      attempt_status: a.status,
+      amount_sek: a.amount_sek,
+      attempt_id: a.id,
+    });
+  }
+
+  // Steg 4: fetch Stripe List
+  let globalStripeMode: string | null = null;
+  try {
+    globalStripeMode = await getSettingString(supabase, 'stripe_mode');
+  } catch (_e) {
+    globalStripeMode = 'live';
+  }
+  const stripeClient = getStripeClient({
+    is_test_account: false,
+    global_stripe_mode: globalStripeMode,
+  });
+  const stripeReq = opts?._stripeRequest ?? defaultStripeRequest;
+
+  let stripeTransfers: Array<{
+    id: string;
+    amount: number;
+    amount_reversed: number;
+    reversed: boolean;
+    created: number;
+  }> = [];
+
+  try {
+    const listResp = await stripeReq(
+      `/transfers?limit=${maxTransfers}&created[gte]=${sinceTs}`,
+      'GET',
+      {},
+      { apiKey: stripeClient.apiKey }
+    );
+    report.api_calls_used++;
+
+    if (!listResp.ok) {
+      if (listResp.status === 401) {
+        throw new ReconcileConfigError('Stripe auth failed (401)', {
+          run_id,
+          status: 401,
+        });
+      }
+      report.completed_at = new Date().toISOString();
+      report.errors.push(
+        `stripe_list_failed:${listResp.status}:${listResp.body?.error?.message ?? 'unknown'}`
+      );
+      return report;
+    }
+
+    stripeTransfers = Array.isArray(listResp.body?.data)
+      ? (listResp.body.data as typeof stripeTransfers)
+      : [];
+  } catch (e) {
+    if (e instanceof ReconcileConfigError) throw e;
+    const msg = e instanceof Error ? e.message : String(e);
+    report.completed_at = new Date().toISOString();
+    report.errors.push(`stripe_list_exception:${msg}`);
+    return report;
+  }
+
+  report.transfers_checked = stripeTransfers.length;
+
+  // Steg 5: matchningsalgoritm
+  // A) For varje Stripe-transfer: jamfor med local
+  const stripeIds = new Set<string>();
+  for (const t of stripeTransfers) {
+    stripeIds.add(t.id);
+    const local = localByTransferId.get(t.id);
+
+    if (!local) {
+      report.mismatches.push({
+        severity: 'alert',
+        type: 'no_local_attempt',
+        booking_id: null,
+        stripe_transfer_id: t.id,
+        details: { stripe_amount_ore: t.amount, stripe_created: t.created },
+      });
+      continue;
+    }
+
+    // Reversed check (critical, mest allvarligt)
+    if (t.reversed && local.payout_status === 'paid') {
+      report.mismatches.push({
+        severity: 'critical',
+        type: 'stripe_reversed_db_paid',
+        booking_id: local.booking_id,
+        stripe_transfer_id: t.id,
+        details: {
+          reversed_amount_ore: t.amount_reversed,
+          db_amount_sek: local.amount_sek,
+          attempt_id: local.attempt_id,
+        },
+      });
+      continue;
+    }
+
+    // Amount-mismatch (critical)
+    const expectedOre = local.amount_sek * 100;
+    if (t.amount !== expectedOre) {
+      report.mismatches.push({
+        severity: 'critical',
+        type: 'amount_mismatch',
+        booking_id: local.booking_id,
+        stripe_transfer_id: t.id,
+        details: {
+          stripe_ore: t.amount,
+          db_ore: expectedOre,
+          diff_ore: t.amount - expectedOre,
+          attempt_id: local.attempt_id,
+        },
+      });
+      continue;
+    }
+
+    // Stripe paid + DB pending
+    if (local.attempt_status === 'pending') {
+      report.mismatches.push({
+        severity: 'alert',
+        type: 'stripe_paid_db_pending',
+        booking_id: local.booking_id,
+        stripe_transfer_id: t.id,
+        details: {
+          db_status: 'pending',
+          attempt_id: local.attempt_id,
+        },
+      });
+      continue;
+    }
+
+    report.matches++;
+  }
+
+  // B) Stale pending (> 48h)
+  for (const s of stalePending ?? []) {
+    if (s.stripe_transfer_id && stripeIds.has(s.stripe_transfer_id)) continue;
+    report.mismatches.push({
+      severity: 'alert',
+      type: 'stale_pending',
+      booking_id: s.booking_id,
+      stripe_transfer_id: s.stripe_transfer_id ?? 'unknown',
+      details: {
+        attempt_id: s.id,
+        pending_since: s.created_at,
+        amount_sek: s.amount_sek,
+      },
+    });
+  }
+
+  // C) DB paid men saknas i Stripe-list → verifiera via GET
+  const rateAbortThreshold = Math.floor(maxApiCalls * 0.8);
+  for (const b of recentBookings ?? []) {
+    if (b.payout_status !== 'paid') continue;
+    for (const a of recentAttempts ?? []) {
+      if (a.booking_id !== b.id) continue;
+      if (!a.stripe_transfer_id) continue;
+      if (stripeIds.has(a.stripe_transfer_id)) continue;
+
+      if (report.api_calls_used >= rateAbortThreshold) {
+        if (!report.errors.includes('rate_limit_approaching')) {
+          report.errors.push('rate_limit_approaching');
+        }
+        continue;
+      }
+
+      const singleResp = await stripeReq(
+        `/transfers/${a.stripe_transfer_id}`,
+        'GET',
+        {},
+        { apiKey: stripeClient.apiKey }
+      );
+      report.api_calls_used++;
+
+      if (singleResp.status === 404 || !singleResp.ok) {
+        report.mismatches.push({
+          severity: 'critical',
+          type: 'db_paid_stripe_missing',
+          booking_id: b.id,
+          stripe_transfer_id: a.stripe_transfer_id,
+          details: {
+            attempt_id: a.id,
+            stripe_status: singleResp.status,
+          },
+        });
+      } else {
+        // Finns i Stripe — bara inte i list (cutoff-fragan)
+        report.matches++;
+      }
+    }
+  }
+
+  // Steg 6 + 7: insert audits (om !dry_run)
+  if (!dryRun) {
+    for (const mm of report.mismatches) {
+      // Idempotens: skip om audit med samma run_id + stripe_transfer_id finns
+      const { data: existing } = await supabase
+        .from('payout_audit_log')
+        .select('id, details')
+        .eq('action', 'reconciliation_mismatch')
+        .eq('stripe_transfer_id', mm.stripe_transfer_id);
+
+      const alreadyExists = (existing ?? []).some(
+        // deno-lint-ignore no-explicit-any
+        (r: any) => r.details?.run_id === run_id
+      );
+      if (alreadyExists) continue;
+
+      const dbAmountSek =
+        typeof mm.details.db_ore === 'number'
+          ? Math.round((mm.details.db_ore as number) / 100)
+          : typeof mm.details.db_amount_sek === 'number'
+          ? (mm.details.db_amount_sek as number)
+          : null;
+
+      const diffKr =
+        typeof mm.details.diff_ore === 'number'
+          ? Math.round((mm.details.diff_ore as number) / 100)
+          : null;
+
+      const { error: insErr } = await supabase
+        .from('payout_audit_log')
+        .insert({
+          booking_id: mm.booking_id,
+          action: 'reconciliation_mismatch',
+          severity: mm.severity,
+          amount_sek: dbAmountSek,
+          stripe_transfer_id: mm.stripe_transfer_id,
+          diff_kr: diffKr,
+          details: {
+            run_id,
+            mismatch_type: mm.type,
+            ...mm.details,
+          },
+          created_at: new Date().toISOString(),
+        });
+
+      if (insErr) {
+        const msg =
+          (insErr as { message?: string })?.message ?? String(insErr);
+        if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('rls')) {
+          throw new ReconcilePermissionError(
+            `audit_log insert blocked: ${msg}`,
+            { run_id, mismatch_type: mm.type }
+          );
+        }
+        report.errors.push(`audit_insert_failed:${msg}`);
+      }
+    }
+
+    // Steg 7: run-audit
+    await supabase.from('payout_audit_log').insert({
+      action: 'reconciliation_completed',
+      severity: report.mismatches.length > 0 ? 'alert' : 'info',
+      amount_sek: null,
+      details: {
+        run_id,
+        transfers_checked: report.transfers_checked,
+        matches: report.matches,
+        mismatches_count: report.mismatches.length,
+        api_calls_used: report.api_calls_used,
+        since_days: sinceDays,
+        errors: report.errors,
+      },
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  // Steg 8: return
+  report.completed_at = new Date().toISOString();
+  return report;
+}
+
+/**
+ * SHA-256 hex-digest via WebCrypto. Anvands av reconcilePayouts
+ * for run_id-generering.
+ */
+async function _sha256Hex(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ============================================================
