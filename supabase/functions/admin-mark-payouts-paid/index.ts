@@ -17,7 +17,7 @@ import {
   isMoneyLayerEnabled
 } from '../_shared/money.ts';
 
-const ADMIN_EMAILS = ['hello@spick.se']; // TODO Fas 1.10.6: flytta till DB-rollbased
+const ADMIN_EMAILS = ['hello@spick.se']; // TODO: flytta till DB-rollbased (ej i v3, framtida fas)
 
 interface BookingResult {
   booking_id: string;
