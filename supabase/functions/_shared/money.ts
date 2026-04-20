@@ -1679,7 +1679,8 @@ export async function reconcilePayouts(
     }
   }
 
-  // Steg 6 + 7: insert audits (om !dry_run)
+  // Steg 6: mismatch-audits (ENDAST i live-mode; dry_run ska inte
+  // trassla admin-granskning av riktiga mismatches)
   if (!dryRun) {
     for (const mm of report.mismatches) {
       // Idempotens: skip om audit med samma run_id + stripe_transfer_id finns
@@ -1736,24 +1737,27 @@ export async function reconcilePayouts(
         report.errors.push(`audit_insert_failed:${msg}`);
       }
     }
-
-    // Steg 7: run-audit
-    await supabase.from('payout_audit_log').insert({
-      action: 'reconciliation_completed',
-      severity: report.mismatches.length > 0 ? 'alert' : 'info',
-      amount_sek: null,
-      details: {
-        run_id,
-        transfers_checked: report.transfers_checked,
-        matches: report.matches,
-        mismatches_count: report.mismatches.length,
-        api_calls_used: report.api_calls_used,
-        since_days: sinceDays,
-        errors: report.errors,
-      },
-      created_at: new Date().toISOString(),
-    });
   }
+
+  // Steg 7: run-audit (ALLTID, aven i dry_run)
+  // Motivation: auto-activation i EF-lagret behover reconciliation_completed-
+  // entries for att rakna clean runs. Utan denna rad = aldrig auto-activation.
+  await supabase.from('payout_audit_log').insert({
+    action: 'reconciliation_completed',
+    severity: report.mismatches.length > 0 ? 'alert' : 'info',
+    amount_sek: null,
+    details: {
+      run_id,
+      transfers_checked: report.transfers_checked,
+      matches: report.matches,
+      mismatches_count: report.mismatches.length,
+      api_calls_used: report.api_calls_used,
+      since_days: sinceDays,
+      errors: report.errors,
+      mode: dryRun ? 'dry_run' : 'live',
+    },
+    created_at: new Date().toISOString(),
+  });
 
   // Steg 8: return
   report.completed_at = new Date().toISOString();

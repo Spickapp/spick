@@ -277,7 +277,10 @@ Deno.test('reconcilePayouts: money_layer_enabled=false + dry_run=true → lyckas
     _stripeRequest: mockStripeList([]),
   });
   assertEquals(report.mismatches.length, 0);
-  assertEquals(state.audit.length, 0, 'dry_run ska inte skriva audit');
+  // dry_run skriver reconciliation_completed (for auto-activation) men INGA mismatch-audits
+  assertEquals(state.audit.length, 1, 'dry_run ska skriva exakt 1 reconciliation_completed-audit');
+  assertEquals(state.audit[0].action, 'reconciliation_completed');
+  assertEquals((state.audit[0].details as any)?.mode, 'dry_run');
 });
 
 // ============================================================
@@ -614,10 +617,10 @@ Deno.test('reconcilePayouts: max_api_calls=5 → abort vid 4 (80%)', async () =>
 });
 
 // ============================================================
-// Test 13 — dry_run=true → ingen audit-write
+// Test 13 — dry_run=true → inga mismatch-audits, men reconciliation_completed
 // ============================================================
 
-Deno.test('reconcilePayouts: dry_run=true → ingen audit-write', async () => {
+Deno.test('reconcilePayouts: dry_run=true → ingen mismatch-audit men reconciliation_completed', async () => {
   const now = new Date().toISOString();
   const state = baseState({
     bookings: [{ id: 'b1', payout_status: null }],
@@ -641,7 +644,13 @@ Deno.test('reconcilePayouts: dry_run=true → ingen audit-write', async () => {
     ]),
   });
   assertEquals(report.mismatches.length, 1);
-  assertEquals(state.audit.length, 0, 'dry_run ska inte skriva audit');
+  // Dry_run: INGEN mismatch-audit (designintention) men reconciliation_completed krivs (for auto-activation)
+  const mmAudits = state.audit.filter((a) => a.action === 'reconciliation_mismatch');
+  const runAudits = state.audit.filter((a) => a.action === 'reconciliation_completed');
+  assertEquals(mmAudits.length, 0, 'dry_run ska INTE skriva mismatch-audits');
+  assertEquals(runAudits.length, 1, 'dry_run ska skriva reconciliation_completed');
+  assertEquals((runAudits[0].details as any)?.mode, 'dry_run');
+  assertEquals((runAudits[0].details as any)?.mismatches_count, 1);
 });
 
 // ============================================================
