@@ -203,6 +203,8 @@ Ej scope för Fas 1.6.x. Flaggat för Fas 10.
 
 ## 4. API-signatur
 
+**Status:** Implementerad 2026-04-20 ([commit efter f37b11e](../../supabase/functions/_shared/money.ts)). Mocks-only (integration → F1.6.1).
+
 ```ts
 export async function triggerStripeTransfer(
   supabase: SupabaseClient,
@@ -210,11 +212,12 @@ export async function triggerStripeTransfer(
   opts?: {
     idempotency_key?: string;  // default: "payout-${booking_id}-${attempt_count}"
     force?: boolean;           // bypass payout_trigger_mode-check
+    _stripeRequest?: StripeRequestFn;  // DI för tester (ej prod)
   }
 ): Promise<PayoutAuditEntry>
 ```
 
-Returtyp `PayoutAuditEntry` finns redan i money.ts (från F1.2-skelett):
+Returtyp `PayoutAuditEntry` (från F1.2-skelett):
 
 ```ts
 export type PayoutAuditEntry = {
@@ -226,6 +229,12 @@ export type PayoutAuditEntry = {
   reconciled_at: string | null;
 };
 ```
+
+**Implementation-not:** `opts._stripeRequest` är dependency-injection-portal för tester. I prod används `defaultStripeRequest` från [`_shared/stripe.ts`](../../supabase/functions/_shared/stripe.ts). Mode-isolation (live/test api-key) hanteras EJ här — kommer i F1.6.1 via `_shared/stripe-client.ts` (§3.6).
+
+**Test-coverage:** 15 Deno-scenarier i [`supabase/functions/_tests/money/stripe-transfer.test.ts`](../../supabase/functions/_tests/money/stripe-transfer.test.ts). Täcker feature flag, pre-conditions, happy path, idempotency, Stripe-errors, data-inkonsistens. 59/59 pass över hela money/-sviten.
+
+**Avvikelse från §5 steg 1:** "escrow_enabled='true' om inte opts.force" är INTE implementerat i F1.6 — per §11:4 aktiveras `escrow_enabled` först i Fas 8. F1.6 använder istället `payout_trigger_mode!=='immediate'`-check som guard (per §7:6). Design-dokets §5 steg 1 korrigeras implicit av §11:4.
 
 ---
 
