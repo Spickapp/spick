@@ -27,6 +27,7 @@
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { stripeRequest as defaultStripeRequest, type StripeRequestFn } from './stripe.ts';
+import { getStripeClient } from './stripe-client.ts';
 
 // ============================================================
 // Types
@@ -736,9 +737,10 @@ export async function triggerStripeTransfer(
   }
 
   // Steg 4: fetch cleaner + Stripe Connect-verifiering
+  //   is_test_account krävs för Fas 1.6.1 mode-isolation (§3.6).
   const { data: cleaner, error: cErr } = await supabase
     .from('cleaners')
-    .select('id, stripe_account_id, stripe_onboarding_status')
+    .select('id, stripe_account_id, stripe_onboarding_status, is_test_account')
     .eq('id', booking.cleaner_id)
     .maybeSingle();
 
@@ -816,8 +818,20 @@ export async function triggerStripeTransfer(
   }
 
   // Steg 8: call Stripe /transfers
+  //   Mode-isolation (Fas 1.6.1 §3.6): getStripeClient väljer rätt nyckel
+  //   baserat på cleaner.is_test_account + platform_settings.stripe_mode.
   const stripeReq = opts?._stripeRequest ?? defaultStripeRequest;
-  const apiKey = Deno.env.get('STRIPE_SECRET_KEY') ?? 'sk_test_mock';
+  let globalStripeMode: string | null = null;
+  try {
+    globalStripeMode = await getSettingString(supabase, 'stripe_mode');
+  } catch (_e) {
+    globalStripeMode = 'live';
+  }
+  const stripeClient = getStripeClient({
+    is_test_account: cleaner.is_test_account ?? false,
+    global_stripe_mode: globalStripeMode,
+  });
+  const apiKey = stripeClient.apiKey;
 
   const stripeParams: Record<string, string> = {
     amount: String(payout.cleaner_payout_sek * 100), // SEK → öre

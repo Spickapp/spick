@@ -586,3 +586,46 @@ Deno.test('triggerStripeTransfer: payout_status=paid utan audit → TransferPrec
     'no audit entry found'
   );
 });
+
+// ============================================================
+// Test 16 — Rollback-path: DB-fel efter Stripe-success → reversal
+// ============================================================
+//
+// Primärkälla: docs/architecture/fas-1-6-stripe-transfer-design.md §6
+//
+// Flöde: Stripe /transfers lyckas → audit-insert failar → catch-block
+// anropar /transfers/{id}/reversals och kastar TransferReversedError.
+// Detta test säkerställer att reversal faktiskt anropas (inte bara
+// att felet kastas) — kritiskt för att slippa dubbla utbetalningar.
+
+Deno.test('triggerStripeTransfer: audit-insert fail → TransferReversedError + reversal anropad', async () => {
+  const state = baseState({ failAuditInsert: true });
+  const sb = createMockSb(state);
+  const { fn: stripeReq, reversalCalls: allCalls } = mockStripeWithReversalTracking();
+
+  await assertRejects(
+    () => triggerStripeTransfer(sb, 'b1', { _stripeRequest: stripeReq }),
+    TransferReversedError,
+    'DB write failed'
+  );
+
+  // Verifiera exakt ett /transfers-anrop och exakt ett /reversals-anrop
+  const transferCalls = allCalls.filter(
+    (c) => c.endpoint === '/transfers'
+  );
+  const reversalCalls = allCalls.filter((c) =>
+    c.endpoint.includes('/reversals')
+  );
+  assertEquals(transferCalls.length, 1, 'Stripe /transfers ska anropas exakt en gång');
+  assertEquals(reversalCalls.length, 1, 'Stripe /reversals ska anropas exakt en gång');
+  assertEquals(
+    reversalCalls[0].endpoint,
+    '/transfers/tr_mock_1/reversals',
+    'Reversal ska riktas mot skapad transfer'
+  );
+
+  // payout_attempts ska vara paid (uppdaterad innan audit-fail)
+  assertEquals(state.attempts.length, 1);
+  assertEquals(state.attempts[0].status, 'paid');
+  assertEquals(state.attempts[0].stripe_transfer_id, 'tr_mock_1');
+});

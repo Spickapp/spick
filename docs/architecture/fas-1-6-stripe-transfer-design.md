@@ -143,9 +143,32 @@ CREATE INDEX idx_payout_audit_created ON payout_audit_log(created_at);
 
 **Varför inte `payout_status` här:** Separation of concerns. F1.6 = transfer skickas. F1.7 = admin markerar som betalt (verifierar transfer). Förhindrar race där UI visar "paid" innan reconciliation bekräftat.
 
-### 3.6 Stripe mode isolation (Fas 1.6.1, EJ i 1.6)
+### 3.6 Stripe mode isolation (Fas 1.6.1)
 
-**Beslut:** Fas 1.6 implementeras med Stripe-mocks i tester. Riktig integration mot Stripe test mode skjuts till Fas 1.6.1.
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** — se artefakter nedan.
+
+**Artefakter:**
+- Migration: [`supabase/migrations/20260420_f1_6_1_stripe_mode_isolation.sql`](../../supabase/migrations/20260420_f1_6_1_stripe_mode_isolation.sql)
+- Helper: [`supabase/functions/_shared/stripe-client.ts`](../../supabase/functions/_shared/stripe-client.ts) (`getStripeClient`, `selectStripeMode`, `assertStripeConfigured`)
+- Integration: [`money.ts:triggerStripeTransfer`](../../supabase/functions/_shared/money.ts) läser `cleaner.is_test_account` + `platform_settings.stripe_mode`
+- Unit-tester: [`_tests/money/stripe-client.test.ts`](../../supabase/functions/_tests/money/stripe-client.test.ts) (13 pass)
+- Integration-tester: [`_tests/money/stripe-transfer-integration.test.ts`](../../supabase/functions/_tests/money/stripe-transfer-integration.test.ts) (4 tester, skippas om `STRIPE_SECRET_KEY_TEST` saknas)
+- Rollback-test (Fas 1.9-gate): test 16 i [`stripe-transfer.test.ts`](../../supabase/functions/_tests/money/stripe-transfer.test.ts) verifierar `TransferReversedError` + `/reversals`-anrop
+
+**Kvar manuellt (ej kodbart):**
+1. Kör migration i prod + staging
+2. Sätt `STRIPE_SECRET_KEY_TEST` i Supabase Secrets (Functions → Settings)
+3. Markera test-cleaners: `UPDATE cleaners SET is_test_account=true WHERE email LIKE '%+test%'`
+4. (För test 4) Onboarda minst en test-cleaner via Stripe Connect test mode → sätt `STRIPE_TEST_DESTINATION_ACCT` i CI/lokal env
+
+**Andra EFs som inte rörs i 1.6.1** (medveten scope-gräns):
+- 15 EFs (stripe-checkout, stripe-webhook, stripe-connect, booking-create m.fl.) använder fortfarande `Deno.env.get('STRIPE_SECRET_KEY')` direkt. Mode-switchning där är inte kritisk för payout-flödet men bör centraliseras via `getStripeClient` i Fas 10 (staging isolation).
+
+---
+
+**Ursprungligt beslut (behållet för historik):**
+
+Fas 1.6 implementeras med Stripe-mocks i tester. Riktig integration mot Stripe test mode skjuts till Fas 1.6.1.
 
 **Motivation:**
 
