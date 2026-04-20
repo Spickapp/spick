@@ -16,7 +16,7 @@ Skalbarhetsauditen 2026-04-20 (commit `72d082f`) identifierade **money-fragmente
 
 - [admin.html:4478-4502](../../admin.html:4478) `markPaid()` PATCH:ar `bookings.payout_status='paid'` utan att anropa Stripe. Ingen transfer, ingen verifiering, ingen idempotency. Fungerar vid låg volym eftersom `stripe-checkout` redan gör destination charges vid betalning, men skalar inte: inget audit-trail, ingen reconciliation mot Stripe, silent double-book-risk.
 - [stripe-connect/index.ts:142-183](../../supabase/functions/stripe-connect/index.ts:142) `payout_cleaner`-action har **0 anropare** (grep i hela repot: 1 träff = definitionen). Död kod som ser verklig ut → risk att någon aktiverar den och dubbel-transfererar.
-- [stripe-checkout/index.ts:88](../../supabase/functions/stripe-checkout/index.ts:88) hardcodar `company_id ? 0.12 : (customer_type==="foretag" ? 0.12 : 0.17)`. Läser INTE `platform_settings.commission_standard` (=12 per [MEMORY.md](../../.claude/projects/C--Users-farha-spick/memory/MEMORY.md)).
+- [stripe-checkout/index.ts:88](../../supabase/functions/stripe-checkout/index.ts:88) hardcodar `company_id ? 0.12 : (customer_type==="foretag" ? 0.12 : 0.17)`. Läser INTE `platform_settings.commission_standard` (verifierat `'12'` 2026-04-20, se Appendix C).
 
 **Mål:** En central `supabase/functions/_shared/money.ts` är **enda vägen** för commission-lookup, payout-beräkning, RUT-split och Stripe-transfer. Ingen hardcodad procent finns i kod. Payout-markering kräver verifierad Stripe Transfer. Reconciliation-cron matchar dagligen DB mot Stripe events.
 
@@ -48,7 +48,7 @@ Alla fil:rad-referenser verifierade i commit `c9038ee` (2026-04-20).
 | 11 | [admin.html:2807](../../admin.html:2807) | Samma fallback (totalPayout) | 🟡 |
 | 12 | [admin.html:2808](../../admin.html:2808) | Samma fallback (paidOut) | 🟡 |
 | 13 | [marknadsanalys.html:969-970](../../marknadsanalys.html:969) | `cleanerPh = adjRate * 0.83; spickPh = adjRate * 0.17;` | 🟢 Simulerings-verktyg |
-| 14 | [cleaners.commission_rate](../../supabase/migrations) + [companies.commission_rate](../../supabase/migrations) | Per-entitet kolumner med mixed format (0.12 eller 12). Ignoreras per [MEMORY.md](../../.claude/projects/C--Users-farha-spick/memory/MEMORY.md). | 🟡 Skall droppa eller migrera |
+| 14 | [cleaners.commission_rate](../../supabase/migrations) + [companies.commission_rate](../../supabase/migrations) | 17 cleaners-rader i **4 format** (0, 0.17, 12, 17). companies: default 0.17, 0 egna värden. Obrukbar som single-source (verifierat 2026-04-20, Appendix C). | 🟡 IGNORERAS av money.ts · Droppas i **F1.10** |
 
 ### 2.2 Payout-pipeline (nuläge)
 
@@ -78,29 +78,49 @@ admin.html:markPaid          ← manuell PATCH payout_status='paid'
 
 Money.ts **utökar** denna, den ersätts inte. `resolvePricing()` flyttas in som intern funktion `_resolveBasePrice()` i money.ts.
 
-### 2.4 Relevanta DB-kolumner (verifierade via kod-läsning)
+### 2.4 Relevanta DB-kolumner (verifierade mot prod 2026-04-20)
 
-| Tabell | Kolumner (money-relaterade) | Källa |
-|--------|------------------------------|-------|
-| `platform_settings` | `key`, `value`, `description` (rader: `commission_standard=12`, `base_price_per_hour=399`) | [pricing-resolver.ts:54-58](../../supabase/functions/_shared/pricing-resolver.ts:54) |
-| `cleaners` | `stripe_account_id`, `stripe_onboarding_status`, `company_id`, `is_company_owner`, `hourly_rate`, `commission_rate` (mixed) | [stripe-checkout:80-82](../../supabase/functions/stripe-checkout/index.ts:80) |
-| `companies` | `stripe_account_id`, `use_company_pricing`, `owner_cleaner_id`, `commission_rate` (mixed) | [stripe-connect:162](../../supabase/functions/stripe-connect/index.ts:162), [pricing-resolver.ts:77-82](../../supabase/functions/_shared/pricing-resolver.ts:77) |
-| `bookings` | `total_price`, `commission_pct`, `spick_gross_sek`, `stripe_fee_sek`, `rut_amount`, `base_price_per_hour`, `customer_price_per_hour`, `payment_status`, `payout_status`, `payout_date` | [faktura.html:118-125](../../faktura.html:118), [admin.html:2806](../../admin.html:2806) |
-| `company_service_prices` | `company_id`, `service_type`, `price`, `price_type` | [pricing-resolver.ts:87-93](../../supabase/functions/_shared/pricing-resolver.ts:87) |
-| `cleaner_service_prices` | `cleaner_id`, `service_type`, `price`, `price_type` | [pricing-resolver.ts:97-102](../../supabase/functions/_shared/pricing-resolver.ts:97) |
+SQL-queries kördes 2026-04-20 mot prod. Output + analys finns i **Appendix C**. Detta avsnitt reflekterar verifierat schema.
 
-**Verifieras innan F1.1-start** (SQL i Supabase-studio, Farhad):
+| Tabell | Kolumner (money-relaterade) | Not |
+|--------|------------------------------|-----|
+| `platform_settings` | `id` (uuid), `key` (TEXT, **primary key**), `value` (TEXT — kastas till numeric i money.ts via `parseFloat`/`Number`), `updated_at` (timestamptz) | Endast 4 kolumner. Ingen `description`-kolumn. Se §2.4.1 för existerande rader. |
+| `cleaners` | `stripe_account_id`, `stripe_onboarding_status`, `company_id`, `is_company_owner`, `hourly_rate`, ~~`commission_rate`~~ | `commission_rate` har 4 format i 17 rader — **IGNORERAS** av money.ts, droppas i F1.10. |
+| `companies` | `stripe_account_id`, `use_company_pricing`, `owner_cleaner_id`, ~~`commission_rate`~~ | `commission_rate` default 0.17, 0 egna värden — **IGNORERAS**, droppas i F1.10. |
+| `bookings` | `total_price` (int), `commission_pct` (numeric), `spick_gross_sek` (numeric), `spick_net_sek` (numeric), `stripe_fee_sek` (numeric), `rut_amount` (int), `base_price_per_hour` (numeric), `customer_price_per_hour` (numeric), `cleaner_price_per_hour` (numeric), `payment_status` (text), `payout_status` (text), `payout_date` (timestamptz), `stripe_payment_intent_id` (text), `stripe_session_id` (text), `dispute_amount_sek` (int — Fas 8-förberedelse), `manual_override_price` (int — admin-undantag), `refund_amount` (int) | Rikare schema än förväntat. money.ts-API utökas att stödja `dispute_amount_sek`, `manual_override_price`, `refund_amount` från F1.2. |
+| `company_service_prices` | `company_id`, `service_type`, `price`, `price_type` | Oförändrat. |
+| `cleaner_service_prices` | `cleaner_id`, `service_type`, `price`, `price_type` | Oförändrat. |
 
-```sql
-SELECT key, value, description FROM platform_settings
- WHERE key LIKE '%commission%' OR key LIKE '%price%' OR key LIKE '%rut%';
+#### 2.4.1 Existerande `platform_settings`-rader (verifierade 2026-04-20)
 
-SELECT column_name, data_type FROM information_schema.columns
- WHERE table_name IN ('cleaners','companies','bookings','platform_settings')
-   AND (column_name LIKE '%commission%' OR column_name LIKE '%price%'
-     OR column_name LIKE '%payout%' OR column_name LIKE '%rut%'
-     OR column_name LIKE '%stripe%');
+| key | value (TEXT) | Kommentar |
+|-----|--------------|-----------|
+| `commission_standard` | `'12'` | Sanning. Set 2026-04-17 10:25. |
+| `commission_top` | `'12'` | **Duplicering** av `commission_standard`. Auditas i F1.2 — om oanvänd: DROP. |
+| `base_price_per_hour` | `'399'` | Default hourly rate. |
+| `subscription_price` | `'349'` | Spark-prenumeration. |
+| `F1_USE_DB_SERVICES` | `'false'` | Feature flag för Fas 4 (services genomgående). |
+
+**Saknas — F1.2 seed-migration lägger till (default-värden):**
+
+| key | default-value | Syfte |
+|-----|---------------|-------|
+| `money_layer_enabled` | `'false'` | Huvud-flagga §8. Sätts `'true'` efter 21d parallell-verifiering. |
+| `smart_trappstege_enabled` | `'false'` | §5 steg 2. Aktiverar payout-impact i F1.7 (om beslut=ja). |
+| `escrow_enabled` | `'false'` | §4.4 + §14. Aktiveras i Fas 8. |
+| `rut_pct` | `'0.50'` | §4.3. 50% RUT-avdrag standard. |
+| `rut_yearly_cap_kr` | `'75000'` | §4.3. Skatteverket-cap 2026. |
+| `reconciliation_alert_threshold_kr` | `'1'` | §8. Minsta belopp-diff för Slack-alert. |
+
+**Implementations-not för money.ts:** eftersom `platform_settings.value` är TEXT, alla läsningar måste kasta:
+
+```ts
+const raw = row.value;  // 'string'
+const parsed = parseFloat(raw);
+if (Number.isNaN(parsed)) throw new Error(`platform_settings.${key} not numeric: ${raw}`);
 ```
+
+Detta mönster finns redan i [pricing-resolver.ts:60-61](../../supabase/functions/_shared/pricing-resolver.ts:60) och återanvänds i money.ts.
 
 ---
 
@@ -413,7 +433,7 @@ true (efter 30d parallell-verifiering):
 | 8–9 | faktura.html:121,205 | Behåll `b.commission_pct \|\| 17` fallback som **defensive**, MEN `bookings.commission_pct` ska alltid vara satt efter F1.2. 17 som fallback blir dead-code men säker. Efter 90d utan träff: ändra till `throw new Error('commission_pct missing')`. | **F1.9** |
 | 10–12 | admin.html:2806-2808 | Samma som faktura.html. Samma 90-dagars defensive-pattern. | **F1.9** |
 | 13 | marknadsanalys.html:969-970 | Simuleringsverktyg, ej live-data. Ersätt med hämtning från `platform_settings`. | **F1.9** |
-| 14 | cleaners/companies.commission_rate | DB-kolumner. Fas 1: lämna orörda (ignoreras per memory). Fas 9 (VD-autonomi): antingen DROP eller omformatera till decimal + aktivera i hierarki §5 steg 3/4. | **Fas 9** |
+| 14 | cleaners/companies.commission_rate | **IGNORERAS** av money.ts från F1.2. Kolumnerna droppas i **F1.10** (prod-verifierat 2026-04-20: 4 format i cleaners, 0 egna värden i companies = obrukbar single-source). Per-entitet commission-override implementeras istället via framtida `cleaners.commission_pct_override` / `companies.commission_pct_override` (decimal procent, strikt format) när §5 steg 3/4 aktiveras. | **F1.10** |
 
 **Bonus:** [admin.html:4478-4502](../../admin.html:4478) `markPaid()` ersätts i **F1.4** med fetch mot ny EF `mark-payout-paid`. Admin-UI:t oförändrat (samma knapp), bara backend-vägen refactoras.
 
@@ -524,13 +544,156 @@ CREATE TABLE payout_audit_log (
 
 ---
 
-## 15. Öppna frågor (lös innan F1.2-start)
+## 15. Öppna frågor
 
-1. **`cleaners.commission_rate`-kolumn:** Vad är faktiskt format i prod — decimal (0.12) eller procent (12)? Kräver SQL-query. Påverkar F1 bara om vi aktiverar §5 steg 3 i Fas 1 (default: nej, lämnas till Fas 9).
-2. **`platform_settings.rut_yearly_cap_kr`:** Finns raden? Verifiera. Om saknas: migration F1.1 lägger till.
-3. **`platform_settings.smart_trappstege_enabled`:** Finns raden? Verifiera. Om saknas: F1.7 skapar den (default false).
-4. **`bookings.spick_gross_sek` vs beräknad commission:** används som audit-spår? Om inte: sätt den i F1.2 så att alla bokningar efter F1.2 har både `commission_pct` och `spick_gross_sek` lagrat.
-5. **Smart Trappstege semantik:** ska "keep"-raten (0.83/0.85/0.87/0.88) räknas på totalt pris eller price_before_rut? [js/commission.js:15-18](../../js/commission.js:15) är tvetydigt. Besluta i F1.7-design.
+### 15.1 Lösta 2026-04-20 (prod-verifiering)
+
+| # | Fråga | Svar | Åtgärd |
+|---|-------|------|--------|
+| 1 | `cleaners.commission_rate` format? | 4 format i 17 rader (0, 0.17, 12, 17). Obrukbar. | IGNORERAS. Droppas i F1.10. |
+| 2 | `platform_settings.rut_yearly_cap_kr` finns? | Nej. | F1.2 seed:ar `'75000'`. |
+| 3 | `platform_settings.smart_trappstege_enabled` finns? | Nej. | F1.2 seed:ar `'false'`. |
+| 4 | `platform_settings.money_layer_enabled` finns? | Nej. | F1.2 seed:ar `'false'`. |
+| 5 | `platform_settings.escrow_enabled` finns? | Nej. | F1.2 seed:ar `'false'`. |
+| 6 | `platform_settings.rut_pct` finns? | Nej. | F1.2 seed:ar `'0.50'`. |
+| 7 | `bookings.spick_gross_sek` finns? | **Ja** (numeric). | F1.2 skriver ner värde vid bokningsskapande. |
+| 8 | `bookings.dispute_amount_sek` finns? | **Ja** (int, Fas 8-förberedelse). | money.ts stödjer från F1.2. |
+| 9 | `bookings.manual_override_price` finns? | **Ja** (int). | money.ts respekterar override om satt (ny §5 steg 0). |
+| 10 | `bookings.stripe_payment_intent_id` finns? | **Ja** (text). | Används för reconciliation-lookup. |
+
+### 15.2 Kvarstående öppna frågor
+
+1. **`platform_settings.commission_top`-duplicering:** Samma värde som `commission_standard` (`'12'`). Vilken används faktiskt? Grep visar 0 träffar på `commission_top` i kodbasen — trolig dead row. **F1.2 action:** verifiera grep + DROP om orörd.
+2. **Smart Trappstege semantik:** ska "keep"-raten (0.83/0.85/0.87/0.88) i [js/commission.js:15-18](../../js/commission.js:15) räknas på totalt pris eller `priceBeforeRut`? Tvetydigt. **Besluta i F1.7-design.**
+3. **Per-entitet override-schema:** om framtida per-cleaner commission ska implementeras — nya kolumner (`commission_pct_override NUMERIC(5,2)`) eller ny tabell (`commission_overrides`)? Beslut tas när §5 steg 3/4 aktiveras (tidigast Fas 9).
+4. **`booking-create` vs `stripe-checkout` dubbel-skriv:** [bookings.commission_pct](../../) sätts i `booking-create` (via pricing-resolver) men Stripe application_fee beräknas separat i `stripe-checkout:88`. **F1.2 måste läsa `commission_pct` från bokningen istället för att räkna om.**
+5. **Pilot-data pre-17-apr:** 4 betalda bokningar har `commission_pct=17` hårdkodat. Historik bevaras (ingen back-fill). Faktura-rendering fungerar pga defensive fallback `|| 17` kvarstår.
+
+---
+
+## Appendix C — Prod-schema-verifiering (2026-04-20)
+
+SQL-queries kördes 2026-04-20 mot prod-databasen (`urjeijcncsyuletprydy.supabase.co`) för att verifiera designen mot verkligt schema. Output sparas här som primärkälla per Regel #27.
+
+### Query A — `platform_settings` struktur
+
+```sql
+SELECT column_name, data_type
+  FROM information_schema.columns
+ WHERE table_name = 'platform_settings'
+ ORDER BY ordinal_position;
+```
+
+**Output:**
+
+| column_name | data_type |
+|-------------|-----------|
+| `id` | `uuid` |
+| `key` | `text` (primary key) |
+| `value` | `text` |
+| `updated_at` | `timestamp with time zone` |
+
+**Ingen `description`-kolumn finns.** Ursprungliga designantagandet korrigerat i §2.4.
+
+### Query B — `platform_settings` money-relaterade rader
+
+```sql
+SELECT key, value FROM platform_settings
+ WHERE key LIKE '%commission%' OR key LIKE '%price%'
+    OR key LIKE '%rut%' OR key LIKE '%escrow%'
+    OR key LIKE '%trappstege%' OR key LIKE '%money%'
+ ORDER BY key;
+```
+
+**Output:**
+
+| key | value |
+|-----|-------|
+| `base_price_per_hour` | `'399'` |
+| `commission_standard` | `'12'` |
+| `commission_top` | `'12'` |
+| `F1_USE_DB_SERVICES` | `'false'` |
+| `subscription_price` | `'349'` |
+
+**5 existerande rader. 6 saknas** (money_layer_enabled, smart_trappstege_enabled, escrow_enabled, rut_pct, rut_yearly_cap_kr, reconciliation_alert_threshold_kr) — seedas i F1.2.
+
+### Query C — `cleaners.commission_rate` format-distribution
+
+```sql
+SELECT commission_rate, COUNT(*) FROM cleaners
+ WHERE commission_rate IS NOT NULL
+ GROUP BY commission_rate ORDER BY commission_rate;
+```
+
+**Output:**
+
+| commission_rate | count |
+|-----------------|-------|
+| `0` | 1 (trolig bug) |
+| `0.17` | 1 (decimal) |
+| `12` | 6 (procent) |
+| `17` | 9 (procent) |
+
+**Totalt:** 17 rader med värden. **4 olika format** inom samma kolumn. Default vid INSERT: `0.17` (decimal), inkonsekvent med majoriteten (17 procent). Kolumnen är obrukbar som single-source. **Beslut:** IGNORERAS. Droppas i F1.10.
+
+### Query D — `companies.commission_rate` format
+
+```sql
+SELECT commission_rate, COUNT(*) FROM companies
+ GROUP BY commission_rate;
+```
+
+**Output:** Alla rader använder default `0.17` (decimal). Ingen firma har satt eget värde. **Beslut:** IGNORERAS. Droppas i F1.10.
+
+### Query E — `bookings.commission_pct` null-analys
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE commission_pct IS NULL) AS null_count,
+  COUNT(*) FILTER (WHERE commission_pct IS NOT NULL) AS set_count,
+  MIN(commission_pct), MAX(commission_pct), AVG(commission_pct)::numeric(5,2) AS avg
+  FROM bookings WHERE payment_status = 'paid';
+```
+
+**Output:** `null_count=0`, `set_count=4`, `min=17`, `max=17`, `avg=17.00`.
+
+**Analys:** 4 betalda pilot-bokningar, alla med `commission_pct=17` (pre-17-apr-data). Inga efter 17 apr — pga pågående bugg i [stripe-checkout:88](../../supabase/functions/stripe-checkout/index.ts:88) skulle nya skrivas som 12 via `booking-create` (pricing-resolver) men stripe-checkout hardcodar fortfarande 0.12/0.17 i Stripe-anropet → `application_fee` och `commission_pct` kan avvika i framtida bokningar. Money.ts (F1.2) eliminerar denna diskrepans genom att **läsa `bookings.commission_pct`** istället för att räkna om i stripe-checkout.
+
+### Query F — `bookings` money-kolumner (kolumn-inventering)
+
+```sql
+SELECT column_name, data_type FROM information_schema.columns
+ WHERE table_name = 'bookings'
+   AND (column_name LIKE '%commission%' OR column_name LIKE '%price%'
+     OR column_name LIKE '%payout%' OR column_name LIKE '%rut%'
+     OR column_name LIKE '%amount%' OR column_name LIKE '%total%'
+     OR column_name LIKE '%spick%' OR column_name LIKE '%stripe%'
+     OR column_name LIKE '%refund%' OR column_name LIKE '%dispute%')
+ ORDER BY column_name;
+```
+
+**Output (nyckel-kolumner för money.ts):**
+
+- `commission_pct` (numeric)
+- `customer_price_per_hour`, `cleaner_price_per_hour`, `base_price_per_hour` (numeric)
+- `spick_gross_sek`, `spick_net_sek`, `stripe_fee_sek` (numeric)
+- `total_price` (integer), `rut_amount` (integer), `refund_amount` (integer)
+- `dispute_amount_sek` (integer) — **Fas 8-förberedelse redan på plats**
+- `manual_override_price` (integer) — admin-undantag (ny hierarki-steg 0)
+- `payout_status` (text), `payout_date` (timestamp with time zone)
+- `stripe_payment_intent_id`, `stripe_session_id` (text) — reconciliation-lookup
+
+**Analys:** Schema är **rikare** än auditen antog. `dispute_amount_sek`, `manual_override_price`, och `refund_amount` är redan på plats — money.ts-API utökas i F1.2 att stödja dessa från dag 1 istället för att läggas till retroaktivt i Fas 8.
+
+### Konsekvenser för design-dokumentet
+
+Fem fakta-korrigeringar gjordes 2026-04-20:
+
+1. **§2.4 platform_settings-struktur**: `(id, key, value, updated_at)` med TEXT value — inte `(key, value, description)`. Kräver `parseFloat()` vid läsning.
+2. **§2.4 cleaners/companies.commission_rate**: IGNORERAS, droppas i F1.10. Inte "skall migreras".
+3. **§10 migration-plan rad #14**: flyttad från Fas 9 till F1.10.
+4. **§15 öppna frågor**: 10 resolved, 5 nya kvarstår (bl.a. `commission_top`-duplicering).
+5. **§4 API-design**: utökas implicit att stödja `dispute_amount_sek`, `manual_override_price`, `refund_amount` från F1.2 (ej Fas 8).
 
 ---
 
