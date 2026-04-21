@@ -20,6 +20,7 @@
 <script src="js/supabase.min.js" defer></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
 <script src="js/i18n-bli-stadare.js" defer></script>
 <script src="js/components.js" defer></script>
 <noscript><style>.calc-wrap,.sticky-cta{display:none!important}</style></noscript>
@@ -352,8 +353,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-h
     </div>
     <div class="calc-inner">
       <div class="calc-controls">
-        <label><span data-i18n="calc_rate_label">Timpris: </span><strong id="c-rate-show">350 kr/h</strong></label>
-        <input type="range" class="calc-slider" id="c-rate" min="250" max="600" step="10" value="350" oninput="calcEarnings()">
+        <label><span data-i18n="calc_rate_label">Timpris: </span><strong id="c-rate-show">—</strong></label>
+        <input type="range" class="calc-slider" id="c-rate" min="250" max="600" step="10" oninput="calcEarnings()">
         <label><span data-i18n="calc_hours_label">Timmar per vecka: </span><strong id="c-hours-show">20h</strong></label>
         <input type="range" class="calc-slider" id="c-hours" min="5" max="40" step="1" value="20" oninput="calcEarnings()">
       </div>
@@ -505,10 +506,10 @@ function restoreSv() {
 }
 /* ── INCOME CALCULATOR ───────────────────── */
 function calcEarnings() {
-  const rate = parseInt(document.getElementById('c-rate')?.value) || 350;
+  const rate = parseInt(document.getElementById('c-rate')?.value) || getDefaultHourlyRate();
   const hours = parseInt(document.getElementById('c-hours')?.value) || 20;
   const grossWeekly = rate * hours;
-  const commission = 0.17;
+  const commission = getCommissionRate();
   const netWeekly = Math.round(grossWeekly * (1 - commission));
   const netMonthly = Math.round(netWeekly * 4.33);
   const spickWeekly = Math.round(grossWeekly * commission);
@@ -546,7 +547,14 @@ function toggleFaq(el) {
 }
 
 /* ── INIT CALCULATOR ON LOAD ─────────────── */
-calcEarnings();
+// §1.8 (2026-04-22): hydrera defaults från platform_settings innan första beräkning.
+// Range-input utan `value`-attribut defaultar till (min+max)/2 i browser — sätt alltid
+// till platform_settings-värdet vid init, användare kan sedan justera via oninput.
+Promise.all([window.SPICK_COMMISSION_READY, window.SPICK_PRICING_READY]).then(() => {
+  const slider = document.getElementById('c-rate');
+  if (slider) slider.value = getDefaultHourlyRate();
+  calcEarnings();
+});
 
 /* ── ACCORDION TOGGLE ─── */
 function tog(el){const o=el.classList.contains('on');document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));if(!o)el.classList.add('on');}

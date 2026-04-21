@@ -124,7 +124,7 @@ h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height
       
       <div class="field">
         <label for="hourlyRate">Önskat timpris (kr)</label>
-        <input type="number" id="hourlyRate" value="350" min="250" max="600">
+        <input type="number" id="hourlyRate" min="250" max="600">
         <div class="field-hint">Kan justeras senare</div>
       </div>
       
@@ -190,6 +190,7 @@ h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height
 
 <script src="js/supabase.min.js" defer></script>
 <script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
 
 <script>
 // ─────────────────────────────────────────────
@@ -347,7 +348,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById(id).addEventListener('change', updateAcceptBtn);
     document.getElementById(id).addEventListener('input', updateAcceptBtn);
   });
-  
+
+  // §1.8 (2026-04-22): hydrera hourlyRate-default från platform_settings.
+  // Sätt ovillkorligt — användare kan justera efteråt, men tom input är inte korrekt default.
+  window.SPICK_PRICING_READY.then(() => {
+    const rateInput = document.getElementById('hourlyRate');
+    if (rateInput) rateInput.value = getDefaultHourlyRate();
+  });
+
   // Wait for supabase SDK
   const waitForSupa = setInterval(() => {
     if (window.supabase && window.SPICK) {

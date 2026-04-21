@@ -90,7 +90,7 @@ Preview-sandbox kunde inte live-testa parse-time-wrapparna i §1.9b (marknadsana
 | §1.5 | 145 | Reconciliation-cron | ✓ | Reconciliation-cron aktiverad | Auto-activation + auto-rollback i kod men ej i v3.md – hygien-task |
 | §1.6 | 146 | Stripe integration-test i CI (full booking → checkout → transfer → payout) | ◯ Ej påbörjad | – | Strukturellt viktigt för skalning |
 | §1.7 | 147 | `js/commission.js` arkivering eller integrering | ✓ | commission.js arkiverad, helpers getKeepRate + getCommissionRate | Display-only Smart Trappstege (INAKTIV i prod). Läckage-fix fångade stadare-dashboard.html:9182. |
-| §1.8 | 148 | Hardcoded hourly-priser (349/350/399) → platform_settings | ◯ Ej påbörjad | – | v3 listar 3 filer (admin/bli-stadare/join-team). boka.html (17 träffar) utanför planen – **plan-beslut #1 väntar**. |
+| §1.8 | 148 | Hardcoded hourly-priser (349/350/399) → platform_settings | ✓ | default_hourly_rate centralisering + commission-läckage-fix | 13 K1/K2-ställen centraliserade via `getDefaultHourlyRate()`: admin.html (9), bli-stadare.html (3), join-team.html (1). bli-stadare.html:511 commission=0.17 hardcode bytt till `getCommissionRate()` i samma commit (stänger hygien-task #3). Migration kördes i prod 2026-04-22 av Farhad. K3 (subscription 349, 3 ställen) + K4 (CW_SERVICES_CATALOG 349) utanför scope. |
 | §1.9 | 149 | faktura.html commission_pct‖17-fallback → money.getCommission() | ✓ | commission-helpers.js + 17 ställen centraliserade i 7 filer | §1.9a infrastruktur + §1.9b applicering. Helpers: getKeepRate, getCommissionRate, getCommissionPct. Konsumenter: admin.html, faktura.html, stadare-dashboard.html, stadare-uppdrag.html, team-jobb.html, marknadsanalys.html, registrera-stadare.html, rekrytera.html. |
 | §1.10 | 150 | Dokumentera money-layer i docs/architecture/money-layer.md | ✓ | Sync mot nuvarande arkitektur 2026-04-22 | Sektioner uppdaterade efter §1.2/§1.3/§1.4/§1.5/§1.7/§1.9. Aktiveringsstatus-tabell + §-mappning + §17 Frontend commission-helpers + §4.7 isMoneyLayerEnabled + §4.8 error-katalog + reconcile auto-governing dokumenterade. cleaners/companies.commission_rate-droppning kvarstår som framtida migration. |
 
@@ -107,10 +107,10 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 
 ## Sammanfattning
 
-- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7, §1.9, §1.10 (7 av 10)
+- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7, §1.8, §1.9, §1.10 (8 av 10)
 - **Superseded:** §1.2 (1 av 10) – verifierad mot produktionsdata 20 apr
 - **Delvis:** – (0 av 10)
-- **Ej påbörjad:** §1.6, §1.8 (2 av 10)
+- **Ej påbörjad:** §1.6 (1 av 10)
 
 ## Öppna plan-beslut
 
@@ -130,7 +130,9 @@ per_sqm?
 - Kod avviker från v3.md i reconcile-payouts (auto-activation + auto-rollback). Plan-sync behövs.
 - ~~`money-layer.md` refererar code-snippets som ändrats i §1.4/§1.7 – uppdatera vid §1.10-färdigställande.~~ ✓ Klart 2026-04-22 (§1.10).
 - Commit-meddelandens "Fas X.Y"-numrering matchar inte v3 §-numrering konsekvent. Ny konvention: använd v3 §-referens i framtida commit-meddelanden.
-- bli-stadare.html:511 commission=0.17 hardcoded – scope-läckage från §1.9. Tredje fallet efter §1.7 (9182) + plan-beslut #1 (2415). Alla tre kan samlas i en §1.9c läckage-fix senare.
+- ~~bli-stadare.html:511 commission=0.17 hardcoded – scope-läckage från §1.9. Tredje fallet efter §1.7 (9182) + plan-beslut #1 (2415). Alla tre kan samlas i en §1.9c läckage-fix senare.~~ ✓ Stängd 2026-04-22 (§1.8-commit använde getCommissionRate()).
+- **platform_settings konsolidering (öppen 2026-04-22):** `base_price_per_hour=399` (pricing-resolver fallback) + `default_hourly_rate=350` (UI-default) har olika värden men semantiskt liknande. Verifiera om de ska konsolideras till en nyckel. Kräver verifiering av pricing-resolver-flow med riktig data.
+- **admin.html commission-hardcodes (upptäckta 2026-04-22 under §1.8-grep):** `admin.html:1119` `value="12"` i cw-commission input (VD-onboarding) + `admin.html:3763` `: 17` fallback i cd-commission. Samma mönster som bli-stadare.html:511 — scope-läckage från §1.9. Kan samlas i framtida §1.9c läckage-fix.
 
 ## Stängda plan-beslut
 

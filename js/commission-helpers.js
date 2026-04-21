@@ -48,3 +48,29 @@ function getCommissionPct() {
     throw new Error('getCommissionPct anropad före SPICK_COMMISSION_READY');
   return window.SPICK_COMMISSION.commissionPct;
 }
+
+/* ── PRICING HELPERS (§1.8, 2026-04-22) ──────────────────────────────
+ * default_hourly_rate används som UI-default i admin/bli-stadare/join-team
+ * när cleaner.hourly_rate saknas. Skild från platform_settings.base_price_per_hour
+ * (pricing-resolver-fallback) — se docs/v3-phase1-progress.md hygien-task.
+ */
+window.SPICK_PRICING_READY = (async function loadPricingSettings() {
+  const r = await fetch(
+    SPICK.SUPA_URL + '/rest/v1/platform_settings?key=eq.default_hourly_rate&select=value',
+    { headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY } }
+  );
+  if (!r.ok) throw new Error('default_hourly_rate fetch failed: HTTP ' + r.status);
+  const rows = await r.json();
+  if (!Array.isArray(rows) || rows.length === 0)
+    throw new Error('default_hourly_rate saknas i platform_settings');
+  const rate = Number(rows[0].value);
+  if (!Number.isFinite(rate) || rate < 100 || rate > 2000)
+    throw new Error('ogiltigt default_hourly_rate: ' + rows[0].value);
+  window.SPICK_PRICING = { defaultHourlyRate: rate };
+})();
+
+function getDefaultHourlyRate() {
+  if (!window.SPICK_PRICING)
+    throw new Error('getDefaultHourlyRate anropad före SPICK_PRICING_READY');
+  return window.SPICK_PRICING.defaultHourlyRate;
+}

@@ -1911,7 +1911,7 @@ function renderOnboarding() {
       </div>
       <div style="display:flex;gap:6px">
         ${nextPhase[phase] ? `<button class="btn btn-outline btn-sm" onclick="moveOnboarding('${a.id}','${nextPhase[phase]}')" style="font-size:.78rem;padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">Flytta →</button>` : ''}
-        ${phase === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}','${escHtml(a.name||a.full_name||'')}','${escHtml(a.email||'')}','${escHtml(a.city||'')}','${escHtml(Array.isArray(a.services)?a.services.join(','):a.services||'Hemstädning')}',${parseInt(a.hourly_rate)||350})" style="font-size:.78rem;padding:6px 12px;background:var(--g);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">✅ Aktivera</button>` : ''}
+        ${phase === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="approveApplication('${a.id}','${escHtml(a.name||a.full_name||'')}','${escHtml(a.email||'')}','${escHtml(a.city||'')}','${escHtml(Array.isArray(a.services)?a.services.join(','):a.services||'Hemstädning')}',${parseInt(a.hourly_rate)||getDefaultHourlyRate()})" style="font-size:.78rem;padding:6px 12px;background:var(--g);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">✅ Aktivera</button>` : ''}
         ${a.email ? `<a href="mailto:${a.email}" style="font-size:.78rem;padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;text-decoration:none;color:var(--b);display:flex;align-items:center">✉️</a>` : ''}
       </div>
     </div>`;
@@ -2053,7 +2053,7 @@ function globalSearch(q) {
   data.cleaners.filter(c => `${c.full_name||''} ${c.email||''} ${c.city||''}`.toLowerCase().includes(q)).slice(0,3).forEach(cl => {
     hits.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem;cursor:pointer" onclick="showPage('cleaners');showCleanerDetail('${cl.id}')">
       <span>🧹 ${cl.full_name||'–'} · ${cl.city||'–'} · ${cl.avg_rating||'–'}★</span>
-      <span style="color:var(--m);font-size:.75rem">${cl.hourly_rate||350} kr/h</span>
+      <span style="color:var(--m);font-size:.75rem">${cl.hourly_rate||getDefaultHourlyRate()} kr/h</span>
     </div>`);
   });
 
@@ -2260,7 +2260,7 @@ if (Notification && Notification.permission === 'default') {
 }
 
 async function loadAll() {
-  await window.SPICK_COMMISSION_READY;
+  await Promise.all([window.SPICK_COMMISSION_READY, window.SPICK_PRICING_READY]);
   ['kpi-skel-1','kpi-skel-2','kpi-skel-3','kpi-skel-4'].forEach(id => {
     const el = document.getElementById(id); if (el) el.remove();
   });
@@ -2684,7 +2684,7 @@ function renderCleaners() {
     return `<tr class="${rowClasses}" style="${rowStyle}" ${isTeamMember ? 'data-company="' + c.company_id + '"' : ''} ${c.is_company_owner ? 'data-owner-company="' + c.company_id + '"' : ''} onclick="showCleanerDetail('${c.id}')">
       ${nameCell}
       <td>${c.city ? escHtml(c.city) : '<span style="color:var(--m)">–</span>'}</td>
-      <td>${c.hourly_rate || '350'} kr/h</td>
+      <td>${c.hourly_rate || getDefaultHourlyRate()} kr/h</td>
       <td>
         <div style="font-weight:600;color:var(--g)">${cleaner_jobs}</div>
         <div style="font-size:.72rem;color:var(--m)">${cleaner_earn.toLocaleString('sv')} kr</div>
@@ -2718,7 +2718,7 @@ function renderApplications() {
           <p style="font-size:.85rem;margin-top:8px">${a.home_address ? '📍 <strong>Adress:</strong> ' + escHtml(a.home_address) : '<span style="color:#D97706">⚠️ Adress saknas</span>'} · ${a.service_radius_km ? '🔄 <strong>Radie:</strong> ' + parseInt(a.service_radius_km) + ' km' : '<span style="color:#D97706">⚠️ Radie ej angiven</span>'}</p>
           <p style="font-size:.75rem;color:#9E9E9A;margin-top:2px">🗺️ ${a.home_lat && a.home_lng ? parseFloat(a.home_lat).toFixed(4) + ', ' + parseFloat(a.home_lng).toFixed(4) : '<span style="color:#D97706">⚠️ Koordinater saknas</span>'}</p>
           <p style="font-size:.85rem;margin-top:8px"><strong>Tjänster:</strong> ${escHtml(Array.isArray(a.services) ? a.services.join(', ') : a.services || '–')}</p>
-          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || 350} kr/h · <strong>F-skatt:</strong> ${a.fskatt_confirmed ? '<span style="color:#16a34a">✅ Har</span>' : a.fskatt_needs_help ? '<span style="color:#ca8a04">📝 Vill ha hjälp</span>' : '<span style="color:#ea580c">❓ Okänd</span>'}</p>
+          <p style="font-size:.85rem"><strong>Timpris:</strong> ${parseInt(a.hourly_rate) || getDefaultHourlyRate()} kr/h · <strong>F-skatt:</strong> ${a.fskatt_confirmed ? '<span style="color:#16a34a">✅ Har</span>' : a.fskatt_needs_help ? '<span style="color:#ca8a04">📝 Vill ha hjälp</span>' : '<span style="color:#ea580c">❓ Okänd</span>'}</p>
           ${a.bio ? `<p style="font-size:.85rem;margin-top:8px;color:var(--m)">"${escHtml(a.bio.substring(0,120))}${a.bio.length > 120 ? '...' : ''}"</p>` : ''}
           ${a.languages && a.languages.length ? `<p style="font-size:.85rem;margin-top:4px"><strong>Språk:</strong> ${escHtml(Array.isArray(a.languages) ? a.languages.join(', ') : a.languages)}</p>` : '<p style="font-size:.85rem;margin-top:4px;color:#D97706">⚠️ Språk ej angivet</p>'}
           ${a.experience ? `<p style="font-size:.85rem"><strong>Erfarenhet:</strong> ${escHtml(a.experience)}</p>` : '<p style="font-size:.85rem;color:#D97706">⚠️ Erfarenhet ej angiven</p>'}
@@ -2730,7 +2730,7 @@ function renderApplications() {
           <button class="btn btn-primary btn-sm" style="white-space:nowrap" 
             data-id="${escHtml(a.id)}" data-name="${escHtml(a.name || a.full_name)}" 
             data-email="${escHtml(a.email)}" data-city="${escHtml(a.city||'')}" 
-            data-services="${escHtml(a.services||'')}" data-rate="${parseInt(a.hourly_rate)||350}"
+            data-services="${escHtml(a.services||'')}" data-rate="${parseInt(a.hourly_rate)||getDefaultHourlyRate()}"
             onclick="approveApplication(this, this.dataset.id, this.dataset.name, this.dataset.email, this.dataset.city, this.dataset.services, this.dataset.rate)">✅ Godkänn</button>
           <button class="btn btn-danger btn-sm" onclick="rejectApplication(this, '${escHtml(a.id)}')">❌ Avslå</button>
         </div>
@@ -3698,7 +3698,7 @@ function showCleanerDetail(id) {
       </div>
       <div>
         <label style="font-size:.72rem;color:var(--m);font-weight:600;display:block;margin-bottom:4px">TIMPRIS (KR/H)</label>
-        <input id="admin-edit-rate" type="number" min="200" max="800" value="${parseInt(c.hourly_rate)||350}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
+        <input id="admin-edit-rate" type="number" min="200" max="800" value="${parseInt(c.hourly_rate)||getDefaultHourlyRate()}" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.85rem">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -3891,7 +3891,7 @@ function showCleanerDetail(id) {
                 '<div>' +
                   '<div style="font-weight:600;font-size:.85rem">' + escHtml(m.full_name || '–') + ' <span style="font-size:.7rem;color:#6B7280">' + mStatus + '</span></div>' +
                   '<div style="font-size:.75rem;color:#6B7280">' + escHtml(m.email || '') + (m.phone ? ' · ' + escHtml(m.phone) : '') + '</div>' +
-                  '<div style="font-size:.75rem;color:#6B7280">' + (m.hourly_rate || 350) + ' kr/h · ' + mJobs.length + ' uppdrag · ⭐ ' + (m.avg_rating ? parseFloat(m.avg_rating).toFixed(1) : '–') + '</div>' +
+                  '<div style="font-size:.75rem;color:#6B7280">' + (m.hourly_rate || getDefaultHourlyRate()) + ' kr/h · ' + mJobs.length + ' uppdrag · ⭐ ' + (m.avg_rating ? parseFloat(m.avg_rating).toFixed(1) : '–') + '</div>' +
                   (Array.isArray(m.services) && m.services.length ? '<div style="font-size:.7rem;margin-top:3px">' + m.services.map(function(s) { return '<span style="background:#DBEAFE;color:#1E40AF;padding:1px 6px;border-radius:6px;font-size:.68rem;margin-right:3px">' + escHtml(s) + '</span>'; }).join('') + '</div>' : '') +
                 '</div>' +
                 '<button onclick="showCleanerDetail(\'' + m.id + '\')" style="font-size:.75rem;padding:6px 10px;border:1px solid #BFDBFE;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;color:#1E40AF">Visa</button>' +
@@ -3946,7 +3946,7 @@ function showCleanerDetail(id) {
           '<option value="hourly"' + (priceType === 'hourly' ? ' selected' : '') + '>kr/h</option>' +
           '<option value="per_sqm"' + (priceType === 'per_sqm' ? ' selected' : '') + '>kr/kvm</option>' +
         '</select>' +
-        '<input type="number" data-svc="' + escHtml(svc) + '" data-cid="' + id + '" value="' + price + '" placeholder="' + (c.hourly_rate || 350) + '" min="50" max="2000" style="width:80px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;font-family:inherit;text-align:right">' +
+        '<input type="number" data-svc="' + escHtml(svc) + '" data-cid="' + id + '" value="' + price + '" placeholder="' + (c.hourly_rate || getDefaultHourlyRate()) + '" min="50" max="2000" style="width:80px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;font-family:inherit;text-align:right">' +
       '</div>';
     }).join('') +
     '<button onclick="saveAdminPrices(\'' + id + '\')" style="margin-top:8px;padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">💾 Spara priser</button>' +
@@ -4171,7 +4171,7 @@ async function saveCleanerFromAdmin() {
     full_name: document.getElementById('admin-edit-name')?.value.trim(),
     phone: document.getElementById('admin-edit-phone')?.value.trim(),
     city: document.getElementById('admin-edit-city')?.value.trim(),
-    hourly_rate: parseInt(document.getElementById('admin-edit-rate')?.value) || 350,
+    hourly_rate: parseInt(document.getElementById('admin-edit-rate')?.value) || getDefaultHourlyRate(),
     services: (document.getElementById('admin-edit-services')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
     bio: document.getElementById('admin-edit-bio')?.value.trim(),
     admin_notes: document.getElementById('admin-note')?.value.trim(),
