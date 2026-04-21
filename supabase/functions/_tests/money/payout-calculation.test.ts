@@ -355,3 +355,79 @@ Deno.test('calculatePayout: commission_pct="abc" → PayoutCalculationError', as
     'Non-numeric commission_pct'
   );
 });
+
+// ============================================================
+// §1.6a — Extra edge-case-coverage (2026-04-22)
+// ============================================================
+
+// Test — total_price = MAX_SAFE_INTEGER → invariant haller utan overflow
+//
+// Spick hanterar aldrig sa stora belopp i verkligheten men invariant-
+// check (cleaner + spick_net + fee === total) ska halla aven for
+// extremvarden. Ingen precision-loss i Math.round.
+
+Deno.test('calculatePayout: total_price=MAX_SAFE_INTEGER → invariant haller', async () => {
+  const maxSafe = Number.MAX_SAFE_INTEGER; // 9007199254740991
+  const sb = createMockSb({
+    settings: { ...ENABLED, commission_standard: '12' },
+    bookings: {
+      b1: { total_price: maxSafe, commission_pct: 12, stripe_fee_sek: 0 },
+    },
+  });
+
+  const result = await calculatePayout(sb, 'b1');
+  // Invariant: cleaner + spick_net + fee === total_price
+  assertEquals(
+    result.cleaner_payout_sek + result.spick_net_sek + result.stripe_fee_sek,
+    maxSafe,
+    'Invariant brots vid MAX_SAFE_INTEGER'
+  );
+});
+
+// Test — commission_pct = 0 → cleaner_payout = total_price
+//
+// Edge: om commission_pct ar satt till 0 (t.ex. pilot-kund utan
+// provision) ska cleaner fa hela beloppet och Spick inget.
+
+Deno.test('calculatePayout: commission_pct=0 → cleaner_payout=total_price, spick=0', async () => {
+  const sb = createMockSb({
+    settings: { ...ENABLED, commission_standard: '12' },
+    bookings: {
+      b1: { total_price: 1000, commission_pct: 0, stripe_fee_sek: 30 },
+    },
+  });
+
+  const result = await calculatePayout(sb, 'b1');
+  assertEquals(result.commission_sek, 0);
+  assertEquals(result.cleaner_payout_sek, 1000);
+  assertEquals(result.spick_gross_sek, 0);
+  assertEquals(result.spick_net_sek, -30, 'spick_net = 0 - 30 (fee) = -30 → forlustbokning');
+});
+
+// Test — stripe_fee > commission → spick_net negativt
+//
+// Om Stripe-avgift ar storre an provisionen (t.ex. liten bokning)
+// ska spick_net bli negativt. Formeln ska inte klampa till 0 —
+// forlusten loggas och raknas med.
+
+Deno.test('calculatePayout: stripe_fee > commission → spick_net negativt, invariant haller', async () => {
+  const sb = createMockSb({
+    settings: { ...ENABLED, commission_standard: '12' },
+    bookings: {
+      // total=100, pct=12 → commission=12, fee=50 → spick_net = 12-50 = -38
+      b1: { total_price: 100, commission_pct: 12, stripe_fee_sek: 50 },
+    },
+  });
+
+  const result = await calculatePayout(sb, 'b1');
+  assertEquals(result.commission_sek, 12);
+  assertEquals(result.cleaner_payout_sek, 88); // 100 - 12
+  assertEquals(result.spick_gross_sek, 12);
+  assertEquals(result.spick_net_sek, -38); // 12 - 50
+  // Invariant: 88 + (-38) + 50 === 100
+  assertEquals(
+    result.cleaner_payout_sek + result.spick_net_sek + result.stripe_fee_sek,
+    100,
+    'Invariant brots med negativ spick_net'
+  );
+});

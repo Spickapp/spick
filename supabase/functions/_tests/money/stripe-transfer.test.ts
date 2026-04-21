@@ -629,3 +629,123 @@ Deno.test('triggerStripeTransfer: audit-insert fail → TransferReversedError + 
   assertEquals(state.attempts[0].status, 'paid');
   assertEquals(state.attempts[0].stripe_transfer_id, 'tr_mock_1');
 });
+
+// ============================================================
+// §1.6a — Extra mock-coverage (2026-04-22)
+// ============================================================
+
+// Test — Stripe svar utan id-falt
+//
+// Stripe /transfers returnerar 200 men body saknar 'id'. Koden i
+// money.ts (rad ~961-968) ska detektera detta och kasta
+// TransferFailedError + logga misslyckandet till payout_attempts
+// och payout_audit_log.
+
+Deno.test('triggerStripeTransfer: Stripe response saknar id → TransferFailedError', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+  const mockStripeNoId: StripeRequestFn = async () => ({
+    ok: true,
+    status: 200,
+    body: { object: 'transfer' }, // saknar id
+  });
+
+  await assertRejects(
+    () => triggerStripeTransfer(sb, 'b1', { _stripeRequest: mockStripeNoId }),
+    TransferFailedError,
+    'Stripe response missing transfer id'
+  );
+
+  // Attempt ska markeras failed i payout_attempts
+  assertEquals(state.attempts.length, 1);
+  assertEquals(state.attempts[0].status, 'failed');
+});
+
+// Test — _stripeRequest throw:ar (network timeout / AbortError)
+//
+// Om nativt fetch kastar (timeout, connection refused) ska money.ts
+// fanga undantaget i try/catch (rad ~940-948), logga failure och
+// kasta TransferFailedError med Stripe-meddelande.
+
+Deno.test('triggerStripeTransfer: _stripeRequest throw:ar (network) → TransferFailedError', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  await assertRejects(
+    () => triggerStripeTransfer(sb, 'b1', {
+      _stripeRequest: mockStripeThrow('Connection reset by peer'),
+    }),
+    TransferFailedError,
+    'Stripe transfer failed: Connection reset by peer'
+  );
+
+  assertEquals(state.attempts.length, 1);
+  assertEquals(state.attempts[0].status, 'failed');
+});
+
+// Test — Reversal sjalvt failar efter DB-fel
+//
+// Dubbelt fel: audit-insert failar EFTER Stripe-success, reversal
+// anropas for att rulla tillbaka Stripe-transferen, men reversal
+// failar ocksa (t.ex. Stripe nere). Koden ska kasta
+// TransferReversedError med BADE original_db_error och reversal_error
+// i details (rad ~1037-1046).
+
+Deno.test('triggerStripeTransfer: reversal sjalvt failar → TransferReversedError med badal fel', async () => {
+  const state = baseState({ failAuditInsert: true });
+  const sb = createMockSb(state);
+
+  // Mock: /transfers OK, /reversals failar
+  const stripeReq: StripeRequestFn = async (endpoint) => {
+    if (endpoint.includes('/reversals')) {
+      throw new Error('Stripe nere — reversal kunde inte koras');
+    }
+    return { ok: true, status: 200, body: { id: 'tr_mock_1', object: 'transfer' } };
+  };
+
+  const err = await assertRejects(
+    () => triggerStripeTransfer(sb, 'b1', { _stripeRequest: stripeReq }),
+    TransferReversedError,
+    'Reversal attempt also failed'
+  );
+
+  const details = (err as TransferReversedError).details;
+  // Bada fel ska finnas i details
+  assertEquals(
+    typeof details.original_db_error,
+    'string',
+    'details.original_db_error saknas'
+  );
+  assertEquals(
+    typeof details.reversal_error,
+    'string',
+    'details.reversal_error saknas'
+  );
+});
+
+// Test — Custom idempotency_key propageras till Stripe-call
+//
+// Om caller anger idempotency_key ska exakt det varde skickas till
+// Stripe (inte money.ts genererade `payout-{booking_id}-{n}`).
+// Verifieras genom att mock:en snapshotar opts.idempotencyKey.
+
+Deno.test('triggerStripeTransfer: custom idempotency_key propageras till Stripe-call', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  let capturedKey: string | undefined;
+  const stripeReq: StripeRequestFn = async (_endpoint, _method, _params, opts) => {
+    capturedKey = opts.idempotencyKey;
+    return { ok: true, status: 200, body: { id: 'tr_mock_custom', object: 'transfer' } };
+  };
+
+  const customKey = 'custom-idempotent-key-abc123';
+  await triggerStripeTransfer(sb, 'b1', {
+    idempotency_key: customKey,
+    _stripeRequest: stripeReq,
+  });
+
+  assertEquals(capturedKey, customKey, 'Stripe-call fick inte custom idempotency_key');
+  // payout_attempts ska ocksa lagra custom key
+  assertEquals(state.attempts[0].stripe_idempotency_key, customKey);
+});

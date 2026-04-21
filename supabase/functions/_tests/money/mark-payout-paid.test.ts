@@ -33,6 +33,7 @@ import {
   BookingNotFound,
   PayoutPreconditionError,
   PayoutVerificationError,
+  PayoutUpdateError,
 } from '../../_shared/money.ts';
 import type { StripeRequestFn, StripeResponse } from '../../_shared/stripe.ts';
 
@@ -575,4 +576,137 @@ Deno.test('markPayoutPaid: skip_stripe_verify=true → hoppar Stripe, uppdaterar
   assertEquals(state.audit.length, 1);
   assertEquals(state.audit[0].action, 'payout_confirmed');
   assertEquals(state.audit[0].details?.verified_via_stripe, false);
+});
+
+// ============================================================
+// §1.6a — Extra mock-coverage (2026-04-22)
+// ============================================================
+
+// Test — Stripe GET throw:ar (network) → PayoutVerificationError
+//
+// Om fetch mot Stripe kastar (timeout, DNS, connection refused)
+// ska markPayoutPaid kasta PayoutVerificationError med
+// Stripe-meddelandet i message (rad ~1292-1298).
+
+Deno.test('markPayoutPaid: Stripe GET throw:ar → PayoutVerificationError', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  const stripeReq: StripeRequestFn = async () => {
+    throw new Error('ETIMEDOUT');
+  };
+
+  await assertRejects(
+    () => markPayoutPaid(sb, 'b1', { _stripeRequest: stripeReq }),
+    PayoutVerificationError,
+    'Failed to verify Stripe transfer: ETIMEDOUT'
+  );
+
+  // Booking ska INTE vara uppdaterad — verification felade
+  assertEquals(state.bookings.b1.payout_status, null);
+  assertEquals(state.audit.length, 0);
+});
+
+// Test — Stripe GET 404 → PayoutVerificationError
+//
+// Transfer-id i payout_attempts finns inte i Stripe (t.ex. borttagen
+// eller felaktig id). Koden ska kasta PayoutVerificationError med
+// Stripe-status i meddelandet (rad ~1300-1309).
+
+Deno.test('markPayoutPaid: Stripe GET 404 → PayoutVerificationError', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  await assertRejects(
+    () => markPayoutPaid(sb, 'b1', {
+      _stripeRequest: mockStripeGetError(404, 'No such transfer'),
+    }),
+    PayoutVerificationError,
+    'Stripe 404'
+  );
+
+  assertEquals(state.bookings.b1.payout_status, null);
+});
+
+// Test — audit-insert fail efter bookings-update → PayoutUpdateError
+//
+// Scenario: bookings-update lyckas men audit-insert failar (t.ex.
+// RLS eller constraint-violation). Koden ska kasta PayoutUpdateError
+// med felmeddelandet (rad ~1378-1384). Booking kvarstar som paid
+// (delvis utfort state) — admin ska granska manuellt.
+
+Deno.test('markPayoutPaid: audit-insert fail → PayoutUpdateError', async () => {
+  const state = baseState();
+  // Skapa mockSb dar audit-insert failar men allt annat ar normalt
+  // deno-lint-ignore no-explicit-any
+  const normalSb: any = createMockSb(state);
+  // deno-lint-ignore no-explicit-any
+  const failingSb: any = {
+    from(table: string) {
+      if (table === 'payout_audit_log') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                order: () => ({
+                  limit: () => ({
+                    async maybeSingle() {
+                      return { data: null, error: null };
+                    },
+                  }),
+                }),
+              }),
+            }),
+          }),
+          insert: (_row: Record<string, unknown>) => ({
+            select: () => ({
+              async single() {
+                return {
+                  data: null,
+                  error: { message: 'insert or update on table violates RLS' },
+                };
+              },
+            }),
+          }),
+        };
+      }
+      return normalSb.from(table);
+    },
+  };
+
+  await assertRejects(
+    () => markPayoutPaid(failingSb, 'b1', {
+      _stripeRequest: mockStripeGetOk(88000, 'tr_1'),
+    }),
+    PayoutUpdateError,
+    'Failed to insert payout_audit_log'
+  );
+
+  // Booking-uppdateringen lyckas men audit fallerar — "halfway"-state
+  assertEquals(state.bookings.b1.payout_status, 'paid');
+});
+
+// Test — admin_user_id propageras till audit details
+//
+// Om opts.admin_user_id anges ska det inkluderas i
+// payout_audit_log.details (rad ~1354-1362). Detta ger audit-trail
+// for vem som triggrade markerigen.
+
+Deno.test('markPayoutPaid: admin_user_id lagras i audit details', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  const adminId = 'admin-uuid-abc-123';
+  const result = await markPayoutPaid(sb, 'b1', {
+    admin_user_id: adminId,
+    _stripeRequest: mockStripeGetOk(88000, 'tr_1'),
+  });
+
+  assertEquals(result.status, 'paid');
+  assertEquals(state.audit.length, 1);
+  assertEquals(
+    state.audit[0].details?.admin_user_id,
+    adminId,
+    'admin_user_id saknas i audit.details'
+  );
 });

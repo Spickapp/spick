@@ -33,6 +33,8 @@ import {
 import {
   reconcilePayouts,
   MoneyLayerDisabled,
+  ReconcileConfigError,
+  ReconcilePermissionError,
 } from '../../_shared/money.ts';
 import type { StripeRequestFn, StripeResponse } from '../../_shared/stripe.ts';
 
@@ -741,4 +743,142 @@ Deno.test('reconcilePayouts: 3 olika mismatch-typer → 3 audit-entries', async 
   const runAudits = state.audit.filter((a) => a.action === 'reconciliation_completed');
   assertEquals(mmAudits.length, 3);
   assertEquals(runAudits.length, 1);
+});
+
+// ============================================================
+// §1.6a — Extra mock-coverage (2026-04-22)
+// ============================================================
+
+// Test — Stripe 401 kastar ReconcileConfigError
+//
+// Primarkalla: money-layer.md §4.6 error-typer. Stripe auth-fel ar
+// inte en mismatch utan en konfig-fel som ska larma omedelbart.
+
+Deno.test('reconcilePayouts: Stripe 401 → ReconcileConfigError', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  await assertRejects(
+    () => reconcilePayouts(sb, { _stripeRequest: mockStripeAuthFail() }),
+    ReconcileConfigError,
+    'Stripe auth failed (401)'
+  );
+});
+
+// Test — RLS permission denied vid audit-insert kastar ReconcilePermissionError
+//
+// Om service_role-writes blockeras mot payout_audit_log (t.ex.
+// felaktig RLS-policy) ska reconcilePayouts kasta
+// ReconcilePermissionError med run_id + mismatch_type. Det ar
+// kritiskt eftersom vi inte kan logga mismatches utan write-access.
+
+Deno.test('reconcilePayouts: RLS permission denied vid audit-insert → ReconcilePermissionError', async () => {
+  const state = baseState();
+
+  // Delegera till standard-mock for lasning, override BARA insert for
+  // payout_audit_log sa kedjan `.select().eq().eq()` fortfarande fungerar.
+  // deno-lint-ignore no-explicit-any
+  const normalSb: any = createMockSb(state);
+  // deno-lint-ignore no-explicit-any
+  const sb: any = {
+    from(table: string) {
+      const base = normalSb.from(table);
+      if (table === 'payout_audit_log') {
+        return {
+          ...base,
+          insert: () =>
+            Promise.resolve({
+              data: null,
+              error: { message: 'permission denied for table payout_audit_log' },
+            }),
+        };
+      }
+      return base;
+    },
+  };
+
+  // 1 Stripe-transfer som saknar DB-attempt → no_local_attempt mismatch
+  // → audit-insert kors → RLS-fel → ReconcilePermissionError
+  const stripeReq = mockStripeList([
+    { id: 'tr_orphan', amount: 50000, amount_reversed: 0, reversed: false, created: 0 },
+  ]);
+
+  await assertRejects(
+    () => reconcilePayouts(sb, { _stripeRequest: stripeReq }),
+    ReconcilePermissionError,
+    'audit_log insert blocked'
+  );
+});
+
+// Test — Stripe list response utan body.data → 0 transfers, inga fel
+//
+// Defensivt: om Stripe returnerar 200 men body saknar .data (eller
+// .data ar inte array) ska koden behandla det som "inga transfers"
+// utan att krascha.
+
+Deno.test('reconcilePayouts: Stripe body.data saknas → 0 transfers utan errors', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  const stripeReq: StripeRequestFn = async () => ({
+    ok: true,
+    status: 200,
+    body: { object: 'list' }, // saknar .data
+  });
+
+  const report = await reconcilePayouts(sb, { _stripeRequest: stripeReq });
+  assertEquals(report.transfers_checked, 0);
+  assertEquals(report.matches, 0);
+  assertEquals(report.mismatches.length, 0);
+  assertEquals(report.errors.length, 0);
+});
+
+// Test — Stripe list 500 → errors-array populated, 0 mismatches
+//
+// Stripe API ner (5xx) ska INTE kasta utan logga till report.errors
+// och returnera. Monitoring larmar pa errors-length.
+
+Deno.test('reconcilePayouts: Stripe list 500 → errors-array med meddelande', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  const stripeReq: StripeRequestFn = async () => ({
+    ok: false,
+    status: 500,
+    body: { error: { message: 'Stripe API internal error' } },
+  });
+
+  const report = await reconcilePayouts(sb, { _stripeRequest: stripeReq });
+  assertEquals(report.transfers_checked, 0);
+  assertEquals(report.mismatches.length, 0);
+  assertEquals(report.errors.length, 1);
+  assertEquals(
+    report.errors[0].startsWith('stripe_list_failed:500'),
+    true,
+    `errors[0] ska borja med stripe_list_failed:500, fick: ${report.errors[0]}`
+  );
+});
+
+// Test — Stripe list throw:ar exception → errors-array med stripe_list_exception
+//
+// Om _stripeRequest sjalvt kastar (timeout, DNS) ska koden fanga
+// och placera felet i errors-array, INTE lata det propagera.
+
+Deno.test('reconcilePayouts: _stripeRequest throw:ar → errors-array med stripe_list_exception', async () => {
+  const state = baseState();
+  const sb = createMockSb(state);
+
+  const stripeReq: StripeRequestFn = async () => {
+    throw new Error('ECONNREFUSED');
+  };
+
+  const report = await reconcilePayouts(sb, { _stripeRequest: stripeReq });
+  assertEquals(report.transfers_checked, 0);
+  assertEquals(report.mismatches.length, 0);
+  assertEquals(report.errors.length, 1);
+  assertEquals(
+    report.errors[0].startsWith('stripe_list_exception:'),
+    true,
+    `errors[0] ska borja med stripe_list_exception:, fick: ${report.errors[0]}`
+  );
 });
