@@ -2,7 +2,7 @@
 
 **Upptäckt:** 2026-04-23 sent kväll
 **Trigger:** Farhad frågade om tidszon-synk i utskick
-**Status:** Utredning klar, fix pending egen sprint
+**Status:** ✓ STÄNGD 2026-04-24. Alla 4 faser klara. Se `docs/architecture/timezone-convention.md` för gällande konvention.
 
 ## Bekräftade buggar
 
@@ -105,25 +105,17 @@ Kommentaren i `20260423_f2_7_1_b2b_schema.sql:74-75` om "4 hardcodes som hygien-
 
 `bookingDate: String(booking.booking_date || "")` skickar rå ISO-datum till kvitto-template. Datum-only format är stabilt (inget tidszon-beroende för ren datum-sträng). OK som det är.
 
-## Sprint-plan (föreslagen)
+## Sprint-plan — KLAR
 
-**Fas 1 — Fix KRITISK (1h):** ✓ KLAR 2026-04-24
-- `_shared/timezone.ts` skapad med `parseStockholmTime` + `formatStockholmDate`
-- auto-remind:93 + auto-remind:299 (båda buggiga, samma pattern) använder helpern
+**Fas 1 — Fix KRITISK (1h):** ✓ KLAR 2026-04-24, commit `13640c3`. auto-remind timezone-fix + bonus-fix på rad 299 (identiskt bugg-mönster upptäckt via grep).
 
-**Fas 2 — Shared helper + refactor (2h):** ✓ KLAR 2026-04-24
-- 4 EFs använder `formatStockholmDate` / `formatStockholmDateLong` från `_shared/timezone.ts`
-- Lokala duplikater raderade (~20 rader kod bort)
-- Regel #28-kompatibel
+**Fas 2 — Shared helper + refactor (2h):** ✓ KLAR 2026-04-24, commit `d252586`. 4 EFs konsoliderade (auto-delegate, cleaner-booking-response, company-propose-substitute, customer-approve-proposal). 33 call-sites uppdaterade. Lokala formatDate-duplikater raderade.
 
-**Fas 3 — auto-rebook edge-case (30-45 min):** ✓ KLAR 2026-04-24
-- `getStockholmDateString()` i `_shared/timezone.ts`
-- 4 call-sites bytta (2 i huvudfunktion, 2 i processSubscription)
+**Fas 3 — auto-rebook edge-case (30-45 min):** ✓ KLAR 2026-04-24, commit `0da7ca9`. 4 call-sites bytta till getStockholmDateString().
 
-**Fas 4 — Dokumentation (30 min):** ej påbörjad
-- Uppdatera money-layer.md eller arkitekturplan med tidszon-konvention
+**Fas 4 — Dokumentation (30 min):** ✓ KLAR 2026-04-24, denna commit. docs/architecture/timezone-convention.md skapad. TODO-fil uppdaterad.
 
-**Totalt kvar: 3-4h**
+**Totalt: 4h faktisk tid.**
 
 Lämplig att köra parallellt med infrastructure-audit (hygien #48) — båda rör tidszon/data-integritet.
 

@@ -20,7 +20,12 @@
 | 22 | `9281d4c` | §3.2d cleaner-job-match EF-radering (+ undeploy via CLI) |
 | 23:45 | `b1c869b` | §3.2c BLOCKERAD + TODO-fil + dags-snapshot |
 | sent kväll | `f8b91b8` | §3.7 partial — chosen_cleaner_match_score audit-writing (verifierat 0.707 i prod) |
-| 01 | (denna) | docs: timezone-audit-TODO + §3.7-partial-verifierad (match_score 0.707) |
+| 01 | `d1744ca` | docs: timezone-audit-TODO + §3.7-partial-verifierad (match_score 0.707) |
+| 24 apr morgon | `9be12ba` | docs: §3.5 STÄNGD + progress-fil status-sync |
+| 24 apr | `13640c3` | §49 Fas 1: auto-remind timezone-fix (rad 90 + 299) |
+| 24 apr | `d252586` | §49 Fas 2: formatDate × 4 EFs konsoliderade |
+| 24 apr | `0da7ca9` | §49 Fas 3: auto-rebook midnatts-edge-case |
+| 24 apr | (denna) | §49 Fas 4: timezone-convention + §49 STÄNGD |
 
 ## Status per spår
 
@@ -49,14 +54,14 @@ Fas 3 kan fortsätta med §3.3-3.9 utan att §3.2c är löst.
 
 Båda kräver samma typ av gräv: förstå vad vår automatik faktiskt gör bakom grep-ranges. Estimat 8-15h tillsammans.
 
-**Hygien #49 — timezone-audit (öppnad sent kväll):**
+**Hygien #49 — timezone-audit:** ✓ STÄNGD 2026-04-24 (4 commits, 4h total).
 
-- `auto-remind` skickar påminnelser 1-2h för tidigt (bekräftad prod-bugg, `new Date()` tolkas som UTC på Deno-servrar)
-- `auto-rebook` midnatts-edge-case (UTC-datum vs svensk tid 22:00-24:00 UTC)
-- 4 EFs med formatDate-duplikering utan timezone (Regel #28-brott)
-- Calendar-EFs `Europe/Stockholm` är spec-krav, INTE bugg (klargjort)
+- auto-remind kritisk prod-bugg fixad (rad 90 + 299 via parseStockholmTime)
+- auto-rebook midnatts-edge-case fixad (4 call-sites via getStockholmDateString)
+- 4 EFs med formatDate-duplikering konsoliderade (formatStockholmDate + formatStockholmDateLong, 33 call-sites)
+- Konvention dokumenterad i docs/architecture/timezone-convention.md
 
-Estimat: 4-5h. Lämplig parallellt med #48.
+Kvarvarande track: Hygien #48 (infrastructure audit, 8-15h).
 
 ## Start-instruktion för nästa session
 
