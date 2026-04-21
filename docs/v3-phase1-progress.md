@@ -176,6 +176,30 @@ per_sqm?
 - **#14 days_since_approval-härledning (öppnad 2026-04-22, Fas 3 §3.1):** Matching-design använder `cleaners.signup_date` (DATE, DEFAULT CURRENT_DATE) för exploration_bonus, matchar prod-precedens i `get_new_cleaner_boost()`-funktionen ([prod-schema.sql:513-521](../prod-schema.sql)). Åtgärd före v2-aktivering: verifiera att `signup_date` är rimlig för alla 14 aktiva cleaners (inte NULL, inte framtida, inte pre-1970). Studio COUNT: `SELECT COUNT(*) FROM cleaners WHERE signup_date IS NULL OR signup_date > CURRENT_DATE OR signup_date < '2020-01-01'`. Se [matching-algorithm.md §5.6](architecture/matching-algorithm.md).
 - **#15 cleaner-kolumn-duplikater audit (öppnad 2026-04-22, Fas 3 §3.1):** Duplikater i `cleaners`-tabellen dokumenterade i [matching-algorithm.md §9.1](architecture/matching-algorithm.md): `avg_rating`/`rating`, `review_count`/`total_reviews`/`total_ratings`, `completed_jobs`/`total_jobs`, `has_fskatt`/`f_skatt_verified`, `signup_date`/`member_since`. RPC v2 läser en av varje par (prod-precedens). Framtida migration: DROP oanvända duplikater efter 30 dagars pilot + kod-grep-verifiering att inget läser dem. Scope: 2-3h analys + 1 migration. Hanteras lämpligen som del av §2.1.2 LEGACY-audit.
 - **#16 cleaner-job-match EF radering (öppnad 2026-04-22, Fas 3 §3.1):** Efter §3.2 konsoliderar scoring i `find_nearby_cleaners` RPC blir EF:n överflödig. Åtgärd: (1) undeploy EF via Supabase CLI, (2) radera `supabase/functions/cleaner-job-match/` katalogen, (3) ta bort från [.github/workflows/deploy-edge-functions.yml:36](../.github/workflows/deploy-edge-functions.yml), (4) ta bort smoke-test på [tests/smoke.spec.ts:85-86](../tests/smoke.spec.ts), (5) uppdatera [docs/1-MASTERKONTEXT.md:134](../docs/1-MASTERKONTEXT.md). Förutsätter att v2-RPC är i prod och boka.html pekar på den. Se [matching-algorithm.md §12](architecture/matching-algorithm.md).
+- **#17 `rut_application_status` spökkolumn (öppnad 2026-04-23, §2.5-minifix):** Kolumn på `bookings` som [booking-create:340](../supabase/functions/booking-create/index.ts:340) skriver (`'pending'|'not_applicable'`) men ingen annan kod läser. Rut-claim-EF skrev istället till `rut_claim_status` (separat kolumn, annat värde-set). Per Farhads prod-verifiering 2026-04-23: 33 rader har `rut_application_status='pending'`, alla utan PNR — spökdata. Åtgärd i Fas 7.5: besluta konsolidering (`rut_claim_status` vinner enligt rut-claim-EFs konvention) + backfill de 33 raderna + DROP kolumnen. Se [2026-04-23-rut-infrastructure-decision.md punkt 5](audits/2026-04-23-rut-infrastructure-decision.md).
+- **#18 `migrations/drafts/20260325000003_rut_claims.sql` icke-applicerad (öppnad 2026-04-23, §2.5-minifix):** CREATE TABLE-migration ligger i `drafts/`-mappen (aldrig körd av Supabase CLI). Den arkiverade rut-claim-EFn försöker `insert` i tabellen med `.catch()` som tystar felet → varje körning loggade varning i prod, ingen faktisk data sparades. Åtgärd i Fas 7.5: beslut (a) applicera migration + använd tabellen som audit-logg för framtida RUT-ansökningar, eller (b) radera drafts-filen om ny design inte kräver den. Se [2026-04-23-rut-infrastructure-decision.md punkt 6](audits/2026-04-23-rut-infrastructure-decision.md).
+
+## Schemalagda framtida faser
+
+### Fas 7.5 — RUT-infrastruktur (öppnad 2026-04-23)
+
+**Motivation:** Spår B-audit 2026-04-23 avslöjade 5 systemiska 🔴-risker i RUT-ansökningsinfrastrukturen (kolumnmismatch, fel XML-matematik, saknad timing-guard, spökkolumn, icke-applicerad migration). Noll ekonomisk exponering idag (`SKV_API_KEY` tom + 0 historiska PNR), men infrastrukturen är inte produktionsklar. Minifix 2026-04-23 (§2.5) stängde triggern + arkiverade EF — full refaktor skjuten hit.
+
+**Placering i v3-ordning:** mellan Fas 7 och Fas 8 (insatt i [spick-arkitekturplan-v3.md](planning/spick-arkitekturplan-v3.md)).
+
+**Beroenden:** inga — kan startas när som helst efter 2026-04-23. Rafa-pilot kan skalas först när Fas 7.5 är klar OCH `SKV_API_KEY` satts till verkligt värde.
+
+**Scope: 25-35h** över 6 sub-faser (§7.5.1-§7.5.6 — grovskissade i v3-planen, detaljeras när fasen startar).
+
+**Primärkälla vid start:** [docs/audits/2026-04-23-rut-infrastructure-decision.md](audits/2026-04-23-rut-infrastructure-decision.md) + arkiverad kod i [docs/archive/edge-functions/rut-claim/](archive/edge-functions/rut-claim/).
+
+## Session-lärdomar (löpande)
+
+Numrering fortsätter från 5 lärdomar i [session-snapshot-2026-04-22.md](planning/session-snapshot-2026-04-22.md).
+
+### #6 Research-drift — kod-grep ≠ primärkälla när schema är sanningen (2026-04-23)
+
+Verifiera mot DB-schema före kod-antaganden. Kod-grep visar vad koden försöker göra, inte om den faktiskt fungerar. Vid drift mellan grep och schema: schema vinner. Samma mönster upptäckt i både §3.1-research (`customer_profiles.preferences` JSONB antagen men existerar ej) och §2.5-RUT-audit (stripe-webhook läser `booking.customer_pnr_hash` men boka.html skickar aldrig hashen → gatekeeper alltid false, hela flödet en no-op).
 
 ## Stängda plan-beslut
 

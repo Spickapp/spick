@@ -515,18 +515,10 @@ ${!cleaner ? `<div style="background:#FFF5E5;border-left:4px solid #F59E0B;paddi
 `);
   await sendEmail(ADMIN, `💰 Ny bokning: ${esc(name)} – ${price} – ${date}`, adminHtml);
 
-  // ── 4. Trigga RUT-ansökan ────────────────────────────────────
-  if (isRut && booking.customer_pnr_hash) {
-    await fetch(`${SUPABASE_URL}/functions/v1/rut-claim`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
-        "apikey": SUPABASE_SERVICE_KEY,
-      },
-      body: JSON.stringify({ booking_id: bookingId })
-    }).catch(e => console.error("RUT-fel:", e));
-  }
+  // RUT-ansökan flyttad till Fas 7.5 (2026-04-23).
+  // Tidigare trigger bruten: kolumnmismatch + fel XML-matematik +
+  // saknad timing-guard. Se docs/audits/2026-04-23-rut-infrastructure-
+  // decision.md för fullständig analys.
 
   // ── 5. Generera kundkvitto (PDF) ───────────────────────────
   try {

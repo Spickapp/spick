@@ -365,6 +365,38 @@ Slutförd 18-19 april 2026. Se v2-planen för detaljer.
 
 ---
 
+### Fas 7.5 — RUT-infrastruktur (vecka TBD, 25-35h)
+
+**Motivation:** Skjuten hit från original-tänkt Fas 2.5 efter Spår B-audit 2026-04-23 (se [docs/audits/2026-04-23-rut-infrastructure-decision.md](../audits/2026-04-23-rut-infrastructure-decision.md)). 5 systemiska 🔴-risker: kolumnmismatch (`rut_application_status` vs `rut_claim_status` vs spökkolumn), fel XML-matematik (hårdkodat 70 % arbetskostnad, ingen 75 000 kr-tak-check), saknad timing-guard (ansökan vid betalning, ej vid utfört arbete), icke-applicerad `drafts/20260325000003_rut_claims.sql`-migration, avsaknad av kreditnota-flöde vid refund.
+
+**Minifix 2026-04-23 (§2.5):** trigger avaktiverad i stripe-webhook, EF arkiverad till [docs/archive/edge-functions/rut-claim/](../archive/edge-functions/rut-claim/), undeploy verifierad. Ingen ekonomisk exponering idag (`SKV_API_KEY` tom + 0 historiska PNR). Full refaktor sker i denna fas.
+
+**Mål:** RUT-ansökan fungerar regel-korrekt, auditbar, idempotent. Kund ser komplett faktura som uppfyller bokföringslag. Refund triggar kreditnota automatiskt. 31 januari-deadline bevakas av cron.
+
+**Sub-faser (grovskiss — detaljer när fasen startar):**
+
+- **7.5.1** Research + prod-verifiering: `SKV_API_KEY`-status, Skatteverkets API-spec 2026, räkna spökrader (`rut_application_status='pending'`), PNR-flöde-karta i boka.html.
+- **7.5.2** Kolumn-konsolidering: välj kanonisk kolumn (`rut_claim_status`), backfill + DROP `rut_application_status` (hygien-task #17). Beslut + exekvering på `drafts/20260325000003_rut_claims.sql` (hygien-task #18).
+- **7.5.3** Timing-guard + admin-godkänd kö: flytta trigger från `stripe-webhook` till cron som körs ≥24 h efter `completed_at`. Admin-godkänner första kvartalet (alt B från F2.5-2).
+- **7.5.4** XML-matematik + takcheck: refaktor `buildRutXml` med korrekt arbetskostnad (100 % för städtjänster, uppdelning vid material) + 75 000 kr/år-tak per kund.
+- **7.5.5** Persistent kundfaktura-infrastruktur: ny `customer_invoices`-tabell (sekventiell nr, snapshot, immutable), moms-rad, automatisk kreditnota vid refund, `rut-reverse`-EF för återkallelse hos Skatteverket.
+- **7.5.6** Årsskifte-vakt + återaktivering: `rut-deadline-check`-cron (dec/jan-vakt), återaktivera rut-claim-EF från arkivet med ny kod, åter-deploya. Sätt verkligt `SKV_API_KEY`-värde.
+
+**Leverabler:**
+
+- Refaktorerad `rut-claim`-EF (återaktiverad från arkiv)
+- Ny `customer_invoices`-tabell + `generate-customer-invoice`-EF
+- `rut-reverse`-EF
+- `rut-deadline-check`-cron
+- Kolumn-konsolidering-migration
+- Uppdaterad `faktura.html` med moms-rad + sekventiell nr
+
+**Dependencies:** Ingen. Kan startas när som helst efter 2026-04-23. Blockerar ingen feature-fas direkt, men **Rafa-pilot får inte skalas** (eller `SKV_API_KEY` sättas till verkligt värde) förrän §7.5 är klar.
+
+**Primärkälla vid start:** [docs/audits/2026-04-23-rut-infrastructure-decision.md](../audits/2026-04-23-rut-infrastructure-decision.md).
+
+---
+
 ### Fas 8 — Dispute + Full Escrow (vecka 16-21, 60-80h)
 
 **Motivation:** Audit-prioritet 🟡 4 men absolut EU-deadline 2 dec 2026. Blockerar B2B-försäljning och ansvarsförsäkring. R4 i auditen: kräver design-dokument först.
@@ -797,6 +829,7 @@ Dessa är Q1-Q2 2027 eller senare:
 | 5 | Kundretention + Recurring | 12-13 | 10-15 | — | Nytt (v3.1) |
 | 6 | Event-system | 14 | 10-15 | — | v2-arv |
 | 7 | Languages + picker | 15 | 5-8 | — | v2-arv |
+| 7.5 | RUT-infrastruktur | TBD | 25-35 | 🔴 | Spår B 2026-04-23 |
 | 8 | Dispute + Full Escrow | 16-21 | 60-80 | 🟡 4 | Sekt. 4 |
 | 9 | VD-autonomi | 22-23 | 15-25 | — | Nytt |
 | 10 | Observability + alerts | 24-25 | 20-40 | 🟡 6 | Sekt. 6 |
@@ -804,7 +837,7 @@ Dessa är Q1-Q2 2027 eller senare:
 | 12 | E2E + Audit-pipeline | 27-28 | 10-15 | — | v2-arv |
 | 13 | GA-readiness | 29 | 5-10 | — | Nytt |
 | 14 | Systemic Robustness [VALFRI] | 30-31 | 20-30 | — | Nytt (v3.1) |
-| **Totalt** | | **20-25v** | **221-378h** | | |
+| **Totalt** | | **20-25v + 7.5 schemaläggs separat** | **246-413h** | | |
 
 **Buffer:** Tidsbudgeten 10-12h/vecka ger ~240-300h över 25 veckor. Om tajtare: skjut Fas 14 till Q1 2027 (den är markerad VALFRI av denna anledning).
 
