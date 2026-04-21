@@ -1925,10 +1925,22 @@ async function loadAvailableCleaners() {
     let cleaners;
     // Radius-matchning: använd find_nearby_cleaners RPC om lat/lng finns
     if (state.lat && state.lng) {
+      // v2 multivariat ranking: skickar bokningskontext för preference-match + exploration-bonus
+      // NULL för has_elevator/booking_materials/customer_id = fält finns ej i UI än
       const rpcRes = await fetch(`${SUPA}/rest/v1/rpc/find_nearby_cleaners`, {
         method: 'POST',
         headers: {...H, 'Content-Type':'application/json'},
-        body: JSON.stringify({ customer_lat: state.lat, customer_lng: state.lng })
+        body: JSON.stringify({
+          customer_lat: state.lat,
+          customer_lng: state.lng,
+          booking_date: state.date || null,
+          booking_time: state.time || null,
+          booking_hours: state.hours || null,
+          has_pets: state.hasPets || false,
+          has_elevator: null,
+          booking_materials: null,
+          customer_id: null
+        })
       });
       if (!rpcRes.ok) throw new Error(`Kunde inte hämta städare (HTTP ${rpcRes.status})`);
       cleaners = await rpcRes.json();
