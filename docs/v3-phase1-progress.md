@@ -190,6 +190,7 @@ per_sqm?
 - **#29 Duplicerade cleaner-rader i prod (öppnad 2026-04-23, §2.5-R2 E2E-test):** Upptäckt under R2-verifiering 23 apr: Farhad Haghighi existerade som **två cleaner-rader** — solo (`hourly_rate=100`) + företag (`hourly_rate=350`). Solo-raden raderad manuellt 23 apr. Bidrog till fel prissättning i Fönsterputs-testbokningen (se #30). Framtida åtgärd: unique constraint på `cleaners(email, company_id)` eller periodisk duplikat-audit via admin.html. Scope: 1-2h (constraint-migration + eventuell backfill-granskning). Risk: befintliga dubletter utanför Farhad-raderna kan finnas — kör audit innan constraint appliceras.
 - **#30 Pricing-resolver ignorerar `services.default_hourly_price` (öppnad 2026-04-23, §2.5-R2 E2E-test):** Fönsterputs-testbokning `681aaa93` 23 apr 2026 avslöjade att `pricing-resolver.ts` föll tillbaka på `cleaner.hourly_rate` (100 kr för Farhad-solo-raden, se #29) istället för att läsa `services.default_hourly_price` (349 kr för Fönsterputs). Resultat: kunden debiterades 100 kr/h istället för 349 kr/h. R2-kvittot (`KV-2026-00001`) renderade korrekt **mot den debiterade summan** — bokföringslag-compliance är intakt. Pricing-resolver-felet är separat från R2-scope. Öppnas som §2.6 "Pricing-konsistens audit" eller egen hygien-sprint. Scope: 4-6h (grep pricing-resolver-callers + trace fallback-kedja + fix + regressionstest). Relaterade: #29 (dubletten), #31 (hours-drift).
 - **#31 Fönsterputs timme-drift frontend vs backend (öppnad 2026-04-23, §2.5-R2 E2E-test):** Samma testbokning `681aaa93`: boka.html visade `1h`, booking-create EF sparade `booking_hours=2.0`. Logic-drift mellan UI-beräkning och server-sidan. Kopplat till #30 — troligen samma pricing-resolver-väg som har inkonsistent timme-beräkning för per_hour vs per_sqm vs per_unit-tjänster. Scope: ingår i §2.6-audit (se #30), 1-2h extra för att trace hours-kedjan. Icke-kritisk (kund debiteras rätt mot debiterad hours, inte mot visad hours), men UX-bug.
+- **#36 `Europe/Stockholm`-hardcodes i calendar-EFs (öppnad 2026-04-23, §2.7.1 Fas A5):** 4 hardcodes kvarstår efter §2.7.1 införde `platform_settings.company_timezone`. Ställen: [calendar-sync/index.ts:270, 273](../supabase/functions/calendar-sync/index.ts:270) (Google Calendar event timeZone) + [calendar-ical-feed/index.ts:127, 131, 168, 169](../supabase/functions/calendar-ical-feed/index.ts:127) (iCal VCALENDAR/VEVENT TZID). Åtgärd: ersätt med `fetchCompanyTimezone(supabase)`-helper (analog med fetchCompanyInfo från R2). Scope: 1h. Ingen funktionell påverkan idag (alla Spick-cleaners är i Europe/Stockholm), men Regel #28-läckage. Hanteras efter §2.7 eller som del av framtida calendar-refaktor.
 - **#19 EF-deploy-drift, 66 repo vs 30 workflow (öppnad 2026-04-23, från §2.5-minifix C0.5):** `ls supabase/functions/` ger **66 EF-kataloger** i repo men [.github/workflows/deploy-edge-functions.yml](../.github/workflows/deploy-edge-functions.yml) deployar bara 30 via explicit FUNCTIONS-array. 36 EFs (55 %) är alltså osynkade från auto-deploy: manuellt deployade, aldrig deployade, eller orphans. Exempel från repo: `admin-approve-cleaner`, `admin-approve-company`, `admin-create-company`, `admin-mark-payouts-paid`, `admin-reject-company`, `auto-delegate`, `auto-rebook`, `booking-auto-timeout`, `booking-reassign`, `calendar-google-auth`, `calendar-google-callback`, `calendar-ical-feed`, `calendar-sync`, `charge-subscription-booking`, `cleaner-booking-response`, `cleaner-og`, `company-accept-invite`, `company-invite-member`, `company-propose-substitute`, `company-self-signup`, `customer-approve-proposal`, `customer-check-auto-delegation`, `customer-upsert`, `expire-team-invitations`, `generate-receipt`, `generate-self-invoice`, `noshow-refund`, `poll-stripe-onboarding-status`, `public-auth-exchange`, `public-auth-link`, `reconcile-payouts`, `serve-invoice`, `services-list`, `setup-subscription`, `stripe-connect-webhook`. Åtgärd: audit via `supabase functions list --project-ref urjeijcncsyuletprydy` → jämför mot `ls supabase/functions/` → klassificera (aktiv-manuellt-deployad / död-kod-orphan / aldrig-deployad-prototyp) → uppdatera workflow-array eller arkivera per kategori. Scope: 3-5h. Icke-blockerare för någon pågående fas, men auto-deploy fungerar inte som "single source of truth" idag. Hanteras lämpligen som hygien-sub-fas under Fas 11 (CLAUDE.md auto-gen) eller Fas 13 (GA-readiness).
 
 ## Fas 2.5 — Minor RUT/dokument-fix (pågår)
@@ -207,6 +208,34 @@ per_sqm?
 | §2.5-R5 | Kreditnota-flöde vid refund + adressfält + städar-mejl | ◯ | — |
 
 **Beroenden:** R2 fristående ✓. R3 fristående. R4 kräver scope-beslut. R5 beror på R4.
+
+## Fas 2.7 — B2B-kompatibilitet (kort-only) (pågår)
+
+**Motivation:** Företagskunder behöver formell faktura med F-YYYY-NNNNN-prefix som uppfyller BokfL 5 kap 7§ + MervL 11 kap 8§. KV-kvittot räcker inte för företagsbokföring (Fortnox/Visma kräver fakturanummer). Rafa-pilot har stor B2B-del — begränsad av dagens B2C-only-flöde.
+
+**Arkitekturdokument:** [docs/planning/fas-2-7-b2b-kompatibilitet.md](planning/fas-2-7-b2b-kompatibilitet.md) (14 sektioner + appendix).
+
+**Designbeslut (verifierade 2026-04-23):**
+
+- RPC: `generate_b2b_invoice_number()` — undviker namnkollision med befintliga `generate_invoice_number()` (returnerar SF- för städar-självfaktura)
+- Sequence: `b2b_invoice_number_seq` — monotoniskt ökande genom alla år
+- Storage-bucket: `invoices/` (delad med SF-) — semantisk konsistens (fakturor i invoices/, kvitton i receipts/)
+- Timezone: config-driven via `platform_settings.company_timezone` (ny nyckel, seed i §2.7.1)
+
+| Sub-fas | Beskrivning | Status | Commit |
+|---|---|:---:|---|
+| §2.7.1 | DB-schema (7 kolumner + sequence + RPC + timezone seed) + serve-invoice i deploy-yml | ✓ | (denna commit) |
+| §2.7.2 | UI-form för B2B-data i boka.html | ◯ | — |
+| §2.7.3 | Client-side validering + booking-create uppdateras | ◯ | — |
+| §2.7.4 | generate-receipt utökas med F-prefix-routing + B2B-mall | ◯ | — |
+| §2.7.5 | serve-invoice regex-utökning för F-prefix | ◯ | — |
+| §2.7.6 | Admin-UI för B2B-faktura + E2E-test | ◯ | — |
+
+**Total estimat:** 10-15h över 6 commits. Kortare än §2.5 tack vare R2-infrastruktur-återanvändning.
+
+**Blockerare att verifiera före §2.7.2-start:**
+- Migration applicerad i prod (se [docs/deploy/2.7.1-manual-apply.md](deploy/2.7.1-manual-apply.md))
+- `SELECT generate_b2b_invoice_number()` returnerar `F-2026-00001`
 
 **R2-verifiering i prod 2026-04-23:**
 - Första kvittot utställt: **`KV-2026-00001`** för bokning `681aaa93` (Fönsterputs-testbokning). Sekventiell serie via `generate_receipt_number()`.

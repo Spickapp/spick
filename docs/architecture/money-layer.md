@@ -1089,6 +1089,42 @@ Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` dir
 
 **Viktigt:** R2-kvittot (`KV-2026-00001`) renderade **korrekt mot den debiterade summan**. Bokföringslag-compliance är intakt oavsett pricing-felet — kvittot är ett sant uttryck av transaktionen som den skedde. Pricing-bugen är sibling, inte regression i R2. Löses i §2.6 "Pricing-konsistens audit" eller separat hygien-sprint.
 
+---
+
+## 19. Fas 2.7 — B2B-fakturering (pågår från 2026-04-23)
+
+**Status:** §2.7.1 (DB-schema) klar. Full arkitektur i [docs/planning/fas-2-7-b2b-kompatibilitet.md](../planning/fas-2-7-b2b-kompatibilitet.md).
+
+**Kontext:** R2 levererade `KV-YYYY-NNNNN`-kvitton till B2C-kunder. Företagskunder behöver formell faktura med `F-YYYY-NNNNN`-prefix för att kunna bokföra i Fortnox/Visma (ett kvitto räcker inte juridiskt för företagsbokföring).
+
+**§2.7.1 DB-infrastruktur (denna commit):**
+
+- **7 nya kolumner** på `bookings`: `business_vat_number`, `business_contact_person`, `business_invoice_email`, `invoice_address_street`, `invoice_address_city`, `invoice_address_postal_code`, `invoice_number`.
+- **Ny sequence** `b2b_invoice_number_seq` — monotoniskt ökande genom alla år.
+- **Ny RPC** `generate_b2b_invoice_number()` → `F-YYYY-NNNNN`-format. Undviker kollision med befintliga `generate_invoice_number()` (städar-självfaktura SF-prefix).
+- **`platform_settings.company_timezone`** seed:ad (Regel #28, config-driven RPC).
+- **`serve-invoice`** tillagd i deploy-yml (31 → 32 EFs). Förberedelse för §2.7.5 regex-utökning.
+
+**Kvarstående sub-faser:**
+
+| Sub-fas | Fokus | Estimat |
+|---|---|---:|
+| §2.7.2 | UI-form för B2B-data i boka.html | 2-3h |
+| §2.7.3 | Validering + booking-create uppdatering | 2-3h |
+| §2.7.4 | generate-receipt utökad med F-prefix-routing + B2B-mall | 3-4h |
+| §2.7.5 | serve-invoice regex `(SF|KV|F)` + bucket-routing | 30 min |
+| §2.7.6 | Admin-UI + E2E-test | 2-3h |
+
+**Storage-strategi:**
+
+| Prefix | Bucket | Syfte |
+|---|---|---|
+| `KV-YYYY-NNNNN` | `receipts/` | B2C-kvitto (R2) |
+| `SF-YYYY-NNNN` | `invoices/` | Städar-självfaktura |
+| `F-YYYY-NNNNN` | `invoices/` | B2B-faktura (§2.7.4+) |
+
+**Inga B2C-regressioner:** alla nya kolumner är NULL-able, RPC:n är additiv, storage-routing per prefix bevarar backwards-compat.
+
 **Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
 
 ### 18.1 Ändringar
