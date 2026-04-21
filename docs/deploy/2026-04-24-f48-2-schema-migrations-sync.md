@@ -142,3 +142,19 @@ WHERE version IN (
 );
 COMMIT;
 ```
+
+## Deploy-historik
+
+**Körd:** 2026-04-24 (sen kväll) via Studio SQL Editor
+
+**Pre-state verifierad:**
+- schema_migrations: 46 rader ✓
+- 20260401000001 / sprint1_missing_tables fanns ✓
+
+**Post-state verifierad:**
+- schema_migrations: 100 rader ✓
+- Inga dubletter ✓
+- Gamla 20260401000001 borta ✓
+- Nya 20260401181153 / sprint1_missing_tables registrerad ✓
+
+Rollback inte utlöst.

@@ -31,7 +31,8 @@
 | 24 apr | `8b3e786` | §3.2c STÄNGD + §48 Fas 48.3 DEPLOY verifierad |
 | 24 apr | `b98aaee` | §48 Fas 48.1-KORRIGERING: diagnos uppdaterad med verifierad primärkälla |
 | 24 apr | `7f0b7a6` | §48 Fas 48.2 Del 1: rename 35 migrations-filer + uppdatera levande referenser |
-| 24 apr | (denna) | §48 Fas 48.2 Del 3: Studio-INSERT-script för schema_migrations-synk (55 rader) |
+| 24 apr | `ab96d3f` | §48 Fas 48.2 Del 3: Studio-INSERT-script för schema_migrations-synk (55 rader) |
+| 24 apr | (denna) | §48 Fas 48.2 Del 3 DEPLOY verifierad (schema_migrations: 46 → 100 rader) |
 
 ## Status per spår
 
