@@ -2462,6 +2462,9 @@ async function findFirstAvailable() {
 }
 function selectCleaner(cl, cardEl) {
   state.cleanerId   = cl.id;
+  // §3.7: lagra match_score för audit-logging vid booking-create
+  // Kan vara undefined för v1-fallback-flöde (ingen lat/lng)
+  state.chosenMatchScore = (typeof cl.match_score === 'number') ? cl.match_score : null;
   state.cleanerName = (cl.company_display_name || cl.company_name)
     ? (cl.company_display_name || cl.company_name) + ' — ' + (cl.full_name || '').split(' ')[0]
     : cl.full_name;
@@ -2951,6 +2954,8 @@ async function doBook() {
         hours: state.hours,
         service: state.service,
         cleaner_id: state.cleanerId || undefined,
+        // §3.7: audit-writing för A/B-analys (designdokumentet §3.7)
+        chosen_cleaner_match_score: state.chosenMatchScore,
         rut: state.customerType === 'privat' && useRut,
         customer_type: state.customerType,
         business_name: state.customerType === 'foretag' ? (document.getElementById('biz-name')?.value.trim() || null) : null,

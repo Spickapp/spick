@@ -221,6 +221,7 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 | §3.2b | 207 | boka.html skickar booking_date/time/hours/has_pets/has_elevator/materials/customer_id | ✓ | `afdcfa4` |
 | §3.2c | 207 | DROP `jobs`/`job_matches`/`cleaner_job_types` (DORMANT) | ⚠ BLOCKERAD | — |
 | §3.2d | 207 | cleaner-job-match EF radering | ✓ | `9281d4c` |
+| §3.7 partial | 211 | chosen_cleaner_match_score + matching_algorithm_version audit-writing | ✓ | (denna commit) |
 | §3.3-§3.9 | 208-233 | History-multiplier-kalibrering, materialiserad vy, admin-UI, pilot-analys | ◯ | — |
 
 > **⚠️ BLOCKERAD från prod-deploy** — upptäckt 2026-04-23 kväll att `supabase_migrations.schema_migrations` är ur sync med repo (1 rad i prod vs 52 filer i repo). Se [docs/planning/todo-migrations-deploy-audit-2026-04-23.md](planning/todo-migrations-deploy-audit-2026-04-23.md). §3.2a manuell deploy via Studio SQL kan köras för att oblockera Fas 3-progress, men strukturell repair behövs före §3.2b deploy.
@@ -243,6 +244,8 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 - `ratings.rating` används (designdok säger felaktigt `ratings.score`)
 
 **Bakåtkompatibilitet (§3.2b ännu inte landad):** boka.html:1928 fortsätter fungera med 2-arg-anrop. När nya params är NULL: preference_match_score + history_multiplier = 1.0 (neutraliserade).
+
+**§3.7 partial — audit-writing:** `chosen_cleaner_match_score` + `matching_algorithm_version` skrivs till bookings vid varje booking-create. Grundar A/B-analys i §3.9. `matching_algorithm_version` läses server-side från `platform_settings` (klient otrusted). Full §3.7 A/B-ramverk (shadow mode, v2-aktivering, traffic-split) kvarstår.
 
 ## Fas 2.5 — Minor RUT/dokument-fix (pågår)
 

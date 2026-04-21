@@ -59,6 +59,7 @@ serve(async (req) => {
     // ── 1. PARSE + VALIDATE INPUT ──────────────────
     const body = await req.json();
     const {
+      chosen_cleaner_match_score, // §3.7 audit-writing (null för v1-fallback)
       name,
       email,
       phone,
@@ -342,6 +343,15 @@ serve(async (req) => {
     const bookingId = crypto.randomUUID();
     const timeEnd = addMinutes(time, validHours * 60);
 
+    // §3.7: läs aktuell matching_algorithm_version från platform_settings server-side
+    // Klient får inte dikterar detta — säkerhetsgaranti för A/B-analysens integritet
+    const { data: versionRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "matching_algorithm_version")
+      .maybeSingle();
+    const matchingVersion = versionRow?.value ?? "v1";
+
     const { error: insertErr } = await supabase.from("bookings").insert({
       id: bookingId,
       customer_name: name,
@@ -359,6 +369,9 @@ serve(async (req) => {
       frequency: frequency || "once",
       cleaner_id: cleaner.id,
       cleaner_name: displayName || cleaner_name,
+      // §3.7 audit-writing: score på vald cleaner + version-snapshot
+      chosen_cleaner_match_score: typeof chosen_cleaner_match_score === "number" ? chosen_cleaner_match_score : null,
+      matching_algorithm_version: matchingVersion,
       square_meters: sqm || null,
       notes: customer_notes || null,
       ...(customer_pnr_hash ? { customer_pnr_hash } : {}),
