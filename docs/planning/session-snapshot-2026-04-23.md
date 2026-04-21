@@ -29,7 +29,9 @@
 | 24 apr | `67254d7` | §48 Fas 1 infrastructure audit DIAGNOS klar (3h) |
 | 24 apr | `aa3b282` | §48 Fas 48.3: migration för DORMANT DROP + deploy-doc |
 | 24 apr | `8b3e786` | §3.2c STÄNGD + §48 Fas 48.3 DEPLOY verifierad |
-| 24 apr | (denna) | §48 Fas 48.1-KORRIGERING: diagnos uppdaterad med verifierad primärkälla |
+| 24 apr | `b98aaee` | §48 Fas 48.1-KORRIGERING: diagnos uppdaterad med verifierad primärkälla |
+| 24 apr | `7f0b7a6` | §48 Fas 48.2 Del 1: rename 35 migrations-filer + uppdatera levande referenser |
+| 24 apr | (denna) | §48 Fas 48.2 Del 3: Studio-INSERT-script för schema_migrations-synk (55 rader) |
 
 ## Status per spår
 
