@@ -14,6 +14,7 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_ID: urjeijcncsyuletprydy
+
     steps:
       - uses: actions/checkout@v4
 
@@ -24,34 +25,25 @@ jobs:
       - name: Link projekt
         run: supabase link --project-ref $PROJECT_ID
 
-      - name: Markera alla befintliga migrationer som applied
+      - name: Repair schema_migrations (idempotent)
+        # Dynamisk repair-lista — scannar top-level supabase/migrations/*.sql
+        # och markerar varje som applied. Säkerhetsnät ifall schema_migrations
+        # skulle komma ur sync (backup-restore, manuell Studio-INSERT, etc).
+        # Inga fel vid redan-applied versioner — repair är idempotent.
+        # 2>/dev/null sväljer bara stderr-brus, inte exit-koder.
         run: |
-          for id in \
-            001 002 003 004 005 006 007 008 009 010 \
-            20260325000001 20260325000002 20260325000003 \
-            20260325000004 20260325000005 20260325000006 \
-            20260326000001 20260326000002 20260326000003 \
-            20260326000004 20260326000005 \
-            20260326100001 20260326200001 \
-            20260326300001 20260326300002 \
-            20260326400001 \
-            20260326500001 20260326500002 20260326500003 \
-            20260326600001 \
-            20260326700001 \
-            20260326800001 \
-            20260327000001 20260327100001 \
-            20260327200001 20260327300001 \
-            20260327400001 20260327500001 \
-            20260327600001 20260327700001; do
-            supabase migration repair --status applied "$id" 2>/dev/null || true
+          set -e
+          for f in supabase/migrations/*.sql; do
+            [ -f "$f" ] || continue
+            basename=$(basename "$f" .sql)
+            version="${basename%%_*}"
+            echo "Repair: $version"
+            supabase migration repair --status applied "$version" 2>/dev/null || \
+              echo "  (already applied or skipped)"
           done
-          # 20260327 (security_notes) — markera som reverted (inte en riktig migration)
-          supabase migration repair --status reverted "20260327" 2>/dev/null || true
 
       - name: Kör nya migrationer
+        # Ingen '|| exit 0' — om db push misslyckas vill vi veta.
         run: |
-          supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}" || {
-            echo "⚠️ db push failed — kan bero på att alla migrationer redan är körda"
-            echo "Kontrollera manuellt om nya migrationer behövs"
-            exit 0
-          }
+          set -e
+          supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
