@@ -84,6 +84,13 @@ serve(async (req) => {
       business_name,
       business_org_number,
       business_reference,
+      // ── §2.7.3: B2B-utökning (6 nya fält från §2.7.1-schema) ──
+      business_vat_number,
+      business_contact_person,
+      business_invoice_email,
+      invoice_address_street,
+      invoice_address_city,
+      invoice_address_postal_code,
       auto_delegation_enabled,
       // ── V1.0: Manuell bokning + Subscription ──
       manual_override_price,     // integer | null — VD-satt totalpris
@@ -102,6 +109,48 @@ serve(async (req) => {
     if (!name || !email || !date || !time || !hours || !service) {
       return json(400, { error: "Obligatoriska fält saknas: name, email, date, time, hours, service" });
     }
+
+    // ── §2.7.3: B2B-sanitering + customer_type-validering ──
+    // sanitize(): trim sträng + returnera null för whitespace-only
+    // (defense-in-depth; frontend trim:ar redan, men direkt API-anrop
+    //  kan skicka whitespace som annars sparas som-är).
+    const sanitize = (s: unknown): string | null => {
+      if (typeof s !== 'string') return null;
+      const trimmed = s.trim();
+      return trimmed === '' ? null : trimmed;
+    };
+
+    // customer_type hybrid-validering (B-10-beslut):
+    //   - saknas/null/undefined → default 'privat' (backwards-compat för
+    //     pre-§2.7.2-clients)
+    //   - satt men ogiltigt värde → 400 Bad Request (skydd mot bad-actor
+    //     / cache-drift)
+    const validCustomerTypes = ['privat', 'foretag'];
+    let effectiveCustomerType: 'privat' | 'foretag';
+    if (customer_type === undefined || customer_type === null || customer_type === '') {
+      effectiveCustomerType = 'privat';
+    } else if (validCustomerTypes.includes(customer_type)) {
+      effectiveCustomerType = customer_type as 'privat' | 'foretag';
+    } else {
+      return json(400, {
+        error: `Ogiltigt customer_type: '${customer_type}'. Tillåtna värden: 'privat' eller 'foretag'.`
+      });
+    }
+
+    // B2B-fält (saniterade). När customer_type='privat' tvingas alla
+    // till null (B-11-beslut: data-integritet, förhindra läckage).
+    const isBusinessBooking = effectiveCustomerType === 'foretag';
+    const b2bFields = {
+      business_name:                isBusinessBooking ? sanitize(business_name)                : null,
+      business_org_number:          isBusinessBooking ? sanitize(business_org_number)          : null,
+      business_reference:           isBusinessBooking ? sanitize(business_reference)           : null,
+      business_vat_number:          isBusinessBooking ? sanitize(business_vat_number)          : null,
+      business_contact_person:      isBusinessBooking ? sanitize(business_contact_person)      : null,
+      business_invoice_email:       isBusinessBooking ? sanitize(business_invoice_email)       : null,
+      invoice_address_street:       isBusinessBooking ? sanitize(invoice_address_street)       : null,
+      invoice_address_city:         isBusinessBooking ? sanitize(invoice_address_city)         : null,
+      invoice_address_postal_code:  isBusinessBooking ? sanitize(invoice_address_postal_code)  : null,
+    };
 
     const validHours = Math.max(2, Math.min(12, Number(hours) || 3));
 
@@ -245,7 +294,9 @@ serve(async (req) => {
     }
 
     // ── 7. RUT-BERÄKNING ───────────────────────────
-    const useRut = !!rut && customer_type !== 'foretag';
+    // §2.7.3: använd effectiveCustomerType (post-validering) istället för
+    // rå customer_type från body.
+    const useRut = !!rut && effectiveCustomerType !== 'foretag';
     const rutDeduction = useRut
       ? Math.floor(pricing.customerTotal * 0.5)
       : 0;
@@ -327,22 +378,42 @@ serve(async (req) => {
       net_margin_pct: pricing.netMarginPct,
       stripe_fee_sek: pricing.stripeFee,
       credit_applied_sek: pricing.creditApplied,
-      customer_type: customer_type || 'privat',
-      business_name: business_name || null,
-      business_org_number: business_org_number || null,
-      business_reference: business_reference || null,
+      // ── §2.7.3: customer_type + 9 B2B-kolumner (saniterade + null-tvång) ──
+      customer_type: effectiveCustomerType,
+      business_name:                b2bFields.business_name,
+      business_org_number:          b2bFields.business_org_number,
+      business_reference:           b2bFields.business_reference,
+      business_vat_number:          b2bFields.business_vat_number,
+      business_contact_person:      b2bFields.business_contact_person,
+      business_invoice_email:       b2bFields.business_invoice_email,
+      invoice_address_street:       b2bFields.invoice_address_street,
+      invoice_address_city:         b2bFields.invoice_address_city,
+      invoice_address_postal_code:  b2bFields.invoice_address_postal_code,
       auto_delegation_enabled: auto_delegation_enabled === true ? true : (auto_delegation_enabled === false ? false : null),
 
       // ── V1.0: Payment mode + Override + Subscription + RUT ──
       payment_mode: effectivePaymentMode,
       subscription_id: subscription_id || null,
       manual_override_price: overrideActive ? Math.round(Number(manual_override_price)) : null,
-      rut_application_status: (!!rut && customer_type !== 'foretag') ? 'pending' : 'not_applicable',
+      rut_application_status: (!!rut && effectiveCustomerType !== 'foretag') ? 'pending' : 'not_applicable',
     });
 
     if (insertErr) {
       console.error("Booking insert failed:", insertErr);
       return json(500, { error: "Kunde inte skapa bokning" });
+    }
+
+    // ── §2.7.3: Minimal B2B-logging för spårbarhet ──
+    // Logga bara icke-känsliga identifierare (Regel #26 D).
+    // Metriker hanteras i Fas 10 (Observability).
+    if (isBusinessBooking) {
+      console.log('[BOOKING-CREATE] B2B booking created:', {
+        booking_id: bookingId,
+        business_name: b2bFields.business_name,
+        business_org_number: b2bFields.business_org_number,
+        has_vat_number: !!b2bFields.business_vat_number,
+        has_separate_invoice_address: !!b2bFields.invoice_address_street,
+      });
     }
 
     // ── 8b. UPSERT CUSTOMER_PROFILE via customer-upsert EF (Fas 1.2) ─────

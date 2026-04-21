@@ -1125,6 +1125,42 @@ Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` dir
 
 **Inga B2C-regressioner:** alla nya kolumner är NULL-able, RPC:n är additiv, storage-routing per prefix bevarar backwards-compat.
 
+### 19.1 booking-create payload-kontrakt (§2.7.3 live)
+
+Efter §2.7.3 (2026-04-23) accepterar `booking-create`-EF följande B2B-fält i request-body utöver befintliga B2C-fält:
+
+```ts
+{
+  // customer_type: hybrid-validering
+  //   - saknas/null/undefined/tom → default 'privat' (backwards-compat)
+  //   - satt till 'privat' eller 'foretag' → accepteras
+  //   - annat värde → 400 Bad Request
+  customer_type?: 'privat' | 'foretag',
+
+  // B2B-fält — ignoreras om customer_type='privat' (null-tvång B-11)
+  business_name?: string | null,
+  business_org_number?: string | null,       // format: XXXXXX-XXXX
+  business_reference?: string | null,        // PO-nummer, kostnadsställe
+  business_vat_number?: string | null,       // format: SE + 10 siffror + 01
+  business_contact_person?: string | null,   // "Att:"-mottagare
+  business_invoice_email?: string | null,    // separat fakturamejl
+  invoice_address_street?: string | null,    // fakturaadress om ≠ tjänsteadress
+  invoice_address_city?: string | null,
+  invoice_address_postal_code?: string | null
+}
+```
+
+**Sanitize-helper:** alla B2B-fält `.trim()`-as + konverteras till `null` om whitespace-only. Defense-in-depth mot bad-actor / direkt API-anrop utan frontend-trim.
+
+**Null-tvång (B-11):** om `customer_type='privat'` populeras **aldrig** något B2B-fält i DB, oavsett payload. Skyddar mot cache-drift och felaktig frontend-state.
+
+**Minimal B2B-logging:** `console.log('[BOOKING-CREATE] B2B booking created:', { booking_id, business_name, business_org_number, has_vat_number, has_separate_invoice_address })`. Innehåller **inte** kontakt-person, invoice-email eller fullständig adress (Regel #26 D / GDPR).
+
+**Kvarstår i kommande sub-faser:**
+
+- `invoice_number` populeras inte än (§2.7.4 sätter via `generate_b2b_invoice_number()` när generate-receipt utökas).
+- `generate-receipt` läser inte ännu de nya kolumnerna — kvittomejlet visar inte business_vat_number etc. §2.7.4 löser detta.
+
 **Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
 
 ### 18.1 Ändringar
