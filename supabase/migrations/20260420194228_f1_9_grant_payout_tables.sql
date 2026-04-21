@@ -1,8 +1,8 @@
 -- ============================================================
 -- Fas 1.9 patch: GRANT-fix for payout-tabeller
 -- ============================================================
--- Rot-orsak: 20260420_f1_6_payout_audit_log.sql +
--- 20260420_f1_6_payout_attempts.sql glomde GRANT till
+-- Rot-orsak: 20260420134219_f1_6_payout_audit_log.sql +
+-- 20260420134202_f1_6_payout_attempts.sql glomde GRANT till
 -- service_role + authenticated. Detta blockerade Edge Functions
 -- (som anvander service_role) att skriva audit-log.
 --

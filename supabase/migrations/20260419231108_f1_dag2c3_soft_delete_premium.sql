@@ -6,7 +6,7 @@
 --
 -- CONTEXT
 -- Premiumstadning was seeded as a standalone service in
--- 20260419_f1_dag1_services_tables.sql. Business decision
+-- 20260419214133_f1_dag1_services_tables.sql. Business decision
 -- (2026-04-19): Premium is not a separate service but a
 -- modifier/upgrade to other services (e.g. extra thorough
 -- Hemstadning). Belongs in F3 pricing-rules / service_addons,

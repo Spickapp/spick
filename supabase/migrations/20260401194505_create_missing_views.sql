@@ -1,5 +1,5 @@
 -- ============================================================
--- Migration: 20260401000001_create_missing_views.sql
+-- Migration: 20260401194505_create_missing_views.sql
 -- Skapar saknade vyer, policies, kolumner och triggers
 -- Alla block är idempotenta
 -- ============================================================

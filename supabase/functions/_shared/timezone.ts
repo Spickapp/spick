@@ -9,7 +9,7 @@
 // (1h vintertid, 2h sommartid pga DST).
 //
 // Konvention: 'Europe/Stockholm' matchar platform_settings.company_timezone
-// (seedad i 20260423_f2_7_1_b2b_schema.sql). Hårdkodad här för performance
+// (seedad i 20260423155052_f2_7_1_b2b_schema.sql). Hårdkodad här för performance
 // — ingen DB-lookup per anrop i hot paths.
 // ─────────────────────────────────────────────────────────────
 
