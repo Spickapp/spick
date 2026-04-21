@@ -26,7 +26,9 @@
 | 24 apr | `d252586` | §49 Fas 2: formatDate × 4 EFs konsoliderade |
 | 24 apr | `0da7ca9` | §49 Fas 3: auto-rebook midnatts-edge-case |
 | 24 apr | `1df1398` | §49 Fas 4: timezone-convention + §49 STÄNGD |
-| 24 apr | (denna) | §48 Fas 1 infrastructure audit DIAGNOS klar (3h) |
+| 24 apr | `67254d7` | §48 Fas 1 infrastructure audit DIAGNOS klar (3h) |
+| 24 apr | `aa3b282` | §48 Fas 48.3: migration för DORMANT DROP + deploy-doc |
+| 24 apr | (denna) | §3.2c STÄNGD + §48 Fas 48.3 DEPLOY verifierad |
 
 ## Status per spår
 
@@ -62,7 +64,7 @@ Båda kräver samma typ av gräv: förstå vad vår automatik faktiskt gör bako
 - 4 EFs med formatDate-duplikering konsoliderade (formatStockholmDate + formatStockholmDateLong, 33 call-sites)
 - Konvention dokumenterad i docs/architecture/timezone-convention.md
 
-**Hygien #48 — infrastructure audit:** Fas 48.1 DIAGNOS ✓ KLAR 2026-04-24 (3h). Fas 48.2-48.6 återstår (5-11h). Se [2026-04-24-infrastructure-audit-diagnos.md](audits/2026-04-24-infrastructure-audit-diagnos.md). §3.2c BLOCKERAD upphävd — safe-drop bekräftat, körs som Fas 48.3.
+**Hygien #48 — infrastructure audit:** Fas 48.1 DIAGNOS ✓ + Fas 48.3 DEPLOY ✓ klara 2026-04-24. Återstår Fas 48.2 (schema_migrations-repair), 48.4 (CI-härdning), 48.5 (drift-check), 48.6 (retrospektiv) — 5-10h kvar. §3.2c formellt STÄNGD (DORMANT-tabeller borta i prod).
 
 ## Start-instruktion för nästa session
 

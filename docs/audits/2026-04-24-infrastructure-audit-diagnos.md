@@ -90,6 +90,21 @@ Konsoliderad rapport. Ingen kod.
 
 **Risk:** Låg givet bekräftat dead data. Inte medium som misstänkt igår.
 
+### Fas 48.3 deploy-anteckning (2026-04-24)
+
+Migrationen kördes framgångsrikt mot prod via Studio SQL Editor. Studio returnerade felmeddelande `42P01: relation "public.jobs" does not exist` mot slutet av körningen, men primärkälla-verifiering efter körning bekräftade komplett exekvering:
+
+- 4 tabeller borta ✓
+- 2 pg_cron-scheman avregistrerade ✓
+- 4 functions borta ✓
+- 4 FK-constraints borta ✓
+- FK-kolumner nullställda (22 bookings + 39 notifications) ✓
+- find_nearby_cleaners fungerar (Zivar 0.695, Farhad 0.657) ✓
+
+Troligaste förklaring: Studio tolkade verifierings-SQL-kommentar-blocket efter `COMMIT` som faktisk SQL och försökte köra `SELECT tablename FROM pg_tables WHERE ...` eller liknande — då kraschade den på jobs-referens som inte längre fanns. Kommentar-SQL i migrations-filer bör undvikas, eller dokumenteras separat i deploy-filer.
+
+**Lärdom för framtida migrations:** Håll verifierings-queries i separat deploy-dokument, inte som kommentarer i migration-filen. Vissa klienter (Studio) parsar ibland kommentar-block fel.
+
 ### Fas 48.4 — CI-härdning — 1-2h
 
 **Mål:** Ta bort tyst fel-swallowning.
