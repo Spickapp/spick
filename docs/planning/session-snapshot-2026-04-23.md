@@ -28,7 +28,8 @@
 | 24 apr | `1df1398` | §49 Fas 4: timezone-convention + §49 STÄNGD |
 | 24 apr | `67254d7` | §48 Fas 1 infrastructure audit DIAGNOS klar (3h) |
 | 24 apr | `aa3b282` | §48 Fas 48.3: migration för DORMANT DROP + deploy-doc |
-| 24 apr | (denna) | §3.2c STÄNGD + §48 Fas 48.3 DEPLOY verifierad |
+| 24 apr | `8b3e786` | §3.2c STÄNGD + §48 Fas 48.3 DEPLOY verifierad |
+| 24 apr | (denna) | §48 Fas 48.1-KORRIGERING: diagnos uppdaterad med verifierad primärkälla |
 
 ## Status per spår
 

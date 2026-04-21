@@ -8,22 +8,44 @@
 
 ### Upptäckt 1: supabase_migrations.schema_migrations ur sync med repo
 
-**Observation:**
-- `supabase_migrations.schema_migrations` i prod: 1 rad (version `20260401000001`)
-- Repo `supabase/migrations/`: 52 filer
+**Observation (korrigerad 2026-04-24 sen eftermiddag):**
+
+Föregående version av denna rapport påstod "schema_migrations har 1 rad". Detta var felaktigt — queryn som producerade det värdet gav fel resultat (troligen korrupt query-körning eller filter-bugg i Studio). Verifierad primärkälla visar:
+
+- `supabase_migrations.schema_migrations`: **46 rader** (inte 1)
+- Alla 46 registrerade migrations är från 25 mars - 1 april 2026
+- Alla migrations från 2 april och framåt saknas helt i registret
+- Kategorier i registret:
+  - 10 tidiga (versioner 001-010)
+  - 33 från 25-28 mars
+  - 3 från 30-31 mars
+  - 1 från 1 april (`20260401000001 / sprint1_missing_tables`)
+
+Repo innehåller 52 `.sql`-filer, varav 35 har version-prefix som KOLLIDERAR med andra filer:
+
+| Prefix | Antal filer | Exempel |
+|---|---|---|
+| `20260401000001` | 2 | `create_missing_views` + `sprint1_missing_tables` |
+| `20260418` | 15 | `admin_cleaner_update`, `customer_reads_own_row`, ... 13 till |
+| `20260419` | 7 | `f1_dag1_services_tables`, `fas_1_1_cleaners_pii_lockdown`, ... |
+| `20260420` | 7 | `f1_2_seed_platform_settings`, `f1_6_payout_attempts`, ... |
+| `20260423` | 4 | `f2_5_R2_company_settings`, `f2_7_1_b2b_schema`, ... |
+
+**Supabase CLI använder version-prefix som primary key i `schema_migrations`.** Två filer med samma prefix kan därför inte båda registreras. 35 filer är permanent exkluderade från CLI:s migration-mekanism tills de omdöps till kanoniska format (`YYYYMMDDHHMMSS_namn.sql`).
 
 **Mekanism som förklarar drift:**
 
-`.github/workflows/run-migrations.yml` har ett "Markera alla befintliga migrationer som applied"-steg som försöker repair:a migrations-statusen. Men hårdkodad lista täcker bara ~40 migrations från 25-28 mars. Alla migrations från 30 mars + framåt är osynliga för repair-steget.
+`.github/workflows/run-migrations.yml` har ett "Markera alla befintliga migrationer som applied"-steg med en hårdkodad repair-lista som täcker ~40 korrekt namngivna migrations från 25-28 mars. Alla migrations från 30 mars framåt är osynliga för repair-steget. Sedan kör `supabase db push`, som försöker applicera migrations som inte finns i schema_migrations. För filer utan kollision funkar detta — för de 35 kollisions-filerna fallerar registrering permanent. `|| exit 0` sväljer felet. Workflow rapporterar success.
 
-Sedan kör `supabase db push`, som försöker applicera ~30 migrations CI tror är "nya" (men är redan körda manuellt i Studio). De kraschar. `|| exit 0` sväljer felet. Workflow rapporterar success.
-
-**Effekt:** Ingen synk mellan repo-tillstånd och CI-registrerat tillstånd. Alla sedan 30 mars tillämpade migrations är "osynliga" för CLI-mekaniken.
+**Effekt:**
+- Alla 35 kollisions-filer har körts manuellt i Studio SQL Editor (prod-schemat speglar deras innehåll), men saknas i registret
+- Några korrekt-namngivna april-migrations (20260401000002, 20260401000003, 20260402xxxxx, 20260414xxxxx, 20260416120000) är också okörda eller okörda-och-oregistrerade — kräver separat verifiering
+- Schema-drift-check (hygien #12) meningslös utan sanning i schema_migrations
 
 **Riskprofil:**
-- Lokal dev fungerar inte (ny utvecklare/disaster recovery kan inte köra migrations i ordning)
-- Schema-drift-check (hygien #12) meningslös utan sanning i schema_migrations
-- Framtida `supabase db push` kommer alltid krascha tyst
+- Lokal dev fungerar inte (ingen pålitlig migration-historik)
+- Disaster recovery kräver manuell rekonstruktion
+- Framtida `supabase db push` kraschar tyst på kollisioner
 
 ### Upptäckt 2: jobs-tabellen är inte dormant — men skrivaren finns inte i repot
 
@@ -59,17 +81,43 @@ Varje källa greppad för `INSERT INTO jobs`, `.from("jobs")` med `.insert()`, `
 
 Konsoliderad rapport. Ingen kod.
 
-### Fas 48.2 — schema_migrations-repair — 2-4h
+### Fas 48.2 — schema_migrations-repair + migration-filnamn-refaktorering — 4-6h
 
-**Mål:** Synka `supabase_migrations.schema_migrations` med repo-tillstånd.
+**Mål:** Synka `supabase_migrations.schema_migrations` med repo-tillstånd. Detta kräver fil-rename:ar av 35 filer med kollisions-prefix.
 
 **Åtgärder:**
-1. Expandera `.github/workflows/run-migrations.yml` `repair`-listan att inkludera alla 52 migrations
-2. Trigga manuell workflow-run för att applicera repairen
-3. Verifiera: `SELECT COUNT(*) FROM supabase_migrations.schema_migrations` → 52
-4. Commit: uppdaterad workflow-fil
 
-**Risk:** Låg. Repair är idempotent (lägger till status utan att röra schema).
+1. **Rename 35 kollisions-filer** till kanoniskt format `YYYYMMDDHHMMSS_namn.sql`:
+   - Använd filens `LastWriteTime` för att välja HHMMSS-suffix (eller numrera 000001, 000002, etc per dag baserat på logisk körordning)
+   - Verifiera att ingen annan fil refererar till original-namnen (grep scripts, docs, CI-configs)
+   - Commit rename:ar separat från repair-skript
+
+2. **Bygg expanderad repair-lista** i `.github/workflows/run-migrations.yml`:
+   - Dynamisk approach: shell-skript som loopar över `supabase/migrations/*.sql` och repair:ar varje
+   - Alternativt: hårdkodad full lista av 52 nu-unika versions
+
+3. **Ta bort `|| exit 0`** från "Kör nya migrationer"-steget (Regel: sluta svälja fel)
+
+4. **Manuell Studio-INSERT** till schema_migrations för alla 52 filer (efter rename):
+```sql
+   INSERT INTO supabase_migrations.schema_migrations (version, name)
+   VALUES ('20260401000002', 'loyalty_points'), ...
+   ON CONFLICT (version) DO NOTHING;
+```
+
+5. **Verifiera:** `SELECT COUNT(*) FROM supabase_migrations.schema_migrations` → **52**
+
+6. **Trigga workflow-run** för att bekräfta ren deploy nästa gång migration-fil ändras.
+
+**Risk:**
+- **Medium.** Rename:ar påverkar git-historik. Framtida rollback via `git revert` på en rename-commit kan vara förvillande.
+- Manuell INSERT till schema_migrations är irreversibel utan backup av tabellen.
+- CI-workflow-ändringar kan bryta framtida auto-deploy om inte testat ordentligt.
+
+**Mitigering:**
+- Backup schema_migrations-tabellen innan INSERT (via Studio export).
+- Rename:ar görs i en enda commit så historik är tydlig.
+- Test-run av workflow med manuell trigger innan första push.
 
 ### Fas 48.3 — DORMANT-tabell-radering (§3.2c i ny form) — 1-2h
 
@@ -89,6 +137,8 @@ Konsoliderad rapport. Ingen kod.
 11. Migration-fil + manuell Studio-körning (analogt med §3.2a-mönster)
 
 **Risk:** Låg givet bekräftat dead data. Inte medium som misstänkt igår.
+
+**Status (2026-04-24):** ✓ KLAR. Migration `20260424_f3_2c_drop_dormant_tables.sql` kördes via Studio SQL Editor. Allt verifierat (se "Fas 48.3 deploy-anteckning"-sektion nedan). §3.2c formellt stängd.
 
 ### Fas 48.3 deploy-anteckning (2026-04-24)
 
@@ -149,9 +199,13 @@ Hypotes: Studio-INSERT under utvecklingsfas. Eventuellt hårdkodade tester.
 
 **Svar:** Inte värt att gräva. Datan raderas i Fas 48.3.
 
-## Tidstotal
+## Tidstotal (uppdaterad 2026-04-24 sen eftermiddag)
 
-- Fas 48.1: ~3h diagnos (denna commit)
-- Fas 48.2-48.6: 5-11h framåt
+- **Fas 48.1:** ~3h diagnos KLAR (denna commit uppdaterar med korrigerade fynd)
+- **Fas 48.2:** 4-6h (uppskjuten — större scope än ursprunglig estimate pga 35 filnamn-kollisioner)
+- **Fas 48.3:** ✓ KLAR (§3.2c DORMANT DROP exekverad)
+- **Fas 48.4:** 1-2h CI-härdning
+- **Fas 48.5:** 2-3h schema-drift-check
+- **Fas 48.6:** 30 min retrospektiv
 
-**Totalt: 8-14h** för komplett infrastructure-audit.
+**Totalt kvar: 7-12h.** (Tidigare estimate 5-11h, utökat pga Fas 48.2-scope.)
