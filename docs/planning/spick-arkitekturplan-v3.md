@@ -180,6 +180,7 @@ Slutförd 18-19 april 2026. Se v2-planen för detaljer.
 - **2.5** Flytta alla övriga SQL från `sql/` till migrations eller arkivera. Prioritet: `companies-and-teams.sql`, `p0-waitlist.sql`, `approval-and-booking-response.sql`, `cleaner-applications-geo.sql`.
 - **2.6** Rensa `.claude/worktrees/wonderful-euler/`. Merga eller radera branch `claude/wonderful-euler`.
 - **2.7** Arkivera fix-skripten (`fix-b2b-foretag.js`, `fix-b2b-services.js`, `fix-leak.js`, `fix-leak2.js`, `fix-multi3.js`, `fix-multi4.js`, `fix-multiflow.js`, `fix-multiservice.js`). Kör inventering: aktiv eller död? Död → `docs/archive/fix-scripts/`.
+  > **Not 2026-04-22:** Faktiskt scope var 19 fix-skript, inte 8. Alla K1-klassade (0 callers, 0 workflows, hårdkodade Windows-paths omöjliga att exekvera utanför ursprunglig dator). Raderade 2026-04-22 (se `git log --diff-filter=D -- 'fix-*.js'`). git log återskapar vid behov.
 - **2.8** CI-workflow: veckovis kör `pg_dump --schema-only` och flagga diff mot migrations via PR.
 - **2.9** Uppdatera `docs/7-ARKITEKTUR-SANNING.md` med aktuell sanning.
 
@@ -251,6 +252,7 @@ Slutförd 18-19 april 2026. Se v2-planen för detaljer.
 - **4.8** Stads-landningssidor och blogg: lämna som statiska SEO-texter men flagga för framtida CMS.
 - **4.9** Lägg till Rafaels Premiumstädning via INSERT (första beviset att refactor lönar sig).
 - **4.10** Ta bort/arkivera `fix-b2b-services.js`, `fix-multiservice.js` (engångsskript).
+  > **Not 2026-04-22:** Superseded av §2.7 cleanup (2026-04-22). Båda skripten ingick i den gemensamma raderingen av 19 fix-skript.
 
 **Leverabler:**
 - 10+ frontend-filer migrerade

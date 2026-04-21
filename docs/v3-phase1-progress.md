@@ -114,13 +114,6 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 
 ## Öppna plan-beslut
 
-### 2. Fix-skript utanför §2.7 – utöka eller separat hantering?
-**Kontext:** v3 §2.7 (rad 181) listar 8 fix-skript för arkivering. §4.10 (rad 252) listar 2. Totalt **18 fix-skript** i repo-rot. 10 saknas i planen: fix-b2b-trust.js, fix-calcvar.js, fix-company-heading.js, fix-company-prices.js, fix-div.js, fix-multi2.js, fix-multi5.js, fix-notes.js, fix-pricing-model.js, fix-rating-toggle.js, fix-team-prices.js.
-
-**Beslut behövs:** utöka §2.7-lista eller separat cleanup-fas.
-
-**Väntar:** Farhad.
-
 ### #4 per_window-prissättning (öppnat 2026-04-22)
 **Kontext:** Fönsterputs kan prissättas per fönster i andra branscher.
 Admin-UI tillät tidigare `per_window`-option men pricing-resolver +
@@ -145,6 +138,9 @@ Beslut: alt D – SAFETY_FALLBACK_RATE-konstant för 15 defensive fallbacks (14 
 
 ### #3 stripe-checkout radering (stängt 2026-04-21)
 Beslut: alt 1 – radera kod + CI + docs. EF undeploy:ad som separat manuell åtgärd av Farhad.
+
+### #2 fix-skript-utvidgning §2.7 (stängt 2026-04-22)
+Beslut: Väg A – radera alla 19 fix-skript (scope växte från v3:s 8+2 till faktiska 19). Alla K1-klassade. git log är arkivet. v3.md §2.7 + §4.10 uppdaterade med noter om faktiskt scope.
 
 ## Session-notes-konvention
 
