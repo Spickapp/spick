@@ -88,7 +88,7 @@ Preview-sandbox kunde inte live-testa parse-time-wrapparna i §1.9b (marknadsana
 | §1.3 | 143 | stripe-connect:172 hardcoded 0.83 → money.calculatePayout() | ✓ | payout_cleaner-action raderad (91 rader) | 0 callers + bruten mot DB-schema (3 kolumner saknas). Transfer-logiken finns i `money.ts::triggerStripeTransfer`. EF:n behålls aktiv för 6 onboarding-callers. |
 | §1.4 | 144 | admin.html:markPaid → EF, idempotency + transfer-verifiering | ✓ | markPaid → EF, swishPay borttagen | Idempotency + Stripe transfer-verifiering via `money.ts` |
 | §1.5 | 145 | Reconciliation-cron | ✓ | Reconciliation-cron aktiverad | Auto-activation + auto-rollback i kod men ej i v3.md – hygien-task |
-| §1.6 | 146 | Stripe integration-test i CI (full booking → checkout → transfer → payout) | ◑ Delvis | §1.6a: 21 enhetstester med mocks. §1.6b: integration + CI kvar | §1.6a (2026-04-22) täckt: isMoneyLayerEnabled (5), stripe-transfer edge-cases (4), reconcile error-paths (5), mark-payout fail-scenarier (4), payout-calc extremvärden (3). Total test-suite: 121 pass + 4 ignored. §1.6b kvar: aktivera de 4 ignored integration-testerna + GitHub Actions-workflow. |
+| §1.6 | 146 | Stripe integration-test i CI (full booking → checkout → transfer → payout) | ✓ | §1.6a: 21 unit-tests med mocks. §1.6b: 3 integration aktiverade + GitHub Actions CI. Destination-transfers kräver verified Connect-account (väntar) | §1.6a (2026-04-22): 21 enhetstester. §1.6b (2026-04-22): [test-money.yml](.github/workflows/test-money.yml) med 2-job-struktur (unit blockerar merge, integration advisory). Env-rename: STRIPE_TEST_DESTINATION_ACCT → STRIPE_TEST_CONNECT_ACCOUNT_ID. Test 4 (E2E transfer) stay-ignored (Väg C) tills verified Connect-konto provisioneras. Nya deno-tasks: test:money:unit + test:money:integration. |
 | §1.7 | 147 | `js/commission.js` arkivering eller integrering | ✓ | commission.js arkiverad, helpers getKeepRate + getCommissionRate | Display-only Smart Trappstege (INAKTIV i prod). Läckage-fix fångade stadare-dashboard.html:9182. |
 | §1.8 | 148 | Hardcoded hourly-priser (349/350/399) → platform_settings | ✓ | default_hourly_rate centralisering + commission-läckage-fix | 13 K1/K2-ställen centraliserade via `getDefaultHourlyRate()`: admin.html (9), bli-stadare.html (3), join-team.html (1). bli-stadare.html:511 commission=0.17 hardcode bytt till `getCommissionRate()` i samma commit (stänger hygien-task #3). Migration kördes i prod 2026-04-22 av Farhad. K3 (subscription 349, 3 ställen) + K4 (CW_SERVICES_CATALOG 349) utanför scope. |
 | §1.9 | 149 | faktura.html commission_pct‖17-fallback → money.getCommission() | ✓ | commission-helpers.js + 17 ställen centraliserade i 7 filer | §1.9a infrastruktur + §1.9b applicering. Helpers: getKeepRate, getCommissionRate, getCommissionPct. Konsumenter: admin.html, faktura.html, stadare-dashboard.html, stadare-uppdrag.html, team-jobb.html, marknadsanalys.html, registrera-stadare.html, rekrytera.html. |
@@ -107,10 +107,12 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 
 ## Sammanfattning
 
-- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7, §1.8, §1.9, §1.10 (8 av 10)
+- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.6, §1.7, §1.8, §1.9, §1.10 (9 av 10)
 - **Superseded:** §1.2 (1 av 10) – verifierad mot produktionsdata 20 apr
-- **Delvis:** §1.6 (1 av 10) – §1.6a enhetstester klart 2026-04-22, §1.6b integration + CI kvar
+- **Delvis:** – (0 av 10)
 - **Ej påbörjad:** – (0 av 10)
+
+**Fas 1 komplett** pending Farhads CI-aktivering (STRIPE_SECRET_KEY_TEST + STRIPE_WEBHOOK_SECRET_TEST i GitHub Secrets). Destination-transfer-coverage (test 4) återaktiveras när verified Connect-account provisioneras.
 
 ## Öppna plan-beslut
 
@@ -133,7 +135,8 @@ per_sqm?
 - ~~bli-stadare.html:511 commission=0.17 hardcoded – scope-läckage från §1.9. Tredje fallet efter §1.7 (9182) + plan-beslut #1 (2415). Alla tre kan samlas i en §1.9c läckage-fix senare.~~ ✓ Stängd 2026-04-22 (§1.8-commit använde getCommissionRate()).
 - **platform_settings konsolidering (öppen 2026-04-22):** `base_price_per_hour=399` (pricing-resolver fallback) + `default_hourly_rate=350` (UI-default) har olika värden men semantiskt liknande. Verifiera om de ska konsolideras till en nyckel. Kräver verifiering av pricing-resolver-flow med riktig data.
 - **admin.html commission-hardcodes (upptäckta 2026-04-22 under §1.8-grep):** `admin.html:1119` `value="12"` i cw-commission input (VD-onboarding) + `admin.html:3763` `: 17` fallback i cd-commission. Samma mönster som bli-stadare.html:511 — scope-läckage från §1.9. Kan samlas i framtida §1.9c läckage-fix.
-- **mock-duplicering (öppen 2026-04-22):** `createMockSb`-pattern i 7 test-filer — överväg delad `_tests/_shared/mock-sb.ts` vid §1.6b-arbete (ej §1.6a-scope).
+- **mock-duplicering (öppen 2026-04-22):** `createMockSb`-pattern i 7 test-filer — överväg delad `_tests/_shared/mock-sb.ts` när nästa money-test läggs till (ej blockerare, inte gjort i §1.6b).
+- **destination-transfer-coverage (öppen 2026-04-22, §1.6b Väg C):** test 4 i `stripe-transfer-integration.test.ts` stay-ignored tills verified Stripe Connect-konto med `transfers_enabled=true` provisioneras. Express-accounts kan inte API-verifieras. Aktivera via att lägga till `STRIPE_TEST_CONNECT_ACCOUNT_ID` i GitHub Secrets + ta bort `continue-on-error` då transfer-E2E körs.
 
 ## Stängda plan-beslut
 

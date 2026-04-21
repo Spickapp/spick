@@ -1,0 +1,64 @@
+name: Money Layer Tests
+
+# §1.6b (v3.md:146) — GitHub Actions CI för money-layer-tester.
+#
+# Två-jobbs-struktur:
+#   unit-tests (blockerar merge, deterministiska)
+#   integration-tests (advisory, får flaky:a mot Stripe API)
+#
+# Motivation: enhetstester med mocks ska ALLTID passera och gatekeep:a
+# merges. Integration-tester gör riktiga anrop mot api.stripe.com och
+# kan fail:a pga transient nätverksfel eller Stripe-side-problem.
+# continue-on-error=true på integration signalerar men blockerar inte.
+#
+# Secrets som krävs (GitHub: Repo Settings → Secrets → Actions):
+#   STRIPE_SECRET_KEY_TEST         (sk_test_... sandbox)
+#   STRIPE_WEBHOOK_SECRET_TEST     (whsec_... sandbox; förberedd, ingen konsument idag)
+#
+# Secret som MEDVETET inte injectas (Väg C, 2026-04-22):
+#   STRIPE_TEST_CONNECT_ACCOUNT_ID — Express-accounts kan inte
+#   API-verifieras för transfers_enabled. Test 4 i integration-
+#   suiten stay-ignored tills verified Connect-konto provisioneras.
+#
+# Lokal körning:
+#   $env:STRIPE_SECRET_KEY_TEST='sk_test_...'
+#   deno task test:money              # allt
+#   deno task test:money:unit         # bara unit
+#   deno task test:money:integration  # bara integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit tests (blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Run money unit tests
+        run: deno task test:money:unit
+        env:
+          STRIPE_SECRET_KEY_TEST: ${{ secrets.STRIPE_SECRET_KEY_TEST }}
+          STRIPE_WEBHOOK_SECRET_TEST: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST }}
+
+  integration-tests:
+    name: Integration tests (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Run money integration tests against Stripe test mode
+        run: deno task test:money:integration
+        env:
+          STRIPE_SECRET_KEY_TEST: ${{ secrets.STRIPE_SECRET_KEY_TEST }}
+          STRIPE_WEBHOOK_SECRET_TEST: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST }}
+          # STRIPE_TEST_CONNECT_ACCOUNT_ID intentionally not set — see header

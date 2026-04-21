@@ -9,13 +9,21 @@
  *
  * Körs med Deno:
  *   $env:STRIPE_SECRET_KEY_TEST='sk_test_...'
- *   deno test --no-check --allow-net --allow-read --allow-env \
- *     supabase/functions/_tests/money/stripe-transfer-integration.test.ts
+ *   deno task test:money:integration
+ *
+ * Eller som del av hela money-suiten:
+ *   deno task test:money
+ *
+ * CI-körning: .github/workflows/test-money.yml kör integration-jobbet
+ * som "advisory" (continue-on-error: true) — Stripe API kan flaky:a.
  *
  * Optional env (för test 4 — end-to-end):
- *   STRIPE_TEST_DESTINATION_ACCT='acct_test_xxx'
- *     En test-cleaner med onboarded Stripe Connect-konto i test mode.
- *     Om saknas, test 4 skippas men 1-3 körs.
+ *   STRIPE_TEST_CONNECT_ACCOUNT_ID='acct_test_xxx'
+ *     Stripe Connect-konto i test mode med transfers_enabled=true.
+ *     §1.6b Väg C (2026-04-22): Express-accounts kan inte API-verifieras
+ *     för transfers_enabled, så test 4 kvarstår ignored i CI tills ett
+ *     verifierat Connect-konto provisioneras. Stay-ignored är medveten
+ *     design — testet dokumenterar vad end-to-end-validering KRÄVER.
  */
 
 import {
@@ -42,13 +50,18 @@ import type {
 // ============================================================
 
 const TEST_KEY = Deno.env.get('STRIPE_SECRET_KEY_TEST');
-const DEST_ACCT = Deno.env.get('STRIPE_TEST_DESTINATION_ACCT');
+const DEST_ACCT = Deno.env.get('STRIPE_TEST_CONNECT_ACCOUNT_ID');
 const SKIP_ALL = !TEST_KEY;
 const SKIP_E2E = !TEST_KEY || !DEST_ACCT;
 
 if (SKIP_ALL) {
   console.warn(
-    '[stripe-transfer-integration] STRIPE_SECRET_KEY_TEST saknas — alla integration-tester skippas.'
+    '[stripe-transfer-integration] STRIPE_SECRET_KEY_TEST saknas — tester 1-3 skippas. Kör med env satt eller via CI test-money-workflow.'
+  );
+}
+if (TEST_KEY && !DEST_ACCT) {
+  console.warn(
+    '[stripe-transfer-integration] Test 4 (E2E transfer) requires STRIPE_TEST_CONNECT_ACCOUNT_ID + transfers_enabled=true Connect-account. §1.6b Väg C: stay-ignored tills verified account finns.'
   );
 }
 
@@ -223,7 +236,7 @@ Deno.test({
 
 Deno.test({
   name:
-    'INTEGRATION E2E: triggerStripeTransfer mot Stripe test (test-cleaner + destination)',
+    'INTEGRATION E2E: triggerStripeTransfer mot Stripe test (requires STRIPE_TEST_CONNECT_ACCOUNT_ID + transfers_enabled)',
   ignore: SKIP_E2E,
   async fn() {
     const state: MockState = {
