@@ -92,7 +92,7 @@ Preview-sandbox kunde inte live-testa parse-time-wrapparna i §1.9b (marknadsana
 | §1.7 | 147 | `js/commission.js` arkivering eller integrering | ✓ | commission.js arkiverad, helpers getKeepRate + getCommissionRate | Display-only Smart Trappstege (INAKTIV i prod). Läckage-fix fångade stadare-dashboard.html:9182. |
 | §1.8 | 148 | Hardcoded hourly-priser (349/350/399) → platform_settings | ◯ Ej påbörjad | – | v3 listar 3 filer (admin/bli-stadare/join-team). boka.html (17 träffar) utanför planen – **plan-beslut #1 väntar**. |
 | §1.9 | 149 | faktura.html commission_pct‖17-fallback → money.getCommission() | ✓ | commission-helpers.js + 17 ställen centraliserade i 7 filer | §1.9a infrastruktur + §1.9b applicering. Helpers: getKeepRate, getCommissionRate, getCommissionPct. Konsumenter: admin.html, faktura.html, stadare-dashboard.html, stadare-uppdrag.html, team-jobb.html, marknadsanalys.html, registrera-stadare.html, rekrytera.html. |
-| §1.10 | 150 | Dokumentera money-layer i docs/architecture/money-layer.md | ◑ Delvis | Delvis dokumenterad | Fil existerar, refererar till code-snippets som ändrats i §1.4/§1.7. Behöver uppdateras. |
+| §1.10 | 150 | Dokumentera money-layer i docs/architecture/money-layer.md | ✓ | Sync mot nuvarande arkitektur 2026-04-22 | Sektioner uppdaterade efter §1.2/§1.3/§1.4/§1.5/§1.7/§1.9. Aktiveringsstatus-tabell + §-mappning + §17 Frontend commission-helpers + §4.7 isMoneyLayerEnabled + §4.8 error-katalog + reconcile auto-governing dokumenterade. cleaners/companies.commission_rate-droppning kvarstår som framtida migration. |
 
 **Status-symboler:** ✓ klar · ◯ ej påbörjad · ◑ delvis · ⊘ superseded
 
@@ -107,9 +107,9 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 
 ## Sammanfattning
 
-- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7, §1.9 (6 av 10)
+- **Klart:** §1.1, §1.3, §1.4, §1.5, §1.7, §1.9, §1.10 (7 av 10)
 - **Superseded:** §1.2 (1 av 10) – verifierad mot produktionsdata 20 apr
-- **Delvis:** §1.10 (1 av 10)
+- **Delvis:** – (0 av 10)
 - **Ej påbörjad:** §1.6, §1.8 (2 av 10)
 
 ## Öppna plan-beslut
@@ -128,8 +128,9 @@ per_sqm?
 ## Hygien-tasks (ej blockerare)
 
 - Kod avviker från v3.md i reconcile-payouts (auto-activation + auto-rollback). Plan-sync behövs.
-- `money-layer.md` refererar code-snippets som ändrats i §1.4/§1.7 – uppdatera vid §1.10-färdigställande.
+- ~~`money-layer.md` refererar code-snippets som ändrats i §1.4/§1.7 – uppdatera vid §1.10-färdigställande.~~ ✓ Klart 2026-04-22 (§1.10).
 - Commit-meddelandens "Fas X.Y"-numrering matchar inte v3 §-numrering konsekvent. Ny konvention: använd v3 §-referens i framtida commit-meddelanden.
+- bli-stadare.html:511 commission=0.17 hardcoded – scope-läckage från §1.9. Tredje fallet efter §1.7 (9182) + plan-beslut #1 (2415). Alla tre kan samlas i en §1.9c läckage-fix senare.
 
 ## Stängda plan-beslut
 

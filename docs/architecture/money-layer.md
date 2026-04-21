@@ -1,10 +1,49 @@
-# F1 — Money Layer (Design)
+# F1 — Money Layer (Design + Implementation)
 
 **Fas:** F1 i arkitekturplan v3.1
 **Skriven:** 2026-04-20
+**Senast uppdaterad:** 2026-04-22 (sync mot nuvarande arkitektur efter §1.2/§1.3/§1.4/§1.5/§1.7/§1.9)
 **Primärkälla för F1.2–F1.10-implementation**
 **Tidsestimat:** 30–50h över vecka 2–5 (per [spick-arkitekturplan-v3.md:133](../planning/spick-arkitekturplan-v3.md) "Fas 1 — Money Layer")
 **Beroenden:** Fas 0 (klart). Blockerar: Fas 5 (recurring payout), Fas 8 (escrow), Fas 10 (observability).
+
+---
+
+## §-numrering vs F-numrering
+
+Dokumentet skrevs 2026-04-20 med `F1.X`-notation. v3.1-arkitekturplanen använder `§1.X`. Mappningen är 1:1 — i citerade sektioner (skrivna 2026-04-20) bevaras `F1.X`. I progress-fil + commit-meddelanden används `§1.X`.
+
+| Dok-notation | v3-notation | Beskrivning |
+|---|---|---|
+| F1.1 | §1.1 | `_shared/money.ts` skelett + helpers |
+| F1.2 | §1.2 | stripe-checkout commission-läsning (SUPERSEDED 2026-04-21) |
+| F1.3 | §1.3 | stripe-connect `payout_cleaner`-rensning |
+| F1.4 | §1.4 | admin.html `markPaid()` → EF |
+| F1.5 | §1.5 | Reconciliation-cron + auto-governing |
+| F1.6 | §1.6 | Stripe integration-test i CI (ej påbörjad) |
+| F1.7 | §1.7 | `js/commission.js` arkivering + helpers |
+| F1.8 | §1.8 | Hardcoded hourly-priser → platform_settings (ej påbörjad) |
+| F1.9 | §1.9 | Centralisering av `commission_pct\|\|17`-fallback |
+| F1.10 | §1.10 | Detta sync-dokument + framtida `commission_rate`-droppning |
+
+---
+
+## Aktiveringsstatus (snabbreferens)
+
+**Feature flag:** `platform_settings.money_layer_enabled='true'` i prod sedan **2026-04-20 19:07 UTC**.
+
+| § | Status | Datum | Verkställelse |
+|---|---|---|---|
+| §1.1 | ✓ Implementerad | 2026-04-20 | money.ts (1798 rader) + alla helpers + 12 error-klasser |
+| §1.2 | ⊘ SUPERSEDED | 2026-04-21 | stripe-checkout EF **raderad** ([§1.2-not](#21-fjorton-hardcoded-money-ställen)). booking-create:604 bär commission-läsningen. |
+| §1.3 | ✓ Implementerad | 2026-04-21 | `payout_cleaner`-action **raderad** (91 rader). transfer-logiken finns i `money.ts::triggerStripeTransfer`. |
+| §1.4 | ✓ Implementerad | 2026-04-20 | EF `admin-mark-payouts-paid` ersätter admin.html direkt-PATCH. |
+| §1.5 | ✓ Implementerad | 2026-04-20 | EF `reconcile-payouts` med pg_cron-trigger + auto-activation/auto-rollback ([se §4.6](#46-reconcilepayouts--periodisk-matchning-mot-stripe)). |
+| §1.6 | ◯ Ej påbörjad | – | Stripe integration-test i CI. 4 ignored tester väntar på `STRIPE_SECRET_KEY_TEST`. |
+| §1.7 | ✓ Implementerad | 2026-04-20 | `js/commission.js` arkiverad. Smart Trappstege-tiers replikerade i [`money.ts:79-88`](../../supabase/functions/_shared/money.ts) (heltal-format). |
+| §1.8 | ◯ Ej påbörjad | – | Hourly-priser 349/350/399 → platform_settings (admin/bli-stadare/join-team). |
+| §1.9 | ✓ Implementerad | 2026-04-20 | 17 hardcodes centraliserade i 8 filer via `js/commission-helpers.js` ([se §17](#17-frontend-commission-helpers)). |
+| §1.10 | ✓ Implementerad | 2026-04-22 | Detta dok-sync. `cleaners/companies.commission_rate`-droppning kvarstår som framtida migration. |
 
 ---
 
@@ -12,11 +51,11 @@
 
 Skalbarhetsauditen 2026-04-20 (commit `72d082f`) identifierade **money-fragmentering** som audit-prioritet 🔴 #1. Commission och payout-logik är spritt över **14 kod-ställen** med fyra olika numeriska värden (0.12, 0.17, 0.83, 0.88) och två format (decimal vs procent). Silent drift uppstår närhelst `platform_settings.commission_standard` ändras eller Smart Trappstege aktiveras — ingen enda källa till sanning.
 
-**Särskilt kritiskt:**
+**Särskilt kritiskt (2026-04-20-state — ALLA 3 ÅTGÄRDADE per 2026-04-22):**
 
-- [admin.html:4478-4502](../../admin.html:4478) `markPaid()` PATCH:ar `bookings.payout_status='paid'` utan att anropa Stripe. Ingen transfer, ingen verifiering, ingen idempotency. Fungerar vid låg volym eftersom `stripe-checkout` redan gör destination charges vid betalning, men skalar inte: inget audit-trail, ingen reconciliation mot Stripe, silent double-book-risk.
-- [stripe-connect/index.ts:142-183](../../supabase/functions/stripe-connect/index.ts:142) `payout_cleaner`-action har **0 anropare** (grep i hela repot: 1 träff = definitionen). Död kod som ser verklig ut → risk att någon aktiverar den och dubbel-transfererar.
-- [stripe-checkout/index.ts:88](../../supabase/functions/stripe-checkout/index.ts:88) hardcodar `company_id ? 0.12 : (customer_type==="foretag" ? 0.12 : 0.17)`. Läser INTE `platform_settings.commission_standard` (verifierat `'12'` 2026-04-20, se Appendix C).
+- [admin.html:4478-4502](../../admin.html:4478) `markPaid()` PATCH:ar `bookings.payout_status='paid'` utan att anropa Stripe. Ingen transfer, ingen verifiering, ingen idempotency. Fungerar vid låg volym eftersom `stripe-checkout` redan gör destination charges vid betalning, men skalar inte: inget audit-trail, ingen reconciliation mot Stripe, silent double-book-risk. **→ ÅTGÄRDAT §1.4 (2026-04-20):** EF `admin-mark-payouts-paid` ersätter direkt-PATCH och anropar `triggerStripeTransfer()` + `markPayoutPaid()` med full audit-trail.
+- [stripe-connect/index.ts:142-183](../../supabase/functions/stripe-connect/index.ts:142) `payout_cleaner`-action har **0 anropare** (grep i hela repot: 1 träff = definitionen). Död kod som ser verklig ut → risk att någon aktiverar den och dubbel-transfererar. **→ ÅTGÄRDAT §1.3 (2026-04-21):** `payout_cleaner`-action raderad (91 rader). Transfer-logiken finns nu i `money.ts::triggerStripeTransfer`.
+- [stripe-checkout/index.ts:88](../../supabase/functions/stripe-checkout/index.ts:88) hardcodar `company_id ? 0.12 : (customer_type==="foretag" ? 0.12 : 0.17)`. Läser INTE `platform_settings.commission_standard` (verifierat `'12'` 2026-04-20, se Appendix C). **→ ÅTGÄRDAT §1.2 SUPERSEDED (2026-04-21):** stripe-checkout EF raderad helt. booking-create:604 bär kommissions-logiken via `getCommission()` mot `platform_settings`.
 
 **Mål:** En central `supabase/functions/_shared/money.ts` är **enda vägen** för commission-lookup, payout-beräkning, RUT-split och Stripe-transfer. Ingen hardcodad procent finns i kod. Payout-markering kräver verifierad Stripe Transfer. Reconciliation-cron matchar dagligen DB mot Stripe events.
 
@@ -36,38 +75,49 @@ Alla fil:rad-referenser verifierade i commit `c9038ee` (2026-04-20).
 | # | Fil:rad | Kod | Klass |
 |---|---------|-----|-------|
 | 1 | ~~stripe-checkout/index.ts:88~~ | ~~`commissionRate = company_id ? 0.12 : (customer_type === "foretag" ? 0.12 : 0.17)`~~ | ❌ RADERAD 2026-04-21 (§1.2 SUPERSEDED). booking-create bär betalningen. |
-| 2 | [stripe-connect/index.ts:172](../../supabase/functions/stripe-connect/index.ts:172) | `Math.round(totalKr * 0.83)` | 🔴 Död kod (`payout_cleaner`-action) |
-| 3 | [js/commission.js:15](../../js/commission.js:15) | `rate: 0.17, keep: 0.83` (tier "new") | 🟡 Display-only Trappstege |
-| 4 | [js/commission.js:16](../../js/commission.js:16) | `rate: 0.15, keep: 0.85` (tier "established") | 🟡 Display-only Trappstege |
-| 5 | [js/commission.js:17](../../js/commission.js:17) | `rate: 0.13, keep: 0.87` (tier "professional") | 🟡 Display-only Trappstege |
-| 6 | [js/commission.js:18](../../js/commission.js:18) | `rate: 0.12, keep: 0.88` (tier "elite") | 🟡 Display-only Trappstege |
-| 7 | [bli-stadare.html:511](../../bli-stadare.html:511) | `const commission = 0.17;` | 🟡 Marknadsförings-kalkylator |
-| 8 | [faktura.html:121](../../faktura.html:121) | `const commissionPct = b.commission_pct \|\| 17;` (kundfaktura) | 🟡 17 som fallback |
-| 9 | [faktura.html:205](../../faktura.html:205) | `const commissionPct = b.commission_pct \|\| 17;` (städarfaktura) | 🟡 17 som fallback |
-| 10 | [admin.html:2806](../../admin.html:2806) | `Math.round((b.total_price\|\|0) * ((b.commission_pct\|\|17)/100))` (totalProvision) | 🟡 17 fallback i dashboard |
-| 11 | [admin.html:2807](../../admin.html:2807) | Samma fallback (totalPayout) | 🟡 |
-| 12 | [admin.html:2808](../../admin.html:2808) | Samma fallback (paidOut) | 🟡 |
-| 13 | [marknadsanalys.html:969-970](../../marknadsanalys.html:969) | `cleanerPh = adjRate * 0.83; spickPh = adjRate * 0.17;` | 🟢 Simulerings-verktyg |
-| 14 | [cleaners.commission_rate](../../supabase/migrations) + [companies.commission_rate](../../supabase/migrations) | 17 cleaners-rader i **4 format** (0, 0.17, 12, 17). companies: default 0.17, 0 egna värden. Obrukbar som single-source (verifierat 2026-04-20, Appendix C). | 🟡 IGNORERAS av money.ts · Droppas i **F1.10** |
+| 2 | ~~stripe-connect/index.ts:172~~ | ~~`Math.round(totalKr * 0.83)`~~ | ❌ RADERAD 2026-04-21 (§1.3). `payout_cleaner`-action borttagen. Transfer-logiken finns i `money.ts::triggerStripeTransfer`. |
+| 3 | ~~js/commission.js:15~~ | ~~`rate: 0.17, keep: 0.83` (tier "new")~~ | ❌ ARKIVERAD 2026-04-20 (§1.7). Tiers replikerade i [`money.ts:79-88`](../../supabase/functions/_shared/money.ts) (heltal-format). |
+| 4 | ~~js/commission.js:16~~ | ~~`rate: 0.15, keep: 0.85` (tier "established")~~ | ❌ ARKIVERAD 2026-04-20 (§1.7). |
+| 5 | ~~js/commission.js:17~~ | ~~`rate: 0.13, keep: 0.87` (tier "professional")~~ | ❌ ARKIVERAD 2026-04-20 (§1.7). |
+| 6 | ~~js/commission.js:18~~ | ~~`rate: 0.12, keep: 0.88` (tier "elite")~~ | ❌ ARKIVERAD 2026-04-20 (§1.7). |
+| 7 | [bli-stadare.html:511](../../bli-stadare.html:511) | `const commission = 0.17;` | 🟡 KVARSTÅR — scope-läckage från §1.9b ([hygien-task i progress-fil](../v3-phase1-progress.md)). |
+| 8 | [faktura.html:121](../../faktura.html:121) | `const commissionPct = b.commission_pct \|\| 17;` (kundfaktura) | ✓ Centraliserad §1.9b via `getCommissionPct()`. 17-fallback bevarad som defensive (legacy-data). |
+| 9 | [faktura.html:205](../../faktura.html:205) | `const commissionPct = b.commission_pct \|\| 17;` (städarfaktura) | ✓ Centraliserad §1.9b. |
+| 10 | [admin.html:2806](../../admin.html:2806) | `Math.round((b.total_price\|\|0) * ((b.commission_pct\|\|17)/100))` (totalProvision) | ✓ Centraliserad §1.9b. |
+| 11 | [admin.html:2807](../../admin.html:2807) | Samma fallback (totalPayout) | ✓ Centraliserad §1.9b. |
+| 12 | [admin.html:2808](../../admin.html:2808) | Samma fallback (paidOut) | ✓ Centraliserad §1.9b. |
+| 13 | [marknadsanalys.html:969-970](../../marknadsanalys.html:969) | `cleanerPh = adjRate * 0.83; spickPh = adjRate * 0.17;` | ✓ Centraliserad §1.9b via `getKeepRate()`/`getCommissionRate()`. |
+| 14 | [cleaners.commission_rate](../../supabase/migrations) + [companies.commission_rate](../../supabase/migrations) | 17 cleaners-rader i **4 format** (0, 0.17, 12, 17). companies: default 0.17, 0 egna värden. Obrukbar som single-source (verifierat 2026-04-20, Appendix C). | 🟡 IGNORERAS av money.ts · Droppas i **F1.10** (kvarstående). |
 
-### 2.2 Payout-pipeline (nuläge)
+**Sammanfattning 2026-04-22:** 12 av 14 ställen åtgärdade. Kvarstår: rad 7 (bli-stadare hygien-task) + rad 14 (DB-kolumn-droppning, framtida migration).
+
+### 2.2 Payout-pipeline (nuläge per 2026-04-22)
 
 ```
 Kund betalar
    ↓
-booking-create:604 (stripe-checkout raderad 2026-04-21, §1.2 SUPERSEDED)
+booking-create:604           ← läser commission via getCommission(), skapar Stripe-session
+                               (stripe-checkout EF raderad §1.2 SUPERSEDED 2026-04-21)
    ↓
 Stripe destination charge    ← pengar direkt till cleaners Connect-konto
    ↓
 stripe-webhook (succeeded)   ← sätter payment_status='paid', payout_status=null
    ↓
-[INGET SKER AUTOMATISKT]
+admin → "Markera utbetald"-knapp i admin.html
    ↓
-admin.html:markPaid          ← manuell PATCH payout_status='paid'
-                               ingen Stripe-anrop, ingen idempotency
+EF admin-mark-payouts-paid   ← ersätter direkt-PATCH (§1.4 2026-04-20)
+   ↓
+1. triggerStripeTransfer()   ← payout_attempts + Stripe /transfers + idempotency
+2. markPayoutPaid()          ← Stripe-verify + bookings.payout_status='paid' + audit
+   ↓
+payout_audit_log             ← full audit-trail
+   ↓
+reconcile-payouts EF (cron)  ← matchar dagligen DB ↔ Stripe (§1.5 2026-04-20)
+                               auto-rollback vid critical mismatches
+                               auto-activation efter 20 clean dry-runs i 24h
 ```
 
-**Kritiskt:** `stripe-connect:payout_cleaner` (rad 142-183) existerar men anropas **aldrig**. `stripe-checkout` gör redan betalningen via destination charge → ingen separat transfer behövs i nuvarande arkitektur. Men det betyder också att `payout_status='paid'` inte betyder något verifierat — bara att Farhad klickat en knapp i admin.
+**Diagram-not (2026-04-22):** Den gamla pipelinen där `payout_status='paid'` betydde "Farhad klickade en knapp" är historik. Idag krävs verifierad Stripe Transfer + audit-insert innan statusen kan sättas. `payout_cleaner`-action raderad §1.3 — transfer-logiken konsoliderad i `money.ts::triggerStripeTransfer`.
 
 ### 2.3 Existerande primärkälla
 
@@ -76,7 +126,7 @@ admin.html:markPaid          ← manuell PATCH payout_status='paid'
 - Commission från `platform_settings.commission_standard` (fallback 12)
 - Pris i 5-stegs hierarki (se §6)
 
-Money.ts **utökar** denna, den ersätts inte. `resolvePricing()` flyttas in som intern funktion `_resolveBasePrice()` i money.ts.
+**Designändring 2026-04-22:** Ursprungsplanen sa `resolvePricing()` skulle flyttas in som `_resolveBasePrice()` i money.ts. Detta skedde **inte** — pricing-resolver.ts förblev separat fil och money.ts fokuserar på commission/payout/transfer/RUT. Pricing-lookup är fortsatt pricing-resolver.ts:s ansvar. Båda filerna läser `platform_settings.commission_standard` med samma fallback-mönster (kod-duplicering accepterad eftersom pricing-resolver är defensiv vid pris-fallback medan money.ts är strikt).
 
 ### 2.4 Relevanta DB-kolumner (verifierade mot prod 2026-04-20)
 
@@ -111,6 +161,15 @@ SQL-queries kördes 2026-04-20 mot prod. Output + analys finns i **Appendix C**.
 | `rut_pct` | `'50'` | §4.3. 50% RUT-avdrag. Heltal-procent — konsistent med `commission_standard`. |
 | `rut_yearly_cap_kr` | `'75000'` | §4.3. Skatteverket-cap 2026. |
 | `reconciliation_alert_threshold_kr` | `'1'` | §8. Minsta belopp-diff för Slack-alert. |
+
+**Tillstånd 2026-04-22 (post-aktivering):** följande nycklar har sedan dess skrivits till prod:
+
+| key | value (TEXT) | Kommentar |
+|-----|--------------|-----------|
+| `money_layer_enabled` | `'true'` | Aktiverad 2026-04-20 19:07 UTC. |
+| `payout_trigger_mode` | `'immediate'` | Krävs av `triggerStripeTransfer()` för auto-trigger utan `force=true`. |
+| `stripe_mode` | `'live'` | Mode-isolation för Fas 1.6.1. `getStripeClient()` väljer nyckel baserat på denna + `cleaner.is_test_account`. |
+| `smart_trappstege_enabled` | `'false'` | Seedad enligt plan. Aktivering kräver beslut + tier-data per cleaner. |
 
 **Implementations-not för money.ts:** eftersom `platform_settings.value` är TEXT, alla läsningar måste kasta:
 
@@ -161,31 +220,40 @@ Alla funktioner i `supabase/functions/_shared/money.ts`. TypeScript. Shared med 
 
 ### 4.1 `getCommission(context)` — Commission-lookup
 
-```ts
-interface CommissionContext {
-  cleanerId: string;
-  companyId?: string | null;
-  customerType?: 'privat' | 'foretag';
-  bookingDate?: string;  // ISO, för historik-lookup
-}
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** (Fas 1.1). [`money.ts:390-412`](../../supabase/functions/_shared/money.ts).
 
-interface CommissionResult {
-  pct: number;                      // decimal, ex. 12 (betyder 12%)
-  source: 'platform_settings'       // default
-        | 'company_override'        // companies.commission_pct (framtida)
-        | 'cleaner_override'        // cleaners.commission_pct (framtida)
-        | 'smart_trappstege'        // js/commission.js tiers (om aktiv)
-        | 'fallback';               // 12 (hardcoded sista utväg)
+**Faktisk signatur (snake_case, konsistent med bookings-schema):**
+
+```ts
+export type CommissionContext = {
+  booking_id?: string;
+  cleaner_id?: string;
+  company_id?: string | null;
+  customer_type?: 'privat' | 'foretag';
+  /** override för Smart Trappstege om aktiv */
+  completed_jobs?: number;
+};
+
+export type CommissionResult = {
+  pct: number;       // heltal-procent (ex. 12 betyder 12%) — INTE decimal
+  source: 'platform_settings'
+        | 'company_override'
+        | 'cleaner_override'
+        | 'smart_trappstege'
+        | 'manual_override'
+        | 'fallback';
   tier?: 'new' | 'established' | 'professional' | 'elite';
-}
+};
 
 export async function getCommission(
-  sb: SupabaseClient,
-  ctx: CommissionContext
+  supabase: SupabaseClient,
+  context: CommissionContext
 ): Promise<CommissionResult>
 ```
 
-**Hierarki:** se §5.
+**Hierarki:** se §5. Implementationsstatus per steg är markerad i [money.ts JSDoc](../../supabase/functions/_shared/money.ts) (rad 367-389).
+
+**Format-not (Regel #28):** `pct` är **heltal-procent** (12, 17), INTE decimal (0.12, 0.17). Konsistent med `platform_settings.commission_standard='12'` och `bookings.commission_pct`. Frontend-kod som `js/commission.js` använde decimal `0.17` — frontend-konsumenter använder nu `js/commission-helpers.js` som exponerar både heltal-procent (`getCommissionPct()`) och decimal (`getKeepRate()`/`getCommissionRate()`).
 
 ### 4.2 `calculatePayout(booking)` — Payout-beräkning
 
@@ -338,22 +406,45 @@ export async function calculateRutSplit(
 
 Nuvarande `opts`-lös signatur är framåt-kompatibel — befintliga callers behöver inte ändras när F1.5.1 landar.
 
-### 4.4 `triggerStripeTransfer(booking)` — Separate-transfer (Fas 8 escrow)
+### 4.4 `triggerStripeTransfer(booking)` — Separate-transfer
+
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** (Fas 1.6). Aktiv i prod sedan §1.4 (admin-mark-payouts-paid EF anropar denna).
+
+**Faktisk signatur:**
 
 ```ts
 export async function triggerStripeTransfer(
-  sb: SupabaseClient,
-  bookingId: string,
-  opts?: { idempotencyKey?: string }
-): Promise<{
-  transferId: string;        // Stripe tr_xxx
-  amountKr: number;
-  destinationAccount: string;
-  status: 'pending' | 'paid' | 'failed';
-}>
+  supabase: SupabaseClient,
+  booking_id: string,
+  opts?: {
+    idempotency_key?: string;
+    force?: boolean;                   // override payout_trigger_mode-check
+    _stripeRequest?: StripeRequestFn;  // DI för tester
+  }
+): Promise<PayoutAuditEntry>
 ```
 
-**Obs:** I Fas 1 är denna **inte aktiv** — destination charges i `stripe-checkout` levererar redan pengarna vid betalning. Funktionen byggs men med flag-guard: `if (!await isEscrowEnabled(sb)) throw new Error('escrow_not_enabled')`. Aktiveras i Fas 8 när `separate-charges-and-transfers`-refactor körs.
+**Aktuell guard (2026-04-22):** Funktionen är inte längre guard:ad bakom `escrow_enabled` (det var Fas 8-planen). Den primära guarden är **`platform_settings.payout_trigger_mode='immediate'`** plus den globala `money_layer_enabled='true'`. När `force=true` kan auto-trigger-checken bypassas (används av admin-mark-payouts-paid när admin manuellt initierar).
+
+**9-stegs flöde** (per [`money.ts:744-1057`](../../supabase/functions/_shared/money.ts)):
+
+1. Feature flag (`money_layer_enabled`) — `MoneyLayerDisabled` om inaktiv.
+2. `payout_trigger_mode`-check (om !force) — `TransferPreconditionError` om ej `'immediate'`.
+3. Fetch booking + pre-condition validering (`payment_status='paid'`, `total_price > 0`).
+4. Idempotency: om `payout_status='paid'` + audit finns → return existing entry.
+5. Fetch cleaner + Stripe Connect-verifiering (`stripe_account_id` + `stripe_onboarding_status='complete'`).
+6. Beräkna `attempt_count` + idempotency_key (`payout-{booking_id}-{attempt_count}`).
+7. `calculatePayout()` för belopp.
+8. Insert `payout_attempts` (status=pending) → POST `/transfers` med Idempotency-Key.
+9. Success: update attempts (status=paid) + insert audit (`action='transfer_created'`).
+   Fel: log failure + throw `TransferFailedError`.
+   DB-fel efter Stripe-success: `createReversal` + throw `TransferReversedError` (kritisk).
+
+**Mode-isolation (Fas 1.6.1):** [`getStripeClient()`](../../supabase/functions/_shared/stripe-client.ts) väljer rätt API-nyckel baserat på `cleaner.is_test_account` + `platform_settings.stripe_mode`.
+
+**Separation of concerns:** `triggerStripeTransfer` sätter INTE `bookings.payout_status` — det gör `markPayoutPaid()` (§4.5).
+
+**Escrow (Fas 8):** Funktionen är förberedd för escrow-mönstret. När `escrow_enabled=true` aktiveras i Fas 8 sker `triggerStripeTransfer()` av `release-escrow`-EF efter completion-väntetid (24h utan dispute) i stället för av admin-mark-payouts-paid.
 
 ### 4.5 `markPayoutPaid(bookingId)` — Bekräftar + uppdaterar bookings
 
@@ -428,7 +519,30 @@ export async function reconcilePayouts(
 ): Promise<ReconciliationReport>
 ```
 
-**Schemaläggning (F1.9-scope):** pg_cron `'5 * * * *'` → EF `reconcile-payouts` → anropar `reconcilePayouts()`. Ej aktiv i F1.8.
+**Schemaläggning (aktiv 2026-04-20):** pg_cron `'5 * * * *'` → EF [`reconcile-payouts`](../../supabase/functions/reconcile-payouts/index.ts) → anropar `reconcilePayouts()`.
+
+**Self-governing features (i `reconcile-payouts/index.ts`, INTE i money.ts):**
+
+EF:n innehåller två autonoma kontrollmekanismer som agerar baserat på reconciliation-resultaten:
+
+1. **Auto-rollback vid critical mismatches:** Om `money_layer_enabled='true'` och rapporten innehåller minst en `severity='critical'` mismatch:
+   - `UPDATE platform_settings SET value='false' WHERE key='money_layer_enabled'`
+   - INSERT audit `action='auto_rollback_triggered', severity='critical'`
+   - Effekt: nästa anrop till money.ts kastar `MoneyLayerDisabled` → systemet återgår till legacy-mode inom 1 cron-cykel.
+
+2. **Auto-activation efter clean dry-runs:** Om `money_layer_enabled='false'` och rapporten är 0 mismatches:
+   - Räknar antalet `reconciliation_completed`-audits med `mode='dry_run'` + `mismatches_count=0` i senaste 24h.
+   - Vid `cleanRuns >= 20` (`AUTO_ACTIVATION_CLEAN_RUNS_THRESHOLD`):
+     - `UPDATE platform_settings SET value='true' WHERE key='money_layer_enabled'`
+     - INSERT audit `action='auto_activation_triggered', severity='info'`
+
+**Konstanter:**
+```ts
+const AUTO_ACTIVATION_CLEAN_RUNS_THRESHOLD = 20;  // ~20 timmar clean
+const AUTO_ACTIVATION_HOURS_WINDOW = 24;
+```
+
+**Designnot:** Auto-activation/rollback är medvetet placerade i EF-lagret, inte i `money.ts`-funktionen. Kärn-funktionen `reconcilePayouts()` förblir pure (ingen feature-flag-mutation) — alla side effects som styr globalt tillstånd är cron-EF:s ansvar. Hygien-task: avvikelse mot v3.md som inte dokumenterar auto-governing.
 
 **6 mismatch-typer** (enligt `MismatchType`):
 - `stripe_paid_db_pending` (alert) — Stripe paid, DB pending
@@ -449,6 +563,40 @@ export async function reconcilePayouts(
 **Nya error-klasser:**
 - `ReconcileConfigError` — Stripe auth failar (401)
 - `ReconcilePermissionError` — RLS blockerar service_role-writes
+
+### 4.7 `isMoneyLayerEnabled()` — Feature-flag helper
+
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** (Fas 1.1). [`money.ts:1792-1797`](../../supabase/functions/_shared/money.ts).
+
+```ts
+export async function isMoneyLayerEnabled(
+  supabase: SupabaseClient
+): Promise<boolean>
+```
+
+Läser `platform_settings.money_layer_enabled` och returnerar `true` om värdet är strängen `'true'`. Används av samtliga publika money.ts-funktioner som steg 0/1-guard. Exporterad publikt för callers som behöver gate:a sina egna anrop (t.ex. `reconcile-payouts/index.ts` använder den för att avgöra `dry_run`-mode).
+
+### 4.8 Error-klasser-katalog
+
+12 exporterade error-klasser. Alla har en `details: Record<string, unknown>`-property utom `MoneyLayerDisabled` och `BookingNotFound`.
+
+| Klass | Anrop | Kategori |
+|---|---|---|
+| `MoneyLayerDisabled` | Alla publika funktioner när flag=false | Feature flag |
+| `BookingNotFound` | calculatePayout, triggerStripeTransfer, markPayoutPaid | Lookup |
+| `PayoutCalculationError` | calculatePayout (data-korruption, bruten invariant) | Beräkning |
+| `InvalidRutAmount` | calculateRutSplit (`gross_sek <= 0`) | Validering |
+| `RutSplitError` | calculateRutSplit (bruten invariant) | Beräkning |
+| `TransferPreconditionError` | triggerStripeTransfer (state-fel pre-Stripe) | Transfer |
+| `TransferFailedError` | triggerStripeTransfer (Stripe avvisar) | Transfer |
+| `TransferReversedError` | triggerStripeTransfer (DB-fel post-Stripe → reversal) | Transfer (kritisk) |
+| `PayoutPreconditionError` | markPayoutPaid (saknad attempt, fel status) | Markering |
+| `PayoutVerificationError` | markPayoutPaid (Stripe transfer reversed/missing/amount mismatch) | Markering |
+| `PayoutUpdateError` | markPayoutPaid (DB-fel) | Markering |
+| `ReconcileConfigError` | reconcilePayouts (Stripe auth 401) | Reconciliation |
+| `ReconcilePermissionError` | reconcilePayouts (RLS blockerar audit-insert) | Reconciliation |
+
+Klassificering hjälper callers (admin-mark-payouts-paid EF) avgöra retry-strategi: precondition-fel = fixa input + retry, transfer-fel = retry med ny idempotency_key, reversed = manuell incident-hantering.
 
 ---
 
@@ -478,13 +626,13 @@ export async function reconcilePayouts(
 
 **Historik:** alla bokningar skriver `bookings.commission_pct` vid skapande (redan idag). Vid rapportering (faktura, admin-dashboard) **alltid** läs från `bookings.commission_pct`, aldrig räkna om via `getCommission()` i efterhand. `getCommission()` anropas endast vid bokningsskapande och payout.
 
-**Regel #28:** Smart Trappstege är `display-only` idag ([js/commission.js](../../js/commission.js)). För att aktivera den i payout krävs F1.7 — annars fragmentering mellan "vad städaren ser" och "vad städaren får".
+**Regel #28 (uppdaterad 2026-04-22):** Smart Trappstege är **kod-implementerad** i `money.ts:79-88` + `_resolveSmartTrappstege()` (steg 2 ovan), men **inaktiv i prod** (`platform_settings.smart_trappstege_enabled='false'`). Aktivering kräver beslut om tier-zon-data per cleaner. Den ursprungliga `js/commission.js` är arkiverad §1.7 — frontend-display av tiers behövs en omdesign innan trappstegen aktiveras i payout, annars riskeras drift mellan "vad städaren ser" och "vad städaren får".
 
 ---
 
 ## 6. Pricing-lookup-hierarki
 
-**Oförändrad från [pricing-resolver.ts:43-152](../../supabase/functions/_shared/pricing-resolver.ts:43)** — bara flyttad in som intern funktion `_resolveBasePrice()` i money.ts.
+**Oförändrad från [pricing-resolver.ts:43-152](../../supabase/functions/_shared/pricing-resolver.ts:43)**. Designändring 2026-04-22: ursprungsplanen sa `_resolveBasePrice()` skulle flyttas in i money.ts — det skedde **inte**. pricing-resolver.ts är fortsatt egen fil och egen import för callers (booking-create m.fl.).
 
 ```
 1. company_service_prices (om companies.use_company_pricing=true)
@@ -496,15 +644,15 @@ export async function reconcilePayouts(
 
 Returnerar `PricingResult { basePricePerHour, pricePerSqm, priceType, source }`.
 
-**Ingen ändring i logik. Enda skillnad:** `commissionPct` hämtas inte längre via denna funktion — `getCommission()` anropas separat för att undvika att pris-fallback påverkar commission-fallback.
+**Ansvarsfördelning:** pricing-resolver.ts löser **pris-per-tjänst per cleaner**. money.ts löser **commission/payout/transfer/RUT**. Båda läser `platform_settings.commission_standard` med samma fallback-mönster (kod-duplicering accepterad — pricing-resolver är defensiv vid pris-fallback medan money.ts är strikt vid commission-läsning).
 
 ---
 
 ## 7. Stripe-integration
 
-### 7.1 Destination charges (nuvarande, Fas 1–7)
+### 7.1 Destination charges (nuvarande)
 
-`stripe-checkout` behåller destination charge-mönstret:
+**Uppdaterat 2026-04-22:** `stripe-checkout` EF är **raderad** (§1.2 SUPERSEDED). Destination charge-mönstret bibehålls men flyttat till [`booking-create:604`](../../supabase/functions/booking-create/index.ts):
 
 ```ts
 {
@@ -515,7 +663,7 @@ Returnerar `PricingResult { basePricePerHour, pricePerSqm, priceType, source }`.
 }
 ```
 
-Men `commissionOre` beräknas via `getCommission()` + `calculatePayout()` — **inte** hardcoded `0.12/0.17`.
+`commissionOre` beräknas via `getCommission()` mot `platform_settings.commission_standard` — **inte** hardcoded `0.12/0.17`.
 
 ### 7.2 Separate charges and transfers (Fas 8 escrow)
 
@@ -537,105 +685,112 @@ Money.ts har redan funktionen klar från Fas 1 (§4.4, guard:ad bakom flag). Fas
 
 ## 8. Feature flag-strategi
 
-**Central flag:** `platform_settings.money_layer_enabled` (bool).
+**Central flag:** `platform_settings.money_layer_enabled` (TEXT `'true'`/`'false'`).
+
+**Aktuellt tillstånd 2026-04-22:** `'true'` sedan **2026-04-20 19:07 UTC**.
 
 ```
-false (default vid launch av F1.2):
-  stripe-checkout läser gamla hardcoded-logiken
-  admin.html:markPaid fungerar som idag
+false (legacy-mode):
+  money.ts-funktioner kastar MoneyLayerDisabled.
+  Callers (admin-mark-payouts-paid EF, booking-create) fångar och
+  faller tillbaka till legacy-kodvägar där sådana finns kvar.
+  reconcile-payouts kör i dry_run-mode.
 
-true (efter 30d parallell-verifiering):
-  stripe-checkout anropar money.calculatePayout()
-  admin.html:markPaid anropar mark-payout-paid EF
-  faktura.html läser bokningens lagrade commission_pct (oförändrat)
+true (aktivt idag):
+  booking-create anropar money.getCommission() mot platform_settings.
+  admin-mark-payouts-paid EF anropar triggerStripeTransfer + markPayoutPaid.
+  reconcile-payouts kör i live-mode.
+  faktura.html + admin.html läser bokningens lagrade commission_pct
+    via js/commission-helpers.js (oförändrad defensive 17-fallback).
 ```
 
-**Underflaggor:**
-- `smart_trappstege_payout_enabled` (bool) — aktiverar §5 steg 2.
-- `escrow_enabled` (bool) — Fas 8.
+**Underflaggor (faktiska namn i prod):**
+- `smart_trappstege_enabled` (TEXT) — aktiverar §5 steg 2 i `_resolveSmartTrappstege()`. Default `'false'`.
+- `payout_trigger_mode` (TEXT `'immediate'`) — krävs av `triggerStripeTransfer()` för auto-trigger utan `force=true`.
+- `stripe_mode` (TEXT `'live'`/`'test'`) — mode-isolation för Fas 1.6.1 (per cleaner via `is_test_account`).
+- `escrow_enabled` (bool) — Fas 8 (ej aktiv).
 - `reconciliation_alert_threshold_kr` (int, default 1) — minsta belopp-diff för Slack-alert.
 
-**Varför flag:** produktionsincident-risk. Om money.ts har bug i första veckan → `UPDATE platform_settings SET value='false' WHERE key='money_layer_enabled'` → tillbaka till gamla kod-path inom 30 sekunder.
+**Varför flag:** produktionsincident-risk. Om money.ts har bug i första veckan → `UPDATE platform_settings SET value='false' WHERE key='money_layer_enabled'` → tillbaka till gamla kod-path inom 30 sekunder. **Auto-rollback** (§4.6) gör detta automatiskt vid critical mismatches.
 
 ---
 
-## 9. Rollout-plan
+## 9. Rollout-plan (historisk — leverans 2026-04-20)
 
-**Vecka 2–3 (F1.1–F1.3):** Bygg money.ts + `payout_audit_log`-migration + `mark-payout-paid` EF. Ingen prod-ändring. Unit-tester + integration-test i Stripe test mode.
+Ursprungsplan från 2026-04-20:
 
-**Vecka 4 (F1.4–F1.6):** Deploya money.ts, guard:ad bakom `money_layer_enabled=false`. Parallell-skriv: varje gång stripe-checkout/faktura anropas, **även** kör money.ts och logga till `payout_audit_log` om avvikelse. Larm om > 0 avvikelser.
+> **Vecka 2–3 (F1.1–F1.3):** Bygg money.ts + `payout_audit_log`-migration + `mark-payout-paid` EF. Ingen prod-ändring. Unit-tester + integration-test i Stripe test mode.
+>
+> **Vecka 4 (F1.4–F1.6):** Deploya money.ts, guard:ad bakom `money_layer_enabled=false`. Parallell-skriv: varje gång stripe-checkout/faktura anropas, **även** kör money.ts och logga till `payout_audit_log` om avvikelse. Larm om > 0 avvikelser.
+>
+> **Vecka 5 (F1.7–F1.10):** Efter 14 dagars 0-avvikelse: `UPDATE platform_settings SET value='true' WHERE key='money_layer_enabled'`. Övervaka 7 dagar. Om OK → tas hardcoded-koden bort i F1.8–F1.9 (single commit, revertable).
+>
+> **Total parallell-period:** 21 dagar. Rivning först efter zero-issue-period. Inget big-bang.
+>
+> **Rollback:** flag-toggle (< 1 min) eller revert av rivnings-commit (< 5 min).
 
-**Vecka 5 (F1.7–F1.10):** Efter 14 dagars 0-avvikelse: `UPDATE platform_settings SET value='true' WHERE key='money_layer_enabled'`. Övervaka 7 dagar. Om OK → tas hardcoded-koden bort i F1.8–F1.9 (single commit, revertable).
-
-**Total parallell-period:** 21 dagar. Rivning först efter zero-issue-period. Inget big-bang.
-
-**Rollback:** flag-toggle (< 1 min) eller revert av rivnings-commit (< 5 min).
+**Faktiskt utfall 2026-04-22:** §1.1–§1.5 + §1.7 + §1.9 levererade på en sprint istället för 4 veckor. Aktivering 2026-04-20 19:07 UTC efter dry-run-period (auto-activation triggades efter 20 clean dry-runs i 24h, ej manuell SQL). §1.2 superseded:ades — stripe-checkout-EF raderades helt 2026-04-21 i stället för parallell-skriv. §1.3 raderade death code samma dag. §1.6 (CI-integration-test) + §1.8 (hourly-priser) kvarstår.
 
 ---
 
 ## 10. Migration-plan per hardcoded-ställe
 
-| # | Fil:rad | Migration-strategi | F-uppgift |
-|---|---------|---------------------|-----------|
-| 1 | stripe-checkout:88 | Ersätt med `const { pct } = await getCommission(sb, { cleanerId, companyId, customerType })` | **F1.2** |
-| 2 | stripe-connect:172 (death code) | Radera hela `payout_cleaner`-action (rad 142-220). Ingen anropare finns. | **F1.3** |
-| 3–6 | js/commission.js:15-18 | Om Smart Trappstege aktiveras i payout (F1.7 ja): behåll tiers men lägg till `await money.getCommission()` i städar-dashboard. Om nej: arkivera hela filen till `docs/archive/commission-trappstege-display-only.js`. | **F1.7** |
-| 7 | bli-stadare.html:511 | Marknadsförings-kalkylator. Ersätt med `await fetch('/rest/v1/platform_settings?key=eq.commission_standard')` + fallback. | **F1.9** |
-| 8–9 | faktura.html:121,205 | Behåll `b.commission_pct \|\| 17` fallback som **defensive**, MEN `bookings.commission_pct` ska alltid vara satt efter F1.2. 17 som fallback blir dead-code men säker. Efter 90d utan träff: ändra till `throw new Error('commission_pct missing')`. | **F1.9** |
-| 10–12 | admin.html:2806-2808 | Samma som faktura.html. Samma 90-dagars defensive-pattern. | **F1.9** |
-| 13 | marknadsanalys.html:969-970 | Simuleringsverktyg, ej live-data. Ersätt med hämtning från `platform_settings`. | **F1.9** |
-| 14 | cleaners/companies.commission_rate | **IGNORERAS** av money.ts från F1.2. Kolumnerna droppas i **F1.10** (prod-verifierat 2026-04-20: 4 format i cleaners, 0 egna värden i companies = obrukbar single-source). Per-entitet commission-override implementeras istället via framtida `cleaners.commission_pct_override` / `companies.commission_pct_override` (decimal procent, strikt format) när §5 steg 3/4 aktiveras. | **F1.10** |
+Status per 2026-04-22: 12 av 14 åtgärdade.
 
-**Bonus:** [admin.html:4478-4502](../../admin.html:4478) `markPaid()` ersätts i **F1.4** med fetch mot ny EF `mark-payout-paid`. Admin-UI:t oförändrat (samma knapp), bara backend-vägen refactoras.
+| # | Fil:rad | Migration-strategi | F-uppgift | Status |
+|---|---------|---------------------|-----------|--------|
+| 1 | ~~stripe-checkout:88~~ | Hela EF raderad i stället. booking-create:604 läser via getCommission(). | **F1.2** | ⊘ SUPERSEDED 2026-04-21 |
+| 2 | ~~stripe-connect:172~~ | `payout_cleaner`-action raderad (91 rader). Transfer-logiken i money.ts. | **F1.3** | ✓ 2026-04-21 |
+| 3–6 | ~~js/commission.js:15-18~~ | js/commission.js arkiverad. Tiers replikerade i `money.ts:79-88` (heltal-format). | **F1.7** | ✓ 2026-04-20 |
+| 7 | [bli-stadare.html:511](../../bli-stadare.html:511) | `const commission = 0.17;` — marknadsförings-kalkylator. **Ej fixad i §1.9b** (scope-läckage). | **F1.9** | 🟡 Hygien-task |
+| 8–9 | faktura.html:121,205 | Centraliserade via `getCommissionPct()` från `js/commission-helpers.js`. 17-fallback bevarad som defensive. | **F1.9** | ✓ 2026-04-20 |
+| 10–12 | admin.html:2806-2808 | Samma som faktura.html — `getCommissionPct()` med 17-fallback. | **F1.9** | ✓ 2026-04-20 |
+| 13 | marknadsanalys.html:969-970 | Centraliserat via `getKeepRate()`/`getCommissionRate()`. | **F1.9** | ✓ 2026-04-20 |
+| 14 | cleaners/companies.commission_rate | **IGNORERAS** av money.ts från F1.2. Kolumnerna droppas i **F1.10** (prod-verifierat 2026-04-20: 4 format i cleaners, 0 egna värden i companies = obrukbar single-source). Per-entitet commission-override implementeras istället via framtida `cleaners.commission_pct_override` / `companies.commission_pct_override` (decimal procent, strikt format) när §5 steg 3/4 aktiveras. | **F1.10** | ◯ Kvarstår |
+
+**Bonus (status uppdaterad 2026-04-22):** [admin.html:4478-4502](../../admin.html:4478) `markPaid()` ersattes i **F1.4** med fetch mot EF [`admin-mark-payouts-paid`](../../supabase/functions/admin-mark-payouts-paid/index.ts). Admin-UI oförändrat (samma knapp), backend-vägen refactorad till `triggerStripeTransfer()` + `markPayoutPaid()`. ✓ 2026-04-20.
 
 ---
 
 ## 11. Integration-test-plan
 
-Ny katalog `supabase/functions/_tests/money/`. Kör i CI via befintlig workflow `.github/workflows/supabase-tests.yml`.
+Katalog `supabase/functions/_tests/money/`. Kör med `deno task test:money` (definierad i [`deno.json`](../../deno.json)).
 
-**Test-suite:**
+**Faktiska test-suites 2026-04-22 (100 pass, 4 ignored):**
 
-1. **`commission-hierarchy.test.ts`** — 6 scenarier (varje hierarki-steg + fallback).
-2. **`payout-breakdown.test.ts`** — RUT eligible vs ej, solo vs company-cleaner, avrundning (tvinga öres-precision-fel).
-3. **`stripe-checkout-parity.test.ts`** — Fullt bokningsflöde i Stripe test mode. Verifiera att `application_fee_amount` matchar `money.calculatePayout().commissionKr * 100`.
-4. **`mark-payout-idempotency.test.ts`** — Dubbel-anrop med samma idempotency_key. Andra anropet returnerar `alreadyPaid=true`, ingen DB-ändring.
-5. **`reconciliation-mismatch.test.ts`** — Seeda DB med 3 bokningar. Seeda Stripe mock med 2 transfers (1 saknas, 1 belopp-diff). Kör `reconcilePayouts()`. Verifiera 2 mismatches loggas + 0 false-positives.
-6. **`rut-yearly-cap.test.ts`** — Kund med 70,000 kr RUT redan använt. Ny bokning på 10,000 kr → 5,000 RUT cappas till 5,000 (74,000 av 75,000 kvar).
-7. **`platform-settings-propagation.test.ts`** — Uppdatera commission_standard 12 → 15. Verifiera nästa bokning får 15%, gamla bokningar oförändrade.
+1. **[`commission-hierarchy.test.ts`](../../supabase/functions/_tests/money/commission-hierarchy.test.ts)** — 6 hierarki-scenarier + fallback.
+2. **[`payout-calculation.test.ts`](../../supabase/functions/_tests/money/payout-calculation.test.ts)** — 12 scenarier (feature flag, booking not found, invalid input, happy paths inkl. rounding, fallback-warn-fall, data-korruption).
+3. **[`rut-split.test.ts`](../../supabase/functions/_tests/money/rut-split.test.ts)** — 14 scenarier (Math.floor-kanter, rut_pct=0/50/100, gross-extremer, eligible-override).
+4. **[`mark-payout-paid.test.ts`](../../supabase/functions/_tests/money/mark-payout-paid.test.ts)** — 12 scenarier (idempotency, force-mode, Stripe-verify, self-healing).
+5. **[`reconcile-payouts.test.ts`](../../supabase/functions/_tests/money/reconcile-payouts.test.ts)** — 15 scenarier (alla 6 mismatch-typer + rate-limit + dry_run).
+6. **[`stripe-transfer.test.ts`](../../supabase/functions/_tests/money/stripe-transfer.test.ts)** — 16 scenarier (mock Stripe, idempotency, retries, reversals).
+7. **[`stripe-transfer-integration.test.ts`](../../supabase/functions/_tests/money/stripe-transfer-integration.test.ts)** — 4 ignored tester. Kräver `STRIPE_SECRET_KEY_TEST` för aktivering. Detta är §1.6-väntande arbete.
 
-**Gate för F1.8 (rivning):** alla 7 test-suits gröna i 10 på rad kör.
+**Total:** 100 pass + 4 ignored. Testerna gate:r alla §1.X-commits sedan 2026-04-20.
+
+**Avvikelse mot ursprungsplan:** `stripe-checkout-parity.test.ts` skulle verifierat `application_fee_amount`-konsistens — superseded:ad eftersom stripe-checkout EF raderats. `platform-settings-propagation.test.ts` är inte separat suite utan täcks av `commission-hierarchy.test.ts` (steg 5).
 
 ---
 
 ## 12. Reconciliation-cron design
 
-**Filstruktur:**
+**Faktisk filstruktur 2026-04-22:**
 
 ```
-supabase/functions/payout-reconciliation/
-  index.ts          # Deno entry
-  _reconcile.ts     # Logik, testbar
-  deno.json
+supabase/functions/reconcile-payouts/
+  index.ts          # Deno entry, 188 rader
+                    # innehåller auto-rollback + auto-activation (se §4.6)
 ```
 
-**Trigger:** GitHub Action `.github/workflows/cron-payout-reconciliation.yml`, schemalagd `0 3 * * *` (03:00 UTC = 04:00/05:00 Stockholm).
+(Ursprungsplanens namn `payout-reconciliation/` användes inte — slutligt namn `reconcile-payouts/` matchar money.ts-funktionen `reconcilePayouts()`.)
 
-**Auth:** `CRON_SECRET` header (samma mönster som `cleanup-stale`, `auto-remind` per [CLAUDE.md](../../CLAUDE.md)).
+**Trigger:** pg_cron, hourly (`'5 * * * *'`). **Ej** GitHub Action (ändring vs ursprungsplan — pg_cron ger lägre latens och mindre drift mot DB-tillstånd).
 
-**Flöde:**
+**Auth:** JWT-role-check (`service_role` eller `authenticated`). Robusthet mot Supabase API-generationsbyte (2026-04-20). Inte CRON_SECRET-pattern eftersom pg_cron tillhandahåller service_role-JWT direkt.
 
-```
-1. Hämta bookings från senaste 25h där payment_status='paid'
-2. Hämta Stripe /v1/transfers?created[gte]=<25h ago>
-3. För varje booking:
-     a. Hitta matchande transfer via transfer.metadata.booking_id
-     b. Verifiera amountKr ±1 kr
-     c. Verifiera booking.payout_status motsvarar
-4. Logga alla mismatches till payout_audit_log (severity='alert')
-5. Om mismatches > 0: POST till platform_settings.slack_webhook_url
-6. Returnera { checked, mismatches, alertsSent }
-```
+**Flöde (faktiskt):** Se `reconcilePayouts()`-implementation [§4.6](#46-reconcilepayouts--periodisk-matchning-mot-stripe). 6 mismatch-typer, idempotens via `run_id`, rate-limit-skydd, ingen auto-heal — bara flagga.
+
+**Self-governing (i EF, inte money.ts):** Auto-rollback vid critical mismatches, auto-activation efter 20 clean dry-runs i 24h. Konstanter och beteende dokumenterade i §4.6.
 
 **Payout_audit_log-schema:**
 
@@ -661,16 +816,21 @@ CREATE TABLE payout_audit_log (
 
 | Scenario | money.ts-beteende | Caller-ansvar |
 |----------|--------------------|---------------|
-| `platform_settings` otillgänglig (DB-fel) | Commission defaultar till 12. Loggas som `source='fallback'`. | Caller: fortsätt bokning men logga warning. |
-| Cleaner saknar `stripe_account_id` | `calculatePayout()` kastar `Error('cleaner_missing_stripe_account')`. | Caller (stripe-checkout): avvisa checkout + visa kund-meddelande. |
-| Cleaner `stripe_onboarding_status != 'complete'` | `destinationAccountId=null`, payout-belopp ändå beräknat. | Caller: Stripe destination charge faller tillbaka till Spick-kontot. |
-| `bookings.cleaner_id` NULL (ej tilldelad) | `calculatePayout()` kastar `Error('booking_not_assigned')`. | Caller (markPaid): avvisa markering. |
-| Smart Trappstege flag på men `cleaners.completed_jobs` NULL | Fallback till platform_settings. Loggas. | — |
-| RUT yearly cap överskriden mid-year | `calculateRutSplit()` returnerar `rutAmountKr=remainingYearlyCapKr` (kan vara 0). | Caller: visa kund-meddelande "RUT-utrymme slut". |
-| Stripe API-fel i `triggerStripeTransfer` | Retry 3× med exponential backoff. Om alla failar → kasta + logga till payout_audit_log. | Caller: admin-alert. |
-| Idempotency-konflikt i markPayoutPaid | Returnera `alreadyPaid=true`. Ingen fel. | — |
+| `money_layer_enabled='false'` | Alla publika funktioner kastar `MoneyLayerDisabled`. | Caller: fångar och faller tillbaka till legacy (där sådan finns). |
+| `platform_settings` otillgänglig (DB-fel) | `getCommission()` defaultar till 12 (`source='fallback'`). | Caller: fortsätt bokning men logga warning. |
+| `bookings.commission_pct` NULL | `calculatePayout()` faller tillbaka till `getCommission()` + `console.warn`. | — (legacy-data, eliminerad efter §1.4). |
+| `bookings.stripe_fee_sek` NULL | `calculatePayout()` defaultar till 0 + `console.warn`. | — (gamla bokningar pre-§1.2). |
+| `bookings.total_price` ogiltig (NULL/0/negativ/NaN) | `calculatePayout()` kastar `PayoutCalculationError` med full kontext. | Caller: avvisa anrop, manuell granskning. |
+| Cleaner saknar `stripe_account_id` | `triggerStripeTransfer()` kastar `TransferPreconditionError`. | Caller (admin-mark-payouts-paid): avvisa + visa felmeddelande. |
+| Cleaner `stripe_onboarding_status != 'complete'` | `triggerStripeTransfer()` kastar `TransferPreconditionError`. | Caller: avvisa transfer, vänta på onboarding-completion. |
+| `payout_trigger_mode != 'immediate'` (utan `force=true`) | `triggerStripeTransfer()` kastar `TransferPreconditionError`. | Caller: använd `force=true` om manuell admin-trigger. |
+| Stripe avvisar `/transfers` (rate-limit, fel) | Logga till `payout_audit_log` (`action='transfer_failed'`) → kasta `TransferFailedError`. | Caller: admin-alert. |
+| DB-fel efter Stripe-success | `createReversal` + audit `transfer_reversed` → kasta `TransferReversedError`. Kritisk. | Caller: incident-eskalera, manuell verifiering. |
+| Stripe transfer reversed/missing/amount mismatch i markPayoutPaid | Kastar `PayoutVerificationError` med detaljer. | Caller: granska Stripe Dashboard, ej ompröva payout_status. |
+| Idempotency: redan markerad paid | `markPayoutPaid()` returnerar existing audit-entry. Self-healing om audit saknas. | — (säkert att retrya). |
+| RUT yearly cap överskriden | `calculateRutSplit()` loggar warning, returnerar full belopp ändå. | Caller: visa kund-meddelande (historisk cap-enforcement i F1.5.1). |
 
-**Princip:** Money-layer är defensiv vid läsning (fallback till safe default), strikt vid skrivning (kasta om prekondition brister). Aldrig silent drift i payout-beräkning.
+**Princip:** Money-layer är defensiv vid läsning (fallback till safe default + console.warn), strikt vid skrivning (kasta om prekondition brister). Aldrig silent drift i payout-beräkning. Se §4.8 för komplett error-klass-katalog.
 
 ---
 
@@ -714,11 +874,12 @@ CREATE TABLE payout_audit_log (
 
 ### 15.2 Kvarstående öppna frågor
 
-1. **`platform_settings.commission_top`-duplicering:** Samma värde som `commission_standard` (`'12'`). Vilken används faktiskt? Grep visar 0 träffar på `commission_top` i kodbasen — trolig dead row. **F1.2 action:** verifiera grep + DROP om orörd.
-2. **Smart Trappstege semantik:** ska "keep"-raten (0.83/0.85/0.87/0.88) i [js/commission.js:15-18](../../js/commission.js:15) räknas på totalt pris eller `priceBeforeRut`? Tvetydigt. **Besluta i F1.7-design.**
-3. **Per-entitet override-schema:** om framtida per-cleaner commission ska implementeras — nya kolumner (`commission_pct_override NUMERIC(5,2)`) eller ny tabell (`commission_overrides`)? Beslut tas när §5 steg 3/4 aktiveras (tidigast Fas 9).
-4. **`booking-create` vs `stripe-checkout` dubbel-skriv:** [bookings.commission_pct](../../) sätts i `booking-create` (via pricing-resolver) men Stripe application_fee beräknas separat i `stripe-checkout:88`. **F1.2 måste läsa `commission_pct` från bokningen istället för att räkna om.**
-5. **Pilot-data pre-17-apr:** 4 betalda bokningar har `commission_pct=17` hårdkodat. Historik bevaras (ingen back-fill). Faktura-rendering fungerar pga defensive fallback `|| 17` kvarstår.
+1. **`platform_settings.commission_top`-duplicering:** Samma värde som `commission_standard` (`'12'`). Grep visar 0 träffar på `commission_top` i kodbasen — trolig dead row. **Status 2026-04-22:** Ej DROP:ad ännu — kvarstår som hygien-task.
+2. **Smart Trappstege semantik:** ska "keep"-raten räknas på totalt pris eller `priceBeforeRut`? Tvetydigt. **Status 2026-04-22:** Inte aktuellt — `smart_trappstege_enabled='false'` i prod, kod-implementerad men inaktiv. Beslut behövs först vid aktivering.
+3. **Per-entitet override-schema:** nya kolumner (`commission_pct_override NUMERIC(5,2)`) eller ny tabell (`commission_overrides`)? Beslut tas när §5 steg 3/4 aktiveras (tidigast Fas 9). **Oförändrat öppet.**
+4. ~~**`booking-create` vs `stripe-checkout` dubbel-skriv:**~~ **LÖST 2026-04-21:** stripe-checkout EF raderad (§1.2 SUPERSEDED). booking-create:604 är enda skrivvägen.
+5. **Pilot-data pre-17-apr:** 4 betalda bokningar har `commission_pct=17` hårdkodat. Historik bevaras (ingen back-fill). **Defensive fallback `\|\| 17` kvarstår** i `getCommissionPct()`-konsumenter (`js/commission-helpers.js`). Tas bort när `bookings.commission_pct IS NOT NULL`-check kan göras med 100% säkerhet (efter 90 dagars stabil drift).
+6. **Auto-governing avvikelse mot v3.md:** Reconcile-EF har auto-activation + auto-rollback som inte dokumenterats i v3.md. Hygien-task: synka v3.md eller dokumentera medvetet avsteg. Listad som hygien-task i progress-fil sedan §1.5.
 
 ---
 
@@ -857,4 +1018,53 @@ Fem fakta-korrigeringar gjordes 2026-04-20:
 
 ---
 
-**Slut.** Nästa steg: F1.1 (utöka pricing-resolver.ts till money.ts) efter Farhads SQL-verifiering av §2.4 + §15.
+## 17. Frontend commission-helpers
+
+**Status:** ✅ **IMPLEMENTERAD 2026-04-20** (Fas 1.9a-infrastruktur). [`js/commission-helpers.js`](../../js/commission-helpers.js) (51 rader).
+
+Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` direkt — det skulle skapa fragmentering med 8+ olika fetch-implementeringar. I stället laddas en delad helper-fil tidigt i sid-init som cache:ar värdet i `window.SPICK_COMMISSION` och exponerar synkrona helpers.
+
+**Användning:**
+
+```html
+<script src="js/config.js"></script>
+<script src="js/commission-helpers.js"></script>
+...
+<script>
+  await window.SPICK_COMMISSION_READY;  // i init-flödet
+  const keep = getKeepRate();           // synkron läsning efteråt
+  const pct = getCommissionPct();       // heltal-procent (12)
+  const rate = getCommissionRate();     // decimal (0.12)
+</script>
+```
+
+**API:**
+
+| Funktion | Returnerar | Exempel (commission=12) |
+|---|---|---|
+| `getKeepRate()` | decimal städar-andel (0.88) | `0.88` |
+| `getCommissionRate()` | decimal commission (0.12) | `0.12` |
+| `getCommissionPct()` | heltal-procent (12) | `12` |
+| `window.SPICK_COMMISSION_READY` | Promise (resolve:as när init klar) | — |
+| `window.SPICK_COMMISSION` | `{ keepRate, commissionPct }` | `{ keepRate: 0.88, commissionPct: 12 }` |
+
+**Gardrails:** alla helpers kastar `Error` om de anropas före `SPICK_COMMISSION_READY` resolve:at. Init-funktionen kastar om `platform_settings.commission_standard` saknas eller är ogiltig (`< 0`, `> 100`, NaN). Inga silenta defaults i frontend.
+
+**Konsumenter (8 filer per §1.9b):**
+
+- [admin.html](../../admin.html) — totalProvision/totalPayout/paidOut-kalkyler
+- [faktura.html](../../faktura.html) — kund- + städar-fakturor (rad 121, 205)
+- [stadare-dashboard.html](../../stadare-dashboard.html) — earnings-vyer
+- [stadare-uppdrag.html](../../stadare-uppdrag.html) — per-uppdrag-payout
+- [team-jobb.html](../../team-jobb.html) — team-medlems-payouts
+- [marknadsanalys.html](../../marknadsanalys.html) — VD-simulering
+- [registrera-stadare.html](../../registrera-stadare.html) — onboarding-kalkylator
+- [rekrytera.html](../../rekrytera.html) — rekryterings-pitch
+
+**Ej konsument (hygien-task):** [bli-stadare.html:511](../../bli-stadare.html:511) — `const commission = 0.17` kvarstår hardcoded. Scope-läckage från §1.9b — flaggad i progress-fil för framtida §1.9c-städ.
+
+---
+
+**Statusnot 2026-04-22:** Detta dokument är synkroniserat mot kodbasen efter §1.2/§1.3/§1.4/§1.5/§1.7/§1.9-leverans. Kvarstår: §1.6 (CI integration-test) + §1.8 (hourly-priser → platform_settings) + framtida `cleaners/companies.commission_rate`-droppning.
+
+**Original-not (2026-04-20):** "Slut. Nästa steg: F1.1 (utöka pricing-resolver.ts till money.ts) efter Farhads SQL-verifiering av §2.4 + §15." — F1.1 levererat 2026-04-20; designändring: pricing-resolver.ts förblev separat fil i stället för att absorberas (se §2.3).
