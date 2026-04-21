@@ -252,11 +252,20 @@ per_sqm?
 
 ## TODOs (post-Fas-1-upptäckter)
 
+### TODO: Avtals-revidering (KRITISK, blockerar Todo A)
+- Prio: **KRITISK** (Fråga 1 commission-läckage = pågående avtalsbrott-risk)
+- Estimat: 1-2h revidering + juristtid (~1500-3000 kr)
+- Fil: [docs/planning/todo-avtals-revidering-2026-04-22.md](planning/todo-avtals-revidering-2026-04-22.md)
+- 4 frågor: commission-läckage, §5.7 RUT-avslag, prisändringsrätt, signatur-DB-logg
+- Beroendeschema: Farhads §5.7-beslut → jurist → PR1 text → Todo A UI-bygge (PR2 signatur-DB-logg kan gå parallellt)
+- Status: scope klart, §5.7-policybeslut + juristgranskning pending
+
 ### TODO A: RUT Notification Transparency
 - Prio: HÖG (pre-Rafa-pilot)
 - Estimat: 2-4h
 - Fil: [docs/planning/todo-a-rut-notification-transparency.md](planning/todo-a-rut-notification-transparency.md)
-- Status: scope klart, bygg pending
+- Status: **BLOCKERAD** av avtals-revidering (se ovan)
+- Kan byggas när avtal uppdaterat + §5.7-policy klarlagd
 - Uppdragsavtal-audit genomförd 22 apr: se [docs/audits/2026-04-22-uppdragsavtal-vs-todo-a.md](audits/2026-04-22-uppdragsavtal-vs-todo-a.md). Status: **KRÄVER_AVTAL_UPPDATERING** (Krav 2 RUT-avslag saknas i §5.6; Krav 1 + Krav 3 MATCHAR). Avtals-PR måste landa före notifikations-bygget.
 
 ### TODO B: RUT Two-Step Payout Pipeline
