@@ -48,6 +48,8 @@ const todayStr = new Date().toISOString().slice(0, 10);
 
 **Prio:** Medel. Triggar bara under vissa körnings-tider.
 
+**Status (2026-04-24):** ✓ FIXAD via `getStockholmDateString(date?)` i `_shared/timezone.ts`. 4 call-sites bytta (2 i huvudfunktion, 2 i processSubscription). `nextDate()`-aritmetik på rad 110 bevarad som UTC medvetet (deterministisk månad/dag-aritmetik, lokaltids-konvertering sker downstream).
+
 ### BUG 3 (MEDEL) — formatDate-duplicering utan tidszon × 4 EFs
 
 **Filer:**
@@ -114,9 +116,9 @@ Kommentaren i `20260423_f2_7_1_b2b_schema.sql:74-75` om "4 hardcodes som hygien-
 - Lokala duplikater raderade (~20 rader kod bort)
 - Regel #28-kompatibel
 
-**Fas 3 — auto-rebook edge-case (30-45 min):** ej påbörjad
-- Fixa todayStr-beräkning med svensk tidszon
-- Deploy EF
+**Fas 3 — auto-rebook edge-case (30-45 min):** ✓ KLAR 2026-04-24
+- `getStockholmDateString()` i `_shared/timezone.ts`
+- 4 call-sites bytta (2 i huvudfunktion, 2 i processSubscription)
 
 **Fas 4 — Dokumentation (30 min):** ej påbörjad
 - Uppdatera money-layer.md eller arkitekturplan med tidszon-konvention

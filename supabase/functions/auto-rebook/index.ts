@@ -16,6 +16,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
+import { getStockholmDateString } from "../_shared/timezone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -34,11 +35,11 @@ serve(async (req) => {
     await req.json().catch(() => ({}));
 
     // Datum att processa (default: 7 dagar framåt)
-    const today = new Date();
-    const horizon = new Date(today);
-    horizon.setDate(horizon.getDate() + 7);
-    const horizonStr = horizon.toISOString().slice(0, 10);
-    const todayStr = today.toISOString().slice(0, 10);
+    // §49 Fas 3: svenskt kalenderdatum, inte UTC
+    const todayStr = getStockholmDateString();
+    const horizonDate = new Date();
+    horizonDate.setDate(horizonDate.getDate() + 7);
+    const horizonStr = getStockholmDateString(horizonDate);
 
     log("info", "auto-rebook", "Starting", { today: todayStr, horizon: horizonStr });
 
@@ -113,7 +114,8 @@ function nextDate(current: string, frequency: string): string {
 async function processSubscription(supabase: ReturnType<typeof createClient>, sub: Record<string, unknown>) {
   let bookingDate = sub.next_booking_date as string;
   const freq = sub.frequency as string;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // §49 Fas 3: svenskt kalenderdatum, inte UTC
+  const todayStr = getStockholmDateString();
 
   // ── Hantera förfallna datum (om auto-rebook missat körningar) ──
   // Avancera till nästa framtida datum UTAN att skapa bokningar för det förflutna
@@ -135,9 +137,10 @@ async function processSubscription(supabase: ReturnType<typeof createClient>, su
   }
 
   // Kolla om bokningsdatum är inom horizon (7 dagar)
-  const horizon = new Date();
-  horizon.setDate(horizon.getDate() + 7);
-  const horizonStr = horizon.toISOString().slice(0, 10);
+  // §49 Fas 3: svenskt kalenderdatum, inte UTC
+  const horizonDate = new Date();
+  horizonDate.setDate(horizonDate.getDate() + 7);
+  const horizonStr = getStockholmDateString(horizonDate);
   if (bookingDate > horizonStr) {
     return { status: "skipped", reason: "not within horizon yet", next_date: bookingDate };
   }

@@ -102,3 +102,28 @@ export function formatStockholmDateLong(dateStr: string | null | undefined): str
     return "–";
   }
 }
+
+/**
+ * Returnerar dagens datum i svensk lokaltid som YYYY-MM-DD-sträng.
+ * Om date-parameter ges: returnerar det datumet konverterat till svensk tid.
+ *
+ * Till skillnad från new Date().toISOString().slice(0, 10) — som returnerar
+ * UTC-datumet — ger denna funktion det SVENSKA kalenderdatumet. Kritisk
+ * skillnad för körningar mellan 22:00-24:00 UTC (= 00:00-02:00 svensk tid)
+ * där UTC-datumet är "igår" medan svensk tid är "idag".
+ *
+ * Används av auto-rebook för dagens datum och horizon-beräkningar.
+ *
+ * @example
+ * // 2026-04-22 23:30 UTC (= 2026-04-23 01:30 svensk tid vintertid)
+ * getStockholmDateString() // returnerar "2026-04-23"
+ * new Date().toISOString().slice(0, 10) // returnerar "2026-04-22" (bug!)
+ */
+export function getStockholmDateString(date?: Date): string {
+  const d = date ?? new Date();
+  // en-CA-locale ger YYYY-MM-DD ISO-format (svenska ger "2026-04-22" också men en-CA är entydig)
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: SWEDEN_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(d);
+}
