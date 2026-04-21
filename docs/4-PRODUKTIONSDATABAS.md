@@ -1,7 +1,8 @@
 # 4 — Produktionsdatabas (schema-sanning)
 
-> **Senast verifierad:** 2026-04-17 från migrations + kodgreps.  
-> **Obs:** SQL-schema ej körd i denna audit. Fält markerade ⚠️ kräver SQL-verifiering.
+> **Senast verifierad:** 2026-04-22 från migrations + kodgreps + SQL-verifiering av `platform_settings` (§1.8-prompt).  
+> **Obs:** Fullt `pg_dump --schema-only` ej körd ännu — schedulerad i §2.1 (Fas 2-plan). Fält markerade ⚠️ kräver SQL-verifiering. Fält markerade 🔍 flaggas för post-Fas 1 omräkning.  
+> **Fas 1-status:** 9/10 sub-faser klara. Se [docs/v3-phase1-progress.md](v3-phase1-progress.md).
 
 ---
 
@@ -175,8 +176,8 @@ ORDER BY ordinal_position;
 - `cancelled_at` timestamptz, `cancellation_reason` text
 - `key_type` text (`open`, `hidden`, `handover`), `key_info` text
 
-**Viktig notering om `total_price`:**
-Sparas av `booking-create` vid skapande. `stripe-checkout` EF (DÖD KOD) räknade oberoende — om DB och Stripe diverger är det latent bug. Pre-Dag 2 **faktiskt aktiv bugg**: `booking-create` läser fel prissättningskälla när `use_company_pricing=true`.
+**Viktig notering om `total_price` (uppdaterad 2026-04-22):**
+Sparas av `booking-create` vid skapande. ~~`stripe-checkout` EF~~ — **RADERAD 2026-04-21 (§1.2 SUPERSEDED)**, se `git log --diff-filter=D -- 'supabase/functions/stripe-checkout/'`. booking-create:604 bär hela logiken idag + anropar `_shared/money.ts::getCommission()` för commission-läsning från `platform_settings`. 🔍 `use_company_pricing`-pricing-path kan vara oförändrad — verifiera post-Fas 1 om Rafa-pilot kräver denna flagga.
 
 ### Triggers på `bookings` (viktigt vid UPDATE-operationer)
 
@@ -206,22 +207,25 @@ Nyckel-värde-tabell som sanning för commission, priser och systemflaggor. All 
 - `value` text (parseFloat eller JSON-parse i kod)
 - `updated_at` timestamptz
 
-**Kända nycklar per 2026-04-17:**
+**Kända nycklar per 2026-04-22 (SQL-verifierad):**
 
-| key | value (live) | value (migration-seed) | Beskrivning |
-|-----|--------------|------------------------|-------------|
-| `commission_standard` | `12` | `17` | Provision för ALLA bokningar (%) |
-| `commission_top` | `12` | `14` | Reserverad för framtida top-tier-belöning. Lika med standard just nu. |
-| `base_price_per_hour` | `399` | `399` | Standardpris per timme (fallback) |
-| `subscription_price` | `349` | `349` | Prenumerationspris |
-| `commission_change_log` | audit-array | — | Historik över commission-ändringar |
-| `auto_remind_last_run` | ISO-timestamp | — | Används av `auto-remind` + `health` EFs |
+| key | value (live) | Sub-fas som la till | Beskrivning |
+|-----|--------------|---------------------|-------------|
+| `base_price_per_hour` | `399` | Pre-Fas 1 | Standardpris per timme (pricing-resolver fallback, steg 5) |
+| `commission_standard` | `12` | Pre-Fas 1 (seed `17`) | Provision för ALLA bokningar (%) — läses av `_shared/money.ts::getCommission()` |
+| `commission_top` | `12` | Pre-Fas 1 (seed `14`) | Reserverad för framtida top-tier. Lika med standard just nu. Hygien-task: verifiera om DROP-bar |
+| `default_hourly_rate` | `350` | §1.8 (2026-04-22) | UI-default i admin/bli-stadare/join-team när `cleaner.hourly_rate` saknas. Skild från `base_price_per_hour` (pricing-resolver) |
+| `escrow_enabled` | `false` | §1.5 seed | Aktiveras i Fas 8 (escrow). Idag: destination charges |
+| `F1_USE_DB_SERVICES` | `false` | Pre-Fas 1 | Feature flag för Fas 4 (services genomgående) |
+| `money_layer_enabled` | `true` | §1.1 seed, aktiverad 2026-04-20 19:07 UTC | Huvud-flagga för `_shared/money.ts` |
+| `payout_trigger_mode` | `immediate` | §1.6 | Krävs av `triggerStripeTransfer()` för auto-trigger utan `force=true` |
+| `rut_pct` | `50` | §1.5 seed | 50% RUT-avdrag (Skatteverket 2026). Heltal-procent, konsistent med commission_standard |
+| `rut_yearly_cap_kr` | `75000` | §1.5 seed | Skatteverket-cap 2026 (per person/år) |
+| `smart_trappstege_enabled` | `false` | §1.7 seed | Aktiverar Smart Trappstege-payout i `_resolveSmartTrappstege()` |
+| `stripe_mode` | `live` | §1.6 | Mode-isolation för Fas 1.6.1. `getStripeClient()` väljer nyckel per cleaner |
+| `subscription_price` | `349` | Pre-Fas 1 | Prenumerationspris |
 
-**⚠️ Skillnad live vs migration:** Migration `20260401000001_sprint1_missing_tables.sql:24-25` har initial seed `commission_standard=17, commission_top=14`. Live-värdet har uppdaterats till `12/12` efter 12%-beslutet. SQL-verifiering:
-```sql
-SELECT key, value, updated_at FROM platform_settings
-WHERE key IN ('commission_standard', 'commission_top');
-```
+**Totalt: 13 nycklar** (ingen `commission_change_log` eller `auto_remind_last_run` i SQL-verifiering 22 apr — om de existerar är de utanför scope). Hygien-task: `base_price_per_hour=399` vs `default_hourly_rate=350` — semantiskt liknande, se hygien-task i progress-fil.
 
 **RLS:**
 - `SELECT` tillåten för alla (`Public read platform_settings`).
@@ -245,9 +249,9 @@ const commissionPct = parseFloat(data.value);
 - `commission_pct` integer (**PROCENT-format**)
 - `commission_amt` numeric (beloppet Spick tar)
 - `net_amount` numeric (städarens del)
-- `level_name` text (`Standard 17%`, `Företag 12%`, etc.) — legacy; nya loggas som `Standard 12%` efter Dag 2
+- `level_name` text (`Standard 17%`, `Företag 12%`, etc.) — legacy; 🔍 verifiera om nya loggas som `Standard 12%` post-§1.4
 
-**⚠️ Inkonsistensrisk:** Pre-Dag 2 kan `commission_log.commission_pct` skilja sig från `bookings.commission_pct` för Top-tier cleaners (BUG 1). Se commission-audit-dokumentet.
+**⚠️ Inkonsistensrisk:** Historiska rader pre-§1.4 kan ha `commission_log.commission_pct` som skiljer sig från `bookings.commission_pct`. Post-§1.4: `_shared/money.ts::calculatePayout()` är referensimplementation, men commission_log-skrivning sker fortfarande i `booking-create` — 🔍 verifiera konsistens.
 
 ---
 
@@ -316,7 +320,7 @@ const commissionPct = parseFloat(data.value);
 - `reviews` → VY på `ratings` (alla inserts MÅSTE gå mot `ratings`-tabellen).
 - `ratings` → primär rating-tabell.
 - `admin_users` → separat auth från cleaners (admin-lösenord via Supabase Auth).
-- `platform_settings` → nyckel-värde-par (base_price_per_hour, commission_standard, commission_top, subscription_price).
+- `platform_settings` → nyckel-värde-par (13 nycklar per 2026-04-22, se ovan).
 - `discounts`, `discount_usage` → rabattkoder.
 - `customer_credits` → kund-kredit (från referrals, refunds).
 - `booking_status_log` → audit av statusändringar.
@@ -325,6 +329,16 @@ const commissionPct = parseFloat(data.value);
 - `cleaner_availability` → EN rad per städare med `day_mon`...`day_sun` boolean.
 - `messages` → chat städare ↔ kund.
 - `notifications` → push-notiser.
+
+#### Money-layer-tabeller (nya sedan §1.6, 2026-04-20)
+
+- `payout_attempts` → en rad per Stripe Transfer-anrop (booking_id + attempt_count + status + stripe_idempotency_key + stripe_transfer_id). Primärkälla för retry-logik i `_shared/money.ts::triggerStripeTransfer()`. Migration: [20260420_f1_6_payout_attempts.sql](../supabase/migrations/20260420_f1_6_payout_attempts.sql).
+- `payout_audit_log` → audit-trail för alla payout-events (`transfer_created`, `payout_confirmed`, `transfer_failed`, `transfer_reversed`, `reconciliation_mismatch`, `reconciliation_completed`, `auto_rollback_triggered`, `auto_activation_triggered`). Migration: [20260420_f1_6_payout_audit_log.sql](../supabase/migrations/20260420_f1_6_payout_audit_log.sql).
+
+#### Services-tabeller (nya sedan §F1 Dag 1, 2026-04-19)
+
+- `services` → centralt service-register (11 seedade: Hemstädning, Premiumstädning, Storstädning, Flyttstädning, Fönsterputs, Mattrengöring, Kontorsstädning, Trappstädning, Skolstädning, Vårdstädning, Hotell & restaurang). Kolumner: `key`, `label_sv`, `label_en`, `rut_eligible`, `is_b2b`, `is_b2c`, `hour_multiplier`, `default_hourly_price`, `ui_config JSONB`. Feature flag `F1_USE_DB_SERVICES=false` — frontend läser fortfarande hardcoded listor. Migration: [20260419_f1_dag1_services_tables.sql](../supabase/migrations/20260419_f1_dag1_services_tables.sql).
+- `service_addons` → FK till services. Seed: ugnsrengöring (295 kr) till Hemstädning.
 
 ---
 
@@ -434,7 +448,7 @@ find_nearby_cleaners(
 - **Returnerar INTE** `company_id`, `is_company_owner`, `company_name`, `completed_jobs`, `has_fskatt` — Dessa nämns i session-prompt men verifierad signatur inkluderar dem EJ. Service-filtrering sker på klientsidan, inte i RPC.
 - Security: `SECURITY DEFINER` — kör med funktionens ägares rättigheter.
 
-**Källa:** [`sql/fix-find-nearby-for-teams.sql`](../sql/fix-find-nearby-for-teams.sql)
+**Källa:** [`sql/fix-find-nearby-for-teams.sql`](../sql/fix-find-nearby-for-teams.sql) — 🔍 **§2.2 schedulerad:** funktionen finns BARA i `sql/`, inte i `supabase/migrations/`. Fas 2 §2.2 ska migrera den. Verifiera att `sql/`-versionen matchar prod innan migration.
 
 ---
 
@@ -450,12 +464,12 @@ Audit-logg för booking-flöden.
 
 ---
 
-## Kända datakvalitetsissues (2026-04-17)
+## Kända datakvalitetsissues (uppdaterad 2026-04-22)
 
 1. **`customer_profiles` skev:** 1 rad trots 4 unika kunder i `bookings`. `booking-create` upsert-fix deployad men påverkar bara nya bokningar.
 2. **Avbokad + betald booking:** 1 bokning (april 2026) med `status='avbokad'` men `payment_status='paid'`. Data-cleanup behövs (manuell SQL).
-3. **Commission-format inkonsistens (cleaners/companies):** `cleaners.commission_rate` och `companies.commission_rate` har blandade historiska värden (`17`, `12`, `0.17`, `0`). Schema-default `0.17` (decimal) + rader lagrade som `17` (procent) + tomma rader = tre format i samma kolumn. **Ska IGNORERAS av ny kod — läs från `platform_settings.commission_standard` istället.** Normaliseras senare (efter calendar_events-bug fixad — P1).
-4. **Pricing-path-divergens:** `booking-create` ignorerar `use_company_pricing`. Latent bug — Rafas flagga får INTE sättas till `true` pre-Dag 2-fix.
+3. **Commission-format inkonsistens (cleaners/companies):** `cleaners.commission_rate` och `companies.commission_rate` har blandade historiska värden (`17`, `12`, `0.17`, `0`). Schema-default `0.17` (decimal) + rader lagrade som `17` (procent) + tomma rader = tre format i samma kolumn. **IGNORERAS av `_shared/money.ts` sedan §1.1.** Kolumnerna planeras droppas i **§1.10 framtida migration** (se [docs/architecture/money-layer.md §2.1 rad 14](architecture/money-layer.md)).
+4. **Pricing-path-divergens (2026-04-17):** `booking-create` ignorerade `use_company_pricing`-flaggan. 🔍 **Status post-Fas 1:** booking-create har genomgått §1.2 SUPERSEDED + §1.4-refactor; verifiera om pricing-path-buggen lever kvar. Rafas flagga kvarstår som "får INTE sättas till true" enligt memory-fil `project_booking_create_use_company_pricing.md`.
 5. **Koordinater saknas:** Daniella + Lizbeth (Rafas team) har NULL `home_lat`/`home_lng`. Väntar på Rafael.
 6. **8 par överlappande testbokningar (P1-bug för framtiden):** Blockerar UPDATE-operationer mot `bookings`-tabellen via trigger `trg_booking_to_calendar` → `no_booking_overlap`-constraint på `calendar_events`. Inte aktivt blockerande för Rafa-pilot men förhindrar t.ex. bulk-UPDATE av `commission_pct` från 17 till 12 på historiska bokningar. Se `3-TODOLIST-v2.md` P1-1.
 

@@ -2,23 +2,45 @@
 
 > **Syfte:** Registrera platser där samma logik finns på flera ställen i kodbasen.  
 > **Vid ändring — kolla ALLA ställen, inte bara en.**  
-> **Senast verifierad:** 2026-04-17 via grep + kodläsning.
+> **Senast verifierad:** 2026-04-22 via grep + kodläsning + Fas 1-leverans-spårning.
 
 Detta dokument är den **permanenta referensen** för fragmenterad logik. När framtida Claude-sessioner planerar ändringar i pricing, commission, auth, status eller översättning — **läs denna FÖRST**.
 
+> **Status post-Fas 1 (2026-04-22):** 9 av 10 sub-faser klara + §2.7 (19 fix-skript raderade). Många "BUG"-rader i tabellerna nedan är åtgärdade — sök efter "✓ åtgärdat §X.Y"-noteringar. Rader med 🔍-flagga kräver verifiering vid eventuell §2.9b-omräkning. Se [docs/v3-phase1-progress.md](v3-phase1-progress.md) för exakt status per sub-fas.
+
+## Money-layer-referens (NY 2026-04-22)
+
+Sedan §1.1 är `_shared/money.ts` (1798 rader) **single source of truth** för commission/payout/transfer/RUT. Viktiga exports:
+
+| Export | Syfte | Sub-fas |
+|---|---|---|
+| `getCommission(ctx)` | Hierarkisk commission-lookup mot platform_settings | §1.1 |
+| `calculatePayout(booking_id)` | Payout-breakdown med invariant-check | §1.4 |
+| `calculateRutSplit(gross, eligible)` | RUT 50% split (Skatteverket-säker Math.floor) | §1.5 |
+| `triggerStripeTransfer(booking_id)` | Stripe Transfer + idempotency + reversal | §1.6 |
+| `markPayoutPaid(booking_id)` | Stripe-verify + bookings-update + audit | §1.4 |
+| `reconcilePayouts()` | DB ↔ Stripe-matchning + 6 mismatch-typer | §1.5 |
+| `isMoneyLayerEnabled()` | Feature-flag-helper för callers | §1.1 |
+
+**Frontend-konsumenter:** [`js/commission-helpers.js`](../js/commission-helpers.js) exponerar `getKeepRate()`, `getCommissionRate()`, `getCommissionPct()`, `getDefaultHourlyRate()` (efter `await window.SPICK_COMMISSION_READY` + `SPICK_PRICING_READY`).
+
+**Detaljerad arkitektur:** [docs/architecture/money-layer.md](architecture/money-layer.md) (uppdaterad §1.10 2026-04-22).
+
 ---
 
-## Pricing-logik (14 ställen)
+## Pricing-logik (14 ställen, post-§1.8: reducerade där verifierat)
 
-Pricing hanteras på **14 platser** — 4 skrivande (authoritative), 10 läsande (display). Vid ändring som påverkar pris, verifiera ALLA:
+Pricing hanteras på **14 platser** — 4 skrivande (authoritative), 10 läsande (display). Vid ändring som påverkar pris, verifiera ALLA.
+
+> **Annotation 2026-04-22:** §1.8 centraliserade 13 hardcoded `350`-fallbacks (admin: 9, bli-stadare: 3, join-team: 1) via `getDefaultHourlyRate()`. K3 (subscription-fallback 349) + K4 (CW_SERVICES_CATALOG) orörda — out of scope per beslut. Originalantalet 14 är inte omräknat — exakt antal pricing-ställen = §2.9b hygien-task.
 
 ### Authoritative (skriver till DB / Stripe)
 
 | # | Plats | Fil:rad | Läser | Status 2026-04-17 | Risk vid miss |
 |---|-------|---------|-------|-------------------|---------------|
 | 1 | Frontend preview | [boka.html:2001-2099](../boka.html) | ✅ Korrekt 3-lagers: `use_company_pricing` → `company_service_prices` → `cleaner_service_prices` → `hourly_rate` | OK | Visningsfel (kund ser fel pris) |
-| 2 | **Booking insert + Stripe session** | [booking-create/index.ts:183-210](../supabase/functions/booking-create/index.ts) | 🔴 BARA `cleaner_service_prices` + `cleaner.hourly_rate` | **LATENT BUG** — ignorerar `use_company_pricing` | DB **OCH** Stripe får fel belopp (konsekvent fel, inte mismatch — men fel jämfört med preview) |
-| 3 | Subscription checkout | [setup-subscription/index.ts:96-100](../supabase/functions/setup-subscription/index.ts) | 🟡 BARA `cleaner.hourly_rate` | LATENT | Subscription-pris låst till fel värde; auto-rebook kan räkna om med helt annat pris |
+| 2 | **Booking insert + Stripe session** | [booking-create/index.ts:183-210](../supabase/functions/booking-create/index.ts) | 🔴 BARA `cleaner_service_prices` + `cleaner.hourly_rate` | **LATENT BUG** — ignorerar `use_company_pricing`. 🔍 verifiera post-§1.2 SUPERSEDED + §1.4 (booking-create:604 bär nu commission-läsning, men pricing-vägen kan vara oförändrad) | DB **OCH** Stripe får fel belopp (konsekvent fel, inte mismatch — men fel jämfört med preview) |
+| 3 | Subscription checkout | [setup-subscription/index.ts:96-100](../supabase/functions/setup-subscription/index.ts) | 🟡 BARA `cleaner.hourly_rate` | LATENT — 🔍 verifiera om §1.X-arbete påverkat | Subscription-pris låst till fel värde; auto-rebook kan räkna om med helt annat pris |
 | 4 | Manual override (VD/admin) | [booking-create/index.ts:230-253](../supabase/functions/booking-create/index.ts) | `manual_override_price` param + proportionell skalning | OK (explicit override) | Om override < 100 → error |
 | 5 | ~~stripe-checkout EF~~ | ~~stripe-checkout/index.ts:112-164~~ | Korrekt 3-lagers — men oanvänd | ❌ **RADERAD 2026-04-21** (§1.2 SUPERSEDED). Verifierat 0 invocations 20 dgr + 0 callers. | – |
 
@@ -43,20 +65,21 @@ Pricing hanteras på **14 platser** — 4 skrivande (authoritative), 10 läsande
 
 ### Gemensam helper
 
-- **Pre-Dag 2:** Inte existerande.
-- **Post-Dag 2 (planerat):** [`supabase/functions/_shared/pricing-resolver.ts`](../supabase/functions/_shared/pricing-resolver.ts) — läser `platform_settings.commission_standard` + 3-lagers-pricing.
-- **Existerande helper som redan delas:** [`_shared/pricing-engine.ts`](../supabase/functions/_shared/pricing-engine.ts) — marginal/rabatt/kredit-motor. Bör uppdateras att läsa `platform_settings` (rad 5-6) istället för att hårdkoda `COMMISSION_STANDARD=17, COMMISSION_TOP=14`.
+- ✓ **EXISTERAR sedan §1.1 (2026-04-20):** [`supabase/functions/_shared/pricing-resolver.ts`](../supabase/functions/_shared/pricing-resolver.ts) — läser `platform_settings.commission_standard` + 5-lagers-pricing-hierarki (commission/payout flyttade till `_shared/money.ts`).
+- ✓ **Frontend (sedan §1.9):** [`js/commission-helpers.js`](../js/commission-helpers.js) — `getKeepRate()`, `getCommissionRate()`, `getCommissionPct()`, `getDefaultHourlyRate()` (efter §1.8). Konsumenter: 8 filer per §1.9b + ny scope §1.8 (admin, bli-stadare, join-team).
+- 🔍 **`_shared/pricing-engine.ts`** marginal/rabatt/kredit-motor — verifiera om `COMMISSION_STANDARD=17, COMMISSION_TOP=14`-konstanter kvarstår eller ersattes via §1.X (sannolikt kvar — inte i §1.9-konsument-listan).
 
 ### Checklista före pricing-ändring
 
 - [ ] Läser koden från `platform_settings`?
-- [ ] Hårdkodar koden `0.17`, `0.12`, `0.83`, `0.88`, `349`, `399`? → FEL, ska läsa platform_settings.
-- [ ] Läser koden `cleaners.commission_rate` eller `companies.commission_rate`? → FEL, fältet ska ignoreras.
-- [ ] Använder den nya koden `pricing-resolver.ts` helper? → JA, efter Dag 2.
+- [ ] Hårdkodar koden `0.17`, `0.12`, `0.83`, `0.88`, `349`, `350`, `399`? → FEL, ska läsa platform_settings (350 nytt sedan §1.8).
+- [ ] Läser koden `cleaners.commission_rate` eller `companies.commission_rate`? → FEL, fältet ska ignoreras (droppas i §1.10 framtida migration).
+- [ ] Använder backend-koden `_shared/money.ts` + `_shared/pricing-resolver.ts`? → JA sedan §1.1.
+- [ ] Använder frontend-koden `js/commission-helpers.js`? → JA sedan §1.9 (med `await SPICK_COMMISSION_READY` + `SPICK_PRICING_READY`).
 
 ---
 
-## Stripe-integration (VERIFIERAT 2026-04-17)
+## Stripe-integration (VERIFIERAT 2026-04-22)
 
 **Ett enda aktivt flöde för engångsbokning:**
 
@@ -110,28 +133,30 @@ const commissionRate = commissionPct / 100;     // 0.12 för Stripe
 
 **⚠️ `cleaners.commission_rate` och `companies.commission_rate`** har blandade historiska värden (`17`, `12`, `0.17`, `0`). **Dessa fält ska IGNORERAS av ny kod.** `platform_settings` är sanning. Normaliseras i P1-6 efter P1-1 är fixat.
 
-### Alla 32 ställen där commission hanteras
+### Alla 32 ställen där commission hanteras (post-§1.9: reducerade där verifierat)
+
+> **Annotation 2026-04-22:** §1.9b centraliserade frontend-konsumenter via [`js/commission-helpers.js`](../js/commission-helpers.js) (8 filer). §1.7 arkiverade `js/commission.js`. §1.2 raderade `stripe-checkout` EF. §1.4 ersatte `admin.html:markPaid` PATCH med EF. Originalantalet 32 är inte exakt omräknat — exakt antal kvar = §2.9b hygien-task vid behov. Rader nedan med 🔍 kräver grep-verifiering vid omräkning.
 
 | Ställe | Fil | Läsning | Skrivning | Status |
 |--------|-----|---------|-----------|--------|
-| pricing-engine | `_shared/pricing-engine.ts:5,9` | Konstanter `COMMISSION_STANDARD=17, COMMISSION_TOP=14` (migration-seed) | Returnerar `commissionPct` | 🟡 Bör läsa från `platform_settings` (Dag 2) |
-| booking-create DB insert | `booking-create/index.ts:330,433` | `pricing.commissionPct` | `bookings.commission_pct` | 🟡 Indirekt — korrekt via pricing-engine |
-| booking-create Stripe fee | `booking-create/index.ts:497,603` | **HÅRDKODAD 0.17/0.12** | Stripe `application_fee_amount` | 🔴 **BUG 1** — ska läsa `platform_settings` |
-| booking-create commission_log | `booking-create/index.ts:683` | `commissionRate * 100` | `commission_log.commission_pct` | ⚠️ Loggar hårdkodad 17 |
+| pricing-engine | `_shared/pricing-engine.ts:5,9` | Konstanter `COMMISSION_STANDARD=17, COMMISSION_TOP=14` (migration-seed) | Returnerar `commissionPct` | 🔍 verifiera om kvar — INTE i §1.9-konsument-listan, sannolikt oförändrad |
+| booking-create DB insert | `booking-create/index.ts:330,433` | `pricing.commissionPct` | `bookings.commission_pct` | 🟡 Indirekt — korrekt via pricing-engine. 🔍 verifiera radnummer post-§1.2 SUPERSEDED |
+| booking-create Stripe fee | `booking-create/index.ts:497,603` | **HÅRDKODAD 0.17/0.12** | Stripe `application_fee_amount` | 🔴 **BUG 1** — ska läsa `platform_settings`. 🔍 verifiera om §1.4-arbete (markPaid → EF) påverkat. booking-create:604 nämns i [docs/architecture/money-layer.md §2.2](architecture/money-layer.md) som commission-läsare post-§1.2 |
+| booking-create commission_log | `booking-create/index.ts:683` | `commissionRate * 100` | `commission_log.commission_pct` | ⚠️ Loggar hårdkodad 17. 🔍 verifiera radnummer + status |
 | ~~stripe-checkout~~ | ~~`stripe-checkout/index.ts:74,88,231`~~ | ~~HÅRDKODAD 0.17/0.12~~ | ~~Stripe fee~~ | ✅ **RADERAD 2026-04-21** (§1.2 SUPERSEDED) |
-| **charge-subscription-booking** | `charge-subscription-booking/index.ts:188-190` | `booking.commission_pct` /100 | Stripe `application_fee_amount` | ✅ **REFERENSIMPLEMENTATION** — dock läser från booking-raden, inte platform_settings. OK tills vidare. |
+| **charge-subscription-booking** | `charge-subscription-booking/index.ts:188-190` | `booking.commission_pct` /100 | Stripe `application_fee_amount` | ✅ **REFERENSIMPLEMENTATION** — dock läser från booking-raden, inte platform_settings. OK tills vidare. Sedan §1.4: nya referensimplementation är `_shared/money.ts::calculatePayout()` |
 | stripe-webhook | `stripe-webhook/index.ts` | — | Ingen commission-beräkning | ✅ Ej commission |
 | stripe-refund | `stripe-refund/index.ts` | `booking.total_price` | Refund | ✅ OK |
 | generate-self-invoice | `generate-self-invoice/index.ts:190-191` | `commission_log.commission_pct \|\| 17` /100 | Fakturarad | ✅ OK (historisk-robust) |
-| admin-create-company | `admin-create-company/index.ts:59,106,205` | `body.commission_rate ?? 12` | `companies.commission_rate` | 🟡 Skriver till fält som ska ignoreras — ta bort i P1-6 |
-| admin-approve-cleaner | `admin-approve-cleaner/index.ts:148,272` | hårdkod 17 | `cleaners.commission_rate` | 🟡 Samma — ta bort i P1-6 |
-| auto-remind emails | `auto-remind/index.ts:119,155,361,673` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** — efter 12% ska vara `*0.88` (P1-5) |
-| notify emails | `notify/index.ts:212,332-333` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** (P1-5) |
-| admin-UI visning | `admin.html:2378,2558,3501,3514,3629,3941,5467` | `commission_pct \|\| 17` /100 + försvarskod för mixed format | Admin-rapporter | ✅ Robust mot historik |
-| faktura.html | `faktura.html:121,205` | `commission_pct \|\| 17` /100 | Kundfaktura | ✅ OK (historisk-robust) |
-| team-jobb | `team-jobb.html:382-383` | `commission_pct \|\| 17` /100 | Teammedlem-vy | ✅ OK |
-| stadare-uppdrag | `stadare-uppdrag.html:637-638` | **FEL FÄLT** — `booking.commission_rate` finns ej | Städare-vy | 🔴 **BUG 3** (P0-2 snabbfix) |
-| stadare-dashboard | `stadare-dashboard.html:9080,9083` | Hårdkodad `0.12` fallback | Salary-översikt | 🟡 **BUG 4** (P1-5) |
+| admin-create-company | `admin-create-company/index.ts:59,106,205` | `body.commission_rate ?? 12` | `companies.commission_rate` | 🟡 Skriver till fält som ska ignoreras — droppas §1.10 framtida migration |
+| admin-approve-cleaner | `admin-approve-cleaner/index.ts:148,272` | hårdkod 17 | `cleaners.commission_rate` | 🟡 Samma — droppas §1.10 framtida migration |
+| auto-remind emails | `auto-remind/index.ts:119,155,361,673` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** — 🔍 verifiera om §1.X-arbete täckt. INTE i §1.9-konsument-listan |
+| notify emails | `notify/index.ts:212,332-333` | Hårdkodad `*0.83` | Email-text | 🟡 **BUG 2** — 🔍 verifiera. INTE i §1.9-konsument-listan |
+| admin-UI visning | `admin.html:2378,2558,3501,3514,3629,3941,5467` | `commission_pct \|\| 17` /100 + försvarskod för mixed format | Admin-rapporter | ✅ **Centraliserad §1.9b** via `getCommissionPct()`. 17-fallback bevarad som defensive (legacy-data). Plus admin commission-hardcodes vid `:1119` (`value="12"`) + `:3763` (`: 17`) flaggade som §1.9c-läckage-task |
+| faktura.html | `faktura.html:121,205` | `commission_pct \|\| 17` /100 | Kundfaktura | ✅ **Centraliserad §1.9b** via `getCommissionPct()` |
+| team-jobb | `team-jobb.html:382-383` | `commission_pct \|\| 17` /100 | Teammedlem-vy | ✅ **Centraliserad §1.9b** via `getCommissionPct()` |
+| stadare-uppdrag | `stadare-uppdrag.html:637-638` | **FEL FÄLT** — `booking.commission_rate` finns ej | Städare-vy | 🔴 **BUG 3** — 🔍 verifiera om §1.9b centraliserade fixade detta (filen är §1.9b-konsument). Ursprunglig BUG-text behålls tills grep-verifiering |
+| stadare-dashboard | `stadare-dashboard.html:9080,9083` | Hårdkodad `0.12` fallback | Salary-översikt | 🟡 **BUG 4** — 🔍 verifiera. §1.7-läckage-fix tog rad 9182 (`getCommissionRate`-helper införd där). Rad 9080,9083 separat — kan kvarstå |
 
 **Post-Dag 2 referensimplementation (i pricing-resolver):**
 ```ts
