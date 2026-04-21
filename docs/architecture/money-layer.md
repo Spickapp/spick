@@ -1073,7 +1073,13 @@ Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` dir
 
 ## 18. Fas 2.5-R2 — Kund-kvitto via mejl (2026-04-23)
 
-**Status:** ✅ Implementerad 2026-04-23. Källa: Spår B-audit ([docs/audits/2026-04-23-revisor-audit-dokument-flow.md](../audits/2026-04-23-revisor-audit-dokument-flow.md)) + Farhads beslut.
+**Status:** ✅ Implementerad + verifierad i prod 2026-04-23. Första kvittot utställt: **`KV-2026-00001`** (sekventiell serie via `generate_receipt_number()`-RPC). Källa: Spår B-audit ([docs/audits/2026-04-23-revisor-audit-dokument-flow.md](../audits/2026-04-23-revisor-audit-dokument-flow.md)) + Farhads beslut.
+
+**Retrospektiva fynd under deploy (hanterade i hygien-commit 2026-04-23):**
+
+1. `receipt_number_seq` saknade `GRANT USAGE` till `service_role` → generate-receipt failade vid första körning. Fix ad-hoc i Studio, versionskontrollerad i [`20260423_f2_5_R2_grants.sql`](../../supabase/migrations/20260423_f2_5_R2_grants.sql) + preventivt för `commission_levels_id_seq` och `spark_levels_id_seq`.
+2. `generate-receipt` saknades i [`deploy-edge-functions.yml`](../../.github/workflows/deploy-edge-functions.yml) FUNCTIONS-array → uppdaterad till 31 EFs.
+3. `supabase db push` drev från prod-state pga 41 KRITISK-tabeller utan CREATE TABLE-migration (se §2.1-audit) → migration kördes manuellt i Studio. Hygien-task #25 öppen, löses av Fas 2-utökning §2.1.1.
 
 **Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
 
