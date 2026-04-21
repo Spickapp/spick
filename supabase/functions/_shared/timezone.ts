@@ -67,11 +67,38 @@ export function parseStockholmTime(dateStr: string, timeStr: string): Date {
 
 /**
  * Formaterar ett datum som "22 april 2026" på svenska, tidszon-säkert.
- * För framtida återanvändning av formatDate-duplikater (hygien #49 Fas 2).
+ * Null-safe: returnerar "–" vid tom input.
+ *
+ * Används av auto-delegate, company-propose-substitute,
+ * customer-approve-proposal för notifikationsmeddelanden.
  */
-export function formatStockholmDate(dateStr: string): string {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: SWEDEN_TZ,
-    day: "numeric", month: "long", year: "numeric",
-  }).format(new Date(`${dateStr}T12:00:00Z`));
+export function formatStockholmDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "–";
+  try {
+    return new Intl.DateTimeFormat("sv-SE", {
+      timeZone: SWEDEN_TZ,
+      day: "numeric", month: "long", year: "numeric",
+    }).format(new Date(`${dateStr}T12:00:00Z`));
+  } catch {
+    return "–";
+  }
+}
+
+/**
+ * Formaterar ett datum som "tisdagen den 22 april 2026" på svenska, tidszon-säkert.
+ * Inkluderar veckodag. Null-safe: returnerar "–" vid tom input.
+ *
+ * Används av cleaner-booking-response för cleaner-notifikationer
+ * där veckodag är relevant kontext.
+ */
+export function formatStockholmDateLong(dateStr: string | null | undefined): string {
+  if (!dateStr) return "–";
+  try {
+    return new Intl.DateTimeFormat("sv-SE", {
+      timeZone: SWEDEN_TZ,
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    }).format(new Date(`${dateStr}T12:00:00Z`));
+  } catch {
+    return "–";
+  }
 }

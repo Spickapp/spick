@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
+import { formatStockholmDate } from "../_shared/timezone.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
@@ -103,7 +104,7 @@ serve(async (req) => {
 
         // Förbered notifikationsdata
         const customerFirstName = (booking.customer_name || "Kund").split(" ")[0];
-        const bookingDate = formatDate(booking.booking_date);
+        const bookingDate = formatStockholmDate(booking.booking_date);
         const bookingTime = (booking.booking_time || "").slice(0, 5);
         const chooseUrl = await generateMagicShortUrl({
           email: booking.customer_email,
@@ -286,7 +287,7 @@ serve(async (req) => {
           <p>Tyvärr kunde den ursprungliga städaren inte ta din bokning. Företaget har föreslagit en ersättare:</p>
           ${card([
             ["Ny städare", esc(newCleaner.full_name)],
-            ["Datum & tid", `${formatDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
+            ["Datum & tid", `${formatStockholmDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
             ["Tjänst", esc(booking.service_type || "Städning")],
             ["Pris", `${booking.total_price} kr (oförändrat)`],
           ])}
@@ -314,11 +315,11 @@ serve(async (req) => {
         await notify({
           email: booking.customer_email,
           phone: booking.customer_phone || undefined,
-          sms_message: `Spick: ${newCleaner.full_name} föreslås ersätta din städare ${formatDate(booking.booking_date)}. Bekräfta inom 1h: ${smsLink}`,
+          sms_message: `Spick: ${newCleaner.full_name} föreslås ersätta din städare ${formatStockholmDate(booking.booking_date)}. Bekräfta inom 1h: ${smsLink}`,
           push_type: "customer_proposal_pending",
           push_data: {
             cleaner_name: newCleaner.full_name,
-            date: formatDate(booking.booking_date),
+            date: formatStockholmDate(booking.booking_date),
             booking_id,
           },
         });
@@ -375,7 +376,7 @@ serve(async (req) => {
           <p>Den ursprungliga städaren kunde inte ta din bokning. Vi har automatiskt tilldelat en annan städare från samma företag:</p>
           ${card([
             ["Ny städare", esc(newCleaner.full_name)],
-            ["Datum & tid", `${formatDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
+            ["Datum & tid", `${formatStockholmDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
             ["Pris", `${booking.total_price} kr (oförändrat)`],
           ])}
           <p>Detta skedde enligt dina preferenser för automatisk hantering. Du kan ändra detta i dina kontoinställningar.</p>
@@ -386,11 +387,11 @@ serve(async (req) => {
         await notify({
           email: booking.customer_email,
           phone: booking.customer_phone || undefined,
-          sms_message: `Spick: Din städning ${formatDate(booking.booking_date)} utförs av ${newCleaner.full_name} (ersättare). Oförändrat pris och tid.`,
+          sms_message: `Spick: Din städning ${formatStockholmDate(booking.booking_date)} utförs av ${newCleaner.full_name} (ersättare). Oförändrat pris och tid.`,
           push_type: "auto_delegated",
           push_data: {
             cleaner_name: newCleaner.full_name,
-            date: formatDate(booking.booking_date),
+            date: formatStockholmDate(booking.booking_date),
             booking_id,
           },
         });
@@ -404,7 +405,7 @@ serve(async (req) => {
           <p>Du har tilldelats en bokning från ditt företag:</p>
           ${card([
             ["Kund", esc(booking.customer_name)],
-            ["Datum & tid", `${formatDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
+            ["Datum & tid", `${formatStockholmDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
             ["Adress", esc(booking.address || "-")],
             ["Tjänst", esc(booking.service_type || "Städning")],
           ])}
@@ -421,15 +422,15 @@ serve(async (req) => {
           cleaner_id: newCleaner.id,
           email: newCleaner.email,
           phone: newCleanerFull?.phone || undefined,
-          sms_message: `Spick: Nytt uppdrag tilldelat! ${booking.customer_name} ${formatDate(booking.booking_date)} kl ${booking.booking_time}. Se detaljer: spick.se/stadare-dashboard`,
+          sms_message: `Spick: Nytt uppdrag tilldelat! ${booking.customer_name} ${formatStockholmDate(booking.booking_date)} kl ${booking.booking_time}. Se detaljer: spick.se/stadare-dashboard`,
           push_type: "proposal_approved",
           push_data: {
-            date: formatDate(booking.booking_date),
+            date: formatStockholmDate(booking.booking_date),
             booking_id,
           },
           in_app: {
             title: "Nytt uppdrag tilldelat",
-            body: `${booking.customer_name} ${formatDate(booking.booking_date)} kl ${booking.booking_time}`,
+            body: `${booking.customer_name} ${formatStockholmDate(booking.booking_date)} kl ${booking.booking_time}`,
             type: "proposal_approved",
             job_id: booking_id,
           },
@@ -458,9 +459,4 @@ function json(data: unknown, status = 200, headers: Record<string, string> = {})
     status,
     headers: { "Content-Type": "application/json", ...headers },
   });
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" });
 }

@@ -87,6 +87,8 @@ export function formatDate(dateStr: string): string {
 
 **Prio:** Medel. Oftast rätt men instabilt.
 
+**Status (2026-04-24):** ✓ FIXAD. Lokala duplikater raderade i alla 4 EFs. Samtliga importerar `formatStockholmDate` (3 st) eller `formatStockholmDateLong` (cleaner-booking-response) från `_shared/timezone.ts`. Null-safe med "–"-fallback. DST-säker via Intl.DateTimeFormat + noon-UTC-input.
+
 ## Icke-buggar (klargjort)
 
 ### calendar-EFs — korrekt av design
@@ -107,8 +109,10 @@ Kommentaren i `20260423_f2_7_1_b2b_schema.sql:74-75` om "4 hardcodes som hygien-
 - `_shared/timezone.ts` skapad med `parseStockholmTime` + `formatStockholmDate`
 - auto-remind:93 + auto-remind:299 (båda buggiga, samma pattern) använder helpern
 
-**Fas 2 — Shared helper + refactor (2h):** delvis klar (helpern finns)
-- Kvarstår: formatDate-konsolidering för 4 EFs (auto-delegate, cleaner-booking-response, company-propose-substitute, customer-approve-proposal)
+**Fas 2 — Shared helper + refactor (2h):** ✓ KLAR 2026-04-24
+- 4 EFs använder `formatStockholmDate` / `formatStockholmDateLong` från `_shared/timezone.ts`
+- Lokala duplikater raderade (~20 rader kod bort)
+- Regel #28-kompatibel
 
 **Fas 3 — auto-rebook edge-case (30-45 min):** ej påbörjad
 - Fixa todayStr-beräkning med svensk tidszon

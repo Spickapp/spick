@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { formatStockholmDateLong } from "../_shared/timezone.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
@@ -104,7 +105,7 @@ serve(async (req) => {
           <p>Hej ${esc(customerName)},</p>
           <p><strong>${esc(cleaner.full_name)}</strong> har bekräftat din städning!</p>
           ${card([
-            ["Datum", formatDate(bookingDate)],
+            ["Datum", formatStockholmDateLong(bookingDate)],
             ["Tid", bookingTime || "Se bekräftelse"],
             ["Tjänst", `${esc(serviceType)}, ${bookingHours}h`],
             ["Städare", esc(cleaner.full_name)],
@@ -120,7 +121,7 @@ serve(async (req) => {
         <p><strong>${esc(cleaner.full_name)}</strong> har accepterat bokning <code>${esc(booking_id.slice(0, 8))}</code>.</p>
         ${card([
           ["Kund", esc(customerName)],
-          ["Datum", formatDate(bookingDate)],
+          ["Datum", formatStockholmDateLong(bookingDate)],
           ["Tjänst", `${esc(serviceType)}, ${bookingHours}h`],
         ])}
       `));
@@ -190,7 +191,7 @@ serve(async (req) => {
         const html = wrap(`
           <h2>Din städare kunde tyvärr inte ta uppdraget</h2>
           <p>Hej ${esc(customerName)},</p>
-          <p>Tyvärr kunde <strong>${esc(cleaner.full_name)}</strong> inte ta din ${esc(serviceType).toLowerCase()} den ${formatDate(bookingDate)}. Vi beklagar!</p>
+          <p>Tyvärr kunde <strong>${esc(cleaner.full_name)}</strong> inte ta din ${esc(serviceType).toLowerCase()} den ${formatStockholmDateLong(bookingDate)}. Vi beklagar!</p>
           <p><strong>Du har två alternativ:</strong></p>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">
             <tr>
@@ -220,11 +221,11 @@ serve(async (req) => {
         await notify({
           email: customerEmail,
           phone: booking.customer_phone || undefined,
-          sms_message: `Spick: Din städare ${cleaner.full_name} kan inte ta bokningen ${formatDate(bookingDate)}. Välj ny eller få pengarna tillbaka: ${smsLink}`,
+          sms_message: `Spick: Din städare ${cleaner.full_name} kan inte ta bokningen ${formatStockholmDateLong(bookingDate)}. Välj ny eller få pengarna tillbaka: ${smsLink}`,
           push_type: "booking_rejected_by_cleaner",
           push_data: {
             cleaner_name: cleaner.full_name,
-            date: formatDate(bookingDate),
+            date: formatStockholmDateLong(bookingDate),
             booking_id,
           },
         });
@@ -236,7 +237,7 @@ serve(async (req) => {
         <p><strong>${esc(cleaner.full_name)}</strong> har avböjt bokning <code>${esc(booking_id.slice(0, 8))}</code>.</p>
         ${card([
           ["Kund", `${esc(customerName)} (${esc(customerEmail)})`],
-          ["Datum", formatDate(bookingDate)],
+          ["Datum", formatStockholmDateLong(bookingDate)],
           ["Anledning", esc(reason || "Ingen angiven")],
           ["Status", "Väntar på kundens val (24h)"],
         ])}
@@ -267,14 +268,14 @@ serve(async (req) => {
             if (owner?.email) {
               const dashboardUrl = "https://spick.se/stadare-dashboard.html";
 
-              await sendEmail(owner.email, `[Spick] Ersättare behövs: ${esc(customerName)} ${formatDate(bookingDate)}`, wrap(`
+              await sendEmail(owner.email, `[Spick] Ersättare behövs: ${esc(customerName)} ${formatStockholmDateLong(bookingDate)}`, wrap(`
                 <h2>Städare avböjde — du behöver föreslå ersättare</h2>
                 <p>Hej ${esc(owner.full_name)},</p>
                 <p><strong>${esc(cleaner.full_name)}</strong> har avböjt en bokning för ditt företag. Du behöver föreslå en ersättare från ditt team inom 2 timmar.</p>
                 ${card([
                   ["Kund", esc(customerName)],
                   ["Tjänst", esc(serviceType)],
-                  ["Datum & tid", `${formatDate(bookingDate)} kl ${esc(booking.booking_time)}`],
+                  ["Datum & tid", `${formatStockholmDateLong(bookingDate)} kl ${esc(booking.booking_time)}`],
                   ["Adress", esc(booking.address || "-")],
                   ["Pris", `${booking.total_price} kr`],
                   ["Avböjare", esc(cleaner.full_name)],
@@ -301,16 +302,16 @@ serve(async (req) => {
                 cleaner_id: company.owner_cleaner_id,
                 email: owner.email,
                 phone: ownerPhone?.phone || undefined,
-                sms_message: `Spick: ${cleaner.full_name} avböjde bokning för ${customerName} ${formatDate(bookingDate)}. Föreslå ersättare: spick.se/stadare-dashboard`,
+                sms_message: `Spick: ${cleaner.full_name} avböjde bokning för ${customerName} ${formatStockholmDateLong(bookingDate)}. Föreslå ersättare: spick.se/stadare-dashboard`,
                 push_type: "company_substitute_needed",
                 push_data: {
                   cleaner_name: cleaner.full_name,
-                  date: formatDate(bookingDate),
+                  date: formatStockholmDateLong(bookingDate),
                   booking_id,
                 },
                 in_app: {
                   title: "Ersättare behövs",
-                  body: `${cleaner.full_name} avböjde bokning för ${customerName} ${formatDate(bookingDate)}`,
+                  body: `${cleaner.full_name} avböjde bokning för ${customerName} ${formatStockholmDateLong(bookingDate)}`,
                   type: "company_substitute_needed",
                   job_id: booking_id,
                 },
@@ -324,7 +325,7 @@ serve(async (req) => {
             ${card([
               ["Avböjare", esc(cleaner.full_name)],
               ["Företag", esc(companyName || String(cleaner.company_id))],
-              ["Bokning", `${esc(serviceType)} ${formatDate(bookingDate)}`],
+              ["Bokning", `${esc(serviceType)} ${formatStockholmDateLong(bookingDate)}`],
               ["Kund", esc(customerName)],
               ["Status", "awaiting_company_proposal"],
             ])}
@@ -357,15 +358,4 @@ function json(data: unknown, status: number, cors: Record<string, string>) {
     status,
     headers: { ...cors, "Content-Type": "application/json" },
   });
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "–";
-  try {
-    return new Date(dateStr).toLocaleDateString("sv-SE", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
 }
