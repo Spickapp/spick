@@ -15,10 +15,12 @@ serve(async (req) => {
   const url = new URL(req.url);
   const file = url.searchParams.get("file");
 
-  if (!file || !file.match(/^(SF|KV)-\d{4}-\d{4,5}\.(html|pdf)$/)) {
+  // §2.7.4 — tillåter F-prefix för B2B-fakturor (fullständig §2.7.5-refaktor senare)
+  if (!file || !file.match(/^(SF|KV|F)-\d{4}-\d{4,5}\.(html|pdf)$/)) {
     return new Response("Invalid file", { status: 400, headers: CORS });
   }
 
+  // KV- → receipts-bucket; SF- och F- → invoices-bucket (båda är fakturor juridiskt)
   const bucket = file.startsWith("KV-") ? "receipts" : "invoices";
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,

@@ -1158,8 +1158,46 @@ Efter §2.7.3 (2026-04-23) accepterar `booking-create`-EF följande B2B-fält i 
 
 **Kvarstår i kommande sub-faser:**
 
-- `invoice_number` populeras inte än (§2.7.4 sätter via `generate_b2b_invoice_number()` när generate-receipt utökas).
-- `generate-receipt` läser inte ännu de nya kolumnerna — kvittomejlet visar inte business_vat_number etc. §2.7.4 löser detta.
+- ~~`invoice_number` populeras inte än~~ ✅ **§2.7.4 löst** — `generate_b2b_invoice_number()` RPC anropas när `customer_type='foretag'` → `invoice_number = F-YYYY-NNNNN`.
+- ~~`generate-receipt` läser inte ännu de nya kolumnerna~~ ✅ **§2.7.4 löst** — alla 10 B2B-fält läses och renderas i FAKTURA-mall.
+
+### 19.2 generate-receipt dokumenttyp-gren (§2.7.4 live)
+
+Efter §2.7.4 (2026-04-23) förgrenar EF:n på `booking.customer_type`:
+
+| Fält | B2C (privat) | B2B (foretag) |
+|---|---|---|
+| Prefix | `KV-` | `F-` |
+| RPC | `generate_receipt_number()` | `generate_b2b_invoice_number()` |
+| Bucket | `receipts/` | `invoices/` |
+| Mall (mejl) | `buildReceiptEmailHtml()` | `buildInvoiceEmailHtml()` (ny) |
+| Mall (webbversion) | `buildReceiptHtml()` | `buildInvoiceHtml()` (ny) |
+| Dokumenttitel | "KVITTO" | "FAKTURA" |
+| Subject | "Bokningsbekräftelse + kvitto — …" | "Faktura F-YYYY-NNNNN — …" |
+| RUT-rad | ✓ (om RUT) | ✗ (aldrig) |
+| Betalningsstatus-box | — | "✓ Betald via …" |
+| Köpare-sektion | — | Org.nr, VAT, kontakt, fakturaadress |
+| Plattform-notering | — | "Fakturan genererades av Spick …" |
+| DB-kolumn | `receipt_number` | `invoice_number` |
+
+**Gemensamt för båda (B-15-beslut):**
+- `receipt_url` återanvänd — pekar till rätt bucket + prefix-fil
+- `receipt_email_sent_at` återanvänd som idempotens-flagga
+- 3-stegs F-R2-7-idempotens (a) email_sent_at, (b) url+nummer finns, (c) full flow
+
+**Dubbel-mejl-logik (E1):** om `customer_type='foretag'` OCH `business_invoice_email` satt OCH skiljer sig från `customer_email` → skickas till båda (kund-mejl är obligatoriskt, faktura-mejl är best-effort).
+
+**Fakturaadress-fallback (E2):** om `invoice_address_street IS NULL` → använd `customer_address` på fakturan.
+
+**E3-skydd mot sekvens-läckage:** steg (b) i idempotensen kollar `(invoice_number OR receipt_number)` INNAN RPC-anrop. Garanterar att `b2b_invoice_number_seq` aldrig förbrukar nytt värde vid re-run.
+
+**B-17 terminologi:** `notifyAdminEmailFailure(bookingId, email, err, isB2B=true)` ger "Fakturamejl misslyckades" (inte "Kvittomejl") + "B2B-faktura (F-serie)" i admin-mejl-kort.
+
+### 19.3 serve-invoice F-prefix-stöd (§2.7.4 övergång)
+
+1-rads regex-fix: `(SF|KV)` → `(SF|KV|F)`. Bucket-routing oförändrad (KV- → receipts, annat → invoices).
+
+**Markerad som övergångslösning** (hygien #44). §2.7.5 gör fullständig refaktor: content-type-headers per fil-typ, CSP, rate-limiting.
 
 **Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
 
