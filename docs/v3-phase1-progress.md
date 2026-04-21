@@ -257,6 +257,7 @@ per_sqm?
 - Estimat: 2-4h
 - Fil: [docs/planning/todo-a-rut-notification-transparency.md](planning/todo-a-rut-notification-transparency.md)
 - Status: scope klart, bygg pending
+- Uppdragsavtal-audit genomförd 22 apr: se [docs/audits/2026-04-22-uppdragsavtal-vs-todo-a.md](audits/2026-04-22-uppdragsavtal-vs-todo-a.md). Status: **KRÄVER_AVTAL_UPPDATERING** (Krav 2 RUT-avslag saknas i §5.6; Krav 1 + Krav 3 MATCHAR). Avtals-PR måste landa före notifikations-bygget.
 
 ### TODO B: RUT Two-Step Payout Pipeline
 - Prio: MEDIUM
