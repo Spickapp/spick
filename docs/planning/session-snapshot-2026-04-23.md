@@ -18,7 +18,9 @@
 | 21 | `da7bf74` | docs: migrations-deploy-audit TODO + §3.2a BLOCKERAD-not |
 | 22 | `afdcfa4` | §3.2b boka.html skickar utökade params (verifierat i prod Network-flik) |
 | 22 | `9281d4c` | §3.2d cleaner-job-match EF-radering (+ undeploy via CLI) |
-| 23:45 | (denna) | §3.2c BLOCKERAD + TODO-fil + dags-snapshot |
+| 23:45 | `b1c869b` | §3.2c BLOCKERAD + TODO-fil + dags-snapshot |
+| sent kväll | `f8b91b8` | §3.7 partial — chosen_cleaner_match_score audit-writing (verifierat 0.707 i prod) |
+| 01 | (denna) | docs: timezone-audit-TODO + §3.7-partial-verifierad (match_score 0.707) |
 
 ## Status per spår
 
@@ -46,6 +48,15 @@ Fas 3 kan fortsätta med §3.3-3.9 utan att §3.2c är löst.
 2. **"DORMANT" jobs är aktiv data** (upptäckt under §3.2c-försök): 22 bookings + 39 notifications refererar aktivt
 
 Båda kräver samma typ av gräv: förstå vad vår automatik faktiskt gör bakom grep-ranges. Estimat 8-15h tillsammans.
+
+**Hygien #49 — timezone-audit (öppnad sent kväll):**
+
+- `auto-remind` skickar påminnelser 1-2h för tidigt (bekräftad prod-bugg, `new Date()` tolkas som UTC på Deno-servrar)
+- `auto-rebook` midnatts-edge-case (UTC-datum vs svensk tid 22:00-24:00 UTC)
+- 4 EFs med formatDate-duplikering utan timezone (Regel #28-brott)
+- Calendar-EFs `Europe/Stockholm` är spec-krav, INTE bugg (klargjort)
+
+Estimat: 4-5h. Lämplig parallellt med #48.
 
 ## Start-instruktion för nästa session
 
