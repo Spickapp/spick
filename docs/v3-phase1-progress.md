@@ -92,10 +92,19 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 168-198](planning/spick-
 | §2.5 | 180 | Flytta `sql/` → migrations eller arkivera | ✓ | 6 radera + 2 arkivera, sql/-mapp borta 2026-04-22 | Klassificering: 4 find_nearby-filer (superseded av §2.2) + approval-and-booking-response + cleaner-applications-geo (ALREADY_APPLIED via migrations) → RADERA (6). p0-waitlist + companies-and-teams (ALREADY_APPLIED, kritisk infrastruktur) → ARKIVERA till [docs/archive/sql-legacy/](archive/sql-legacy/) med README som dokumenterar cut-off 2026-04-22. sql/-mappen auto-raderad av git. Uppdaterade docs/4 rad 451 (source-pekare till ny migration). |
 | §2.6 | 181 | Rensa worktree + branch `claude/wonderful-euler` | ✓ | Branch raderad 2026-04-22 | 0 unique commits vs main (main 201 ahead = abandonerad). Lokal delete via `git branch -D` + remote delete via `git push --delete` + `git fetch --prune` för stale tracking-ref. Reversibel via git reflog 30 dagar (sha `d165f18`). Worktree var redan borta innan §2.6-start. |
 | §2.7 | 182 | Arkivera fix-skripten | ✓ | 19 fix-skript raderade 2026-04-22 | plan-beslut #2, commit `1d41099`. v3 listade 8, faktiskt scope 19. Alla K1 (0 callers, 0 workflows, hårdkodade Windows-paths) |
-| §2.8 | 184 | CI-workflow schema-drift-check | ◯ | – | Ingen workflow existerar idag. Byggs efter §2.1-infrastruktur |
+| §2.8 | 184 | CI-workflow schema-drift-check | ⊘ | Deferred till Fas 2-utökning 2026-04-22 | §2.8 utan §2.1.1-4 (KRITISK-migrations) skulle bli baseline som accepterar 60+ drift-objekt som norm — signalerar att skuld är OK. Bygg §2.8 efter §2.1.1 (15 KRITISK-tabeller migrerade) för meningsfull drift-check. |
 | §2.9 | 185 | Uppdatera `docs/7-ARKITEKTUR-SANNING.md` + `docs/4-PRODUKTIONSDATABAS.md` | ✓ | Sync mot Fas 1-leverans 2026-04-22 | docs/7: Money-layer-referens-sektion (NY), pricing-helper uppdaterad (pricing-resolver EXISTERAR + commission-helpers.js), post-§1.X-annotationer + 🔍-flaggor för osäkra rader. docs/4: platform_settings utökad 6→13 nycklar (SQL-verifierad 22 apr), money-layer-tabeller (payout_attempts, payout_audit_log) + services-tabeller (services, service_addons) tillagda, datum-bump, stripe-checkout-referenser uppdaterade till RADERAD. |
 
-**Fas 2-summering:** 7 klara (§2.1, §2.2, §2.4, §2.5, §2.6, §2.7, §2.9), 1 deferred (§2.3 → Fas 3), 1 ej påbörjad (§2.8 — rekommenderas skjutas till post-§2.1.1-4 per schema-drift-analys). Inga blockerare kvar.
+**Fas 2 STÄNGD inom v3-scope 2026-04-22:** 7 klara (§2.1, §2.2, §2.4, §2.5, §2.6, §2.7, §2.9) + 2 deferred (§2.3 → Fas 3, §2.8 → Fas 2-utökning).
+
+**Fas 2-utökning (skuld-roadmap, schedulerad separat):**
+- §2.1.1: 15 KRITISK-tabeller → CREATE TABLE migrations (5-8h)
+- §2.1.2: 15 LEGACY → Studio COUNT + DROP-beslut (3-5h)
+- §2.1.3: 10 DORMANT → Fas 3-integration eller DROP (kan falla under Fas 3-arbete)
+- §2.1.4: 217 policies-diff (4-6h)
+- §2.1.5: 11 views + 3 types migrations (2h)
+- §2.8: CI schema-drift-check (2-3h, efter §2.1.1 minst)
+- **Total: 16-24h** — rekommendation: hantera som Fas 7.5 eller under Fas 13 "GA-readiness".
 
 ---
 
@@ -162,6 +171,7 @@ per_sqm?
 - **Admin-policies TO-uppgradering (öppen 2026-04-22, från §2.4-verifiering):** flera admin/owner-policies i prod saknar `TO authenticated`-klausul (implicit `TO public` = mer permissivt). Defense-in-depth-uppgradering kräver medveten prod-SQL-körning (`ALTER POLICY` eller DROP+CREATE). Kandidater: `Admin can update any cleaner` (rad 4514), `Admin can update emails` (rad 4518), och troligen flera andra av de 217 policies. Kräver fullständig 217-policies audit innan batch-fix.
 - **Duplikat-policy i prod customer_profiles (öppen 2026-04-22, från §2.4-verifiering):** rad 4473 `"Admin SELECT customer profiles"` och rad 5385 `"admin_reads_all_customer_profiles"` har identisk logik (samma USING + samma TO authenticated på samma tabell). Bör konsolideras (DROP en av dem) för att undvika framtida förvirring och dubbel-evaluering.
 - **destination-transfer-coverage (öppen 2026-04-22, §1.6b Väg C):** test 4 i `stripe-transfer-integration.test.ts` stay-ignored tills verified Stripe Connect-konto med `transfers_enabled=true` provisioneras. Express-accounts kan inte API-verifieras. Aktivera via att lägga till `STRIPE_TEST_CONNECT_ACCOUNT_ID` i GitHub Secrets + ta bort `continue-on-error` då transfer-E2E körs.
+- **§2.8 CI schema-drift (öppen 2026-04-22, deferred till Fas 2-utökning):** Bygg efter §2.1.1 (15 KRITISK-migrations). Utan prior drift-reducering skulle CI baseline:a 60+ drift-objekt = oanvändbar larm-signal. Total: 2-3h.
 
 ## Stängda plan-beslut
 
