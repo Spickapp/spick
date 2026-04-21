@@ -570,7 +570,6 @@ ${rutNote}
 ${prepBox}
 
 <a href="${escAttr(ctx.magicLink)}" class="btn">Visa min bokning →</a>
-<p style="margin-top:8px;font-size:13px"><a href="${escAttr(receiptUrl)}" style="color:#0F6E56">Öppna kvittot som webbversion</a></p>
 
 <hr style="border:none;border-top:1px solid #E8E8E4;margin:24px 0">
 <p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> — inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a> inom 24h.</p>
@@ -682,8 +681,7 @@ ${buyerSection}
 </p>
 ${platformNote}
 
-<a href="${escAttr(invoiceUrl)}" class="btn">Öppna fakturan som webbversion</a>
-<p style="margin-top:8px;font-size:13px"><a href="${escAttr(ctx.magicLink)}" style="color:#0F6E56">Visa bokning</a></p>
+<a href="${escAttr(ctx.magicLink)}" class="btn">Visa bokning →</a>
 
 <hr style="border:none;border-top:1px solid #E8E8E4;margin:24px 0">
 <p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> — inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a>.</p>

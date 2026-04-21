@@ -1199,6 +1199,25 @@ Efter §2.7.4 (2026-04-23) förgrenar EF:n på `booking.customer_type`:
 
 **Markerad som övergångslösning** (hygien #44). §2.7.5 gör fullständig refaktor: content-type-headers per fil-typ, CSP, rate-limiting.
 
+### 19.4 Webbversion-länk avvecklad (§2.7.4-fix1, 2026-04-23)
+
+**Problem upptäckt vid smoke-test:** "Öppna kvittot/fakturan som webbversion"-länken i mejl-mallarna visade HTML-källkod istället för renderad sida. **Rotorsak:** Supabase Edge Runtime strippar content-type + applicerar CSP-sandbox på alla GET-responses från user Edge Functions. Plattformsbegränsning, inte kod-bug (verifierat via PowerShell HEAD vs GET-jämförelse).
+
+**Åtgärd i fix1:**
+- Tog bort webbversion-länken från både `buildReceiptEmailHtml` (B2C) och `buildInvoiceEmailHtml` (B2B)
+- Behöll "Visa bokning"-länken (magic-link) som primär CTA — denna går till `min-bokning.html` (GitHub Pages, utan CSP-sandbox) och fungerar korrekt
+- `receipt_url` sparas fortfarande i DB-kolumnen (för framtida bruk)
+- `serve-invoice`-EF oförändrad — kan användas internt/admin via direkt-fetch
+
+**Konsekvens för bokföringslag-compliance:** inga. Alla 11 obligatoriska fält (BokfL 5 kap 7§ + MervL 11 kap 8§) finns i mejl-innehållet. Kunden sparar mejlet som underlag. Spick kan vid behov regenerera dokument via `generate-receipt`-EF (idempotent).
+
+**Framtida lösning** (hygien #45):
+- (a) Custom domain som proxar till Supabase storage direkt (`kvitto.spick.se` eller liknande)
+- (b) PDF-generering via `browserless.io` eller `pdf-lib` + attachment till mejlet
+- (c) spick.se-backend-route (kräver Next.js eller annat server-runtime — svårt i dagens GitHub Pages-setup)
+
+Låg prioritet — låt kvittot/fakturan vara i mejlet tills en kund explicit efterfrågar separata länkar.
+
 **Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
 
 ### 18.1 Ändringar
