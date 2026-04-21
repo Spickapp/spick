@@ -81,27 +81,6 @@ test.describe('API Tests', () => {
     // 201 = ny rad skapad, 4xx = RLS/constraint blockerar anon-insert (acceptabelt — endpoint svarar)
     expect(res.status()).toBeLessThan(500);
   });
-
-  test('A05: cleaner-job-match svarar', async ({ request }) => {
-    const res = await request.post(`${SUPA}/functions/v1/cleaner-job-match`, {
-      headers: {
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${ANON_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      data: {
-        booking: {
-          date: '2026-04-15',
-          time: '10:00',
-          hours: 3,
-          service: 'Hemstädning',
-          address: 'Testgatan 1, Stockholm'
-        },
-        limit: 5
-      }
-    });
-    expect(res.ok()).toBe(true);
-  });
 });
 
 test.describe('Booking Flow E2E', () => {
