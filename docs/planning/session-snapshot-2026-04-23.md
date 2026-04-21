@@ -25,7 +25,8 @@
 | 24 apr | `13640c3` | §49 Fas 1: auto-remind timezone-fix (rad 90 + 299) |
 | 24 apr | `d252586` | §49 Fas 2: formatDate × 4 EFs konsoliderade |
 | 24 apr | `0da7ca9` | §49 Fas 3: auto-rebook midnatts-edge-case |
-| 24 apr | (denna) | §49 Fas 4: timezone-convention + §49 STÄNGD |
+| 24 apr | `1df1398` | §49 Fas 4: timezone-convention + §49 STÄNGD |
+| 24 apr | (denna) | §48 Fas 1 infrastructure audit DIAGNOS klar (3h) |
 
 ## Status per spår
 
@@ -61,7 +62,7 @@ Båda kräver samma typ av gräv: förstå vad vår automatik faktiskt gör bako
 - 4 EFs med formatDate-duplikering konsoliderade (formatStockholmDate + formatStockholmDateLong, 33 call-sites)
 - Konvention dokumenterad i docs/architecture/timezone-convention.md
 
-Kvarvarande track: Hygien #48 (infrastructure audit, 8-15h).
+**Hygien #48 — infrastructure audit:** Fas 48.1 DIAGNOS ✓ KLAR 2026-04-24 (3h). Fas 48.2-48.6 återstår (5-11h). Se [2026-04-24-infrastructure-audit-diagnos.md](audits/2026-04-24-infrastructure-audit-diagnos.md). §3.2c BLOCKERAD upphävd — safe-drop bekräftat, körs som Fas 48.3.
 
 ## Start-instruktion för nästa session
 
