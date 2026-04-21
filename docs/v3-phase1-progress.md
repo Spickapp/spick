@@ -121,6 +121,17 @@ Konvention från 2026-04-20: commit-meddelanden använder §-referens i format `
 
 **Väntar:** Farhad.
 
+### #4 per_window-prissättning (öppnat 2026-04-22)
+**Kontext:** Fönsterputs kan prissättas per fönster i andra branscher.
+Admin-UI tillät tidigare `per_window`-option men pricing-resolver +
+boka.html hanterar inte detta – skulle gett felaktigt pris. Option
+borttagen 2026-04-22 i admin.html som tillfällig fix.
+**Beslut behövs:** Bygga full per_window end-to-end (5-7 h: DB-schema +
+pricing-resolver + booking-create + boka.html + stadare-dashboard),
+eller permanent dokumentera att fönsterputs bara stöder per_hour +
+per_sqm?
+**Väntar:** Farhad.
+
 ## Hygien-tasks (ej blockerare)
 
 - Kod avviker från v3.md i reconcile-payouts (auto-activation + auto-rollback). Plan-sync behövs.
