@@ -529,6 +529,49 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
                 <input type="text" id="biz-org" placeholder="556677-8899" autocomplete="off">
               </div>
             </div>
+
+            <div class="f" style="margin-top:.75rem">
+              <label>Momsregistreringsnummer <span style="font-size:.75rem;color:var(--m)">(valfritt)</span></label>
+              <input type="text" id="biz-vat" placeholder="SE559402452201" autocomplete="off" oninput="onBizFieldInput('bizVat', this.value)">
+              <div class="field-hint" style="font-size:.75rem;color:var(--m);margin-top:4px">Krävs om moms över 2000 kr. Format: SE + 10 siffror + 01.</div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem">
+              <div class="f">
+                <label>Kontaktperson <span style="font-size:.75rem;color:var(--m)">(valfritt)</span></label>
+                <input type="text" id="biz-contact" placeholder="Anna Andersson" autocomplete="name" oninput="onBizFieldInput('bizContact', this.value)">
+              </div>
+              <div class="f">
+                <label>Faktura-e-post <span style="font-size:.75rem;color:var(--m)">(valfritt)</span></label>
+                <input type="email" id="biz-invoice-email" placeholder="faktura@foretag.se" autocomplete="email" oninput="onBizFieldInput('bizInvoiceEmail', this.value)">
+              </div>
+            </div>
+            <div class="field-hint" style="font-size:.75rem;color:var(--m);margin-top:4px">Kontaktperson visas som "Att:" på fakturan. Lämna faktura-e-post tom för att använda samma som bokningsmejlet.</div>
+
+            <div style="margin-top:.75rem">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem">
+                <input type="checkbox" id="invoice-addr-differs" onchange="toggleInvoiceAddress(this.checked)" style="width:16px;height:16px;cursor:pointer">
+                <span>Fakturaadress skiljer sig från tjänsteadressen</span>
+              </label>
+            </div>
+
+            <div id="invoice-address-fields" style="display:none;margin-top:.75rem;padding:.75rem;background:#F9FAFB;border:1px solid var(--border);border-radius:10px">
+              <div class="f">
+                <label>Fakturaadress — gata och nummer *</label>
+                <input type="text" id="invoice-street" placeholder="Kungsgatan 10" autocomplete="street-address" oninput="onBizFieldInput('invoiceStreet', this.value)">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 2fr;gap:.75rem;margin-top:.75rem">
+                <div class="f">
+                  <label>Postnummer *</label>
+                  <input type="text" id="invoice-postal" placeholder="171 64" autocomplete="postal-code" oninput="onBizFieldInput('invoicePostal', this.value)">
+                </div>
+                <div class="f">
+                  <label>Ort *</label>
+                  <input type="text" id="invoice-city" placeholder="Solna" autocomplete="address-level2" oninput="onBizFieldInput('invoiceCity', this.value)">
+                </div>
+              </div>
+            </div>
+
             <div class="f" style="margin-top:.75rem">
               <label>Fakturareferens <span style="font-size:.75rem;color:var(--m)">(valfritt)</span></label>
               <input type="text" id="biz-ref" placeholder="Kostnadsställe, referens eller PO-nummer" autocomplete="off">
@@ -765,7 +808,11 @@ let state = {
   availableCleaners: [],
   // Referral
   referralCode: '',
-  customerType: 'privat'
+  customerType: 'privat',
+  // B2B-utökning (§2.7.2). Gamla biz-name/biz-org/biz-ref kvar i DOM (hygien #38).
+  bizVat: '', bizContact: '', bizInvoiceEmail: '',
+  invoiceAddressDiffers: false,
+  invoiceStreet: '', invoicePostal: '', invoiceCity: ''
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -1183,6 +1230,23 @@ function setCustomerType(type) {
 
   // Uppdatera prisvisning
   updateSidebar();
+}
+
+// ── B2B-fält event-handlers (§2.7.2) ─────────────────────────
+// Uppdaterar state när användaren skriver i nya B2B-fälten.
+// Befintliga biz-name/biz-org/biz-ref läses fortfarande direkt från DOM
+// i submit — hygien #38 öppen för framtida harmonisering.
+function onBizFieldInput(stateKey, value) {
+  state[stateKey] = (value || '').trim();
+}
+
+// Fakturaadress-checkbox-toggle (§2.7.2).
+// När markerad visas 3 required adressfält. När avmarkerad döljs de,
+// men värdena behålls i state + DOM (B-8-beslut: ingen rensning vid växling).
+function toggleInvoiceAddress(checked) {
+  state.invoiceAddressDiffers = !!checked;
+  var wrap = document.getElementById('invoice-address-fields');
+  if (wrap) wrap.style.display = checked ? 'block' : 'none';
 }
 
 function selectFreq(freq, btn) {
@@ -2641,7 +2705,7 @@ function goStep4() {
     }
   }
   
-  // Företagsfält-validering
+  // Företagsfält-validering (§2.7.2 utökad)
   if (state.customerType === 'foretag') {
     var bizName = document.getElementById('biz-name')?.value.trim();
     var bizOrg = document.getElementById('biz-org')?.value.trim();
@@ -2652,6 +2716,39 @@ function goStep4() {
     if (!bizOrg || !/^\d{6}-\d{4}$/.test(bizOrg)) {
       showFieldError(document.getElementById('biz-org'), 'Ange org.nummer (format: 556677-8899)');
       errors.push('biz-org');
+    }
+
+    // Momsreg.nr (valfritt, validera bara om ifyllt)
+    var bizVat = (state.bizVat || '').trim();
+    if (bizVat && !/^SE\d{10}01$/.test(bizVat)) {
+      showFieldError(document.getElementById('biz-vat'), 'Ogiltigt momsreg.nr — format: SE + 10 siffror + 01');
+      errors.push('biz-vat');
+    }
+
+    // Faktura-e-post (valfritt, validera bara om ifyllt)
+    var bizEmail = (state.bizInvoiceEmail || '').trim();
+    if (bizEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bizEmail)) {
+      showFieldError(document.getElementById('biz-invoice-email'), 'Ogiltig e-postadress');
+      errors.push('biz-invoice-email');
+    }
+
+    // Fakturaadress (required om checkbox markerad)
+    if (state.invoiceAddressDiffers) {
+      var invStreet = (state.invoiceStreet || '').trim();
+      var invPostal = (state.invoicePostal || '').trim();
+      var invCity = (state.invoiceCity || '').trim();
+      if (!invStreet || invStreet.length < 5 || !/\d/.test(invStreet)) {
+        showFieldError(document.getElementById('invoice-street'), 'Ange fullständig fakturaadress med gatunummer');
+        errors.push('invoice-street');
+      }
+      if (!invPostal || !/^\d{3}\s?\d{2}$/.test(invPostal)) {
+        showFieldError(document.getElementById('invoice-postal'), 'Ange postnummer (5 siffror, t.ex. 171 64)');
+        errors.push('invoice-postal');
+      }
+      if (!invCity || invCity.length < 2) {
+        showFieldError(document.getElementById('invoice-city'), 'Ange ort');
+        errors.push('invoice-city');
+      }
     }
   }
 
@@ -2872,6 +2969,13 @@ async function doBook() {
         business_name: state.customerType === 'foretag' ? (document.getElementById('biz-name')?.value.trim() || null) : null,
         business_org_number: state.customerType === 'foretag' ? (document.getElementById('biz-org')?.value.trim() || null) : null,
         business_reference: state.customerType === 'foretag' ? (document.getElementById('biz-ref')?.value.trim() || null) : null,
+        // §2.7.2 — B2B-utökning. NULL för privat (och för foretag om fältet är tomt).
+        business_vat_number: state.customerType === 'foretag' ? (state.bizVat || null) : null,
+        business_contact_person: state.customerType === 'foretag' ? (state.bizContact || null) : null,
+        business_invoice_email: state.customerType === 'foretag' ? (state.bizInvoiceEmail || null) : null,
+        invoice_address_street: state.customerType === 'foretag' && state.invoiceAddressDiffers ? (state.invoiceStreet || null) : null,
+        invoice_address_city: state.customerType === 'foretag' && state.invoiceAddressDiffers ? (state.invoiceCity || null) : null,
+        invoice_address_postal_code: state.customerType === 'foretag' && state.invoiceAddressDiffers ? (state.invoicePostal || null) : null,
         sqm: state.sqm || undefined,
         frequency: state.frequency || 'once',
         discount_code: state.discountCode || undefined,
