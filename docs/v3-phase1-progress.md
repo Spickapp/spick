@@ -90,12 +90,12 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 168-198](planning/spick-
 | §2.3 | 178 | `v_available_jobs_with_match` + `jobs`-tabell | ◯ | – | Kräver DB-access. Oklart om VIEW/RPC/tabell — källa bara i prod |
 | §2.4 | 179 | 3 odokumenterade prod-policies | ◯ | – | Mostly klart: alla 3 migrations redan skapade 18 apr. Kvarstår: verifiera prod-match via §2.1-output |
 | §2.5 | 180 | Flytta `sql/` → migrations eller arkivera | ◯ | – | 8 filer i sql/ (324 rader). 3 är fix-*-nearby-patches (kan vara applicerade i prod redan) |
-| §2.6 | 181 | Rensa worktree + branch `claude/wonderful-euler` | ◯ | – | Worktree redan borta. Branch kvar lokalt + remote. Verifiera inga unique commits innan delete |
+| §2.6 | 181 | Rensa worktree + branch `claude/wonderful-euler` | ✓ | Branch raderad 2026-04-22 | 0 unique commits vs main (main 201 ahead = abandonerad). Lokal delete via `git branch -D` + remote delete via `git push --delete` + `git fetch --prune` för stale tracking-ref. Reversibel via git reflog 30 dagar (sha `d165f18`). Worktree var redan borta innan §2.6-start. |
 | §2.7 | 182 | Arkivera fix-skripten | ✓ | 19 fix-skript raderade 2026-04-22 | plan-beslut #2, commit `1d41099`. v3 listade 8, faktiskt scope 19. Alla K1 (0 callers, 0 workflows, hårdkodade Windows-paths) |
 | §2.8 | 184 | CI-workflow schema-drift-check | ◯ | – | Ingen workflow existerar idag. Byggs efter §2.1-infrastruktur |
 | §2.9 | 185 | Uppdatera `docs/7-ARKITEKTUR-SANNING.md` + `docs/4-PRODUKTIONSDATABAS.md` | ✓ | Sync mot Fas 1-leverans 2026-04-22 | docs/7: Money-layer-referens-sektion (NY), pricing-helper uppdaterad (pricing-resolver EXISTERAR + commission-helpers.js), post-§1.X-annotationer + 🔍-flaggor för osäkra rader. docs/4: platform_settings utökad 6→13 nycklar (SQL-verifierad 22 apr), money-layer-tabeller (payout_attempts, payout_audit_log) + services-tabeller (services, service_addons) tillagda, datum-bump, stripe-checkout-referenser uppdaterade till RADERAD. |
 
-**Fas 2-summering:** 2 klara (§2.7, §2.9), 1 mostly klar (§2.4 — kräver verifiering), 6 ej påbörjade. Kritisk blockerare: §2.1 (pg_dump) behövs för §2.3, §2.4-verifiering, §2.8. §2.2, §2.5, §2.6 kan göras utan DB-access.
+**Fas 2-summering:** 3 klara (§2.6, §2.7, §2.9), 1 mostly klar (§2.4 — kräver verifiering), 5 ej påbörjade. Kritisk blockerare: §2.1 (pg_dump) behövs för §2.3, §2.4-verifiering, §2.8. §2.2, §2.5 kan göras utan DB-access.
 
 ---
 
