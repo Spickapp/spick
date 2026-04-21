@@ -4,7 +4,80 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-20
+**Senast uppdaterad:** 2026-04-21
+
+## Session 2026-04-22 – Startpunkt
+
+**Läs denna sektion först.** Den är primärkälla för var vi slutade och vart vi går härnäst.
+
+### Verifiera först (5 min)
+
+```powershell
+git log -1                    # ska vara 18f5b5b eller senare
+deno task test:money          # ska vara 100 pass (4 ignored = Stripe-tester utan test-secret, normalt)
+```
+
+Om något avviker → flagga innan fortsättning.
+
+### Status just nu
+
+- **Fas 1 Money Layer:** 6 av 10 klara + 1 SUPERSEDED-verkställd + 1 delvis + 2 ej påbörjade
+- **Plan-beslut:** #1 stängt, #3 stängt, #2 öppet
+- **Stripe-balans:** negativ (blockerar första riktiga transfer, ej kod-fråga)
+- **money_layer_enabled=true** i prod sedan 2026-04-20 19:07 UTC
+
+### Nästa steg – välj ett
+
+**Alternativ 1: Plan-beslut #2 (fix-skript-utvidgning §2.7)** – 30-60 min
+- Kartlägg 10 fix-skript utanför v3 §2.7 (grep callers, verifiera döda)
+- Ta beslut: utöka §2.7 eller separat cleanup-fas
+- Låg risk om alla visar sig döda
+
+**Alternativ 2: §1.8 originalplan (admin.html + bli-stadare.html + join-team.html)** – 1-2 h
+- Hourly-priser 349/350/399 → platform_settings via helper
+- Nu unblocked efter plan-beslut #1 (boka.html är hanterad separat)
+- Mekaniskt arbete, helpers-pattern etablerat från §1.9
+
+**Alternativ 3: §1.10 money-layer.md hygien** – 30-45 min
+- Uppdatera arkitektur-dok mot nuvarande state (efter §1.2/§1.3/§1.7/§1.9)
+- Ren dokumentation, ingen kod
+
+**Alternativ 4: §1.6 Stripe integration-test CI** – egen större session (3-5 h)
+- Test-infra-bygge (mockad Stripe, CI-secrets, GitHub Actions)
+- Kritiskt för skalning men stor bit
+- Kommer aktivera de 4 ignored-testerna
+
+### Rekommenderad ordning
+
+1. Plan-beslut #2 först (rensa öppna beslut)
+2. §1.10 hygien (stänger Fas 1-dokumentation)
+3. §1.8 (mekanisk, unblocked)
+4. §1.6 integration-test (egen session)
+
+### Viktiga regler att bära med
+
+- Grep-truncering har orsakat scope-läckage 2 ggr (§1.7 + plan-beslut #1). ALLTID `| Measure-Object -Line` för count, aldrig head_limit vid scope-räkning
+- Verifiera aktiv-status via produktionsdata innan migrera/radera någon EF (stripe-checkout-lärdom: 0 invocations 20 dgr räddade oss från att migrera död kod)
+- Primärkällor kan konflikta. Nyare slår äldre när data stödjer (SUPERSEDED-status legitim)
+- Använd §-referens i commit-meddelanden: `§X.Y (v3.md:rad): beskrivning`
+- PowerShell, inte bash
+
+### 2026-04-21 commits (ordning)
+
+- eb898fe §1.4 markPaid → EF + swishPay borttagen
+- 5cce033 §1.7 commission.js arkiverad
+- 641226e §1.7 läckage-fix + getCommissionRate helper
+- 4f90fae docs: progress-overlay + TODO-rättning
+- c3df068 §1.3 payout_cleaner raderad (död + bruten)
+- e7e113f docs: progress-konvention (hash → §-sökning)
+- 69af63e §1.9a commission-helpers.js infrastruktur
+- 22875d5 §1.9b 17 hardcodes centraliserade
+- d8ad532 §1.2 SUPERSEDED: stripe-checkout raderad (+ EF undeploy:ad)
+- 18f5b5b plan-beslut #1: SAFETY_FALLBACK_RATE i boka.html (15 fallbacks)
+
+### Loose end att knyta
+
+Preview-sandbox kunde inte live-testa parse-time-wrapparna i §1.9b (marknadsanalys.html + rekrytera.html). Statisk verifiering gav hög konfidens, men nästa gång Farhad öppnar staging/prod: 30-sekunders smoke-test av kalkylatorerna på dessa sidor. Om något kraschar → rollback av 22875d5 är rent.
 
 ## Status per sub-fas
 
