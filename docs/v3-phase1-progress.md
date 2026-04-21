@@ -86,7 +86,7 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 168-198](planning/spick-
 | Sub-fas | v3.md rad | Beskrivning | Status | Ändring | Kommentar |
 |---------|----------:|-------------|:------:|---------|-----------|
 | §2.1 | 176 | `pg_dump --schema-only` mot prod + diff-lista | ◯ | – | Kräver DB-access (Farhad kör `supabase db dump` eller ger CLI-access) |
-| §2.2 | 177 | Migrera `find_nearby_cleaners` från sql/radius-model.sql | ◯ | – | Ren kod, 72 rader, beror på §2.1-verifiering att prod matchar |
+| §2.2 | 177 | Migrera `find_nearby_cleaners` från sql/radius-model.sql | ✓ | Migration skapad 2026-04-22 från prod-verifierad källa | Ny fil: [supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql](../supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql). Källa: Studio SQL-query via `pg_get_functiondef` 2026-04-22, INTE sql/-filer. v3.md §2.2 pekade på obsolet sql/radius-model.sql (home_coords existerar ej i prod). Alla 3 sql/-filer drev från prod-sanningen (text[]/jsonb-konflikt, 19 vs 24 returfält, annat company-filter). 24 returfält, services jsonb, LEFT JOIN companies, filter `(company_id IS NULL OR is_company_owner = true)`. Idempotent via DROP FUNCTION IF EXISTS + CREATE OR REPLACE. sql/-filer orörda — hanteras §2.5. |
 | §2.3 | 178 | `v_available_jobs_with_match` + `jobs`-tabell | ◯ | – | Kräver DB-access. Oklart om VIEW/RPC/tabell — källa bara i prod |
 | §2.4 | 179 | 3 odokumenterade prod-policies | ◯ | – | Mostly klart: alla 3 migrations redan skapade 18 apr. Kvarstår: verifiera prod-match via §2.1-output |
 | §2.5 | 180 | Flytta `sql/` → migrations eller arkivera | ◯ | – | 8 filer i sql/ (324 rader). 3 är fix-*-nearby-patches (kan vara applicerade i prod redan) |
@@ -95,7 +95,7 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 168-198](planning/spick-
 | §2.8 | 184 | CI-workflow schema-drift-check | ◯ | – | Ingen workflow existerar idag. Byggs efter §2.1-infrastruktur |
 | §2.9 | 185 | Uppdatera `docs/7-ARKITEKTUR-SANNING.md` + `docs/4-PRODUKTIONSDATABAS.md` | ✓ | Sync mot Fas 1-leverans 2026-04-22 | docs/7: Money-layer-referens-sektion (NY), pricing-helper uppdaterad (pricing-resolver EXISTERAR + commission-helpers.js), post-§1.X-annotationer + 🔍-flaggor för osäkra rader. docs/4: platform_settings utökad 6→13 nycklar (SQL-verifierad 22 apr), money-layer-tabeller (payout_attempts, payout_audit_log) + services-tabeller (services, service_addons) tillagda, datum-bump, stripe-checkout-referenser uppdaterade till RADERAD. |
 
-**Fas 2-summering:** 3 klara (§2.6, §2.7, §2.9), 1 mostly klar (§2.4 — kräver verifiering), 5 ej påbörjade. Kritisk blockerare: §2.1 (pg_dump) behövs för §2.3, §2.4-verifiering, §2.8. §2.2, §2.5 kan göras utan DB-access.
+**Fas 2-summering:** 4 klara (§2.2, §2.6, §2.7, §2.9), 1 mostly klar (§2.4 — kräver verifiering), 4 ej påbörjade. Kritisk blockerare: §2.1 (pg_dump) behövs för §2.3, §2.4-verifiering, §2.8. §2.5 kan göras utan DB-access.
 
 ---
 
