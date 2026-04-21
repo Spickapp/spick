@@ -19,7 +19,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
-import { sendMagicSms, generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { sendMagicSms } from "../_shared/send-magic-sms.ts";
 
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
 const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
@@ -332,79 +332,63 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
   const address = booking.customer_address || "";
   const matInfo = getMaterialInfo(service);
 
-  // Email magic-link (Fas 1.2) — single-use, 168h TTL
-  const emailMagicLink = await generateMagicShortUrl({
-    email: booking.customer_email,
-    redirect_to: `https://spick.se/min-bokning.html?bid=${bookingId}`,
-    scope: "booking",
-    resource_id: bookingId,
-    ttl_hours: 168,
-  });
-
-  // ── 1. Bekräftelsemail till kund ────────────────────────────
-  const customerHtml = autoConfirm
-    ? wrap(`
-<div class="check">
-  <span class="check-icon">✅</span>
-  <div class="check-text">Bokning bekräftad!</div>
-</div>
-<h2>Allt klart, ${fname}! 🌿</h2>
-<p>${cleaner ? cleaner.full_name : "Din städare"} har bekräftats för ditt uppdrag. Du behöver inte göra något mer!</p>
+  // ── 1. Kvittomejl (Fas 2.5-R2) ──────────────────────────────
+  // Ersätter tidigare "Bokning bekräftad"/"Bokning mottagen"-mejl.
+  // generate-receipt skickar kvittomejl (bokföringslag-kompatibelt,
+  // 11 fält) SAMT innehåller bokningsbekräftelse-kontext (magic link,
+  // material-förberedelse, nöjdhetsgaranti). Ett mejl, inte två.
+  //
+  // Körs SYNKRONT för att kunna fallback-hantera fel. Om EF faller
+  // eller returnerar HTTP 500 → skicka enkel bekräftelse + admin-notis,
+  // bryt inte bokningsflödet.
+  try {
+    const receiptRes = await fetch(`${SUPABASE_URL}/functions/v1/generate-receipt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "apikey": SUPABASE_SERVICE_KEY,
+      },
+      body: JSON.stringify({ booking_id: bookingId }),
+    });
+    if (!receiptRes.ok) {
+      throw new Error(`generate-receipt HTTP ${receiptRes.status}: ${await receiptRes.text()}`);
+    }
+    console.log("✅ Kvittomejl skickat till kund för bokning:", bookingId);
+  } catch (e) {
+    const errMsg = (e as Error).message;
+    console.error("[STRIPE-WEBHOOK] generate-receipt fallback triggered:", errMsg);
+    // Fallback: enkel bekräftelse till kund så hen inte står utan något mejl
+    const fallbackRecipient = customerEmail || booking.customer_email;
+    if (fallbackRecipient) {
+      await sendEmail(fallbackRecipient,
+        `Bokningsbekräftelse — ${service} den ${date}`,
+        wrap(`
+<h2>Tack för din bokning! 🌿</h2>
+<p>Vi har tagit emot din bokning och betalning. Ditt detaljerade kvitto skickas separat inom kort.</p>
 <div class="card">
   <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
-  <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">${time}</span></div>
+  <div class="row"><span class="lbl">Datum</span><span class="val">${date} kl ${time}</span></div>
   <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
-  ${cleaner ? `<div class="row"><span class="lbl">Din städare</span><span class="val">${cleaner.full_name} ⭐ ${cleaner.avg_rating || "5.0"}</span></div>` : ""}
   <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
 </div>
-<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;color:#92400E;line-height:1.6">
-  ${matInfo.emoji} <strong>Förberedelse:</strong> ${matInfo.customer}
-</div>
-<div class="steps">
-  <div class="step"><div class="step-num">1</div><div class="step-text">Städaren anländer på utsatt tid och utför jobbet</div></div>
-  <div class="step"><div class="step-num">2</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
-</div>
-${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin:16px 0"><p style="margin:0;font-size:14px;color:#0F6E56">🏦 <strong>RUT-avdrag:</strong> Vi ansöker automatiskt om ditt RUT-avdrag hos Skatteverket. Du behöver inte göra något.</p></div>` : ""}
-<a href="${emailMagicLink}" class="btn">Visa min bokning →</a>
-<hr class="divider">
-<p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
-<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
-`)
-    : wrap(`
-<div class="check">
-  <span class="check-icon">⏳</span>
-  <div class="check-text">Bokning mottagen!</div>
-</div>
-<h2>Tack för din bokning, ${fname}! 🌿</h2>
-<p>Tack för din betalning! Din städare bekräftar uppdraget inom 90 minuter. Du får ett mejl så snart bokningen är bekräftad.</p>
+<p style="font-size:13px">Ändra/avboka senast 24h innan: <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
+`)).catch((err: Error) => console.error("[STRIPE-WEBHOOK] Fallback-mejl misslyckades:", err.message));
+    }
+    // Notifiera admin om fallback triggades
+    await sendEmail(ADMIN,
+      `⚠️ generate-receipt fallback — bokning ${bookingId.slice(0, 8)}`,
+      wrap(`
+<h2>Kvittomejl misslyckades</h2>
+<p>generate-receipt-EF svarade inte OK. Kunden fick fallback-bekräftelse utan kvitto.</p>
 <div class="card">
-  <div class="row"><span class="lbl">Tjänst</span><span class="val">${service} · ${hours}h</span></div>
-  <div class="row"><span class="lbl">Datum</span><span class="val">${date}</span></div>
-  <div class="row"><span class="lbl">Tid</span><span class="val">${time}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${address}</span></div>
-  ${cleaner ? `<div class="row"><span class="lbl">Din städare</span><span class="val">${cleaner.full_name} ⭐ ${cleaner.avg_rating || "5.0"}</span></div>` : ""}
-  <div class="row"><span class="lbl">Betalt</span><span class="val">${price}${rutNote}</span></div>
+  <div class="row"><span class="lbl">Bokning</span><span class="val">${esc(bookingId)}</span></div>
+  <div class="row"><span class="lbl">Kund</span><span class="val">${esc(customerEmail || booking.customer_email)}</span></div>
+  <div class="row"><span class="lbl">Fel</span><span class="val">${esc(errMsg)}</span></div>
 </div>
-<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;color:#92400E;line-height:1.6">
-  ${matInfo.emoji} <strong>Förberedelse:</strong> ${matInfo.customer}
-</div>
-<div class="steps">
-  <div class="step"><div class="step-num">1</div><div class="step-text">Din städare bekräftar inom 90 minuter — du får mejl</div></div>
-  <div class="step"><div class="step-num">2</div><div class="step-text">Städaren anländer på utsatt tid och utför jobbet</div></div>
-  <div class="step"><div class="step-num">3</div><div class="step-text">Du betygsätter städningen – vi säkerställer kvaliteten</div></div>
-</div>
-${isRut ? `<div style="background:#E1F5EE;border-radius:12px;padding:16px;margin:16px 0"><p style="margin:0;font-size:14px;color:#0F6E56">🏦 <strong>RUT-avdrag:</strong> Vi ansöker automatiskt om ditt RUT-avdrag hos Skatteverket. Du behöver inte göra något.</p></div>` : ""}
-<a href="${emailMagicLink}" class="btn">Visa min bokning →</a>
-<hr class="divider">
-<p style="font-size:13px">Behöver du ändra eller avboka? Kontakta oss senast 24h innan på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a></p>
-<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> – inte nöjd? Vi städar om gratis.</p>
-`);
-  await sendEmail(customerEmail || booking.customer_email,
-    autoConfirm
-      ? `Bokning bekräftad – ${service} den ${date} ✅`
-      : `Bokning mottagen – ${service} den ${date} ⏳`,
-    customerHtml);
+<p>Åtgärd: anropa generate-receipt manuellt via CLI eller admin-UI. EF:n är idempotent (F-R2-7) — retry säkert.</p>
+`)).catch((err: Error) => console.error("[STRIPE-WEBHOOK] Admin-fallback-notis misslyckades:", err.message));
+  }
 
   // SMS-bekräftelse med magic-link (Fas 1.2)
   if (booking.customer_phone) {
@@ -520,21 +504,10 @@ ${!cleaner ? `<div style="background:#FFF5E5;border-left:4px solid #F59E0B;paddi
   // saknad timing-guard. Se docs/audits/2026-04-23-rut-infrastructure-
   // decision.md för fullständig analys.
 
-  // ── 5. Generera kundkvitto (PDF) ───────────────────────────
-  try {
-    await fetch(`${SUPABASE_URL}/functions/v1/generate-receipt`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
-        "apikey": SUPABASE_SERVICE_KEY,
-      },
-      body: JSON.stringify({ booking_id: bookingId }),
-    });
-    console.log("✅ Kvitto genererat för bokning:", bookingId);
-  } catch (e) {
-    console.error("Kvitto-fel:", (e as Error).message);
-  }
+  // ── 5. (Tidigare: Generera kundkvitto) ─────────────────────
+  // Fas 2.5-R2 (2026-04-23): Flyttat till synkront anrop i steg 1 ovan.
+  // generate-receipt skickar nu kvittomejl + bekräftelse som ett enda
+  // mejl till kund, med idempotens-skydd (receipt_email_sent_at).
 }
 
 // ── Betalning misslyckades ─────────────────────────────────────────────────

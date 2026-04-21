@@ -1068,3 +1068,45 @@ Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` dir
 **Statusnot 2026-04-22:** Detta dokument är synkroniserat mot kodbasen efter §1.2/§1.3/§1.4/§1.5/§1.7/§1.9-leverans. Kvarstår: §1.6 (CI integration-test) + §1.8 (hourly-priser → platform_settings) + framtida `cleaners/companies.commission_rate`-droppning.
 
 **Original-not (2026-04-20):** "Slut. Nästa steg: F1.1 (utöka pricing-resolver.ts till money.ts) efter Farhads SQL-verifiering av §2.4 + §15." — F1.1 levererat 2026-04-20; designändring: pricing-resolver.ts förblev separat fil i stället för att absorberas (se §2.3).
+
+---
+
+## 18. Fas 2.5-R2 — Kund-kvitto via mejl (2026-04-23)
+
+**Status:** ✅ Implementerad 2026-04-23. Källa: Spår B-audit ([docs/audits/2026-04-23-revisor-audit-dokument-flow.md](../audits/2026-04-23-revisor-audit-dokument-flow.md)) + Farhads beslut.
+
+**Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
+
+### 18.1 Ändringar
+
+1. **9 `company_*`-nycklar seed:ade i `platform_settings`** — source of truth för legal name, org.nr, momsreg.nr, adress, SNI, F-skatt-status, email, website. generate-receipt läser dem via `fetchCompanyInfo()`-helper med fallback till dagens hardcodes. Framtida dokument-EFs (Fas 7.5, R4, R5) återanvänder samma helper.
+2. **`bookings.receipt_email_sent_at timestamptz`-kolumn** — idempotens-flagga för mejl-leverans (inte bara HTML-generering).
+3. **generate-receipt 3-stegs-idempotens** (F-R2-7):
+   - (a) `receipt_email_sent_at IS NOT NULL` → return early
+   - (b) `receipt_url` satt men `receipt_email_sent_at IS NULL` → skip HTML, skicka mejl
+   - (c) annars → full flow + UPDATE båda
+4. **Synkront anrop från stripe-webhook** — tidigare fire-and-forget, nu awaitad med try/catch. Vid fel: fallback-mejl till kund + admin-notis.
+5. **Kvittomejlet ersätter tidigare "Bokning bekräftad"-mejl**. Subject: `"Bokningsbekräftelse + kvitto — <service> <datum>"`. Innehåll: alla 11 BokfL 5 kap 7§ + MervL 11 kap 8§-fält + magic link + nöjdhetsgaranti.
+
+### 18.2 Bokföringslag-täckning (11 fält)
+
+| # | Fält | Källa |
+|---|---|---|
+| 1 | Utfärdandedatum | `new Date()` vid EF-körning |
+| 2 | Kvittonummer sekventiellt | `generate_receipt_number()` → `KV-YYYY-NNNNN` |
+| 3 | Utfärdarens namn + adress | `company_legal_name` + `company_address` |
+| 4 | Utfärdarens org.nr | `company_org_number` |
+| 5 | Momsreg.nr | `company_vat_number` |
+| 6 | Kundens namn | `bookings.customer_name` |
+| 7 | Kundens adress | `bookings.customer_address` (tjänsteadress; S3-brist kvar för R4) |
+| 8 | Beskrivning av tjänst | `service_type` + `booking_hours` + städare |
+| 9 | Datum för utförd tjänst | `booking_date` + `booking_time` |
+| 10 | Moms-sats + belopp exkl/moms/totalt | Beräknas från `total_price` + `rut_amount`, moms 25 % |
+| 11 | F-skatt + RUT | `company_f_skatt` + `rut_amount` |
+
+### 18.3 Framtida relaterade sub-faser (kvarstår)
+
+- **§2.5-R3** — moms-rad i `faktura.html` D1/D3 (on-the-fly webbversion).
+- **§2.5-R4** — persistera customer-invoices eller avveckla D1/D3. Scope-beslut öppet.
+- **§2.5-R5** — kreditnota-flöde vid refund + städar-mejl för D4.
+- **Fas 7.5** — full RUT-infrastruktur-refaktor (trigger-timing, XML-matematik, schema-fix).

@@ -1,16 +1,82 @@
 // ═══════════════════════════════════════════════════════════════
-// SPICK – Kundkvitto (Customer Receipt HTML)
-// Genererar kvitto vid betalning. Privat = RUT-info, Företag = org.nr
-// Anropas av stripe-webhook efter checkout.session.completed
+// SPICK – Kundkvitto (Customer Receipt HTML + Email)
+//
+// Fas 2.5-R2 (2026-04-23): Utökad att skicka bokföringslag-kompatibelt
+// kvittomejl till kund. Tidigare genererade bara HTML till storage.
+//
+// Flöde:
+//   1. Fetch booking + platform_settings (företagsuppgifter)
+//   2. IDEMPOTENS (F-R2-7):
+//      (a) receipt_email_sent_at satt       → return early (allt klart)
+//      (b) receipt_url satt, email_sent NULL → skip HTML-gen, skicka mejl
+//      (c) annars                            → full flow
+//   3. Generera HTML + upload till storage (webbversion)
+//   4. Skicka kvittomejl till kund via wrap()-mall
+//   5. UPDATE bookings (receipt_url, receipt_number, receipt_email_sent_at)
+//
+// Error-handling: sendEmail-fel loggas + admin notifieras, men returnerar
+// 200 så stripe-webhook inte triggar sin fallback (URL finns och kan
+// återanvändas). 500 returneras bara vid total misslyckande (storage upload).
+//
+// Anropas av stripe-webhook SYNKRONT efter checkout.session.completed.
 // ═══════════════════════════════════════════════════════════════
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders } from "../_shared/email.ts";
+import { corsHeaders, sendEmail, wrap, ADMIN, getMaterialInfo } from "../_shared/email.ts";
+import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RUT_OMBUD = true;
+
+// ─── Platform settings-helpers ──────────────────────────────
+// Läser företagsuppgifter från platform_settings (Regel #28, single
+// source of truth). Fallback-defaults matchar dagens hardcodes så
+// systemet fungerar även om seed-migrationen av någon anledning
+// inte har körts i prod än.
+
+interface CompanyInfo {
+  legalName: string;
+  tradeName: string;
+  orgNumber: string;
+  vatNumber: string;
+  address: string;
+  sniCode: string;
+  fSkatt: boolean;
+  email: string;
+  website: string;
+}
+
+async function fetchCompanyInfo(
+  supabase: ReturnType<typeof createClient>,
+): Promise<CompanyInfo> {
+  const keys = [
+    "company_legal_name", "company_trade_name", "company_org_number",
+    "company_vat_number", "company_address", "company_sni_code",
+    "company_f_skatt", "company_email", "company_website",
+  ];
+
+  const { data } = await supabase
+    .from("platform_settings")
+    .select("key, value")
+    .in("key", keys);
+
+  const m = new Map<string, string>();
+  (data || []).forEach((row: { key: string; value: string }) => m.set(row.key, row.value));
+
+  return {
+    legalName:  m.get("company_legal_name")  || "Haghighi Consulting AB",
+    tradeName:  m.get("company_trade_name")  || "Spick",
+    orgNumber:  m.get("company_org_number")  || "559402-4522",
+    vatNumber:  m.get("company_vat_number")  || "SE559402452201",
+    address:    m.get("company_address")     || "Solna, Sverige",
+    sniCode:    m.get("company_sni_code")    || "81.210",
+    fSkatt:     m.get("company_f_skatt")     === "true",
+    email:      m.get("company_email")       || "hello@spick.se",
+    website:    m.get("company_website")     || "spick.se",
+  };
+}
 
 serve(async (req) => {
   const CORS = corsHeaders(req);
@@ -31,7 +97,7 @@ serve(async (req) => {
 
     if (!bookingId) return json(400, { error: "booking_id krävs" });
 
-    console.log("[RECEIPT] Generating receipt for booking:", bookingId);
+    console.log("[RECEIPT] Processing booking:", bookingId);
 
     // 1. Fetch booking
     const { data: booking, error: bErr } = await supabase
@@ -42,13 +108,45 @@ serve(async (req) => {
 
     if (bErr || !booking) return json(404, { error: "Bokning ej hittad: " + (bErr?.message || bookingId) });
 
-    // Skip if receipt already exists
-    if (booking.receipt_url) {
-      console.log("[RECEIPT] Receipt already exists:", booking.receipt_number);
-      return json(200, { receipt_number: booking.receipt_number, receipt_url: booking.receipt_url });
+    // ── F-R2-7 IDEMPOTENS ─────────────────────────────────
+    // Steg (a): Mejl redan skickat → inget att göra
+    if (booking.receipt_email_sent_at) {
+      console.log("[RECEIPT] Email already sent at", booking.receipt_email_sent_at, "— skipping");
+      return json(200, {
+        success: true,
+        already_sent: true,
+        receipt_number: booking.receipt_number,
+        receipt_url: booking.receipt_url,
+      });
     }
 
-    // 2. Generate receipt number
+    const company = await fetchCompanyInfo(supabase);
+
+    // Steg (b): HTML finns men mejl INTE skickat → skippa HTML-gen, skicka mejl
+    if (booking.receipt_url && booking.receipt_number) {
+      console.log("[RECEIPT] HTML exists but email not sent — sending email only");
+      const d = buildReceiptData(booking, booking.receipt_number);
+      const ctx = await buildEmailContext(supabase, booking);
+      const emailResult = await sendReceiptEmail(d, company, booking.receipt_url, ctx);
+
+      if (emailResult.ok) {
+        await supabase.from("bookings").update({
+          receipt_email_sent_at: new Date().toISOString(),
+        }).eq("id", bookingId);
+      } else {
+        await notifyAdminEmailFailure(bookingId, d.customerEmail, emailResult.error);
+      }
+
+      return json(200, {
+        success: true,
+        email_sent: emailResult.ok,
+        email_error: emailResult.error,
+        receipt_number: booking.receipt_number,
+        receipt_url: booking.receipt_url,
+      });
+    }
+
+    // Steg (c): Full flow — generera HTML, lagra, skicka mejl
     const { data: receiptNum, error: rnErr } = await supabase.rpc("generate_receipt_number");
     if (rnErr) {
       console.error("[RECEIPT] Receipt number generation error:", rnErr.message);
@@ -57,42 +155,16 @@ serve(async (req) => {
     const receiptNumber = receiptNum as string;
     console.log("[RECEIPT] Receipt number:", receiptNumber);
 
-    // 3. Determine customer type
-    const isCompany = (booking.customer_type || "").toLowerCase() === "foretag";
-    const isRut = !isCompany && !!booking.rut_amount && booking.rut_amount > 0;
+    const d = buildReceiptData(booking, receiptNumber);
 
-    // 4. Build receipt data
-    const d: ReceiptData = {
-      receiptNumber,
-      receiptDate: new Date().toISOString().split("T")[0],
-      bookingDate: booking.booking_date || "",
-      bookingTime: booking.booking_time || "",
-      service: translateService(booking.service_type),
-      hours: booking.booking_hours || 0,
-      address: booking.customer_address || "",
-      customerName: booking.customer_name || "",
-      customerEmail: booking.customer_email || "",
-      isCompany,
-      companyName: booking.business_name || "",
-      companyOrg: booking.business_org_number || "",
-      companyRef: booking.business_reference || "",
-      totalPrice: booking.total_price || 0,
-      amountPaid: booking.amount_paid || booking.total_price || 0,
-      rutAmount: booking.rut_amount || 0,
-      isRut,
-      paymentMethod: booking.payment_method || "card",
-      cleanerName: booking.cleaner_name || "",
-      bookingId: booking.id,
-    };
-
-    // 5. Ensure storage bucket exists
+    // Ensure storage bucket exists
     const { data: buckets } = await supabase.storage.listBuckets();
     if (!buckets?.find((b: { name: string }) => b.name === "receipts")) {
       await supabase.storage.createBucket("receipts", { public: true });
     }
 
-    // 6. Generate HTML receipt
-    const html = buildReceiptHtml(d);
+    // Generate HTML receipt (web version — full layout för "Öppna webbversion"-länk)
+    const html = buildReceiptHtml(d, company);
     const fileName = `${receiptNumber}.html`;
 
     const { error: uploadErr } = await supabase.storage
@@ -111,14 +183,28 @@ serve(async (req) => {
     const receiptUrl = urlData.publicUrl;
     console.log("[RECEIPT] HTML uploaded:", receiptUrl);
 
-    // 7. Update booking with receipt info
-    await supabase.from("bookings").update({
+    // Skicka kvittomejl till kund (med bokningsbekräftelse-kontext)
+    const ctx = await buildEmailContext(supabase, booking);
+    const emailResult = await sendReceiptEmail(d, company, receiptUrl, ctx);
+
+    // UPDATE bookings: alltid receipt_url + receipt_number, receipt_email_sent_at bara om mejl OK
+    const updatePayload: Record<string, unknown> = {
       receipt_number: receiptNumber,
       receipt_url: receiptUrl,
-    }).eq("id", bookingId);
+    };
+    if (emailResult.ok) {
+      updatePayload.receipt_email_sent_at = new Date().toISOString();
+    }
+    await supabase.from("bookings").update(updatePayload).eq("id", bookingId);
+
+    if (!emailResult.ok) {
+      await notifyAdminEmailFailure(bookingId, d.customerEmail, emailResult.error);
+    }
 
     return json(200, {
       success: true,
+      email_sent: emailResult.ok,
+      email_error: emailResult.error,
       receipt_number: receiptNumber,
       receipt_url: receiptUrl,
     });
@@ -153,7 +239,262 @@ interface ReceiptData {
   bookingId: string;
 }
 
-// ─── Helpers ────────────────────────────────────────────────
+function buildReceiptData(booking: Record<string, unknown>, receiptNumber: string): ReceiptData {
+  const isCompany = String(booking.customer_type || "").toLowerCase() === "foretag";
+  const rutAmount = Number(booking.rut_amount || 0);
+  const isRut = !isCompany && rutAmount > 0;
+
+  return {
+    receiptNumber,
+    receiptDate:   new Date().toISOString().split("T")[0],
+    bookingDate:   String(booking.booking_date || ""),
+    bookingTime:   String(booking.booking_time || ""),
+    service:       translateService(String(booking.service_type || "")),
+    hours:         Number(booking.booking_hours || 0),
+    address:       String(booking.customer_address || ""),
+    customerName:  String(booking.customer_name || ""),
+    customerEmail: String(booking.customer_email || ""),
+    isCompany,
+    companyName:   String(booking.business_name || ""),
+    companyOrg:    String(booking.business_org_number || ""),
+    companyRef:    String(booking.business_reference || ""),
+    totalPrice:    Number(booking.total_price || 0),
+    amountPaid:    Number(booking.amount_paid || booking.total_price || 0),
+    rutAmount,
+    isRut,
+    paymentMethod: String(booking.payment_method || "card"),
+    cleanerName:   String(booking.cleaner_name || ""),
+    bookingId:     String(booking.id || ""),
+  };
+}
+
+// ─── Email-hantering ────────────────────────────────────────
+
+interface EmailContext {
+  autoConfirm: boolean;
+  cleanerFullName: string;
+  cleanerAvgRating: string;
+  magicLink: string;
+  materialCustomerText: string;
+  materialEmoji: string;
+}
+
+async function buildEmailContext(
+  supabase: ReturnType<typeof createClient>,
+  booking: Record<string, unknown>,
+): Promise<EmailContext> {
+  let cleanerFullName = String(booking.cleaner_name || "Din städare");
+  let cleanerAvgRating = "5.0";
+  let autoConfirm = false;
+
+  if (booking.cleaner_id) {
+    const { data: cleaner } = await supabase
+      .from("cleaners")
+      .select("full_name, avg_rating, total_jobs, tier")
+      .eq("id", booking.cleaner_id)
+      .maybeSingle();
+    if (cleaner) {
+      cleanerFullName = String(cleaner.full_name || cleanerFullName);
+      cleanerAvgRating = cleaner.avg_rating != null ? String(cleaner.avg_rating) : "5.0";
+      // Samma auto-confirm-heuristik som stripe-webhook: erfaren cleaner → auto-confirm
+      autoConfirm = Number(cleaner.total_jobs || 0) >= 5 || String(cleaner.tier || "") === "experienced";
+    }
+  }
+
+  let magicLink = `https://spick.se/min-bokning.html?bid=${booking.id}`;
+  try {
+    const generated = await generateMagicShortUrl({
+      email: String(booking.customer_email || ""),
+      redirect_to: `https://spick.se/min-bokning.html?bid=${booking.id}`,
+      scope: "booking",
+      resource_id: String(booking.id),
+      ttl_hours: 168,
+    });
+    if (generated) magicLink = generated;
+  } catch (e) {
+    console.warn("[RECEIPT] Magic link generation failed, using direct URL:", (e as Error).message);
+  }
+
+  const matInfo = getMaterialInfo(String(booking.service_type || ""));
+
+  return {
+    autoConfirm,
+    cleanerFullName,
+    cleanerAvgRating,
+    magicLink,
+    materialCustomerText: matInfo.customer,
+    materialEmoji: matInfo.emoji,
+  };
+}
+
+async function sendReceiptEmail(
+  d: ReceiptData,
+  company: CompanyInfo,
+  receiptUrl: string,
+  ctx: EmailContext,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!d.customerEmail) {
+    return { ok: false, error: "customer_email saknas" };
+  }
+
+  const subject = `Bokningsbekräftelse + kvitto — ${d.service} ${d.bookingDate}`;
+  const html = buildReceiptEmailHtml(d, company, receiptUrl, ctx);
+
+  const result = await sendEmail(d.customerEmail, subject, html);
+  if (!result.ok) {
+    console.error("[RECEIPT] sendEmail failed:", result.error);
+  } else {
+    console.log("[RECEIPT] Email sent to", d.customerEmail, "id:", result.id);
+  }
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+async function notifyAdminEmailFailure(
+  bookingId: string,
+  customerEmail: string,
+  errorMsg: string | undefined,
+): Promise<void> {
+  const html = wrap(`
+<h2>⚠️ Kvittomejl misslyckades</h2>
+<p>generate-receipt kunde inte skicka kvitto till kund. HTML finns i storage, men kunden har inte fått mejlet.</p>
+<div class="card">
+  <div class="row"><span class="lbl">Bokning</span><span class="val">${escHtml(bookingId)}</span></div>
+  <div class="row"><span class="lbl">Kund-email</span><span class="val">${escHtml(customerEmail)}</span></div>
+  <div class="row"><span class="lbl">Fel</span><span class="val">${escHtml(errorMsg || "okänt")}</span></div>
+</div>
+<p>Åtgärd: anropa generate-receipt igen manuellt, eller skicka <code>receipt_url</code> direkt till kund. EF:n är idempotent (F-R2-7) — retry säkert.</p>
+`);
+  await sendEmail(ADMIN, `⚠️ Kvittomejl misslyckades — bokning ${bookingId.slice(0, 8)}`, html)
+    .catch((e) => console.error("[RECEIPT] Admin notify failed:", (e as Error).message));
+}
+
+// ─── Email HTML Builder (R2) ────────────────────────────────
+// Kompakt mejl-version med alla 11 bokföringslag-fält. För fullständig
+// webbversion använder kunden "Öppna webbversion"-länken till storage.
+
+function buildReceiptEmailHtml(
+  d: ReceiptData,
+  company: CompanyInfo,
+  receiptUrl: string,
+  ctx: EmailContext,
+): string {
+  const pricing = computePricingBreakdown(d);
+  const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
+
+  const customerAddrLine = d.address ? `<br>${escHtml(d.address)}` : "";
+  const cleanerLabel = ctx.cleanerFullName
+    ? `<div class="row"><span class="lbl">Städare</span><span class="val">${escHtml(ctx.cleanerFullName)} ⭐ ${escHtml(ctx.cleanerAvgRating)}</span></div>`
+    : "";
+
+  const pricingRows = d.isRut
+    ? `
+    <div class="row"><span class="lbl">Arbetskostnad exkl. moms</span><span class="val">${fmtKr(pricing.exVat)} kr</span></div>
+    <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtKr(pricing.vat)} kr</span></div>
+    <div class="row"><span class="lbl">Arbetskostnad inkl. moms</span><span class="val">${fmtKr(pricing.gross)} kr</span></div>
+    <div class="row" style="color:#0F6E56"><span class="lbl">RUT-avdrag 50%</span><span class="val">-${fmtKr(d.rutAmount)} kr</span></div>
+    <div class="row"><span class="lbl"><strong>Att betala</strong></span><span class="val"><strong>${fmtKr(d.amountPaid)} kr</strong></span></div>`
+    : `
+    <div class="row"><span class="lbl">Arbetskostnad exkl. moms</span><span class="val">${fmtKr(pricing.exVat)} kr</span></div>
+    <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtKr(pricing.vat)} kr</span></div>
+    <div class="row"><span class="lbl"><strong>Att betala inkl. moms</strong></span><span class="val"><strong>${fmtKr(d.totalPrice)} kr</strong></span></div>`;
+
+  const rutNote = d.isRut
+    ? `<p style="font-size:12px;color:#6B6960;margin-top:16px">
+         RUT-avdraget ansöks hos Skatteverket efter utfört arbete.
+         Maximalt avdrag är 75 000 kr per person och år.
+       </p>`
+    : "";
+
+  const fSkattLine = company.fSkatt ? "Godkänd för F-skatt. " : "";
+  const fname = d.customerName.split(" ")[0] || "";
+
+  // Status-banner: auto-confirm vs pending 90 min
+  const statusBanner = ctx.autoConfirm
+    ? `<div style="background:#E1F5EE;border-left:4px solid #0F6E56;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#0F6E56">
+         <strong>✅ Bokning bekräftad</strong> — ${escHtml(ctx.cleanerFullName)} har bekräftats för ditt uppdrag.
+       </div>`
+    : `<div style="background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#92400E">
+         <strong>⏳ Bokning mottagen</strong> — Din städare bekräftar uppdraget inom 90 minuter.
+       </div>`;
+
+  const prepBox = ctx.materialCustomerText
+    ? `<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:16px 0;font-size:13px;color:#92400E;line-height:1.6">
+         ${ctx.materialEmoji} <strong>Förberedelse:</strong> ${escHtml(ctx.materialCustomerText)}
+       </div>`
+    : "";
+
+  const content = `
+${statusBanner}
+<h2>Tack för din bokning${fname ? ", " + escHtml(fname) : ""}! 🌿</h2>
+<p>Här är ditt bokföringslag-grundade kvitto. Spara mejlet — det är underlag för eventuell RUT-deklaration och garanti-krav.</p>
+
+<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Kvitto</h3>
+<div class="card">
+  <div class="row"><span class="lbl">Kvittonummer</span><span class="val">${escHtml(d.receiptNumber)}</span></div>
+  <div class="row"><span class="lbl">Utfärdandedatum</span><span class="val">${escHtml(d.receiptDate)}</span></div>
+  <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
+</div>
+
+<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Utfärdare</h3>
+<div class="card">
+  <div class="row"><span class="lbl">Företag</span><span class="val">${escHtml(company.legalName)} (bifirma ${escHtml(company.tradeName)})</span></div>
+  <div class="row"><span class="lbl">Org.nr</span><span class="val">${escHtml(company.orgNumber)}</span></div>
+  <div class="row"><span class="lbl">Momsreg.nr</span><span class="val">${escHtml(company.vatNumber)}</span></div>
+  <div class="row"><span class="lbl">Adress</span><span class="val">${escHtml(company.address)}</span></div>
+</div>
+
+<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Kund</h3>
+<div class="card">
+  <div class="row"><span class="lbl">Namn</span><span class="val">${escHtml(d.customerName)}${customerAddrLine}</span></div>
+  ${d.isCompany && d.companyName ? `<div class="row"><span class="lbl">Företag</span><span class="val">${escHtml(d.companyName)}${d.companyOrg ? " · Org.nr " + escHtml(d.companyOrg) : ""}</span></div>` : ""}
+</div>
+
+<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Tjänst</h3>
+<div class="card">
+  <div class="row"><span class="lbl">Beskrivning</span><span class="val">${escHtml(d.service)}</span></div>
+  <div class="row"><span class="lbl">Utförd</span><span class="val">${escHtml(d.bookingDate)} kl ${escHtml(d.bookingTime)}</span></div>
+  <div class="row"><span class="lbl">Omfattning</span><span class="val">${d.hours} timmar</span></div>
+  ${cleanerLabel}
+</div>
+
+<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Belopp</h3>
+<div class="card">${pricingRows}
+</div>
+
+<p style="font-size:12px;color:#6B6960;margin-top:20px">
+  ${fSkattLine}Momssatsen 25% är inkluderad i priset.
+  SNI ${escHtml(company.sniCode)} (städtjänster).
+</p>
+${rutNote}
+${prepBox}
+
+<a href="${escAttr(ctx.magicLink)}" class="btn">Visa min bokning →</a>
+<p style="margin-top:8px;font-size:13px"><a href="${escAttr(receiptUrl)}" style="color:#0F6E56">Öppna kvittot som webbversion</a></p>
+
+<hr style="border:none;border-top:1px solid #E8E8E4;margin:24px 0">
+<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> — inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a> inom 24h.</p>
+<p style="font-size:13px">Ändra eller avboka senast 24h innan på <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a>.</p>
+`;
+
+  return wrap(content);
+}
+
+interface PricingBreakdown {
+  gross: number;    // inkl moms
+  exVat: number;    // exkl moms
+  vat: number;      // moms-belopp (25%)
+}
+
+function computePricingBreakdown(d: ReceiptData): PricingBreakdown {
+  // För RUT-bokning är total_price efter-RUT; brutto = total + rut
+  // För icke-RUT är total_price direkt brutto inkl moms
+  const gross = d.isRut ? (d.totalPrice + d.rutAmount) : d.totalPrice;
+  const exVat = Math.round(gross / 1.25);
+  const vat = gross - exVat;
+  return { gross, exVat, vat };
+}
+
+// ─── Helpers (oförändrade från tidigare) ────────────────────
 
 function translateService(type: string): string {
   const map: Record<string, string> = {
@@ -181,6 +522,22 @@ function esc(s: string): string {
     .replace(/\u00A0/g, "&nbsp;");
 }
 
+// Enkel HTML-escape för mejl-templates (inga entity-konverteringar för svenska bokstäver)
+function escHtml(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escAttr(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;");
+}
+
 function fmtSEK(n: number): string {
   const str = n.toFixed(2).replace(".", ",");
   const parts = str.split(",");
@@ -188,9 +545,15 @@ function fmtSEK(n: number): string {
   return parts.join(",");
 }
 
-// ─── HTML Receipt Builder ───────────────────────────────────
+function fmtKr(n: number): string {
+  return Math.round(n).toLocaleString("sv-SE");
+}
 
-function buildReceiptHtml(d: ReceiptData): string {
+// ─── HTML Receipt Builder (storage / webbversion) ───────────
+// Oförändrad struktur från tidigare. Använder company-data
+// (Regel #28) istället för hardcodes.
+
+function buildReceiptHtml(d: ReceiptData, company: CompanyInfo): string {
   const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
 
   // Pricing section differs for company vs private
@@ -252,6 +615,8 @@ function buildReceiptHtml(d: ReceiptData): string {
       ${esc(d.customerEmail)}`;
   }
 
+  const fSkattLine = company.fSkatt ? "Godk&auml;nd f&ouml;r F-skatt &middot; " : "";
+
   return `<!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -304,7 +669,7 @@ function buildReceiptHtml(d: ReceiptData): string {
 
 <div class="header">
   <div class="header-left">
-    <h1>Spick</h1>
+    <h1>${esc(company.tradeName)}</h1>
     <span class="title">KVITTO</span>
   </div>
   <div class="meta">
@@ -317,10 +682,12 @@ function buildReceiptHtml(d: ReceiptData): string {
   <div class="party">
     <h3>Fr&aring;n</h3>
     <p>
-      <strong>Haghighi Consulting AB</strong><br>
-      Bifirma: Spick<br>
-      Org.nr: 559402-4522<br>
-      hello@spick.se
+      <strong>${esc(company.legalName)}</strong><br>
+      Bifirma: ${esc(company.tradeName)}<br>
+      Org.nr: ${esc(company.orgNumber)}<br>
+      Momsreg.nr: ${esc(company.vatNumber)}<br>
+      ${esc(company.address)}<br>
+      ${esc(company.email)}
     </p>
   </div>
   <div class="party">
@@ -358,14 +725,14 @@ ${pricingHtml}
 
 <div class="guarantee">
   <strong>&#x1F6E1;&#xFE0F; N&ouml;jdhetsgaranti</strong>
-  <p>Inte n&ouml;jd med st&auml;dningen? Vi st&auml;dar om kostnadsfritt. Kontakta hello@spick.se inom 24h.</p>
+  <p>Inte n&ouml;jd med st&auml;dningen? Vi st&auml;dar om kostnadsfritt. Kontakta ${esc(company.email)} inom 24h.</p>
 </div>
 
 <div class="booking-id">Boknings-ID: ${esc(d.bookingId)}</div>
 
 <div class="footer">
-  Haghighi Consulting AB (bifirma Spick) · Org.nr: 559402-4522 · hello@spick.se<br>
-  <strong style="color:#0F6E56">Spick</strong> &mdash; Sveriges st&auml;dplattform &middot; <a href="https://spick.se" style="color:#0F6E56">spick.se</a>
+  ${esc(company.legalName)} (bifirma ${esc(company.tradeName)}) &middot; Org.nr: ${esc(company.orgNumber)} &middot; ${fSkattLine}SNI: ${esc(company.sniCode)} &middot; ${esc(company.email)}<br>
+  <strong style="color:#0F6E56">${esc(company.tradeName)}</strong> &mdash; Sveriges st&auml;dplattform &middot; <a href="https://${esc(company.website)}" style="color:#0F6E56">${esc(company.website)}</a>
 </div>
 
 </body>
