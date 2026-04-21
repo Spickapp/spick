@@ -30,6 +30,8 @@ Exempel: Kund har städning tisdag 10:00 svensk tid. Påminnelse meant att skick
 
 **Prio:** Fix asap, påverkar kundupplevelse varje dag.
 
+**Status (2026-04-24):** ✓ FIXAD via `_shared/timezone.ts::parseStockholmTime`. Auto-remind:93 + auto-remind:299 (samma bugg-mönster, upptäckt via grep under fix-arbetet). Deploy automatisk via deploy-edge-functions.yml.
+
 ### BUG 2 (MEDEL) — auto-rebook midnatts-datum-drift
 
 **Fil:** `supabase/functions/auto-rebook/index.ts:116`
@@ -101,26 +103,21 @@ Kommentaren i `20260423_f2_7_1_b2b_schema.sql:74-75` om "4 hardcodes som hygien-
 
 ## Sprint-plan (föreslagen)
 
-**Fas 1 — Fix KRITISK (1h):**
-- Fixa auto-remind:90 med korrekt svensk tidszon-parsing
-- Deploy EF
-- Test mot produktion: verifiera nästa påminnelse går rätt tid
+**Fas 1 — Fix KRITISK (1h):** ✓ KLAR 2026-04-24
+- `_shared/timezone.ts` skapad med `parseStockholmTime` + `formatStockholmDate`
+- auto-remind:93 + auto-remind:299 (båda buggiga, samma pattern) använder helpern
 
-**Fas 2 — Shared helper + refactor (2h):**
-- Skapa `supabase/functions/_shared/date-format.ts` med formatDate + formatTime
-- Uppdatera fyra EFs att importera (raderar 4 duplicerade funktioner)
-- Deploy alla berörda EFs
-- Test mot produktion
+**Fas 2 — Shared helper + refactor (2h):** delvis klar (helpern finns)
+- Kvarstår: formatDate-konsolidering för 4 EFs (auto-delegate, cleaner-booking-response, company-propose-substitute, customer-approve-proposal)
 
-**Fas 3 — auto-rebook edge-case (30-45 min):**
+**Fas 3 — auto-rebook edge-case (30-45 min):** ej påbörjad
 - Fixa todayStr-beräkning med svensk tidszon
 - Deploy EF
 
-**Fas 4 — Dokumentation (30 min):**
-- Öppna nytt hygien-task eller stäng befintligt relaterat
+**Fas 4 — Dokumentation (30 min):** ej påbörjad
 - Uppdatera money-layer.md eller arkitekturplan med tidszon-konvention
 
-**Totalt: 4-5h**
+**Totalt kvar: 3-4h**
 
 Lämplig att köra parallellt med infrastructure-audit (hygien #48) — båda rör tidszon/data-integritet.
 

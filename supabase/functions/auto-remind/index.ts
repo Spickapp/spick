@@ -7,6 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { parseStockholmTime } from "../_shared/timezone.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -87,7 +88,9 @@ serve(async (req) => {
     for (const b of bookings || []) {
       const dateStr  = b.booking_date;
       if (!dateStr) continue;
-      const dateTime = new Date(`${dateStr}T${(b.booking_time || "09:00")}:00`);
+      // §49: parseStockholmTime tolkar DB-värden som svensk lokaltid
+      // (tidigare: new Date() tolkade som UTC → påminnelser 1-2h för tidigt)
+      const dateTime = parseStockholmTime(dateStr, b.booking_time || "09:00");
       const hoursLeft = (dateTime.getTime() - now.getTime()) / 3_600_000;
       const alreadySent = (b.reminders_sent || []) as string[];
 
@@ -292,7 +295,8 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
 
       // ── NUDGE: Glömd markera klar (30 min efter estimerad sluttid) ──
       if (b.checked_in_at && b.status === "pågår" && !b.completed_at && !alreadySent.includes("checkout_nudge")) {
-        const startTime = new Date(`${dateStr}T${(b.booking_time || "09:00")}:00`);
+        // §49: samma UTC-bugg som rad 93 — parseStockholmTime ger korrekt svensk lokaltid
+        const startTime = parseStockholmTime(dateStr, b.booking_time || "09:00");
         const estimatedEnd = new Date(startTime.getTime() + (parseInt(b.booking_hours) || 3) * 3_600_000);
         const minutesPastEnd = (now.getTime() - estimatedEnd.getTime()) / 60_000;
 
