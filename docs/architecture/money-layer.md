@@ -1073,13 +1073,21 @@ Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` dir
 
 ## 18. Fas 2.5-R2 — Kund-kvitto via mejl (2026-04-23)
 
-**Status:** ✅ Implementerad + verifierad i prod 2026-04-23. Första kvittot utställt: **`KV-2026-00001`** (sekventiell serie via `generate_receipt_number()`-RPC). Källa: Spår B-audit ([docs/audits/2026-04-23-revisor-audit-dokument-flow.md](../audits/2026-04-23-revisor-audit-dokument-flow.md)) + Farhads beslut.
+**Status:** ✅ Implementerad + verifierad i prod 2026-04-23. Första kvittot utställt: **`KV-2026-00001`** för bokning `681aaa93` (Fönsterputs-testbokning, sekventiell serie via `generate_receipt_number()`-RPC). **Alla 11 BokfL 5 kap 7§ + MervL 11 kap 8§-fält renderade korrekt i mejlet.** Källa: Spår B-audit ([docs/audits/2026-04-23-revisor-audit-dokument-flow.md](../audits/2026-04-23-revisor-audit-dokument-flow.md)) + Farhads beslut.
 
-**Retrospektiva fynd under deploy (hanterade i hygien-commit 2026-04-23):**
+**Retrospektiva fynd under deploy (hanterade i hygien-commits 2026-04-23):**
 
 1. `receipt_number_seq` saknade `GRANT USAGE` till `service_role` → generate-receipt failade vid första körning. Fix ad-hoc i Studio, versionskontrollerad i [`20260423_f2_5_R2_grants.sql`](../../supabase/migrations/20260423_f2_5_R2_grants.sql) + preventivt för `commission_levels_id_seq` och `spark_levels_id_seq`.
 2. `generate-receipt` saknades i [`deploy-edge-functions.yml`](../../.github/workflows/deploy-edge-functions.yml) FUNCTIONS-array → uppdaterad till 31 EFs.
 3. `supabase db push` drev från prod-state pga 41 KRITISK-tabeller utan CREATE TABLE-migration (se §2.1-audit) → migration kördes manuellt i Studio. Hygien-task #25 öppen, löses av Fas 2-utökning §2.1.1.
+
+**Sibling-bugs upptäckta under E2E-test (utanför R2-scope):**
+
+- **Duplicerade cleaner-rader** (hygien #29): Farhad Haghighi hade två cleaner-rader (solo 100 kr + företag 350 kr). Solo-raden raderad manuellt 23 apr.
+- **Pricing-resolver ignorerar `services.default_hourly_price`** (hygien #30): Fönsterputs-bokningen debiterades 100 kr/h istället för 349 kr/h pga fallback till `cleaner.hourly_rate` på solo-dubbletten. Separat från R2.
+- **Hours-drift frontend vs backend** (hygien #31): boka.html visade `1h`, booking-create sparade `2.0h`. UX-bug, icke-kritisk.
+
+**Viktigt:** R2-kvittot (`KV-2026-00001`) renderade **korrekt mot den debiterade summan**. Bokföringslag-compliance är intakt oavsett pricing-felet — kvittot är ett sant uttryck av transaktionen som den skedde. Pricing-bugen är sibling, inte regression i R2. Löses i §2.6 "Pricing-konsistens audit" eller separat hygien-sprint.
 
 **Problem som löstes:** generate-receipt-EF genererade kvitto till Supabase storage men skickade **aldrig länken till kunden**. Kunden fick idag bara Stripe-auto-kvittot (inte bokföringslag-kompatibelt). Dessutom var företagsuppgifter hardcodade i 3-4 filer (Regel #28-brott).
 
