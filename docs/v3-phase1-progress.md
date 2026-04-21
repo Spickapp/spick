@@ -250,6 +250,21 @@ per_sqm?
 - 3 retrospektiva fynd hanterade i första hygien-commit (`e854ee5`): (a) `receipt_number_seq` GRANT fix ad-hoc i Studio → versionskontrolleras i [20260423_f2_5_R2_grants.sql](../supabase/migrations/20260423_f2_5_R2_grants.sql), (b) `generate-receipt` saknas i deploy-yml → tillagd, (c) hygien-tasks #25-28 öppnade.
 - 3 ytterligare fynd under E2E-test (denna commit): (d) duplicerade cleaner-rader #29, (e) pricing-resolver ignorerar services.default_hourly_price #30, (f) hours-drift frontend vs backend #31. Alla utanför R2-scope — kvittot renderade korrekt mot faktiskt debiterad summa, pricing-felet är sibling-bug.
 
+## TODOs (post-Fas-1-upptäckter)
+
+### TODO A: RUT Notification Transparency
+- Prio: HÖG (pre-Rafa-pilot)
+- Estimat: 2-4h
+- Fil: [docs/planning/todo-a-rut-notification-transparency.md](planning/todo-a-rut-notification-transparency.md)
+- Status: scope klart, bygg pending
+
+### TODO B: RUT Two-Step Payout Pipeline
+- Prio: MEDIUM
+- Estimat: 10-15h
+- Fil: [docs/planning/todo-b-rut-two-step-payout.md](planning/todo-b-rut-two-step-payout.md)
+- Status: scope-beslut pending (§1.11 vs Fas 8 vs standalone)
+- Beroende på Todo A
+
 ## Schemalagda framtida faser
 
 ### Fas 7.5 — RUT-infrastruktur (öppnad 2026-04-23)

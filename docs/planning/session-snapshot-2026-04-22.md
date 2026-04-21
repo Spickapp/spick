@@ -200,6 +200,22 @@ Om Farhad föreslår något utanför v3-ordningen:
 
 ---
 
+## Post-Fas-1-upptäckt: RUT Payout Split
+
+Under session-avslut upptäckte Farhad att notifikationer för städare
+visar bara halva intjäningen för RUT-bokningar. Affärsprincip fastställd:
+Tolkning B (städaren bär RUT-risk). Scope delat i två todos:
+
+- **Todo A:** UI/notis-transparens (2-4h, HÖG prio, pre-pilot)
+- **Todo B:** full two-step pipeline (10-15h, MEDIUM, post-Todo A)
+
+Filer:
+- [docs/planning/todo-a-rut-notification-transparency.md](todo-a-rut-notification-transparency.md)
+- [docs/planning/todo-b-rut-two-step-payout.md](todo-b-rut-two-step-payout.md)
+
+Rekommendation för nästa session: börja med Todo A scope-verifiering
+(uppdragsavtals-check + grep av notifikations-EFs) innan bygg.
+
 ## Sammanfattning session
 
 - **17 Claude-commits** (+ 2 auto: backup, sitemap)
