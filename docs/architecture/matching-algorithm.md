@@ -571,6 +571,31 @@ COMMIT;
 - **#15** — Cleaner-kolumn-duplikater audit: `avg_rating`/`rating`, `review_count`/`total_reviews`/`total_ratings`, `completed_jobs`/`total_jobs`, `has_fskatt`/`f_skatt_verified`, `signup_date`/`member_since`. RPC läser en av varje, resten bör DROPas i framtida migration.
 - **#16** — `cleaner-job-match` EF radering efter §3.2 (RPC-konsolidering komplett). Innefattar: undeploy EF, radera `supabase/functions/cleaner-job-match/`, ta bort från `deploy-edge-functions.yml:36`, ta bort smoke-test på `tests/smoke.spec.ts:85`.
 
+## §3.5-beslut (2026-04-24): VIEW-indirektion ej tillämplig
+
+**Arkitekturplanens §3.5-spec:**
+> "Uppdatera boka.html att läsa från ny vy v_matched_cleaners_for_booking istället för RPC direkt. Frontend sorterar inte längre själv."
+
+**Beslut:** §3.5 stängs utan ny VIEW. Mål uppnått via §3.2a.
+
+**Motivering:**
+
+1. **PostgreSQL har inte parameteriserade VIEWs.** find_nearby_cleaners är en parametriserad SQL-function som tar 9 inputs (customer_lat, customer_lng, booking_date, booking_time, booking_hours, has_pets, has_elevator, booking_materials, customer_id). En vanlig VIEW kan inte wrappa denna — en VIEW är ett statiskt SELECT utan parametrar.
+
+2. **Arkitekturplanens §3.5-mål är uppnått.** "Frontend sorterar inte längre själv" är redan sant efter §3.2a — RPC:n returnerar `ORDER BY match_score DESC` med deterministisk tie-break. boka.html har bara kvar en defensiv `cleaners.sort()` på rad 2057 som safety-net om RPC returnerar osorterat. Primär sortering sker server-side.
+
+3. **v_cleaners_for_booking existerar redan** och används i boka.html v1-fallback-flödet (utan lat/lng). Att skapa `v_matched_cleaners_for_booking` som duplikat skulle bryta Regel #28 (ingen business-data-fragmentering) utan tydlig nytta.
+
+**Sammanfattning:**
+
+| §3.5-krav | Status |
+|---|---|
+| Frontend sorterar inte själv | ✓ Uppnått i §3.2a |
+| Wrap RPC i VIEW | ✗ Tekniskt omöjligt (PostgreSQL-begränsning) |
+| Skapa v_matched_cleaners_for_booking | ✗ Inte värd att bygga som duplikat av v_cleaners_for_booking |
+
+**Om framtida behov uppstår** (t.ex. att exponera `find_nearby_cleaners`-resultat via PostgREST utan klient-side RPC-call) kan en `STABLE` SQL-function som wrapper-API övervägas — men det är arkitektonisk hygien, inte §3.5-scope.
+
 ## Stängd deferred sub-fas
 
 - **§2.1.3 (DORMANT-beslut)** stängs: jobs/job_matches/cleaner_job_types raderas per §12-beslut. Exekvering i kommande migration (§3.2 eller separat cleanup-commit).

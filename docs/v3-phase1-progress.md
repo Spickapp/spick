@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-23 kväll (§3.2-sviten partiellt: a/b/d klara, c BLOCKERAD)
+**Senast uppdaterad:** 2026-04-24 morgon (§3.5 STÄNGD + status-sync)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -19,12 +19,36 @@ deno task test:money          # ska vara 100 pass (4 ignored = Stripe-tester uta
 
 Om något avviker → flagga innan fortsättning.
 
-### Status just nu
+### Status just nu (2026-04-24)
 
-- **Fas 1 Money Layer:** 6 av 10 klara + 1 SUPERSEDED-verkställd + 1 delvis + 2 ej påbörjade
-- **Plan-beslut:** #1 stängt, #3 stängt, #2 öppet
-- **Stripe-balans:** negativ (blockerar första riktiga transfer, ej kod-fråga)
-- **money_layer_enabled=true** i prod sedan 2026-04-20 19:07 UTC
+- **Fas 0:** ✓ KLAR (18-19 april)
+- **Fas 1 Money Layer:** ✓ 100 % KLAR (22 april)
+- **Fas 2 Migrations-sanering:** ✓ STÄNGD inom v3-scope (7 klara + §2.3 deferred till Fas 3 + §2.8 till Fas 2-utökning)
+- **Fas 2.7 B2B-kompatibilitet:** ✓ KLAR
+- **Fas 2.5-minifix:** ✓ rut-claim avstängd, skjuts till Fas 7.5
+- **Fas 3 Matching:** ◑ PÅGÅENDE
+  - §3.1 ✓ designdokument
+  - §3.2a ✓ RPC v2 migration live
+  - §3.2b ✓ boka.html skickar utökade params
+  - §3.2c BLOCKERAD (DORMANT-FK-utredning)
+  - §3.2d ✓ cleaner-job-match EF raderad
+  - §3.3 ✓ implicit klar (vikter i §3.2a)
+  - §3.4 ✓ implicit klar (history_multiplier i §3.2a, inaktiv utan customer_id)
+  - §3.5 ✓ STÄNGD (VIEW ej tillämplig, mål uppnått i §3.2a)
+  - §3.6 ◯ villkorat på performance (ej akut)
+  - §3.7 partial ✓ audit-writing live + verifierad (match_score 0.707)
+  - §3.7 full ◯ shadow-mode + v2-aktivering + traffic-split ej påbörjat
+  - §3.8 ◯ admin dashboard ej påbörjat
+  - §3.9 ◯ pilot-analys (kräver 30 dagars data)
+- **Fas 4-14:** ◯ ej påbörjade
+
+**Plan-beslut:** #1 stängt, #3 stängt, #2 stängt 22 april, #4 per_window öppet (väntar Farhad)
+
+**Stripe:** LIVE i prod (13 apr), testat end-to-end
+
+**Parallella skuld-tracks:**
+- Hygien #48 Infrastructure audit (migrations-deploy + DORMANT-FK), 8-15h
+- Hygien #49 Timezone-audit (1 kritisk prod-bugg + 2 medel), 4-5h
 
 ### Nästa steg – välj ett
 
@@ -222,8 +246,11 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 | §3.2b | 207 | boka.html skickar booking_date/time/hours/has_pets/has_elevator/materials/customer_id | ✓ | `afdcfa4` |
 | §3.2c | 207 | DROP `jobs`/`job_matches`/`cleaner_job_types` (DORMANT) | ⚠ BLOCKERAD | — |
 | §3.2d | 207 | cleaner-job-match EF radering | ✓ | `9281d4c` |
-| §3.7 partial | 211 | chosen_cleaner_match_score + matching_algorithm_version audit-writing | ✓ | (denna commit) |
-| §3.3-§3.9 | 208-233 | History-multiplier-kalibrering, materialiserad vy, admin-UI, pilot-analys | ◯ | — |
+| §3.7 partial | 211 | chosen_cleaner_match_score + matching_algorithm_version audit-writing | ✓ | `f8b91b8` |
+| §3.3 | 208 | Vikter implementerade | ✓ implicit | i §3.2a |
+| §3.4 | 209 | History-multiplier | ✓ implicit | i §3.2a (inaktiv utan customer_id) |
+| §3.5 | 210 | VIEW-indirektion | ✓ STÄNGD (ej tillämplig) | (denna commit) |
+| §3.6, §3.7 full, §3.8, §3.9 | 211-233 | Materialiserad vy, A/B-ramverk, admin-UI, pilot-analys | ◯ | — |
 
 > **⚠️ BLOCKERAD från prod-deploy** — upptäckt 2026-04-23 kväll att `supabase_migrations.schema_migrations` är ur sync med repo (1 rad i prod vs 52 filer i repo). Se [docs/planning/todo-migrations-deploy-audit-2026-04-23.md](planning/todo-migrations-deploy-audit-2026-04-23.md). §3.2a manuell deploy via Studio SQL kan köras för att oblockera Fas 3-progress, men strukturell repair behövs före §3.2b deploy.
 
