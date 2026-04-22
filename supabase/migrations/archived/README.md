@@ -224,3 +224,21 @@ som inte existerar i prod-bookings.
 
 Filen representerar prototyp "Kör mot Supabase SQL Editor" som
 aldrig applicerades.
+
+### 20260327400001_nuclear_rls_hardening.sql (arkiverad 2026-04-22)
+
+**Varför:** Operativt meningslös vid replay.
+
+STEG 1 i filen drop:ar alla permissiva policies ('Dropped 29 permissive
+policies'). Vid fresh replay är detta no-op eftersom de 29 permissiva
+policies fanns i migrations som nu är arkiverade (007_rls.sql,
+20260325000002 etc).
+
+STEG 2 skapar 13 'Anon insert X'-policies på olika tabeller. ALLA
+saknas i prod (verifierat via grep 2026-04-22). 100% dead.
+
+Dessutom har filen ordering-problem: 'CREATE POLICY ... ON notifications'
+körs innan notifications-tabellen skapas (20260422083000).
+
+Filen har historiskt värde som dokumentation av hardening-pass
+2026-03-27 men är inte del av nuvarande prod-state.
