@@ -40,26 +40,31 @@ BEGIN;
 -- - Payload: tom body (EF behover ingen input)
 -- - Auth: Bearer-token via SUPABASE_SERVICE_ROLE_KEY fran vault
 --
--- Om jobbet redan finns: cron.schedule ar idempotent
--- (ersatter befintligt)
-SELECT cron.schedule(
-  'reconcile-payouts-hourly',
-  '5 * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://urjeijcncsyuletprydy.supabase.co/functions/v1/reconcile-payouts',
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || (
-        SELECT decrypted_secret
-        FROM vault.decrypted_secrets
-        WHERE name = 'SUPABASE_SERVICE_ROLE_KEY'
-      ),
-      'Content-Type', 'application/json'
-    ),
-    body := '{}'::jsonb
-  );
-  $$
-);
+-- =============================================================
+-- Fas 2.X iter 42 (2026-04-22): cron.schedule kommenterad ut
+-- =============================================================
+-- pg_cron-extensionen finns bara i Supabase cloud, inte lokal CLI.
+-- Cron-jobbet finns i prod, skapas via Supabase Dashboard SQL Editor.
+-- =============================================================
+
+-- SELECT cron.schedule(
+--   'reconcile-payouts-hourly',
+--   '5 * * * *',
+--   $$
+--   SELECT net.http_post(
+--     url := 'https://urjeijcncsyuletprydy.supabase.co/functions/v1/reconcile-payouts',
+--     headers := jsonb_build_object(
+--       'Authorization', 'Bearer ' || (
+--         SELECT decrypted_secret
+--         FROM vault.decrypted_secrets
+--         WHERE name = 'SUPABASE_SERVICE_ROLE_KEY'
+--       ),
+--       'Content-Type', 'application/json'
+--     ),
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );
 
 -- ────────────────────────────────────────────────────────────
 -- Steg 3: payout_metrics_hourly-vy
@@ -118,13 +123,10 @@ GRANT SELECT ON payout_metrics_hourly TO service_role;
 -- ────────────────────────────────────────────────────────────
 DO $$
 DECLARE
-  cron_exists int;
   view_exists int;
 BEGIN
-  -- Cron job
-  SELECT COUNT(*) INTO cron_exists
-  FROM cron.job
-  WHERE jobname = 'reconcile-payouts-hourly';
+  -- Fas 2.X iter 42: cron-check borttagen (pg_cron saknas lokalt).
+  -- Behåll view-check eftersom den är relevant i lokal replay.
 
   -- Vy
   SELECT COUNT(*) INTO view_exists
@@ -132,20 +134,11 @@ BEGIN
   WHERE table_name = 'payout_metrics_hourly';
 
   -- Assertions
-  IF cron_exists = 0 THEN
-    RAISE EXCEPTION 'Migration failed: cron job reconcile-payouts-hourly not created';
-  END IF;
-
   IF view_exists = 0 THEN
     RAISE EXCEPTION 'Migration failed: view payout_metrics_hourly not created';
   END IF;
 
-  RAISE NOTICE 'OK: Fas 1.9 migration klar';
-  RAISE NOTICE '  - Cron job reconcile-payouts-hourly schemalagd (5 * * * *)';
-  RAISE NOTICE '  - payout_metrics_hourly-vy skapad';
-  RAISE NOTICE '';
-  RAISE NOTICE 'Forsta reconciliation-run: nasta hela timme + 5 min';
-  RAISE NOTICE 'Sjalvgaende activation efter 20 clean dry-runs (24h)';
+  RAISE NOTICE 'OK: Fas 1.9 migration klar (view only; cron skapas via Dashboard)';
 END $$;
 
 COMMIT;
