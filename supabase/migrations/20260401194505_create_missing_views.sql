@@ -43,23 +43,35 @@ SELECT
 FROM bookings;
 GRANT SELECT ON booking_confirmation TO anon, authenticated;
 
--- ── Block 4: Fixa booking_slots-vyn ────────────────────────
--- Gamla vyn selekterade date/time/hours (saknas). Alias till korrekt kolumnnamn.
--- time_end beräknas eftersom kolumnen saknas i tabellen.
-CREATE OR REPLACE VIEW booking_slots AS
-SELECT
-  cleaner_id,
-  booking_date                                                              AS date,
-  booking_time                                                              AS time,
-  booking_hours                                                             AS hours,
-  COALESCE(
-    time_end,
-    (booking_time::time + (booking_hours * interval '1 hour'))::text
-  )                                                                         AS time_end
-FROM bookings
-WHERE payment_status = 'paid'
-  AND status        != 'avbokad';
-GRANT SELECT ON booking_slots TO anon, authenticated;
+-- ── Block 4: FLYTTAD (Fas 2.X iter 26, 2026-04-22) ─────────
+-- Ursprungligen: CREATE OR REPLACE VIEW booking_slots som alias till
+-- bookings(booking_date, booking_time, booking_hours).
+--
+-- PROBLEM: Prod har booking_slots som riktig TABELL (rad 1521 i
+-- prod-schema.sql), inte VIEW. Prod har sync_booking_to_slot-trigger
+-- som upprätthåller tabellens data från bookings-INSERTs.
+--
+-- Dessutom försökte VIEW:n använda time_end-kolumn som inte finns.
+-- Time_end-infrastrukturen arkiverades i Fas 2.X iter 15
+-- (20260326800001_booking_time_slots.sql — 100% dead mot prod).
+--
+-- Hela Block 4 är arkitektoniskt inkompatibelt med prod och kommenterat ut.
+-- Ursprungligt innehåll bevarat nedan som kommentar för audit-trail.
+--
+-- CREATE OR REPLACE VIEW booking_slots AS
+-- SELECT
+--   cleaner_id,
+--   booking_date                                                              AS date,
+--   booking_time                                                              AS time,
+--   booking_hours                                                             AS hours,
+--   COALESCE(
+--     time_end,
+--     (booking_time::time + (booking_hours * interval '1 hour'))::text
+--   )                                                                         AS time_end
+-- FROM bookings
+-- WHERE payment_status = 'paid'
+--   AND status        != 'avbokad';
+-- GRANT SELECT ON booking_slots TO anon, authenticated;
 
 -- ── Block 5: Skapa v_cleaners_for_booking ──────────────────
 -- Vyn saknades helt. boka.html hämtar städare härifrån (steg 2+3).
