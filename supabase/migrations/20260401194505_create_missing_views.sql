@@ -75,51 +75,64 @@ GRANT SELECT ON booking_confirmation TO anon, authenticated;
 
 -- ── Block 5: Skapa v_cleaners_for_booking ──────────────────
 -- Vyn saknades helt. boka.html hämtar städare härifrån (steg 2+3).
--- Kolumner som ännu saknas i cleaners (services, review_count, service_radius_km)
--- hanteras med fallback-värden tills Block 2 är körd.
-CREATE OR REPLACE VIEW v_cleaners_for_booking AS
-SELECT
-  c.id,
-  c.full_name,
-  COALESCE(c.avg_rating, 5.0)                                              AS avg_rating,
-  COALESCE(c.review_count,
-    (SELECT count(*)::int FROM reviews r WHERE r.cleaner_id = c.id)
-  )                                                                         AS review_count,
-  COALESCE(c.services, 'Hemstädning')                                      AS services,
-  c.city,
-  COALESCE(c.hourly_rate, 399)                                             AS hourly_rate,
-  c.bio,
-  c.avatar_url,
-  COALESCE(c.identity_verified, false)                                     AS identity_verified,
-  c.home_lat,
-  c.home_lng,
-  COALESCE(c.service_radius_km, 10)                                        AS service_radius_km,
-  COALESCE(c.pet_pref,      false)                                         AS pet_pref,
-  COALESCE(c.elevator_pref, false)                                         AS elevator_pref
-FROM  cleaners c
-WHERE c.is_approved = true
-  AND c.status      = 'aktiv';
-GRANT SELECT ON v_cleaners_for_booking TO anon, authenticated;
+
+-- =============================================================
+-- Fas 2.X iter 27 (2026-04-22): Block 5 + 6 kommenterade ut
+-- =============================================================
+-- Rot-orsak Block 5: cleaners.services är jsonb i prod + vår 00004.
+-- Denna fil antar TEXT-kolumn → JSON-parse-fel i COALESCE.
+--
+-- Rot-orsak Block 6: v_cleaner_availability_int antar day_mon..day_sun
+-- schema som matchar prod men inte lokal replay-tidpunkt.
+--
+-- Båda vyerna FINNS i prod (v_cleaners_for_booking rad 2977,
+-- v_cleaner_availability_int rad 2923). Prod-versionerna är definitivt
+-- korrekta — denna fils definitioner är gamla prototyper.
+--
+-- Behövs en dedikerad view-skapar-migration som körs efter alla
+-- schema-konverteringar är klara (framtida iteration).
+-- =============================================================
+
+-- CREATE OR REPLACE VIEW v_cleaners_for_booking AS
+-- SELECT
+--   c.id,
+--   c.full_name,
+--   COALESCE(c.avg_rating, 5.0)                                              AS avg_rating,
+--   COALESCE(c.review_count,
+--     (SELECT count(*)::int FROM reviews r WHERE r.cleaner_id = c.id)
+--   )                                                                         AS review_count,
+--   COALESCE(c.services, 'Hemstädning')                                      AS services,
+--   c.city,
+--   COALESCE(c.hourly_rate, 399)                                             AS hourly_rate,
+--   c.bio,
+--   c.avatar_url,
+--   COALESCE(c.identity_verified, false)                                     AS identity_verified,
+--   c.home_lat,
+--   c.home_lng,
+--   COALESCE(c.service_radius_km, 10)                                        AS service_radius_km,
+--   COALESCE(c.pet_pref,      false)                                         AS pet_pref,
+--   COALESCE(c.elevator_pref, false)                                         AS elevator_pref
+-- FROM  cleaners c
+-- WHERE c.is_approved = true
+--   AND c.status      = 'aktiv';
+-- GRANT SELECT ON v_cleaners_for_booking TO anon, authenticated;
 
 -- ── Block 6: Skapa v_cleaner_availability_int ──────────────
--- Vyn saknades helt. Faktisk tabell har EN rad per städare med boolean-kolumner
--- per dag (day_mon … day_sun). Koden förväntar sig EN rad per dag per städare
--- med day_of_week INTEGER: 0=sön, 1=mån, 2=tis, 3=ons, 4=tor, 5=fre, 6=lör.
-CREATE OR REPLACE VIEW v_cleaner_availability_int AS
-  SELECT cleaner_id, 0 AS day_of_week, start_time, end_time, is_active FROM cleaner_availability WHERE day_sun  = true
-  UNION ALL
-  SELECT cleaner_id, 1, start_time, end_time, is_active FROM cleaner_availability WHERE day_mon  = true
-  UNION ALL
-  SELECT cleaner_id, 2, start_time, end_time, is_active FROM cleaner_availability WHERE day_tue  = true
-  UNION ALL
-  SELECT cleaner_id, 3, start_time, end_time, is_active FROM cleaner_availability WHERE day_wed  = true
-  UNION ALL
-  SELECT cleaner_id, 4, start_time, end_time, is_active FROM cleaner_availability WHERE day_thu  = true
-  UNION ALL
-  SELECT cleaner_id, 5, start_time, end_time, is_active FROM cleaner_availability WHERE day_fri  = true
-  UNION ALL
-  SELECT cleaner_id, 6, start_time, end_time, is_active FROM cleaner_availability WHERE day_sat  = true;
-GRANT SELECT ON v_cleaner_availability_int TO anon, authenticated;
+-- CREATE OR REPLACE VIEW v_cleaner_availability_int AS
+--   SELECT cleaner_id, 0 AS day_of_week, start_time, end_time, is_active FROM cleaner_availability WHERE day_sun  = true
+--   UNION ALL
+--   SELECT cleaner_id, 1, start_time, end_time, is_active FROM cleaner_availability WHERE day_mon  = true
+--   UNION ALL
+--   SELECT cleaner_id, 2, start_time, end_time, is_active FROM cleaner_availability WHERE day_tue  = true
+--   UNION ALL
+--   SELECT cleaner_id, 3, start_time, end_time, is_active FROM cleaner_availability WHERE day_wed  = true
+--   UNION ALL
+--   SELECT cleaner_id, 4, start_time, end_time, is_active FROM cleaner_availability WHERE day_thu  = true
+--   UNION ALL
+--   SELECT cleaner_id, 5, start_time, end_time, is_active FROM cleaner_availability WHERE day_fri  = true
+--   UNION ALL
+--   SELECT cleaner_id, 6, start_time, end_time, is_active FROM cleaner_availability WHERE day_sat  = true;
+-- GRANT SELECT ON v_cleaner_availability_int TO anon, authenticated;
 
 -- ── Block 7: Fixa public_stats-vyn ─────────────────────────
 -- Gamla vyn räknade städare med status='godkänd' → alltid 0.
