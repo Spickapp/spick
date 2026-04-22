@@ -33,3 +33,46 @@ INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('YYYYMMDDHHMMSS', 'fas_2_1_<tabell>')
 ON CONFLICT DO NOTHING;
 ```
+
+## Policies separat från CREATE TABLE
+
+**Lärdom 2026-04-22:** CREATE POLICY validerar tabell-refs INLINE vid CREATE.
+Om policy refererar annan tabell i USING-klausul/subquery, måste den tabellen
+redan existera när policy-migrationen körs.
+
+**Konsekvens:** Policies kan INTE definieras i samma migration som CREATE TABLE
+om policies refererar andra tabeller.
+
+**Mönster:**
+
+1. Tabell-migration: CREATE TABLE + constraints + indexes + RLS ENABLE + grants
+2. Separat policies-migration (kör EFTER alla tabeller): DROP POLICY IF EXISTS + CREATE POLICY
+
+**Exempel:** Se `20260422130000_fas_2_1_1_all_policies.sql` som konsoliderar
+79 policies för 16 §2.1.1-tabeller.
+
+## Functions med forward-refs: använd plpgsql
+
+**Lärdom 2026-04-22:** `CREATE FUNCTION ... LANGUAGE sql` parsar body INLINE vid
+CREATE. Forward-refs till ännu-ej-existerande tabeller/functions failar.
+
+**LANGUAGE plpgsql** har sen binding — body parsas vid första körning.
+
+**Mönster:**
+
+För functions som refererar framtida tabeller i samma migration-batch:
+
+```sql
+-- AVVIKELSE från prod: LANGUAGE plpgsql istället för sql
+-- Skäl: forward-ref-tolerans för migrations-replay
+CREATE OR REPLACE FUNCTION "public"."some_func"() RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+BEGIN
+    RETURN EXISTS (SELECT 1 FROM future_table WHERE ...);
+END;
+$$;
+```
+
+Dokumentera avvikelsen från prod i migrationens kommentar. Accepterar
+drift-check false positive tills prod uppgraderas eller accepteras.
