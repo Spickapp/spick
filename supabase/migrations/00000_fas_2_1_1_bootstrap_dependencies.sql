@@ -105,6 +105,20 @@ END $$;
 CREATE INDEX IF NOT EXISTS "idx_spark_levels_points"
     ON "public"."spark_levels" USING "btree" ("min_points");
 
+-- ── receipt_number_seq ──────────────────────────────────────
+-- Standalone sequence utan ägar-tabell. Används av
+-- generate_receipt_number() EF-function (KV-YYYY-00001 format).
+-- Primärkälla: prod-schema.sql rad 2542-2550.
+-- Skapad i prod via Studio — aldrig migrerad. Hygien-task #28.
+CREATE SEQUENCE IF NOT EXISTS "public"."receipt_number_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE "public"."receipt_number_seq" OWNER TO "postgres";
+
 -- ── subscriptions ───────────────────────────────────────
 -- FK från bookings.subscription_id.
 -- Primärkälla: prod-schema.sql rad 2712-2761
