@@ -47,3 +47,25 @@ existerar i prod (prod har `customer_email` sedan schema-ändring).
 **Om du behöver återställa någon policy:** Titta i
 `20260422130000_fas_2_1_1_all_policies.sql` — det är nuvarande
 bookings-policies (14 st) konsoliderade från prod.
+
+### 20260325000003_rut_claims.sql (arkiverad 2026-04-22)
+
+**Varför:** Hela migrationen är dead code mot nuvarande prod:
+
+1. Skapar `rut_claims`-tabell som inte finns i prod (RUT-infrastruktur
+   är avstängd tills Fas 7.5, se userMemories).
+2. ADD:ar 4 kolumner till bookings: `rut_claim_id`, `rut_claim_status`,
+   `rut_claim_error`, `rut_submitted_at` — alla saknas i prod.
+3. Använder ogiltig PG-syntax: `CREATE POLICY IF NOT EXISTS`.
+
+Prod-bookings har istället `rut_amount` (integer) +
+`rut_application_status` (text med CHECK constraint) — dessa finns
+i `00005_fas_2_1_bookings.sql` från retroaktiv §2.1.1-audit.
+
+**Fas 2.X Replayability:** Filen blockerade db reset på rad 30 med
+"syntax error at or near NOT". Arkiverad för att låta replay fortsätta.
+
+**När RUT-infrastruktur ska byggas (Fas 7.5):**
+- Bygg ny migration med fräsch rut_claims-schema
+- Matcha aktuellt Skatteverket-API-kontrakt
+- Se `docs/audits/2026-04-23-rut-infrastructure-decision.md`
