@@ -72,7 +72,8 @@ CREATE TRIGGER booking_customer_profile_trigger
 -- FIX 2: bookings.name är NOT NULL men E2E skickar inte den
 -- (customer_name är den faktiska kolumnen, name är legacy)
 -- ============================================================
-ALTER TABLE bookings ALTER COLUMN name DROP NOT NULL;
+-- Fas 2.X iter 16 (2026-04-22): 'name' finns inte i prod (legacy).
+-- ALTER TABLE bookings ALTER COLUMN name DROP NOT NULL;
 
 -- Aktivera customer_profile_trigger
 ALTER TABLE bookings ENABLE TRIGGER booking_customer_profile_trigger;
@@ -98,5 +99,7 @@ CREATE POLICY "bookings_insert_open" ON bookings
 -- FIX 4: Legacy NOT NULL-kolumner blockerade INSERT från app-koden
 -- customer_email och customer_name är de faktiska kolumnerna
 -- email och name är legacy-duplikat som sätts automatiskt av boka.html men inte av E2E
-ALTER TABLE bookings ALTER COLUMN email DROP NOT NULL;
-ALTER TABLE bookings ALTER COLUMN "name" DROP NOT NULL;
+-- Fas 2.X iter 16: 'email' finns inte i prod (legacy, ersatt av customer_email).
+-- ALTER TABLE bookings ALTER COLUMN email DROP NOT NULL;
+-- Fas 2.X iter 16: 'name' finns inte i prod (legacy).
+-- ALTER TABLE bookings ALTER COLUMN "name" DROP NOT NULL;
