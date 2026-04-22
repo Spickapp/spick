@@ -3,12 +3,16 @@
 **Senaste verifiering:** 2026-04-24 (Sprint 1 Dag 1 — PNR-fält avstängt i boka.html)
 **Status:** STABILISERAT — ackumulation stoppad. Befintliga 36 rader kvarstår för GDPR-beslut.
 
-## Nuläge (verifierat i PROD)
+## Nuläge (verifierat i PROD 2026-04-24)
 
 `bookings.customer_pnr` innehåller 36 rader:
-- 24 rader × 56 tecken (troligen AES-krypterad, nyckel okänd) — alla farrehagge@gmail.com testdata
-- 11 rader × 12 tecken (**KLARTEXT** YYYYMMDDNNNN) — 3 riktiga kunder
+- 27 rader × 56 tecken (troligen AES-krypterad, nyckel okänd) — alla farrehagge@gmail.com testdata + ev. nyligen konverterade
+- 8 rader × 12 tecken (**KLARTEXT** YYYYMMDDNNNN) — 3 riktiga kunder
 - 1 rad × 48 tecken (annan kryptering/hash) — zivar.majid, riktig person
+
+**Förändring sedan 23 apr kväll:** 3 rader har konverterats från 12-tecken (klartext) till 56-tecken (krypterat). Orsak okänd — kan vara auto-process eller manuell UPDATE. Behöver utredas i Fas 7.5 Åtgärd 2.
+
+**Verifierat Sprint 1 Dag 1-fix håller:** 0 nya customer_pnr-rader sedan 2026-04-24 (query: `COUNT(*) FILTER (WHERE created_at >= '2026-04-24')`).
 
 `bookings.customer_pnr_hash` innehåller 0 rader.
 
