@@ -261,3 +261,23 @@ reviews.booking_id är TEXT vid denna replay-punkt medan bookings.id
 
 Reviews konverteras till VIEW i 20260422131000 (Fas 2.X iter 4),
 så alla reviews-TABLE-policies raderas ändå.
+
+### 20260328100001_booking_integrity.sql (arkiverad 2026-04-22)
+
+**Varför:** 100% dead mot prod.
+
+Filen skapar:
+- idx_unique_booking_slot (legacy date/time) — SAKNAS
+- idx_bookings_cleaner_date (partial) — SAKNAS
+- idx_bookings_pending_cleanup — SAKNAS
+- cleanup_orphan_bookings function — SAKNAS
+- reviews.google_review_requested kolumn — SAKNAS
+
+Dessutom använder legacy-kolumnnamn (date, time).
+
+Filens kommentar 'RUN IN SUPABASE SQL EDITOR' stämmer med prototyp-
+mönster — skrevs men applicerades aldrig till prod.
+
+Prod hanterar dubbelbokning via booking_slots-tabell (rad 1521) +
+calendar_events no_booking_overlap EXCLUDE constraint (rad 3489) —
+helt annan arkitektur än denna fil föreslår.
