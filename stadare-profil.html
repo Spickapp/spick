@@ -304,6 +304,36 @@ var svcIcons = {'Hemstädning':'🏠','Storstädning':'✨','Flyttstädning':'�
 var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
 function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
 
+// Sprint Prof-2a: Dynamic accent-color från entitetens namn (hash→HSL).
+// Undviker röd (0-30, 330-360) och gul (45-65) för professionell look.
+// Deterministisk — samma namn ger samma färg varje gång.
+function nameToColor(name) {
+  var hash = 0;
+  for (var i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  var h = Math.abs(hash) % 360;
+  if (h < 30) h += 120;
+  if (h > 330) h -= 120;
+  if (h > 45 && h < 65) h += 80;
+  return {
+    main:  'hsl(' + h + ', 55%, 32%)',
+    light: 'hsl(' + h + ', 55%, 42%)',
+    pale:  'hsl(' + h + ', 45%, 95%)'
+  };
+}
+
+// Sprint Prof-2a: ease-out-cubic count-up-animation för stats.
+function animateCounter(el, target) {
+  if (!el || target <= 0) return;
+  var dur = 1200, start = performance.now();
+  function step(now) {
+    var t = Math.min((now - start) / dur, 1);
+    t = 1 - Math.pow(1 - t, 3); // easeOutCubic
+    el.textContent = Math.round(target * t);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 async function loadProfile() {
   var params = new URLSearchParams(location.search);
   var slug = params.get('s') || params.get('slug');
@@ -321,6 +351,12 @@ async function loadProfile() {
   if (!c) { showError('Städaren hittades inte eller är inte aktiv.'); return; }
   _cleaner = c;
 
+  // Sprint Prof-2a: Dynamic accent från cleaner-namn (initialvärde — overrides
+  // senare med företagsnamn om is_company_owner). Ger varje städare unik signatur.
+  var _initialPalette = nameToColor(c.full_name || 'Spick');
+  document.documentElement.style.setProperty('--g', _initialPalette.main);
+  document.documentElement.style.setProperty('--gm', _initialPalette.light);
+
   // ── FÖRETAGSPROFIL ────────────────────────────
   var _isCompany = c.is_company_owner && c.company_id;
   var _company = null;
@@ -333,6 +369,14 @@ async function loadProfile() {
       var compArr = compRes.ok ? await compRes.json() : [];
       _company = compArr[0] || null;
     } catch(e) {}
+
+    // Sprint Prof-2a: override initial cleaner-palette med företagsnamn.
+    // För VD-profiler är företaget den visuella identiteten.
+    if (_company && _company.name) {
+      var _companyPalette = nameToColor(_company.name);
+      document.documentElement.style.setProperty('--g', _companyPalette.main);
+      document.documentElement.style.setProperty('--gm', _companyPalette.light);
+    }
 
     // Hämta teammedlemmar
     try {
@@ -440,7 +484,13 @@ async function loadProfile() {
     }
   } catch(e) { console.warn('Detail ratings:', e); }
 
-  document.getElementById('rv-jobs').textContent = (c.completed_jobs > 0) ? c.completed_jobs : 'Ny';
+  // Sprint Prof-2a: count-up-animation för utförda jobb (om > 0)
+  var rvJobsEl = document.getElementById('rv-jobs');
+  if (c.completed_jobs > 0) {
+    animateCounter(rvJobsEl, c.completed_jobs);
+  } else {
+    rvJobsEl.textContent = 'Ny';
+  }
   if (c.member_since) {
     var ms = new Date(c.member_since);
     var mNames = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
