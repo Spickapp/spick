@@ -50,17 +50,6 @@ CREATE INDEX IF NOT EXISTS "idx_auth_audit_user"
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."auth_audit_log" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin reads auth_audit_log" ON "public"."auth_audit_log";
-CREATE POLICY "Admin reads auth_audit_log" ON "public"."auth_audit_log"
-    FOR SELECT TO "authenticated"
-    USING ("public"."is_admin"());
-
-DROP POLICY IF EXISTS "Service role writes auth_audit_log" ON "public"."auth_audit_log";
-CREATE POLICY "Service role writes auth_audit_log" ON "public"."auth_audit_log"
-    TO "service_role"
-    USING (true) WITH CHECK (true);
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."auth_audit_log" TO "service_role";
 GRANT SELECT ON TABLE "public"."auth_audit_log" TO "authenticated";

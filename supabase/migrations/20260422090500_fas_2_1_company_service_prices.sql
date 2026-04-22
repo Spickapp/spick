@@ -46,37 +46,6 @@ CREATE INDEX IF NOT EXISTS "idx_company_svc_prices"
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."company_service_prices" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin manages all company prices" ON "public"."company_service_prices";
-CREATE POLICY "Admin manages all company prices" ON "public"."company_service_prices"
-    TO "authenticated"
-    USING ("public"."is_admin"())
-    WITH CHECK ("public"."is_admin"());
-
-DROP POLICY IF EXISTS "Public read company_service_prices — intentional" ON "public"."company_service_prices";
-CREATE POLICY "Public read company_service_prices — intentional" ON "public"."company_service_prices"
-    FOR SELECT TO "authenticated", "anon"
-    USING (true);
-
-DROP POLICY IF EXISTS "Service role manages company_service_prices" ON "public"."company_service_prices";
-CREATE POLICY "Service role manages company_service_prices" ON "public"."company_service_prices"
-    TO "service_role"
-    USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "VD manages own company prices" ON "public"."company_service_prices";
-CREATE POLICY "VD manages own company prices" ON "public"."company_service_prices"
-    TO "authenticated"
-    USING (("company_id" IN (
-        SELECT "cleaners"."company_id"
-        FROM "public"."cleaners"
-        WHERE (("cleaners"."auth_user_id" = "auth"."uid"()) AND ("cleaners"."is_company_owner" = true))
-    )))
-    WITH CHECK (("company_id" IN (
-        SELECT "cleaners"."company_id"
-        FROM "public"."cleaners"
-        WHERE (("cleaners"."auth_user_id" = "auth"."uid"()) AND ("cleaners"."is_company_owner" = true))
-    )));
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT, MAINTAIN ON TABLE "public"."company_service_prices" TO "anon";
 GRANT ALL ON TABLE "public"."company_service_prices" TO "authenticated";

@@ -40,21 +40,5 @@ END $$;
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."guarantee_requests" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Anon insert guarantee requests" ON "public"."guarantee_requests";
-CREATE POLICY "Anon insert guarantee requests" ON "public"."guarantee_requests"
-    FOR INSERT TO "authenticated", "anon"
-    WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Service manage guarantee requests" ON "public"."guarantee_requests";
-CREATE POLICY "Service manage guarantee requests" ON "public"."guarantee_requests"
-    TO "service_role"
-    USING (true);
-
-DROP POLICY IF EXISTS "Service read guarantee requests" ON "public"."guarantee_requests";
-CREATE POLICY "Service read guarantee requests" ON "public"."guarantee_requests"
-    FOR SELECT TO "service_role"
-    USING (true);
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT ALL ON TABLE "public"."guarantee_requests" TO "service_role";

@@ -51,11 +51,5 @@ CREATE INDEX IF NOT EXISTS "idx_shortcodes_resource"
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."magic_link_shortcodes" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Service role manages magic_link_shortcodes" ON "public"."magic_link_shortcodes";
-CREATE POLICY "Service role manages magic_link_shortcodes" ON "public"."magic_link_shortcodes"
-    TO "service_role"
-    USING (true) WITH CHECK (true);
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."magic_link_shortcodes" TO "service_role";

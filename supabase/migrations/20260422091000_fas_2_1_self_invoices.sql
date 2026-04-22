@@ -76,21 +76,6 @@ CREATE INDEX IF NOT EXISTS "idx_self_invoices_status"
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."self_invoices" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Cleaners see own invoices" ON "public"."self_invoices";
-CREATE POLICY "Cleaners see own invoices" ON "public"."self_invoices"
-    FOR SELECT
-    USING (("cleaner_id" IN (
-        SELECT "cleaners"."id"
-        FROM "public"."cleaners"
-        WHERE ("cleaners"."auth_user_id" = "auth"."uid"())
-    )));
-
-DROP POLICY IF EXISTS "Service role full access" ON "public"."self_invoices";
-CREATE POLICY "Service role full access" ON "public"."self_invoices"
-    TO "service_role"
-    USING (true) WITH CHECK (true);
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT ON TABLE "public"."self_invoices" TO "authenticated";
 GRANT ALL ON TABLE "public"."self_invoices" TO "service_role";

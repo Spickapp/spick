@@ -28,17 +28,3 @@ END $$;
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."waitlist" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "admin_read_waitlist" ON "public"."waitlist";
-CREATE POLICY "admin_read_waitlist" ON "public"."waitlist"
-    FOR SELECT
-    USING ((("auth"."jwt"() ->> 'email'::"text") IN (
-        SELECT "admin_users"."email"
-        FROM "public"."admin_users"
-        WHERE ("admin_users"."is_active" = true)
-    )));
-
-DROP POLICY IF EXISTS "anon_insert_waitlist" ON "public"."waitlist";
-CREATE POLICY "anon_insert_waitlist" ON "public"."waitlist"
-    FOR INSERT
-    WITH CHECK (true);

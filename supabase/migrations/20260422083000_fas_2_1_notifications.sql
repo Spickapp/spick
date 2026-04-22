@@ -44,29 +44,6 @@ CREATE INDEX IF NOT EXISTS "idx_notif_cleaner"
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Auth updates notifications" ON "public"."notifications";
-CREATE POLICY "Auth updates notifications" ON "public"."notifications"
-    FOR UPDATE
-    USING (("cleaner_id" IN (
-        SELECT "cleaners"."id"
-        FROM "public"."cleaners"
-        WHERE ("cleaners"."auth_user_id" = "auth"."uid"())
-    )));
-
-DROP POLICY IF EXISTS "Cleaner sees own notifications" ON "public"."notifications";
-CREATE POLICY "Cleaner sees own notifications" ON "public"."notifications"
-    USING (("cleaner_id" IN (
-        SELECT "cleaners"."id"
-        FROM "public"."cleaners"
-        WHERE ("cleaners"."auth_user_id" = "auth"."uid"())
-    )));
-
-DROP POLICY IF EXISTS "Read own notifications" ON "public"."notifications";
-CREATE POLICY "Read own notifications" ON "public"."notifications"
-    FOR SELECT TO "authenticated"
-    USING (("cleaner_id" = "auth"."uid"()));
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT ON TABLE "public"."notifications" TO "anon";
 GRANT SELECT, UPDATE ON TABLE "public"."notifications" TO "authenticated";

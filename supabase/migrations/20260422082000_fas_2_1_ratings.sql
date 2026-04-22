@@ -54,26 +54,6 @@ CREATE INDEX IF NOT EXISTS "idx_ratings_cleaner" ON "public"."ratings" USING "bt
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."ratings" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Allow insert ratings" ON "public"."ratings";
-CREATE POLICY "Allow insert ratings" ON "public"."ratings"
-    FOR INSERT TO "authenticated", "anon"
-    WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Anon can read ratings" ON "public"."ratings";
-CREATE POLICY "Anon can read ratings" ON "public"."ratings"
-    FOR SELECT
-    USING (true);
-
-DROP POLICY IF EXISTS "Cleaner sees own ratings" ON "public"."ratings";
-CREATE POLICY "Cleaner sees own ratings" ON "public"."ratings"
-    FOR SELECT
-    USING (("cleaner_id" IN (
-        SELECT "cleaners"."id"
-        FROM "public"."cleaners"
-        WHERE ("cleaners"."auth_user_id" = "auth"."uid"())
-    )));
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT ON TABLE "public"."ratings" TO "anon";
 GRANT SELECT ON TABLE "public"."ratings" TO "authenticated";

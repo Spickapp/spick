@@ -40,37 +40,6 @@ END $$;
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."service_checklists" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies ─────────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin manages all service_checklists" ON "public"."service_checklists";
-CREATE POLICY "Admin manages all service_checklists" ON "public"."service_checklists"
-    TO "authenticated"
-    USING ("public"."is_admin"())
-    WITH CHECK ("public"."is_admin"());
-
-DROP POLICY IF EXISTS "Public read service_checklists" ON "public"."service_checklists";
-CREATE POLICY "Public read service_checklists" ON "public"."service_checklists"
-    FOR SELECT TO "authenticated", "anon"
-    USING (true);
-
-DROP POLICY IF EXISTS "Service role manages service_checklists" ON "public"."service_checklists";
-CREATE POLICY "Service role manages service_checklists" ON "public"."service_checklists"
-    TO "service_role"
-    USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "VD manages own company service_checklists" ON "public"."service_checklists";
-CREATE POLICY "VD manages own company service_checklists" ON "public"."service_checklists"
-    TO "authenticated"
-    USING (("company_id" IN (
-        SELECT "cleaners"."company_id"
-        FROM "public"."cleaners"
-        WHERE (("cleaners"."auth_user_id" = "auth"."uid"()) AND ("cleaners"."is_company_owner" = true))
-    )))
-    WITH CHECK (("company_id" IN (
-        SELECT "cleaners"."company_id"
-        FROM "public"."cleaners"
-        WHERE (("cleaners"."auth_user_id" = "auth"."uid"()) AND ("cleaners"."is_company_owner" = true))
-    )));
-
 -- ── Grants ───────────────────────────────────────────────
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."service_checklists" TO "authenticated";
 GRANT ALL ON TABLE "public"."service_checklists" TO "service_role";

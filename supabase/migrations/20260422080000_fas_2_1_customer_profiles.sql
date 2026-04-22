@@ -90,46 +90,6 @@ CREATE INDEX IF NOT EXISTS "idx_customer_profiles_stripe_customer"
 -- ── RLS ──────────────────────────────────────────────────
 ALTER TABLE "public"."customer_profiles" ENABLE ROW LEVEL SECURITY;
 
--- ── Policies (DROP + CREATE för idempotens) ──────────────
-
-DROP POLICY IF EXISTS "Admin SELECT customer profiles" ON "public"."customer_profiles";
-CREATE POLICY "Admin SELECT customer profiles" ON "public"."customer_profiles"
-    FOR SELECT TO "authenticated"
-    USING ((("auth"."jwt"() ->> 'email'::"text") IN (
-        SELECT "admin_users"."email"
-        FROM "public"."admin_users"
-    )));
-
-DROP POLICY IF EXISTS "Customer reads own profile" ON "public"."customer_profiles";
-CREATE POLICY "Customer reads own profile" ON "public"."customer_profiles"
-    FOR SELECT TO "authenticated"
-    USING (("auth_user_id" = "auth"."uid"()));
-
-DROP POLICY IF EXISTS "Customer updates own profile" ON "public"."customer_profiles";
-CREATE POLICY "Customer updates own profile" ON "public"."customer_profiles"
-    FOR UPDATE TO "authenticated"
-    USING (("auth_user_id" = "auth"."uid"()));
-
-DROP POLICY IF EXISTS "Owner reads own profile" ON "public"."customer_profiles";
-CREATE POLICY "Owner reads own profile" ON "public"."customer_profiles"
-    FOR SELECT TO "authenticated"
-    USING ((("auth_user_id" = "auth"."uid"())
-        OR ("email" = (("current_setting"('request.jwt.claims'::"text", true))::json ->> 'email'::"text"))));
-
-DROP POLICY IF EXISTS "Service role full profiles" ON "public"."customer_profiles";
-CREATE POLICY "Service role full profiles" ON "public"."customer_profiles"
-    TO "service_role"
-    USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "admin_reads_all_customer_profiles" ON "public"."customer_profiles";
-CREATE POLICY "admin_reads_all_customer_profiles" ON "public"."customer_profiles"
-    FOR SELECT TO "authenticated"
-    USING ((("auth"."jwt"() ->> 'email'::"text") IN (
-        SELECT "admin_users"."email"
-        FROM "public"."admin_users"
-        WHERE ("admin_users"."is_active" = true)
-    )));
-
 -- ── Grants ────────────────────────────────────────────────
 GRANT SELECT ON TABLE "public"."customer_profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."customer_profiles" TO "service_role";
