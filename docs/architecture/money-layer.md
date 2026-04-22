@@ -632,17 +632,22 @@ Klassificering hjälper callers (admin-mark-payouts-paid EF) avgöra retry-strat
 
 ## 6. Pricing-lookup-hierarki
 
-**Oförändrad från [pricing-resolver.ts:43-152](../../supabase/functions/_shared/pricing-resolver.ts:43)**. Designändring 2026-04-22: ursprungsplanen sa `_resolveBasePrice()` skulle flyttas in i money.ts — det skedde **inte**. pricing-resolver.ts är fortsatt egen fil och egen import för callers (booking-create m.fl.).
+**Uppdaterad 2026-04-24 (Sprint 1 Dag 2):** 6-stegs-hierarki med min-pris-guard + services-fallback (hygien #30-fix). Ursprungsplanen sa `_resolveBasePrice()` skulle flyttas in i money.ts — det skedde **inte**. pricing-resolver.ts är fortsatt egen fil och egen import för callers (booking-create m.fl.).
 
 ```
-1. company_service_prices (om companies.use_company_pricing=true)
-2. cleaner_service_prices (individpris)
-3. company_service_prices (fallback oavsett flaggan)
-4. cleaners.hourly_rate
-5. platform_settings.base_price_per_hour (default 399)
+1. company_service_prices (om companies.use_company_pricing=true)     → source='company_prices'
+2. cleaner_service_prices (individpris)                                → source='cleaner_prices'
+3. company_service_prices (fallback oavsett flaggan)                   → source='company_prices'
+4. cleaners.hourly_rate — ENDAST om >= platform_settings.min_hourly_rate → source='hourly_rate'
+5. services.default_hourly_price (NY Sprint 1 Dag 2)                   → source='service_default'
+6. platform_settings.base_price_per_hour (default 399)                 → source='fallback'
 ```
 
-Returnerar `PricingResult { basePricePerHour, pricePerSqm, priceType, source }`.
+**Min-pris-guard (Sprint 1 Dag 2):** Läser `platform_settings.min_hourly_rate` (default 200). Skyddar mot testdata/misstag där cleaner satt för lågt pris. Cleaners under min-gränsen faller genom till services.default_hourly_price istället för att debitera kund orimligt.
+
+**Hygien #30-fix:** Fönsterputs-testbokning 681aaa93 (2026-04-23) debiterades 100 kr/h (cleaner-solo-dubbletten) istället för 349 kr/h. Efter fix: cleaner.hourly_rate=100 → under min 200 → services.default_hourly_price=349 används.
+
+Returnerar `PricingResult { basePricePerHour, pricePerSqm, priceType, source, commissionPct }`.
 
 **Ansvarsfördelning:** pricing-resolver.ts löser **pris-per-tjänst per cleaner**. money.ts löser **commission/payout/transfer/RUT**. Båda läser `platform_settings.commission_standard` med samma fallback-mönster (kod-duplicering accepterad — pricing-resolver är defensiv vid pris-fallback medan money.ts är strikt vid commission-läsning).
 
@@ -1084,7 +1089,7 @@ Frontend-konsumenter får INTE läsa `platform_settings.commission_standard` dir
 **Sibling-bugs upptäckta under E2E-test (utanför R2-scope):**
 
 - **Duplicerade cleaner-rader** (hygien #29): Farhad Haghighi hade två cleaner-rader (solo 100 kr + företag 350 kr). Solo-raden raderad manuellt 23 apr.
-- **Pricing-resolver ignorerar `services.default_hourly_price`** (hygien #30): Fönsterputs-bokningen debiterades 100 kr/h istället för 349 kr/h pga fallback till `cleaner.hourly_rate` på solo-dubbletten. Separat från R2.
+- ~~**Pricing-resolver ignorerar `services.default_hourly_price`** (hygien #30)~~: ✅ STÄNGD Sprint 1 Dag 2 (2026-04-24). Min-pris-guard + services-fallback införda. 13 unit-tester verifierar 6-stegs-hierarkin.
 - **Hours-drift frontend vs backend** (hygien #31): boka.html visade `1h`, booking-create sparade `2.0h`. UX-bug, icke-kritisk.
 
 **Viktigt:** R2-kvittot (`KV-2026-00001`) renderade **korrekt mot den debiterade summan**. Bokföringslag-compliance är intakt oavsett pricing-felet — kvittot är ett sant uttryck av transaktionen som den skedde. Pricing-bugen är sibling, inte regression i R2. Löses i §2.6 "Pricing-konsistens audit" eller separat hygien-sprint.
