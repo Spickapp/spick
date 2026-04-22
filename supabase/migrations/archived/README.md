@@ -118,3 +118,26 @@ operation. Migrationen representerar en övergiven prototyp.
 matchar nuvarande prod-schema (5 kolumner). Aktuella referrals-
 policies finns i 20260422130000_fas_2_1_1_all_policies.sql (om några)
 annars i fresh prod-dump.
+
+### 20260326000005_all_missing_columns.sql (arkiverad 2026-04-22)
+
+**Varför:** Hela filen är praktiskt dead mot prod trots den skapar flera
+schema-objekt:
+
+1. **ALTER TABLE bookings (24 rader):** ADD COLUMN-operationer som alla
+   antingen redan finns i `00005_fas_2_1_bookings.sql` (retroaktiv
+   prod-snapshot) eller saknas i prod. Redundant.
+
+2. **8 CREATE INDEX:** 6 saknas i prod, 2 med fel kolumnnamn.
+   - idx_bookings_email → bookings har inte 'email' (har 'customer_email')
+   - idx_bookings_date → prod har index men på 'booking_date', inte 'date'
+   - 5 andra index: alla saknas helt i prod
+
+3. **CREATE TABLE customer_reports:** Hela tabellen saknas i prod.
+
+4. **2 CREATE POLICY:** Båda saknas i prod.
+
+Migrationens INTENT reflekterar en prototyp-fas som omfattande
+reviderades innan prod-deploy.
+
+**Fas 2.X Replayability:** Blockerade db reset på rad 25. Arkiverad.
