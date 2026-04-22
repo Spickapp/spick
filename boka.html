@@ -578,15 +578,12 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </div>
           </div>
 
-          <!-- PNR för RUT -->
-          <div class="pnr-wrap" id="pnr-wrap">
+          <!-- PNR för RUT — AVSTÄNGT Sprint 1 Dag 1 (2026-04-24). Se docs/sanning/pnr-och-gdpr.md + docs/planning/todo-pnr-infrastructure-2026-04-23.md. Återaktiveras i Fas 7.5 efter §7.5.1 Skatteverket-API-research. -->
+          <div class="pnr-wrap" id="pnr-wrap" data-fas-7-5-disabled="true" style="display:none !important">
             <div class="f">
-              <label>Personnummer <span style="color:var(--g);font-weight:700">— du sparar upp till 50% med RUT ✓</span></label>
-              <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="width:100%" oninput="validatePNR(this.value)">
-              <div id="pnr-hint" class="field-hint">🔒 Ditt personnummer krypteras och används endast för RUT-ansökan till Skatteverket.</div>
-              <div style="margin-top:8px;padding:10px 12px;background:#F0FDF4;border-radius:8px;font-size:.75rem;color:#065F46;line-height:1.6">
-                ✅ De allra flesta får RUT-avdrag. Max 75&nbsp;000&nbsp;kr/år per person. Vid frågor hjälper vi dig.
-              </div>
+              <label>Personnummer</label>
+              <input type="text" id="pnr" placeholder="YYYYMMDD-XXXX" style="width:100%" oninput="validatePNR(this.value)" disabled>
+              <div id="pnr-hint" class="field-hint">Personnummer-fält tillfälligt avstängt. RUT-rabatten tillämpas ändå — vi samlar in personnummer senare om det behövs.</div>
             </div>
           </div>
 
@@ -785,6 +782,13 @@ function syncRutToggleVisibility() {
 // Säker fallback när DB-kedjan bryts. Ej default-pris, ej business-konfig.
 // Primärväg: service_price (DB) > cleaner.hourly_rate (DB) > SAFETY_FALLBACK_RATE
 const SAFETY_FALLBACK_RATE = 350;
+
+// ── FAS 7.5 KILL-SWITCH ──────────────────────────────────────────────────────
+// PNR-fält avstängt Sprint 1 Dag 1 (2026-04-24) pga GDPR-fynd: 11 klartext-PNR
+// från 3 riktiga kunder + utfästelse om kryptering som inte stämde.
+// Återaktiveras i Fas 7.5 efter §7.5.1 Skatteverket-API-research + rätt kryptering.
+// Primärkällor: docs/sanning/pnr-och-gdpr.md, docs/planning/todo-pnr-infrastructure-2026-04-23.md
+const PNR_FIELD_DISABLED = true;
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state = {
@@ -1203,10 +1207,10 @@ function setCustomerType(type) {
   var addrInput = document.getElementById('step1-address');
   if (addrInput) addrInput.placeholder = type === 'foretag' ? 'Kontorsadress, t.ex. Kungsgatan 10' : 'Gatunamn + nummer, t.ex. Kungsgatan 10A';
 
-  // PNR-fält: visa/dölj (steg 3)
+  // PNR-fält: visa/dölj (steg 3) — avstängt Fas 7.5-blocker
   var pnrWrap = document.getElementById('pnr-wrap');
   if (pnrWrap && type === 'foretag') pnrWrap.style.display = 'none';
-  if (pnrWrap && type === 'privat') pnrWrap.style.display = '';
+  if (pnrWrap && type === 'privat' && !PNR_FIELD_DISABLED) pnrWrap.style.display = '';
 
   // RUT-toggle: dölj för företag
   var rutToggle = document.getElementById('rut-toggle');
@@ -2488,6 +2492,7 @@ let useRut = true;
 // Visa personnummer-fältet direkt om RUT är aktivt (default)
 document.addEventListener('DOMContentLoaded', () => {
   const pw = document.getElementById('pnr-wrap');
+  if (PNR_FIELD_DISABLED) return; // Fas 7.5-blocker
   if (pw && useRut) pw.style.display = 'block';
 });
 function toggleRut() {
@@ -2495,7 +2500,9 @@ function toggleRut() {
   state.useRut = useRut;
   const tog = document.getElementById('rut-toggle');
   tog.classList.toggle('off', !useRut);
-  document.getElementById('pnr-wrap').style.display = useRut ? 'block' : 'none';
+  if (!PNR_FIELD_DISABLED) {
+    document.getElementById('pnr-wrap').style.display = useRut ? 'block' : 'none';
+  }
   updateSidebar();
 }
 
@@ -2642,8 +2649,8 @@ function goStep4() {
     address: { el: document.getElementById('address'), val: document.getElementById('address').value.trim(), label: 'Adress' },
   };
   
-  // PNR only required if RUT enabled
-  if (useRut) {
+  // PNR only required if RUT enabled (avstängt Fas 7.5-blocker)
+  if (useRut && !PNR_FIELD_DISABLED) {
     document.getElementById('pnr-wrap').style.display = 'block';
     fields.pnr = { el: document.getElementById('pnr'), val: document.getElementById('pnr').value.trim(), label: 'Personnummer' };
   }
@@ -2742,8 +2749,8 @@ function goStep4() {
     }
   }
 
-  // PNR format (if RUT, only for privat)
-  if (state.customerType === 'privat') {
+  // PNR format (if RUT, only for privat) — skippas när fältet är avstängt (Fas 7.5-blocker)
+  if (state.customerType === 'privat' && !PNR_FIELD_DISABLED) {
     if (useRut && fields.pnr && fields.pnr.val) {
       const digits = fields.pnr.val.replace(/[^0-9]/g, '');
       if (digits.length !== 10 && digits.length !== 12) {
@@ -2806,7 +2813,7 @@ function goStep4() {
   state.email = fields.email.val;
   state.phone = fields.phone.val;
   state.address = fields.address.val;
-  state.pnr = useRut ? fields.pnr.val : '';
+  state.pnr = (useRut && !PNR_FIELD_DISABLED && fields.pnr) ? fields.pnr.val : '';
   state.customerNotes = document.getElementById('customer-notes')?.value?.trim() || '';
 
   buildConfirmSummary();
@@ -2937,9 +2944,9 @@ async function doBook() {
   const rut   = useRut ? Math.floor(gross * 0.5) : 0;
   const total = gross - rut;
   try {
-    // PNR skickas i klartext till booking-create EF (krypteras server-side).
-    // SHA-256 används INTE längre — Skatteverket kräver riktigt personnummer.
-    const rawPnr = (useRut && state.pnr) ? state.pnr.replace(/\D/g, '') : '';
+    // PNR-insamling AVSTÄNGD Sprint 1 Dag 1 (2026-04-24). Se PNR_FIELD_DISABLED ovan.
+    // Återaktiveras i Fas 7.5 med korrekt kryptering + ärlig kund-text.
+    const rawPnr = (useRut && state.pnr && !PNR_FIELD_DISABLED) ? state.pnr.replace(/\D/g, '') : '';
     // 2. Skapa bokning + Stripe-session via booking-create EF (single source of truth)
     const bcRes = await fetch(`${SUPA}/functions/v1/booking-create`, {
       method: 'POST',
