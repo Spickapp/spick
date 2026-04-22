@@ -10,21 +10,35 @@
 -- Referens: docs/audits/2026-04-18-rls-full-audit.md Del A
 -- ============================================================
 
-BEGIN;
+-- =============================================================
+-- Fas 2.X iter 34 (2026-04-22): policies kommenterade ut
+-- =============================================================
+-- Orsak: self_invoices-tabellen skapas i 20260422091000 som sorteras
+-- EFTER denna. DROP/CREATE POLICY failar pga forward-ref till tabell.
+--
+-- Verifiering mot prod:
+-- - 'Service role full access' FINNS (rad 4996)
+-- - 'Anon read all invoices' SAKNAS (drop:ad via annan väg)
+--
+-- Täcks redan av 20260422130000_fas_2_1_1_all_policies.sql som
+-- konsoliderar alla prod-policies. Denna fil duplicerar det work.
+-- =============================================================
 
--- Stäng anon-läckan
-DROP POLICY IF EXISTS "Anon read all invoices" ON self_invoices;
-
--- Återskapa service_role-policy korrekt scopad
-DROP POLICY IF EXISTS "Service role full access" ON self_invoices;
-
-CREATE POLICY "Service role full access"
-  ON self_invoices FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
-
-COMMIT;
+-- BEGIN;
+--
+-- -- Stäng anon-läckan
+-- DROP POLICY IF EXISTS "Anon read all invoices" ON self_invoices;
+--
+-- -- Återskapa service_role-policy korrekt scopad
+-- DROP POLICY IF EXISTS "Service role full access" ON self_invoices;
+--
+-- CREATE POLICY "Service role full access"
+--   ON self_invoices FOR ALL
+--   TO service_role
+--   USING (true)
+--   WITH CHECK (true);
+--
+-- COMMIT;
 
 -- Verifiering:
 -- SET ROLE anon; SELECT COUNT(*) FROM self_invoices;  -- 0
