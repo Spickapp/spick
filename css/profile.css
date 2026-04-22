@@ -1,0 +1,325 @@
+/* ═══════════════════════════════════════════════════
+   css/profile.css — Spick profil-sidor design-system
+   ═══════════════════════════════════════════════════
+   Delad stil för foretag.html (/f/<slug>) och
+   stadare-profil.html (/s/<slug>).
+
+   Sprint Prof-1 (2026-04-25): konsolidera varierande
+   CSS-variabler mellan filerna + etablera gemensam
+   vokabulär för framtida feature-paritet (Prof-2/3)
+   och data-layer-unifiering (Prof-4).
+
+   Arkitektur:
+   1. Kanoniska --spick-*-variabler (single source of truth)
+   2. Bakåtkompat-aliases (--g, --accent etc.) så filerna
+      fungerar utan JS/CSS-ändringar idag
+   3. Shared animations (fadeUp, pulse) dedupliceras
+   4. Utility primitives i .spick-*-namespace för framtida bruk
+
+   Zero-risk: HTML-filerna har egna <style> som kan
+   override denna. Ingen breaking change.
+
+   Läs docs/architecture/shadow-mode-analysis.md för
+   övergripande profil-strategi (Alt B stegvis konvergens).
+   ═══════════════════════════════════════════════════ */
+
+/* ═══ 1. DESIGN-SYSTEM VARIABLER (kanoniska) ═══ */
+:root {
+  /* Brand-färger */
+  --spick-primary:        #0F6E56;
+  --spick-primary-hover:  #0a5a46;
+  --spick-accent:         #1D9E75;
+  --spick-accent-light:   #2BB88A;
+  --spick-pale:           #E1F5EE;
+  --spick-bg:             #FAFAF8;
+  --spick-surface:        #fff;
+  --spick-text:           #1C1C1A;
+  --spick-text-muted:     #6B6960;
+  --spick-text-soft:      #4A4A44;
+  --spick-border:         #E8E8E4;
+  --spick-border-soft:    #F2F2EE;
+  --spick-gold:           #D4A853;
+  --spick-gold-vivid:     #F59E0B;
+  --spick-red:            #DC2626;
+  --spick-blue-pale:      #DBEAFE;
+  --spick-blue:           #1E40AF;
+
+  /* Skuggor */
+  --spick-shadow-sm:      0 1px 3px rgba(0,0,0,.06);
+  --spick-shadow-md:      0 4px 16px rgba(0,0,0,.08);
+  --spick-shadow-lg:      0 8px 24px rgba(0,0,0,.12);
+  --spick-shadow-cta:     0 4px 12px rgba(15,110,86,.25);
+
+  /* Radius */
+  --spick-radius-sm:      10px;
+  --spick-radius:         16px;
+  --spick-radius-lg:      20px;
+  --spick-radius-pill:    99px;
+
+  /* Typografi */
+  --spick-font-display:   'Playfair Display', serif;
+  --spick-font-body:      'DM Sans', system-ui, sans-serif;
+
+  /* Layout */
+  --spick-max-profile:    720px;
+  --spick-max-narrow:     680px;
+
+  /* ═══ BAKÅTKOMPAT-ALIASES ═══
+     Filerna använder dessa kortare namn i sina lokala
+     <style>-block. Aliases pekar på kanoniska så ändring
+     sker på ett ställe. Framtida sprintar (Prof-4+)
+     migrerar filerna till spick-*-namn och rensar dessa. */
+  --g:           var(--spick-primary);
+  --gm:          var(--spick-accent);
+  --gp:          var(--spick-pale);
+  --bg:          var(--spick-bg);
+  --w:           var(--spick-surface);
+  --t:           var(--spick-text);
+  --b:           var(--spick-text);
+  --m:           var(--spick-text-muted);
+  --border:      var(--spick-border);
+  --gold:        var(--spick-gold);
+  --r:           var(--spick-red);
+  --shadow-sm:   var(--spick-shadow-sm);
+  --shadow-md:   var(--spick-shadow-md);
+  --shadow:      var(--spick-shadow-sm);
+  --radius:      var(--spick-radius);
+  --accent:      var(--spick-primary);
+  --accent2:     var(--spick-accent);
+  --accent3:     var(--spick-pale);
+}
+
+/* ═══ 2. SHARED ANIMATIONS ═══ */
+@keyframes spickFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spickFadeUpLarge {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spickPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(74,222,128,.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+}
+
+/* Legacy-namn — båda filer använder dem i sina keyframes-referenser.
+   Dedupliceras här så filerna kan rensa sina egna definitioner senare. */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(74,222,128,.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+}
+
+/* ═══ 3. UTILITY PRIMITIVES (.spick-* namespace) ═══
+   Används av framtida sprintar (Prof-2/3) när features
+   migreras mellan filerna. Redo att konsumeras nu.
+   ═══ */
+
+/* Profil-sida bas */
+.spick-profile-page {
+  font-family: var(--spick-font-body);
+  background: var(--spick-bg);
+  color: var(--spick-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layout-containers */
+.spick-profile-section {
+  max-width: var(--spick-max-profile);
+  margin: 0 auto 1.5rem;
+  padding: 0 1.25rem;
+}
+.spick-profile-section--narrow {
+  max-width: var(--spick-max-narrow);
+}
+
+/* Card */
+.spick-card {
+  background: var(--spick-surface);
+  border-radius: var(--spick-radius);
+  box-shadow: var(--spick-shadow-sm);
+  padding: 1.5rem;
+}
+.spick-card--bordered {
+  border: 1px solid var(--spick-border);
+  box-shadow: none;
+}
+.spick-card--elevated {
+  box-shadow: var(--spick-shadow-md);
+}
+
+/* Section-titel */
+.spick-section-title {
+  font-family: var(--spick-font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.spick-section-title--lg {
+  font-size: 1.4rem;
+}
+
+/* CTA-knappar */
+.spick-btn {
+  display: inline-block;
+  font-family: var(--spick-font-body);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .2s;
+  border: none;
+  text-align: center;
+}
+.spick-btn--primary {
+  background: var(--spick-primary);
+  color: #fff;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  box-shadow: var(--spick-shadow-cta);
+}
+.spick-btn--primary:hover {
+  background: var(--spick-primary-hover);
+  transform: translateY(-1px);
+}
+.spick-btn--block {
+  display: block;
+  width: 100%;
+}
+.spick-btn--pill {
+  border-radius: var(--spick-radius-pill);
+  padding: .75rem 1.5rem;
+  font-size: .92rem;
+}
+.spick-btn--outline {
+  background: transparent;
+  color: var(--spick-primary);
+  border: 1.5px solid var(--spick-border);
+}
+.spick-btn--outline:hover {
+  border-color: var(--spick-primary);
+  background: var(--spick-pale);
+}
+
+/* Tags */
+.spick-tag {
+  display: inline-block;
+  background: var(--spick-pale);
+  color: var(--spick-primary);
+  font-size: .8rem;
+  font-weight: 600;
+  padding: .35rem .75rem;
+  border-radius: var(--spick-radius-pill);
+}
+.spick-tag--outline {
+  background: transparent;
+  border: 1.5px solid var(--spick-border);
+  color: var(--spick-text-muted);
+}
+.spick-tag--sm {
+  font-size: .7rem;
+  padding: .2rem .6rem;
+}
+
+/* Avatar */
+.spick-avatar {
+  border-radius: 50%;
+  background: var(--spick-pale);
+  color: var(--spick-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--spick-font-display);
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.spick-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.spick-avatar--sm { width: 48px; height: 48px; font-size: 1rem; }
+.spick-avatar--md { width: 64px; height: 64px; font-size: 1.3rem; }
+.spick-avatar--lg { width: 96px; height: 96px; font-size: 2.2rem; }
+
+/* Trust-items (används i trust-grids) */
+.spick-trust-item {
+  background: var(--spick-surface);
+  border: 1px solid var(--spick-border);
+  border-radius: 12px;
+  padding: 18px 12px;
+  text-align: center;
+  transition: all .2s;
+}
+.spick-trust-item:hover {
+  border-color: var(--spick-primary);
+  transform: translateY(-1px);
+}
+.spick-trust-check {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--spick-pale);
+  color: var(--spick-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  margin: 0 auto 8px;
+  font-weight: 700;
+}
+
+/* Rating & stars */
+.spick-star { color: var(--spick-gold); }
+.spick-star--vivid { color: var(--spick-gold-vivid); }
+
+/* Tillstånd: loading/error/empty */
+.spick-loading {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--spick-text-muted);
+  font-size: .95rem;
+}
+.spick-error {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--spick-red);
+}
+.spick-empty-state {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--spick-text-muted);
+}
+
+/* Sticky bokning-bar (botten) */
+.spick-sticky-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, .95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--spick-border);
+  padding: .75rem 1.25rem;
+  z-index: 99;
+  box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+}
+
+/* ═══ 4. RESPONSIVE ═══ */
+@media (max-width: 640px) {
+  .spick-profile-section {
+    padding: 0 1rem;
+  }
+  .spick-section-title {
+    font-size: 1.05rem;
+  }
+}
