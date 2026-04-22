@@ -1,8 +1,9 @@
-# Session handoff — Sprint 1 Dag 1 (24 april 2026)
+# Session handoff — Sprint 1 (24 april 2026)
 
 **Föregående session:** 23 april kväll (commit `4400245`).
-**Denna session:** Sprint 1 Dag 1 — stabilisering före skalning.
-**Status vid avslut:** PNR-fält avstängt i kod. Två manuella Studio-steg väntar på Farhad.
+**Denna session:** Sprint 1 (stabilisering före skalning).
+**Commits:** `25bd74f`, `a9e0b3f`, `6bdf8c5`, `580281c`, `e128016`, + unique-constraint-migration (senaste).
+**Status vid avslut:** Sprint 1 Dag 1-3 klart. Dag 4-5 omdesignat (§2.1.1-utökning skjuts till Sprint 7).
 
 ---
 
@@ -25,9 +26,9 @@ Detta avviker från v3: ny Sprint 7, Fas 4 skjuts bakåt, Fas 7/11 skjuts till s
 
 ---
 
-## Vad som gjordes idag (2026-04-24)
+## Sprint 1 complete summary (2026-04-24)
 
-### 1. PNR-fält avstängt i boka.html ✅
+### 1. PNR-fält avstängt i boka.html ✅ (Dag 1 — commit `25bd74f`, pushad + GitHub Pages deployed)
 
 **Varför:** GDPR-fynd från 23 apr — 11 klartext-PNR från 3 riktiga kunder ackumulerade i prod trots löfte om kryptering. Utan fix = fortsatt ackumulation vid varje ny RUT-bokning.
 
@@ -50,6 +51,45 @@ Detta avviker från v3: ny Sprint 7, Fas 4 skjuts bakåt, Fas 7/11 skjuts till s
 - Risker: 🔴 aktiv insamling → 🟢 stoppad
 - Planerad åtgärd steg 1: markerad KLART
 - Hårda låsningar: förtydligade kring återaktivering
+
+### 3. Pricing-resolver min-pris-guard + services-fallback ✅ (Dag 2 — commit `a9e0b3f`, booking-create EF deployed på 54s)
+
+**Bakgrund:** Hygien #30 (2026-04-23). Fönsterputs-testbokning `681aaa93` debiterades 100 kr/h (cleaner-solo-dubbletten) istället för 349 kr/h eftersom pricing-resolver föll tillbaka på `cleaner.hourly_rate` utan min-pris-kontroll.
+
+**Fix (3 delar):**
+
+1. **Seed-migration** `20260424230000_sprint1d2_min_hourly_rate_seed.sql` — `platform_settings.min_hourly_rate=200`
+2. **Ny 6-stegs-hierarki** i `supabase/functions/_shared/pricing-resolver.ts`:
+   - Lager 4 (`cleaner.hourly_rate`) endast om >= `min_hourly_rate`
+   - NY lager 5: `services.default_hourly_price`
+   - Lager 6: `platform_settings.base_price_per_hour`
+3. **13 unit-tester** i `supabase/functions/_tests/money/pricing-resolver.test.ts` — alla passerar, plus regressionstest: 134 money-tester, 0 failures.
+
+**Verifiering:** booking-create EF live i prod sedan 2026-04-24. Även utan seed-migration i DB skyddar koden via fallback `min_hourly_rate=200` i resolvern.
+
+### 4. Defensive cleaner-unique-constraint migration ✅ (Dag 3 — migration skriven, ej deployad pga run-migrations CI-drift)
+
+**Bakgrund:** Hygien #29. Farhad existerade som två cleaner-rader (solo 100 kr/h + företag 350 kr/h). Solo raderad manuellt 23 apr. Constraint förhindrar upprepning.
+
+**Fil:** `supabase/migrations/20260424230500_sprint1d3_cleaners_email_unique.sql`
+
+**Design:**
+- UNIQUE INDEX på `(lower(email), COALESCE(company_id, zero-uuid))` (case-insensitive + NULL-säker)
+- Samma email får finnas på flera företag (ägare med flera bolag), ej i samma företag
+- Pre-check: migration abortera med tydligt felmeddelande om kvarvarande dubletter finns
+- Rollback: `DROP INDEX IF EXISTS cleaners_email_company_unique_idx`
+
+**Deploy-status:** Commit ligger i main. `run-migrations.yml` är bruten (pre-existing Fas 2.X-drift). Migration körs manuellt i Studio — se "Öppna manuella steg" nedan.
+
+### 5. DB-audit-workflow (infrastruktur-försök) ⚠️ (Dag 3 — nätverk-blockad i runner)
+
+**Mål:** Automatiserad kanal för prod-read-only audits utan manuell Studio-query.
+
+**Status:** Workflow skriven (`.github/workflows/db-audit.yml`) men fail:ad att ansluta till prod-DB:
+- Pooler-URL: `FATAL: tenant/user postgres.{ref} not found` — okänd region-config
+- Direct-URL: `Network is unreachable` (IPv6-only host, runner saknar IPv6)
+
+**Beslut:** Parkeras. Fortsättning via annan väg senare: (a) bygga admin-query EF + curl, (b) Supabase REST API-polling, (c) fixa pooler-region. Manuell Studio-query räcker för Sprint 1-2.
 
 ---
 
@@ -115,32 +155,24 @@ Alla commits i Sprint 1+ ska följa dessa. Ingen gissning, aldrig antagande.
 
 ---
 
-## Nästa steg i Sprint 1 Dag 1
+## Nästa steg
 
-### Kvar att göra idag/imorgon
+### Omedelbart (Farhad, 10 min)
 
-1. **Preview-verifiering av boka.html** — öppna sidan i browser, gå till steg 3, bekräfta PNR-fält är dolt + RUT-rabatt fungerar + submit går igenom utan PNR
-2. **Kör manuella Steg 1+2 ovan** (Farhad)
-3. **Commit Sprint 1 Dag 1 PNR-del**
+1. Kör **Steg 1** (backup-drop) och **Steg 3** (seed min_hourly_rate) i Studio
+2. Kör **Steg 4** (audit-queries) och rapportera resultaten
+3. Baserat på audit: kör eller blockera **Steg 5** (unique-constraint)
 
-### Sprint 1 Dag 2-3 — Pricing-resolver + cleaner-dubletter (hygien #29 + #30)
+### Sprint 2 — Fas 3 Matching-avslut (2-3 veckor)
 
-**Kontext:** Fönsterputs-testbokning `681aaa93` visade att pricing-resolver läste `cleaner.hourly_rate` (100 kr för Farhad-solo-raden) istället för `services.default_hourly_price` (349 kr). Kund debiterades 100 kr/h istf 349 kr/h = **aktiv revenue-läcka som skalar med volym**.
+§3.6, §3.7-full, §3.8, §3.9 (se `docs/v3-phase1-progress.md` Fas 3-sektion).
 
-Steg:
-1. Grep pricing-resolver-callers + trace fallback-kedja
-2. Audit PROD: finns fler cleaner-dubletter utöver Farhad-solo-raden?
-3. Fix pricing-resolver att prioritera `services.default_hourly_price` över `cleaner.hourly_rate`
-4. Unique constraint på `cleaners(email, company_id)` (om data tillåter)
-5. Regressionstest + commit
+Matching-automation blir "produktion-ready" = matchning skalbart vid 100+ städare/stad. Kräver shadow-mode, traffic-split, admin-dashboard, pilot-analys efter 30 dgrs data.
 
-Estimat: 4-6h.
+### Parallellt Sprint 2 kan förberedas
 
-### Sprint 1 Dag 4-5 — §2.1.1-utökning klar
-
-Bootstrap-migrations tills `supabase db reset --local` går igenom alla 100 migrations. Unblock-ar `supabase db push` för CI/CD.
-
-Estimat: 3-5h kvarvarande.
+- **Design-dokument Fas 6 Events** (för Sprint 3): event-types, schema, helper-pattern
+- **§7.5.1 research Fas 7.5** (för Sprint 3): Farhad + web_search om Skatteverkets API-spec 2026
 
 ---
 
@@ -158,8 +190,25 @@ Estimat: 3-5h kvarvarande.
 
 ## Miljö och checkpoints
 
-- **Repo-status vid start:** Clean på main, commit `4400245` som HEAD
-- **Repo-status vid avslut:** Sprint 1 Dag 1 PNR-del redo för commit (ocommittade ändringar: `boka.html` + `docs/sanning/pnr-och-gdpr.md` + denna handoff-fil)
-- **PROD DB:** Oförändrad. Två manuella steg väntar (backup-drop + vault-radering).
+- **Repo-status vid avslut:** Clean på main. 5 commits under Sprint 1: `25bd74f` (PNR), `a9e0b3f` (pricing-resolver), `6bdf8c5` + `580281c` + `e128016` (db-audit-försök), + pending unique-constraint.
+- **Prod:** PNR-fix live via GitHub Pages. booking-create EF live med pricing-min-guard + services-fallback. 134/134 money-tester passerar.
+- **PROD DB:** Oförändrad. 3-5 manuella Studio-steg väntar (se "Öppna manuella steg").
 - **Stripe:** LIVE mode, oförändrat. Inga transaktioner påverkade.
 - **RUT:** Förblir AVSTÄNGD. Fas 7.5 ej startad.
+- **Auto-deploy:** Bekräftat fungerar för Edge Functions + GitHub Pages. Bekräftat BRUTEN för migrations (`run-migrations.yml` exit 1, Fas 2.X-drift). Manuell Studio för nya migrations.
+
+## Sprint 1-lärdomar
+
+1. **GitHub Pages auto-deploy fungerar** för pushar till main (verifierat 3 gånger: PNR, pricing, db-audit). 15-20 sek deploy-tid.
+2. **Edge Functions auto-deploy fungerar** via `deploy-edge-functions.yml` (verifierat för booking-create Sprint 1 Dag 2). 54 sek för 31 funktioner.
+3. **run-migrations-workflow är bruten** sedan Fas 2.X-drift. Kräver omdesign eller §2.1.1-utökning-slutförande.
+4. **DB-audit-workflow blockad** av nätverk/region-config. Parkeras för senare sprint.
+5. **Code-first defensive pattern lönar sig:** pricing-resolver fallback:ar till min=200 i koden → fix gäller även utan DB-seed.
+
+## Kommande handoff-format
+
+Nästa session läser i denna ordning:
+1. `docs/START_HERE.md`
+2. `docs/sanning/*.md` (3 sanningsfiler)
+3. `docs/sessions/SESSION-HANDOFF_2026-04-24-sprint-1-dag-1.md` (denna fil, senaste)
+4. `docs/v3-phase1-progress.md` + `docs/planning/spick-arkitekturplan-v3.md`
