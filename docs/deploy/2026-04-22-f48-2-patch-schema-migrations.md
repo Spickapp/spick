@@ -55,6 +55,22 @@ WHERE version IN ('20260422113608', '20260424223318');
 -- Förväntat: 2 rader
 ```
 
+## Deploy-historik
+
+**Körd:** 2026-04-22 morgon via Studio SQL Editor
+
+**Pre-state:**
+- 3 rader med 8-siffriga prefix (20260327, 20260422, 20260424) ✓
+
+**Post-state:**
+- 99 rader totalt ✓
+- 0 rader med 8-siffrig prefix ✓
+- 20260422113608 + 20260424223318 registrerade ✓
+
+**Workflow-verifiering:** Workflow #136 triggad manuellt efter Studio-deploy. Gick Success på 6m 53s.
+
+Rollback inte utlöst.
+
 ## Rollback
 
 ```sql
