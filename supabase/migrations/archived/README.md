@@ -199,3 +199,28 @@ prod:s booking_date/booking_time/booking_hours.
 
 Representerar tidigt försök att bygga tidsbaserad bokningsspärr som
 ersattes helt före prod-deploy.
+
+### 20260327200001_performance_indexes.sql (arkiverad 2026-04-22)
+
+**Varför:** 89% dead. Av 18 CREATE INDEX + 1 UNIQUE constraint:
+
+FINNS i prod (2):
+- idx_bookings_date (rad 3708) — skapas också i 20260325000001
+- idx_bookings_status (rad 3744) — skapas i 00005_fas_2_1_bookings.sql
+
+SAKNAS i prod (16):
+- idx_bookings_cleaner_date, idx_bookings_payment, idx_bookings_email
+- idx_bookings_customer_email
+- idx_cleaners_city/status/city_status (alla 3)
+- idx_applications_status/email
+- idx_availability_cleaner/active
+- idx_blocked_dates_cleaner/date
+- idx_reviews_cleaner (reviews är VIEW — kan inte ha index)
+- idx_emails_status/category
+- uq_booking_cleaner_slot UNIQUE constraint
+
+Dessutom använder flera rader obsoleta kolumnnamn (date, email, time)
+som inte existerar i prod-bookings.
+
+Filen representerar prototyp "Kör mot Supabase SQL Editor" som
+aldrig applicerades.
