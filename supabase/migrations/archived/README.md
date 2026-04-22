@@ -172,3 +172,15 @@ mellan miljöer.
 
 **Om du behöver test-cleaners lokalt:** Skapa dem via lokal Studio
 eller `supabase/seed.sql` (separat från migrations).
+
+### 20260326600001_fix_applications_rls_and_update.sql (arkiverad 2026-04-22)
+
+**Varför:** 100% dead code + ogiltig SQL-syntax.
+
+- Använder `CREATE POLICY IF NOT EXISTS` (ej PG-syntax)
+- 2 policies saknas i prod:
+  - "Autentiserad kan uppdatera ansökningar"
+  - "Anon kan uppdatera ansökningar"
+
+Aktuella cleaner_applications-policies finns i
+`20260422130000_fas_2_1_1_all_policies.sql` (8 policies från prod).
