@@ -141,3 +141,18 @@ Migrationens INTENT reflekterar en prototyp-fas som omfattande
 reviderades innan prod-deploy.
 
 **Fas 2.X Replayability:** Blockerade db reset på rad 25. Arkiverad.
+
+### 20260326100001_customers_rls.sql (arkiverad 2026-04-22)
+
+**Varför:** Migrationen refererar tabellen `customers` som aldrig
+existerat i prod. Prod har alltid använt `customer_profiles`-
+tabellen (rad 2200 i prod-schema.sql, skapas i `00002_fas_2_1_customer_profiles.sql`).
+
+Filen har `ALTER TABLE IF EXISTS customers ENABLE RLS` (skippas),
+men `CREATE POLICY "..." ON customers` saknar motsvarande guard
+och failar.
+
+**Fas 2.X Replayability:** Blockerade db reset på rad 9. Arkiverad.
+
+Aktuella customer_profiles-policies finns i
+`20260422130000_fas_2_1_1_all_policies.sql`.
