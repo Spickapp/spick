@@ -12,34 +12,41 @@ name: DB Audit (Prod Read-Only)
 #
 # Används av Claude Code för Sprint 1+ utan att kräva Farhads manuella
 # Studio-queries. Triggas via `gh workflow run db-audit.yml`.
+#
+# Använder psql direkt mot Supabase Pooler-URL. Supabase CLI 2.x har
+# inte `db execute` — psql är den enkla lösningen.
 # ──────────────────────────────────────────────────────────────────
 
 'on':
   workflow_dispatch:
 
 jobs:
-  audit-cleaners:
-    name: Cleaners-audit (dubletter + låga rates + hourly_rate-distribution)
+  audit:
+    name: Read-only audit (cleaners, services, platform_settings)
     runs-on: ubuntu-latest
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_ID: urjeijcncsyuletprydy
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Link prod-projekt
-        run: supabase link --project-ref $PROJECT_ID
-
-      - name: Audit — cleaners-dubletter (email × company_id)
+      - name: Bygg DB-URL (pooler)
+        id: dburl
         run: |
-          cat > /tmp/audit-dubletter.sql <<'SQL'
-          -- Dubletter per email (över företag)
+          # Supabase Pooler-format: aws-0-eu-west-1.pooler.supabase.com port 6543
+          # Lösenordet kommer från SUPABASE_DB_PASSWORD-secret.
+          # Workflow tvingar SSL via sslmode=require.
+          echo "url=postgresql://postgres.${{ env.PROJECT_ID }}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
+
+      - name: Audit 1 — Cleaners-dubletter (email med >1 rader)
+        run: |
+          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
+          \pset border 2
+          \echo '=== Dubletter per email (över företag) ==='
           SELECT email, COUNT(*) AS row_count, array_agg(id) AS ids
           FROM cleaners
           WHERE email IS NOT NULL
@@ -48,12 +55,12 @@ jobs:
           ORDER BY row_count DESC
           LIMIT 50;
           SQL
-          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-dubletter.sql || echo "(inga dubletter eller query-fel)"
 
-      - name: Audit — hourly_rate-distribution (distribution + under min 200)
+      - name: Audit 2 — Hourly_rate-distribution + lista under 200 kr
         run: |
-          cat > /tmp/audit-rates.sql <<'SQL'
-          -- Distribution
+          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
+          \pset border 2
+          \echo '=== Distribution ==='
           SELECT
             COUNT(*) AS total,
             COUNT(*) FILTER (WHERE hourly_rate IS NULL) AS null_rate,
@@ -64,32 +71,31 @@ jobs:
             MIN(hourly_rate) AS min_rate,
             MAX(hourly_rate) AS max_rate,
             ROUND(AVG(hourly_rate)::numeric, 2) AS avg_rate
-          FROM cleaners
-          WHERE is_approved = true OR is_approved IS NULL;
+          FROM cleaners;
 
-          -- Lista alla cleaners med rate < 200 (troliga testdata/misstag)
+          \echo '=== Cleaners med rate < 200 (troligtvis testdata/misstag) ==='
           SELECT id, email, first_name, last_name, hourly_rate, company_id, is_approved, signup_date
           FROM cleaners
           WHERE hourly_rate IS NOT NULL AND hourly_rate < 200
           ORDER BY hourly_rate ASC
           LIMIT 30;
           SQL
-          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-rates.sql
 
-      - name: Audit — services default_hourly_price
+      - name: Audit 3 — services.default_hourly_price (seed-verifiering)
         run: |
-          cat > /tmp/audit-services.sql <<'SQL'
-          -- Verifiera services-tabellen har rätt default-priser (förvarsvärden från seed)
+          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
+          \pset border 2
+          \echo '=== Services + default_hourly_price ==='
           SELECT key, label_sv, rut_eligible, default_hourly_price, active
           FROM services
           ORDER BY display_order;
           SQL
-          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-services.sql
 
-      - name: Audit — platform_settings pricing-nycklar
+      - name: Audit 4 — platform_settings pricing-nycklar
         run: |
-          cat > /tmp/audit-settings.sql <<'SQL'
-          -- Verifiera alla pricing-nycklar är seeded och aktuella
+          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
+          \pset border 2
+          \echo '=== Pricing-relaterade platform_settings ==='
           SELECT key, value, updated_at
           FROM platform_settings
           WHERE key IN ('commission_standard', 'commission_top', 'min_hourly_rate',
@@ -97,4 +103,18 @@ jobs:
                         'rut_yearly_cap_kr', 'money_layer_enabled', 'smart_trappstege_enabled')
           ORDER BY key;
           SQL
-          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-settings.sql
+
+      - name: Audit 5 — bookings PNR-status (verifiering av Sprint 1 Dag 1-fix)
+        run: |
+          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
+          \pset border 2
+          \echo '=== PNR-statistik (ska inte ha ökat sedan 2026-04-23: 36 rader) ==='
+          SELECT
+            COUNT(*) AS total_with_pnr,
+            COUNT(*) FILTER (WHERE length(customer_pnr) = 12) AS klartext_12,
+            COUNT(*) FILTER (WHERE length(customer_pnr) = 48) AS crypt_48,
+            COUNT(*) FILTER (WHERE length(customer_pnr) = 56) AS crypt_56,
+            COUNT(*) FILTER (WHERE created_at >= '2026-04-24') AS new_since_fix
+          FROM bookings
+          WHERE customer_pnr IS NOT NULL;
+          SQL
