@@ -304,3 +304,18 @@ andra migrations), inte denna fil (som fail:ade direkt).
 Rate limiting + webhook idempotency + stale booking cleanup är värdefulla
 koncept som bör implementeras om — men inte med denna migrations
 legacy-kolumner.
+
+### 20260330000002_emergency_cleanup.sql (arkiverad 2026-04-22)
+
+**Varför:** Engångs-data-cleanup utan schema-värde.
+
+Filen innehåller:
+- 2 UPDATE cleaners (städare-status-manipulation)
+- 1 DELETE FROM bookings (test-data-cleanup med legacy 'email')
+- 4 DROP POLICY IF EXISTS (no-ops)
+
+Ingen schema-operation (CREATE/ALTER/DROP TABLE|FUNCTION|INDEX|TRIGGER).
+
+Filnamn + rubriker ("EMERGENCY CLEANUP") bekräftar engångs-karaktär.
+Samma antipattern som realistic_cleaners_seed (iter 12):
+data-manipulation i migrations skapar irrepeterbara scenarios.
