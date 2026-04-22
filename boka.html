@@ -1927,11 +1927,12 @@ async function loadAvailableCleaners() {
     const jsDay = new Date(state.date + 'T00:00:00').getDay();
     const dow = jsDay === 0 ? 7 : jsDay;
     let cleaners;
-    // Radius-matchning: använd find_nearby_cleaners RPC om lat/lng finns
+    // Radius-matchning via matching-wrapper EF (§3.7-full Step 2c, Sprint 2 Dag 2).
+    // EF brancher v1/v2/shadow baserat på platform_settings.matching_algorithm_version.
+    // Skickar bokningskontext för v2-preference-match. NULL för has_elevator/booking_materials/
+    // customer_id = fält finns ej i UI än. EF returnerar {cleaners, algorithm_version, shadow_meta?}.
     if (state.lat && state.lng) {
-      // v2 multivariat ranking: skickar bokningskontext för preference-match + exploration-bonus
-      // NULL för has_elevator/booking_materials/customer_id = fält finns ej i UI än
-      const rpcRes = await fetch(`${SUPA}/rest/v1/rpc/find_nearby_cleaners`, {
+      const efRes = await fetch(`${SUPA}/functions/v1/matching-wrapper`, {
         method: 'POST',
         headers: {...H, 'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -1946,8 +1947,9 @@ async function loadAvailableCleaners() {
           customer_id: null
         })
       });
-      if (!rpcRes.ok) throw new Error(`Kunde inte hämta städare (HTTP ${rpcRes.status})`);
-      cleaners = await rpcRes.json();
+      if (!efRes.ok) throw new Error(`Kunde inte hämta städare (HTTP ${efRes.status})`);
+      const efPayload = await efRes.json();
+      cleaners = efPayload.cleaners || [];
     } else {
       // Fallback: hämta alla godkända städare (inget lat/lng)
       let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,company_display_name,completed_jobs,has_fskatt,owner_only`;
