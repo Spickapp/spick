@@ -57,7 +57,7 @@ import { corsHeaders } from "../_shared/email.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-type AlgorithmVersion = "v1" | "v2" | "shadow";
+type AlgorithmVersion = "v1" | "v2" | "shadow" | "providers-shadow";
 
 interface RequestBody {
   customer_lat?: number;
@@ -85,7 +85,9 @@ async function readSettings(supabase: SupabaseClient): Promise<SettingsPair> {
   const rows = (data ?? []) as Array<{ key: string; value: string }>;
   const rawVersion = rows.find((r) => r.key === "matching_algorithm_version")?.value ?? "v1";
   const version: AlgorithmVersion =
-    rawVersion === "v1" || rawVersion === "v2" || rawVersion === "shadow" ? rawVersion : "v1";
+    rawVersion === "v1" || rawVersion === "v2" || rawVersion === "shadow" || rawVersion === "providers-shadow"
+      ? rawVersion
+      : "v1";
   const shadowLogEnabled =
     rows.find((r) => r.key === "matching_shadow_log_enabled")?.value === "true";
 
@@ -237,15 +239,129 @@ serve(async (req) => {
     // Shadow-mode definition (designdok §10.1): "RPC returnerar v1-ordning
     // till boka.html, men loggar även v2-score för jämförelse". Vi returnerar
     // v1, mappad till v2-schema för att klient-kod inte ska behöva veta mode.
+    if (version === "shadow") {
+      return json(200, {
+        cleaners: mapV1ToV2Schema(v1Cleaners),
+        algorithm_version: "shadow",
+        shadow_meta: {
+          shadow_log_id: shadowLogId, // §3.9b: klient skickar med till booking-create
+          top5_overlap: top5Overlap,
+          spearman_rho: spearmanRho,
+          v1_count: v1Cleaners.length,
+          v2_count: v2Cleaners.length,
+          logged: shadowLogEnabled,
+        },
+      });
+    }
+
+    // ── providers-shadow: v2 + providers parallellt, logga diff, return v2 ──
+    // Sprint Model-3 (audit 2026-04-26): shadow-jämförelse mellan v2-RPC
+    // och Model-2a providers-RPC. Klient får v2-data (bakåtkompat); diff
+    // loggas i matching_shadow_log.providers_ranking för §3.9-analys.
+    // Model-4 aktiverar 'providers' direkt (utan shadow) efter verifiering.
+    const v2ParamsM3 = {
+      customer_lat,
+      customer_lng,
+      booking_date: body.booking_date ?? null,
+      booking_time: body.booking_time ?? null,
+      booking_hours: body.booking_hours ?? null,
+      has_pets: body.has_pets ?? null,
+      has_elevator: body.has_elevator ?? null,
+      booking_materials: body.booking_materials ?? null,
+      customer_id: body.customer_id ?? null,
+    };
+    const [v2ResultM3, providersResult] = await Promise.all([
+      supabase.rpc("find_nearby_cleaners", v2ParamsM3),
+      supabase.rpc("find_nearby_providers", v2ParamsM3),
+    ]);
+
+    if (v2ResultM3.error && providersResult.error) {
+      return json(500, {
+        error: "Båda RPCs failade i providers-shadow",
+        v2: v2ResultM3.error.message,
+        providers: providersResult.error.message,
+      });
+    }
+    if (v2ResultM3.error) {
+      // v2 failade — returnera v2-tom och logga inget
+      return json(200, {
+        cleaners: [] as V2Cleaner[],
+        algorithm_version: "v2_fallback_from_providers_shadow",
+        shadow_warning: `v2 failade: ${v2ResultM3.error.message}`,
+      });
+    }
+    if (providersResult.error) {
+      // providers failade — returnera v2, skippa shadow-logging
+      return json(200, {
+        cleaners: (v2ResultM3.data ?? []) as V2Cleaner[],
+        algorithm_version: "v2_fallback_from_providers_shadow",
+        shadow_warning: `providers failade: ${providersResult.error.message}`,
+      });
+    }
+
+    const v2CleanersM3 = (v2ResultM3.data ?? []) as Array<Record<string, unknown>>;
+    const providersRows = (providersResult.data ?? []) as Array<Record<string, unknown>>;
+
+    // Bygg providers_ranking för shadow_log
+    const providersRankingForLog = providersRows.map((p, i) => ({
+      provider_type: p.provider_type,
+      provider_id: String(p.provider_id ?? ""),
+      representative_cleaner_id: String(p.representative_cleaner_id ?? ""),
+      rank: i + 1,
+      team_size: Number(p.team_size ?? 1),
+      distance_km: Number(p.distance_km ?? 0),
+    }));
+
+    // Diff-metrik: top-N-overlap + Spearman på representative_cleaner_id vs v2.id
+    const v2RankingM3 = buildV2Ranking(v2CleanersM3);
+    const providersAsRepresentatives = providersRankingForLog.map((p) => ({
+      cleaner_id: p.representative_cleaner_id,
+      rank: p.rank,
+    }));
+    const top5OverlapM3 = calculateTopNOverlap(providersAsRepresentatives, v2RankingM3, 5);
+    const spearmanRhoM3 = calculateSpearmanRho(providersAsRepresentatives, v2RankingM3);
+
+    // Logga i matching_shadow_log (fire-and-forget)
+    let shadowLogIdM3: string | null = null;
+    if (shadowLogEnabled) {
+      try {
+        const { data: logRow, error: logErr } = await supabase
+          .from("matching_shadow_log")
+          .insert({
+            booking_id: null,
+            v1_ranking: [], // n/a i providers-shadow
+            v2_ranking: v2RankingM3,
+            providers_ranking: providersRankingForLog, // Model-3 nya kolumn
+            top5_overlap: top5OverlapM3,
+            spearman_rho: spearmanRhoM3,
+            chosen_cleaner_id: null,
+            customer_lat,
+            customer_lng,
+            booking_date: body.booking_date ?? null,
+            booking_time: body.booking_time ?? null,
+          })
+          .select("id")
+          .single();
+        if (logErr) {
+          console.error("providers-shadow INSERT failed:", logErr);
+        } else {
+          shadowLogIdM3 = (logRow as { id: string } | null)?.id ?? null;
+        }
+      } catch (e) {
+        console.error("providers-shadow INSERT threw:", e);
+      }
+    }
+
+    // Returnera v2-data till klient (Model-3 håller klient-schemat stabilt)
     return json(200, {
-      cleaners: mapV1ToV2Schema(v1Cleaners),
-      algorithm_version: "shadow",
+      cleaners: v2CleanersM3 as unknown as V2Cleaner[],
+      algorithm_version: "providers-shadow",
       shadow_meta: {
-        shadow_log_id: shadowLogId, // §3.9b: klient skickar med till booking-create
-        top5_overlap: top5Overlap,
-        spearman_rho: spearmanRho,
-        v1_count: v1Cleaners.length,
-        v2_count: v2Cleaners.length,
+        shadow_log_id: shadowLogIdM3,
+        top5_overlap: top5OverlapM3,
+        spearman_rho: spearmanRhoM3,
+        v2_count: v2CleanersM3.length,
+        providers_count: providersRows.length,
         logged: shadowLogEnabled,
       },
     });
