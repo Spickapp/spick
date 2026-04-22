@@ -34,13 +34,13 @@ jobs:
       - name: Install psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Bygg DB-URL (pooler)
+      - name: Bygg DB-URL (direkt-anslutning)
         id: dburl
         run: |
-          # Supabase Pooler-format: aws-0-eu-west-1.pooler.supabase.com port 6543
-          # Lösenordet kommer från SUPABASE_DB_PASSWORD-secret.
-          # Workflow tvingar SSL via sslmode=require.
-          echo "url=postgresql://postgres.${{ env.PROJECT_ID }}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
+          # Direkt DB-host (port 5432) undviker Pooler tenant-resolution-fel.
+          # Lösenordet kommer från SUPABASE_DB_PASSWORD-secret (PGPASSWORD env).
+          # SSL tvingas via sslmode=require.
+          echo "url=postgresql://postgres@db.${{ env.PROJECT_ID }}.supabase.co:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
 
       - name: Audit 1 — Cleaners-dubletter (email med >1 rader)
         run: |
