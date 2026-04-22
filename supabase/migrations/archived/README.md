@@ -26,3 +26,24 @@ i nuvarande prod.
 **Om du behöver återställa någon policy:** Titta i
 `20260422130000_fas_2_1_1_all_policies.sql` — det är nuvarande
 bookings/customer_profiles-policies konsoliderade.
+
+### 20260325000002_rls_bookings.sql (arkiverad 2026-04-22)
+
+**Varför:** Samma situation som 007_rls.sql — 100% dead code mot nuvarande
+prod. Alla 4 CREATE POLICY-satser saknas i prod-schema.sql (verifierat
+via grep 2026-04-22):
+
+- "Public can insert bookings" — SAKNAS
+- "Customer can read own bookings by email" — SAKNAS
+- "Public can read bookings by id" — SAKNAS
+- "Customer can update own booking" — SAKNAS
+
+Dessutom refererar 2 av policies `bookings.email` som inte längre
+existerar i prod (prod har `customer_email` sedan schema-ändring).
+
+**Fas 2.X Replayability:** Filen blockerade db reset på rad 14 med
+"column email does not exist". Arkiverad för att låta replay fortsätta.
+
+**Om du behöver återställa någon policy:** Titta i
+`20260422130000_fas_2_1_1_all_policies.sql` — det är nuvarande
+bookings-policies (14 st) konsoliderade från prod.
