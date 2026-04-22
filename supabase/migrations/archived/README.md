@@ -369,3 +369,17 @@ tema i Fas 2.X Replayability Sprint. Filer i samma kategori:
 
 Aktuella policies finns i `20260422130000_fas_2_1_1_all_policies.sql`
 (79 policies konsoliderade från prod).
+
+### 20260418163304_customer_reads_own_row.sql (arkiverad 2026-04-22)
+
+**Varför:** Refererar 'customers'-tabell som aldrig existerat i prod.
+
+Prod har alltid använt `customer_profiles` (rad 2200, skapas i
+00002_fas_2_1_customer_profiles.sql). Filen DROP:ar + CREATE:ar policy
+på `customers` som kraschar i fresh DB.
+
+Andra 'customers'-filen som arkiveras — iter 10 var första
+(20260326100001_customers_rls.sql).
+
+Aktuella customer_profiles-policies finns i
+`20260422130000_fas_2_1_1_all_policies.sql`.
