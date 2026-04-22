@@ -166,6 +166,21 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .recruit-btn{display:inline-block;background:var(--accent);color:#fff;padding:12px 28px;border-radius:10px;font-weight:600;font-size:.88rem;text-decoration:none;transition:all .2s}
 .recruit-btn:hover{background:var(--accent2)}
 
+/* Prof-3: Similar profiles + QR + share */
+.similar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem}
+.similar-card{background:var(--bg);border-radius:12px;padding:1rem;text-align:center;text-decoration:none;color:var(--t);transition:all .15s;border:1px solid var(--border)}
+.similar-card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.similar-av{width:48px;height:48px;border-radius:50%;background:var(--accent3);display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;font-family:'Playfair Display',serif;font-weight:700;color:var(--accent);overflow:hidden}
+.similar-av img{width:100%;height:100%;object-fit:cover}
+.similar-name{font-weight:600;font-size:.85rem}
+.similar-area{font-size:.75rem;color:var(--m)}
+.similar-rating{font-size:.8rem;color:#F59E0B;margin-top:.25rem}
+.qr-section{text-align:center;padding:16px 0}
+.qr-section canvas,.qr-section img{border-radius:12px;max-width:180px;height:auto}
+.share-bar{display:flex;gap:.75rem;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.share-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.6rem 1rem;border-radius:100px;font-size:.8rem;font-weight:600;border:1.5px solid var(--border);color:var(--t);background:#fff;cursor:pointer;transition:all .15s;font-family:inherit}
+.share-btn:hover{border-color:var(--accent);color:var(--accent)}
+
 /* ── FOOTER ── */
 .footer{text-align:center;padding:16px;font-size:.72rem;color:var(--m)}
 .footer a{color:var(--accent);font-weight:600;text-decoration:none}
@@ -274,6 +289,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 </div>
 
 <script src="js/config.js"></script>
+<!-- Prof-3: QR-generator CDN (~5kB, cached). Används för shareable profile-QR. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
 var SU = SPICK.SUPA_URL, SK = SPICK.SUPA_KEY;
 var H = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
@@ -675,6 +692,46 @@ async function init() {
     h += '<p>' + (isB2B ? 'Professionell städservice för företag och organisationer' : 'Professionell städning med säker betalning och RUT-avdrag') + '</p>';
     h += '<a href="' + bookUrl + '" class="bottom-cta-btn">Boka städning →</a></div>';
 
+    // ── Prof-3: Similar profiles (discovery + SEO interlinking) ──
+    try {
+      // or=(NULL eller olika företag) — inkluderar solo-städare (company_id=NULL)
+      // som annars exkluderas av PostgREST-neq-semantik på NULL.
+      var simUrl = SU + '/rest/v1/v_cleaners_public?select=id,slug,full_name,city,avg_rating,company_id,is_company_owner,owner_only,avatar_url&is_approved=eq.true&owner_only=neq.true&or=(company_id.is.null,company_id.neq.' + co.id + ')&limit=6&apikey=' + SK;
+      var simRes = await fetch(simUrl, { headers: H });
+      var sims = simRes.ok ? await simRes.json() : [];
+      // Bara VD eller solo-städare (team-members bokas via företaget)
+      sims = sims.filter(function(s) {
+        if (s.owner_only) return false;
+        if (s.company_id && !s.is_company_owner) return false;
+        return true;
+      }).slice(0, 3);
+      if (sims.length > 0) {
+        h += '<div class="section"><div class="section-head"><div class="section-title">Fler städfirmor i närheten</div></div>';
+        h += '<div class="similar-grid">';
+        sims.forEach(function(s) {
+          var initial = (s.full_name || '?').charAt(0).toUpperCase();
+          var href = (s.is_company_owner && s.slug) ? ('/f/' + s.slug) : ('/stadare-profil.html?s=' + encodeURIComponent(s.slug || s.id));
+          h += '<a href="' + href + '" class="similar-card">';
+          h += s.avatar_url ? '<div class="similar-av"><img src="' + esc(s.avatar_url) + '" alt="' + esc(s.full_name || '') + '"></div>' : '<div class="similar-av">' + esc(initial) + '</div>';
+          h += '<div class="similar-name">' + esc(s.full_name || 'Städare') + '</div>';
+          h += '<div class="similar-area">' + esc(s.city || 'Stockholm') + '</div>';
+          if (s.avg_rating) h += '<div class="similar-rating">★ ' + Number(s.avg_rating).toFixed(1) + '</div>';
+          h += '</a>';
+        });
+        h += '</div></div>';
+      }
+    } catch(e) {}
+
+    // ── Prof-3: QR + share-knappar (mobil-delning + spridning) ──
+    h += '<div class="section"><div class="section-head"><div class="section-title">Dela denna sida</div></div>';
+    h += '<div class="card" style="text-align:center;padding:24px 20px">';
+    h += '<div class="qr-section"><canvas id="foretag-qr"></canvas></div>';
+    h += '<div style="font-size:.78rem;color:var(--m);margin:8px 0 12px">Skanna för att besöka på mobilen</div>';
+    h += '<div class="share-bar">';
+    h += '<button class="share-btn" onclick="shareForetag()">📤 Dela</button>';
+    h += '<button class="share-btn" id="copy-btn-f" onclick="copyLinkForetag()">🔗 Kopiera länk</button>';
+    h += '</div></div></div>';
+
     h += '</div>'; // container
 
     // ── 7. RECRUIT FOOTER ──
@@ -689,6 +746,19 @@ async function init() {
     document.querySelectorAll('.animated-counter').forEach(function(el) {
       animateCounter(el, parseInt(el.dataset.target) || 0);
     });
+
+    // ── Prof-3: QR-kod efter DOM-render ──
+    // Lagra canonical share-URL på window så globala share-funktioner ser den.
+    window._foretagShareUrl = 'https://spick.se/f/' + (co.slug || co.id);
+    try {
+      var qrCanvas = document.getElementById('foretag-qr');
+      if (qrCanvas && typeof qrcode === 'function') {
+        var qr = qrcode(0, 'M');
+        qr.addData(window._foretagShareUrl);
+        qr.make();
+        qrCanvas.outerHTML = qr.createImgTag(4, 8);
+      }
+    } catch(e) { console.warn('Prof-3 QR generation:', e); }
 
     // ── STICKY CTA ──
     var stickyCta = document.getElementById('sticky-cta');
@@ -977,6 +1047,27 @@ function renderB2BLanding() {
     }
   });
   document.head.appendChild(ld);
+}
+
+// ── Prof-3: Globala share-helpers (tillgängliga för onclick-handlers i injected HTML) ──
+function shareForetag() {
+  var url = window._foretagShareUrl || location.href;
+  if (navigator.share) {
+    navigator.share({ title: document.title, url: url }).catch(function(){});
+  } else {
+    copyLinkForetag();
+  }
+}
+function copyLinkForetag() {
+  var url = window._foretagShareUrl || location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      var btn = document.getElementById('copy-btn-f');
+      if (btn) { btn.textContent = '✓ Kopierad!'; setTimeout(function(){ btn.textContent = '🔗 Kopiera länk'; }, 2000); }
+    }).catch(function(){ prompt('Kopiera denna länk:', url); });
+  } else {
+    prompt('Kopiera denna länk:', url);
+  }
 }
 
 init();
