@@ -33,8 +33,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);line-h
 /* HERO CARD */
 .hero-card{max-width:680px;margin:0 auto 1.5rem;padding:0 1.25rem}
 .hero-inner{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden}
-.hero-gradient{height:100px;background:linear-gradient(135deg,#0F6E56,#1D9E75,#2BB88A);position:relative}
-.hero-gradient::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#fff)}
+.hero-gradient{height:120px;background:linear-gradient(135deg,#0F6E56,#1D9E75,#2BB88A);position:relative;overflow:hidden}
+.hero-gradient::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.09) 1px,transparent 1px);background-size:18px 18px;z-index:1;pointer-events:none}
+.hero-gradient::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#fff);z-index:2}
+
+/* Sprint Prof-2b: "Tillgänglig idag" pulse-badge */
+.hero-avail{display:inline-flex;align-items:center;gap:6px;margin:4px 0 8px;font-size:.75rem;font-weight:600;background:rgba(15,110,86,.08);border:1px solid rgba(15,110,86,.2);color:var(--g);padding:5px 14px;border-radius:99px}
+.hero-avail .pulse{width:8px;height:8px;border-radius:50%;background:#4ADE80;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pulse 2s infinite}
+
+/* Sprint Prof-2b: Social-proof bar efter hero-card */
+.proof-bar{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:14px 24px;text-align:center;font-size:.85rem;color:var(--b);max-width:680px;margin:0 auto 1.5rem}
+.proof-bar strong{color:var(--g);font-weight:700}
+.proof-bar .count{font-size:1.1rem;font-weight:700;color:var(--g)}
 .hero-body{padding:0 1.5rem 1.5rem;position:relative;margin-top:-48px}
 
 /* AVATAR */
@@ -185,6 +195,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);line-h
         <span class="top-badge" id="p-top-badge">⭐ Toppstädare</span>
       </div>
       <div class="location" id="p-city">–</div>
+      <div class="hero-avail" id="p-avail-badge" style="display:none"><span class="pulse"></span>Tillgänglig idag</div>
       <div class="rating-bar" id="p-rating-bar">
         <div class="rating-item"><div class="rating-value"><span class="star">★</span> <span id="rv-rating">–</span></div><div class="rating-label">Snittbetyg</div></div>
         <div class="rating-item"><div class="rating-value" id="rv-jobs">–</div><div class="rating-label">Utförda jobb</div></div>
@@ -204,6 +215,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--b);line-h
     </div>
   </div>
 </div>
+
+<!-- PROOF BAR (Sprint Prof-2b) -->
+<div class="proof-bar" id="p-proof-bar" style="display:none;margin-top:1.5rem"></div>
 
 <!-- TRUST STRIP -->
 <div class="trust-strip" id="p-trust">
@@ -383,6 +397,38 @@ async function loadProfile() {
       var tmRes = await fetch(SUPA + '/rest/v1/v_cleaners_public?select=id,slug,full_name,avatar_url,avg_rating,review_count,services,bio,completed_jobs&company_id=eq.' + c.company_id + '&is_approved=eq.true&id=neq.' + c.id + '&apikey=' + KEY, {headers: H});
       _teamMembers = tmRes.ok ? await tmRes.json() : [];
     } catch(e) {}
+  }
+
+  // Sprint Prof-2b: "Tillgänglig idag"-check mot cleaner_availability_v2 (async fire-and-forget).
+  // Visar pulse-badge i hero om städaren har aktiv availability för dagens dag (ISO 1-7).
+  (async function() {
+    try {
+      var jsDay = new Date().getDay();
+      var isoDay = jsDay === 0 ? 7 : jsDay;
+      var availTodayRes = await fetch(SUPA + '/rest/v1/cleaner_availability_v2?select=id&cleaner_id=eq.' + c.id + '&day_of_week=eq.' + isoDay + '&is_active=eq.true&limit=1&apikey=' + KEY, {headers: H});
+      var availTodayArr = availTodayRes.ok ? await availTodayRes.json() : [];
+      if (availTodayArr.length > 0) {
+        var badge = document.getElementById('p-avail-badge');
+        if (badge) badge.style.display = 'inline-flex';
+      }
+    } catch(e) {}
+  })();
+
+  // Sprint Prof-2b: Social-proof bar — aggregat över entitet.
+  // Solo-cleaner: egna completed_jobs. VD: VD + hela teamets summa (företags-branding).
+  var _totalJobs = c.completed_jobs || 0;
+  if (_isCompany && _teamMembers && _teamMembers.length) {
+    _totalJobs += _teamMembers.reduce(function(s, m) { return s + (m.completed_jobs || 0); }, 0);
+  }
+  if (_totalJobs > 0) {
+    var _proofName = (_isCompany && _company && _company.name)
+      ? _company.name
+      : ((c.full_name || '').split(' ')[0] || 'denna städare');
+    var proofEl = document.getElementById('p-proof-bar');
+    if (proofEl) {
+      proofEl.innerHTML = '<span class="count">' + _totalJobs + '</span> städningar utförda av <strong>' + escHtml(_proofName) + '</strong> på Spick';
+      proofEl.style.display = 'block';
+    }
   }
 
   var firstName = (c.full_name || '').split(' ')[0];
