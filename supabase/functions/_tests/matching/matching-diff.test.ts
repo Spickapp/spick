@@ -127,6 +127,57 @@ Deno.test("spearman: 1 gemensam cleaner → 0 (otillräcklig data)", () => {
   assertEquals(calculateSpearmanRho(v1, v2), 0);
 });
 
+Deno.test("spearman: asymmetriska listor (v1=5, v2=2, 2 gemensamma) → i [-1, 1]", () => {
+  // REGRESSIONSTEST — Sprint 2 Dag 2 prod-bug 2026-04-25
+  // EF returnerade spearman_rho=-8 när v1 hade 5 cleaners, v2 hade 2,
+  // och 2 var gemensamma. Rotorsak: globala ranks (v1_rank=4, v2_rank=1)
+  // användes i formeln istället för lokala ranks (1..n_common).
+  //
+  // v1: A=1, B=2, C=3, D=4, E=5
+  // v2: C=1, A=2
+  // Gemensamma: {A, C}, n=2
+  // Lokala v1-ranks på gemensamma: A=1 (global 1), C=2 (global 3)
+  // Lokala v2-ranks på gemensamma: C=1 (global 1), A=2 (global 2)
+  // Diff per cleaner (lokal): A: 1-2=-1, C: 2-1=1 → d²=[1,1], Σd²=2
+  // n=2, n*(n²-1)=6 → ρ = 1 - (6*2)/6 = -1.0 (helt inverterad lokalt)
+  const v1: V1RankingEntry[] = [
+    { cleaner_id: "a", rank: 1, distance_km: 1 },
+    { cleaner_id: "b", rank: 2, distance_km: 2 },
+    { cleaner_id: "c", rank: 3, distance_km: 3 },
+    { cleaner_id: "d", rank: 4, distance_km: 4 },
+    { cleaner_id: "e", rank: 5, distance_km: 5 },
+  ];
+  const v2: V2RankingEntry[] = [
+    { cleaner_id: "c", rank: 1, match_score: 0.9 },
+    { cleaner_id: "a", rank: 2, match_score: 0.8 },
+  ];
+  const rho = calculateSpearmanRho(v1, v2);
+  assertEquals(rho, -1.0);
+  assertEquals(rho >= -1 && rho <= 1, true); // SAFETY GUARD — inom giltigt intervall
+});
+
+Deno.test("spearman: asymmetriska listor med lokal identisk ordning → 1.0", () => {
+  // v1: A=1, B=2, C=3, D=4, E=5
+  // v2: A=1, C=2  (färre cleaners, men samma relativa ordning)
+  // Gemensamma: {A, C}, n=2
+  // Lokala v1-ranks: A=1, C=2
+  // Lokala v2-ranks: A=1, C=2
+  // Σd²=0 → ρ=1.0
+  const v1: V1RankingEntry[] = [
+    { cleaner_id: "a", rank: 1, distance_km: 1 },
+    { cleaner_id: "b", rank: 2, distance_km: 2 },
+    { cleaner_id: "c", rank: 3, distance_km: 3 },
+    { cleaner_id: "d", rank: 4, distance_km: 4 },
+    { cleaner_id: "e", rank: 5, distance_km: 5 },
+  ];
+  const v2: V2RankingEntry[] = [
+    { cleaner_id: "a", rank: 1, match_score: 0.9 },
+    { cleaner_id: "c", rank: 2, match_score: 0.8 },
+  ];
+  const rho = calculateSpearmanRho(v1, v2);
+  assertEquals(rho, 1.0);
+});
+
 Deno.test("spearman: disjoint rankings → 0", () => {
   const v1: V1RankingEntry[] = [
     { cleaner_id: "a", rank: 1, distance_km: 1 },

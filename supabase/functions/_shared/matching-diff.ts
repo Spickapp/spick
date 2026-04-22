@@ -94,17 +94,24 @@ export function calculateTopNOverlap<
  * Spearman rank correlation mellan två rankings.
  *
  * Formel: ρ = 1 - (6 * Σd²) / (n * (n² - 1))
- * där d = rank-skillnaden för samma cleaner_id i v1 vs v2.
+ * där d = LOKAL rank-skillnad för samma cleaner_id inom delmängden
+ * gemensamma cleaners. n = antal gemensamma.
+ *
+ * VIKTIGT: Använder *lokala* ranks (1..n_common), INTE de globala
+ * ranks från v1/v2-listorna. Standardformeln kräver att ranks är
+ * en permutation av 1..n — om v1 har 5 cleaners och v2 har 2 med 2
+ * gemensamma, globala ranks (t.ex. v1_rank=4, v2_rank=1) ger värden
+ * utanför [-1, 1]. Sprint 2 Dag 2 bugfix efter prod-test visade
+ * spearman_rho=-8 pga globala ranks på asymmetriska listor.
  *
  * Returvärde i [-1, 1]:
- *   +1 = identisk ordning
- *    0 = ingen korrelation
- *   -1 = exakt inverterad ordning
+ *   +1 = identisk lokal ordning
+ *    0 = ingen korrelation (eller n < 2)
+ *   -1 = exakt inverterad lokal ordning
  *
  * Edge cases:
  *   - Färre än 2 cleaners gemensamma → returnerar 0 (otillräcklig data)
  *   - Cleaners som bara finns i en ranking ignoreras
- *   - Ties hanteras som fractional ranks (avg av positioner)
  *
  * Avrundning till 3 decimaler matchar shadow_log.spearman_rho numeric(4,3).
  */
@@ -118,26 +125,37 @@ export function calculateSpearmanRho<
   const v1Map = new Map(v1.map((r) => [r.cleaner_id, r.rank]));
   const v2Map = new Map(v2.map((r) => [r.cleaner_id, r.rank]));
 
-  const common: Array<{ r1: number; r2: number }> = [];
-  for (const [id, r1] of v1Map) {
-    const r2 = v2Map.get(id);
-    if (r2 !== undefined) common.push({ r1, r2 });
+  const commonIds: string[] = [];
+  for (const id of v1Map.keys()) {
+    if (v2Map.has(id)) commonIds.push(id);
   }
 
-  const n = common.length;
+  const n = commonIds.length;
   if (n < 2) return 0;
 
-  // Spearman med enkel rank-diff (inga ties antas — v1 distance + v2 match_score
-  // har olika värde-domäner, ties är osannolika på identiska positioner).
+  // Tilldela LOKALA ranks på de gemensamma cleaners.
+  // Sortera efter globala v1-rank, assign lokal 1..n. Samma för v2.
+  const sortedByV1 = [...commonIds].sort(
+    (a, b) => (v1Map.get(a) ?? 0) - (v1Map.get(b) ?? 0),
+  );
+  const localV1Rank = new Map(sortedByV1.map((id, i) => [id, i + 1]));
+
+  const sortedByV2 = [...commonIds].sort(
+    (a, b) => (v2Map.get(a) ?? 0) - (v2Map.get(b) ?? 0),
+  );
+  const localV2Rank = new Map(sortedByV2.map((id, i) => [id, i + 1]));
+
   let sumD2 = 0;
-  for (const { r1, r2 } of common) {
+  for (const id of commonIds) {
+    const r1 = localV1Rank.get(id)!;
+    const r2 = localV2Rank.get(id)!;
     const d = r1 - r2;
     sumD2 += d * d;
   }
 
   const rho = 1 - (6 * sumD2) / (n * (n * n - 1));
 
-  // Avrunda till 3 decimaler för DB-insertion
+  // Avrunda till 3 decimaler för DB-insertion (numeric(4,3))
   return Math.round(rho * 1000) / 1000;
 }
 
