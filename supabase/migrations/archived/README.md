@@ -281,3 +281,26 @@ mönster — skrevs men applicerades aldrig till prod.
 Prod hanterar dubbelbokning via booking_slots-tabell (rad 1521) +
 calendar_events no_booking_overlap EXCLUDE constraint (rad 3489) —
 helt annan arkitektur än denna fil föreslår.
+
+### 20260330000001_security_hardening.sql (arkiverad 2026-04-22)
+
+**Varför:** 80% dead + kritiska delar använder legacy-kolumner.
+
+Filen har 8 FIX-blocks. Verifiering mot prod:
+- Objekt som finns i prod: 3/15 (booking_status_log,
+  processed_webhook_events, idx_status_log_booking)
+- Objekt som saknas: 12/15
+
+Kritiska delar som FAIL:ar:
+- FIX 1: booking_confirmation VIEW — definitionen har legacy-kolumner
+  (service/date/time/hours). Prod-VIEW:en har helt annan struktur
+  (service_type/booking_date/booking_time/booking_hours + 25 andra kolumner).
+- FIX 8: validate_booking_insert trigger — refererar 5 legacy-kolumner.
+- FIX 5: bookings_hours_range CHECK constraint — använder 'hours'.
+
+De 3 objekt som finns i prod skapades via andra vägar (Studio eller
+andra migrations), inte denna fil (som fail:ade direkt).
+
+Rate limiting + webhook idempotency + stale booking cleanup är värdefulla
+koncept som bör implementeras om — men inte med denna migrations
+legacy-kolumner.
