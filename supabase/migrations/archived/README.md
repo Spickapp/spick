@@ -343,3 +343,29 @@ hardening-migrations.
 
 Admin-portal-systemet byggdes via Studio eller andra migrations,
 inte denna fils definitioner. Filens INTENT har aldrig realiserats.
+
+### 20260402000001_fix_rls_security.sql (arkiverad 2026-04-22)
+
+**Varför:** 94% dead mot prod. 7:e RLS-hardening-fil som arkiveras.
+
+Verifiering (18 policies):
+- FINNS i prod: 1 ("Auth read own bookings") — men failar pga legacy
+  `bookings.email`-kolumn
+- SAKNAS: 17 (94%)
+- 0 non-policy operations (ingen CREATE TABLE/FUNCTION/TRIGGER/INDEX/VIEW)
+
+Den enda policy som finns i prod skapades via senare Studio-intervention
+eller annan migration — inte denna (som failar direkt på stmt 5).
+
+**Mönster:** Dead RLS-hardening-migrations har blivit ett konsistent
+tema i Fas 2.X Replayability Sprint. Filer i samma kategori:
+- 007_rls.sql (iter 2)
+- 20260325000002_rls_bookings.sql (iter 5)
+- 20260326100001_customers_rls.sql (iter 10)
+- 20260326600001_fix_applications_rls_and_update.sql (iter 13)
+- 20260327400001_nuclear_rls_hardening.sql (iter 18)
+- 20260327700001_fix_reviews_messages_rls.sql (iter 19)
+- 20260402000001_fix_rls_security.sql (iter 28)
+
+Aktuella policies finns i `20260422130000_fas_2_1_1_all_policies.sql`
+(79 policies konsoliderade från prod).
