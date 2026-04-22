@@ -59,7 +59,18 @@ END $$;
 
 -- ── spark_levels ────────────────────────────────────────
 -- FK från cleaners.spark_level_id.
--- Primärkälla: prod-schema.sql rad 2681-2689
+-- Primärkälla: prod-schema.sql rad 2681-2689 (tabell) + 3594 (UNIQUE)
+--            + 2696 (sequence) + 3960 (index)
+CREATE SEQUENCE IF NOT EXISTS "public"."spark_levels_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE "public"."spark_levels_id_seq" OWNER TO "postgres";
+
 CREATE TABLE IF NOT EXISTS "public"."spark_levels" (
     "id" integer NOT NULL,
     "name" "text" NOT NULL,
@@ -73,13 +84,26 @@ CREATE TABLE IF NOT EXISTS "public"."spark_levels" (
 
 ALTER TABLE "public"."spark_levels" OWNER TO "postgres";
 
+ALTER SEQUENCE "public"."spark_levels_id_seq" OWNED BY "public"."spark_levels"."id";
+
+ALTER TABLE ONLY "public"."spark_levels"
+    ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."spark_levels_id_seq"'::"regclass");
+
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'spark_levels_pkey') THEN
         ALTER TABLE ONLY "public"."spark_levels"
             ADD CONSTRAINT "spark_levels_pkey" PRIMARY KEY ("id");
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'spark_levels_name_key') THEN
+        ALTER TABLE ONLY "public"."spark_levels"
+            ADD CONSTRAINT "spark_levels_name_key" UNIQUE ("name");
+    END IF;
 END $$;
+
+CREATE INDEX IF NOT EXISTS "idx_spark_levels_points"
+    ON "public"."spark_levels" USING "btree" ("min_points");
 
 -- ── subscriptions ───────────────────────────────────────
 -- FK från bookings.subscription_id.
