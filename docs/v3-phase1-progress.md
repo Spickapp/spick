@@ -252,7 +252,10 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 | §3.3 | 208 | Vikter implementerade | ✓ implicit | i §3.2a |
 | §3.4 | 209 | History-multiplier | ✓ implicit | i §3.2a (inaktiv utan customer_id) |
 | §3.5 | 210 | VIEW-indirektion | ✓ STÄNGD (ej tillämplig) | (denna commit) |
-| §3.6, §3.7 full, §3.8, §3.9 | 211-233 | Materialiserad vy, A/B-ramverk, admin-UI, pilot-analys | ◯ | — |
+| §3.6 | 218 | Materialiserad vy (villkorat performance) | ✓ STÄNGD | (denna session) — Sprint 2 Dag 1 2026-04-24 |
+| §3.7 full | 219-220 | Shadow-mode + A/B-ramverk | ◑ | (denna session) — infrastruktur klar, wrapper-logik kvar |
+| §3.8 | 220 | Admin-dashboard för match_score | ◯ | — blockerad av hygien #13 |
+| §3.9 | 221 | Pilot-analys efter 30 dgrs data | ◯ | — kräver shadow-mode aktiverat först |
 
 > **⚠️ BLOCKERAD från prod-deploy** — upptäckt 2026-04-23 kväll att `supabase_migrations.schema_migrations` är ur sync med repo (1 rad i prod vs 52 filer i repo). Se [docs/planning/todo-migrations-deploy-audit-2026-04-23.md](planning/todo-migrations-deploy-audit-2026-04-23.md). §3.2a manuell deploy via Studio SQL kan köras för att oblockera Fas 3-progress, men strukturell repair behövs före §3.2b deploy.
 
@@ -275,7 +278,11 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 
 **Bakåtkompatibilitet (§3.2b ännu inte landad):** boka.html:1928 fortsätter fungera med 2-arg-anrop. När nya params är NULL: preference_match_score + history_multiplier = 1.0 (neutraliserade).
 
-**§3.7 partial — audit-writing:** `chosen_cleaner_match_score` + `matching_algorithm_version` skrivs till bookings vid varje booking-create. Grundar A/B-analys i §3.9. `matching_algorithm_version` läses server-side från `platform_settings` (klient otrusted). Full §3.7 A/B-ramverk (shadow mode, v2-aktivering, traffic-split) kvarstår.
+**§3.7 partial — audit-writing:** `chosen_cleaner_match_score` + `matching_algorithm_version` skrivs till bookings vid varje booking-create. Grundar A/B-analys i §3.9. `matching_algorithm_version` läses server-side från `platform_settings` (klient otrusted).
+
+**§3.7 full-infrastruktur (Sprint 2 Dag 1, 2026-04-24):** `matching_shadow_log`-tabell skapad i prod + `matching_shadow_log_enabled=false` seed i platform_settings. Tabell har RLS (admin-read), FK till bookings, 2 indexes för pilot-queries. Wrapper-logik i booking-create EF (kallar v1+v2 + loggar diff) återstår. Se `supabase/migrations/20260424231000_sprint2d1_matching_shadow_log.sql`.
+
+**§3.6 STÄNGD (Sprint 2 Dag 1, 2026-04-24):** Benchmark av `find_nearby_cleaners` visar 51ms warm-cache (380ms cold) på 12 approved cleaners. Materialized view EJ behövd idag — tröskel 200ms @ 500+ cleaners enligt designdok §11. Index finns: `idx_cleaners_approval_active` (partial hard-filter) + `idx_cleaners_home_geo` (GiST spatial). Öppnas om/när benchmark visar >200ms.
 
 ## Fas 2.5 — Minor RUT/dokument-fix (pågår)
 
