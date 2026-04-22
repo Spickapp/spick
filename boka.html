@@ -1950,6 +1950,9 @@ async function loadAvailableCleaners() {
       if (!efRes.ok) throw new Error(`Kunde inte hämta städare (HTTP ${efRes.status})`);
       const efPayload = await efRes.json();
       cleaners = efPayload.cleaners || [];
+      // §3.9b (Sprint 2 Dag 3b): spara shadow_log_id för booking-create-korrelation.
+      // NULL om inte shadow-mode aktivt — booking-create behandlar NULL som no-op.
+      state.shadowLogId = efPayload.shadow_meta?.shadow_log_id ?? null;
     } else {
       // Fallback: hämta alla godkända städare (inget lat/lng)
       let url = `${SUPA}/rest/v1/v_cleaners_for_booking?select=id,full_name,avg_rating,review_count,services,city,hourly_rate,bio,avatar_url,identity_verified,home_lat,home_lng,pet_pref,elevator_pref,company_id,is_company_owner,company_name,company_display_name,completed_jobs,has_fskatt,owner_only`;
@@ -2965,6 +2968,9 @@ async function doBook() {
         cleaner_id: state.cleanerId || undefined,
         // §3.7: audit-writing för A/B-analys (designdokumentet §3.7)
         chosen_cleaner_match_score: state.chosenMatchScore,
+        // §3.9b (Sprint 2 Dag 3b): korrelera bokning med shadow-log-rad.
+        // booking-create UPDATE:ar matching_shadow_log SET booking_id, chosen_cleaner_id.
+        shadow_log_id: state.shadowLogId || undefined,
         rut: state.customerType === 'privat' && useRut,
         customer_type: state.customerType,
         business_name: state.customerType === 'foretag' ? (document.getElementById('biz-name')?.value.trim() || null) : null,

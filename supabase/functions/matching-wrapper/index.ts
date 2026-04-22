@@ -202,23 +202,35 @@ serve(async (req) => {
     const spearmanRho = calculateSpearmanRho(v1Ranking, v2Ranking);
 
     // Logga om enabled. Fire-and-forget: log-failure ska INTE blockera kunden.
+    // §3.9b (Sprint 2 Dag 3b): returnerar shadow_log_id så klient kan skicka
+    // med till booking-create EF, som i sin tur UPDATE:ar shadow-raden med
+    // booking_id + chosen_cleaner_id. Stänger kategori B-metrics.
+    let shadowLogId: string | null = null;
     if (shadowLogEnabled) {
       try {
-        await supabase.from("matching_shadow_log").insert({
-          booking_id: null, // fylls vid booking-create via korrelations-UPDATE (framtida)
-          v1_ranking: v1Ranking,
-          v2_ranking: v2Ranking,
-          top5_overlap: top5Overlap,
-          spearman_rho: spearmanRho,
-          chosen_cleaner_id: null,
-          customer_lat,
-          customer_lng,
-          booking_date: body.booking_date ?? null,
-          booking_time: body.booking_time ?? null,
-        });
-      } catch (logErr) {
-        // Log-failure = varning, inte kund-fel
-        console.error("matching_shadow_log INSERT failed:", logErr);
+        const { data: logRow, error: logErr } = await supabase
+          .from("matching_shadow_log")
+          .insert({
+            booking_id: null, // fylls av booking-create via §3.9b-korrelations-UPDATE
+            v1_ranking: v1Ranking,
+            v2_ranking: v2Ranking,
+            top5_overlap: top5Overlap,
+            spearman_rho: spearmanRho,
+            chosen_cleaner_id: null, // fylls av booking-create
+            customer_lat,
+            customer_lng,
+            booking_date: body.booking_date ?? null,
+            booking_time: body.booking_time ?? null,
+          })
+          .select("id")
+          .single();
+        if (logErr) {
+          console.error("matching_shadow_log INSERT failed:", logErr);
+        } else {
+          shadowLogId = (logRow as { id: string } | null)?.id ?? null;
+        }
+      } catch (e) {
+        console.error("matching_shadow_log INSERT threw:", e);
       }
     }
 
@@ -229,6 +241,7 @@ serve(async (req) => {
       cleaners: mapV1ToV2Schema(v1Cleaners),
       algorithm_version: "shadow",
       shadow_meta: {
+        shadow_log_id: shadowLogId, // §3.9b: klient skickar med till booking-create
         top5_overlap: top5Overlap,
         spearman_rho: spearmanRho,
         v1_count: v1Cleaners.length,

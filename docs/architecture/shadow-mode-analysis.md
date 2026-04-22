@@ -1,6 +1,6 @@
 # Shadow-mode pilot-analys (§3.9)
 
-**Status:** Kategori A ✓ (Sprint 2 Dag 3a, 2026-04-25) · Kategori B ◯ (kräver §3.9b booking-korrelation)
+**Status:** Kategori A ✓ (Sprint 2 Dag 3a, 2026-04-25) · Kategori B ✓ infrastruktur klar (Sprint 2 Dag 3b) — väntar shadow-mode-bokningar för data
 
 **Primärkälla:** [matching-algorithm.md §14](matching-algorithm.md) (metrik-plan från designdokumentet)
 
@@ -186,17 +186,18 @@ WHERE created_at >= NOW() - INTERVAL '30 days';
 - `low_agreement > 30%` → v2 gör signifikant olika val, data är mycket värdefull för go/no-go
 - `moderate` i mitten → förväntat utfall
 
-## 5. Kategori B (efter §3.9b)
+## 5. Kategori B — infrastruktur klar (Sprint 2 Dag 3b)
 
-Kräver att `matching_shadow_log.booking_id` och `matching_shadow_log.chosen_cleaner_id` fylls i när kund gör en bokning. Idag är de NULL (shadow-log skrivs vid sökning, innan kund väljer).
+`matching_shadow_log.booking_id` och `chosen_cleaner_id` fylls i vid varje shadow-mode-bokning. Korrelations-flöde:
 
-**§3.9b scope (framtida):**
-1. EF `matching-wrapper` returnerar `shadow_log_id` i response
-2. `boka.html` sparar `shadow_log_id` i `state`
-3. `booking-create` EF accepterar `shadow_log_id` i body
-4. `booking-create` UPDATE:ar shadow-raden: `SET booking_id = NEW.id, chosen_cleaner_id = cleaner_id WHERE id = shadow_log_id`
+1. **EF `matching-wrapper`** INSERT:ar shadow-rad + `SELECT id` → returnerar `shadow_meta.shadow_log_id` i response.
+2. **`boka.html`** sparar `efPayload.shadow_meta?.shadow_log_id` i `state.shadowLogId` (rad ~1953).
+3. **`boka.html`** skickar `shadow_log_id: state.shadowLogId || undefined` i `booking-create`-body (rad ~2970).
+4. **`booking-create`** deconstructar `shadow_log_id` (rad 63) och kör `UPDATE matching_shadow_log SET booking_id, chosen_cleaner_id WHERE id = shadow_log_id` efter lyckad booking-INSERT (rad ~420). Fail-soft — log-failure blockerar INTE betalning.
 
-När detta är på plats kan kategori B-queries köras:
+**Smoke-test (Sprint 2 Dag 3b):** Shadow-log-rad `dc4b3502-9fac-4c1d-b110-d2dab0d140fc` skapad via EF, `booking_id` + `chosen_cleaner_id` NULL redo för första verkliga shadow-bokning att fylla.
+
+**Data-tillgänglighet:** Första verkliga shadow-mode-bokning (kund öppnar boka.html, väljer städare, bokar, betalar) fyller i korrelations-kolumnerna. Därefter kan kategori B-queries köras:
 
 ### 5.1 Acceptance-rate (chosen i top-3 av v2)
 

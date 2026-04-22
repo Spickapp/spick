@@ -60,6 +60,7 @@ serve(async (req) => {
     const body = await req.json();
     const {
       chosen_cleaner_match_score, // §3.7 audit-writing (null för v1-fallback)
+      shadow_log_id, // §3.9b (Sprint 2 Dag 3b): korrelation till matching_shadow_log
       name,
       email,
       phone,
@@ -414,6 +415,26 @@ serve(async (req) => {
     if (insertErr) {
       console.error("Booking insert failed:", insertErr);
       return json(500, { error: "Kunde inte skapa bokning" });
+    }
+
+    // §3.9b (Sprint 2 Dag 3b): korrelera bokning med shadow-log-rad.
+    // Fail-soft — UPDATE-failure blockerar INTE betalningsflödet. Log endast.
+    // Stänger kategori B-metrics i docs/architecture/shadow-mode-analysis.md.
+    if (shadow_log_id && cleaner?.id) {
+      try {
+        const { error: shadowErr } = await supabase
+          .from("matching_shadow_log")
+          .update({
+            booking_id: bookingId,
+            chosen_cleaner_id: cleaner.id,
+          })
+          .eq("id", shadow_log_id);
+        if (shadowErr) {
+          console.error("matching_shadow_log UPDATE failed:", shadowErr, { shadow_log_id, bookingId });
+        }
+      } catch (e) {
+        console.error("matching_shadow_log UPDATE threw:", e);
+      }
     }
 
     // ── §2.7.3: Minimal B2B-logging för spårbarhet ──
