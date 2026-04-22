@@ -67,19 +67,29 @@ CREATE POLICY "Admin reads all applications"
 CREATE POLICY "Service role reads applications"
   ON cleaner_applications FOR SELECT TO service_role USING (true);
 
--- 6) jobs: 0 frontend-konsumenter → service_role + scoped ────
-DROP POLICY IF EXISTS "Anon reads jobs" ON jobs;
-DROP POLICY IF EXISTS "Auth reads jobs" ON jobs;
-DROP POLICY IF EXISTS "Cleaner sees own jobs" ON jobs;
+-- =============================================================
+-- Fas 2.X iter 40 (2026-04-22): sekt 6 (jobs) kommenterad ut
+-- =============================================================
+-- Orsak: 'jobs'-tabellen raderades i Fas 3 §3.2c. Prod har inte
+-- tabellen längre. 3 DROP + 3 CREATE policy är dead.
+--
+-- Från CLAUDE.md: jobs var dormant (27 kolumner, 39 rader) utan
+-- CREATE-migration, raderades senare.
+-- =============================================================
 
-CREATE POLICY "Admin manages all jobs"
-  ON jobs FOR ALL TO authenticated
-  USING (is_admin()) WITH CHECK (is_admin());
-
-CREATE POLICY "Cleaner sees own jobs"
-  ON jobs FOR SELECT TO authenticated
-  USING (cleaner_id IN (SELECT id FROM cleaners WHERE auth_user_id = auth.uid()));
-
-CREATE POLICY "Service role manages jobs"
-  ON jobs FOR ALL TO service_role
-  USING (true) WITH CHECK (true);
+-- -- 6) jobs: 0 frontend-konsumenter → service_role + scoped ────
+-- DROP POLICY IF EXISTS "Anon reads jobs" ON jobs;
+-- DROP POLICY IF EXISTS "Auth reads jobs" ON jobs;
+-- DROP POLICY IF EXISTS "Cleaner sees own jobs" ON jobs;
+--
+-- CREATE POLICY "Admin manages all jobs"
+--   ON jobs FOR ALL TO authenticated
+--   USING (is_admin()) WITH CHECK (is_admin());
+--
+-- CREATE POLICY "Cleaner sees own jobs"
+--   ON jobs FOR SELECT TO authenticated
+--   USING (cleaner_id IN (SELECT id FROM cleaners WHERE auth_user_id = auth.uid()));
+--
+-- CREATE POLICY "Service role manages jobs"
+--   ON jobs FOR ALL TO service_role
+--   USING (true) WITH CHECK (true);
