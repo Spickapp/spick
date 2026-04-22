@@ -69,3 +69,26 @@ i `00005_fas_2_1_bookings.sql` från retroaktiv §2.1.1-audit.
 - Bygg ny migration med fräsch rut_claims-schema
 - Matcha aktuellt Skatteverket-API-kontrakt
 - Se `docs/audits/2026-04-23-rut-infrastructure-decision.md`
+
+### 20260326000002_add_sqm_bookings.sql (arkiverad 2026-04-22)
+
+**Varför:** Hela migrationen är dead code mot prod:
+
+- `ADD COLUMN sqm INTEGER` på bookings → prod har `square_meters`
+  (annat kolumnnamn), inte `sqm`. `sqm` existerar inte i prod.
+- `CREATE INDEX idx_bookings_email` → `bookings.email` finns inte
+  i prod (ersatt av `customer_email`).
+- `CREATE INDEX idx_bookings_customer_email/date` → dessa index-namn
+  existerar inte i prod.
+- `cleaners.terms_accepted/terms_accepted_at/terms_version` — alla 3
+  kolumner saknas i prod. Prod har istället `terms_version_accepted` på
+  BOOKINGS (inte cleaners).
+
+Filen representerar tidig prototyp av kolumn-namngivning som helt
+omarbetades innan prod-deploy.
+
+**Fas 2.X Replayability:** Blockerade db reset på rad 4 med
+"column email does not exist". Arkiverad.
+
+**Observation:** `20260326000005_all_missing_columns.sql` gör också
+`ADD COLUMN sqm` — hanteras när replay når den.
