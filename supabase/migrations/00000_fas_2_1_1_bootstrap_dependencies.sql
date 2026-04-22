@@ -166,18 +166,22 @@ ALTER FUNCTION "public"."is_admin"() OWNER TO "postgres";
 -- ── is_company_owner_of(uuid) ───────────────────────────
 -- Använd av cleaners- och service_checklists-policies.
 -- Primärkälla: prod-schema.sql rad 683-691
--- OBS: Refererar companies + cleaners som båda skapas senare i §2.1.1.
--- SQL-funktioner parsas inte förrän de exekveras, så body-referenser
--- är OK även om tabellerna inte existerar vid CREATE FUNCTION-tiden.
+--
+-- ÄNDRAT FRÅN PROD: LANGUAGE plpgsql istället för sql.
+-- Skäl: sql-funktioner parsar body inline vid CREATE, vilket failar
+-- när companies/cleaners inte finns än. plpgsql har sen binding.
+-- Funktionellt identisk. Senare sprint kan uppgradera prod.
 CREATE OR REPLACE FUNCTION "public"."is_company_owner_of"("target_company_id" "uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM companies
-    JOIN cleaners ON cleaners.id = companies.owner_cleaner_id
-    WHERE companies.id = target_company_id
-    AND cleaners.auth_user_id = auth.uid()
-  );
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM companies
+        JOIN cleaners ON cleaners.id = companies.owner_cleaner_id
+        WHERE companies.id = target_company_id
+        AND cleaners.auth_user_id = auth.uid()
+    );
+END;
 $$;
 
 ALTER FUNCTION "public"."is_company_owner_of"("target_company_id" "uuid") OWNER TO "postgres";
