@@ -92,3 +92,29 @@ omarbetades innan prod-deploy.
 
 **Observation:** `20260326000005_all_missing_columns.sql` gör också
 `ADD COLUMN sqm` — hanteras när replay når den.
+
+### 20260326000003_referrals_table.sql (arkiverad 2026-04-22)
+
+**Varför:** Migrationen skapar en `referrals`-tabell som skiljer sig
+från prod:
+
+- Migration: 9 kolumner inkl `ref_code` (NOT NULL), `converted_at`,
+  `reward_sent`
+- Prod (rad 2553): 5 kolumner — id, referrer_email, referred_email,
+  status, created_at + CHECK constraint på status
+- Migrationens 2 index + 1 policy: alla saknas i prod (prod har bara
+  "Service role manages referrals"-policy)
+
+CREATE TABLE IF NOT EXISTS skippas (tabellen finns redan), men sedan
+failar `CREATE INDEX ... ON referrals(ref_code)` eftersom den
+kolumnen aldrig blev del av prod-schemat.
+
+Tabellen i prod måste ha skapats via annan migration eller Studio-
+operation. Migrationen representerar en övergiven prototyp.
+
+**Fas 2.X Replayability:** Blockerade db reset på rad 12. Arkiverad.
+
+**Om referrals-hantering ska uppdateras:** Skapa ny migration som
+matchar nuvarande prod-schema (5 kolumner). Aktuella referrals-
+policies finns i 20260422130000_fas_2_1_1_all_policies.sql (om några)
+annars i fresh prod-dump.
