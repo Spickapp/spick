@@ -242,3 +242,22 @@ körs innan notifications-tabellen skapas (20260422083000).
 
 Filen har historiskt värde som dokumentation av hardening-pass
 2026-03-27 men är inte del av nuvarande prod-state.
+
+### 20260327700001_fix_reviews_messages_rls.sql (arkiverad 2026-04-22)
+
+**Varför:** 100% dead + type-mismatch fail.
+
+Filen skapar 2 policies:
+- "Insert review for completed booking" ON reviews: SAKNAS i prod
+- "Anon insert messages validated" ON messages: SAKNAS i prod
+
+Filens kommentar säger 'EXECUTED IN PRODUCTION 2026-03-27' men policies
+existerar inte längre i prod. Drop:ades troligen senare i en annan
+hardening-pass.
+
+Dessutom failar filen med 'uuid = text'-type-mismatch eftersom
+reviews.booking_id är TEXT vid denna replay-punkt medan bookings.id
+är UUID.
+
+Reviews konverteras till VIEW i 20260422131000 (Fas 2.X iter 4),
+så alla reviews-TABLE-policies raderas ändå.
