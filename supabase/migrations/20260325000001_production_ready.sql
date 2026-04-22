@@ -54,7 +54,10 @@ CREATE TABLE IF NOT EXISTS cleaner_applications (
 );
 
 -- Indexes för snabbare queries
-CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(scheduled_date);
+-- Ändrat 2026-04-22 (Fas 2.X iter 3): scheduled_date → booking_date
+-- Prod har alltid haft booking_date. scheduled_date var en antagen
+-- kolumn som aldrig realiserades. Fix matchar prod-index rad 3708.
+CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
 CREATE INDEX IF NOT EXISTS idx_bookings_payment_status ON bookings(payment_status);
 CREATE INDEX IF NOT EXISTS idx_bookings_customer_email ON bookings(customer_email);
 CREATE INDEX IF NOT EXISTS idx_bookings_cleaner_id ON bookings(cleaner_id);
