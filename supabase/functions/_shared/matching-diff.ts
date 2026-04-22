@@ -65,6 +65,18 @@ export interface V2Cleaner {
   exploration_bonus: number | null;
   history_multiplier: number | null;
   company_display_name: string | null;
+
+  // Sprint Model-4a extensions — endast satta i 'providers'-läge
+  // Null/undefined i v1, v2, shadow, providers-shadow-lägen.
+  // Gör det möjligt för klient (boka.html) att rendera team-aggregat.
+  provider_type?: 'solo' | 'company' | null;
+  provider_id?: string | null;
+  representative_cleaner_id?: string | null;
+  team_size?: number | null;
+  aggregate_rating?: number | null;
+  aggregate_review_count?: number | null;
+  aggregate_completed_jobs?: number | null;
+  min_hourly_rate?: number | null;
 }
 
 /**
@@ -207,6 +219,79 @@ export function mapV1ToV2Schema(
     history_multiplier: null,
     company_display_name: (c.company_name as string) ?? null,
   }));
+}
+
+/**
+ * Sprint Model-4a: mappa find_nearby_providers-output till V2Cleaner-format.
+ *
+ * Providers-RPC returnerar (provider_type, provider_id, representative_cleaner_id,
+ * display_name, aggregate_*, min_hourly_rate, team_size, ...). Klienten (boka.html)
+ * förväntar V2Cleaner-struktur. Denna helper bygger en bro:
+ *
+ *   - id = representative_cleaner_id (så booking-create kan använda samma
+ *     cleaner_id som tidigare)
+ *   - full_name = display_name (för 'company' = företagsnamnet)
+ *   - hourly_rate = min_hourly_rate
+ *   - avg_rating = aggregate_rating
+ *   - review_count = aggregate_review_count
+ *   - completed_jobs = aggregate_completed_jobs
+ *   - company_id populerad om provider_type='company' (booking-create routar
+ *     Stripe-transfer via is_company_owner = VD:n)
+ *   - Extension-fält (provider_type, team_size m.fl.) bevaras för klient-UI
+ *
+ * V2-specifika score-fält blir null (providers har inget match_score i Model-2a).
+ */
+export function mapProvidersToV2Cleaners(
+  providers: ReadonlyArray<Record<string, unknown>>,
+): V2Cleaner[] {
+  return providers.map((p) => {
+    const providerType = (p.provider_type as 'solo' | 'company') ?? 'solo';
+    const isCompany = providerType === 'company';
+    return {
+      id: String(p.representative_cleaner_id ?? p.provider_id ?? ''),
+      full_name: (p.display_name as string) ?? null,
+      first_name: null,
+      last_name: null,
+      bio: (p.bio as string) ?? null,
+      hourly_rate: (p.min_hourly_rate as number) ?? null,
+      profile_image_url: null,
+      avatar_url: (p.avatar_url as string) ?? null,
+      avg_rating: (p.aggregate_rating as number) ?? null,
+      total_reviews: (p.aggregate_review_count as number) ?? null,
+      review_count: (p.aggregate_review_count as number) ?? null,
+      services: p.services ?? null,
+      city: (p.city as string) ?? null,
+      identity_verified: (p.identity_verified as boolean) ?? null,
+      home_lat: null,
+      home_lng: null,
+      pet_pref: null,
+      elevator_pref: null,
+      distance_km: (p.distance_km as number) ?? null,
+      company_id: isCompany ? String(p.provider_id ?? '') : null,
+      is_company_owner: null, // providers exponerar inte detta
+      company_name: isCompany ? (p.display_name as string) : null,
+      completed_jobs: (p.aggregate_completed_jobs as number) ?? null,
+      has_fskatt: (p.has_fskatt as boolean) ?? null,
+      match_score: null,
+      distance_score: null,
+      rating_score: null,
+      completed_jobs_score: null,
+      preference_match_score: null,
+      verified_score: null,
+      exploration_bonus: null,
+      history_multiplier: null,
+      company_display_name: isCompany ? (p.display_name as string) : null,
+      // Model-4a extensions
+      provider_type: providerType,
+      provider_id: String(p.provider_id ?? ''),
+      representative_cleaner_id: String(p.representative_cleaner_id ?? ''),
+      team_size: (p.team_size as number) ?? 1,
+      aggregate_rating: (p.aggregate_rating as number) ?? null,
+      aggregate_review_count: (p.aggregate_review_count as number) ?? null,
+      aggregate_completed_jobs: (p.aggregate_completed_jobs as number) ?? null,
+      min_hourly_rate: (p.min_hourly_rate as number) ?? null,
+    };
+  });
 }
 
 /**

@@ -49,6 +49,7 @@ import {
   buildV2Ranking,
   calculateSpearmanRho,
   calculateTopNOverlap,
+  mapProvidersToV2Cleaners,
   mapV1ToV2Schema,
   type V2Cleaner,
 } from "../_shared/matching-diff.ts";
@@ -57,7 +58,7 @@ import { corsHeaders } from "../_shared/email.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-type AlgorithmVersion = "v1" | "v2" | "shadow" | "providers-shadow";
+type AlgorithmVersion = "v1" | "v2" | "shadow" | "providers-shadow" | "providers";
 
 interface RequestBody {
   customer_lat?: number;
@@ -85,7 +86,8 @@ async function readSettings(supabase: SupabaseClient): Promise<SettingsPair> {
   const rows = (data ?? []) as Array<{ key: string; value: string }>;
   const rawVersion = rows.find((r) => r.key === "matching_algorithm_version")?.value ?? "v1";
   const version: AlgorithmVersion =
-    rawVersion === "v1" || rawVersion === "v2" || rawVersion === "shadow" || rawVersion === "providers-shadow"
+    rawVersion === "v1" || rawVersion === "v2" || rawVersion === "shadow" ||
+      rawVersion === "providers-shadow" || rawVersion === "providers"
       ? rawVersion
       : "v1";
   const shadowLogEnabled =
@@ -128,6 +130,32 @@ serve(async (req) => {
       return json(200, {
         cleaners: mapV1ToV2Schema((data ?? []) as Array<Record<string, unknown>>),
         algorithm_version: "v1",
+      });
+    }
+
+    // ── providers: Model-2a-RPC, mappad till V2Cleaner med extensions ──
+    // Sprint Model-4a (audit 2026-04-26). Klient får team_size + aggregat
+    // via extension-fält. Solo-providers renderas exakt som solo-städare
+    // idag (team_size=1). Company-providers visas med företagsnamn som
+    // display_name och min_hourly_rate som kortpris.
+    if (version === "providers") {
+      const { data, error } = await supabase.rpc("find_nearby_providers", {
+        customer_lat,
+        customer_lng,
+        booking_date: body.booking_date ?? null,
+        booking_time: body.booking_time ?? null,
+        booking_hours: body.booking_hours ?? null,
+        has_pets: body.has_pets ?? null,
+        has_elevator: body.has_elevator ?? null,
+        booking_materials: body.booking_materials ?? null,
+        customer_id: body.customer_id ?? null,
+      });
+      if (error) {
+        return json(500, { error: "providers-RPC misslyckades", detail: error.message });
+      }
+      return json(200, {
+        cleaners: mapProvidersToV2Cleaners((data ?? []) as Array<Record<string, unknown>>),
+        algorithm_version: "providers",
       });
     }
 
