@@ -319,3 +319,27 @@ Ingen schema-operation (CREATE/ALTER/DROP TABLE|FUNCTION|INDEX|TRIGGER).
 Filnamn + rubriker ("EMERGENCY CLEANUP") bekräftar engångs-karaktär.
 Samma antipattern som realistic_cleaners_seed (iter 12):
 data-manipulation i migrations skapar irrepeterbara scenarios.
+
+### 20260331000001_admin_portal.sql (arkiverad 2026-04-22)
+
+**Varför:** Partial-live mot prod men definitioner matchar inte.
+
+Verifiering (17 objekt):
+- FINNS i prod: 8 (admin_roles, admin_permissions, role_permissions,
+  admin_users, admin_audit_log, support_tickets, idx_audit_resource,
+  idx_audit_created)
+- SAKNAS: 9 (ticket_notes, admin_settings, temp_role_elevations,
+  trg_protect_superadmin, trg_ticket_number, 4 index)
+
+De 8 objekt som finns i prod har andra kolumn-definitioner än denna
+fil specificerar. Exempel: admin_users har 5 kolumner i prod
+(matchar 00000-bootstrap), denna fil definierar 11 (inkl display_name).
+
+CREATE TABLE IF NOT EXISTS blir no-op. INSERT-seed (rad 180) försöker
+använda display_name-kolumn som inte finns → fail.
+
+7 policies i filen är permissive (USING(true)) — ersatta av senare
+hardening-migrations.
+
+Admin-portal-systemet byggdes via Studio eller andra migrations,
+inte denna fils definitioner. Filens INTENT har aldrig realiserats.
