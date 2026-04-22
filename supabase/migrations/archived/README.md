@@ -383,3 +383,18 @@ Andra 'customers'-filen som arkiveras — iter 10 var första
 
 Aktuella customer_profiles-policies finns i
 `20260422130000_fas_2_1_1_all_policies.sql`.
+
+### 20260326500003_recreate_cleaner_applications.sql (arkiverad 2026-04-22)
+
+**Varför:** Destruktiv DROP TABLE + partial recreate.
+
+Filen gör `DROP TABLE cleaner_applications` följt av
+`CREATE TABLE` med bara 14 kolumner. Prod + vår 00001-bootstrap har
+43 kolumner. I fresh DB raderar filen 29 kolumner inkl
+`invited_by_company_id` som senare migrations refererar.
+
+Båda RLS-policies filen skapar (`Anon kan insertera ansökan`,
+`Autentiserad kan läsa ansökningar`) SAKNAS i prod.
+
+Filen var 2026-03-26 PostgREST schema-cache-fix — irrelevant i
+fresh DB-replay.
