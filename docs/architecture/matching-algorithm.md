@@ -24,7 +24,7 @@ Tre matching-system samexisterar i prod. Den här designen ersätter alla tre:
 
 | System | Typ | Filer | Status | Vikter / logik |
 |---|---|---|---|---|
-| `find_nearby_cleaners` RPC | Pull-modell, filter + endim-sort | [supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql](../../supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql) | LIVE, i migrations sedan §2.2 | `distance ASC → avg_rating DESC NULLS LAST` |
+| `find_nearby_cleaners` RPC | Pull-modell, filter + endim-sort | [supabase/migrations/20260422113608_f2_2_find_nearby_cleaners.sql](../../supabase/migrations/20260422113608_f2_2_find_nearby_cleaners.sql) | LIVE, i migrations sedan §2.2 | `distance ASC → avg_rating DESC NULLS LAST` |
 | `cleaner-job-match` EF | Pull-modell, 7-dim-scoring | [cleaner-job-match/index.ts:11-19](../../supabase/functions/cleaner-job-match/index.ts:11) | LIVE, deploy via [deploy-edge-functions.yml:36](../../.github/workflows/deploy-edge-functions.yml:36) | availability 25, geography 20, jobType 15, hourlyRate 15, quality 10, preferences 10, history 5 |
 | `jobs` + `job_matches` + `cleaner_job_types` | Push-modell, broadcast-scoring | [prod-schema.sql:2240-2297](../../prod-schema.sql) | DORMANT (39 rader, 0 kod-callers) | 7-booleans + integer `match_score` |
 
@@ -557,7 +557,7 @@ COMMIT;
 - **v3-arkitekturplan**: [docs/planning/spick-arkitekturplan-v3.md:199-233](../planning/spick-arkitekturplan-v3.md:199)
 - **Prod-schema (granskad 2026-04-22)**: `prod-schema.sql` (gitignored, 200 KB)
 - **Schema-drift-audit**: [docs/audits/2026-04-22-schema-drift-analysis.md](../audits/2026-04-22-schema-drift-analysis.md)
-- **Nuvarande `find_nearby_cleaners`-migration**: [supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql](../../supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql)
+- **Nuvarande `find_nearby_cleaners`-migration**: [supabase/migrations/20260422113608_f2_2_find_nearby_cleaners.sql](../../supabase/migrations/20260422113608_f2_2_find_nearby_cleaners.sql)
 - **`cleaner-job-match` EF (raderas efter §3.2)**: [supabase/functions/cleaner-job-match/index.ts](../../supabase/functions/cleaner-job-match/index.ts)
 - **Tidigare matching-relaterad audit**: [docs/audits/2026-04-19-nytt-jobb-matchar-bugg.md](../audits/2026-04-19-nytt-jobb-matchar-bugg.md), [2026-04-19-boka-cleaner-filter-bugg.md](../audits/2026-04-19-boka-cleaner-filter-bugg.md)
 - **Prod-funktion `get_new_cleaner_boost`** (konventions-källa): [prod-schema.sql:513-521](../../prod-schema.sql)

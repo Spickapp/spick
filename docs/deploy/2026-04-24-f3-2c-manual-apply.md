@@ -1,7 +1,7 @@
 # Manuell Deploy: §3.2c DORMANT DROP
 
 **Datum:** 2026-04-24
-**Migration:** `supabase/migrations/20260424_f3_2c_drop_dormant_tables.sql`
+**Migration:** `supabase/migrations/20260424223318_f3_2c_drop_dormant_tables.sql`
 **Metod:** Studio SQL Editor (ej CI pga schema_migrations ur sync, se §48 Fas 48.1-rapport)
 
 ## Pre-flight checklista
@@ -45,7 +45,7 @@ WHERE command ILIKE '%cleanup_expired_jobs%';
 1. Kopiera migrationsfilens innehåll till urklipp:
 
 ```powershell
-Get-Content supabase\migrations\20260424_f3_2c_drop_dormant_tables.sql -Raw | Set-Clipboard
+Get-Content supabase\migrations\20260424223318_f3_2c_drop_dormant_tables.sql -Raw | Set-Clipboard
 ```
 
 2. Öppna Studio SQL Editor → ny query.

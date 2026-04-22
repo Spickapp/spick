@@ -448,7 +448,7 @@ find_nearby_cleaners(
 - **Returnerar INTE** `company_id`, `is_company_owner`, `company_name`, `completed_jobs`, `has_fskatt` — Dessa nämns i session-prompt men verifierad signatur inkluderar dem EJ. Service-filtrering sker på klientsidan, inte i RPC.
 - Security: `SECURITY DEFINER` — kör med funktionens ägares rättigheter.
 
-**Källa:** ✓ [`supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql`](../supabase/migrations/20260422_f2_2_find_nearby_cleaners.sql) (prod-verifierad §2.2 2026-04-22). Tidigare källor `sql/radius-model.sql` + `sql/fix-find-nearby-for-teams.sql` + `sql/fix-nearby-part*.sql` raderade i §2.5 — alla drev från prod-sanningen.
+**Källa:** ✓ [`supabase/migrations/20260422113608_f2_2_find_nearby_cleaners.sql`](../supabase/migrations/20260422113608_f2_2_find_nearby_cleaners.sql) (prod-verifierad §2.2 2026-04-22). Tidigare källor `sql/radius-model.sql` + `sql/fix-find-nearby-for-teams.sql` + `sql/fix-nearby-part*.sql` raderade i §2.5 — alla drev från prod-sanningen.
 
 ---
 
