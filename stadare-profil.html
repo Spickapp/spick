@@ -365,6 +365,21 @@ async function loadProfile() {
   if (!c) { showError('Städaren hittades inte eller är inte aktiv.'); return; }
   _cleaner = c;
 
+  // Sprint Prof-5: VD-canonical-redirect.
+  // Om cleaner är VD (is_company_owner) → redirect till /f/<company-slug>.
+  // Samma entity ska inte indexeras på två URL:er (SEO-straff för duplikat).
+  // location.replace() = ingen back-button-entry (matchar 301-semantik).
+  if (c.is_company_owner && c.company_id) {
+    try {
+      var compSlugRes = await fetch(SUPA + '/rest/v1/companies?select=slug&id=eq.' + c.company_id + '&apikey=' + KEY, {headers: H});
+      var compSlugArr = compSlugRes.ok ? await compSlugRes.json() : [];
+      if (compSlugArr[0] && compSlugArr[0].slug) {
+        location.replace('/f/' + compSlugArr[0].slug);
+        return; // stoppa resten av loadProfile(); sidan ersätts av /f/
+      }
+    } catch(e) { /* fail-soft: fortsätter med /s/-rendering */ }
+  }
+
   // Sprint Prof-2a: Dynamic accent från cleaner-namn (initialvärde — overrides
   // senare med företagsnamn om is_company_owner). Ger varje städare unik signatur.
   var _initialPalette = nameToColor(c.full_name || 'Spick');
@@ -737,16 +752,50 @@ async function loadProfile() {
   var canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = 'https://spick.se/s/' + (c.slug || c.id);
 
-  document.getElementById('schema-json').textContent = JSON.stringify({
-    "@context":"https://schema.org","@type":"LocalBusiness",
+  // Sprint Prof-5: Enhanced JSON-LD med aggregateRating, review, areaServed-City,
+  // hasOfferCatalog. Ger Google rich-results-chans (stjärnor, priser i SERP).
+  var ld = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
     "name": c.full_name + " — Städare via Spick",
     "description": "Professionell städning i " + (c.city || "Stockholm") + ". ID-verifierad.",
     "url": "https://spick.se/s/" + (c.slug || c.id),
-    "areaServed": c.city || "Stockholm",
-    "geo": c.home_lat ? {"@type":"GeoCoordinates","latitude":String(c.home_lat),"longitude":String(c.home_lng)} : undefined,
+    "telephone": "+46760505153",
     "priceRange": rate + " kr/h (" + rutPrice + " kr/h med RUT)",
-    "parentOrganization": {"@type":"Organization","name":"Spick","url":"https://spick.se"}
-  });
+    "image": c.avatar_url || "https://spick.se/assets/og-image.png",
+    "parentOrganization": { "@type": "Organization", "name": "Spick", "url": "https://spick.se" },
+    "address": { "@type": "PostalAddress", "addressLocality": c.city || "Stockholm", "addressCountry": "SE" },
+    "areaServed": { "@type": "City", "name": c.city || "Stockholm" }
+  };
+  if (c.home_lat && c.home_lng) {
+    ld.geo = { "@type": "GeoCoordinates", "latitude": String(c.home_lat), "longitude": String(c.home_lng) };
+  }
+  if (hasRatings) {
+    ld.aggregateRating = { "@type": "AggregateRating", "ratingValue": c.avg_rating.toFixed(1), "reviewCount": c.review_count, "bestRating": "5", "worstRating": "1" };
+  }
+  if (Array.isArray(reviews) && reviews.length > 0) {
+    ld.review = reviews.slice(0, 3).map(function(r) {
+      var rv = {
+        "@type": "Review",
+        "reviewRating": { "@type": "Rating", "ratingValue": r.cleaner_rating, "bestRating": "5", "worstRating": "1" },
+        "author": { "@type": "Person", "name": "Kund" },
+        "reviewBody": r.comment || ""
+      };
+      if (r.created_at) rv.datePublished = r.created_at.split('T')[0];
+      return rv;
+    });
+  }
+  if (Array.isArray(svcs) && svcs.length > 0) {
+    ld.hasOfferCatalog = {
+      "@type": "OfferCatalog",
+      "name": "Städtjänster",
+      "itemListElement": svcs.map(function(s) {
+        var trimmed = (typeof s === 'string') ? s.trim() : String(s);
+        return { "@type": "Offer", "itemOffered": { "@type": "Service", "name": trimmed } };
+      })
+    };
+  }
+  document.getElementById('schema-json').textContent = JSON.stringify(ld);
 
   // Done — show content
   document.getElementById('loading').style.display = 'none';

@@ -774,7 +774,10 @@ async function init() {
     var metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.content = displayName + ' — Professionell städning med verifierade städare. Boka via Spick med säker betalning och RUT-avdrag.';
 
-    // ── SEO: JSON-LD ──
+    // ── SEO: JSON-LD (Prof-5 enhanced) ──
+    // Rich-result-kandidat: aggregateRating, review[] med author, geo, areaServed,
+    // hasOfferCatalog för tjänster. Google kan visa stjärnor + pris i SERP.
+    var primaryCity = cities[0] || 'Stockholm';
     var jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
@@ -782,16 +785,37 @@ async function init() {
       'description': co.description || 'Professionell städning',
       'url': 'https://spick.se/f/' + (co.slug || co.id),
       'telephone': '+46760505153',
-      'address': { '@type': 'PostalAddress', 'addressCountry': 'SE' },
+      'address': { '@type': 'PostalAddress', 'addressLocality': primaryCity, 'addressCountry': 'SE' },
       'priceRange': '$$',
-      'image': 'https://spick.se/images/spick-og.png'
+      'image': 'https://spick.se/images/spick-og.png',
+      'parentOrganization': { '@type': 'Organization', 'name': 'Spick', 'url': 'https://spick.se' }
     };
+    // Prof-5: areaServed som array (flera städer) eller City (en)
+    if (cities.length > 1) {
+      jsonLd.areaServed = cities.map(function(cty) { return { '@type': 'City', 'name': cty }; });
+    } else {
+      jsonLd.areaServed = { '@type': 'City', 'name': primaryCity };
+    }
+    // Prof-5: geo skippas för foretag.html — v_cleaners_public exponerar inte
+    // home_lat/home_lng (PII-skyddad policy). Företagsadress finns inte i companies-
+    // schema idag. Lägg till som framtida features (hygien-flag).
+    //
+    // Prof-5: tjänster som OfferCatalog
+    if (uniqueServices.length > 0) {
+      jsonLd.hasOfferCatalog = {
+        '@type': 'OfferCatalog',
+        'name': 'Städtjänster',
+        'itemListElement': uniqueServices.map(function(svc) {
+          return { '@type': 'Offer', 'itemOffered': { '@type': 'Service', 'name': svc.service_type } };
+        })
+      };
+    }
     if (avgRating > 0) {
       jsonLd.aggregateRating = { '@type': 'AggregateRating', 'ratingValue': avgRating.toFixed(1), 'reviewCount': reviews.length, 'bestRating': '5', 'worstRating': '1' };
     }
     if (reviews.length) {
       jsonLd.review = reviews.slice(0, 3).map(function(r) {
-        return { '@type': 'Review', 'reviewRating': { '@type': 'Rating', 'ratingValue': r.cleaner_rating }, 'reviewBody': r.comment || '', 'datePublished': r.created_at ? r.created_at.split('T')[0] : '' };
+        return { '@type': 'Review', 'author': { '@type': 'Person', 'name': nameMap[r.cleaner_id] || 'Kund' }, 'reviewRating': { '@type': 'Rating', 'ratingValue': r.cleaner_rating, 'bestRating': '5', 'worstRating': '1' }, 'reviewBody': r.comment || '', 'datePublished': r.created_at ? r.created_at.split('T')[0] : '' };
       });
     }
     var ldScript = document.createElement('script');
