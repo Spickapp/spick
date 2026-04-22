@@ -184,3 +184,18 @@ eller `supabase/seed.sql` (separat från migrations).
 
 Aktuella cleaner_applications-policies finns i
 `20260422130000_fas_2_1_1_all_policies.sql` (8 policies från prod).
+
+### 20260326800001_booking_time_slots.sql (arkiverad 2026-04-22)
+
+**Varför:** 100% dead code. Skapar hel time_end-infrastruktur som inget
+av finns i prod:
+- time_end-kolumn på bookings
+- set_booking_time_end function + trigger
+- idx_bookings_date_time
+- 4 policies på cleaner_availability/blocked_dates
+
+Dessutom använder obsoleta kolumnnamn: date/time/hours istället för
+prod:s booking_date/booking_time/booking_hours.
+
+Representerar tidigt försök att bygga tidsbaserad bokningsspärr som
+ersattes helt före prod-deploy.
