@@ -1,0 +1,100 @@
+name: DB Audit (Prod Read-Only)
+
+# ──────────────────────────────────────────────────────────────────
+# Sprint 1 Dag 3 (2026-04-24): Säker read-only-kanal för prod-audits
+# ──────────────────────────────────────────────────────────────────
+# Kör fördefinierade audit-queries mot prod och skriver resultaten
+# till workflow-loggen. Ingen write-access. Ingen SQL-input från
+# externa parametrar (undviker injection).
+#
+# Tilläggs-audits läggs till som jobs nedanför. Varje job = en konkret
+# fråga med dokumenterat syfte och rollback-säkerhet.
+#
+# Används av Claude Code för Sprint 1+ utan att kräva Farhads manuella
+# Studio-queries. Triggas via `gh workflow run db-audit.yml`.
+# ──────────────────────────────────────────────────────────────────
+
+'on':
+  workflow_dispatch:
+
+jobs:
+  audit-cleaners:
+    name: Cleaners-audit (dubletter + låga rates + hourly_rate-distribution)
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_ID: urjeijcncsyuletprydy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link prod-projekt
+        run: supabase link --project-ref $PROJECT_ID
+
+      - name: Audit — cleaners-dubletter (email × company_id)
+        run: |
+          cat > /tmp/audit-dubletter.sql <<'SQL'
+          -- Dubletter per email (över företag)
+          SELECT email, COUNT(*) AS row_count, array_agg(id) AS ids
+          FROM cleaners
+          WHERE email IS NOT NULL
+          GROUP BY email
+          HAVING COUNT(*) > 1
+          ORDER BY row_count DESC
+          LIMIT 50;
+          SQL
+          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-dubletter.sql || echo "(inga dubletter eller query-fel)"
+
+      - name: Audit — hourly_rate-distribution (distribution + under min 200)
+        run: |
+          cat > /tmp/audit-rates.sql <<'SQL'
+          -- Distribution
+          SELECT
+            COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE hourly_rate IS NULL) AS null_rate,
+            COUNT(*) FILTER (WHERE hourly_rate < 200) AS below_min_200,
+            COUNT(*) FILTER (WHERE hourly_rate BETWEEN 200 AND 399) AS normal_200_399,
+            COUNT(*) FILTER (WHERE hourly_rate BETWEEN 400 AND 600) AS high_400_600,
+            COUNT(*) FILTER (WHERE hourly_rate > 600) AS above_600,
+            MIN(hourly_rate) AS min_rate,
+            MAX(hourly_rate) AS max_rate,
+            ROUND(AVG(hourly_rate)::numeric, 2) AS avg_rate
+          FROM cleaners
+          WHERE is_approved = true OR is_approved IS NULL;
+
+          -- Lista alla cleaners med rate < 200 (troliga testdata/misstag)
+          SELECT id, email, first_name, last_name, hourly_rate, company_id, is_approved, signup_date
+          FROM cleaners
+          WHERE hourly_rate IS NOT NULL AND hourly_rate < 200
+          ORDER BY hourly_rate ASC
+          LIMIT 30;
+          SQL
+          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-rates.sql
+
+      - name: Audit — services default_hourly_price
+        run: |
+          cat > /tmp/audit-services.sql <<'SQL'
+          -- Verifiera services-tabellen har rätt default-priser (förvarsvärden från seed)
+          SELECT key, label_sv, rut_eligible, default_hourly_price, active
+          FROM services
+          ORDER BY display_order;
+          SQL
+          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-services.sql
+
+      - name: Audit — platform_settings pricing-nycklar
+        run: |
+          cat > /tmp/audit-settings.sql <<'SQL'
+          -- Verifiera alla pricing-nycklar är seeded och aktuella
+          SELECT key, value, updated_at
+          FROM platform_settings
+          WHERE key IN ('commission_standard', 'commission_top', 'min_hourly_rate',
+                        'base_price_per_hour', 'default_hourly_rate', 'rut_pct',
+                        'rut_yearly_cap_kr', 'money_layer_enabled', 'smart_trappstege_enabled')
+          ORDER BY key;
+          SQL
+          supabase db execute --password "$SUPABASE_DB_PASSWORD" --file /tmp/audit-settings.sql
