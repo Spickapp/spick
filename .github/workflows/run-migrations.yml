@@ -1,5 +1,32 @@
 name: Run SQL Migrations
 
+# =============================================================
+# Sprint 2 Dag 2 (2026-04-25): Workflow omdesignad från db push
+# till per-fil Management API-deploy.
+#
+# Bakgrund:
+#   - supabase_migrations.schema_migrations-registret är ur sync
+#     (1 rad i prod vs 100+ filer i repo). Orsak: historisk manuell
+#     Studio-deploy som inte uppdaterar registret.
+#   - `supabase db push` försöker applicera ALLA filer som "nya" och
+#     failar på redan existerande objekt / saknade beroenden / ordning.
+#   - Full fix = Fas 2.X Replayability Sprint (30-50h, ej akut).
+#
+# Denna workflow kringgår registret via `supabase db query --linked
+# --file` per ny migration. Samma mekanism som Sprint 1 Dag 3 och
+# Sprint 2 Dag 2 använde manuellt.
+#
+# Konvention för nya migrations (krävs för idempotens):
+#   - DROP IF EXISTS innan CREATE (functions, policies, triggers)
+#   - CREATE TABLE IF NOT EXISTS (tabeller)
+#   - ON CONFLICT DO NOTHING (seed-inserts)
+#   - DO $$ ... $$ med verifieringsblock längst ned
+#
+# Primärkällor:
+#   - docs/audits/2026-04-22-replayability-audit.md (grund-diagnos)
+#   - docs/planning/todo-migrations-deploy-audit-2026-04-23.md (historik)
+# =============================================================
+
 'on':
   workflow_dispatch:
   push:
@@ -11,39 +38,76 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_ID: urjeijcncsyuletprydy
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Behöver HEAD^ för git diff mellan commits.
+          fetch-depth: 2
 
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Link projekt
-        run: supabase link --project-ref $PROJECT_ID
+      - name: Link projekt (Management API)
+        run: supabase link --project-ref "$PROJECT_ID"
 
-      - name: Repair schema_migrations (idempotent)
-        # Dynamisk repair-lista — scannar top-level supabase/migrations/*.sql
-        # och markerar varje som applied. Säkerhetsnät ifall schema_migrations
-        # skulle komma ur sync (backup-restore, manuell Studio-INSERT, etc).
-        # Inga fel vid redan-applied versioner — repair är idempotent.
-        # 2>/dev/null sväljer bara stderr-brus, inte exit-koder.
+      - name: Identifiera nya migrations
+        id: diff
         run: |
           set -e
-          for f in supabase/migrations/*.sql; do
-            [ -f "$f" ] || continue
-            basename=$(basename "$f" .sql)
-            version="${basename%%_*}"
-            echo "Repair: $version"
-            supabase migration repair --status applied "$version" 2>/dev/null || \
-              echo "  (already applied or skipped)"
+
+          # Endast ADDED .sql-filer i supabase/migrations/ (inte arkiverade
+          # eller modifierade). Modifierade migrations är anti-pattern —
+          # skapa ny migration istället för att redigera gammal.
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            files=$(git diff --name-only --diff-filter=A HEAD^ HEAD -- 'supabase/migrations/*.sql' || true)
+          else
+            # Shallow clone eller första commit — inga nya att identifiera.
+            echo "Ingen HEAD^ tillgänglig — hoppar över (initial commit eller shallow clone)."
+            files=""
+          fi
+
+          if [ -z "$files" ]; then
+            echo "Inga nya migrations i denna commit."
+          else
+            echo "Nya migrations att applicera:"
+            echo "$files"
+          fi
+
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Applicera migrations via Management API
+        if: steps.diff.outputs.files != ''
+        # `supabase db query --linked --file` kör SQL mot prod via Management
+        # API. Kringgår supabase_migrations.schema_migrations (ur sync).
+        # Varje migration måste vara idempotent enligt konvention ovan —
+        # om fil redan applicerats räddar DROP IF EXISTS / CREATE IF NOT EXISTS.
+        # Failar hårt (set -e) vid första fel så drift-issues inte sväljs.
+        run: |
+          set -e
+          echo "${{ steps.diff.outputs.files }}" | while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [ ! -f "$file" ] ; then
+              echo "Skippar (fil finns inte i working tree): $file"
+              continue
+            fi
+            echo ""
+            echo "=== Applicerar: $file ==="
+            supabase db query --linked --file "$file"
+            echo "    OK: $file"
           done
 
-      - name: Kör nya migrationer
-        # Ingen '|| exit 0' — om db push misslyckas vill vi veta.
-        run: |
-          set -e
-          supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+          echo ""
+          echo "Alla nya migrations applicerade utan fel."
+          echo ""
+          echo "OBS: supabase_migrations.schema_migrations uppdateras INTE av"
+          echo "denna workflow. Registret är känd ur sync (Fas 2.X Replayability"
+          echo "Sprint 30-50h). Denna workflow appliceras via Management API och"
+          echo "är idempotent via DROP IF EXISTS / CREATE OR REPLACE."
