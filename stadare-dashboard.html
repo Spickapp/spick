@@ -3607,11 +3607,15 @@ function updateVdOnboarding() {
     || cleaner.stripe_onboarding_status === 'complete';
   var pricesDone = (window._companyPrices || []).length > 0;
   var profileDone = !!(cleaner.avatar_url && window._companyData && window._companyData.description);
-  var shareDone = !!localStorage.getItem('spick-profile-shared');
+  // Sprint 2 Dag 3 bug-fix: server-side persistens via cleaners.profile_shared_at.
+  // localStorage kvar som fallback för enheter där DB-uppdatering failade.
+  var shareDone = !!(cleaner.profile_shared_at || localStorage.getItem('spick-profile-shared'));
 
   var steps = [
     { key:'profile', label:'Fyll i företagsprofil',
-      desc: profileDone ? 'Klart ✓' : 'Skriv en kort beskrivning och ladda upp logga',
+      // Sprint 2 Dag 3 bug-fix: texten reflekterar verklig condition
+      // (cleaner.avatar_url + companies.description — INTE företagslogo).
+      desc: profileDone ? 'Klart ✓' : 'Ladda upp profilbild och skriv företagsbeskrivning',
       done:profileDone,
       actionLabel:'Redigera profil →',
       onClick:function(){
@@ -3656,6 +3660,17 @@ function updateVdOnboarding() {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(url).then(function(){
             localStorage.setItem('spick-profile-shared','1');
+            // Sprint 2 Dag 3 bug-fix: persistera till server så progress
+            // överlever browser-byte och enhet-byte. Fail-soft — localStorage
+            // är fallback om DB-PATCH failar (t.ex. offline).
+            var nowIso = new Date().toISOString();
+            fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
+              method: 'PATCH',
+              headers: Object.assign({}, _authHeadersLegacy(), {'Prefer':'return=minimal'}),
+              body: JSON.stringify({ profile_shared_at: nowIso })
+            }).then(function(r){
+              if (r.ok) { cleaner.profile_shared_at = nowIso; }
+            }).catch(function(){ /* fail-soft: localStorage räddar UX */ });
             showToast('Länk kopierad! Dela den med potentiella kunder.');
             updateVdOnboarding();
           }).catch(function(){ prompt('Kopiera denna länk:', url); });
