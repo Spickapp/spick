@@ -206,24 +206,30 @@ boka.html:2474 visar cleaner-kort med `cl.company_display_name`. Om `cl.complete
 >
 > VD är INTE matchbar som städare om hen inte själv städar.
 
-### 5.2 Data-modell-tillägg
+### 5.2 Data-modell-tillägg — **UPPDATERAT 2026-04-26**
 
-En ny kolumn på `cleaners`:
+**⚠️ KORRIGERING:** Ursprungligt förslag föreslog ny kolumn `cleaners.active_cleaner`. Post-audit-upptäckt: kolumnen `cleaners.owner_only` existerar redan sedan `00004_fas_2_1_cleaners.sql` rad 89 med **identisk semantik** (omvänt värde):
 
-```sql
-ALTER TABLE cleaners
-  ADD COLUMN IF NOT EXISTS active_cleaner boolean NOT NULL DEFAULT true;
+- `owner_only = false` (default) → personen utför städjobb själv (≡ active_cleaner=true)
+- `owner_only = true` → VD hanterar bara team, städar inte själv (≡ active_cleaner=false)
 
-COMMENT ON COLUMN cleaners.active_cleaner IS
-  'true = personen utför städjobb själv och inkluderas i matching-aggregat. '
-  'false = endast administratör (VD som inte städar, onboarding, pausad). '
-  'Solo-cleaners: alltid true. VD som städar själv: true. VD som bara ansvarar: false.';
+Dokumenterat i `docs/4-PRODUKTIONSDATABAS.md:51`. Se §12 Lärdom nedan.
+
+**Ingen ny kolumn behövs.** UI-toggle existerar redan:
+- `stadare-dashboard.html:1169` — `toggle-owner-only` med label "Jag städar inte själv" (triggar `toggleOwnerOnly(checked)`)
+- `admin.html:3774` — `cd-owner-only`-checkbox med text "Ja — hanterar bara team"
+
+Klient-filter finns redan i `boka.html:2010`:
+```javascript
+cleaners = cleaners.filter(c => !c.owner_only);
 ```
 
-Backfill-strategi:
-- Alla solo (`company_id IS NULL`): `active_cleaner = true` (default OK)
-- Alla team-medlemmar: `active_cleaner = true` (de städar per definition)
-- VD:er: **kräver manuell utpekning** i VD-dashboard. Default `true` bakåtkompat, men Farhad måste markera vilka av de 4 VD:erna som själva städar.
+**Backfill-strategi (uppdaterad):**
+- Alla solo (`company_id IS NULL`): `owner_only = false` (default)
+- Alla team-medlemmar: `owner_only = false` (de städar per definition)
+- VD:er: `owner_only = false` idag (default). Farhad markerar via VD-dashboard-toggle vilka VD:er som inte städar → `owner_only = true`.
+
+Sprint Model-2 flyttar klient-filtret till RPC hard-filter (`WHERE NOT owner_only`). Det gör filtret säkrare (server-side, ej manipulerbart av klient).
 
 ### 5.3 Ny RPC: `find_nearby_providers`
 
@@ -353,17 +359,22 @@ Redan redirectas till /f/ via Prof-5. Ingen ändring.
 
 ## 7. Implementations-plan (4 sprintar)
 
-### Sprint Model-1: DB-kolumn + backfill (~2h, risk: låg)
+### Sprint Model-1: DB-kolumn + backfill — **REDUCERAD 2026-04-26**
 
-1. Migration: `20260426_model1_active_cleaner.sql`
-   - `ALTER TABLE cleaners ADD COLUMN active_cleaner boolean NOT NULL DEFAULT true`
-   - Backfill ingen ändring (alla blir true)
-2. Admin-panel: lägg till per-cleaner toggle "Aktiv städare"
-3. VD-dashboard: lägg till toggle "Jag städar själv" (om is_company_owner=true)
-4. Dokumentera i `docs/architecture/matching-algorithm.md` §13
-5. **Ingen matching-ändring** — endast infrastruktur
+**Ny status:** I praktiken redan levererad av tidigare migrations/UI. Se §5.2 uppdatering + §12 Lärdom.
 
-**Leverabel:** Farhad kan markera vilka VD:er som faktiskt INTE städar (t.ex. Zivar om sant).
+Kvarstående arbete:
+1. ✅ DB-kolumn: `cleaners.owner_only` finns sedan `00004_fas_2_1_cleaners.sql` — klart
+2. ✅ Admin-panel toggle: `admin.html:3774` (`cd-owner-only`) — klart
+3. ✅ VD-dashboard toggle: `stadare-dashboard.html:1169` (`toggle-owner-only`) — klart
+4. ⏳ Dokumentera i `docs/architecture/matching-algorithm.md` §13 (Model-2)
+5. ⏳ Farhad flaggar vilka VD:er som inte städar via befintlig dashboard-toggle
+
+**Leverabel denna session:**
+- Rollback av felaktig `active_cleaner`-migration (20260426120500)
+- Audit-dokument uppdaterat (§5.2 + §12)
+
+**Sprint Model-2 kan starta direkt.** Läsa `NOT owner_only` istället för `active_cleaner=true`.
 
 ### Sprint Model-2: Ny RPC `find_nearby_providers` (~4h, risk: medel)
 
@@ -425,7 +436,7 @@ Redan redirectas till /f/ via Prof-5. Ingen ändring.
 1. **Vilka av de 4 VD:erna städar själva?**
    - Zivar Majid (Solid Service): ?
    - Övriga 3 VD:er: ?
-   - Detta styr backfill av `active_cleaner=false` i Sprint Model-1.
+   - Sätts via befintlig `toggleOwnerOnly()` i VD-dashboard (owner_only=true för VD som inte städar). Inget nytt UI behövs.
 
 2. **Ska company-nivå "services" lagras eller aggregeras live?**
    - (A) Lagrad: ny `companies.services jsonb` + triggers som synkar från team. Snabbare matching. Risk för drift.
@@ -471,6 +482,23 @@ Redan redirectas till /f/ via Prof-5. Ingen ändring.
 - Denna audit pekar ut root cause som separat Sprint Model-serie
 
 ---
+
+## 12. Lärdom (post-audit)
+
+**Regel #26 (grep-före-edit) brast** under denna audit. Vid kartläggning av `is_company_owner`-call-sites greppade jag inte efter andra relevanta boolean-fält på cleaners-tabellen. Resultat: föreslog ny kolumn `active_cleaner` trots att `owner_only` redan existerar med identisk semantik. Sprint Model-1 startade med migration `20260426120000_model1_active_cleaner.sql` som adderade duplikat-kolumnen; direkt därefter krävdes rollback `20260426120500_model1_rollback_active_cleaner.sql` när dubbletten upptäcktes.
+
+**Ny audit-mall (lessons learned):**
+1. När en ny kolumn föreslås: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '<tabell>' AND data_type = '<typ>' ORDER BY column_name` FÖRST
+2. Grep existerande toggle-UI (`toggle|checkbox|switch`) i HTML innan förslå nytt
+3. Sök i `docs/4-PRODUKTIONSDATABAS.md` efter "boolean" / "flag" / "toggle" i samma tabell-avsnitt
+4. Audit-review-steg: "vilka befintliga kolumner täcker detta use-case?"
+
+**Konsekvens för Sprint Model-1:** Reducerad scope. DB-kolumn finns. UI finns. Inget nytt infrastruktur-arbete behövs — Sprint Model-1 är i praktiken redan levererad av tidigare kommittérande. Sprint Model-2 kan starta direkt med RPC-logik baserad på `NOT owner_only`.
+
+**Regel-reflektion:**
+- #26 ska INTE gälla bara vid edit. Den ska gälla vid ALLA design-beslut som involverar DB-schema.
+- #28 (single source of truth) räddade oss — rollback gjordes inom minuter eftersom regel var tydlig.
+- #31 (primärkälla över memory) fungerade delvis — jag verifierade `cleaners`-schema men bara för call-sites av is_company_owner, inte för "kolumner relevant till detta audit".
 
 ## 11. Nästa steg
 
