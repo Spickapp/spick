@@ -97,6 +97,123 @@ BEGIN
     -- framtida arbete i audit: lägg till FK i sen-migration.
 END $$;
 
+-- ── blocked_times ───────────────────────────────────────────
+-- Fas 2.X iter 38: tillagd efter fail i 20260418224617.
+-- Primärkälla: prod-schema.sql rad 1116 + 3154 (PKEY) + 3672 (idx) + 4082 (FK)
+CREATE TABLE IF NOT EXISTS "public"."blocked_times" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "cleaner_id" "uuid" NOT NULL,
+    "blocked_date" "date" NOT NULL,
+    "start_time" time without time zone DEFAULT '08:00:00'::time without time zone,
+    "end_time" time without time zone DEFAULT '18:00:00'::time without time zone,
+    "all_day" boolean DEFAULT false,
+    "reason" "text" DEFAULT 'day_off'::"text",
+    "notes" "text",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+ALTER TABLE "public"."blocked_times" OWNER TO "postgres";
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blocked_times_pkey') THEN
+        ALTER TABLE ONLY "public"."blocked_times"
+            ADD CONSTRAINT "blocked_times_pkey" PRIMARY KEY ("id");
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blocked_times_cleaner_id_fkey') THEN
+        ALTER TABLE ONLY "public"."blocked_times"
+            ADD CONSTRAINT "blocked_times_cleaner_id_fkey"
+            FOREIGN KEY ("cleaner_id") REFERENCES "public"."cleaners"("id") ON DELETE CASCADE;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "idx_blocked_cleaner"
+    ON "public"."blocked_times" USING "btree" ("cleaner_id", "blocked_date");
+
+-- ── services (måste FÖRE service_addons pga FK) ─────────────
+-- Fas 2.X iter 38: tillagd proaktivt.
+-- Primärkälla: prod-schema.sql rad 2658 + 3584+3589 (constraints) + 4008+4012 (idx)
+CREATE TABLE IF NOT EXISTS "public"."services" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "key" "text" NOT NULL,
+    "label_sv" "text" NOT NULL,
+    "label_en" "text",
+    "description_sv" "text",
+    "rut_eligible" boolean DEFAULT false NOT NULL,
+    "is_b2b" boolean DEFAULT false NOT NULL,
+    "is_b2c" boolean DEFAULT true NOT NULL,
+    "hour_multiplier" numeric(3,2) DEFAULT 1.00 NOT NULL,
+    "default_hourly_price" integer,
+    "display_order" integer DEFAULT 100 NOT NULL,
+    "active" boolean DEFAULT true NOT NULL,
+    "icon_key" "text",
+    "ui_config" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE "public"."services" OWNER TO "postgres";
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'services_pkey') THEN
+        ALTER TABLE ONLY "public"."services"
+            ADD CONSTRAINT "services_pkey" PRIMARY KEY ("id");
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'services_key_key') THEN
+        ALTER TABLE ONLY "public"."services"
+            ADD CONSTRAINT "services_key_key" UNIQUE ("key");
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "services_active_order_idx"
+    ON "public"."services" USING "btree" ("active", "display_order")
+    WHERE ("active" = true);
+
+CREATE INDEX IF NOT EXISTS "services_key_idx"
+    ON "public"."services" USING "btree" ("key");
+
+-- ── service_addons ──────────────────────────────────────────
+-- Fas 2.X iter 38: tillagd proaktivt.
+-- Primärkälla: prod-schema.sql rad 2629 + 3564+3569 (constraints) + 4004 (idx) + 4362 (FK)
+CREATE TABLE IF NOT EXISTS "public"."service_addons" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "service_id" "uuid" NOT NULL,
+    "key" "text" NOT NULL,
+    "label_sv" "text" NOT NULL,
+    "label_en" "text",
+    "price_sek" integer NOT NULL,
+    "display_order" integer DEFAULT 100 NOT NULL,
+    "active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE "public"."service_addons" OWNER TO "postgres";
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_addons_pkey') THEN
+        ALTER TABLE ONLY "public"."service_addons"
+            ADD CONSTRAINT "service_addons_pkey" PRIMARY KEY ("id");
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_addons_service_id_key_key') THEN
+        ALTER TABLE ONLY "public"."service_addons"
+            ADD CONSTRAINT "service_addons_service_id_key_key" UNIQUE ("service_id", "key");
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_addons_service_id_fkey') THEN
+        ALTER TABLE ONLY "public"."service_addons"
+            ADD CONSTRAINT "service_addons_service_id_fkey"
+            FOREIGN KEY ("service_id") REFERENCES "public"."services"("id") ON DELETE CASCADE;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "service_addons_service_idx"
+    ON "public"."service_addons" USING "btree" ("service_id", "active", "display_order");
+
 -- ── sync_booking_to_slot() function ─────────────────────────
 CREATE OR REPLACE FUNCTION "public"."sync_booking_to_slot"() RETURNS "trigger"
     LANGUAGE "plpgsql"
