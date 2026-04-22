@@ -8061,14 +8061,14 @@ function cancelCompanyEdit() {
 async function saveCompanyProfile() {
   var name = document.getElementById('cp-name').value.trim();
   var bio = document.getElementById('cp-bio').value.trim();
+  var displayName = document.getElementById('cp-display-name').value.trim() || null;
   if (!name) { alert('F\u00f6retagsnamn kr\u00e4vs'); return; }
   try {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
       method: 'PATCH',
       headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
-      body: JSON.stringify({ name: name, description: bio, display_name: displayName, display_name: document.getElementById('cp-display-name').value.trim() || null })
+      body: JSON.stringify({ name: name, description: bio, display_name: displayName })
     });
-    var displayName = document.getElementById('cp-display-name').value.trim() || null;
     window._companyData = Object.assign(window._companyData || {}, { name: name, description: bio, display_name: displayName });
     renderCompanyProfile(window._companyData);
     cancelCompanyEdit();
