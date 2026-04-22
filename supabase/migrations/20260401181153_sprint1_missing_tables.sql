@@ -137,46 +137,26 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS stripe_fee_sek          NUMERIC;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credit_applied_sek      NUMERIC DEFAULT 0;
 
 
--- ── 8. v_cleaners_for_booking (publik vy för boka.html) ─────
-CREATE OR REPLACE VIEW v_cleaners_for_booking AS
-SELECT
-  id,
-  full_name,
-  avg_rating,
-  total_ratings  AS review_count,
-  city,
-  hourly_rate,
-  bio,
-  avatar_url,
-  identity_verified,
-  home_lat,
-  home_lng,
-  pet_pref,
-  elevator_pref
-FROM cleaners
-WHERE is_approved = true
-  AND status = 'aktiv';
+-- =============================================================
+-- Fas 2.X iter 25 (2026-04-22): VIEW-sektion kommenterad ut
+-- =============================================================
+-- Ursprungligen: CREATE OR REPLACE VIEW v_cleaners_for_booking
+-- och v_cleaner_availability_int + GRANT SELECT på båda.
+--
+-- Problem: v_cleaner_availability_int refererar cleaner_availability
+-- kolumner (day_mon..day_sun) som inte finns vid denna replay-punkt.
+-- Gamla 20260326300002 skapar tabellen med day_of_week INT (gammalt
+-- schema). Prod har konverterats till day_mon..day_sun booleans via
+-- Studio — den konverteringen saknar migration.
+--
+-- Verifiering: båda vyerna FINNS i prod (rad 2923, 2977). Filens
+-- definitioner är levande, bara replay-ordningen är trasig.
+--
+-- Hanteras i senare iteration med dedikerad cleaner_availability-
+-- schema-konvertering + VIEW-recreate (analog iter 4 reviews→VIEW).
+-- =============================================================
 
-
--- ── 9. v_cleaner_availability_int ───────────────────────────
--- cleaner_availability använder day_mon..day_sun booleans.
--- Denna vy unpivoterar till (cleaner_id, day_of_week INT, is_active, start_time, end_time).
-CREATE OR REPLACE VIEW v_cleaner_availability_int AS
-SELECT cleaner_id, 1 AS day_of_week, day_mon AS is_active, start_time, end_time FROM cleaner_availability
-UNION ALL
-SELECT cleaner_id, 2, day_tue, start_time, end_time FROM cleaner_availability
-UNION ALL
-SELECT cleaner_id, 3, day_wed, start_time, end_time FROM cleaner_availability
-UNION ALL
-SELECT cleaner_id, 4, day_thu, start_time, end_time FROM cleaner_availability
-UNION ALL
-SELECT cleaner_id, 5, day_fri, start_time, end_time FROM cleaner_availability
-UNION ALL
-SELECT cleaner_id, 6, day_sat, start_time, end_time FROM cleaner_availability
-UNION ALL
-SELECT cleaner_id, 7, day_sun, start_time, end_time FROM cleaner_availability;
-
-
--- ── 10. RLS-grant på vyerna (anon + authenticated) ──────────
-GRANT SELECT ON v_cleaners_for_booking      TO anon, authenticated;
-GRANT SELECT ON v_cleaner_availability_int  TO anon, authenticated;
+-- CREATE OR REPLACE VIEW v_cleaners_for_booking AS ...
+-- CREATE OR REPLACE VIEW v_cleaner_availability_int AS ...
+-- GRANT SELECT ON v_cleaners_for_booking TO anon, authenticated;
+-- GRANT SELECT ON v_cleaner_availability_int TO anon, authenticated;
