@@ -19,6 +19,30 @@ Den auditen räknade tabeller som saknade CREATE TABLE-migration (15 KRITISKA).
 Denna replayability-audit upptäcker att drift inte bara gäller individuella
 objekt utan hela migration-ordningen.
 
+## Baseline: faktisk db reset-status 2026-04-22 12:40
+
+Verifierat med `supabase db reset --local` efter commits 00000–53d6eb0.
+
+**Går igenom utan fel:**
+1. ✓ `00000_fas_2_1_1_bootstrap_dependencies.sql` — extensions + 3 tables + 2 functions
+2. ✓ `00001_fas_2_1_1_cleaner_applications.sql` — CREATE TABLE + 2 constraints + 2 indexes + RLS + 3 grants
+3. ◑ `001_push.sql` — börjar köra, går igenom första ALTER TABLE-block (cleaner_applications-kolumner)
+
+**Fail-punkt:**
+```
+Applying migration 001_push.sql...
+ERROR: relation "bookings" does not exist (SQLSTATE 42P01)
+At statement: 12
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cleaner_email TEXT
+```
+
+**Rot-orsak:** `bookings`-tabellen skapas i `20260422120000_fas_2_1_bookings.sql`
+som sorteras EFTER `001_push.sql`. Rename till `00002_–00017_`-prefix skulle
+lösa detta (sektion 2 av Fas 2.X-scope).
+
+**Framgångskvot idag:** 2 av 100 migrations applicerade utan fel + delar
+av en tredje. Detta är baselinen Fas 2.X utgår från.
+
 ## Upptäckta problem
 
 ### P1 — Saknade tabeller som gamla migrations förutsätter existerar
