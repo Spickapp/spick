@@ -61,7 +61,10 @@ CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
 CREATE INDEX IF NOT EXISTS idx_bookings_payment_status ON bookings(payment_status);
 CREATE INDEX IF NOT EXISTS idx_bookings_customer_email ON bookings(customer_email);
 CREATE INDEX IF NOT EXISTS idx_bookings_cleaner_id ON bookings(cleaner_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_cleaner ON reviews(cleaner_id);
+-- Borttaget 2026-04-22 (Fas 2.X iter 4): reviews är VIEW i prod, inga index.
+-- cleaner_id finns dessutom inte än vid denna körpunkt (ADD:as i 20260327100001).
+-- Samma index skapas senare (20260327200001) när cleaner_id finns.
+-- CREATE INDEX IF NOT EXISTS idx_reviews_cleaner ON reviews(cleaner_id);
 CREATE INDEX IF NOT EXISTS idx_cleaners_approved ON cleaners(is_approved);
 
 -- RLS policies
