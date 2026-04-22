@@ -71,11 +71,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trg_sync_review_stats ON ratings;
-CREATE TRIGGER trg_sync_review_stats
-  AFTER INSERT OR UPDATE OR DELETE ON ratings
-  FOR EACH ROW
-  EXECUTE FUNCTION sync_cleaner_review_stats();
+-- =============================================================
+-- Fas 2.X iter 29 (2026-04-22): Trigger kommenterad ut
+-- =============================================================
+-- DROP/CREATE TRIGGER på ratings failar eftersom ratings-tabellen
+-- skapas i 20260422082000_fas_2_1_ratings.sql (sorteras EFTER denna).
+--
+-- Verifiering: trg_sync_review_stats FINNS i prod (rad 4068). Den här
+-- migrationen skulle ha skapat den om ordning var rätt.
+--
+-- sync_cleaner_review_stats function ovan (LANGUAGE plpgsql)
+-- är sen-bindande och skapas utan fel.
+--
+-- Triggern behöver återskapas i separat "missing-triggers"-migration
+-- efter 20260422082000. Dokumenteras som framtida arbete.
+-- =============================================================
+
+-- DROP TRIGGER IF EXISTS trg_sync_review_stats ON ratings;
+-- CREATE TRIGGER trg_sync_review_stats
+--   AFTER INSERT OR UPDATE OR DELETE ON ratings
+--   FOR EACH ROW
+--   EXECUTE FUNCTION sync_cleaner_review_stats();
 
 -- 4. Auto-convert referral when a booking is completed
 CREATE OR REPLACE FUNCTION auto_convert_referral()
