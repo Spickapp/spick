@@ -80,11 +80,23 @@ jobs:
             # Spara detaljerad diff för rapport
             diff /tmp/repo-sorted.sql /tmp/prod-sorted.sql > /tmp/drift-diff.txt || true
 
-            # Räkna rader som skiljer
-            added=$(grep -c "^> " /tmp/drift-diff.txt || echo 0)
-            removed=$(grep -c "^< " /tmp/drift-diff.txt || echo 0)
-            echo "added_lines=$added" >> $GITHUB_OUTPUT
-            echo "removed_lines=$removed" >> $GITHUB_OUTPUT
+            # Räkna rader som skiljer (grep -c returnerar exit 1 om 0 matches)
+            # Använder set +e lokalt + fallback för att säkra single-line output
+            set +e
+            added=$(grep -c "^> " /tmp/drift-diff.txt)
+            if [ $? -ne 0 ]; then added=0; fi
+            removed=$(grep -c "^< " /tmp/drift-diff.txt)
+            if [ $? -ne 0 ]; then removed=0; fi
+            set -e
+
+            # Säkerställ att variabler är enskilda heltal
+            added=${added:-0}
+            removed=${removed:-0}
+
+            echo "Added lines: $added"
+            echo "Removed lines: $removed"
+            echo "added_lines=${added}" >> "$GITHUB_OUTPUT"
+            echo "removed_lines=${removed}" >> "$GITHUB_OUTPUT"
 
             # Skapa summary för Issue body
             cat > /tmp/issue-body.md <<EOF
