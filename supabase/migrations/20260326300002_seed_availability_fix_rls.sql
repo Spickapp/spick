@@ -59,25 +59,38 @@ WHERE c.status = 'godkänd'
     WHERE a.cleaner_id = c.id AND a.day_of_week = d.day
   );
 
--- 5. Säkra bookings RLS – ta bort USING(true) som exponerar alla kunders data
-DROP POLICY IF EXISTS "Public can read bookings by id"   ON bookings;
-DROP POLICY IF EXISTS "Cleaner update booking status"    ON bookings;
-DROP POLICY IF EXISTS "Read booking by uuid"             ON bookings;
-DROP POLICY IF EXISTS "Assigned cleaner update booking"  ON bookings;
+-- =============================================================
+-- Fas 2.X iter 11 (2026-04-22): rad 60-80 kommenterade ut
+-- =============================================================
+-- Ursprungligen: "Säkra bookings RLS" — drop/create 2 policies på
+-- bookings ("Read booking by uuid", "Assigned cleaner update booking").
+--
+-- Problem: båda policies refererar bookings.email som inte existerar
+-- i prod (ersatt av customer_email). CREATE POLICY validerar kolumn-
+-- refs inline → fail vid db reset.
+--
+-- Verifiering: båda policy-namnen saknas i prod-schema.sql. Dead code.
+-- Aktuella bookings-policies finns i 20260422130000_all_policies.sql.
+-- =============================================================
 
-CREATE POLICY "Read booking by uuid"
-  ON bookings FOR SELECT
-  USING (
-    auth.role() = 'service_role'
-    OR (auth.role() = 'authenticated' AND (
-      email = auth.jwt()->>'email'
-      OR customer_email = auth.jwt()->>'email'
-    ))
-  );
-
-CREATE POLICY "Assigned cleaner update booking"
-  ON bookings FOR UPDATE
-  USING (
-    auth.role() = 'service_role'
-    OR cleaner_id = auth.uid()
-  );
+-- DROP POLICY IF EXISTS "Public can read bookings by id"   ON bookings;
+-- DROP POLICY IF EXISTS "Cleaner update booking status"    ON bookings;
+-- DROP POLICY IF EXISTS "Read booking by uuid"             ON bookings;
+-- DROP POLICY IF EXISTS "Assigned cleaner update booking"  ON bookings;
+--
+-- CREATE POLICY "Read booking by uuid"
+--   ON bookings FOR SELECT
+--   USING (
+--     auth.role() = 'service_role'
+--     OR (auth.role() = 'authenticated' AND (
+--       email = auth.jwt()->>'email'
+--       OR customer_email = auth.jwt()->>'email'
+--     ))
+--   );
+--
+-- CREATE POLICY "Assigned cleaner update booking"
+--   ON bookings FOR UPDATE
+--   USING (
+--     auth.role() = 'service_role'
+--     OR cleaner_id = auth.uid()
+--   );
