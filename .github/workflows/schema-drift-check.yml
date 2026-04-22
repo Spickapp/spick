@@ -9,6 +9,10 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   drift-check:
     name: Compare prod schema vs repo
@@ -36,60 +40,50 @@ jobs:
           supabase db dump --schema public -f /tmp/prod-schema-current.sql
           echo "Dump size: $(wc -c < /tmp/prod-schema-current.sql) bytes"
 
-      - name: Normalize schemas for comparison
+      - name: Prepare schemas for comparison
         run: |
-          # Normalisera båda filer: ta bort kommentarer, tomma rader, sortera
-          # Detta minskar false positives från formatterings-skillnader
+          # Enkel normalisering: ta bort tomma rader + normalisera line endings
+          # Sortering är fel strategi för multi-line SQL-strukturer.
+          # pg_dump är vanligtvis deterministisk inom samma projekt.
 
-          # Funktion för att normalisera en SQL-fil
-          normalize() {
+          prepare() {
             local input="$1"
             local output="$2"
-            # 1. Ta bort SQL-kommentarer (-- till radslut)
-            # 2. Ta bort tomma rader
-            # 3. Normalisera whitespace (flera spaces → ett space)
-            # 4. Ta INTE bort SET-statements, de är del av dumpens header
-            sed 's/--.*$//' "$input" | \
-              grep -v '^\s*$' | \
-              sed 's/[[:space:]]\+/ /g' | \
-              sed 's/^[[:space:]]//;s/[[:space:]]$//' \
-              > "$output"
+            # Normalisera line endings och ta bort tomma rader
+            tr -d '\r' < "$input" | grep -v '^[[:space:]]*$' > "$output"
           }
 
-          normalize prod-schema.sql /tmp/repo-normalized.sql
-          normalize /tmp/prod-schema-current.sql /tmp/prod-normalized.sql
+          prepare prod-schema.sql /tmp/repo-prepared.sql
+          prepare /tmp/prod-schema-current.sql /tmp/prod-prepared.sql
 
-          echo "Repo normalized: $(wc -l < /tmp/repo-normalized.sql) rader"
-          echo "Prod normalized: $(wc -l < /tmp/prod-normalized.sql) rader"
+          echo "Repo prepared: $(wc -l < /tmp/repo-prepared.sql) rader"
+          echo "Prod prepared: $(wc -l < /tmp/prod-prepared.sql) rader"
 
       - name: Compare schemas
         id: diff
         run: |
-          # Sortera båda för att hantera ordning av objekt
-          sort /tmp/repo-normalized.sql > /tmp/repo-sorted.sql
-          sort /tmp/prod-normalized.sql > /tmp/prod-sorted.sql
+          # Direkt diff utan sortering — pg_dump är deterministisk
+          # inom samma projekt. Eventuella ordnings-skillnader är
+          # edge case som hanteras manuellt.
 
-          # Spara diff för rapportering
-          if diff -q /tmp/repo-sorted.sql /tmp/prod-sorted.sql > /dev/null; then
-            echo "has_drift=false" >> $GITHUB_OUTPUT
+          if diff -q /tmp/repo-prepared.sql /tmp/prod-prepared.sql > /dev/null; then
+            echo "has_drift=false" >> "$GITHUB_OUTPUT"
             echo "✓ Ingen drift upptäckt — prod matchar repot"
           else
-            echo "has_drift=true" >> $GITHUB_OUTPUT
+            echo "has_drift=true" >> "$GITHUB_OUTPUT"
             echo "⚠ DRIFT UPPTÄCKT"
 
-            # Spara detaljerad diff för rapport
-            diff /tmp/repo-sorted.sql /tmp/prod-sorted.sql > /tmp/drift-diff.txt || true
+            # Spara unified diff för rapport
+            diff -u /tmp/repo-prepared.sql /tmp/prod-prepared.sql > /tmp/drift-diff.txt || true
 
-            # Räkna rader som skiljer (grep -c returnerar exit 1 om 0 matches)
-            # Använder set +e lokalt + fallback för att säkra single-line output
+            # Räkna rader som skiljer (säkrad syntax)
             set +e
-            added=$(grep -c "^> " /tmp/drift-diff.txt)
+            added=$(grep -c "^+[^+]" /tmp/drift-diff.txt)
             if [ $? -ne 0 ]; then added=0; fi
-            removed=$(grep -c "^< " /tmp/drift-diff.txt)
+            removed=$(grep -c "^-[^-]" /tmp/drift-diff.txt)
             if [ $? -ne 0 ]; then removed=0; fi
             set -e
 
-            # Säkerställ att variabler är enskilda heltal
             added=${added:-0}
             removed=${removed:-0}
 
@@ -105,8 +99,8 @@ jobs:
           Automatic weekly check (schema-drift-check workflow) upptäckte skillnader mellan prod-databasen och \`prod-schema.sql\` i repot.
 
           ### Sammanfattning
-          - **Rader endast i prod (saknas i repo):** $added
-          - **Rader endast i repo (saknas i prod):** $removed
+          - **Rader tillagda i prod (+):** $added
+          - **Rader borttagna från prod (-):** $removed
 
           ### Nästa steg
           1. Granska driften genom att köra lokalt:
@@ -114,22 +108,25 @@ jobs:
              supabase db dump --schema public -f prod-schema-new.sql
              git diff prod-schema.sql prod-schema-new.sql
              \`\`\`
-          2. Om driften är **förväntad** (t.ex. ny migration applicerad via \`supabase db push\`):
+          2. Om driften är **förväntad** (t.ex. ny migration applicerad):
              - Ersätt \`prod-schema.sql\` med den nya dumpen
-             - Commita med meddelande \`chore: uppdatera prod-schema.sql (drift-check YYYY-MM-DD)\`
-          3. Om driften är **oförväntad** (någon har ändrat prod via Studio utan migration):
+             - Commita: \`chore: uppdatera prod-schema.sql (drift-check YYYY-MM-DD)\`
+          3. Om driften är **oförväntad** (Studio-ändring utan migration):
              - Identifiera ändringen
-             - Skapa retroaktiv migration enligt mönstret från §2.1.1
+             - Skapa retroaktiv migration enligt §2.1.1-mönstret
              - Uppdatera \`prod-schema.sql\`
+          4. **Om drift bara är ordnings-skillnader från pg_dump**:
+             - Uppdatera \`prod-schema.sql\` med senaste dumpen
+             - Ingen migration behövs
 
           ### Workflow
           - Run: [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - Tidpunkt: $(date -u '+%Y-%m-%d %H:%M UTC')
 
-          ### Fullständig diff (första 200 rader)
+          ### Diff-sammanfattning (första 100 rader)
 
           \`\`\`diff
-          $(head -n 200 /tmp/drift-diff.txt)
+          $(head -n 100 /tmp/drift-diff.txt)
           \`\`\`
 
           ---
