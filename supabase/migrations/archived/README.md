@@ -398,3 +398,22 @@ Båda RLS-policies filen skapar (`Anon kan insertera ansökan`,
 
 Filen var 2026-03-26 PostgREST schema-cache-fix — irrelevant i
 fresh DB-replay.
+
+### 20260424223318_f3_2c_drop_dormant_tables.sql (arkiverad 2026-04-22)
+
+**Varför:** Cleanup-migration utan bestående värde för replay.
+
+Filen DROP:ar jobs + job_matches + cleaner_job_types (DORMANT-tabeller
+per CLAUDE.md §3.2c). Dessa tabeller fanns i prod men hade ingen
+CREATE-migration i lokal repo (hygien-task #27/#28 noterar detta).
+
+I fresh DB är tabellerna aldrig skapade. DROP TRIGGER IF EXISTS ON
+jobs failar eftersom tabellen inte finns (IF EXISTS skyddar inte mot
+saknad tabell, bara mot saknad trigger).
+
+Tjugoförsta arkivering idag. Samma kategori som 20260330000002
+emergency_cleanup (iter 23) — engångs cleanup-operation utan
+schema-värde för replay.
+
+I prod var den korrekt och har körts. I fresh DB är den no-op med
+fail.
