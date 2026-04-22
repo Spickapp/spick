@@ -253,7 +253,7 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 | §3.4 | 209 | History-multiplier | ✓ implicit | i §3.2a (inaktiv utan customer_id) |
 | §3.5 | 210 | VIEW-indirektion | ✓ STÄNGD (ej tillämplig) | (denna commit) |
 | §3.6 | 218 | Materialiserad vy (villkorat performance) | ✓ STÄNGD | (denna session) — Sprint 2 Dag 1 2026-04-24 |
-| §3.7 full | 219-220 | Shadow-mode + A/B-ramverk | ◑ | Step 1 ✓ (Sprint 2 Dag 1, `52fd7de`), Step 2a ✓ (Sprint 2 Dag 2 — v1-RPC), Step 2b–d pågående |
+| §3.7 full | 219-220 | Shadow-mode + A/B-ramverk | ◑ | Step 1 ✓ (Dag 1, `52fd7de`), Step 2a ✓ (Dag 2 — v1-RPC), Step 2b ✓ (Dag 2 — EF matching-wrapper), Step 2c–d pågående |
 | §3.8 | 220 | Admin-dashboard för match_score | ◯ | — blockerad av hygien #13 |
 | §3.9 | 221 | Pilot-analys efter 30 dgrs data | ◯ | — kräver shadow-mode aktiverat först |
 
@@ -283,6 +283,8 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 199-233](planning/spick-
 **§3.7 full-infrastruktur (Sprint 2 Dag 1, 2026-04-24):** `matching_shadow_log`-tabell skapad i prod + `matching_shadow_log_enabled=false` seed i platform_settings. Tabell har RLS (admin-read), FK till bookings, 2 indexes för pilot-queries. Wrapper-logik i booking-create EF (kallar v1+v2 + loggar diff) återstår. Se `supabase/migrations/20260424231000_sprint2d1_matching_shadow_log.sql`.
 
 **§3.7-full Step 2a (Sprint 2 Dag 2, 2026-04-25):** `find_nearby_cleaners_v1`-RPC återskapad i prod (migration `20260425120000_sprint2d2_find_nearby_cleaners_v1.sql`). 2-arg-signatur `(customer_lat, customer_lng)`, 24 returfält, `ORDER BY distance_km, avg_rating DESC` — exakt kopia av f2_2-body (pre-§3.2a, prod-verifierad 22 apr). Skapad med nytt namn för att undvika signatur-kollision med v2 (9-arg). Grants: `EXECUTE TO anon, authenticated, service_role` (matchar v2 per prod-schema rad 5632-5633). Smoke-test mot Stockholm-koordinater (59.3293, 18.0686): 5 cleaners, 4.7–17.3 km spread. Deploy via `supabase db query --linked --file`. Verifierat i prod via `pg_proc`: båda RPCs samexisterar. Arkitekturval (Alt A från Dag 2-scoping): ny RPC + ny EF-wrapper + boka.html-switch. Planeras sunsettas per designdok §10.3 steg 5 efter v2-rollout.
+
+**§3.7-full Step 2b (Sprint 2 Dag 2, 2026-04-25):** EF `matching-wrapper` deployad till prod (bundle 125.1kB). Brancher på `platform_settings.matching_algorithm_version`: `'v1'` → anropa `find_nearby_cleaners_v1` + mappa till v2-schema med NULL-scores; `'v2'` → anropa `find_nearby_cleaners` (9 args) direkt; `'shadow'` → `Promise.all` båda RPCs + beräkna `top5_overlap` + Spearman `rho` + INSERT i `matching_shadow_log` (om `matching_shadow_log_enabled=true`) + returnera v1-ordning till klient. Fail-soft: om en RPC failar i shadow-mode returneras den andra som fallback. Diff-helpers isolerade i `_shared/matching-diff.ts` för unit-testbarhet. 16 unit-tester (top-N-overlap, Spearman, v1→v2 schema-mapping, ranking-build) + 134 money-regressionstester passerar. Smoke-test @ Stockholm i v1-mode: 5 cleaners, 33-fält-schema, `match_score=null`, `company_display_name` korrekt från `company_name`. Shadow/v2-smoke-test körs i Step 2d efter flag-flip.
 
 **§3.6 STÄNGD (Sprint 2 Dag 1, 2026-04-24):** Benchmark av `find_nearby_cleaners` visar 51ms warm-cache (380ms cold) på 12 approved cleaners. Materialized view EJ behövd idag — tröskel 200ms @ 500+ cleaners enligt designdok §11. Index finns: `idx_cleaners_approval_active` (partial hard-filter) + `idx_cleaners_home_geo` (GiST spatial). Öppnas om/när benchmark visar >200ms.
 
