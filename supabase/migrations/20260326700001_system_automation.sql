@@ -131,7 +131,9 @@ CREATE TRIGGER booking_customer_trigger
 
 -- 9. Index för prestanda
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_scheduled_date ON bookings(scheduled_date);
+-- Borttaget 2026-04-22 (Fas 2.X iter 14): scheduled_date-kolumn finns inte i prod.
+-- Prod har booking_date istället (index idx_bookings_date rad 3708).
+-- CREATE INDEX IF NOT EXISTS idx_bookings_scheduled_date ON bookings(scheduled_date);
 CREATE INDEX IF NOT EXISTS idx_bookings_cleaner_email ON bookings(cleaner_email);
 CREATE INDEX IF NOT EXISTS idx_bookings_reminders ON bookings USING GIN(reminders_sent);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_email ON subscriptions(customer_email);
