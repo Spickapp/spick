@@ -122,7 +122,7 @@ Referens: [docs/planning/spick-arkitekturplan-v3.md rad 168-198](planning/spick-
 **Fas 2 STÄNGD inom v3-scope 2026-04-22:** 7 klara (§2.1, §2.2, §2.4, §2.5, §2.6, §2.7, §2.9) + 2 deferred (§2.3 → Fas 3, §2.8 → Fas 2-utökning).
 
 **Fas 2-utökning (skuld-roadmap, schedulerad separat):**
-- §2.1.1: 15 KRITISK-tabeller → CREATE TABLE migrations (5-8h)
+- **§2.1.1** — ◑ PÅGÅENDE. Retroaktiv CREATE TABLE för 15 KRITISKA tabeller som saknar migration (från drift-audit 2026-04-22). Template skapad: customer_profiles (denna commit). 14 återstår.
 - §2.1.2: 15 LEGACY → Studio COUNT + DROP-beslut (3-5h)
 - ~~§2.1.3: 10 DORMANT → Fas 3-integration eller DROP~~ ✓ **Stängd 2026-04-22 (Fas 3 §3.1-beslut)**: `jobs`, `job_matches`, `cleaner_job_types` raderas (push-modell ej behövd, pull räcker). Exekvering i kommande migration (§3.2 eller separat cleanup-commit). Övriga DORMANT-kandidater (cleaner_customer_relations, cleaner_preferred_zones, cleaner_skills, cleaner_zones, cleaner_referrals, customer_selections, earnings_summary) kvarstår för separat grep+COUNT-beslut.
 - §2.1.4: 217 policies-diff (4-6h)
