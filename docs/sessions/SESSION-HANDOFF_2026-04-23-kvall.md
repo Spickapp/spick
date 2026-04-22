@@ -64,6 +64,23 @@ DROP TABLE bookings_backup_commission_17_before_sync;
 
 ---
 
+## 🔴 KRITISK: PNR-infrastruktur-fynd (upptäckt efter commit a7bb559)
+
+**Status:** Dokumenterad men ej åtgärdad. Se [docs/planning/todo-pnr-infrastructure-2026-04-23.md](../planning/todo-pnr-infrastructure-2026-04-23.md) för full kontext.
+
+**Kort sammanfattning:**
+- Verifiering i prod-DB visade 36 rader med customer_pnr (audit 21 apr sa 0)
+- 11 rader är klartext PNR (12 tecken YYYYMMDDNNNN format)
+- 3 riktiga kunder berörda: claraml@hotmail.se, derin.bahram@ivory.se, zivar.majid@outlook.com
+- boka.html:586 utlovar kryptering + Skatteverket-användning. Ingetdera stämmer.
+- boka.html-PNR-fältet är AKTIVT i prod — varje ny RUT-bokning genererar mer klartext-PNR
+
+**Ekonomisk exponering:** 0 kr (allt Stripe-testmode). GDPR-exponering finns.
+
+**Beslutat 23 apr kväll:** Ingen kod-ändring ikväll. Planera ordentligt tillsammans med Fas 7.5-start. Se TODO-fil för åtgärdsplan i 4 steg.
+
+**FÖRSTA STEG i nästa session:** Bestäm om Åtgärd 1 (dölja PNR-fält) ska köras innan planering av Åtgärd 2-4.
+
 ## Öppen sprint: "Provision-centralisering"
 
 Kvällens arbete avslöjade att provisionssiffran är fragmenterad över hela kodbasen

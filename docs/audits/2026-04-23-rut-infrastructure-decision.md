@@ -210,3 +210,26 @@ Bakgrund: §3.1-research antog att `customer_profiles.preferences` JSONB exister
 När Fas 7.5 startar (ej schemalagd än): börja med §7.5.1 research. Betrakta RUT.1-designen i arkivet som **ostestad hypotes**, inte som "huvud-start". Jämför varje kolumn, statusvärde och funktionsdefinition i arkivfilen mot Skatteverkets faktiska API-spec 2026 innan du använder något av det.
 
 **Regel som skulle förhindrat detta:** Regel #29 i kombination med Regel #27 — Fas 7.5-arbete får aldrig startas på "RUT-audit 2026-04-23 säger vi ska bygga X" utan att audit-filen lästs i helhet. Research-steget §7.5.1 är inte en formalia — det är primärkällan som hela fasen bygger på.
+
+### Ytterligare fynd under formaliseringssessionen 2026-04-23 kväll
+
+Efter commit `a7bb559` (RUT.1 arkiverat + post-mortem) fortsatte verifikationen av vault-nyckel-städningen. Verifikation i PROD Studio visade:
+
+**Audit:n från 21 apr sa: "0 historiska bokningar har customer_pnr eller customer_pnr_hash ifyllda."**
+
+**Verifierad prod-sanning 23 apr kväll: 36 rader har customer_pnr.**
+
+Tre format samexisterar i kolumnen:
+- 24 rader × 56 tecken (AES-krypterad) — alla farrehagge@ testdata
+- 11 rader × 12 tecken (**klartext YYYYMMDDNNNN**) — 3 riktiga kunder berörda
+- 1 rad × 48 tecken (annan kryptering/hash) — 1 riktig kund
+
+**Konsekvens för denna audit:**
+
+Sektion "Punkt 7 — PNR-fält aldrig fyllt i prod" är **felaktig**. Korrigering ovan bygger på Regel #31 — schema är primärkällan, inte memory eller tidigare research. Audit-slutsatsen "noll ekonomisk exponering idag" kvarstår dock giltig (alla 36 är testmode, 0 riktiga Stripe-transaktioner).
+
+**Ny risk-typ:** GDPR. 11 klartext-PNR från 3 riktiga kunder lagrade i strid med utfästelsen i boka.html:586 ("krypteras och används endast för RUT-ansökan till Skatteverket"). Varken kryptering eller användning stämmer.
+
+**Full åtgärdsplan:** [docs/planning/todo-pnr-infrastructure-2026-04-23.md](../planning/todo-pnr-infrastructure-2026-04-23.md).
+
+**Lärdom:** När nästa Fas 7.5-session startar: §7.5.1 research måste även inkludera en ny verifikation av `bookings.customer_pnr`-kolumnen (count, format-distribution, vilka riktiga kunder), eftersom den data som 21 apr-audit sa inte fanns faktiskt gjorde det.
