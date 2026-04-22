@@ -185,3 +185,28 @@ Bakgrund: §3.1-research antog att `customer_profiles.preferences` JSONB exister
 - [docs/planning/spick-arkitekturplan-v3.md](../planning/spick-arkitekturplan-v3.md) — Fas 7.5-blocket
 - Arkiv: [docs/archive/edge-functions/rut-claim/](../archive/edge-functions/rut-claim/)
 - Prod-schema granskad: `prod-schema.sql` (gitignored, 2026-04-22-dump)
+
+---
+
+## Post-mortem: Sprint RUT.1-avvikelse 2026-04-23 (tillagt kväll 2026-04-23)
+
+**Vad hände:** 23 apr förmiddag byggdes Sprint RUT.1 (commit `0b82f2d`) lokalt. Migrationsfil `20260423000001_rut_sprint_1_datamodell.sql` skapade 21 kolumner + 3 tabeller inklusive `customer_pnr_encrypted`, `customer_pnr_last4`, `rut_requested` m.fl. — exakt de kolumner denna audit-fil uttryckligen sa skulle vara "rört EJ tills Fas 7.5" (se scope-gränser i minifix-commit `d901cc1c`).
+
+**Varför det är Regel #29-brott:**
+
+1. **§7.5.1 research inte genomförd.** Denna audit föreskrev explicit att "första-commit-förslag för Fas 7.5-session" är `§7.5.1 research: prod-state + Skatteverket-API-spec 2026`. RUT.1 byggde datamodellen utan att API-specen verifierats.
+2. **Scope-gränser överträdda.** Audit listade 4 områden att inte röra tills Fas 7.5: `customer_pnr`/`customer_pnr_hash`-kolumner, `rut_application_status`-spökkolumn, XML-matematik, PNR-flöde i boka.html. RUT.1 överlappade minst två av dessa.
+3. **Tidsbudget inkonsistent.** Audit estimerade Fas 7.5 till 25-35h samordnad refaktor. RUT.1 byggdes på en dag — tempot matchar inte den föreskrivna omfattningen.
+4. **Regel #30-brott.** Datamodellen gjordes på hypoteser om vad Skatteverket kräver (t.ex. vilka PNR-format, vilka statusvärden, vilken buffertlogik). Skatteverket-API-spec 2026 var aldrig verifierad som primärkälla.
+
+**Åtgärd 2026-04-23 kväll:**
+
+- **RUT.1-migrationsfil flyttad** från `supabase/migrations/20260423000001_rut_sprint_1_datamodell.sql` till `docs/archive/migrations/rut-sprint-1-deferred-to-fas-7-5.sql`. Skyddar mot accidental deploy, bevarar design som referens.
+- **PROD vault-nyckel raderad manuellt** av Farhad: `RUT_PNR_ENCRYPTION_KEY` (UUID `86767fda-4dcf-44c6-8869-7e5b9a0145f1`) som skapades av misstag i PROD-vault när RUT.1 kördes i fel Studio. Verifierat att 0 PNR-rader krypterats med nyckeln (0 rader med `customer_pnr_encrypted IS NOT NULL`).
+- **Progress-fil uppdaterad** med tidslinje och referens till denna post-mortem.
+
+**Lärdom för Fas 7.5-sessionen:**
+
+När Fas 7.5 startar (ej schemalagd än): börja med §7.5.1 research. Betrakta RUT.1-designen i arkivet som **ostestad hypotes**, inte som "huvud-start". Jämför varje kolumn, statusvärde och funktionsdefinition i arkivfilen mot Skatteverkets faktiska API-spec 2026 innan du använder något av det.
+
+**Regel som skulle förhindrat detta:** Regel #29 i kombination med Regel #27 — Fas 7.5-arbete får aldrig startas på "RUT-audit 2026-04-23 säger vi ska bygga X" utan att audit-filen lästs i helhet. Research-steget §7.5.1 är inte en formalia — det är primärkällan som hela fasen bygger på.

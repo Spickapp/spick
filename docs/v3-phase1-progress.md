@@ -366,17 +366,44 @@ alla dependencies (functions, views, triggers, types), konsolidering av
 §2.1.1 till bootstrap-serie, reverse-engineering av ~80 saknade objekt,
 och rensning av gamla migrations-konflikter (reviews dual-create, etc.).
 
-### Fas 7.5 — RUT-infrastruktur (öppnad 2026-04-23)
+### Fas 7.5 — RUT-infrastruktur (öppnad 2026-04-23, PAUSAD)
 
-**Motivation:** Spår B-audit 2026-04-23 avslöjade 5 systemiska 🔴-risker i RUT-ansökningsinfrastrukturen (kolumnmismatch, fel XML-matematik, saknad timing-guard, spökkolumn, icke-applicerad migration). Noll ekonomisk exponering idag (`SKV_API_KEY` tom + 0 historiska PNR), men infrastrukturen är inte produktionsklar. Minifix 2026-04-23 (§2.5) stängde triggern + arkiverade EF — full refaktor skjuten hit.
+**Status:** ◯ EJ STARTAD. Sprint RUT.1-avvikelse 23 apr hanterad och formaliserad 23 apr kväll.
+
+**Motivation:** Spår B-audit 2026-04-23 avslöjade 5 systemiska 🔴-risker i RUT-ansökningsinfrastrukturen (kolumnmismatch, fel XML-matematik, saknad timing-guard, spökkolumn, icke-applicerad migration). Noll ekonomisk exponering idag (`SKV_API_KEY` tom + 0 historiska PNR). Full refaktor skjuts hit.
+
+**Tidslinje:**
+- **2026-04-21** (`d901cc1c`): Audit fastställde 5 risker. Minifix: rut-claim-EF avstängd, arkiverad, undeploy:ad. Full refaktor → Fas 7.5.
+- **2026-04-23 förmiddag** (`0b82f2d`): Sprint RUT.1 byggd lokalt utanför audit-planen. 21 kolumner på `bookings` (inkl `customer_pnr_encrypted`, `customer_pnr_last4`, 7 statustidsstämplar) + 3 tabeller (`customer_pnr_access_log`, `rut_skv_payouts`, `rut_payout_allocations`) + 3 SECURITY DEFINER functions + pgcrypto AES-kryptering. Migrationsfil skapad men INTE applicerad i prod.
+- **2026-04-23 kväll**: Regel #29-granskning identifierade att RUT.1 byggdes utan §7.5.1 research + överträdde audit:ns "rör EJ"-scope (customer_pnr-kolumner, rut_application_status-spökkolumn, XML-matematik). RUT.1 pausad formellt.
+
+**Åtgärd 2026-04-23 kväll:**
+- RUT.1-migrationsfil flyttad till [docs/archive/migrations/rut-sprint-1-deferred-to-fas-7-5.sql](../archive/migrations/rut-sprint-1-deferred-to-fas-7-5.sql) (bevarar design för referens, skyddar mot accidental deploy)
+- PROD vault-nyckel `RUT_PNR_ENCRYPTION_KEY` (UUID `86767fda-4dcf-44c6-8869-7e5b9a0145f1`) raderad manuellt av Farhad (skapades av misstag när RUT.1 kördes i fel Studio)
+- Audit-fil uppdaterad med post-mortem-sektion
 
 **Placering i v3-ordning:** mellan Fas 7 och Fas 8 (insatt i [spick-arkitekturplan-v3.md](planning/spick-arkitekturplan-v3.md)).
 
-**Beroenden:** inga — kan startas när som helst efter 2026-04-23. Rafa-pilot kan skalas först när Fas 7.5 är klar OCH `SKV_API_KEY` satts till verkligt värde.
+**Beroenden:** inga — kan startas när som helst efter Farhads beslut. Rafa-pilot kan skalas först när Fas 7.5 är klar OCH `SKV_API_KEY` satts till verkligt värde.
 
 **Scope: 25-35h** över 6 sub-faser (§7.5.1-§7.5.6 — grovskissade i v3-planen, detaljeras när fasen startar).
 
-**Primärkälla vid start:** [docs/audits/2026-04-23-rut-infrastructure-decision.md](audits/2026-04-23-rut-infrastructure-decision.md) + arkiverad kod i [docs/archive/edge-functions/rut-claim/](archive/edge-functions/rut-claim/).
+**Nästa steg vid aktivering:**
+1. **§7.5.1 research FÖRST**: `web_search` + Farhads verifiering av Skatteverket RUT API-spec 2026 (versionsnummer, XML-format, kvot-regler, 75 000 kr-tak per kund/år). Detta är Regel #30 i praktiken — ingen gissning om regulator-regler.
+2. §7.5.2: Design (kolumn-konsolidering av `rut_application_status` vs `rut_claim_status` + spökkolumn, krypteringsarkitektur, skyddslager)
+3. §7.5.3: Timing-guard + admin-godkänd kö
+4. §7.5.4: XML-matematik refaktor (100% arbetskostnad för städtjänster, takcheck)
+5. §7.5.5: Persistent kundfaktura-infrastruktur (immutable, moms-rad, kreditnota vid refund)
+6. §7.5.6: Årsskifte-vakt + återaktivera rut-claim-EF från arkivet
+
+**Referens-material från RUT.1 (pausad design):** [docs/archive/migrations/rut-sprint-1-deferred-to-fas-7-5.sql](../archive/migrations/rut-sprint-1-deferred-to-fas-7-5.sql) kan användas som utgångspunkt men MÅSTE valideras mot §7.5.1-research innan användning. Ignorera designen om den inte matchar Skatteverkets API-spec 2026.
+
+**Blockerare (hårda låsningar):**
+- `SKV_API_KEY` får ALDRIG sättas i prod innan Fas 7.5 är klar
+- RUT-ansökan är AVSTÄNGD i stripe-webhook (rad 518-521, kommentar pekar till audit)
+- `rut-claim` EF är undeploy:ad från prod (verifierat via `supabase functions list`)
+
+**Primärkälla:** [docs/audits/2026-04-23-rut-infrastructure-decision.md](audits/2026-04-23-rut-infrastructure-decision.md) (inklusive post-mortem tillagd 23 apr kväll).
 
 ## Session-lärdomar (löpande)
 
