@@ -1,20 +1,18 @@
 name: DB Audit (Prod Read-Only)
 
 # ──────────────────────────────────────────────────────────────────
-# Sprint 1 Dag 3 (2026-04-24): Säker read-only-kanal för prod-audits
+# Sprint 1 Dag 3 (2026-04-24): Read-only prod-audits via Management API
 # ──────────────────────────────────────────────────────────────────
 # Kör fördefinierade audit-queries mot prod och skriver resultaten
-# till workflow-loggen. Ingen write-access. Ingen SQL-input från
-# externa parametrar (undviker injection).
+# till workflow-loggen. Använder `supabase db query --linked` som
+# går via Management API (HTTPS) — fungerar pålitligt från CI runners
+# (till skillnad från direct DB-URL som kräver IPv6 + pooler-tenant).
 #
-# Tilläggs-audits läggs till som jobs nedanför. Varje job = en konkret
-# fråga med dokumenterat syfte och rollback-säkerhet.
+# Auth: SUPABASE_ACCESS_TOKEN (redan i secrets). Project ref seed:as
+# via supabase link-kommandot.
 #
-# Används av Claude Code för Sprint 1+ utan att kräva Farhads manuella
-# Studio-queries. Triggas via `gh workflow run db-audit.yml`.
-#
-# Använder psql direkt mot Supabase Pooler-URL. Supabase CLI 2.x har
-# inte `db execute` — psql är den enkla lösningen.
+# Ingen write-access. Ingen SQL-input från parametrar (injection-safe).
+# Tilläggs-audits läggs till som steps nedanför.
 # ──────────────────────────────────────────────────────────────────
 
 'on':
@@ -22,99 +20,46 @@ name: DB Audit (Prod Read-Only)
 
 jobs:
   audit:
-    name: Read-only audit (cleaners, services, platform_settings)
+    name: Read-only audit (cleaners, services, platform_settings, bookings)
     runs-on: ubuntu-latest
     env:
-      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_ID: urjeijcncsyuletprydy
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install psql
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
-      - name: Bygg DB-URL (direkt-anslutning)
-        id: dburl
+      - name: Link prod-projekt
+        run: supabase link --project-ref $PROJECT_ID
+
+      - name: Audit 1 — Cleaner-dubletter (email × company_id)
         run: |
-          # Direkt DB-host (port 5432) undviker Pooler tenant-resolution-fel.
-          # Lösenordet kommer från SUPABASE_DB_PASSWORD-secret (PGPASSWORD env).
-          # SSL tvingas via sslmode=require.
-          echo "url=postgresql://postgres@db.${{ env.PROJECT_ID }}.supabase.co:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
+          supabase db query --linked "SELECT lower(email) AS email_lc, COUNT(*) AS n, array_agg(id::text ORDER BY created_at) AS ids FROM cleaners WHERE email IS NOT NULL GROUP BY lower(email), COALESCE(company_id::text, 'NULL') HAVING COUNT(*) > 1 ORDER BY n DESC LIMIT 20;"
 
-      - name: Audit 1 — Cleaners-dubletter (email med >1 rader)
+      - name: Audit 2 — Hourly_rate-distribution
         run: |
-          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
-          \pset border 2
-          \echo '=== Dubletter per email (över företag) ==='
-          SELECT email, COUNT(*) AS row_count, array_agg(id) AS ids
-          FROM cleaners
-          WHERE email IS NOT NULL
-          GROUP BY email
-          HAVING COUNT(*) > 1
-          ORDER BY row_count DESC
-          LIMIT 50;
-          SQL
+          supabase db query --linked "SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE hourly_rate IS NULL) AS null_rate, COUNT(*) FILTER (WHERE hourly_rate < 200) AS below_min, COUNT(*) FILTER (WHERE hourly_rate BETWEEN 200 AND 399) AS normal, COUNT(*) FILTER (WHERE hourly_rate BETWEEN 400 AND 600) AS high, COUNT(*) FILTER (WHERE hourly_rate > 600) AS above_600, MIN(hourly_rate) AS min_rate, MAX(hourly_rate) AS max_rate, ROUND(AVG(hourly_rate)::numeric, 2) AS avg_rate FROM cleaners;"
 
-      - name: Audit 2 — Hourly_rate-distribution + lista under 200 kr
+      - name: Audit 3 — Cleaners med rate under min 200
         run: |
-          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
-          \pset border 2
-          \echo '=== Distribution ==='
-          SELECT
-            COUNT(*) AS total,
-            COUNT(*) FILTER (WHERE hourly_rate IS NULL) AS null_rate,
-            COUNT(*) FILTER (WHERE hourly_rate < 200) AS below_min_200,
-            COUNT(*) FILTER (WHERE hourly_rate BETWEEN 200 AND 399) AS normal_200_399,
-            COUNT(*) FILTER (WHERE hourly_rate BETWEEN 400 AND 600) AS high_400_600,
-            COUNT(*) FILTER (WHERE hourly_rate > 600) AS above_600,
-            MIN(hourly_rate) AS min_rate,
-            MAX(hourly_rate) AS max_rate,
-            ROUND(AVG(hourly_rate)::numeric, 2) AS avg_rate
-          FROM cleaners;
+          supabase db query --linked "SELECT id, email, first_name, last_name, hourly_rate, company_id, is_approved FROM cleaners WHERE hourly_rate IS NOT NULL AND hourly_rate < 200 ORDER BY hourly_rate ASC LIMIT 30;"
 
-          \echo '=== Cleaners med rate < 200 (troligtvis testdata/misstag) ==='
-          SELECT id, email, first_name, last_name, hourly_rate, company_id, is_approved, signup_date
-          FROM cleaners
-          WHERE hourly_rate IS NOT NULL AND hourly_rate < 200
-          ORDER BY hourly_rate ASC
-          LIMIT 30;
-          SQL
-
-      - name: Audit 3 — services.default_hourly_price (seed-verifiering)
+      - name: Audit 4 — Services default_hourly_price (seed-verifiering)
         run: |
-          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
-          \pset border 2
-          \echo '=== Services + default_hourly_price ==='
-          SELECT key, label_sv, rut_eligible, default_hourly_price, active
-          FROM services
-          ORDER BY display_order;
-          SQL
+          supabase db query --linked "SELECT key, label_sv, rut_eligible, default_hourly_price, active FROM services ORDER BY display_order;"
 
-      - name: Audit 4 — platform_settings pricing-nycklar
+      - name: Audit 5 — Pricing platform_settings
         run: |
-          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
-          \pset border 2
-          \echo '=== Pricing-relaterade platform_settings ==='
-          SELECT key, value, updated_at
-          FROM platform_settings
-          WHERE key IN ('commission_standard', 'commission_top', 'min_hourly_rate',
-                        'base_price_per_hour', 'default_hourly_rate', 'rut_pct',
-                        'rut_yearly_cap_kr', 'money_layer_enabled', 'smart_trappstege_enabled')
-          ORDER BY key;
-          SQL
+          supabase db query --linked "SELECT key, value, updated_at FROM platform_settings WHERE key IN ('commission_standard','commission_top','min_hourly_rate','base_price_per_hour','default_hourly_rate','rut_pct','rut_yearly_cap_kr','money_layer_enabled','smart_trappstege_enabled','escrow_enabled','matching_algorithm_version') ORDER BY key;"
 
-      - name: Audit 5 — bookings PNR-status (verifiering av Sprint 1 Dag 1-fix)
+      - name: Audit 6 — PNR-status (verifiera Sprint 1 Dag 1-fix håller)
         run: |
-          psql "${{ steps.dburl.outputs.url }}" <<'SQL'
-          \pset border 2
-          \echo '=== PNR-statistik (ska inte ha ökat sedan 2026-04-23: 36 rader) ==='
-          SELECT
-            COUNT(*) AS total_with_pnr,
-            COUNT(*) FILTER (WHERE length(customer_pnr) = 12) AS klartext_12,
-            COUNT(*) FILTER (WHERE length(customer_pnr) = 48) AS crypt_48,
-            COUNT(*) FILTER (WHERE length(customer_pnr) = 56) AS crypt_56,
-            COUNT(*) FILTER (WHERE created_at >= '2026-04-24') AS new_since_fix
-          FROM bookings
-          WHERE customer_pnr IS NOT NULL;
-          SQL
+          supabase db query --linked "SELECT length(customer_pnr) AS len, COUNT(*) AS n, COUNT(*) FILTER (WHERE created_at >= '2026-04-24') AS new_since_fix FROM bookings WHERE customer_pnr IS NOT NULL GROUP BY length(customer_pnr) ORDER BY length(customer_pnr);"
+
+      - name: Audit 7 — Unique-constraint verifiering
+        run: |
+          supabase db query --linked "SELECT indexname, indexdef FROM pg_indexes WHERE indexname = 'cleaners_email_company_unique_idx';"
