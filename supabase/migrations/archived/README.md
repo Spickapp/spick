@@ -156,3 +156,19 @@ och failar.
 
 Aktuella customer_profiles-policies finns i
 `20260422130000_fas_2_1_1_all_policies.sql`.
+
+### 20260326400001_realistic_cleaners_seed.sql (arkiverad 2026-04-22)
+
+**Varför:** Ren test-seed-data (3 INSERT-statements, 0 schema-operationer).
+
+Filen INSERT:ar testdata för cleaners + cleaner_availability med
+kolumnen `jobs_completed` som inte existerar i prod (prod har
+`completed_jobs` + `total_jobs` — duplikatpar dokumenterat i
+progress-filens hygien-task #15).
+
+Test-data hör inte hemma i migrations. Arkiverad av Fas 2.X-principer:
+migrations ska bara hantera schema-förändringar som ska replikeras
+mellan miljöer.
+
+**Om du behöver test-cleaners lokalt:** Skapa dem via lokal Studio
+eller `supabase/seed.sql` (separat från migrations).
