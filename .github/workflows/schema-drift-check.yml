@@ -1,0 +1,174 @@
+name: Schema Drift Check
+
+on:
+  schedule:
+    # Varje måndag 06:00 UTC (08:00 lokal tid)
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  drift-check:
+    name: Compare prod schema vs repo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase link --project-ref urjeijcncsyuletprydy
+
+      - name: Dump current prod schema
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db dump --schema public -f /tmp/prod-schema-current.sql
+          echo "Dump size: $(wc -c < /tmp/prod-schema-current.sql) bytes"
+
+      - name: Normalize schemas for comparison
+        run: |
+          # Normalisera båda filer: ta bort kommentarer, tomma rader, sortera
+          # Detta minskar false positives från formatterings-skillnader
+
+          # Funktion för att normalisera en SQL-fil
+          normalize() {
+            local input="$1"
+            local output="$2"
+            # 1. Ta bort SQL-kommentarer (-- till radslut)
+            # 2. Ta bort tomma rader
+            # 3. Normalisera whitespace (flera spaces → ett space)
+            # 4. Ta INTE bort SET-statements, de är del av dumpens header
+            sed 's/--.*$//' "$input" | \
+              grep -v '^\s*$' | \
+              sed 's/[[:space:]]\+/ /g' | \
+              sed 's/^[[:space:]]//;s/[[:space:]]$//' \
+              > "$output"
+          }
+
+          normalize prod-schema.sql /tmp/repo-normalized.sql
+          normalize /tmp/prod-schema-current.sql /tmp/prod-normalized.sql
+
+          echo "Repo normalized: $(wc -l < /tmp/repo-normalized.sql) rader"
+          echo "Prod normalized: $(wc -l < /tmp/prod-normalized.sql) rader"
+
+      - name: Compare schemas
+        id: diff
+        run: |
+          # Sortera båda för att hantera ordning av objekt
+          sort /tmp/repo-normalized.sql > /tmp/repo-sorted.sql
+          sort /tmp/prod-normalized.sql > /tmp/prod-sorted.sql
+
+          # Spara diff för rapportering
+          if diff -q /tmp/repo-sorted.sql /tmp/prod-sorted.sql > /dev/null; then
+            echo "has_drift=false" >> $GITHUB_OUTPUT
+            echo "✓ Ingen drift upptäckt — prod matchar repot"
+          else
+            echo "has_drift=true" >> $GITHUB_OUTPUT
+            echo "⚠ DRIFT UPPTÄCKT"
+
+            # Spara detaljerad diff för rapport
+            diff /tmp/repo-sorted.sql /tmp/prod-sorted.sql > /tmp/drift-diff.txt || true
+
+            # Räkna rader som skiljer
+            added=$(grep -c "^> " /tmp/drift-diff.txt || echo 0)
+            removed=$(grep -c "^< " /tmp/drift-diff.txt || echo 0)
+            echo "added_lines=$added" >> $GITHUB_OUTPUT
+            echo "removed_lines=$removed" >> $GITHUB_OUTPUT
+
+            # Skapa summary för Issue body
+            cat > /tmp/issue-body.md <<EOF
+          ## Schema Drift Detected
+
+          Automatic weekly check (schema-drift-check workflow) upptäckte skillnader mellan prod-databasen och \`prod-schema.sql\` i repot.
+
+          ### Sammanfattning
+          - **Rader endast i prod (saknas i repo):** $added
+          - **Rader endast i repo (saknas i prod):** $removed
+
+          ### Nästa steg
+          1. Granska driften genom att köra lokalt:
+             \`\`\`powershell
+             supabase db dump --schema public -f prod-schema-new.sql
+             git diff prod-schema.sql prod-schema-new.sql
+             \`\`\`
+          2. Om driften är **förväntad** (t.ex. ny migration applicerad via \`supabase db push\`):
+             - Ersätt \`prod-schema.sql\` med den nya dumpen
+             - Commita med meddelande \`chore: uppdatera prod-schema.sql (drift-check YYYY-MM-DD)\`
+          3. Om driften är **oförväntad** (någon har ändrat prod via Studio utan migration):
+             - Identifiera ändringen
+             - Skapa retroaktiv migration enligt mönstret från §2.1.1
+             - Uppdatera \`prod-schema.sql\`
+
+          ### Workflow
+          - Run: [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - Tidpunkt: $(date -u '+%Y-%m-%d %H:%M UTC')
+
+          ### Fullständig diff (första 200 rader)
+
+          \`\`\`diff
+          $(head -n 200 /tmp/drift-diff.txt)
+          \`\`\`
+
+          ---
+
+          *Detta issue skapades automatiskt av schema-drift-check workflow. Stäng när drift är hanterad.*
+          EOF
+
+            echo "Issue body sparad i /tmp/issue-body.md"
+          fi
+
+      - name: Create Issue on drift
+        if: steps.diff.outputs.has_drift == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/issue-body.md', 'utf8');
+            const today = new Date().toISOString().split('T')[0];
+
+            // Kolla om det redan finns en öppen issue för schema-drift denna vecka
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'schema-drift'
+            });
+
+            if (existing.data.length > 0) {
+              console.log(`${existing.data.length} existing schema-drift issue(s) already open. Skipping creation.`);
+              // Kommentera på första existerande issue istället
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `Update ${today}: drift fortfarande detekterad (run ${context.runId}). Se workflow för detaljer.`
+              });
+              return;
+            }
+
+            // Skapa ny issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Schema drift detected — ${today}`,
+              body: body,
+              labels: ['schema-drift', 'infrastructure']
+            });
+            console.log('Created new schema-drift issue');
+
+      - name: Report no-drift status
+        if: steps.diff.outputs.has_drift == 'false'
+        run: |
+          echo "✓ Workflow completed: no schema drift detected"
+          echo "::notice title=Schema Check::prod-schema.sql matches current prod state"
