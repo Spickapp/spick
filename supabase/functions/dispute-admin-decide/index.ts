@@ -44,6 +44,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
+import { isServiceRoleJwt } from "../_shared/auth.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return json(CORS, 401, { error: "missing_auth" });
     }
-    if (authHeader.slice(7) !== SERVICE_KEY) {
+    if (!isServiceRoleJwt(authHeader.slice(7))) {
       return json(CORS, 403, { error: "service_role_required" });
     }
 

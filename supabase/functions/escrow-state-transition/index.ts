@@ -35,6 +35,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
 import { validateInput } from "../_shared/escrow-state.ts";
+import { isServiceRoleJwt } from "../_shared/auth.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -64,13 +65,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
 
   try {
-    // ── Auth: service-role bearer ──
+    // ── Auth: service-role bearer (JWT-role-claim, inte strict equality) ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return json(CORS, 401, { error: "missing_auth" });
     }
     const token = authHeader.slice(7);
-    if (token !== SERVICE_KEY) {
+    if (!isServiceRoleJwt(token)) {
       return json(CORS, 403, { error: "service_role_required" });
     }
 
