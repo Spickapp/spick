@@ -149,22 +149,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── INSERT escrow_events (audit-trail) ──
-    // Best-effort: om detta failar rollback:ar vi INTE state-changen.
-    // State är redan uppdaterad → log warning + returnera success.
-    const { error: eventErr } = await sb
-      .from("escrow_events")
-      .insert({
-        booking_id,
-        from_state: fromState,
-        to_state: transition.to,
-        triggered_by,
-        triggered_by_id,
-        metadata: { action, ...metadata },
-      });
+    // ── INSERT escrow_events via SECURITY DEFINER RPC ──
+    // Rotorsak 2026-04-24: direct INSERT blockerades av RLS trots
+    // service_role (Supabase-konfig-drift). log_escrow_event RPC
+    // kör som function-owner → bypassar RLS konsistent.
+    const { error: eventErr } = await sb.rpc("log_escrow_event", {
+      p_booking_id: booking_id,
+      p_from_state: fromState,
+      p_to_state: transition.to,
+      p_triggered_by: triggered_by,
+      p_triggered_by_id: triggered_by_id,
+      p_metadata: { action, ...metadata },
+    });
 
     if (eventErr) {
-      log("warn", "escrow_events insert failed (state changed, audit missing)", {
+      log("warn", "log_escrow_event RPC failed (state changed, audit missing)", {
         booking_id, from_state: fromState, to_state: transition.to, error: eventErr.message,
       });
     }
