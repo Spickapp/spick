@@ -1,8 +1,8 @@
-# Session handoff — 2026-04-27 (30 commits: marketplace LIVE + Fas 5/6/8/11 substantial)
+# Session handoff — 2026-04-27 (39 commits: marketplace LIVE + säkerhet P1 + Fas 5/6/8/11)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-26-modell-b-c.md`
 **Denna session:** 2026-04-23 (morgon + dag + kväll, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
-**Status vid avslut:** 30 commits pushade. **Marknaden LIVE** (Model-4c flipp + team-aktivering + payment-fix). Fas 5 Retention substantial (schema + UX + helper). Fas 6 75% retrofit (6/8 EFs). Fas 8 + Fas 5.1 design-skelett. Fas 11 CI-automation live. Stripe dual-key infrastructure deployed + verified. 0 blockerande buggar.
+**Status vid avslut:** **39 commits pushade**. Marknaden LIVE (Model-4c flipp). Fas 6 **87.5% retrofit + robust + rate-limited**. **P1 säkerhet aktiv** (rate_limits + check_rate_limit i prod, verifierat 20/200 + 5/429). Fas 5 Retention 65%. Fas 8 + 5.1 design-skelett. Fas 11 CI-automation + CLAUDE.md manuell sync. Tidszon-fix + cleaner-payment-badge live. **3 rule #31-brott identifierade + korrigerade** — lärdom dokumenterad. 0 blockerande buggar.
 
 ## 🎯 MAJOR MILESTONE — Marketplace aktiverad 2026-04-23
 
@@ -91,8 +91,17 @@ Team-aktivering + Model-4c flipp exekverade av Farhad i Studio SQL. Verifierat l
 | 27 | `997557f` | feat(retention): Fas 5.5a foundation - _shared/preferences.ts helper + 15 tester |
 | 28 | `ae11f44` | docs(retention): §5.10 audit - pris-binding fungerar korrekt i prod + doc-fix |
 | 29 | `c0d3f68` | ci(claude): Fas 11.2 - auto-uppdatera CLAUDE.md-snapshot veckovis |
+| 30 | `78ce416` | docs(session): uppdatera handoff med alla 30 commits + lärdomar |
+| 31 | `81a1cb7` | docs(claude): manuell sync från snapshot - rule #29-drift korrigerad |
+| 32 | `a35505d` | feat: B1 save-booking-event EF + Fas 5/8 beslut-defaults + Fas 7 SUPERSEDED |
+| 33 | `d701d7b` | docs(events): TODO log_booking_event silent-failure robustness |
+| 34 | `9e0075b` | fix(events): Fas 6.3 robustness - log_booking_event RETURNS uuid + data-check |
+| 35 | `6ee8a02` | docs(events): RESOLVED log_booking_event silent-failure TODO |
+| 36 | `60330ed` | feat: P1 rate-limit + tidszon-fix + cleaner-payment-badge (Farhads 3 prios) |
+| 37 | `e8cab49` | docs(security): TODO rate-limit-migration 20260327300001 saknas i prod |
+| 38 | `d1a0d86` | feat(security): minimal rate_limits-migration (Alt B - 0 existing policy-andringar) |
 
-**Totalt: 29 Claude-commits + 2 bot-commits (sitemap + backup) = 31 entries på main**
+**Totalt: 39 Claude-commits + 2 bot-commits (sitemap + backup) = 41 entries på main**
 
 **Obs om push-ordning:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`. Tredje push (Fas 6.2) landade direkt. Efterföljande commits landade direkt utan rebase. 11:e commit (`b273d4b` Fas 8.1) blockerades av backup-bot, rebasade.
 
@@ -427,6 +436,45 @@ Lägst-risk → högst-risk:
 **Lärdom:** ALL schema-verification MÅSTE gå via `information_schema`-query från prod, inte mot migration-filer i repo. Migration-kedjan är ur sync per §2.1-hygien #25. Fas 2.X Replayability Sprint (30-50h) löser detta långsiktigt.
 
 **Deploy-lärdom:** `git push` triggar INTE Supabase EF-deploy. `supabase functions deploy <name> --project-ref ...` måste köras explicit efter varje EF-kodändring. Händer naturligt via Fas 11.2 framtida om deploy-check integreras.
+
+### 10.5 TOTALT 3 RULE #31-BROTT SESSION (alla korrigerade)
+
+| # | Antagande | Verklighet | Korrigering | Commit |
+|---|---|---|---|---|
+| 1 | `bookings.company_id` | Finns inte | JOIN cleaners på cleaner_id | `fd2a2c5` |
+| 2 | `subscriptions.favorite_cleaner_email` | Finns inte (schema-drift från 003_subs.sql) | Migration-rewrite mot verklig prod-schema | `d90f8f3` |
+| 3 | `check_rate_limit` RPC | Migration 20260327300001 ej applicerad | Ny minimal migration 20260427000004 | `d1a0d86` |
+
+**Mönster:** Migration-fil existerar i repo ≠ RPC/tabell/kolumn finns i prod. Schema-drift är SYSTEMISK.
+
+**Framtida-praxis (MÅSTE följas):**
+
+```bash
+# Innan ALLA RPC-referenser i ny kod:
+curl -X POST ${SUPA_URL}/rest/v1/rpc/<function_name> \
+  -H "apikey: ..." -d '{}'
+# Förvänta 200/204/400 om RPC finns. PGRST202 = saknas.
+
+# Innan ALLA kolumn-referenser i SQL:
+SELECT column_name FROM information_schema.columns
+WHERE table_name='<tabell>' AND column_name='<kolumn>';
+```
+
+**Långsiktig fix:** Fas 2.X Replayability Sprint (30-50h, skjuts till Q3 2026).
+
+### 10.6 Projektchef-analys levererad 2026-04-23 (för framtida referens)
+
+**8 frågor besvarade via research:**
+
+1. **Netlify:** ANVÄNDS INTE. GitHub Pages räcker tills >100k sidvisningar/mån.
+2. **Cleaner-kalender för kunder:** Delvis finns (cleaner_availability_v2 + calendar-ical-feed EF). Saknas: widget på stadare-profil.html. Behöver GDPR-check innan publik exponering.
+3. **Valbara knappar företag/städare:** Finns redan i DB (`companies.allow_customer_choice`, `show_individual_ratings`, `use_company_pricing`). Saknas UI i foretag-dashboard för VD (Fas 9).
+4. **Flera städadmins per företag:** Finns INTE. Kräver ny tabell `company_roles` eller `cleaners.company_role`. Blockerande för företag >5 städare. Prioritera Q3 2026.
+5. **Tidszon-bug morning-report:** Cron korrekt (06:07 UTC = 08:07 CEST). EF hade UTC-day bug (fixat i commit 60330ed). 12:50-delay är troligen Gmail-batch, inte EF-fel.
+6. **Cleaner ser betalning före städning:** Implementerat i commit 60330ed — payment-badges (💰/⚠️/🛑/↩️) i stadare-dashboard.
+7. **Top-5 förbättringar:** P1 Rate-limit (KLART), P2 EF-deploy-CI (skjuts), P3 Schema-drift (skjuts), P4 auto-delegate-tests (skjuts), P5 boka.html-error-handling (skjuts).
+
+Se commit `60330ed` för full analys-text.
 
 ---
 

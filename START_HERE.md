@@ -45,7 +45,7 @@ Läs dessa filer i EXAKT denna ordning. Ingen skippning.
 
 4. `CLAUDE.md` — projektkontext.
 5. `docs/v3-phase1-progress.md` — aktuellt fas-läge, öppna TODOs.
-6. `docs/sessions/SESSION-HANDOFF_2026-04-23-kvall.md` — senaste handoff (läs SENASTE om det finns nyare).
+6. `docs/sessions/SESSION-HANDOFF_2026-04-27-c2-m4b.md` — **senaste handoff (39 commits 2026-04-23)**. Om nyare finns via `ls docs/sessions/` alfabetisk-sort → läs SENASTE istället.
 
 ### C. Audits-läsning vid behov (ej obligatorisk)
 
@@ -77,8 +77,26 @@ Läs dessa filer i EXAKT denna ordning. Ingen skippning.
 - **#27 (Scope-respekt):** Gör det du blev ombedd om, inget mer. Flagga relaterade observationer istället för att agera på dem.
 - **#28 (Pricing-konsolidering):** Provision ska läsas från ETT ställe (platform_settings). Skapa inte fler fragmenteringspunkter.
 - **#29 (Audit-först):** Läs hela audit-filen innan du agerar på "audit säger X". Research-steg är inte formalia.
-- **#30 (Ingen regulator-gissning):** Skatteverket, GDPR, BokfL, Stripe-regler får aldrig gissas. Verifiera mot spec eller fråga Farhad.
+- **#30 (Ingen regulator-gissning):** Skatteverket, GDPR, BokfL, Stripe-regler, EU PWD får aldrig gissas. Verifiera mot spec eller fråga Farhad.
 - **#31 (Primärkälla över memory):** Schema/data är sanning. Memory och tidigare audit-antaganden är hypoteser.
+
+**LÄRDOM 2026-04-23 (3 rule #31-brott samma session):**
+Migration-fil i repo ≠ RPC/kolumn/tabell finns i prod. Schema-drift är systemisk.
+
+**OBLIGATORISK PRAXIS före alla nya SQL-/RPC-användningar:**
+
+```bash
+# Innan ALLA RPC-references i ny kod:
+curl -X POST ${SUPA_URL}/rest/v1/rpc/<function_name> \
+  -H "apikey: ..." -d '{}'
+# 200/204/400 = RPC finns. PGRST202 = saknas.
+
+# Innan ALLA kolumn-references i SQL:
+SELECT column_name FROM information_schema.columns
+WHERE table_name='<tabell>' AND column_name='<kolumn>';
+```
+
+Kör INNAN kod skrivs. Fas 2.X Replayability Sprint (30-50h) löser långsiktigt.
 
 ---
 
