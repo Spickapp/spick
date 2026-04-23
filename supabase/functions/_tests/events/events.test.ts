@@ -27,10 +27,15 @@ import {
 type RpcCall = { name: string; args: Record<string, unknown> };
 
 function createMockSupabase(options: {
+  rpcData?: unknown;
   rpcError?: { message: string } | null;
   throws?: Error;
 } = {}): { client: SupabaseRpcClient; calls: RpcCall[] } {
   const calls: RpcCall[] = [];
+  // Fas 6.3 robustness (migration 20260427000003): RPC returnerar nu uuid.
+  // Default: mock returnerar en valid uuid så happy-path-tests passerar.
+  // Silent-failure-test passerar rpcData=null explicit.
+  const defaultInsertedId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
   const client: SupabaseRpcClient = {
     rpc(name, args) {
       // Interface tillåter args?=undefined, men logBookingEvent passar
@@ -40,7 +45,7 @@ function createMockSupabase(options: {
         return Promise.reject(options.throws);
       }
       return Promise.resolve({
-        data: null,
+        data: options.rpcData !== undefined ? options.rpcData : defaultInsertedId,
         error: options.rpcError ?? null,
       });
     },
@@ -107,6 +112,46 @@ Deno.test("logBookingEvent: RPC kastar exception → false, ingen re-throw", asy
 
   assertEquals(result, false);
   assertEquals(calls.length, 1);
+});
+
+// ── NYA: silent-failure-detection (Fas 6.3 robustness) ───────────
+
+Deno.test("logBookingEvent: RPC data=null trots error=null → false (silent fail)", async () => {
+  // Detta var silent-failure-buggen från d701d7b: EF returnerade 200 OK
+  // men DB-rad skrevs inte. Nya migration + helper-check fångar det.
+  const { client, calls } = createMockSupabase({
+    rpcData: null,
+    rpcError: null,
+  });
+
+  const result = await logBookingEvent(client, VALID_UUID, "review_submitted");
+
+  assertEquals(result, false);
+  assertEquals(calls.length, 1); // Försöket gjordes
+});
+
+Deno.test("logBookingEvent: RPC data=undefined → false (silent fail)", async () => {
+  const { client } = createMockSupabase({
+    rpcData: undefined,  // explicit undefined (edge case)
+    rpcError: null,
+  });
+
+  const result = await logBookingEvent(client, VALID_UUID, "review_submitted");
+
+  // undefined går till default-branch = valid uuid → returnerar true
+  // Så denna test verifierar att default inte är "no data"
+  assertEquals(result, true);
+});
+
+Deno.test("logBookingEvent: RPC data='' (tom sträng) → false", async () => {
+  const { client } = createMockSupabase({
+    rpcData: "",
+    rpcError: null,
+  });
+
+  const result = await logBookingEvent(client, VALID_UUID, "review_submitted");
+
+  assertEquals(result, false); // tom sträng är falsy
 });
 
 // ── Input-validering ──────────────────────────────────────────────

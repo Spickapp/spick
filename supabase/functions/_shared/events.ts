@@ -202,7 +202,7 @@ export async function logBookingEvent(
   }
 
   try {
-    const { error } = await supabase.rpc("log_booking_event", {
+    const { data, error } = await supabase.rpc("log_booking_event", {
       p_booking_id: bookingId,
       p_event_type: eventType,
       p_actor_type: actorType,
@@ -214,6 +214,18 @@ export async function logBookingEvent(
         bookingId,
         eventType,
         error: error.message,
+      });
+      return false;
+    }
+
+    // Fas 6.3 robustness (migration 20260427000003): RPC returnerar nu
+    // uuid av insertad rad. Om data är null/undefined → INSERT failade
+    // tyst (silent-failure-bug från d701d7b). Returnera false så callers
+    // kan detektera + eventuellt retry.
+    if (!data) {
+      console.error("[events] log_booking_event returnerade no id — insert failade tyst", {
+        bookingId,
+        eventType,
       });
       return false;
     }
