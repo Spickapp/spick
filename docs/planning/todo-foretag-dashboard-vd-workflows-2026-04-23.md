@@ -15,19 +15,16 @@ Denna fil samlar alla flaggade-men-ej-byggda punkter från sessionen så inget g
 
 **Status:** Blockerat av RLS + VIEW-drift i prod. UI-only räcker inte.
 
-**Fynd (regel #31 primärkälla-verifiering mot prod-schema.sql):**
+**Fynd (regel #31 primärkälla-verifiering mot prod-schema.sql + curl-probe 2026-04-23):**
 
 1. `cleaner_blocked_dates` är en **VIEW** i prod ([rad 1766](../../prod-schema.sql)), inte en tabell. Pekar på `blocked_times`.
-2. Ingen INSTEAD OF-trigger hittad i prod-schema → befintlig [addBlockedDate()](../../stadare-dashboard.html:5795) som kör `R.insert('cleaner_blocked_dates', ...)` kan vara **latent trasig i prod** för städarens egen spärring. Behöver verifieras.
-3. RLS på `blocked_times`: `Auth inserts blocked_times` ([rad 4602](../../prod-schema.sql)) WITH CHECK kräver `cleaner_id IN (SELECT cleaners.id WHERE auth_user_id = auth.uid())`. **VD kan inte INSERT för team-medlems cleaner_id.**
-4. `GRANT SELECT, INSERT` till authenticated på blocked_times ([rad 5688](../../prod-schema.sql)) — saknar DELETE-grant för authenticated.
+2. ~~Ingen INSTEAD OF-trigger → addBlockedDate kan vara latent trasig~~ **KORRIGERAD 2026-04-23:** PostgreSQL stöder "updatable views" — simpla VIEWs (SELECT 1-1 från en tabell utan expressions/DISTINCT/etc) får INSERT/UPDATE/DELETE automatiskt. Vår view matchar. Befintlig `addBlockedDate()` **fungerar** för städarens egen spärring.
+3. RLS på `blocked_times`: `Auth inserts blocked_times` ([rad 4602](../../prod-schema.sql)) WITH CHECK kräver `cleaner_id IN (SELECT cleaners.id WHERE auth_user_id = auth.uid())`. **VD kan inte INSERT för team-medlems cleaner_id.** ← detta är den kvarstående blockern.
+4. `GRANT SELECT, INSERT` till authenticated på blocked_times ([rad 5688](../../prod-schema.sql)) — saknar DELETE-grant för authenticated. Men DELETE fungerar idag via VIEW (GRANT ALL på viewn ärver till updatable tabell). För att göra team-manage fungera från VD behöver vi utvidga RLS-policy.
 
 **Åtgärdssteg:**
 
-- [ ] **Steg 1: Verifiera prod-beteende för nuvarande addBlockedDate().**
-  - Farhad eller dev loggar in som städare (solo), öppnar stadare-dashboard → Instill → "Spärrade datum" → lägg in testdatum.
-  - Check: får bokare 200 OK (rad skapad i blocked_times) eller felkod? Kolla Network-tab + `SELECT * FROM blocked_times WHERE cleaner_id = X AND blocked_date = Y` i Studio.
-  - Om trasig → fix som egen hotfix (INSTEAD OF-trigger på viewn ELLER ändra R.insert till `blocked_times`-tabellen direkt).
+- [x] **Steg 1: Verifiera prod-beteende för nuvarande addBlockedDate().** — KLAR 2026-04-23 via prod-schema-analys + curl-probe + updatable-view-dokumentation. Fungerar.
 
 - [ ] **Steg 2: SQL-migration för VD-team-manage-policy.**
   - Ny policy på `blocked_times`: authenticated kan INSERT/UPDATE/DELETE för cleaner_id där cleaner tillhör samma company_id som VD (inloggad user med is_company_owner=true).

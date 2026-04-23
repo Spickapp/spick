@@ -2110,6 +2110,20 @@ body{top:0!important}
         </div>
       </div>
 
+      <!-- Fält 10b: Spärra datum för team-medlem (P1 - endast synligt vid redigering) -->
+      <!-- Kräver SQL-migration 20260427000005 applicerad i prod innan funktionen används. -->
+      <div class="tm-form-group" id="team-blocked-section" style="display:none">
+        <label>🚫 Spärrade datum <span style="color:var(--gray-400);font-size:13px">(sjukdom, semester, privat)</span></label>
+        <p style="font-size:12px;color:var(--gray-500);margin:6px 0 10px 0">Kunder kan inte boka medlemmen på dessa datum. Befintliga bokningar påverkas ej.</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input type="date" id="team-block-date-input" class="tm-input" style="flex:1;padding:8px 10px;font-size:.85rem;min-height:40px">
+          <button type="button" onclick="addTeamMemberBlockedDate()" style="padding:8px 14px;background:var(--r);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem;white-space:nowrap;min-height:40px">+ Spärra</button>
+        </div>
+        <div id="team-blocked-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
+          <span style="color:var(--gray-400);font-size:.8rem">Laddar...</span>
+        </div>
+      </div>
+
       <!-- Fält 11: Submit -->
       <button id="add-member-btn" class="team-submit-btn" onclick="addTeamMember()"
         style="width:100%;padding:14px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;min-height:52px;transition:background .15s">
@@ -5822,6 +5836,69 @@ async function removeBlockedDate(id) {
   loadBlockedDates();
 }
 
+// ── P1: VD blockerar datum för team-medlem ─────────────────────────
+// Kräver migration 20260427000005_p1_vd_team_block_dates.sql applicerad.
+// Innan applicering: RLS tillåter endast cleaner att manage egen blocked_times
+// → dessa funktioner kommer få 403 från PostgREST när VD försöker skriva
+// för annan cleaner_id. Felmeddelande visas tydligt till användaren.
+async function loadTeamMemberBlockedDates(memberId) {
+  const el = document.getElementById('team-blocked-list');
+  if (!el) return;
+  const today = new Date().toISOString().split('T')[0];
+  const {data, error} = await R.select('cleaner_blocked_dates', `select=id,blocked_date,reason&cleaner_id=eq.${memberId}&blocked_date=gte.${today}&order=blocked_date.asc`);
+  if (error) {
+    el.innerHTML = '<span style="color:var(--r);font-size:.78rem">Kunde inte ladda: ' + escHtml(error.message || '') + '</span>';
+    return;
+  }
+  if (!data?.length) {
+    el.innerHTML = '<span style="color:var(--gray-400);font-size:.78rem">Inga spärrade datum</span>';
+    return;
+  }
+  el.innerHTML = data.map(function(d) {
+    const dt = new Date(d.blocked_date + 'T00:00:00');
+    const label = dt.toLocaleDateString('sv-SE', {weekday:'short',month:'short',day:'numeric'});
+    return '<div style="display:flex;align-items:center;gap:5px;background:#FEE2E2;border:1px solid #FECACA;border-radius:20px;padding:3px 10px;font-size:.75rem;color:#DC2626">' +
+      '<span>' + escHtml(label) + '</span>' +
+      '<button onclick="removeTeamMemberBlockedDate(\'' + d.id + '\')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:.9rem;padding:0;line-height:1;min-width:24px;min-height:24px">×</button>' +
+    '</div>';
+  }).join('');
+}
+
+async function addTeamMemberBlockedDate() {
+  if (!_editingTeamMemberId) { showToast('❌ Ingen medlem vald'); return; }
+  const inp = document.getElementById('team-block-date-input');
+  const dateVal = inp?.value;
+  if (!dateVal) { showToast('Välj ett datum'); return; }
+  const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: _editingTeamMemberId, blocked_date: dateVal });
+  if (error) {
+    if (error.code === '23505' || (error.status === 409)) {
+      showToast('ℹ️ Datum redan spärrat');
+    } else if (error.status === 403 || error.status === 401) {
+      showToast('❌ Behörighet saknas — migration 20260427000005 kan saknas i prod');
+    } else {
+      showToast('❌ ' + (error.message || 'Okänt fel'));
+    }
+    return;
+  }
+  showToast('🚫 ' + dateVal + ' spärrat för medlem');
+  if (inp) inp.value = '';
+  loadTeamMemberBlockedDates(_editingTeamMemberId);
+}
+
+async function removeTeamMemberBlockedDate(id) {
+  const {error} = await R.del('cleaner_blocked_dates', `id=eq.${id}`);
+  if (error) {
+    if (error.status === 403 || error.status === 401) {
+      showToast('❌ Behörighet saknas — migration 20260427000005 kan saknas i prod');
+    } else {
+      showToast('❌ ' + (error.message || 'Kunde inte ta bort'));
+    }
+    return;
+  }
+  showToast('✅ Datum borttaget');
+  if (_editingTeamMemberId) loadTeamMemberBlockedDates(_editingTeamMemberId);
+}
+
 // ── STRIPE CONNECT ───────────────────────────────────────────
 async function startStripeConnect() {
   showToast('⏳ Öppnar utbetalningssida...');
@@ -6561,6 +6638,11 @@ function closeTeamModal() {
 function resetTeamModal() {
   _editingTeamMemberId = null;
   _editingMemberPrices = [];
+  // P1: dölj block-date-sektion vid "Lägg till ny" (bara synlig vid redigering)
+  var blkSec = document.getElementById('team-blocked-section');
+  if (blkSec) blkSec.style.display = 'none';
+  var blkList = document.getElementById('team-blocked-list');
+  if (blkList) blkList.innerHTML = '<span style="color:var(--gray-400);font-size:.8rem">Laddar...</span>';
   document.getElementById('team-fname').value = '';
   document.getElementById('team-lname').value = '';
   document.getElementById('team-phone').value = '';
@@ -8536,6 +8618,13 @@ async function editTeamMember(memberId) {
 
   document.getElementById('add-member-modal').style.display = 'flex';
   loadTeamMemberSchedule(memberId);
+
+  // P1: visa + ladda spärrade datum (endast vid redigering av existerande medlem)
+  var blkSec = document.getElementById('team-blocked-section');
+  if (blkSec) blkSec.style.display = 'block';
+  var blkInp = document.getElementById('team-block-date-input');
+  if (blkInp) blkInp.value = '';
+  loadTeamMemberBlockedDates(memberId);
 }
 
 // Team-avatar-upload: listener sätts en gång vid dokumentstart
