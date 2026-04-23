@@ -19,28 +19,38 @@ deno task test:money          # ska vara 100 pass (4 ignored = Stripe-tester uta
 
 Om något avviker → flagga innan fortsättning.
 
-### Status just nu (2026-04-24)
+### Status just nu (2026-04-27)
 
 - **Fas 0:** ✓ KLAR (18-19 april)
 - **Fas 1 Money Layer:** ✓ 100 % KLAR (22 april)
 - **Fas 2 Migrations-sanering:** ✓ STÄNGD inom v3-scope (7 klara + §2.3 deferred till Fas 3 + §2.8 till Fas 2-utökning)
 - **Fas 2.7 B2B-kompatibilitet:** ✓ KLAR
 - **Fas 2.5-minifix:** ✓ rut-claim avstängd, skjuts till Fas 7.5
-- **Fas 3 Matching:** ◑ PÅGÅENDE
-  - §3.1 ✓ designdokument
-  - §3.2a ✓ RPC v2 migration live
-  - §3.2b ✓ boka.html skickar utökade params
-  - §3.2c ✓ STÄNGD (DORMANT DROP exekverad 2026-04-24)
-  - §3.2d ✓ cleaner-job-match EF raderad
-  - §3.3 ✓ implicit klar (vikter i §3.2a)
-  - §3.4 ✓ implicit klar (history_multiplier i §3.2a, inaktiv utan customer_id)
-  - §3.5 ✓ STÄNGD (VIEW ej tillämplig, mål uppnått i §3.2a)
-  - §3.6 ◯ villkorat på performance (ej akut)
-  - §3.7 partial ✓ audit-writing live + verifierad (match_score 0.707)
-  - §3.7 full ◯ shadow-mode + v2-aktivering + traffic-split ej påbörjat
+- **Fas 3 Matching:** ◕ KONVERGERAR
+  - §3.1-§3.7 klara som tidigare (se detaljer nedan)
   - §3.8 ◯ admin dashboard ej påbörjat
   - §3.9 ◯ pilot-analys (kräver 30 dagars data)
-- **Fas 4-14:** ◯ ej påbörjade
+  - **Modell B (företag vs städare)** ✓ Model-1 till Model-4a (providers-shadow LIVE)
+  - **Modell C (flexibel matchning)**: C-2 ✓ (2026-04-27 sprint), C-1/C-3/C-4/C-5 ◯
+  - **Model-4b boka.html team-badge rendering** ✓ (2026-04-27 sprint, vilande tills Model-4c flipp)
+- **Fas 4 Services genomgående:** ◯ EJ PÅBÖRJAD (v2-arv)
+  - `services` + `service_addons` + `services-list` EF + `services-loader.js` + `boka.html` DB-driven: ✓ (pre-v3-arv)
+  - §4.1-§4.7 frontend-migration av 7 filer: ◯
+- **Fas 5 Kundretention + Recurring:** ◯ EJ PÅBÖRJAD (oberoende, 10-15h)
+- **Fas 6 Event-system:** ◑ PÅGÅENDE (2026-04-27 sprint)
+  - §6.2 foundation ✓ (`_shared/events.ts` + 27 canonical events + 8 tester)
+  - §6.3 retrofit ◑ 5/8 EFs (62.5%): booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund
+  - §6.3 kvar: stripe-webhook, auto-remind, betyg.html (specifika risker, egen session var)
+  - §6.4-§6.6 event-timeline-UI: ◯
+  - §6.7 event-schema.md ✓
+  - §6.8 recurring-events: ◯ (pendar Fas 5)
+- **Fas 7 Languages:** ◑ PARTIELLT REDAN GJORT (v2/pre-v3-arv) — **plan §7.1-§7.2 är REDUNDANT**
+  - **Prod-verklighet (verifierat 2026-04-27):** `cleaners.languages TEXT[]` + GIN-index finns via migration [20260402100001_slug_languages.sql](../supabase/migrations/20260402100001_slug_languages.sql)
+  - Plan §7.1 (separat `languages`-tabell) + §7.2 (`cleaner_languages` m2m): duplicerar embedded array = rule #28-brott
+  - **Scope-rekommendation:** Håll embedded array-design. Stäng §7.1-§7.2 som SUPERSEDED. Fokus på §7.4-§7.5 (UI) + §7.7 (matching-RPC `p_languages`-param) om sen aktualiseras
+  - §7.6 GIN-index: ✓ (redan i 20260402-migration)
+- **Fas 7.5 RUT-infrastruktur:** ◯ LÅST (25-35h, dokumenterat i [planen](planning/spick-arkitekturplan-v3.md) + [sanning/rut.md](sanning/rut.md))
+- **Fas 8-14:** ◯ ej påbörjade
 
 **Plan-beslut:** #1 stängt, #3 stängt, #2 stängt 22 april, #4 per_window öppet (väntar Farhad)
 
