@@ -3073,6 +3073,17 @@ async function loadCleanerByEmail(email, authUserId) {
     try { await renderTeam(); } catch(e) { console.error('[SPICK] renderTeam init error:', e); }
   }
 
+  // Deep-link från foretag-dashboard.html etc: öppna specifik tab via #hash.
+  // Giltiga hash: #team, #kalender, #jobb, #inkomst, #inst, #hem.
+  // Kör efter renderTeam så team-data är redo om #team används.
+  try {
+    var hashTab = (window.location.hash || '').replace('#', '').split('?')[0];
+    var validTabs = ['hem','jobb','kalender','inkomst','team','inst'];
+    if (hashTab && validTabs.indexOf(hashTab) > -1) {
+      setTimeout(function() { switchTab(hashTab); }, 100);
+    }
+  } catch(e) { console.warn('[SPICK] hash-tab init error:', e); }
+
   // Load tasks (VD gets team tasks, solo cleaner gets assigned tasks)
   try { if (typeof loadTasks === 'function') loadTasks(); } catch(e) {}
 
