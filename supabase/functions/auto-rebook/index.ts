@@ -17,6 +17,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
 import { getStockholmDateString } from "../_shared/timezone.ts";
+import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -219,6 +220,20 @@ async function processSubscription(supabase: ReturnType<typeof createClient>, su
   if (!createRes.ok || !createResult.booking_id) {
     throw new Error(createResult.error || "booking-create failed");
   }
+
+  // Fas 6 §6.8: logga recurring_generated för timeline
+  // (primär state-transition = booking skapad; email/sub-update är secondary)
+  // H5: cast till SupabaseRpcClient pga supabase-js version-inferens-drift
+  await logBookingEvent(supabase as unknown as SupabaseRpcClient, createResult.booking_id as string, "recurring_generated", {
+    actorType: "system",
+    metadata: {
+      subscription_id: sub.id as string,
+      series_position: ((sub.total_bookings_created as number) || 0) + 1,
+      booking_date: bookingDate,
+      frequency: freq,
+      cleaner_id: sub.cleaner_id || null,
+    },
+  });
 
   // ── Skicka påminnelse-email ────────────────────────────────
   const freqText = freq === "weekly"
