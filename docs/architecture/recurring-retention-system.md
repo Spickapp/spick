@@ -226,14 +226,32 @@ C-2 deep-link-infrastrukturen (shippad 2026-04-23) gör detta trivialt.
 
 ## 6. Pris-binding (§5.10)
 
-**Princip:** När subscription skapas, lås `subscription.price`. Auto-rebook använder detta pris oavsett om `cleaner.hourly_rate` eller `service.default_hourly_price` ändras senare.
+**Princip:** När subscription skapas, lås priset på subscription-raden. Auto-rebook använder detta pris oavsett om `cleaner.hourly_rate` eller `service.default_hourly_price` ändras senare.
 
-**Implementation:** Redan i schema (`subscriptions.price decimal(10,2)`). Säkerställ att:
-- `charge-subscription-booking` läser från subscriptions.price, inte från cleaners aktuella rate
-- `generate-recurring-bookings` kopierar subscription.price → bookings.total_price
-- Admin-UI låter Farhad bryta låsning manuellt om kund accepterar
+**Prod-schema (verifierat 2026-04-23 via information_schema):** subscriptions har INTE en `price decimal(10,2)`-kolumn. Prod använder:
+- `subscriptions.hourly_rate integer` — kr per timme, låst vid subscription-skapande
+- `subscriptions.manual_override_price integer` — admin-override på totalpris (om satt och ≥ 100)
 
-**Undantag:** `payment_mode='monthly_prepaid'` eller `'full_prepaid'` — pris bundet vid debitering, inte per tillfälle.
+**AUDIT-STATUS 2026-04-23: fungerar korrekt, ingen fix behövs.**
+
+Verifierat-flöde i prod (auto-rebook:234, 236-237, 199 + charge-subscription-booking:171):
+
+1. `auto-rebook` läser `sub.hourly_rate` (läser ALDRIG cleaner.hourly_rate)
+2. Om `sub.manual_override_price >= 100` används det som totalPrice (admin-override)
+3. Annars: `totalPrice = rate × hours`
+4. `manual_override_price` kopieras även till booking-raden
+5. `charge-subscription-booking` debiterar `booking.total_price` (booking-låst)
+
+Pris är alltså låst trippel:
+- Subscription.hourly_rate (låst vid serie-start)
+- Booking.total_price (låst vid booking-skapande via auto-rebook)
+- Stripe PaymentIntent amount (låst vid charge)
+
+**Ingen silent drift möjlig** om cleaner senare höjer sin rate i profil eller admin ändrar service default.
+
+**Undantag:** `payment_mode='monthly_prepaid'` eller `'full_prepaid'` (framtida Fas 5 sub-iteration) — pris bundet vid debitering, inte per tillfälle.
+
+**Admin-override:** manual_override_price fältet finns redan. Admin-UI behöver inget bygge — kan UPDATE:as direkt via Studio SQL om kund accepterar. Framtida: admin.html-knapp för enklare hantering.
 
 ---
 
