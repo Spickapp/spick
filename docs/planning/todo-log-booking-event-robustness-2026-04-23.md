@@ -2,7 +2,31 @@
 
 **Öppnat:** 2026-04-23 (under Fas 6.3 smoke-test)
 **Prio:** MEDIUM — audit-data-förlust-risk, påverkar Fas 8 PWD-compliance
-**Status:** Bug dokumenterad, ej åtgärdad (separat session)
+**Status:** ✅ RESOLVED 2026-04-23 — Alt A implementerad + verifierad
+
+## RESOLUTION 2026-04-23
+
+**Implementation (commit `9e0075b`):**
+
+1. Migration 20260427000003: `log_booking_event` ändrad från `RETURNS void` till `RETURNS uuid` med `RAISE EXCEPTION` om NULL.
+2. `_shared/events.ts logBookingEvent`: destructurerar `{data, error}`, checkar `if (!data) return false`.
+3. 3 nya tester i events.test.ts (11/11 PASS).
+
+**Verifiering end-to-end (2026-04-23 11:28):**
+
+Farhad körde migration + re-deployade alla 7 EFs. Smoke-test:
+- 5 probes via save-booking-event EF (`_probe: robustness-1` till `-5`)
+- Alla 5 returnerade HTTP 200
+- SQL-verifiering: `SELECT COUNT(*) WHERE metadata->>'_probe' LIKE 'robustness-%'` = **5** ✓
+- Timestamps 11:28:50.137 → 11:28:52.772 matchar EF-responses
+
+**Data-integrity-garanti:** EF-success-response ⇔ DB-insert. Fas 8 PWD-audit-compliance-risk eliminerad för logBookingEvent-vägen.
+
+Ursprunglig failure-rate 25% (1/4) → nu 0% (0/5) efter fix. Hypoteserna nedan behövde aldrig verifieras individuellt — fixet adresserade rot-orsak oavsett vilken.
+
+---
+
+## Originalt rapporterat problem (historiskt)
 
 ## Bekräftade fakta
 
