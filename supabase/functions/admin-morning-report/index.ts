@@ -93,23 +93,75 @@ serve(async (req) => {
       0
     );
 
+    // 6. Fas 10 §10.5: Intressanta events senaste 24h (från booking_events)
+    // Filtrerar till events som kräver uppmärksamhet — inte rad-för-rad brus.
+    // Primärkälla för event-types: docs/architecture/event-schema.md §3
+    const INTERESTING_EVENTS = [
+      "dispute_opened",       // EU-compliance, 7d-SLA
+      "dispute_resolved",     // utfall viktigt
+      "noshow_reported",      // cleaner-kvalitet
+      "cancelled_by_cleaner", // reassignment-arbete
+      "cancelled_by_admin",   // admin-action-spår
+      "refund_issued",        // money-flöde audit
+      "recurring_cancelled",  // retention-signal
+    ] as const;
+
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: eventRows } = await sb
+      .from("booking_events")
+      .select("event_type, created_at, booking_id, metadata")
+      .in("event_type", INTERESTING_EVENTS as unknown as string[])
+      .gte("created_at", since24h)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    const eventCounts: Record<string, number> = {};
+    for (const e of (eventRows || []) as Array<{ event_type: string }>) {
+      eventCounts[e.event_type] = (eventCounts[e.event_type] || 0) + 1;
+    }
+    const hasCritical = (eventCounts.dispute_opened || 0) > 0 ||
+      (eventCounts.noshow_reported || 0) > 0;
+
     const stats = {
       today_bookings: todayBookings || 0,
       pending_apps: pendingApps || 0,
       pending_conf: pendingConf || 0,
       onboarding: onboarding || 0,
       yesterday_revenue: Math.round(yesterdayRevenue),
+      interesting_events_24h: Object.values(eventCounts).reduce((a, b) => a + b, 0),
     };
 
     const dateLabel = now.toLocaleDateString("sv-SE", {
       weekday: "long", day: "numeric", month: "long",
     });
-    const subject = `☀️ Spick morgonrapport — ${dateLabel} — ${stats.today_bookings} bokningar idag`;
+    const subject = hasCritical
+      ? `⚠️ Spick morgonrapport — ${dateLabel} — action needed`
+      : `☀️ Spick morgonrapport — ${dateLabel} — ${stats.today_bookings} bokningar idag`;
 
-    const quietDay = stats.today_bookings === 0 && stats.pending_apps === 0;
+    const quietDay = stats.today_bookings === 0 && stats.pending_apps === 0 &&
+      stats.interesting_events_24h === 0;
+
+    // Human-läsbara labels per event-type
+    const EVENT_LABELS: Record<string, string> = {
+      dispute_opened: "⚠️ Tvist öppnad",
+      dispute_resolved: "✅ Tvist löst",
+      noshow_reported: "🚨 No-show rapporterad",
+      cancelled_by_cleaner: "❌ Avböjd av städare",
+      cancelled_by_admin: "🛠️ Avbokad av admin",
+      refund_issued: "↩️ Återbetalning",
+      recurring_cancelled: "🔁 Prenumeration avslutad",
+    };
+
+    const eventsHtml = stats.interesting_events_24h === 0
+      ? '<p style="color:#6B6960;font-size:13px;margin:4px 0">Inga intressanta events senaste 24h.</p>'
+      : Object.entries(eventCounts)
+          .sort(([, a], [, b]) => b - a)
+          .map(([type, count]) =>
+            `<div class="row"><span class="lbl">${EVENT_LABELS[type] || type}</span><span class="val">${count}</span></div>`
+          ).join("");
 
     const html = wrap(`
-<h2>☀️ God morgon!</h2>
+<h2>${hasCritical ? "⚠️" : "☀️"} God morgon!</h2>
 <p>Här är dagens läge:</p>
 <div class="card">
   <div class="row"><span class="lbl">📅 Bokningar idag</span><span class="val">${stats.today_bookings}</span></div>
@@ -117,6 +169,10 @@ serve(async (req) => {
   <div class="row"><span class="lbl">⏳ Väntar bekräftelse</span><span class="val">${stats.pending_conf}</span></div>
   <div class="row"><span class="lbl">🔧 Onboarding</span><span class="val">${stats.onboarding} städare</span></div>
   <div class="row"><span class="lbl">💰 Gårdagens intäkt</span><span class="val">${stats.yesterday_revenue.toLocaleString("sv-SE")} kr</span></div>
+</div>
+<h2 style="margin-top:24px">${hasCritical ? "🚨 Senaste 24h (kräver uppmärksamhet)" : "📊 Senaste 24h"}</h2>
+<div class="card">
+  ${eventsHtml}
 </div>
 ${quietDay ? `<div class="quiet">Lugnt idag — fokus på rekrytering! 💪</div>` : ""}
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
