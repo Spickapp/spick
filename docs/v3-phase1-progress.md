@@ -36,7 +36,23 @@ Om något avviker → flagga innan fortsättning.
 - **Fas 4 Services genomgående:** ◯ EJ PÅBÖRJAD (v2-arv)
   - `services` + `service_addons` + `services-list` EF + `services-loader.js` + `boka.html` DB-driven: ✓ (pre-v3-arv)
   - §4.1-§4.7 frontend-migration av 7 filer: ◯
-- **Fas 5 Kundretention + Recurring:** ◯ EJ PÅBÖRJAD (oberoende, 10-15h)
+- **Fas 5 Kundretention + Recurring:** ◑ PÅGÅENDE (oberoende, 10-15h)
+  - §5.1 ✓ subscriptions inventerad (Model B)
+  - §5.2 ✓ schema utökad 12 nya kolumner (a6ec8a5 + d90f8f3)
+  - §5.3a ✓ recurring_generated event i auto-rebook (denna session)
+  - §5.3b ✓ horizon 7d → 28d / 4 veckor (denna session)
+  - §5.3c ✓ duration_mode stop-check (fixed_count + end_date → status='cancelled' + recurring_cancelled event)
+  - §5.4 ◯ pause/skip/ändra-tid/avsluta-UI
+  - §5.5a ✓ customer_preferences foundation (997557f)
+  - §5.5b ◯ preference-learning (auto-favorit efter 3 bokningar rating≥4)
+  - §5.6 ✓ Boka samma igen (8d56324)
+  - §5.7 ✓ Boka samma städaren igen (8d56324)
+  - §5.8 ◯ preference-learning pattern-detection
+  - §5.9 ◯ email-nudges (7d efter första bokning)
+  - §5.10 ✓ pris-binding verifierad (ae11f44)
+  - §5.11 ◯ helgdag-hantering (kräver swedish_holidays-tabell + research)
+  - §5.12 ⊘ LÅST av Fas 7.5 (RUT-kvotsplitting kräver aktiv RUT-infrastruktur)
+  - **Hygien-fynd §5.3 session:** prod-schema-status-drift (auto-rebook 'active', arkitektur-doc 'aktiv', BROKEN idx_sub_next index `WHERE status='aktiv'`). Flaggad separat.
 - **Fas 6 Event-system:** ◑ PÅGÅENDE (2026-04-27 sprint)
   - §6.2 foundation ✓ (`_shared/events.ts` + 27 canonical events + 8 tester)
   - §6.3 retrofit ✓ STÄNGD 8/8: booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund, stripe-webhook (09b0c89), betyg.html (via save-booking-event EF, §6.5-beslut a35505d), auto-remind (denna session — cancelled_by_cleaner + refund_issued i auto_timeout_90-path)

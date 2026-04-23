@@ -141,6 +141,75 @@ async function processSubscription(supabase: ReturnType<typeof createClient>, su
     }).eq("id", sub.id as string);
   }
 
+  // Fas 5 §5.3c: duration_mode stop-check
+  // fixed_count: stoppa när total_bookings_created >= max_occurrences
+  // end_date:    stoppa när nästa bokningsdatum > end_date
+  // Status sätts till 'cancelled' per prod-constraint (active|paused|cancelled).
+  const durationMode = (sub.duration_mode as string) || "open_ended";
+  const totalBookings = (sub.total_bookings_created as number) || 0;
+
+  if (durationMode === "fixed_count") {
+    const maxOcc = sub.max_occurrences as number | null;
+    if (maxOcc && totalBookings >= maxOcc) {
+      await supabase.from("subscriptions").update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      }).eq("id", sub.id as string);
+      if (sub.last_booking_id) {
+        await logBookingEvent(
+          supabase as unknown as SupabaseRpcClient,
+          sub.last_booking_id as string,
+          "recurring_cancelled",
+          {
+            actorType: "system",
+            metadata: {
+              subscription_id: sub.id as string,
+              cancelled_by: "system",
+              reason: "max_occurrences_reached",
+              total_bookings: totalBookings,
+              max_occurrences: maxOcc,
+            },
+          },
+        );
+      }
+      log("info", "auto-rebook", "Ended: max_occurrences reached", {
+        sub_id: sub.id, total_bookings: totalBookings, max: maxOcc,
+      });
+      return { status: "ended", reason: "max_occurrences_reached", total_bookings: totalBookings };
+    }
+  }
+
+  if (durationMode === "end_date") {
+    const endDate = sub.end_date as string | null;
+    if (endDate && bookingDate > endDate) {
+      await supabase.from("subscriptions").update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      }).eq("id", sub.id as string);
+      if (sub.last_booking_id) {
+        await logBookingEvent(
+          supabase as unknown as SupabaseRpcClient,
+          sub.last_booking_id as string,
+          "recurring_cancelled",
+          {
+            actorType: "system",
+            metadata: {
+              subscription_id: sub.id as string,
+              cancelled_by: "system",
+              reason: "end_date_reached",
+              end_date: endDate,
+              attempted_booking_date: bookingDate,
+            },
+          },
+        );
+      }
+      log("info", "auto-rebook", "Ended: end_date reached", {
+        sub_id: sub.id, end_date: endDate, attempted: bookingDate,
+      });
+      return { status: "ended", reason: "end_date_reached", end_date: endDate };
+    }
+  }
+
   // Kolla om bokningsdatum är inom horizon (HORIZON_DAYS)
   // §49 Fas 3: svenskt kalenderdatum, inte UTC
   const horizonDate = new Date();
