@@ -67,7 +67,22 @@ Om något avviker → flagga innan fortsättning.
   - **Kvarvarande Fas 7-scope:** §7.4-§7.5 (UI picker i cleaner-profil + bli-stadare/join-team) + §7.7 (matching-RPC `p_languages`-param). Aktualiseras vid behov, ej blockerande.
   - §7.6 GIN-index: ✓ (redan i 20260402-migration)
 - **Fas 7.5 RUT-infrastruktur:** ◯ LÅST (25-35h, dokumenterat i [planen](planning/spick-arkitekturplan-v3.md) + [sanning/rut.md](sanning/rut.md))
-- **Fas 8-14:** ◯ ej påbörjade
+- **Fas 8 Dispute + Full Escrow:** ◑ PÅBÖRJAD (EU-deadline 2 dec 2026, 60-80h total)
+  - §8.1 Design-skelett ✓ ([dispute-escrow-system.md](architecture/dispute-escrow-system.md), commit b273d4b)
+  - §8.3 escrow_state-kolumn + CHECK constraint ✓ (migration 20260427000007, pending deploy)
+  - §8.4 escrow_events + disputes + dispute_evidence + attested_jobs tables ✓ (samma migration)
+  - §8.2 Stripe architecture shift (destination → separate charges): ◯ NÄSTA
+  - §8.5 storage-bucket dispute-evidence: ◯
+  - §8.6 escrow-state-transition EF: ◯
+  - §8.7 escrow-release EF: ◯
+  - §8.8-§8.14 dispute-UI + SLA-cronner + admin-beslut: ◯
+  - §8.15-§8.25 data-export + EU PWD-compliance-hårdning: ◯
+- **Fas 10 Observability:** ◑ DELVIS
+  - §10.1 alerts-helper ✓
+  - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
+  - §10.5 morning-report filtered-events ✓ (denna session)
+  - §10.3 Grafana-dashboard + §10.4 uptime-mon + §10.6 ML-light: ◯ (kräver Farhads extern-setup)
+- **Fas 9-14 (exkl Fas 10):** ◯ ej påbörjade
 
 **Plan-beslut:** #1 stängt, #3 stängt, #2 stängt 22 april, #4 per_window öppet (väntar Farhad)
 
