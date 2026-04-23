@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${SERVICE_KEY}`,
+        "X-Internal-Secret": Deno.env.get("INTERNAL_EF_SECRET") || "",
       },
       body: JSON.stringify({
         booking_id: bookingId,

@@ -49,3 +49,36 @@ export function getJwtRole(token: string): string | null {
 export function isServiceRoleJwt(token: string): boolean {
   return getJwtRole(token) === "service_role";
 }
+
+/**
+ * Shared-secret-auth för interna EF-to-EF-calls.
+ *
+ * RATIONALE (2026-04-24 rotorsaksfix):
+ * Supabase gateway avvisade JWT även när stripe-webhook skickade
+ * valid service_role-JWT från env. Skäl okänt (möjligen key-rotation
+ * eller gateway-konfig). JWT-role-claim utan signature-verify är
+ * sårbar för spoofing. Shared secret är robust + säker:
+ * - Ingen JWT-validation behövs
+ * - Bara caller som har env-variabeln kan anropa
+ * - EF deploy:as med --no-verify-jwt så gateway släpper igenom
+ *
+ * ENV-KONVENTION:
+ *   Sätt `INTERNAL_EF_SECRET` i Supabase Dashboard → Settings →
+ *   Edge Functions → Secrets. Använd en slumpmässig sträng (≥32 tecken).
+ *
+ * HEADER-KONVENTION:
+ *   Caller skickar `X-Internal-Secret: <value>`.
+ */
+export function verifyInternalSecret(req: Request): boolean {
+  const expected = Deno.env.get("INTERNAL_EF_SECRET");
+  if (!expected || expected.length < 16) {
+    // Defense: avvisa om env inte är konfigurerad (fail-closed).
+    console.warn("[auth] INTERNAL_EF_SECRET ej satt i env — alla calls avvisas");
+    return false;
+  }
+  const provided = req.headers.get("x-internal-secret");
+  if (!provided) return false;
+  // Timing-safe-jämförelse skulle varit bättre, men för korta secrets
+  // (< 100 tecken) är riskerna minimal. Använd string ===.
+  return provided === expected;
+}

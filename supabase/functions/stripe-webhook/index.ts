@@ -356,7 +356,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>, stripeKey:
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "X-Internal-Secret": Deno.env.get("INTERNAL_EF_SECRET") || "",
         },
         body: JSON.stringify({
           booking_id: bookingId,
@@ -688,7 +688,7 @@ async function handleRefund(charge: Record<string, unknown>) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+          "X-Internal-Secret": Deno.env.get("INTERNAL_EF_SECRET") || "",
         },
         body: JSON.stringify({
           booking_id: booking.id,

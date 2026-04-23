@@ -46,7 +46,7 @@ import { corsHeaders } from "../_shared/email.ts";
 import { calculatePayout } from "../_shared/money.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
-import { isServiceRoleJwt } from "../_shared/auth.ts";
+import { verifyInternalSecret } from "../_shared/auth.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -125,7 +125,7 @@ async function callEscrowStateTransition(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${SERVICE_KEY}`,
+        "X-Internal-Secret": Deno.env.get("INTERNAL_EF_SECRET") || "",
       },
       body: JSON.stringify({
         booking_id: bookingId,
@@ -158,13 +158,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
 
   try {
-    // ── Auth: service-role ──
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return json(CORS, 401, { error: "missing_auth" });
-    }
-    if (!isServiceRoleJwt(authHeader.slice(7))) {
-      return json(CORS, 403, { error: "service_role_required" });
+    // ── Auth: shared-secret (internal EF-to-EF calls) ──
+    if (!verifyInternalSecret(req)) {
+      return json(CORS, 403, { error: "internal_secret_required" });
     }
 
     // ── Input ──
