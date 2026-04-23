@@ -2024,6 +2024,24 @@ async function loadAvailableCleaners() {
           }
         });
 
+        // Providers-mode fix: representative_cleaner_id för company är team-medlem
+        // (is_company_owner=false), så payableCompanies byggs inte från payData.
+        // Hämta VD-stripe-status separat för alla company_ids i resultatet.
+        var resultCompanyIds = Array.from(new Set(cleaners.map(function(c) { return c.company_id; }).filter(Boolean)));
+        if (resultCompanyIds.length > 0) {
+          try {
+            var vdRes = await fetch(SUPA + '/rest/v1/v_cleaners_public?select=company_id,stripe_onboarding_status&is_company_owner=eq.true&company_id=in.(' + resultCompanyIds.join(',') + ')', {headers: H});
+            var vdData = vdRes.ok ? await vdRes.json() : [];
+            vdData.forEach(function(c) {
+              if (c.stripe_onboarding_status === 'complete') {
+                payableCompanies[c.company_id] = true;
+              }
+            });
+          } catch(vdErr) {
+            console.warn('[SPICK] VD stripe check failed:', vdErr);
+          }
+        }
+
         // Bygg status-karta
         var statusMap = {};
         payData.forEach(function(c) { statusMap[c.id] = c; });
