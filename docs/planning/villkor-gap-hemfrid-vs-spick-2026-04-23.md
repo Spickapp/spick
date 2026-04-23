@@ -139,25 +139,70 @@ Nedan är **utkast-text** som underlag till jurist. Kopiera inte rakt av — lå
 
 ---
 
-### Gap 2: Rätt att neka tjänster — FARHAD GODKÄND (§5.1-5.2)
+### Gap 2: Rätt att neka tjänster — FARHAD GODKÄND + UTÖKAD med underleverantörs-rätt
 
-**Farhads beslut 2026-04-23:** "Detta är också intressant. Givetvis ändrar du om med egna ord."
+**Farhads beslut 2026-04-23:** Godkänd som bas PLUS förtydligande: *"har du även tagit hänsyn till rätt att neka tjänster, våra underleverantörer har rätt att neka m.m.?"*
 
 **Nuvarande (Spick):** Saknas.
 
-**Hemfrid-ref (§5.1-5.2):** Hemfrid får neka vid respektlöst uppträdande, oriktig info, olämplig utrustning, osäker arbetsmiljö, eller rimliga förutsättningar saknas.
+**Hemfrid-ref (§5.1-5.2):** Hemfrid får neka vid respektlöst uppträdande, oriktig info, olämplig utrustning, osäker arbetsmiljö.
 
-**Utkast (till jurist — 2 underpunkter, omformulerat):**
+**Kritisk tre-parts-distinktion:**
 
-> **§X.1** *Spick har rätt att ensidigt neka eller avbryta utförandet av Tjänsterna om särskilda skäl föreligger. Exempel på särskilda skäl är att Kunden eller någon i Kundens hushåll inte uppträder respektfullt mot den personal som utför Tjänsterna, har lämnat felaktiga uppgifter i strid med Kundens informationsplikt, att utrustning eller material som Kunden tillhandahåller är olämpligt för ändamålet, att Kunden inte kan säkerställa en trygg och säker arbetsmiljö, eller att det i övrigt föreligger omständigheter som gör att rimliga förutsättningar för att utföra Tjänsterna enligt Avtalet saknas.*
+| Nivå | Aktör | Beslut |
+|---|---|---|
+| Plattform | Spick | Blockera kund från framtida bokningar, pausa konto, säga upp Avtalet |
+| Utförande | Underleverantör (städare/städfirma) | Vägra inleda eller avbryta pågående Tjänst på plats |
+| Operativt | Båda | Debitera Kunden för inställd/avbruten Tjänst |
 
-> **§X.2** *Om Spick åberopar rätten att neka eller avbryta ett tjänsteutförande enligt §X.1 har Spick rätt att debitera Kunden enligt gällande prislista för Tjänsten och eventuella nedlagda kostnader i samband med den inställda eller avbrutna insatsen.*
+Hemfrid behöver inte separera detta (de är både plattform OCH utförare). Spick som plattform MÅSTE separera för att ge städare rätt att skydda sig själva utan att behöva ringa Spick-support mitt i ett obehagligt möte.
+
+**Utkast (till jurist — 3 underpunkter, Spick-anpassat):**
+
+> **§X.1 (Spicks rätt att neka som plattform)** *Spick har rätt att ensidigt neka att ta emot nya bokningar från en Kund, pausa Kundens konto, eller säga upp Avtalet till omedelbart upphörande om särskilda skäl föreligger. Sådana skäl omfattar bland annat att Kunden vid tidigare tillfällen brutit mot dessa villkor, utsatt underleverantörens personal för trakasserier eller hot, lämnat felaktig eller vilseledande information, använt plattformen i strid med dess syfte, eller att det i övrigt föreligger omständigheter som gör att Spick bedömer att en fortsatt affärsrelation inte är rimlig.*
+
+> **§X.2 (Underleverantörens rätt att neka vid utförande)** *Den underleverantör som tilldelats att utföra Tjänsten har rätt att ensidigt vägra att inleda, eller avbryta ett pågående utförande, om särskilda skäl föreligger på plats. Sådana skäl omfattar bland annat:*
+>
+> *(a) att Kunden eller någon i Kundens hushåll inte uppträder respektfullt mot underleverantörens personal,*
+>
+> *(b) att arbetsmiljön på plats inte är trygg och säker — exempelvis på grund av farligt material, smittorisk, aggressiva husdjur, eller tecken på olaglig verksamhet,*
+>
+> *(c) att utrustning, material eller tillträdesförhållanden som Kunden tillhandahåller är olämpliga eller ofullständiga för ändamålet,*
+>
+> *(d) att Kunden inte är tillgänglig för nödvändig avstämning vid betydande avvikelse från det bokade uppdraget,*
+>
+> *(e) att Kunden begär att Tjänsten utförs på ett sätt som strider mot lag, branschstandard eller underleverantörens personals yrkesmässiga bedömning,*
+>
+> *(f) att uppdragets verkliga omfattning väsentligen skiljer sig från den information Kunden lämnat vid bokning,*
+>
+> *(g) att det i övrigt föreligger omständigheter som gör att rimliga förutsättningar för att utföra Tjänsten enligt Avtalet saknas.*
+>
+> *Underleverantören ska, om möjligt och om det kan ske utan risk för personalen, söka lösa situationen i samråd med Kunden innan Tjänsten avbryts. Om Tjänsten avbryts ska underleverantören omedelbart underrätta Spick med motivering.*
+
+> **§X.3 (Debitering vid nekad eller avbruten Tjänst)** *Om Spick eller underleverantören åberopar rätten att neka, avbryta eller inställa en Tjänst enligt §X.1 eller §X.2 har Spick rätt att debitera Kunden enligt gällande prislista för Tjänsten eller skälig del därav, samt eventuella nedlagda kostnader i samband med den inställda eller avbrutna insatsen. Detta gäller oavsett om Tjänsten hann påbörjas eller ej. Avgift enligt denna punkt är inte berättigad till RUT-avdrag.*
 
 **Lagrum:**
-- Arbetsmiljölagen (1977:1160) 3 kap. 2§ — arbetsgivarens skyldighet att förebygga ohälsa/olycksfall
-- Diskrimineringslagen (2008:567) — respekt för personal, rimlig nekanderätt
+- Arbetsmiljölagen (1977:1160) 3 kap. 2§ + 12§ — arbetsgivarens skyldighet att förebygga ohälsa/olycksfall samt säker arbetsplats även vid inhyrd/anlitad personal
+- Diskrimineringslagen (2008:567) — respekt för personal
+- Konsumenttjänstlagen (1985:716) §13-14 — näringsidkaren kan avbryta om material/förutsättningar inte uppfyller avtalet
+- Brottsbalken 4 kap. 7§ (hemfridsbrott) + 10§ (ofredande) — skyddar städare från trakasserier
 
-**Risk om utelämnas:** Städare/underleverantör utsätts för trakasserier utan juridisk grund att avbryta insats.
+**Varför underleverantörens rätt är kritisk för Spick:**
+1. **Operativ realitet** — städaren är på plats, Spick är inte. Beslut måste kunna fattas direkt
+2. **Skydd för visselblåsare** — om städare upptäcker misstänkt olaglig verksamhet (t.ex. drogodling upptäckt vid städning) måste hon kunna avbryta utan att riskera anklagelse om avtalsbrott
+3. **Arbetsmiljö-lag-efterlevnad** — Arbetsmiljöverket pålägger ansvar även när Spick är förmedlare. Att ge städaren uttrycklig rätt att lämna osäker plats skyddar alla parter
+4. **Rekrytering + retention** — städare väljer plattform där de känner sig backade
+
+**Not för jurist:**
+- Punkt (e) "yrkesmässig bedömning" är viktig men måste formuleras så att den inte blir "vilkorlig bakväg" till avbrytande utan grund
+- Punkt (f) "väsentlig avvikelse från bokad information" bör kvantifieras där möjligt (t.ex. >50% större yta, eller okänt tilläggsrum). Annars risk för godtycklighet
+- Skyldighet att "söka lösa i samråd" balanserar underleverantörens rätt mot kundens förväntan om att tjänsten ska utföras
+- §X.3 "oavsett om Tjänsten hann påbörjas" är kärna — annars kan kund undvika debitering genom att beta sig ut precis innan städaren kommer
+
+**Operational impact:**
+- Stadare-dashboard behöver "Avbryt uppdrag + motivering"-knapp som skickar event till Spick + notifierar kund
+- Admin-UI behöver logg över avbrutna uppdrag per kund (för att identifiera repeat-offenders som Spick själv ska neka)
+- Template-meddelanden för kund ("Din städare har avbrutit uppdraget pga X — kontakta hello@spick.se")
 
 ---
 
