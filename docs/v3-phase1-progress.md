@@ -39,8 +39,9 @@ Om något avviker → flagga innan fortsättning.
 - **Fas 5 Kundretention + Recurring:** ◯ EJ PÅBÖRJAD (oberoende, 10-15h)
 - **Fas 6 Event-system:** ◑ PÅGÅENDE (2026-04-27 sprint)
   - §6.2 foundation ✓ (`_shared/events.ts` + 27 canonical events + 8 tester)
-  - §6.3 retrofit ◑ 5/8 EFs (62.5%): booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund
-  - §6.3 kvar: stripe-webhook, auto-remind, betyg.html (specifika risker, egen session var)
+  - §6.3 retrofit ✓ STÄNGD 8/8: booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund, stripe-webhook (09b0c89), betyg.html (via save-booking-event EF, §6.5-beslut a35505d), auto-remind (denna session — cancelled_by_cleaner + refund_issued i auto_timeout_90-path)
+  - §6.3 hygien-flagg: pre-existing TS-fel i auto-remind:996 (`sb.rpc("cleanup_rate_limits").catch` supabase-js-typ-mismatch, samma kategori som H5). EJ introducerat av §6.3-retrofit. Scope-respekt (#27) → ej fix denna session.
+  - §6.3 SKIPPAT state-change-events i auto-remind (motiverat): vd_timeout_2h Case B (awaiting_reassignment utan ny cleaner) + customer_timeout_1h (proposal withdraw). Inga canonical event-types matchar — mid-state-transitions utan cleaner-association-ändring. Flaggat för framtida schema-utökning vid Fas 8-design.
   - §6.4-§6.6 event-timeline-UI: ◯
   - §6.7 event-schema.md ✓
   - §6.8 recurring-events: ◯ (pendar Fas 5)

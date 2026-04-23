@@ -8,6 +8,7 @@ import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 import { parseStockholmTime } from "../_shared/timezone.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -637,6 +638,19 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
               reminders_sent: [...alreadySent, "auto_timeout_90"],
             }).eq("id", b.id);
 
+            // Fas 6.3: cleaner svarade inte inom 90 min → cancelled_by_cleaner
+            // (actor_type=system eftersom cron-initierad, metadata markerar auto-timeout
+            // för att skilja från aktiv reject via cleaner-booking-response)
+            await logBookingEvent(sb, b.id, "cancelled_by_cleaner", {
+              actorType: "system",
+              metadata: {
+                cleaner_id: b.cleaner_id || null,
+                reason: "auto_timeout_90min",
+                cancelled_at: now.toISOString(),
+                timeout_minutes: TIMEOUT_AFTER_MIN,
+              },
+            });
+
             // 2. Stripe-refund
             let refundStatus = "skipped";
             const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY");
@@ -653,6 +667,16 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
                 refundStatus = refundRes.ok ? "initiated" : "failed";
                 if (refundRes.ok) {
                   await sb.from("bookings").update({ payment_status: "refunded" }).eq("id", b.id);
+                  // Fas 6.3: refund lyckades → logga för timeline
+                  await logBookingEvent(sb, b.id, "refund_issued", {
+                    actorType: "system",
+                    metadata: {
+                      amount_sek: b.total_price || 0,
+                      reason: "auto_timeout",
+                      initiated_by: "auto-remind",
+                      stripe_refund_status: refundStatus,
+                    },
+                  });
                 }
               } catch (e) {
                 refundStatus = "error";
