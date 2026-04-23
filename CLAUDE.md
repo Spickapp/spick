@@ -1,9 +1,11 @@
 # CLAUDE.md – Spick Projektkontext
-> Uppdaterad: 2026-03-30 – Efter fullständig säkerhets- och systemaudit
+> Uppdaterad: 2026-04-23 – Manuell sync från codebase-snapshot + sanning/-filer
 
 ## Projekt
 **Spick** — Sveriges städplattform. Uber-modellen för städning.
-Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600 kr/h). Spick tar 17% provision (Smart Trappstege: 17%→12% baserat på volym). RUT-avdrag 50%.
+Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600 kr/h). **Spick tar 12% flat provision** (trappsystem avskaffat 2026-04-17, låst i `platform_settings.commission_standard=12`). RUT-avdrag 50%.
+
+**Primärkällor för affärsregler:** `docs/sanning/provision.md`, `docs/sanning/rut.md`, `docs/sanning/pnr-och-gdpr.md`. Memory + denna fil är hypoteser — sanning-filer vinner vid konflikt.
 
 ## Ägare
 - **Farhad Haghighi** — farrehagge@gmail.com / hello@spick.se
@@ -15,31 +17,41 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | Frontend | Vanilla HTML/CSS/JS (64 sidor), components.js (nav/footer) |
 | Typsnitt | Playfair Display (rubriker) + DM Sans (brödtext) |
 | Färger | #0F6E56 primär, #1D9E75 accent, #E1F5EE pale, #F7F7F5 bg |
-| Backend/DB | Supabase PostgreSQL + 15 Edge Functions + 3 VIEWs |
+| Backend/DB | Supabase PostgreSQL + 66 Edge Functions + 3 VIEWs |
 | Hosting | GitHub Pages (auto-deploy vid push till main) |
 | E-post | Resend (verifierad) + Google Workspace hello@spick.se |
-| Betalning | Stripe live mode (kort + Klarna) |
-| CI/CD | 27 GitHub Actions workflows (14 cron-jobb) |
+| Betalning | Stripe live mode (kort + Klarna) + dual-key test/live-toggle (`platform_settings.stripe_test_mode`) |
+| CI/CD | 35 GitHub Actions workflows (cron + on-push + manuell) |
 | Analytics | GA4 (G-CP115M45TT) + Meta Pixel + Microsoft Clarity (w1ep5s1zm6) |
 | PWA | Service Worker (stale-while-revalidate) + manifest.json |
 
-## Edge Functions (14 st)
+## Edge Functions (66 st — fullständig lista + beskrivningar)
+
+**Full canonical snapshot:** `docs/auto-generated/codebase-snapshot.md` (auto-uppdateras veckovis via workflow `update-claude-md.yml` — Fas 11.2).
+
+**Kritiska EFs (urval):**
+
 | Funktion | Syfte | Auth |
 |----------|-------|------|
-| stripe-webhook | Betalningsbekräftelse, auto-tilldelning, email, idempotency | Stripe sig |
-| cleanup-stale | Rensar pending >30min (cron var 15 min) | CRON_SECRET |
-| auto-remind | Bokningspåminnelser (cron var 30 min) | CRON_SECRET |
-| notify | Transaktionsmail (bekräftelse, avbokning etc) | Anon |
-| admin-data | Säker dataåtkomst för admin-panel | Supabase Auth |
-| health | Systemstatus + business metrics (DB, Stripe, Resend) | Anon |
+| booking-create | Prismotor + Stripe Checkout + booking-insert + event-log | Anon |
+| stripe-webhook | Betalningsbekräftelse, auto-tilldelning, email, idempotency + dual-key | Stripe sig via API-verify |
+| matching-wrapper | Branching mellan v1/v2/shadow/providers — returnerar V2Cleaner[] | Anon |
+| auto-delegate | System-tilldelning av ersättare (cron fallback + on-reject) | Service role |
+| auto-rebook | Cron som skapar bokningar från aktiva subscriptions | CRON_SECRET |
+| charge-subscription-booking | Debiterar sparade kort dagen innan städning | CRON_SECRET |
+| cleanup-stale | Rensar pending >30min | CRON_SECRET |
+| auto-remind | Bokningspåminnelser + auto-reassign | CRON_SECRET |
+| notify | Transaktionsmail (bekräftelse, avbokning, garanti etc) | Anon |
+| health | Systemstatus + business metrics | Anon |
 | geo | Geocoding + nearest-cleaner matching (Nominatim) | Anon |
-| email-inbound | Inkommande e-post → AI-kategorisering | Resend sig |
-| rut-claim | RUT-ansökan till Skatteverket | Service role |
-| push | Push-notiser till städare | Service role |
-| bankid | BankID-verifiering | Anon |
-| social-media | Buffer-integration för auto-posting | Service role |
-| stripe-connect | Stripe Connect payout setup | Service role |
-| swish | Swish-betalning (ej live ännu) | Anon |
+| rut-claim | RUT-ansökan till Skatteverket (**AVSTÄNGD** — pausad till Fas 7.5) | Service role |
+| sitemap-profiles | Dynamisk XML sitemap för /f/ och /s/ (Prof-5) | Anon |
+| reconcile-payouts | Daglig avstämning Stripe transfers vs payout_status | CRON_SECRET |
+| stripe-connect-webhook | Stripe Connect onboarding-status-updates | Stripe sig |
+| generate-receipt | HTML-kvitto + Resend-mail (BokfL 5 kap 7§-kompatibelt) | Anon |
+| company-self-signup | Self-service företagsregistrering (Sprint B) | Anon |
+
+**Shared helpers** (13 st i `_shared/`): money.ts, events.ts, preferences.ts, matching-diff.ts, pricing-engine.ts, pricing-resolver.ts, stripe.ts, stripe-client.ts, stripe-webhook-verify.ts, email.ts, notifications.ts, send-magic-sms.ts, timezone.ts, fonts.ts.
 
 ## Databasvyer (säkra, anon-åtkomst)
 | View | Syfte | Exponerade kolumner |
@@ -81,8 +93,16 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 | js/config.js | Config (SUPA_URL, SUPA_KEY, escHtml, spickFetch, error handling) |
 | js/components.js | Nav, footer, mobilmeny (injiceras i alla sidor) |
 | js/cro.js | Social proof toasts (riktig data från reviews), exit-intent popup |
+| js/services-loader.js | Feature-flagged DB-driven services-rendering (F1_USE_DB_SERVICES) |
+| js/commission-helpers.js | Centralized commission-läsning (getCommissionRate/Pct från platform_settings) |
 | sw.js | Service Worker v2026-03-30-v1 |
-| supabase/PREFLIGHT_RUN_THIS.sql | Allt-i-ett SQL (10 block, kör vid deploy) |
+| supabase/functions/_shared/money.ts | Central money-layer (Fas 1) |
+| supabase/functions/_shared/events.ts | Central event-logging (Fas 6.2) |
+| supabase/functions/_shared/preferences.ts | customer_preferences helpers (Fas 5.5a) |
+| scripts/generate-claude-md.ts | Auto-snapshot av codebase (Fas 11.1) |
+| docs/sanning/*.md | Primärkällor för affärsregler (provision, rut, pnr-gdpr) |
+| docs/architecture/*.md | Design-docs per fas (matching, money, events, recurring, escrow) |
+| docs/auto-generated/codebase-snapshot.md | Auto-uppdaterad snapshot (Fas 11.2) |
 | docs/OPERATIONS_RUNBOOK.md | Komplett drifthandbok |
 | scripts/verify-deploy.sh | Post-deploy verifiering (18 checks) |
 
@@ -93,3 +113,13 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 - Frontend queryar ALDRIG bookings-tabellen direkt — använd VIEWs
 - Supabase JS laddas utan defer (utom index.html som har DOMContentLoaded-wrapper)
 - Farhads PowerShell: använd semikolon (;) istf && för att kedja kommandon
+
+## Obligatoriska regler (#26-#31)
+- **#26** Grep-före-edit: läs exakt text + verifiera surrounding code innan str_replace
+- **#27** Scope-respekt: gör exakt det du blev ombedd, flagga observationer istället för att agera
+- **#28** Single source of truth: business-data centraliserad i `platform_settings` + `_shared/`-helpers. Ingen fragmentering.
+- **#29** Audit-först: läs audit-filen i sin helhet innan du agerar på "audit säger X"
+- **#30** Regulator-gissning FÖRBJUDEN: Skatteverket, GDPR, BokfL, Stripe-regler, EU PWD får aldrig antas. Verifiera mot spec eller fråga Farhad.
+- **#31** Primärkälla över memory: prod-schema (via `information_schema`-query) + `docs/sanning/*.md` är sanning. Migrations-filer kan vara stale. Memory är hypotes.
+
+**Lärdom 2026-04-23:** Tre rule #31-brott i samma session — alla fall av antagande om DB-kolumner (bookings.company_id, subscriptions.favorite_cleaner_email, subscriptions.price). **ALL schema-verification MÅSTE ske via `information_schema`-query mot prod INNAN kod/SQL skrivs.** Migration-filer i repo är ej tillförlitliga pga §2.1-hygien #25 drift. Fas 2.X Replayability Sprint löser detta långsiktigt.
