@@ -5,6 +5,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, ADMIN } from "../_shared/email.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -84,6 +85,25 @@ serve(async (req) => {
       refunded_at: new Date().toISOString(),
       refund_reason: "Kundens begäran — städare dök inte upp",
     }).eq("id", bid);
+
+    // Fas 6.3: två separata events för komplett timeline
+    await logBookingEvent(sb, bid, "noshow_reported", {
+      actorType: "customer",
+      metadata: {
+        reported_by: "customer_magic_link",
+        cleaner_id: booking.cleaner_id || null,
+        cleaner_name: booking.cleaner_name || null,
+      },
+    });
+    await logBookingEvent(sb, bid, "refund_issued", {
+      actorType: "system",
+      metadata: {
+        amount_sek: booking.total_price || 0,
+        reason: "no_show",
+        initiated_by: "noshow-refund",
+        stripe_refund_status: refundStatus,
+      },
+    });
 
     const custFirst = (booking.customer_name || "").split(" ")[0] || "Kund";
     const cleanerName = booking.cleaner_name || "städaren";
