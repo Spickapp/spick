@@ -1,0 +1,139 @@
+# Codebase Snapshot (auto-generated 2026-04-23)
+
+Genererad av `scripts/generate-claude-md.ts`. Kopiera valda sektioner
+till CLAUDE.md för att fixa Regel #29-drift.
+
+---
+
+## Edge Functions (66 st)
+
+| Funktion | Första kommentar |
+|----------|------------------|
+| `admin-approve-cleaner` |  |
+| `admin-approve-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-approve-company (Sprint B Dag 5) |
+| `admin-create-company` |  |
+| `admin-mark-payouts-paid` | Fas 1.10.2: Admin-trigger av payout-flode (ersatter direkt DB-PATCH) Primarkalla: docs/planning/spick-arkitekturplan-v3. |
+| `admin-morning-report` |  |
+| `admin-reject-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-reject-company (Sprint B Dag 5) |
+| `auto-approve-check` |  |
+| `auto-delegate` |  |
+| `auto-rebook` | auto-rebook — Skapar bokningar för aktiva prenumerationer ═══════════════════════════════════════════════════════════ |
+| `auto-remind` |  |
+| `bankid` |  |
+| `bankid-verify` |  |
+| `bankid-webhook` |  |
+| `booking-auto-timeout` |  |
+| `booking-cancel-v2` |  |
+| `booking-create` | supabase/functions/booking-create/index.ts SPICK: Booking Create — med inbyggd prismotor + marginalcheck |
+| `booking-reassign` |  |
+| `calendar-google-auth` | calendar-google-auth — Starta Google OAuth-flöde URL: /functions/v1/calendar-google-auth?cleaner_id=XXX |
+| `calendar-google-callback` | calendar-google-callback — Google OAuth callback Tar emot auth code, utbyter mot tokens, sparar i calendar_connections |
+| `calendar-ical-feed` | supabase/functions/calendar-ical-feed/index.ts Genererar iCal (.ics) feed för en städare. |
+| `calendar-sync` | calendar-sync — Synkronisera Google Calendar ↔ Spick Triggas av: |
+| `charge-subscription-booking` | charge-subscription-booking — Debiterar sparade kort dagen innan städning ══════════════════════════════════════════════ |
+| `claude` |  |
+| `cleaner-booking-response` |  |
+| `cleaner-og` |  |
+| `cleaner-optout` |  |
+| `cleanup-stale` |  |
+| `company-accept-invite` | ═══════════════════════════════════════════════════════════════ SPICK – company-accept-invite (Sprint B Dag 4) |
+| `company-invite-member` | ═══════════════════════════════════════════════════════════════ SPICK – company-invite-member (Sprint B Dag 4) |
+| `company-propose-substitute` |  |
+| `company-self-signup` | ═══════════════════════════════════════════════════════════════ SPICK – company-self-signup (Sprint B Dag 3) |
+| `customer-approve-proposal` |  |
+| `customer-check-auto-delegation` | ═══════════════════════════════════════════════════════════════ SPICK – customer-check-auto-delegation (Fas 1.2) |
+| `customer-upsert` | ═══════════════════════════════════════════════════════════════ SPICK – customer-upsert (Fas 1.2) |
+| `email-inbound` |  |
+| `expire-team-invitations` | ═══════════════════════════════════════════════════════════════ SPICK – expire-team-invitations (Sprint B Dag 6) |
+| `generate-receipt` | ═══════════════════════════════════════════════════════════════ SPICK – Kundkvitto (Customer Receipt HTML + Email) |
+| `generate-self-invoice` | ═══════════════════════════════════════════════════════════════ SPICK – Självfaktura-generator (Self-billing invoice) |
+| `geo` | SPICK – Geo Matching |
+| `get-cleaner-contact` |  |
+| `health` |  |
+| `matching-wrapper` | supabase/functions/matching-wrapper/index.ts §3.7-full Step 2b — Matching-wrapper EF (shadow-mode A/B-ramverk) |
+| `noshow-refund` |  |
+| `notify` |  |
+| `notify-new-application` |  |
+| `onboarding-reminders` |  |
+| `onboarding-save` |  |
+| `places-autocomplete` |  |
+| `poll-stripe-onboarding-status` | ═══════════════════════════════════════════════════════════════ SPICK – poll-stripe-onboarding-status (Sprint B Dag 6) |
+| `public-auth-exchange` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-exchange (Fas 1.2) |
+| `public-auth-link` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-link (Fas 1.2) |
+| `push` | SPICK – Push Notifications med VAPID |
+| `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
+| `referral-register` |  |
+| `serve-invoice` |  |
+| `services-list` | services-list: Public read of services + addons F1 Dag 1 - arkitekturplan v3 |
+| `setup-subscription` | supabase/functions/setup-subscription/index.ts SPICK: Subscription Setup |
+| `sitemap-profiles` | supabase/functions/sitemap-profiles/index.ts Sprint Prof-5: Dynamisk sitemap för profil-URL:er (/f/<slug>, /s/<slug>) |
+| `sms` |  |
+| `social-media` |  |
+| `stripe-connect` |  |
+| `stripe-connect-webhook` | ═══════════════════════════════════════════════════════════════ SPICK – stripe-connect-webhook (Sprint B Dag 1) |
+| `stripe-refund` |  |
+| `stripe-webhook` |  |
+| `swish` |  |
+| `team-sms-notify` |  |
+
+## Shared EF helpers (13 st)
+
+| Fil | Första kommentar |
+|-----|------------------|
+| `_shared/email.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Delad Edge Function-infrastruktur |
+| `_shared/events.ts` | supabase/functions/_shared/events.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/fonts.ts` |  |
+| `_shared/matching-diff.ts` | supabase/functions/_shared/matching-diff.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/money.ts` |  |
+| `_shared/notifications.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Multi-kanal notifikationer |
+| `_shared/pricing-engine.ts` |  |
+| `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/send-magic-sms.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Magic-link hjälpare för publika auth-flows (Fas  |
+| `_shared/stripe-client.ts` |  |
+| `_shared/stripe-webhook-verify.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Stripe webhook HMAC-signature-validering (shared |
+| `_shared/stripe.ts` |  |
+| `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
+
+## GitHub Actions workflows (35 st)
+
+- `.github/workflows/admin-morning-report.yml`
+- `.github/workflows/auto-post-daily.yml`
+- `.github/workflows/auto-rebook.yml`
+- `.github/workflows/auto-remind.yml`
+- `.github/workflows/backup.yml`
+- `.github/workflows/bulk-schedule-week.yml`
+- `.github/workflows/charge-subscription.yml`
+- `.github/workflows/claude.yml`
+- `.github/workflows/cleanup-stale.yml`
+- `.github/workflows/content-engine.yml`
+- `.github/workflows/daily-automation.yml`
+- `.github/workflows/db-audit.yml`
+- `.github/workflows/deploy-edge-functions.yml`
+- `.github/workflows/deploy-loopia.yml`
+- `.github/workflows/deploy-stripe.yml`
+- `.github/workflows/deploy.yml`
+- `.github/workflows/disaster-recovery.yml`
+- `.github/workflows/e2e-test.yml`
+- `.github/workflows/generate-sitemap.yml`
+- `.github/workflows/inject-tracking.yml`
+- `.github/workflows/loopia-dns.yml`
+- `.github/workflows/monthly-invoices.yml`
+- `.github/workflows/run-migrations.yml`
+- `.github/workflows/schema-drift-check.yml`
+- `.github/workflows/security-scan.yml`
+- `.github/workflows/set-secrets.yml`
+- `.github/workflows/social-media.yml`
+- `.github/workflows/ssl-monitor.yml`
+- `.github/workflows/stripe-setup.yml`
+- `.github/workflows/team-sms.yml`
+- `.github/workflows/test-money.yml`
+- `.github/workflows/test.yml`
+- `.github/workflows/ui-monitor.yml`
+- `.github/workflows/uptime-monitor.yml`
+- `.github/workflows/weekly-report.yml`
+
+## Migrations (109 st)
+
+- Senaste: `20260426140000_model3_shadow_log_providers_col.sql`
+- Timestamp-prefix: `20260426140000`
+
