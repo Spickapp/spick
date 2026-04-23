@@ -5821,7 +5821,9 @@ async function addBlockedDate() {
   const inp = document.getElementById('block-date-input');
   const dateVal = inp?.value;
   if (!dateVal) { showToast('Välj ett datum'); return; }
-  const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: cleaner.id, blocked_date: dateVal });
+  // all_day:true = spärra hela dagen (annars gäller tabellens default 08:00-18:00).
+  // UX för "Spärrat datum" förutsätter heldag; partiell tidsspärr hanteras via veckoschema.
+  const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: cleaner.id, blocked_date: dateVal, all_day: true });
   if (error && error.code !== '23505') {
     showToast('❌ ' + error.message); return;
   }
@@ -5869,7 +5871,8 @@ async function addTeamMemberBlockedDate() {
   const inp = document.getElementById('team-block-date-input');
   const dateVal = inp?.value;
   if (!dateVal) { showToast('Välj ett datum'); return; }
-  const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: _editingTeamMemberId, blocked_date: dateVal });
+  // all_day:true = spärra hela dagen (se kommentar i addBlockedDate).
+  const {error} = await R.insert('cleaner_blocked_dates', { cleaner_id: _editingTeamMemberId, blocked_date: dateVal, all_day: true });
   if (error) {
     if (error.code === '23505' || (error.status === 409)) {
       showToast('ℹ️ Datum redan spärrat');
