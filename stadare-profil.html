@@ -452,7 +452,7 @@ async function loadProfile() {
   var hasRutServices = svcsForRut.some(function(s) { return isRutEligible(s.trim()); });
   var rutPrice = hasRutServices ? Math.round(rate * 0.5) : rate;
   var hasRatings = c.avg_rating != null && c.review_count > 0;
-  var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate;
+  var bokaHref = 'boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate + (c.company_id ? '&company=' + c.company_id : '');
 
   // Avatar
   var avatarEl = document.getElementById('p-avatar');
@@ -674,7 +674,7 @@ async function loadProfile() {
   // 4. QR code
   try {
     var qr = qrcode(0, 'M');
-    qr.addData('https://spick.se/boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate);
+    qr.addData('https://spick.se/boka.html?id=' + c.id + '&name=' + encodeURIComponent(c.full_name || '') + '&rate=' + rate + (c.company_id ? '&company=' + c.company_id : ''));
     qr.make();
     document.getElementById('qr-canvas').outerHTML = qr.createImgTag(4, 8);
   } catch(e) {}
