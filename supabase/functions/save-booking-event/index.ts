@@ -86,6 +86,42 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── RATE-LIMIT (20 calls / 5 min per IP) ─────────────
+    // Anvander existing check_rate_limit RPC (migration 20260327300001).
+    // Regel #28: single source — bygger inte eget rate-limit-system.
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") || "unknown";
+    try {
+      const { data: allowed, error: rlErr } = await sb.rpc("check_rate_limit", {
+        p_key: `save_event:${ip}`,
+        p_max: 20,
+        p_window_minutes: 5,
+      });
+      if (rlErr) {
+        console.warn("[save-booking-event] rate-limit check fel:", rlErr.message);
+        // Fail-open: om rate-limit-check failar, tillat request (annars
+        // blockeras all trafik vid DB-issues). Loggas for monitoring.
+      } else if (allowed === false) {
+        return new Response(
+          JSON.stringify({
+            error: "rate_limit_exceeded",
+            retry_after_seconds: 60,
+          }),
+          {
+            status: 429,
+            headers: {
+              ...CORS,
+              "Content-Type": "application/json",
+              "Retry-After": "60",
+            },
+          },
+        );
+      }
+    } catch (e) {
+      console.warn("[save-booking-event] rate-limit oväntat fel:", (e as Error).message);
+      // Fail-open (se ovan)
+    }
+
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return new Response(

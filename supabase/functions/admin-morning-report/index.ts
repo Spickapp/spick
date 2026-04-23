@@ -4,6 +4,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getStockholmDateString } from "../_shared/timezone.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -42,19 +43,23 @@ async function mail(to: string, subject: string, html: string) {
   return res.ok;
 }
 
-function ymd(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+// Rule #31-fix: ymd() via UTC är FEL för "svensk dag". Om EF kör 06:07
+// UTC (= 08:07 CEST), och bokning skapades 22:30 CEST (= 20:30 UTC),
+// då är bokningen på "idag" svensk tid men "igår" UTC. Använder nu
+// Stockholm-tidszon från _shared/timezone.ts för konsistent svensk
+// dag-beräkning.
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204 });
 
   try {
     const now = new Date();
-    const today = ymd(now);
-    const y = new Date(now);
-    y.setUTCDate(y.getUTCDate() - 1);
-    const yesterday = ymd(y);
+    const today = getStockholmDateString(now);
+
+    // Igår i svensk tid — skapa via Stockholm-midnatt, inte UTC-midnatt
+    const yDate = new Date(now);
+    yDate.setUTCDate(yDate.getUTCDate() - 1);
+    const yesterday = getStockholmDateString(yDate);
 
     // 1. Dagens bokningar (alla statusar utom cancelled/avbokad)
     const { count: todayBookings } = await sb.from("bookings")

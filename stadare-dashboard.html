@@ -4214,6 +4214,23 @@ function jobCard(j) {
   else if (isActive) badgeHtml = `<span class="badge badge-inprogress">Pågår</span>`;
   else if (isMine) badgeHtml = `<span class="badge badge-ok">Bekräftat</span>`;
 
+  // Farhad-begäran 2026-04-23: tydlig betalnings-status-badge så städare
+  // vet om pengarna kommit in INNAN de åker till kunden. Förhindrar
+  // scenarie där städare utför jobb utan att betalning är mottagen.
+  // Visas alltid för isMine-jobb (egna bokningar) oavsett övriga badges.
+  if (isMine && !isDone) {
+    const ps = j.payment_status;
+    if (ps === 'paid') {
+      badgeHtml += ` <span class="badge" style="background:#d1fae5;color:#065f46;font-weight:700">💰 Betald</span>`;
+    } else if (ps === 'pending' || ps === 'awaiting_charge') {
+      badgeHtml += ` <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:700">⚠️ Väntar betalning — utför EJ</span>`;
+    } else if (ps === 'failed' || ps === 'cancelled') {
+      badgeHtml += ` <span class="badge" style="background:#fee2e2;color:#991b1b;font-weight:700">🛑 Betalning misslyckades</span>`;
+    } else if (ps === 'refunded') {
+      badgeHtml += ` <span class="badge" style="background:#e5e7eb;color:#374151;font-weight:700">↩️ Återbetald</span>`;
+    }
+  }
+
   let actionsHtml = '';
   if (isPendingConfirmation) {
     actionsHtml = `<div class="job-actions" style="margin-top:8px">
