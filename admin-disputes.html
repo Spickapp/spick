@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dispute-hantering — Spick Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --g:#0F6E56; --gm:#1D9E75; --gp:#E1F5EE; --gl:#9FE1CB; --gd:#085041;
+  --b:#0E0E0E; --t:#1C1C1A; --m:#6B6960; --bg:#F7F7F5; --border:#E8E8E4;
+  --w:#fff; --err:#DC2626; --warn:#D97706; --critical:#991B1B; --r:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height:1.2;font-weight:700}
+
+.page-header{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);color:var(--w);padding:2.5rem 1.5rem 1.5rem}
+.page-header-inner{max-width:1100px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:.25rem}
+.page-header .sub{opacity:.9;font-size:1rem}
+.container{max-width:1100px;margin:-1rem auto 4rem;padding:0 1.5rem;position:relative}
+.card{background:var(--w);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.dispute-card{border-left:4px solid var(--warn);padding-left:1rem}
+.dispute-card.sla-warn{border-left-color:var(--err);background:#FEF2F2}
+.dispute-card.sla-critical{border-left-color:var(--critical);background:#FEE2E2}
+.dispute-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem}
+.dispute-meta{font-size:.82rem;color:var(--m);margin-bottom:.5rem}
+.dispute-meta strong{color:var(--t)}
+.dispute-reason{display:inline-block;padding:.2rem .6rem;background:var(--bg);border:1px solid var(--border);border-radius:100px;font-size:.78rem;font-weight:600;margin-right:.5rem}
+.dispute-age{font-size:.78rem;color:var(--m)}
+.dispute-age.warn{color:var(--warn);font-weight:600}
+.dispute-age.critical{color:var(--err);font-weight:700}
+.quote-box{background:var(--bg);padding:.75rem 1rem;border-radius:8px;font-size:.88rem;margin:.5rem 0;white-space:pre-wrap;line-height:1.5}
+.quote-box .label{font-size:.7rem;color:var(--m);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem}
+
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)}
+.btn{padding:.6rem 1rem;border-radius:8px;font-family:inherit;font-size:.88rem;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.btn:hover:not(:disabled){filter:brightness(.95)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-refund-full{background:var(--err);color:var(--w);border-color:var(--err)}
+.btn-refund-partial{background:#F59E0B;color:var(--w);border-color:#F59E0B}
+.btn-dismiss{background:var(--gp);color:var(--gd);border-color:var(--gl)}
+.btn-muted{background:var(--w);color:var(--m);border-color:var(--border)}
+
+.alert{padding:.9rem 1.1rem;border-radius:8px;font-size:.9rem;margin-bottom:1rem}
+.alert-info{background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD}
+.alert-error{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+.alert-success{background:var(--gp);color:var(--gd);border:1px solid var(--gl)}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>Dispute-hantering</h1>
+    <div class="sub" id="subHeader">Laddar disputes…</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alertBox"></div>
+
+  <div id="content">
+    <div class="empty">
+      <div class="spinner"></div>
+      <p style="margin-top:1rem">Laddar öppna disputes…</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase.min.js" defer></script>
+<script src="js/config.js"></script>
+
+<script>
+const REASON_LABELS = {
+  not_as_described: 'Inte som beskrivet',
+  incomplete: 'Inte slutfört',
+  damage: 'Skada',
+  no_show: 'No-show',
+  quality: 'Kvalitet',
+  other: 'Annat',
+};
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function hoursSince(iso) {
+  return Math.round((Date.now() - new Date(iso).getTime()) / 36e5);
+}
+
+function slaClass(opened, cleanerResp, adminDec) {
+  const h = hoursSince(opened);
+  if (h >= 168) return 'sla-critical'; // EU PWD 7d
+  if (h >= 72 && !adminDec) return 'sla-warn';
+  if (h >= 48 && !cleanerResp) return 'sla-warn';
+  return '';
+}
+
+function slaAgeHtml(opened, cleanerResp, adminDec) {
+  const h = hoursSince(opened);
+  let className = 'dispute-age';
+  let suffix = '';
+  if (h >= 168) { className += ' critical'; suffix = ' ⚠️ EU PWD-breach (7d)'; }
+  else if (h >= 72 && !adminDec) { className += ' warn'; suffix = ' ⚠️ >72h utan beslut'; }
+  else if (h >= 48 && !cleanerResp) { className += ' warn'; suffix = ' ⚠️ 48h utan cleaner-svar'; }
+  return `<span class="${className}">${h}h öppen${suffix}</span>`;
+}
+
+let SB;
+let sessionToken = null;
+
+async function init() {
+  if (typeof SPICK === 'undefined' || !window.supabase) {
+    setTimeout(init, 100);
+    return;
+  }
+  SB = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+
+  const { data: sess } = await SB.auth.getSession();
+  if (!sess?.session?.access_token) {
+    showAlert('error', 'Du måste vara inloggad som admin. <a href="/mitt-konto.html">Logga in</a>');
+    document.getElementById('content').innerHTML = '';
+    return;
+  }
+  sessionToken = sess.session.access_token;
+
+  // Verify admin
+  const { data: isAdmin, error } = await SB.rpc('is_admin');
+  if (error || !isAdmin) {
+    showAlert('error', 'Du har inte admin-rättigheter.');
+    document.getElementById('content').innerHTML = '';
+    return;
+  }
+
+  await loadDisputes();
+}
+
+async function loadDisputes() {
+  const { data, error } = await SB
+    .from('disputes')
+    .select('*')
+    .is('resolved_at', null)
+    .order('opened_at', { ascending: true });
+
+  if (error) {
+    showAlert('error', 'Kunde inte ladda disputes: ' + error.message);
+    return;
+  }
+
+  renderDisputes(data || []);
+}
+
+async function loadBookingsForDisputes(disputes) {
+  if (disputes.length === 0) return {};
+  const ids = disputes.map(d => d.booking_id);
+  const { data } = await SB
+    .from('bookings')
+    .select('id, customer_name, customer_email, cleaner_name, cleaner_id, booking_date, booking_time, total_price, escrow_state')
+    .in('id', ids);
+  const map = {};
+  (data || []).forEach(b => { map[b.id] = b; });
+  return map;
+}
+
+async function renderDisputes(disputes) {
+  document.getElementById('subHeader').textContent =
+    disputes.length === 0 ? 'Inga öppna disputes' : `${disputes.length} öppen(a) dispute(s)`;
+
+  if (disputes.length === 0) {
+    document.getElementById('content').innerHTML =
+      '<div class="card empty"><p style="font-size:1.1rem;margin-bottom:.5rem">🎉 Inga öppna disputes!</p><p>Allt är under kontroll.</p></div>';
+    return;
+  }
+
+  const bookingMap = await loadBookingsForDisputes(disputes);
+
+  const html = disputes.map(d => {
+    const b = bookingMap[d.booking_id];
+    const cls = slaClass(d.opened_at, d.cleaner_response, d.admin_decision);
+    return `
+      <div class="card dispute-card ${cls}">
+        <div class="dispute-head">
+          <div>
+            <span class="dispute-reason">${esc(REASON_LABELS[d.reason] || d.reason)}</span>
+            ${slaAgeHtml(d.opened_at, d.cleaner_response, d.admin_decision)}
+          </div>
+          <div class="dispute-meta" style="text-align:right">
+            <strong>Bokning:</strong> ${esc((d.booking_id || '').slice(0,8))}<br>
+            <strong>Öppnad:</strong> ${new Date(d.opened_at).toLocaleString('sv-SE')}
+          </div>
+        </div>
+
+        <div class="dispute-meta">
+          ${b ? `<strong>Kund:</strong> ${esc(b.customer_name || '–')} (${esc(b.customer_email || '–')})<br>
+                <strong>Städare:</strong> ${esc(b.cleaner_name || '–')}<br>
+                <strong>Datum:</strong> ${esc(b.booking_date || '–')} kl ${esc(b.booking_time || '–')}<br>
+                <strong>Belopp:</strong> ${b.total_price || 0} kr | <strong>Escrow-state:</strong> ${esc(b.escrow_state || '–')}` : '<em>Booking-data ej tillgänglig.</em>'}
+        </div>
+
+        ${d.customer_description ? `<div class="quote-box"><div class="label">Kund:</div>${esc(d.customer_description)}</div>` : ''}
+        ${d.cleaner_response ? `<div class="quote-box"><div class="label">Städare:</div>${esc(d.cleaner_response)}</div>` : '<div class="dispute-meta"><em>Städare har inte svarat ännu.</em></div>'}
+
+        <div class="actions">
+          <button class="btn btn-refund-full" onclick="decide('${esc(d.id)}', 'full_refund', ${b?.total_price || 0})">💰 Full refund (${b?.total_price || 0} kr)</button>
+          <button class="btn btn-refund-partial" onclick="decide('${esc(d.id)}', 'partial_refund', ${b?.total_price || 0})">📊 Delvis refund…</button>
+          <button class="btn btn-dismiss" onclick="decide('${esc(d.id)}', 'dismissed', 0)">✋ Avvisa</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('content').innerHTML = html;
+}
+
+async function decide(disputeId, decision, totalPrice) {
+  let refundAmount = null;
+  let confirmMsg = '';
+
+  if (decision === 'full_refund') {
+    confirmMsg = `Full refund på ${totalPrice} kr? Kunden får hela beloppet tillbaka.`;
+  } else if (decision === 'partial_refund') {
+    const input = prompt(`Ange refund-belopp i SEK (mellan 1 och ${totalPrice - 1}):`);
+    if (!input) return;
+    const amount = parseInt(input, 10);
+    if (isNaN(amount) || amount <= 0 || amount >= totalPrice) {
+      alert(`Ogiltigt belopp. Måste vara mellan 1 och ${totalPrice - 1}.`);
+      return;
+    }
+    refundAmount = amount;
+    confirmMsg = `Delvis refund på ${amount} kr (av ${totalPrice} kr)?`;
+  } else if (decision === 'dismissed') {
+    confirmMsg = 'Avvisa dispute? Städaren får full betalning.';
+  }
+
+  const notes = prompt(confirmMsg + '\n\nLägg till en admin-kommentar (valfritt, max 2000 tecken):');
+  if (notes === null) return;
+
+  const body = { dispute_id: disputeId, decision };
+  if (refundAmount !== null) body.refund_amount_sek = refundAmount;
+  if (notes.trim()) body.admin_notes = notes.trim();
+
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-dispute-decide', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionToken },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showAlert('error', 'Kunde inte fatta beslut: ' + (data.error || res.status));
+      return;
+    }
+    showAlert('success', `✅ Beslut registrerat: ${decision}. Nästa steg: ${data.next_step || '–'}`);
+    await loadDisputes();
+  } catch (e) {
+    showAlert('error', 'Nätverksfel: ' + e.message);
+  }
+}
+
+function showAlert(type, html) {
+  document.getElementById('alertBox').innerHTML =
+    `<div class="alert alert-${type}">${html}</div>`;
+  setTimeout(() => { document.getElementById('alertBox').innerHTML = ''; }, 8000);
+}
+
+init();
+</script>
+</body>
+</html>
