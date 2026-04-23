@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mina ärenden — Spick städare</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --g:#0F6E56; --gm:#1D9E75; --gp:#E1F5EE; --gl:#9FE1CB; --gd:#085041;
+  --b:#0E0E0E; --t:#1C1C1A; --m:#6B6960; --bg:#F7F7F5; --border:#E8E8E4;
+  --w:#fff; --err:#DC2626; --warn:#D97706; --r:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height:1.2;font-weight:700}
+
+.page-header{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);color:var(--w);padding:2.5rem 1.5rem 1.5rem}
+.page-header-inner{max-width:900px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:.25rem}
+.page-header .sub{opacity:.9;font-size:1rem}
+.container{max-width:900px;margin:-1rem auto 4rem;padding:0 1.5rem;position:relative}
+.card{background:var(--w);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.dispute-card{border-left:4px solid var(--warn)}
+.dispute-card.urgent{border-left-color:var(--err);background:#FEF2F2}
+.dispute-head{margin-bottom:.75rem}
+.dispute-reason{display:inline-block;padding:.2rem .6rem;background:var(--bg);border:1px solid var(--border);border-radius:100px;font-size:.78rem;font-weight:600;margin-right:.5rem}
+.dispute-deadline{font-size:.78rem;color:var(--m)}
+.dispute-deadline.urgent{color:var(--err);font-weight:700}
+.dispute-meta{font-size:.82rem;color:var(--m);margin:.5rem 0 .75rem}
+.dispute-meta strong{color:var(--t)}
+.quote-box{background:var(--bg);padding:.75rem 1rem;border-radius:8px;font-size:.88rem;margin:.5rem 0;white-space:pre-wrap;line-height:1.5}
+.quote-box .label{font-size:.7rem;color:var(--m);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem}
+
+.response-form{margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)}
+textarea{width:100%;min-height:90px;padding:.75rem 1rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:.9rem;resize:vertical;line-height:1.5}
+textarea:focus{outline:none;border-color:var(--g)}
+.btn{padding:.65rem 1.25rem;border-radius:8px;font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;border:1px solid transparent;margin-top:.75rem}
+.btn:hover:not(:disabled){filter:brightness(.95)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--g);color:var(--w)}
+.btn-muted{background:var(--w);color:var(--m);border-color:var(--border)}
+
+.responded-badge{display:inline-block;padding:.2rem .6rem;background:var(--gp);color:var(--gd);border-radius:100px;font-size:.78rem;font-weight:600}
+
+.alert{padding:.9rem 1.1rem;border-radius:8px;font-size:.9rem;margin-bottom:1rem}
+.alert-info{background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD}
+.alert-error{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+.alert-success{background:var(--gp);color:var(--gd);border:1px solid var(--gl)}
+
+.tips{background:#DBEAFE;color:#1E3A8A;padding:1rem 1.25rem;border-radius:10px;font-size:.88rem;line-height:1.5;margin-bottom:1.5rem}
+.tips strong{display:block;margin-bottom:.4rem;color:#1E40AF}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>Mina ärenden</h1>
+    <div class="sub" id="subHeader">Laddar…</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alertBox"></div>
+
+  <div class="tips">
+    <strong>ℹ️ Viktigt att veta</strong>
+    Om en kund har öppnat ett ärende mot en av dina städningar får du 48 timmar att svara.
+    Admin behöver se din sida av historien för att kunna fatta ett rättvist beslut.
+    Svaret är din chans att förklara vad som hände. Var saklig, tydlig och vänlig.
+  </div>
+
+  <div id="content">
+    <div class="empty">
+      <div class="spinner"></div>
+      <p style="margin-top:1rem">Laddar ärenden…</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase.min.js" defer></script>
+<script src="js/config.js"></script>
+
+<script>
+const REASON_LABELS = {
+  not_as_described: 'Inte som beskrivet',
+  incomplete: 'Inte slutfört',
+  damage: 'Skada',
+  no_show: 'No-show',
+  quality: 'Kvalitet',
+  other: 'Annat',
+};
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function hoursSince(iso) {
+  return Math.round((Date.now() - new Date(iso).getTime()) / 36e5);
+}
+
+function deadlineHtml(openedAt, hasResponse) {
+  if (hasResponse) return '<span class="responded-badge">✓ Svar skickat</span>';
+  const h = hoursSince(openedAt);
+  const hoursLeft = 48 - h;
+  if (hoursLeft <= 0) {
+    return '<span class="dispute-deadline urgent">⏰ Deadline passerad — kontakta hello@spick.se</span>';
+  }
+  if (hoursLeft <= 12) {
+    return `<span class="dispute-deadline urgent">⏰ ${hoursLeft}h kvar att svara</span>`;
+  }
+  return `<span class="dispute-deadline">${hoursLeft}h kvar att svara</span>`;
+}
+
+let SB;
+let sessionToken = null;
+let cleanerId = null;
+
+async function init() {
+  if (typeof SPICK === 'undefined' || !window.supabase) {
+    setTimeout(init, 100);
+    return;
+  }
+  SB = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+
+  const { data: sess } = await SB.auth.getSession();
+  if (!sess?.session?.access_token) {
+    showAlert('error', 'Du måste vara inloggad som städare. <a href="/mitt-konto.html">Logga in</a>');
+    document.getElementById('content').innerHTML = '';
+    return;
+  }
+  sessionToken = sess.session.access_token;
+
+  // Fetch cleaner-row for auth-user
+  const { data: cleaner, error } = await SB
+    .from('cleaners')
+    .select('id')
+    .eq('auth_user_id', sess.session.user.id)
+    .maybeSingle();
+  if (error || !cleaner) {
+    showAlert('error', 'Kunde inte hitta din städarprofil.');
+    document.getElementById('content').innerHTML = '';
+    return;
+  }
+  cleanerId = cleaner.id;
+
+  await loadDisputes();
+}
+
+async function loadDisputes() {
+  // Hämta bookings där denna cleaner är tilldelad + har öppen dispute
+  const { data: myBookings } = await SB
+    .from('bookings')
+    .select('id, customer_name, booking_date, booking_time, total_price')
+    .eq('cleaner_id', cleanerId);
+
+  const bookingIds = (myBookings || []).map(b => b.id);
+  if (bookingIds.length === 0) {
+    renderEmpty();
+    return;
+  }
+
+  const { data: disputes, error } = await SB
+    .from('disputes')
+    .select('*')
+    .in('booking_id', bookingIds)
+    .is('resolved_at', null)
+    .order('opened_at', { ascending: true });
+
+  if (error) {
+    showAlert('error', 'Kunde inte ladda ärenden: ' + error.message);
+    return;
+  }
+
+  if (!disputes || disputes.length === 0) {
+    renderEmpty();
+    return;
+  }
+
+  const bookingMap = {};
+  (myBookings || []).forEach(b => { bookingMap[b.id] = b; });
+  renderDisputes(disputes, bookingMap);
+}
+
+function renderEmpty() {
+  document.getElementById('subHeader').textContent = 'Inga öppna ärenden';
+  document.getElementById('content').innerHTML =
+    '<div class="card empty"><p style="font-size:1.1rem;margin-bottom:.5rem">🎉 Inga öppna ärenden!</p><p>Allt lugnt — fortsätt göra ett bra jobb.</p></div>';
+}
+
+function renderDisputes(disputes, bookingMap) {
+  document.getElementById('subHeader').textContent = disputes.length === 1
+    ? '1 öppet ärende'
+    : `${disputes.length} öppna ärenden`;
+
+  const html = disputes.map(d => {
+    const b = bookingMap[d.booking_id] || {};
+    const h = hoursSince(d.opened_at);
+    const urgent = !d.cleaner_response && h >= 36;
+
+    return `
+      <div class="card dispute-card ${urgent ? 'urgent' : ''}" id="dispute-${esc(d.id)}">
+        <div class="dispute-head">
+          <span class="dispute-reason">${esc(REASON_LABELS[d.reason] || d.reason)}</span>
+          ${deadlineHtml(d.opened_at, !!d.cleaner_response)}
+        </div>
+
+        <div class="dispute-meta">
+          <strong>Kund:</strong> ${esc(b.customer_name || '–')}<br>
+          <strong>Datum:</strong> ${esc(b.booking_date || '–')} kl ${esc(b.booking_time || '–')}<br>
+          <strong>Belopp:</strong> ${b.total_price || 0} kr | <strong>Öppnad:</strong> ${new Date(d.opened_at).toLocaleString('sv-SE')}
+        </div>
+
+        ${d.customer_description ? `<div class="quote-box"><div class="label">Kundens beskrivning:</div>${esc(d.customer_description)}</div>` : '<div class="dispute-meta"><em>Kunden angav ingen extra beskrivning.</em></div>'}
+
+        ${d.cleaner_response ? `
+          <div class="quote-box" style="background:#F0FDF4">
+            <div class="label">Ditt svar:</div>${esc(d.cleaner_response)}
+          </div>
+          <p style="font-size:.78rem;color:var(--m);margin-top:.5rem">Skickat ${new Date(d.cleaner_responded_at).toLocaleString('sv-SE')}</p>
+        ` : `
+          <div class="response-form">
+            <label style="font-size:.82rem;color:var(--m);font-weight:600;display:block;margin-bottom:.5rem">Ditt svar (minst 10 tecken):</label>
+            <textarea id="resp-${esc(d.id)}" placeholder="Vad hände? Var saklig och vänlig. Beskriv vad du gjorde och varför."></textarea>
+            <button class="btn btn-primary" onclick="submitResponse('${esc(d.id)}', this)">Skicka svar</button>
+          </div>
+        `}
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('content').innerHTML = html;
+}
+
+async function submitResponse(disputeId, btn) {
+  const txt = (document.getElementById('resp-' + disputeId)?.value || '').trim();
+  if (txt.length < 10) {
+    alert('Svaret måste vara minst 10 tecken långt.');
+    return;
+  }
+  if (txt.length > 2000) {
+    alert('Svaret får max vara 2000 tecken.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Skickar…';
+
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/dispute-cleaner-respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionToken },
+      body: JSON.stringify({ dispute_id: disputeId, response_text: txt }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      const msg = data.error === 'response_already_submitted'
+        ? 'Du har redan svarat på detta ärende.'
+        : data.error === 'response_window_expired'
+        ? 'Tiden för att svara har gått ut (48h). Kontakta hello@spick.se.'
+        : data.error === 'not_your_booking'
+        ? 'Denna bokning tillhör inte dig.'
+        : 'Kunde inte spara svar: ' + (data.error || res.status);
+      showAlert('error', msg);
+      btn.disabled = false;
+      btn.textContent = 'Skicka svar';
+      return;
+    }
+    showAlert('success', '✅ Svar skickat. Admin tar beslut inom 7 dagar.');
+    await loadDisputes();
+  } catch (e) {
+    showAlert('error', 'Nätverksfel: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Skicka svar';
+  }
+}
+
+function showAlert(type, html) {
+  document.getElementById('alertBox').innerHTML =
+    `<div class="alert alert-${type}">${html}</div>`;
+  setTimeout(() => { document.getElementById('alertBox').innerHTML = ''; }, 8000);
+}
+
+init();
+</script>
+</body>
+</html>
