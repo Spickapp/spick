@@ -4,6 +4,7 @@ import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/
 import { notify } from "../_shared/notifications.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 import { formatStockholmDateLong } from "../_shared/timezone.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
@@ -160,6 +161,18 @@ serve(async (req) => {
       // VD kommer att sätta ny cleaner_id via company-propose-substitute
 
       await sb.from("bookings").update(updateFields).eq("id", booking_id);
+
+      // Fas 6.3: logga cleaner_declined för audit-trail
+      await logBookingEvent(sb, booking_id, "cleaner_declined", {
+        actorType: "cleaner",
+        metadata: {
+          cleaner_id: cleaner.id,
+          reason: reason || null,
+          is_company: isCompanyBooking,
+          company_id: cleaner.company_id || null,
+          new_status: newStatus,
+        },
+      });
 
       log("info", "cleaner-booking-response", `Booking ${newStatus}`, {
         booking_id,

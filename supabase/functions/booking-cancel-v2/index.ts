@@ -12,6 +12,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const sb = createClient(
@@ -186,6 +187,20 @@ Deno.serve(async (req) => {
       old_status: oldStatus,
       new_status: "cancelled",
       changed_by: `customer:${customer_email}`,
+    });
+
+    // Fas 6.3: semantisk event i booking_events (booking_status_log blir
+    // ovanför för rå status-audit; denna för timeline-rendering).
+    await logBookingEvent(sb, booking_id, "cancelled_by_customer", {
+      actorType: "customer",
+      metadata: {
+        reason: reason || null,
+        cancelled_at: new Date().toISOString(),
+        from_status: oldStatus,
+        refund_amount_sek: refundAmount,
+        refund_percent: refundPercent,
+        stripe_refund_id: stripeRefundId || null,
+      },
     });
 
     // 8. Notify customer
