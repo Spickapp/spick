@@ -358,6 +358,25 @@ ${cleaner ? `
   </div>
 </div>
 
+${b.escrow_state === 'awaiting_attest' ? `
+<div class="card" style="border:2px solid #F59E0B;background:#FEF3C7">
+  <p style="font-size:.8rem;color:#92400E;font-weight:700;margin-bottom:8px">⚠️ PROBLEM MED STÄDNINGEN?</p>
+  <p style="font-size:.85rem;color:#78350F;line-height:1.5;margin-bottom:12px">
+    Du har 24 timmar att rapportera problem (inte som beskrivet, skada, städare dök inte upp, etc). Om inget händer frigörs pengarna till städaren automatiskt.
+  </p>
+  <button onclick="openDispute('${escHtml(b.id)}')" style="padding:10px 16px;background:#EF4444;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.9rem">
+    Rapportera problem
+  </button>
+</div>` : ''}
+
+${b.escrow_state === 'disputed' ? `
+<div class="card" style="border:2px solid #EF4444;background:#FEE2E2">
+  <p style="font-size:.8rem;color:#991B1B;font-weight:700;margin-bottom:8px">🛡️ ÄRENDE ÖPPNAT</p>
+  <p style="font-size:.85rem;color:#7F1D1D;line-height:1.5">
+    Ditt ärende är mottaget. Vi och städaren granskar informationen. Beslut fattas inom 7 dagar.
+  </p>
+</div>` : ''}
+
 ${isPaid ? `
 <div class="chat-section">
   <p style="font-size:.8rem;color:var(--m);margin-bottom:12px;font-weight:600">💬 CHATT MED STÄDAREN</p>
@@ -624,6 +643,86 @@ function showEmpty() {
   <p style="color:var(--m);margin-bottom:24px">Hittar du inte din bokning? Kolla din e-post eller kontakta oss på <a href="mailto:hello@spick.se" style="color:var(--g)">hello@spick.se</a> eller <a href="tel:+46760505153" style="color:var(--g)">076-050 51 53</a>.</p>
   <a href="boka.html" class="btn btn-primary" style="max-width:280px;margin:0 auto">Boka städning →</a>
 </div>`;
+}
+
+// Fas 8 §8.8: Öppna dispute (customer-side) via dispute-open EF.
+// Visas när escrow_state='awaiting_attest' (24h-window).
+async function openDispute(bookingId) {
+  const reasons = [
+    '1. Inte som beskrivet',
+    '2. Jobbet inte slutfört',
+    '3. Skada uppstod',
+    '4. Städare dök inte upp',
+    '5. Otillräcklig kvalitet',
+    '6. Annat',
+  ];
+  const choice = prompt(
+    'Vad är problemet?\n\n' + reasons.join('\n') + '\n\nAnge siffra 1-6:'
+  );
+  if (!choice) return;
+  const reasonMap = {
+    '1': 'not_as_described',
+    '2': 'incomplete',
+    '3': 'damage',
+    '4': 'no_show',
+    '5': 'quality',
+    '6': 'other',
+  };
+  const reason = reasonMap[(choice || '').trim()];
+  if (!reason) { alert('Ogiltigt val — ange siffra 1-6.'); return; }
+
+  const descriptionRequired = reason === 'other';
+  const description = prompt(
+    descriptionRequired
+      ? 'Beskriv problemet (minst 10 tecken):'
+      : 'Vill du beskriva problemet närmare? (valfritt)'
+  );
+  if (descriptionRequired && (!description || description.trim().length < 10)) {
+    alert('Beskrivning krävs (minst 10 tecken) för "Annat".');
+    return;
+  }
+
+  // Customer JWT från Supabase-session
+  const { data: sess } = await SB.auth.getSession();
+  const token = sess?.session?.access_token;
+  if (!token) {
+    alert('Du måste vara inloggad för att rapportera problem. Ladda om sidan och logga in igen.');
+    return;
+  }
+
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/dispute-open', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify({
+        booking_id: bookingId,
+        reason,
+        customer_description: description ? description.trim() : null,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      const msg = data.error === 'dispute_already_exists'
+        ? 'Du har redan öppnat ett ärende för denna bokning.'
+        : data.error === 'dispute_window_expired'
+        ? 'Tiden för att rapportera problem har gått ut (24h).'
+        : data.error === 'dispute_not_allowed_in_current_state'
+        ? 'Det går inte att rapportera problem nu. Bokningen är inte i rätt status.'
+        : 'Kunde inte öppna ärende: ' + (data.error || 'okänt fel');
+      alert(msg);
+      return;
+    }
+
+    alert('✅ Ärende öppnat. Vi granskar och återkommer inom 7 dagar via e-post.');
+    location.reload();
+  } catch (e) {
+    console.error('openDispute error:', e);
+    alert('Nätverksfel: ' + e.message);
+  }
 }
 
 async function cancelBooking(id) {
