@@ -139,44 +139,77 @@ Nedan är **utkast-text** som underlag till jurist. Kopiera inte rakt av — lå
 
 ---
 
-### Gap 2: Rätt att neka tjänster
+### Gap 2: Rätt att neka tjänster — FARHAD GODKÄND (§5.1-5.2)
+
+**Farhads beslut 2026-04-23:** "Detta är också intressant. Givetvis ändrar du om med egna ord."
 
 **Nuvarande (Spick):** Saknas.
 
 **Hemfrid-ref (§5.1-5.2):** Hemfrid får neka vid respektlöst uppträdande, oriktig info, olämplig utrustning, osäker arbetsmiljö, eller rimliga förutsättningar saknas.
 
-**Utkast:**
-> *"Spick har rätt att ensidigt vägra att utföra Tjänsterna om särskilda skäl föreligger. Med särskilda skäl avses exempelvis att Kunden eller medlemmar i Kundens hushåll inte uppträder på ett respektfullt sätt mot Spicks eller dess underleverantörers personal, har lämnat oriktig information, att utrustning eller material som Kunden tillhandahåller inte är lämpliga för ändamålet, att Kunden inte kan garantera en god och säker arbetsmiljö för personalen, eller att det föreligger omständigheter som gör att Spick bedömer att det saknas rimliga förutsättningar att utföra Tjänsterna i enlighet med Avtalet. Vid sådant nekande har Spick rätt att debitera Kunden enligt gällande prislista."*
+**Utkast (till jurist — 2 underpunkter, omformulerat):**
 
-**Risk om utelämnas:** Städare utsätts för trakasserier utan juridisk grund att avbryta.
+> **§X.1** *Spick har rätt att ensidigt neka eller avbryta utförandet av Tjänsterna om särskilda skäl föreligger. Exempel på särskilda skäl är att Kunden eller någon i Kundens hushåll inte uppträder respektfullt mot den personal som utför Tjänsterna, har lämnat felaktiga uppgifter i strid med Kundens informationsplikt, att utrustning eller material som Kunden tillhandahåller är olämpligt för ändamålet, att Kunden inte kan säkerställa en trygg och säker arbetsmiljö, eller att det i övrigt föreligger omständigheter som gör att rimliga förutsättningar för att utföra Tjänsterna enligt Avtalet saknas.*
 
----
-
-### Gap 3: Nyckelhantering
-
-**Nuvarande (Spick):** Saknas helt.
-
-**Hemfrid-ref (§4.3):** Skriftlig kvittering, 1 mån destruering efter kundavslut, återlämnande på kundens risk, inget ansvar vid postrelaterad förlust.
-
-**Utkast:**
-> *"Spick tar ansvar för nycklar som skriftligen kvitterats ut från Kunden. Om Kunden och Spick kommer överens om att hantera nyckeln på annat sätt sker det på Kundens egen risk. Kunden är skyldig att i samband med Avtalets upphörande hämta upp och kvittera ut nycklar som lämnats till Spick, om inte annat skriftligen avtalats. Om Kunden inte hämtat ut sina nycklar inom en (1) månad från det att Spick meddelat Kunden om att upphämtning ska ske, kommer Spick att se till att nycklarna förstörs. Spick kan på Kundens skriftliga begäran skicka tillbaka nycklar med rekommenderat brev eller på annat sätt. Sådant återlämnande sker dock helt på Kundens risk och Spick bär inget ansvar i samband med detta."*
-
-**Operational impact:** Processen kräver nyckel-loggsystem i dashboard (idag saknas). Flaggas i todo separat om juridiken kräver det.
-
----
-
-### Gap 4: Kundens arbetsmiljö-åtagande
-
-**Nuvarande (Spick):** Saknas.
-
-**Hemfrid-ref (§4.4):** *"Kunden ska tillse att Hemfrids personal vid utförande av Tjänsterna erbjuds en god och säker arbetsmiljö i enlighet med gällande lagar och förordningar."*
+> **§X.2** *Om Spick åberopar rätten att neka eller avbryta ett tjänsteutförande enligt §X.1 har Spick rätt att debitera Kunden enligt gällande prislista för Tjänsten och eventuella nedlagda kostnader i samband med den inställda eller avbrutna insatsen.*
 
 **Lagrum:**
-- Arbetsmiljölagen (1977:1160) 3 kap. 12 § — arbetsplatsen skall vara trygg och säker
-- AFS 2018:4 — Smittrisker (relevant för städare)
+- Arbetsmiljölagen (1977:1160) 3 kap. 2§ — arbetsgivarens skyldighet att förebygga ohälsa/olycksfall
+- Diskrimineringslagen (2008:567) — respekt för personal, rimlig nekanderätt
 
-**Utkast:**
-> *"Kunden ska tillse att Spicks personal (inklusive underleverantörers personal) vid utförande av Tjänsterna erbjuds en god och säker arbetsmiljö i enlighet med gällande arbetsmiljölagstiftning. Kunden ska särskilt informera om förekomsten av farligt material, smittorisker, aggressiva husdjur eller andra omständigheter som kan påverka personalens säkerhet."*
+**Risk om utelämnas:** Städare/underleverantör utsätts för trakasserier utan juridisk grund att avbryta insats.
+
+---
+
+### Gap 3: Kundens åtaganden (§4) — FARHAD GODKÄND med KRITISK ANPASSNING för nycklar
+
+**Farhads beslut 2026-04-23:** "Ansvarsbegränsningen och Kundens åtaganden godkänt." + **explicit förtydligande:**
+
+> *"Vi ska bara säkerställa att om man väljer att dela ut nyckeln till städarna/städfirmorna/underleverantörer är det inget ansvar som Spick tar del av."*
+
+**Kritisk distinktion mot Hemfrid-modellen:**
+- **Hemfrid:** tar själv ansvar för nycklar som kvitterats ut, inklusive destruering, utskick via rekommenderat brev etc.
+- **Spick:** är en förmedlingsplattform — Spick tar ALDRIG emot nycklar, kvitterar aldrig, förvarar aldrig. Om nyckel överlämnas sker det **direkt** mellan Kund och underleverantör, utanför Spicks regi.
+
+**Konsekvens:** Spicks §4.3 är en **friskrivning**, inte en ansvarsförbindelse som Hemfrids.
+
+**Utkast (till jurist — 5 underpunkter, Spick-anpassade):**
+
+> **§X.1 (Tillträde)** *Kunden ska tillse att den personal som utför Tjänsterna för Spicks räkning får tillträde till de utrymmen, samt tillgång till den utrustning och det material, som krävs för att Tjänsterna ska kunna utföras i enlighet med Avtalet. Det kan röra sig om att tillhandahålla städutrustning, instruktioner om portkoder, information om hur man tar sig in i bostaden eller liknande.*
+
+> **§X.2 (Informationsplikt)** *Kunden ska löpande informera om förhållanden i hemmet som kan ha betydelse för Tjänsternas utförande. Det omfattar korrekt information om uppdragets omfattning, samt särskild information om pågående renoveringar, förekomsten av värdefulla eller ömtåliga föremål och material, samt anvisningar om hur sådana ska hanteras. Om Kunden underlåter att lämna sådan information, eller lämnar oriktig information, kan det påverka Spicks och underleverantörernas ansvar enligt §X [ref ansvarsbegränsning].*
+
+> **§X.3 (Nyckelhantering — Spick tar inget ansvar)** *Spick är en förmedlingsplattform och tar aldrig emot, förvarar eller ansvarar för nycklar, passerkort, koder eller andra föremål som ger tillträde till Kundens bostad. Om Kunden väljer att överlämna nyckel eller passerkort till en underleverantör (städare eller städfirma) för att möjliggöra utförandet av Tjänsterna sker sådan överlämning helt utanför Spicks regi och på Kundens eget ansvar. Spick frånsäger sig allt ansvar för förlust, skada eller missbruk av nycklar, passerkort, koder eller liknande som uppstår i samband med sådan direktöverlämning mellan Kund och underleverantör. Kunden rekommenderas att säkerställa att Kundens hemförsäkring omfattar sådana situationer samt att dokumentera nyckelöverlämning skriftligen direkt med underleverantören.*
+
+> **§X.4 (Arbetsmiljö)** *Kunden ska tillse att den personal som utför Tjänsterna vid utförandet erbjuds en god och säker arbetsmiljö i enlighet med gällande lagar och förordningar. Kunden ska särskilt informera om förekomsten av farligt material, smittorisker, aggressiva husdjur eller andra omständigheter som kan påverka personalens säkerhet.*
+
+> **§X.5 (Debitering vid åsidosättande)** *Om Kunden inte fullföljer sina åtaganden enligt detta avsnitt, eller delar av dem, kan Spick komma att debitera Kunden enligt gällande prislista för merarbete, inställd tjänst eller annan följdkostnad som uppkommit på grund av Kundens försummelse.*
+
+**Lagrum:**
+- Arbetsmiljölagen (1977:1160) 3 kap. 12§ — trygg arbetsplats för inhyrd/anlitad personal
+- AFS 2018:4 — Smittrisker (relevant vid städning i hem med sjukdom)
+- Konsumenttjänstlagen (1985:716) §9 — kunden ska informera om omständigheter som påverkar tjänsten
+- Distansavtalslagen (2005:59) — friskrivningens synlighet vid konsumentavtal
+
+**Varför §X.3 är kritisk för Spicks affärsmodell:**
+1. **Spick skalar som plattform** — att ta fysiskt ansvar för nycklar hos hundratals kunder skulle kräva fysiskt kontor, kvittensrutin, arkivering → orimlig overhead
+2. **Försäkrings-komplikation** — om Spick "tar emot" en nyckel, utökas försäkringsansvaret dramatiskt
+3. **GDPR-reducering** — nyckel-logg = personuppgift. Om Spick inte har nycklar har Spick inte den data
+4. **Tre-parts-modellen:** Kund ↔ Underleverantör (städfirma/städare) ↔ Spick (plattform). Nyckelhantering ligger i första relationen, inte mellan Spick och Kund
+
+**Not för jurist:**
+- §X.3 behöver vara **tydligt synlig** i villkoren (inte gömd i fin-print), annars kan Avtalslagen §36 angripa som "oskäligt villkor"
+- Rekommendera att checkboxen vid bokning säger: *"Jag godkänner att nyckelöverlämning (om aktuellt) sker direkt mellan mig och städaren/städfirman, utanför Spicks ansvar"*
+- Jämför med Airbnb-modellen: värd tar emot nyckel, inte plattformen. Uber: transport mellan förare/passagerare, inte Uber
+- Motsvarande friskrivning bör även finnas i **B2B-villkor** (passerkort till kontor)
+
+**Operational impact:** Inget nyckel-loggsystem behövs i dashboard (lättare än Hemfrid-modellen!). Men UI-flöde vid bokning bör tydligt kommunicera detta — flaggas i todo.
+
+---
+
+### Gap 4: Kundens arbetsmiljö-åtagande (FLYTTAD till Gap 3 §X.4 ovan)
+
+**Status:** Integrerad i Gap 3 som §X.4 för att undvika duplikation. Farhad godkänd.
 
 ---
 
