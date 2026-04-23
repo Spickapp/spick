@@ -3994,6 +3994,22 @@ async function heroMarkDone() {
       body: JSON.stringify(patchData)
     });
     if (res.ok) {
+      // Fas 8 §8.2: transitionera escrow-state paid_held → awaiting_attest
+      // (no-op om legacy-booking, EF returnerar 200 noop). Fire-and-forget
+      // så UX inte blockeras.
+      fetch(SUPA_URL + '/functions/v1/cleaner-job-completed', {
+        method: 'POST',
+        headers: _authHeadersLegacy(),
+        body: JSON.stringify({
+          booking_id: bid,
+          metadata: {
+            checkout_lat: patchData.checkout_lat || null,
+            checkout_lng: patchData.checkout_lng || null,
+            completed_at: patchData.completed_at,
+          },
+        }),
+      }).catch(function(e) { console.warn('[escrow-transition skipped]:', e.message); });
+
       btn.textContent = '✅ Klart!';
       btn.style.background = '#065F46';
       showToast('🎉 Jobbet markerat som klart!');
