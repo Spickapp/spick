@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log, ADMIN } from "../_shared/email.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -168,6 +169,15 @@ serve(async (req) => {
         ["Status", "pending_confirmation"],
       ])}
     `));
+    // Fas 10: info — normalt recovery-flöde
+    await sendAdminAlert({
+      severity: "info",
+      title: `Bokning omtilldelad → ${cleaner.full_name}`,
+      source: "booking-reassign",
+      booking_id,
+      cleaner_id: cleaner.id,
+      metadata: { customer: booking.customer_name || "", status: "pending_confirmation" },
+    });
 
     log("info", "booking-reassign", "Booking reassigned", { booking_id, new_cleaner_id: cleaner.id });
     return json({

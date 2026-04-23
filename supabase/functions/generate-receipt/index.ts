@@ -25,6 +25,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, sendEmail, wrap, ADMIN, getMaterialInfo } from "../_shared/email.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -467,6 +468,20 @@ async function notifyAdminEmailFailure(
 `);
   await sendEmail(ADMIN, `⚠️ ${docType} misslyckades — bokning ${bookingId.slice(0, 8)}`, html)
     .catch((e) => console.error("[RECEIPT] Admin notify failed:", (e as Error).message));
+  // Fas 10: warn — kvitto/faktura misslyckades, manuell retry krävs
+  await sendAdminAlert({
+    severity: "warn",
+    title: `${docType} misslyckades`,
+    source: "generate-receipt",
+    message: "Anropa generate-receipt manuellt för retry (idempotent F-R2-7).",
+    booking_id: bookingId,
+    metadata: {
+      doc_type: docType,
+      customer_email: customerEmail,
+      error: errorMsg || "okänt",
+      is_b2b: isB2B,
+    },
+  });
 }
 
 // ─── Email HTML Builder (R2) ────────────────────────────────

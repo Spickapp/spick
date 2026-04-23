@@ -5,6 +5,7 @@ import { notify } from "../_shared/notifications.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 import { formatStockholmDateLong } from "../_shared/timezone.ts";
 import { logBookingEvent } from "../_shared/events.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
@@ -126,6 +127,15 @@ serve(async (req) => {
           ["Tjänst", `${esc(serviceType)}, ${bookingHours}h`],
         ])}
       `));
+      // Fas 10: info — normalt flöde, nice-to-know
+      await sendAdminAlert({
+        severity: "info",
+        title: `Bokning bekräftad: ${cleaner.full_name}`,
+        source: "cleaner-booking-response",
+        booking_id,
+        cleaner_id: cleaner.id,
+        metadata: { customer: customerName, service: serviceType, hours: bookingHours, date: bookingDate },
+      });
 
       log("info", "cleaner-booking-response", "Booking accepted", { booking_id, cleaner_id: cleaner.id });
       return json({ success: true, message: "Bokning bekräftad! Kunden har fått mejl." }, 200, CORS);
@@ -256,6 +266,20 @@ serve(async (req) => {
         ])}
         <p>Kunden har fått mejl med alternativ att välja ny städare eller begära återbetalning. Auto-refund efter 24h.</p>
       `));
+      // Fas 10: warn — kund behöver agera, 24h-window
+      await sendAdminAlert({
+        severity: "warn",
+        title: `Bokning avböjd: ${cleaner.full_name}`,
+        source: "cleaner-booking-response",
+        booking_id,
+        cleaner_id: cleaner.id,
+        metadata: {
+          customer: customerName,
+          customer_email: customerEmail,
+          reason: reason || "Ingen angiven",
+          auto_refund_in_hours: 24,
+        },
+      });
 
       // ── FAS 2: Notifiera VD om detta var en företagsbokning ──
       let companyName: string | null = null;
@@ -344,6 +368,22 @@ serve(async (req) => {
             ])}
             <p>VD har 2h att föreslå ersättare. Efter det eskaleras till awaiting_reassignment automatiskt.</p>
           `));
+          // Fas 10: warn — VD-SLA 2h startar
+          await sendAdminAlert({
+            severity: "warn",
+            title: `Företagsbokning avböjd: ${companyName || "okänt företag"}`,
+            source: "cleaner-booking-response",
+            booking_id,
+            cleaner_id: cleaner.id,
+            company_id: String(cleaner.company_id || ""),
+            metadata: {
+              declined_by: cleaner.full_name,
+              company: companyName || "okänt",
+              customer: customerName,
+              sla_hours: 2,
+              status: "awaiting_company_proposal",
+            },
+          });
         } catch (notifyErr) {
           log("error", "cleaner-booking-response", "Failed to notify company owner", {
             error: (notifyErr as Error).message,

@@ -9,6 +9,7 @@ import { notify } from "../_shared/notifications.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 import { parseStockholmTime } from "../_shared/timezone.ts";
 import { logBookingEvent } from "../_shared/events.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -220,6 +221,19 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
 </div>
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>`)
         );
+        // Fas 10: warn — städare försenad
+        await sendAdminAlert({
+          severity: "warn",
+          title: `Städare ej incheckad: ${b.cleaner_name || "?"}`,
+          source: "auto-remind",
+          booking_id: b.id,
+          cleaner_id: b.cleaner_id || undefined,
+          metadata: {
+            booking_time: b.booking_time || "09:00",
+            minutes_late: Math.round(Math.abs(hoursLeft) * 60),
+            customer: b.customer_name || "–",
+          },
+        });
 
         await sb.from("bookings").update({ reminders_sent: [...alreadySent, "checkin_nudge"] }).eq("id", b.id);
         sent.push(`checkin_nudge:${b.id}`);
@@ -289,6 +303,21 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
 <p>Kunden har fått en refund-länk. Ring städaren och ta reda på vad som hänt.</p>
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>`)
         );
+        // Fas 10: critical — no-show kräver omedelbar action
+        await sendAdminAlert({
+          severity: "critical",
+          title: `No-show: ${b.cleaner_name || "?"}`,
+          source: "auto-remind",
+          message: "Kunden har fått refund-länk. Ring städaren omgående.",
+          booking_id: b.id,
+          cleaner_id: b.cleaner_id || undefined,
+          metadata: {
+            customer: b.customer_name || "–",
+            cleaner_phone: b.cleaner_phone || "–",
+            amount_sek: b.total_price || 0,
+            minutes_since_booking: 60,
+          },
+        });
 
         await sb.from("bookings").update({ reminders_sent: [...alreadySent, "noshow_customer_60"] }).eq("id", b.id);
         sent.push(`noshow_customer_60:${b.id}`);
@@ -340,6 +369,20 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
   <div class="row"><span class="lbl">Adress</span><span class="val">${b.customer_address||"–"}</span></div>
 </div>
 <a href="https://spick.se/admin.html" class="btn">Tilldela städare nu →</a>`));
+        // Fas 10: critical — kräver akut admin-action
+        await sendAdminAlert({
+          severity: "critical",
+          title: `Ingen städare tilldelad (${Math.round(hoursLeft)}h kvar)`,
+          source: "auto-remind",
+          message: "Tilldela städare omgående via admin-panelen.",
+          booking_id: b.id,
+          metadata: {
+            hours_until_booking: Math.round(hoursLeft),
+            service: b.service_type || "Städning",
+            booking_date: b.booking_date,
+            customer: b.customer_name || "–",
+          },
+        });
         await sb.from("bookings").update({reminders_sent:[...alreadySent,"no-cleaner"]}).eq("id",b.id);
         sent.push(`no-cleaner:${b.id}`);
       }
@@ -716,6 +759,21 @@ ${b.payment_intent_id ? `<p><strong>Full återbetalning är på väg</strong> �
 </div>
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>`)
             );
+            // Fas 10: warn — auto-timeout + refund genomförd
+            await sendAdminAlert({
+              severity: "warn",
+              title: `Auto-timeout: ${b.cleaner_name || "?"} svarade inte`,
+              source: "auto-remind",
+              booking_id: b.id,
+              cleaner_id: b.cleaner_id || undefined,
+              metadata: {
+                customer: b.customer_name || "–",
+                service: b.service_type || "Städning",
+                booking_date: b.booking_date,
+                timeout_minutes: TIMEOUT_AFTER_MIN,
+                refund_status: refundStatus,
+              },
+            });
 
             // 6. Mejl till städare
             const cEmail = b.cleaner_email || null;

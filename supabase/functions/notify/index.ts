@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 const sb = createClient(
   "https://urjeijcncsyuletprydy.supabase.co",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -195,6 +196,14 @@ serve(async (req) => {
         </div>
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
+      // Fas 10: parallell webhook-alert
+      await sendAdminAlert({
+        severity: "info",
+        title: `Ny bokning: ${name}`,
+        source: "notify",
+        booking_id: String(r.id || r.booking_id || ""),
+        metadata: { service, date, price_sek: price, has_rut: hasRut, customer_type: r.customer_type || "privat" },
+      });
     }
 
     // ── NY BOKNING TILL STÄDARE ───────────────────────────────
@@ -311,6 +320,18 @@ serve(async (req) => {
         </div>
         <a class="btn" href="https://spick.se/admin.html">Granska ansökan →</a>
       `));
+      // Fas 10: parallell webhook-alert
+      await sendAdminAlert({
+        severity: "info",
+        title: `Ny städaransökan: ${r.full_name || "okänd"}`,
+        source: "notify",
+        metadata: {
+          name: r.full_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || "–",
+          city: r.city || "–",
+          fskatt: r.fskatt_confirmed ? "yes" : (r.fskatt_needs_help ? "needs_help" : "no"),
+          is_company: !!r.is_company,
+        },
+      });
     }
 
     // ── ANSÖKAN BEKRÄFTELSE (från frontend) ────────────────────
@@ -405,6 +426,13 @@ serve(async (req) => {
           <div class="row"><span class="lbl">Email</span><span class="val">${esc(r.email || "–")}</span></div>
         </div>
       `));
+      // Fas 10: parallell webhook-alert
+      await sendAdminAlert({
+        severity: "info",
+        title: `Väntelista: ${r.city || "–"}`,
+        source: "notify",
+        metadata: { city: r.city || "–", email: r.email || "–" },
+      });
     }
 
     // ── NÖJDHETSGARANTI ───────────────────────────────────────
@@ -418,6 +446,14 @@ serve(async (req) => {
         </div>
         <a class="btn" href="https://spick.se/admin.html">Hantera ärende →</a>
       `));
+      // Fas 10: parallell webhook-alert (garantiärende kräver admin-action)
+      await sendAdminAlert({
+        severity: "warn",
+        title: `Garantiärende: ${r.rating}★`,
+        source: "notify",
+        booking_id: String(r.booking_id || ""),
+        metadata: { customer: r.customer_name || r.customer_email, rating: r.rating, comment: r.comment || "–" },
+      });
     }
 
     // ── UPTIME / SSL / RAPPORT ────────────────────────────────
@@ -428,6 +464,13 @@ serve(async (req) => {
         <p>Tid: ${new Date().toLocaleString("sv-SE")}</p>
         <a class="btn" href="https://spick.se">Kontrollera →</a>
       `));
+      // Fas 10: critical — omedelbar åtgärd krävs
+      await sendAdminAlert({
+        severity: "critical",
+        title: "spick.se är nere",
+        source: "notify",
+        message: String(r.message || "Hemsidan svarar inte"),
+      });
     }
     else if (type === "weekly_report") {
       await sendEmail(ADMIN, "📊 Spick Veckorapport", wrap(`
@@ -439,6 +482,17 @@ serve(async (req) => {
         </div>
         <a class="btn" href="https://spick.se/admin.html">Öppna admin →</a>
       `));
+      // Fas 10: info-report
+      await sendAdminAlert({
+        severity: "info",
+        title: "Veckorapport",
+        source: "notify",
+        metadata: {
+          bookings: r.bookings || 0,
+          cleaners: r.cleaners || 0,
+          est_revenue_sek: (r.bookings || 0) * 178,
+        },
+      });
     }
     else if (type === "customer_report") {
       const r = payload.record || {};
@@ -575,6 +629,13 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
           <div class="row"><span class="lbl">Meddelande</span><span class="val">${esc(r.message || "–")}</span></div>
         </div>
       `));
+      // Fas 10: parallell webhook-alert
+      await sendAdminAlert({
+        severity: "info",
+        title: `Kontakt: ${r.subject || "Meddelande"}`,
+        source: "notify",
+        metadata: { name: r.name || "–", email: r.email || "–", subject: r.subject || "–" },
+      });
     }
 
     else if (type === "manual_reply") {
@@ -599,6 +660,20 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
         </div>
         <p><strong>Ring kunden:</strong> <a href="tel:${esc(r.phone)}" style="color:#0F6E56;font-weight:600">${esc(r.phone || "–")}</a></p>
       `));
+      // Fas 10: parallell webhook-alert (B2B-lead, högt värde)
+      await sendAdminAlert({
+        severity: "info",
+        title: `B2B-lead: ${r.company_name || "okänt"}`,
+        source: "notify",
+        metadata: {
+          company: r.company_name || "–",
+          contact: r.contact_name || "–",
+          phone: r.phone || "–",
+          email: r.email || "–",
+          type: r.cleaning_type || "–",
+          frequency: r.frequency || "–",
+        },
+      });
     }
 
     else if (type === "job_started") {
@@ -654,6 +729,14 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
         </div>
         <a href="https://spick.se/admin.html" class="btn">Tilldela ny städare</a>
       `));
+      // Fas 10: warn — kund väntar på ersättare
+      await sendAdminAlert({
+        severity: "warn",
+        title: `Städare avbokade: ${cleanerName}`,
+        source: "notify",
+        booking_id: String(r.booking_id || ""),
+        metadata: { customer: r.customer_name || "–", cleaner: cleanerName },
+      });
     }
 
     else if (type === "chat_message") {
@@ -681,6 +764,14 @@ ${r.message ? `<div class="card"><p style="margin:0;font-style:italic">"${esc(r.
         <p>Certifikatet för spick.se går ut om <b>${r.days_left} dagar</b>!</p>
         <p>Förnya via Loopia Kundzon → spick.se → SSL.</p>
       `));
+      // Fas 10: warn (kritisk om days_left ≤ 3)
+      await sendAdminAlert({
+        severity: (r.days_left !== undefined && r.days_left <= 3) ? "critical" : "warn",
+        title: `SSL expiring in ${r.days_left || "?"} days`,
+        source: "notify",
+        message: "Förnya via Loopia Kundzon → spick.se → SSL",
+        metadata: { days_left: r.days_left || null },
+      });
     }
 
     return new Response(JSON.stringify({ ok: true, type }), {

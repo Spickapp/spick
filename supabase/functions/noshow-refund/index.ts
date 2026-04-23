@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, ADMIN } from "../_shared/email.ts";
 import { logBookingEvent } from "../_shared/events.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -143,6 +144,20 @@ serve(async (req) => {
 <p>Ring städaren och följ upp. Överväg varning om detta upprepas.</p>
 <a href="https://spick.se/admin.html" class="btn">Öppna admin</a>`)
     );
+    // Fas 10: warn — no-show rapporterat, kräver uppföljning med städare
+    await sendAdminAlert({
+      severity: "warn",
+      title: `No-show refund: ${cleanerName}`,
+      source: "noshow-refund",
+      booking_id: bid,
+      cleaner_id: booking.cleaner_id || undefined,
+      metadata: {
+        customer: booking.customer_name || "–",
+        cleaner_phone: booking.cleaner_phone || "–",
+        amount_sek: booking.total_price || 0,
+        refund_status: refundStatus,
+      },
+    });
 
     return new Response(JSON.stringify({ ok: true, refund: refundStatus }), {
       headers: { ...CORS, "Content-Type": "application/json" },

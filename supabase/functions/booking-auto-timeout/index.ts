@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, log, ADMIN } from "../_shared/email.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
@@ -122,6 +123,18 @@ serve(async (req) => {
       <p>${results.length} bokning(ar) hade väntat mer än ${TIMEOUT_HOURS}h utan svar och har avbokats.</p>
       <pre style="background:#F7F7F5;padding:12px;border-radius:8px;font-size:13px;white-space:pre-wrap">${esc(summary)}</pre>
     `));
+    // Fas 10: warn — bulk-timeout indikerar systemisk problem om > 1
+    await sendAdminAlert({
+      severity: results.length > 1 ? "warn" : "info",
+      title: `${results.length} bokning(ar) auto-timeout:ade`,
+      source: "booking-auto-timeout",
+      metadata: {
+        count: results.length,
+        timeout_hours: TIMEOUT_HOURS,
+        refund_successes: results.filter((r) => r.refund === "initiated").length,
+        refund_failures: results.filter((r) => r.refund === "failed" || r.refund === "error").length,
+      },
+    });
 
     return json({
       success: true,
