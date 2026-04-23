@@ -254,19 +254,44 @@ WHERE created_at >= NOW() - INTERVAL '48 hours'
 GROUP BY matching_algorithm_version;
 
 -- Företag-andel av nya bokningar (= Model-4c-värdet konkret)
+-- Notering: bookings-tabellen har INGEN direkt company_id-kolumn
+-- (verifierat mot 00005_fas_2_1_bookings.sql). Vi JOIN:ar cleaners.
 SELECT 
-  COUNT(*) FILTER (WHERE company_id IS NOT NULL) AS company_bookings,
-  COUNT(*) FILTER (WHERE company_id IS NULL) AS solo_bookings,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE company_id IS NOT NULL) / NULLIF(COUNT(*), 0), 1) AS company_pct
-FROM bookings
-WHERE created_at >= NOW() - INTERVAL '48 hours';
+  COUNT(*) FILTER (WHERE c.company_id IS NOT NULL) AS company_bookings,
+  COUNT(*) FILTER (WHERE c.company_id IS NULL) AS solo_bookings,
+  ROUND(
+    100.0 * COUNT(*) FILTER (WHERE c.company_id IS NOT NULL) 
+    / NULLIF(COUNT(*), 0), 
+    1
+  ) AS company_pct
+FROM bookings b
+LEFT JOIN cleaners c ON b.cleaner_id = c.id
+WHERE b.created_at >= NOW() - INTERVAL '48 hours';
 
 -- Avvisnings-rate per primär cleaner
+-- Notering: korrekta status-värden enligt bookings_status_check-constraint:
+-- 'rejected_by_cleaner' (inte 'rejected'), 'awaiting_reassignment',
+-- 'awaiting_company_proposal'.
 SELECT 
   cleaner_id,
-  COUNT(*) FILTER (WHERE status IN ('rejected', 'awaiting_reassignment', 'awaiting_company_proposal')) AS declined,
+  COUNT(*) FILTER (
+    WHERE status IN (
+      'rejected_by_cleaner',
+      'awaiting_reassignment',
+      'awaiting_company_proposal'
+    )
+  ) AS declined,
   COUNT(*) AS total,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE status IN ('rejected', 'awaiting_reassignment', 'awaiting_company_proposal')) / NULLIF(COUNT(*), 0), 1) AS decline_pct
+  ROUND(
+    100.0 * COUNT(*) FILTER (
+      WHERE status IN (
+        'rejected_by_cleaner',
+        'awaiting_reassignment',
+        'awaiting_company_proposal'
+      )
+    ) / NULLIF(COUNT(*), 0),
+    1
+  ) AS decline_pct
 FROM bookings
 WHERE created_at >= NOW() - INTERVAL '48 hours'
   AND cleaner_id IS NOT NULL
