@@ -677,6 +677,40 @@ async function handleRefund(charge: Record<string, unknown>) {
       reason: "stripe_refund",
     },
   });
+
+  // Fas 8 §8.7/§8.14: om booking är i resolved_full_refund (efter
+  // dispute-admin-decide full_refund), transitionera till refunded.
+  // Legacy-bokningar (escrow_state='released_legacy') eller andra
+  // states skippas — bara dispute-driven refunds triggar state-change.
+  if (booking.escrow_state === "resolved_full_refund") {
+    try {
+      const transRes = await fetch(`${SUPABASE_URL}/functions/v1/escrow-state-transition`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          action: "transfer_full_refund",
+          triggered_by: "system_webhook",
+          metadata: {
+            stripe_charge_id: (charge.id as string) || null,
+            stripe_payment_intent_id: paymentIntentId,
+            amount_refunded_sek: Math.round(refundAmount),
+          },
+        }),
+      });
+      if (!transRes.ok) {
+        console.warn("[SPICK] escrow-state-transition after refund failed:", {
+          booking_id: booking.id,
+          status: transRes.status,
+        });
+      }
+    } catch (e) {
+      console.warn("[SPICK] escrow-state-transition exception:", (e as Error).message);
+    }
+  }
   const fname = booking.customer_name?.split(" ")[0] || "där";
 
   await sendEmail(
