@@ -45,7 +45,7 @@ Läs dessa filer i EXAKT denna ordning. Ingen skippning.
 
 4. `CLAUDE.md` — projektkontext.
 5. `docs/v3-phase1-progress.md` — aktuellt fas-läge, öppna TODOs.
-6. `docs/sessions/SESSION-HANDOFF_2026-04-27-c2-m4b.md` — **senaste handoff (39 commits 2026-04-23)**. Om nyare finns via `ls docs/sessions/` alfabetisk-sort → läs SENASTE istället.
+6. `docs/sessions/SESSION-HANDOFF_2026-04-28-fas8-escrow-complete.md` — **senaste handoff (55+ commits, Fas 8 0% → 96% + escrow_v2 LIVE-verifierat)**. Om nyare finns via `ls docs/sessions/` alfabetisk-sort → läs SENASTE istället.
 
 ### C. Audits-läsning vid behov (ej obligatorisk)
 
