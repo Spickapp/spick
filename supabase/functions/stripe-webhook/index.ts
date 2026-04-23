@@ -22,14 +22,31 @@ import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { sendMagicSms } from "../_shared/send-magic-sms.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 
-const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
-const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
-const SUPABASE_URL          = "https://urjeijcncsyuletprydy.supabase.co";
-const SUPABASE_SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const FROM                  = "Spick <hello@spick.se>";
-const ADMIN                 = "hello@spick.se";
+const STRIPE_SECRET_KEY       = Deno.env.get("STRIPE_SECRET_KEY")!;
+const STRIPE_SECRET_KEY_TEST  = Deno.env.get("STRIPE_SECRET_KEY_TEST") || "";
+const RESEND_API_KEY          = Deno.env.get("RESEND_API_KEY")!;
+const SUPABASE_URL            = "https://urjeijcncsyuletprydy.supabase.co";
+const SUPABASE_SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const FROM                    = "Spick <hello@spick.se>";
+const ADMIN                   = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+/**
+ * Dual-key Stripe: välj secret för API-anrop baserat på event.livemode.
+ * Stripe's native livemode-flag (true för live, false för test) styr
+ * vilken secret som används för verification-call och downstream API.
+ * Fail-safe: om test-event och STRIPE_SECRET_KEY_TEST saknas → fallback
+ * live (Stripe API returnerar då 404 → isReal=false → event hoppas över,
+ * vilket är korrekt defensiv behavior).
+ */
+function stripeKeyForEvent(event: Record<string, unknown>): string {
+  const isLive = event.livemode !== false; // default true om fältet saknas
+  if (!isLive && STRIPE_SECRET_KEY_TEST) {
+    return STRIPE_SECRET_KEY_TEST;
+  }
+  return STRIPE_SECRET_KEY;
+}
 
 // ── Smart Auto-Confirm trösklar ────────────────────────────
 const AUTO_CONFIRM_MIN_JOBS = 5;
@@ -43,15 +60,34 @@ function isExperiencedCleaner(cleaner: any): boolean {
 }
 
 // ── Stripe event verification via API ───────────────────────────────────────
-async function verifyEventWithStripe(eventId: string): Promise<boolean> {
+async function verifyEventWithStripe(eventId: string, stripeKey: string): Promise<boolean> {
   try {
     const res = await fetch(`https://api.stripe.com/v1/events/${eventId}`, {
-      headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}` }
+      headers: { "Authorization": `Bearer ${stripeKey}` }
     });
     return res.ok;
   } catch {
     return false;
   }
+}
+
+/**
+ * Resolve Stripe key för code-paths som saknar event-context
+ * (t.ex. capturePayment från stadare-dashboard). Läser platform_settings
+ * flag. Samma logik som booking-create.
+ */
+async function resolveStripeKeyFromFlag(): Promise<string> {
+  try {
+    const { data } = await sb
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "stripe_test_mode")
+      .single();
+    if (data?.value === 'true' && STRIPE_SECRET_KEY_TEST) {
+      return STRIPE_SECRET_KEY_TEST;
+    }
+  } catch (_) { /* fallback live */ }
+  return STRIPE_SECRET_KEY;
 }
 
 // ── Email wrapper ──────────────────────────────────────────────────────────
@@ -202,10 +238,10 @@ async function assignBestCleaner(booking: Record<string, unknown>): Promise<Reco
 }
 
 // ── Betalning lyckades ─────────────────────────────────────────────────────
-async function handlePaymentSuccess(session: Record<string, unknown>) {
+async function handlePaymentSuccess(session: Record<string, unknown>, stripeKey: string = STRIPE_SECRET_KEY) {
   // ── Subscription setup (mode=setup) ────────────────
   if (session.mode === 'setup' && (session.metadata as Record<string, string>)?.type === 'subscription_setup') {
-    await handleSubscriptionSetup(session);
+    await handleSubscriptionSetup(session, stripeKey);
     return;
   }
 
@@ -267,7 +303,7 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
       try {
         const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
           method: "POST",
-          headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+          headers: { Authorization: `Bearer ${stripeKey}`, "Content-Type": "application/x-www-form-urlencoded" },
           body: `payment_intent=${session.payment_intent}`,
         });
         console.log("Auto-refund result:", refundRes.status);
@@ -598,6 +634,7 @@ async function handleRefund(charge: Record<string, unknown>) {
 
 // ── FÅNGA BETALNING (escrow → faktisk debitering) ─────────────────────────
 async function capturePayment(bookingId: string) {
+  const stripeKey = await resolveStripeKeyFromFlag();
   const { data: booking } = await sb.from("bookings")
     .select("payment_intent_id,total_price,customer_email,service_type")
     .eq("id", bookingId).single();
@@ -610,7 +647,7 @@ async function capturePayment(bookingId: string) {
     {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+        "Authorization": `Bearer ${stripeKey}`,
         "Content-Type": "application/x-www-form-urlencoded"
       }
     }
@@ -626,7 +663,7 @@ async function capturePayment(bookingId: string) {
 }
 
 // ── Subscription setup (kort-registrering) ────────────────────────────────
-async function handleSubscriptionSetup(session: Record<string, unknown>) {
+async function handleSubscriptionSetup(session: Record<string, unknown>, stripeKey: string = STRIPE_SECRET_KEY) {
   const metadata = session.metadata as Record<string, string>;
   const subscriptionId = metadata?.subscription_id;
   const customerEmail = metadata?.customer_email;
@@ -640,14 +677,14 @@ async function handleSubscriptionSetup(session: Record<string, unknown>) {
 
   // Hämta SetupIntent → PaymentMethod
   const siRes = await fetch(`https://api.stripe.com/v1/setup_intents/${setupIntentId}`, {
-    headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+    headers: { Authorization: `Bearer ${stripeKey}` },
   });
   const setupIntent = await siRes.json();
   const paymentMethodId = setupIntent.payment_method;
 
   // Hämta kort-detaljer
   const pmRes = await fetch(`https://api.stripe.com/v1/payment_methods/${paymentMethodId}`, {
-    headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+    headers: { Authorization: `Bearer ${stripeKey}` },
   });
   const pm = await pmRes.json();
 
@@ -655,7 +692,7 @@ async function handleSubscriptionSetup(session: Record<string, unknown>) {
   await fetch(`https://api.stripe.com/v1/customers/${stripeCustomerId}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+      Authorization: `Bearer ${stripeKey}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
@@ -847,8 +884,14 @@ serve(async (req) => {
   try { event = JSON.parse(body); } catch { return new Response("Bad JSON", { status: 400 }); }
 
   const eventId = event.id as string;
+  // Dual-key: välj Stripe secret baserat på event.livemode (native flag)
+  const stripeKey = stripeKeyForEvent(event);
+  const isTestEvent = event.livemode === false;
+  if (isTestEvent) {
+    console.log(`[stripe-webhook] TEST event received: ${eventId} (${event.type})`);
+  }
   if (eventId) {
-    const isReal = await verifyEventWithStripe(eventId);
+    const isReal = await verifyEventWithStripe(eventId, stripeKey);
     if (!isReal) {
       console.error("Event verification failed:", eventId);
       return new Response("Unauthorized", { status: 401 });
@@ -873,7 +916,7 @@ serve(async (req) => {
   try {
     switch (event.type) {
       case "checkout.session.completed":
-        await handlePaymentSuccess(event.data.object as Record<string, unknown>);
+        await handlePaymentSuccess(event.data.object as Record<string, unknown>, stripeKey);
         break;
       case "payment_intent.payment_failed":
         await handlePaymentFailed(event.data.object as Record<string, unknown>);

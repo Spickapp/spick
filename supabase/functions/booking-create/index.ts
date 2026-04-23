@@ -39,8 +39,36 @@ import { logBookingEvent } from "../_shared/events.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const STRIPE_KEY      = Deno.env.get("STRIPE_SECRET_KEY")!;
+const STRIPE_KEY_LIVE = Deno.env.get("STRIPE_SECRET_KEY")!;
+const STRIPE_KEY_TEST = Deno.env.get("STRIPE_SECRET_KEY_TEST") || "";
 const BASE_URL        = Deno.env.get("BASE_URL") || "https://spick.se";
+
+/**
+ * Resolve Stripe secret key baserat på platform_settings.stripe_test_mode.
+ * Dual-key infrastructure — låter Farhad toggla test/live utan kod-ändring.
+ * Fail-safe: om flag=true men STRIPE_SECRET_KEY_TEST saknas → fallback live
+ * (loggas som warning — förhindrar betalnings-downtime).
+ */
+async function resolveStripeKey(supabase: any): Promise<{ key: string; mode: 'test' | 'live' }> {
+  try {
+    const { data } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "stripe_test_mode")
+      .single();
+    const testMode = data?.value === 'true';
+    if (testMode) {
+      if (!STRIPE_KEY_TEST) {
+        console.warn("[booking-create] stripe_test_mode=true but STRIPE_SECRET_KEY_TEST not set — falling back to live");
+        return { key: STRIPE_KEY_LIVE, mode: 'live' };
+      }
+      return { key: STRIPE_KEY_TEST, mode: 'test' };
+    }
+  } catch (e) {
+    console.warn("[booking-create] stripe_test_mode lookup failed, using live:", (e as Error).message);
+  }
+  return { key: STRIPE_KEY_LIVE, mode: 'live' };
+}
 
 serve(async (req) => {
   const CORS = corsHeaders(req);
@@ -56,6 +84,12 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // Dual-key Stripe: resolve key based on platform_settings.stripe_test_mode
+    const { key: STRIPE_KEY, mode: stripeMode } = await resolveStripeKey(supabase);
+    if (stripeMode === 'test') {
+      console.log("[booking-create] STRIPE TEST MODE aktivt");
+    }
 
     // ── 1. PARSE + VALIDATE INPUT ──────────────────
     const body = await req.json();
