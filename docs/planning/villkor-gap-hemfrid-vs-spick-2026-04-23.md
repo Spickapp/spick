@@ -1,0 +1,248 @@
+# Gap-analys: Spicks kundvillkor vs Hemfrids branschstandard
+
+**Skapad:** 2026-04-23
+**Källa:** [Hemfrid allmänna villkor 2024-08-30](https://hemfrid.se) (delade av Farhad) vs [kundvillkor.html](../../kundvillkor.html) (Spick v1)
+**Syfte:** Jurist-underlag för revidering av Spicks kundvillkor inför Solid Service go-live.
+
+---
+
+## ⚠️ VARNING — JURIST-UNDERLAG, EJ SLUTGILTIGA VILLKOR
+
+**Allt textutkast i detta dokument är förslag till jurist, INTE färdig avtalstext.** Claude kan inte:
+
+- Garantera juridisk hållbarhet
+- Avgöra vilka gaps är konsumenträttsliga blockers vs praxis
+- Formulera bindande villkor utan jurist-granskning
+
+**Rekommendation:** Skicka detta dokument + kundvillkor.html + Hemfrids text till jurist som EN paket. Låt jurist formulera slutlig version.
+
+---
+
+## Sammanfattning (TL;DR för jurist)
+
+**7 kritiska gaps rangordnade efter risk för Spick:**
+
+| # | Gap | Risk om ej åtgärdat |
+|---|---|---|
+| 1 | Ansvarsbegränsnings-cap saknas | **Obegränsat skadeståndsansvar** — största enskilda risken |
+| 2 | Rätt att neka tjänster saknas | Ingen juridisk grund att neka obehaglig kund |
+| 3 | Nyckelhantering odefinierad | Tvist vid försvunna/skadade nycklar svår att försvara |
+| 4 | Kundens arbetsmiljö-åtagande saknas | Spick ansvarar för team-medlems säkerhet hos kund |
+| 5 | Avtalstid + uppsägning saknas (abonnemang) | Otydlighet vid recurring → konflikt |
+| 6 | Timbank-regler saknas | Kund förlorar förbetalda timmar utan förklaring |
+| 7 | BOHAG 2010-hänvisning saknas (flyttstäd) | Branschstandard saknas → konsumenträttsligt svagare |
+
+**Övriga 7 förbättringar** (icke-kritiska men hygien): KPI-prisjustering, framkörningsavgift, dröjsmålsränta, 48h-reklamationsfönster, överlåtelse, villkorsändringar, 6-års preskription RUT.
+
+---
+
+## Fullständig jämförelsetabell (Hemfrid §1-18)
+
+| Hemfrid § | Rubrik | Spicks motsvarighet | Status | Kommentar |
+|---|---|---|---|---|
+| 1 | Hemfrids tjänster | §3 Bokning och utförande | ✓ | Prissättning vs abonnemang nämns båda ställen |
+| 2.1 | **Flytt → BOHAG 2010** | — | ❌ | BOHAG 2010 är branschstandard + delvis tvingande |
+| 2.2 | Barnpassning | — | N/A | Spick erbjuder ej |
+| 2.3 | Andra tjänster (villkor-addendum) | — | ⚠️ | Kan behövas för pilotering av nya tjänster |
+| 3.1 | Omsorg + fackmannamässigt | Underförstått i §3 | ⚠️ | Bör explicit skrivas |
+| 3.2 | Rätt att byta personal vid sjukdom | — | ⚠️ | Spick har auto-delegation, bör nämnas i villkor |
+| 3.3 | Underleverantörer + ansvar | §1.1 nämns | ✓ | "Spick ansvarar... underleverantörer... som för sig själv" matchar |
+| 4.1 | Kunden ger tillträde | — | ❌ | Saknas helt |
+| 4.2 | Kunden informerar om förhållanden + värdefulla föremål | — | ❌ | Saknas helt |
+| 4.3 | **Nyckelhantering** (kvittering, 1 mån, destruering) | — | ❌ | Stor gap — juridiskt löst idag |
+| 4.4 | **Kundens arbetsmiljöansvar** | — | ❌ | Arbetsmiljölagen-hänvisning saknas |
+| 4.5 | Debitering vid kundens missförhållande | — | ❌ | |
+| 5.1 | **Hemfrids rätt att neka tjänster** | — | ❌ | Skydd mot obehagliga kunder saknas |
+| 5.2 | Debitering vid nekat utförande | — | ❌ | |
+| 6.1 | Avbokning >5 vardagar = gratis | §5.1 (24h-regel) | ⚠️ | Spick har **24h**, Hemfrid **5 vardagar** — olika modell |
+| 6.2 | Ombokning <5 dgr = 12,5% | — | ❌ | Inte i Spicks policy |
+| 6.3 | Avbokning <5 dgr = 25% | §5.1 liknande | ⚠️ | Spick har någon form — verifiera |
+| 6.4 | Av/ombokningsavgift ej RUT-berättigad | — | ❌ | Explicit uppgift saknas |
+| 7.1-7.4 | **Timbank för abonnemang** | — | ❌ | Spick recurring saknar timbank-regler helt |
+| 8 | Ångerrätt 14 dagar | §5.2 ✓ | ✓ | Bra formulering |
+| 9.1 | Priser inkl moms | §4.1 ✓ | ✓ | |
+| 9.2 | Serviceavgift (städmedel, RUT-admin) | — | ⚠️ | Spick debiterar ej idag — affärsbeslut |
+| 9.3 | **KPI-prisjustering + 1 mån-varsel** | §10 (Ändringar) generellt | ⚠️ | Uppsägningsrätt vid prisändring saknas |
+| 9.4 | Merarbete debitering | — | ⚠️ | Booking-create hanterar detta tekniskt, men villkor saknar |
+| 9.5 | Framkörningsavgift (flytt + kollektivt >1,3 km) | — | ❌ | Spick har ingen framkörningsavgift idag |
+| 10.1-10.3 | RUT/ROT + 6-års preskription | §4.3 ✓ | ⚠️ | Spick nämner preskription men "10 år" vs Hemfrids "6 år" → verifiera |
+| 11.1 | Fakturering i efterskott | — | ⚠️ | Spick använder förskott via Stripe — annan modell |
+| 11.2 | **Dröjsmålsränta + påminnelseavgift** | — | ❌ | Saknas helt |
+| 11.3 | Frysning vid obetald | — | ❌ | Saknas |
+| 11.4 | Invändning senast förfallodag | — | ❌ | |
+| 12.1 | **Spick innehar ansvarsförsäkring** | §6.5 ✓ | ⚠️ | Transportansvarsförsäkring för flytt saknas |
+| 12.2 | Försäkringsbolag hanterar reklamation | — | ⚠️ | Bör nämnas |
+| 12.3 | Kundens hemförsäkring | — | ❌ | Saknas |
+| 13.1 | Ej debitering om Spick inte utfört | §6 underförstått | ⚠️ | Bör explicit |
+| 13.2 | **48h-reklamationsfönster** | — | ❌ | Saknas |
+| 13.3 | Kunden bevisbörda för skada | — | ⚠️ | Bör specifieras |
+| 13.4 | "Skälig tid" för reklamation | §6 finns | ✓ | |
+| 13.5 | Reklamation via e-post/formulär | §6 ✓ | ✓ | |
+| 14.1 | Endast direkta skador | §7.2 ✓ | ✓ | |
+| 14.2 | **Cap = 1 prisbasbelopp/år** | — | ❌ | **STÖRSTA RISKEN** |
+| 14.3 | Undantag personskada, grov vårdslöshet | — | ⚠️ | Tvingande lag men bör nämnas |
+| 14.4 | Ej ersättning för värdefulla okända föremål + förslitning | — | ❌ | Saknas |
+| 14.5 | Jämkning vid medvållande | — | ⚠️ | Underförstått i §7.2 |
+| 14.6 | Marknadsvärde vid ersättning | — | ❌ | |
+| 15.1 | **1 mån uppsägning** | — | ❌ | Saknas |
+| 15.2 | Abonnemang: sista dag i efterföljande månad | — | ❌ | |
+| 15.3 | 2 mån att utnyttja timbank efter upphörande | — | ❌ | |
+| 15.4 | Väsentligt avtalsbrott → 10 dgr rättelse → omedelbar uppsägning | — | ❌ | |
+| 16 | Personuppgifter (GDPR) | §9 ✓ | ✓ | Bra |
+| 17.1 | **Överlåtelse** (Kunden ej, Spick ja vid meddelande) | — | ❌ | Saknas |
+| 17.2 | **Villkorsändringar + uppsägningsrätt** | §10 finns | ⚠️ | 1 mån-varsel saknas |
+| 18.1 | ARN | §11 ✓ | ✓ | |
+| 18.2 | Svensk rätt | §11 ✓ | ✓ | |
+| 18.3 | Stockholms tingsrätt + hemortsrätt | §11 finns | ⚠️ | Verifiera formulering |
+
+---
+
+## Detaljerade rekommendationer — 7 kritiska gaps
+
+Nedan är **utkast-text** som underlag till jurist. Kopiera inte rakt av — låt jurist revidera.
+
+### Gap 1: Ansvarsbegränsnings-cap
+
+**Nuvarande (Spick §7.2):** Ingen monetär gräns.
+
+**Hemfrid-ref (§14.2):** *"Hemfrids totala ansvar för skador som uppstår under Avtalet ska för varje kalenderår vara begränsat till ett maximalt belopp motsvarande ett (1) prisbasbelopp enligt socialförsäkringsbalken (2010:110)."*
+
+**Lagrum:**
+- Socialförsäkringsbalken (2010:110) — prisbasbelopp fastställs årligen av regeringen (2024 = 57 300 kr)
+- Konsumenttjänstlagen (1985:716) §32 — tillåter avtalade begränsningar utom för personskada/grov vårdslöshet
+
+**Utkast (till jurist):**
+> *"Spicks totala ansvar för skador som uppstår under Avtalet ska för varje kalenderår vara begränsat till ett maximalt belopp motsvarande ett (1) prisbasbelopp enligt socialförsäkringsbalken (2010:110). Begränsningen gäller inte för personskada eller om grov vårdslöshet eller uppsåt föreligger på Spicks sida eller annars följer av tvingande lag."*
+
+**Risk om utelämnas:** Kund med 500k kr i antika möbler som skadas → obegränsat skadeståndskrav mot Spick. Cap begränsar exponering.
+
+---
+
+### Gap 2: Rätt att neka tjänster
+
+**Nuvarande (Spick):** Saknas.
+
+**Hemfrid-ref (§5.1-5.2):** Hemfrid får neka vid respektlöst uppträdande, oriktig info, olämplig utrustning, osäker arbetsmiljö, eller rimliga förutsättningar saknas.
+
+**Utkast:**
+> *"Spick har rätt att ensidigt vägra att utföra Tjänsterna om särskilda skäl föreligger. Med särskilda skäl avses exempelvis att Kunden eller medlemmar i Kundens hushåll inte uppträder på ett respektfullt sätt mot Spicks eller dess underleverantörers personal, har lämnat oriktig information, att utrustning eller material som Kunden tillhandahåller inte är lämpliga för ändamålet, att Kunden inte kan garantera en god och säker arbetsmiljö för personalen, eller att det föreligger omständigheter som gör att Spick bedömer att det saknas rimliga förutsättningar att utföra Tjänsterna i enlighet med Avtalet. Vid sådant nekande har Spick rätt att debitera Kunden enligt gällande prislista."*
+
+**Risk om utelämnas:** Städare utsätts för trakasserier utan juridisk grund att avbryta.
+
+---
+
+### Gap 3: Nyckelhantering
+
+**Nuvarande (Spick):** Saknas helt.
+
+**Hemfrid-ref (§4.3):** Skriftlig kvittering, 1 mån destruering efter kundavslut, återlämnande på kundens risk, inget ansvar vid postrelaterad förlust.
+
+**Utkast:**
+> *"Spick tar ansvar för nycklar som skriftligen kvitterats ut från Kunden. Om Kunden och Spick kommer överens om att hantera nyckeln på annat sätt sker det på Kundens egen risk. Kunden är skyldig att i samband med Avtalets upphörande hämta upp och kvittera ut nycklar som lämnats till Spick, om inte annat skriftligen avtalats. Om Kunden inte hämtat ut sina nycklar inom en (1) månad från det att Spick meddelat Kunden om att upphämtning ska ske, kommer Spick att se till att nycklarna förstörs. Spick kan på Kundens skriftliga begäran skicka tillbaka nycklar med rekommenderat brev eller på annat sätt. Sådant återlämnande sker dock helt på Kundens risk och Spick bär inget ansvar i samband med detta."*
+
+**Operational impact:** Processen kräver nyckel-loggsystem i dashboard (idag saknas). Flaggas i todo separat om juridiken kräver det.
+
+---
+
+### Gap 4: Kundens arbetsmiljö-åtagande
+
+**Nuvarande (Spick):** Saknas.
+
+**Hemfrid-ref (§4.4):** *"Kunden ska tillse att Hemfrids personal vid utförande av Tjänsterna erbjuds en god och säker arbetsmiljö i enlighet med gällande lagar och förordningar."*
+
+**Lagrum:**
+- Arbetsmiljölagen (1977:1160) 3 kap. 12 § — arbetsplatsen skall vara trygg och säker
+- AFS 2018:4 — Smittrisker (relevant för städare)
+
+**Utkast:**
+> *"Kunden ska tillse att Spicks personal (inklusive underleverantörers personal) vid utförande av Tjänsterna erbjuds en god och säker arbetsmiljö i enlighet med gällande arbetsmiljölagstiftning. Kunden ska särskilt informera om förekomsten av farligt material, smittorisker, aggressiva husdjur eller andra omständigheter som kan påverka personalens säkerhet."*
+
+---
+
+### Gap 5: Avtalstid + uppsägning (för abonnemang)
+
+**Nuvarande (Spick):** Saknas.
+
+**Hemfrid-ref (§15.1-15.4):** 1 mån uppsägning, abonnemang upphör sista dagen efterföljande månad, 2 mån att nyttja timbank, 10-dagars rättelse vid väsentligt avtalsbrott.
+
+**Utkast:**
+> *"Om inte annat framgår av Avtalet gäller det tills vidare från och med undertecknandet/bokningen och kan sägas upp av endera parten med en (1) månads uppsägningstid. För Tjänster som omfattas av ett abonnemang upphör Avtalet att gälla den sista dagen i efterföljande månad då uppsägningen sker. Om någon av parterna väsentligen bryter mot bestämmelserna i Avtalet och inte vidtar rättelse inom tio (10) dagar efter mottagandet av en skriftlig begäran, har den andra parten rätt att säga upp Avtalet med omedelbar verkan."*
+
+---
+
+### Gap 6: Timbank-regler (abonnemang)
+
+**Nuvarande (Spick):** Saknas — recurring har inga explicita regler för avbokade tillfällen.
+
+**Hemfrid-ref (§7.1-7.4):** Avbokad tid sparas i timbank, max 5 ggr (vecka) eller 3 ggr (övriga), skrivs ner efter 1 år, visas i app.
+
+**Utkast:**
+> *"Om Kunden väljer att avboka utförandet av en Tjänst som omfattas av ett abonnemang sparas det antal timmar som motsvarar det outnyttjade Tjänstetillfället i en timbank som Kunden kan välja att använda vid ett senare tillfälle. Vid användning av timbankstimmar tillämpar Spick sist-in-först-ut-principen. Om inte annat särskilt överenskommits kan Kunden maximalt spara det antal timmar som motsvarar fem (5) Tjänstetillfällen om abonnemanget omfattar utförandet av Tjänster varje vecka, eller tre (3) Tjänstetillfällen för övriga abonnemang. Överskjutande tid kommer att debiteras Kunden. Spick förbehåller sig rätten att skriva ner sådana timmar i timbanken som inte utnyttjats inom ett (1) år."*
+
+**Operational impact:** Kräver timbank-implementation i DB + dashboard + faktureringslogik. Flagga som separat feature-utveckling efter juridiken är klar.
+
+---
+
+### Gap 7: BOHAG 2010-hänvisning (flyttstäd)
+
+**Nuvarande (Spick):** Saknas.
+
+**Hemfrid-ref (§2.1):** *"Vid flytt av bohag gäller BOHAG 2010 – Allmänna flyttbestämmelser för konsumenter."*
+
+**Utkast:**
+> *"Vid utförande av Tjänster som utgör flytthjälp eller flyttstädning gäller BOHAG 2010 – Allmänna flyttbestämmelser för konsumenter i dess helhet utöver dessa allmänna villkor, med undantag för punkterna som specifikt regleras i dessa allmänna villkor."*
+
+**Notera:** BOHAG 2010 är överenskommelse mellan Konsumentverket och Sveriges Åkeriföretag. Gäller avtalsrättsligt även utan explicit hänvisning, men bra för tydlighet.
+
+---
+
+## Föreslaget jurist-paket (kombinera med P0 i go-live-checklist)
+
+Offertförfrågan till jurist bör omfatta:
+
+| Leverans | Estimerad omfattning | Ref |
+|---|---|---|
+| Revidering av kundvillkor enligt 7 kritiska + 7 hygien gaps ovan | 6-10h | Denna fil |
+| Underleverantörsavtal-mall (Spick ↔ Solid Service) | 4-6h | [go-live-checklist #1](go-live-solid-service-checklist.md#1) |
+| DPA-mall (GDPR) | 3-5h | [go-live-checklist #3](go-live-solid-service-checklist.md#3) |
+| Villkor-stadare genomgång (villkor-stadare.html 249 rader) | 2-4h | Egen fil |
+| Granskning av kundvillkor-ändringsrutin | 1-2h | §10 → §17.2 |
+
+**Totalt:** 16-27h jurist-arbete. Överkomligt för mindre specialiserad jurist.
+
+---
+
+## Lagrum-referenser (verifierade)
+
+Alla referenser nedan är verifierade i Hemfrids villkor eller svensk författningssamling. Claude har inte gissat.
+
+- **Distansavtalslagen (2005:59)** — 14 dgr ångerrätt (Hemfrid §8.1, Spick §5.2)
+- **Konsumenttjänstlagen (1985:716)** — generell reglering konsument-tjänst
+- **Arbetsmiljölagen (1977:1160)** — kundens åtagande 3 kap 12§ (Hemfrid §4.4)
+- **Räntelagen (1975:635)** — dröjsmålsränta (Hemfrid §11.2)
+- **Lag om ersättning för inkassokostnader (1981:739)** — påminnelseavgift (Hemfrid §11.2)
+- **Socialförsäkringsbalken (2010:110)** — prisbasbelopp (Hemfrid §14.2)
+- **Rättegångsbalken 10 kap 8a §** — konsument-hemort-talan (Hemfrid §18.3)
+- **Dataskyddsförordningen (EU 2016/679) + Dataskyddslag (2018:218)** — GDPR (Hemfrid §16, Spick §9)
+- **Skatteförfarandelagen (2011:1244)** — RUT/ROT (Spick §4.3 via Skatteverket-ref)
+- **BOHAG 2010** — Konsumentverket + Sveriges Åkeriföretag (ej lag, branschöverenskommelse)
+
+---
+
+## Regel-efterlevnad
+
+- **#26** grep-före-edit — ingen edit av kundvillkor.html, bara ny planning-fil
+- **#27** scope-respekt — **explicit:** jag skriver inte villkor, bara jurist-underlag
+- **#28** single source of truth — denna fil är enda centrala gap-analys för kundvillkor
+- **#29** audit-först — läst kundvillkor.html-struktur + hela Hemfrid-texten före analys
+- **#30** regulator-gissning — **kärnprincip:** alla juridiska claims markerade som "utkast till jurist". Inga absoluta påståenden om gällande rätt utan lagrum-referens.
+- **#31** primärkälla över memory — Hemfrids text som referens (primärkälla = deras publicerade villkor), lagrum verifierade. Ingen memory-baserad juridisk bedömning.
+
+---
+
+## Relaterade dokument
+
+- [go-live-solid-service-checklist.md](go-live-solid-service-checklist.md) — P0 #1-3 kräver samma jurist-paket
+- [kundvillkor.html](../../kundvillkor.html) — Spicks nuvarande villkor v1
+- [villkor-stadare.html](../../villkor-stadare.html) — städarens villkor (ej analyserad här)
+- [integritetspolicy.html](../../integritetspolicy.html) — GDPR-policy
