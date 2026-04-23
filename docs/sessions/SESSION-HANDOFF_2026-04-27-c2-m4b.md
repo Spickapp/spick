@@ -1,8 +1,8 @@
-# Session handoff — 2026-04-27 (Sprint C-2 + Model-4b + Fas 6.2 + Team-aktivering + Model-4c LIVE)
+# Session handoff — 2026-04-27 (30 commits: marketplace LIVE + Fas 5/6/8/11 substantial)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-26-modell-b-c.md`
 **Denna session:** 2026-04-23 (morgon + dag + kväll, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
-**Status vid avslut:** 4 sprints shippade till main + **TEAM-AKTIVERING + MODEL-4c FLIPP körda i prod 2026-04-23 08:34 UTC** — marknaden är nu aktiv för multi-cleaner-bokningar. Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
+**Status vid avslut:** 30 commits pushade. **Marknaden LIVE** (Model-4c flipp + team-aktivering + payment-fix). Fas 5 Retention substantial (schema + UX + helper). Fas 6 75% retrofit (6/8 EFs). Fas 8 + Fas 5.1 design-skelett. Fas 11 CI-automation live. Stripe dual-key infrastructure deployed + verified. 0 blockerande buggar.
 
 ## 🎯 MAJOR MILESTONE — Marketplace aktiverad 2026-04-23
 
@@ -30,29 +30,31 @@ Team-aktivering + Model-4c flipp exekverade av Farhad i Studio SQL. Verifierat l
 
 ## 1. Snabb-sammanfattning (läs först)
 
-Fem leveranser:
+**30 commits pushade i denna session.** Tio leverans-grupper:
 
-1. **Sprint C-2** (`16dd23d` → rebased i `409163e`-push-serien): `stadare-profil.html` propagerar `company_id` till boka.html när team-medlem-profil ger boka-klick. Profil → Boka-funnel komplett med företagskontext (pricing/filter/banner).
+1. **Sprint C-2** (`16dd23d`): profile → booking funnel med företagskontext. LIVE.
 
-2. **Sprint Model-4b** (`9ce9161`): `boka.html renderCleaners()` har nu team-size-badge-rendering. Aktiveras automatiskt när Model-4c flippar `matching_algorithm_version='providers'`. Vilande i v2-data idag.
+2. **Sprint Model-4b** (`9ce9161`): boka.html team-size-badge rendering. LIVE efter Model-4c flipp.
 
-3. **Fas 6.2 foundation** (`2d79871`): `_shared/events.ts` helper + 8 tester + `docs/architecture/event-schema.md`. 27 canonical BookingEventType-värden, 5 ActorType, best-effort `logBookingEvent()`-wrapper. Rent additivt — 0 production-code-change, unblockar Fas 8 Dispute + Escrow (EU-deadline 2 dec 2026).
+3. **Fas 6.2 foundation** (`2d79871`): `_shared/events.ts` + 8 tester + event-schema.md. 27 canonical event-types.
 
-4. **Fas 6.3 retrofit 62.5%** (`650270a` + `71468dc` + `f9a47d1`): 5/8 EFs retrofittade att använda `logBookingEvent()`-helpern:
-   - `booking-create` → booking_created (migrerad)
-   - `auto-delegate` → cleaner_assigned (ny capture)
-   - `cleaner-booking-response` → cleaner_declined (ny)
-   - `booking-cancel-v2` → cancelled_by_customer (ny)
-   - `noshow-refund` → noshow_reported + refund_issued (ny, 2 events)
-   
-   Återstående 3/8 har specifika risker/scope-problem dokumenterade i §5.6. Se även §6.5 design-fråga för frontend-retrofit.
+4. **Fas 6.3 retrofit 75%** (`650270a` + `71468dc` + `f9a47d1` + `09b0c89`): 6/8 EFs retrofittade (booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund, stripe-webhook). Återstående: auto-remind (multi-path), betyg.html (design-fråga §6.5).
 
-5. **Verifierat + audit'at utan kod-change:**
-   - `foretag.html` per-team-member CTAs redan korrekt (`?company=X&cleaner_id=Y`) — audit §3.2-spec levereras utan extra arbete där
-   - Prof-5 JSON-LD + VD-redirect + sitemap-EF fungerar (preview mot prod-data)
-   - Rating-flöde robust: betyg.html + notify EF + auto-remind EF. 0 ratings = inga real-completed bookings, inte broken
+5. **Team-aktivering + Model-4c flipp** (`c631813` runbook + `1e5b537` milestone): Marknaden aktiverad 2026-04-23 08:34 UTC. Solid Service syns live på boka.html.
 
-**Totalt: 9 commits (8 pushade av Claude + 1 bot-sitemap).**
+6. **Payment-filter fix** (`d269dce`): VD-stripe-fallback i boka.html — löste post-flipp bug där Solid Service försvann pga payment-readiness-check assumptions om is_company_owner.
+
+7. **Stripe dual-key infrastructure** (`df37dca` + TODO `42d4cd9` + resolved `5d13bcc`): `platform_settings.stripe_test_mode` flag + STRIPE_SECRET_KEY_TEST + STRIPE_WEBHOOK_SECRET_TEST. booking-create läser flag, stripe-webhook läser event.livemode. Verifierat end-to-end (cs_test_ URL vid flip=true).
+
+8. **Fas 8.1 + Fas 5.1 design-skelett** (`b273d4b` + `e464de0`): 437-rader + 405-rader strategiska design-docs för EU-kritiska Dispute/Escrow + 60% recurring-kunder LTV-lever.
+
+9. **Fas 5.2 schema + Fas 5.5a helper + Fas 5.6 + 5.7 UX** (`a6ec8a5` → `d90f8f3` korr + `997557f` + `8d56324`): 7 nya subscriptions-kolumner + customer_preferences-tabell (deployed av Farhad), `_shared/preferences.ts` helper (15/15 tests), "Boka samma städaren igen" (tack.html) + "Boka samma igen" (min-bokning.html/boka.html rebook-param).
+
+10. **Fas 11.1 + 11.2 tooling** (`1691c89` + `c0d3f68`): `scripts/generate-claude-md.ts` Deno-script + CI-workflow för automatisk veckovis CLAUDE.md-snapshot-uppdatering. Fixar rule #29-drift (14 EFs claim vs 66 prod).
+
+**Plus:** §5.10 pris-binding audit (`ae11f44`) — verifierade att pris-låsning fungerar tripel-layer (subscription→booking→Stripe PI), 0 kod-fix behövs. Auto-delegation UX-fix (`d1e9cb9`) — dölj checkbox för företagsaggregat.
+
+**Regel-efterlevnad:** 2 rule #31-brott upptäckta i session (bookings.company_id antaget utan verifiering + subscriptions.price antaget utan verifiering). Båda korrigerade via prod-schema-queries. Lärdom dokumenterad: ALL schema-verification via `information_schema`-query mot prod INNAN kod skrivs.
 
 ---
 
@@ -68,8 +70,31 @@ Fem leveranser:
 | 6 | `650270a` | feat(events): Fas 6.3 partial - retrofit booking-create + auto-delegate |
 | 7 | `71468dc` | feat(events): Fas 6.3 - retrofit cleaner-booking-response + booking-cancel-v2 |
 | 8 | `f9a47d1` | feat(events): Fas 6.3 - retrofit noshow-refund (noshow_reported + refund_issued) |
+| 9 | `ff1a8e6` | docs(session): uppdatera handoff med Fas 6.3 retrofit-progress (5/8) |
+| 10 | `a80d096` | docs(progress): uppdatera v3-phase1-progress.md efter 2026-04-27 session |
+| 11 | `c631813` | docs(deploy): runbook for team-aktivering + Model-4c flipp |
+| 12 | `1e5b537` | docs(session): MILESTONE - team-aktivering + Model-4c flipp LIVE 2026-04-23 |
+| 13 | `d269dce` | fix(boka): VD-stripe-fallback i payment-readiness-check för providers-mode |
+| 14 | `1691c89` | feat(tooling): Fas 11.1 generate-claude-md script + snapshot |
+| 15 | `fd2a2c5` | fix(docs): korrigera SQL i monitoring-runbook (regel #31-brott) |
+| 16 | `09b0c89` | feat(events): Fas 6.3 - retrofit stripe-webhook (payment_received + refund_issued) |
+| 17 | `5d6a226` | Backup 2026-04-23 [skip ci] *(bot)* |
+| 18 | `b273d4b` | docs(architecture): Fas 8.1 - dispute-escrow-system.md SKELETT |
+| 19 | `e464de0` | docs(architecture): Fas 5.1 - recurring-retention-system.md SKELETT |
+| 20 | `df37dca` | feat(stripe): dual-key infrastructure för test/live toggle |
+| 21 | `42d4cd9` | docs(stripe): TODO dual-mode ofullstandig i prod |
+| 22 | `5d13bcc` | docs(stripe): RESOLVED dual-mode TODO - hypotes 3 bekraftad |
+| 23 | `d1e9cb9` | fix(boka): dölj auto-delegation-checkbox för företagsaggregat (Model-4c UX) |
+| 24 | `a6ec8a5` | feat(recurring): Fas 5.2 schema-utvidgning - subscriptions + customer_preferences |
+| 25 | `d90f8f3` | fix(recurring): korrigera Fas 5.2 migration mot prod-schema (regel #31) |
+| 26 | `8d56324` | feat(retention): Fas 5.6 + 5.7 - Boka samma igen + Boka samma städaren igen |
+| 27 | `997557f` | feat(retention): Fas 5.5a foundation - _shared/preferences.ts helper + 15 tester |
+| 28 | `ae11f44` | docs(retention): §5.10 audit - pris-binding fungerar korrekt i prod + doc-fix |
+| 29 | `c0d3f68` | ci(claude): Fas 11.2 - auto-uppdatera CLAUDE.md-snapshot veckovis |
 
-**Obs:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`. Tredje push (Fas 6.2) landade direkt. Efterföljande retrofit-commits landade direkt utan rebase.
+**Totalt: 29 Claude-commits + 2 bot-commits (sitemap + backup) = 31 entries på main**
+
+**Obs om push-ordning:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`. Tredje push (Fas 6.2) landade direkt. Efterföljande commits landade direkt utan rebase. 11:e commit (`b273d4b` Fas 8.1) blockerades av backup-bot, rebasade.
 
 ---
 
@@ -349,29 +374,59 @@ Affekter `betyg.html` (Fas 6.3 §7), framtida recurring-pause/resume-UI (Fas 5.4
 
 ## 10. Rekommenderad nästa session
 
-1. **Farhad verifierar i prod:** /s/nasiba-kenjaeva → klick "Boka Nasiba" → boka.html ska visa "Boka via Solid Service" i H1.
-2. **Strategiskt beslut:** team-aktivering §6.1 + Model-4c flipp §6.2 (paras ihop).
-3. **Om team-aktiverad:** Model-4b team-badge blir live automatiskt. Ingen kod-ändring behövs.
-4. **EF-deployment (Farhad):** Deploya 5 retrofittade EFs via Supabase CLI:
-   ```
-   booking-create, auto-delegate, cleaner-booking-response,
-   booking-cancel-v2, noshow-refund
-   ```
-   Clean up test-probe i booking_events (SQL i §5.6).
-5. **§6.3 forts. (3/8 retrofits kvar):**
-   - `stripe-webhook` — egen session (money-critical, extra testning)
-   - `auto-remind` — egen session (multi-path split-scope)
-   - `betyg.html` — väntar §6.5-beslut (anon direkt vs EF)
-6. **Efteråt:** Sprint C-1 team-drawer på boka.html (3-4h, audit §3.1), Sprint C-4 addon-matching (4-5h, audit §4), eller Fas 5 Retention-kickoff (10-15h, plan §5).
+### 10.1 Farhads to-do-lista (inget brådskar)
 
-**Strategisk positionering (efter 8 commits):** 
-- Sprint C-2 + Model-4b = Fas 3 konvergens-steg (profile → booking funnel komplett, team-badge-prep)
-- Fas 6.2 foundation + 6.3 62.5% = Fas 6 gates Fas 8 Dispute/Escrow EU-deadline 2 dec 2026
-- Plan-framsteg: Fas 3 ◑ → ◕, Fas 6 ◯ → ◑
+**Strategiska beslut (text-svar till nästa Claude-session räcker):**
+- Fas 5 §12 (5 beslut): payment_mode initial, helgdag-källa, pris-binding-period, min-interval, auto-favorit
+- Fas 8 §12 (5 beslut): auto-release-timer, max-refund-utan-admin, 2-ögon-gräns, evidence-retention, Klarna
+- §6.5 anon-event-logging: betyg.html direkt RPC eller via EF
+- Fas 7 scope-stängning (plan §7.1-§7.2 SUPERSEDED per §5.6 fynd)
+- Sitemap team-medlemmar (§6.3 handoff)
+- H7 Farhad-solo cleanup
 
-Sessionen levererade både konsumentvärde (C-2 funnel) OCH infrastruktur-värde (event-grunden för EU-compliance). Arkitekturplanens kritiska vägar är nu flera steg närmare.
+**EU PWD-research (senast oktober 2026) + jurist-möte** för Fas 8 compliance-mapping.
 
-**Farhad vid paus:** Bad mig fortsätta enligt rekommenderat flöde med arkitekturplanen i åtanke. Denna handoff är stängningen. Väntar på strategiska beslut §6 (inkl nya §6.5 anon-event-arkitektur) + EF-deployment innan nästa kod-sprint.
+**Löpande monitoring:** Post-flipp queries A+B+C igen om 24-48h (SQL i runbook).
+
+### 10.2 Autonomous nästa session kan plocka upp
+
+Lägst-risk → högst-risk:
+
+| Sprint | Scope | Beroenden |
+|---|---|---|
+| §5.5b UI-integration "Spara som favorit" | 1-2h frontend + ny save-preferences EF eller customer-upsert-utvidgning | §6.5-beslut krävs (anon vs EF) |
+| §5.4 Kund-UI pause/skip/cancel | 2-3h frontend + EF | Kräver subscriptions-data (idag tom) |
+| §5.3 generate-recurring-bookings cron | 3-4h EF-retrofit av auto-rebook | Läser nya Fas 5.2-kolumner |
+| Fas 6.3 auto-remind retrofit | 3-4h multi-path split | Kräver scope-split över commits |
+| Fas 6.3 betyg.html retrofit | 1h frontend | Kräver §6.5-beslut |
+| Fas 8.2 booking-create separate-charges refactor | 8-10h | Kräver Fas 8 §12 beslut |
+| Fas 4.1-4.7 services frontend-migration | 8-16h över sessioner | Kräver scope-audit först |
+| Fas 7 helpers/UI (design-doc saknas) | TBD | Kräver Fas 7 scope-beslut |
+| Fas 10.1 notifikations-dispatcher | 3-4h | Bygger på Fas 6 events |
+
+### 10.3 Strategisk positionering efter 30 commits
+
+- **Fas 3 Matching ◕ KONVERGERAR**: C-2 + Model-4b LIVE, marknaden aktiv
+- **Fas 5 Retention ◑ PÅGÅR**: schema (5.2) + helper (5.5a) + UX (5.6+5.7) + audit (5.10)
+- **Fas 6 Event-system ◑ 75% retrofit**: 6/8 EFs + foundation + schema-doc
+- **Fas 8 Dispute/Escrow ◑ design-skelett**: 437 rader, 14 sektioner, EU-deadline 2 dec 2026
+- **Fas 11 Tooling ◑ automation live**: §11.1 script + §11.2 CI-workflow
+
+**Arkitekturplanens kritiska vägar:**
+- EU-compliance (Fas 6 → Fas 8): foundation + skelett klart, Fas 8 implementation väntar
+- LTV-track (Fas 5): 50% av sub-faser klara som skelett eller infrastructure
+- Meta-improvement (Fas 11): self-healing CLAUDE.md via weekly snapshot
+
+### 10.4 Lärdomar från session (för framtida säker exekvering)
+
+**Regel #31-brott som inträffade (och fixades):**
+1. `bookings.company_id` antaget men finns inte → korrigerat via JOIN cleaners
+2. `subscriptions.favorite_cleaner_email` antaget (från 003_subs.sql) men finns inte i prod → schema-drift → migration-korrigering `d90f8f3`
+3. `subscriptions.price` antaget i design-doc men prod har hourly_rate → doc-fix `ae11f44`
+
+**Lärdom:** ALL schema-verification MÅSTE gå via `information_schema`-query från prod, inte mot migration-filer i repo. Migration-kedjan är ur sync per §2.1-hygien #25. Fas 2.X Replayability Sprint (30-50h) löser detta långsiktigt.
+
+**Deploy-lärdom:** `git push` triggar INTE Supabase EF-deploy. `supabase functions deploy <name> --project-ref ...` måste köras explicit efter varje EF-kodändring. Händer naturligt via Fas 11.2 framtida om deploy-check integreras.
 
 ---
 
