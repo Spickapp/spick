@@ -1368,8 +1368,9 @@ function calcHours() {
     h = Math.ceil(h * _storMult * 2) / 2;
   }
   else if (state.service === 'Flyttstädning') {
-    var _flyttMult = isForetag ? 2.0 : 2.2;
-    h = Math.ceil(h * _flyttMult * 2) / 2;
+    // Mäklarsamfundets avlämningskrav gäller för kontor också — samma 2.2× som privat,
+    // skalan skiljer via isForetag-basformeln ovan. Bekräftat mot svensk bransch 2026.
+    h = Math.ceil(h * 2.2 * 2) / 2;
   }
   // Kontorsstädning: isForetag-basformeln är redan rätt skala — ingen multiplier.
   else if (state.services && state.services.length === 1 && state.services[0] === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
