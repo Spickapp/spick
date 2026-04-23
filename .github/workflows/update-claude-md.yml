@@ -24,8 +24,9 @@ on:
       - '.github/workflows/**'
       - 'supabase/migrations/**'
       - 'scripts/generate-claude-md.ts'
-    paths-ignore:
-      - 'docs/auto-generated/**'
+    # paths-ignore kan INTE kombineras med paths i samma trigger (GitHub schema-
+    # validering failar omedelbart → total_count:0 jobs). docs/auto-generated/**
+    # skyddas ändå av [skip ci] i bot-committen nedan.
   workflow_dispatch:
 
 permissions:
