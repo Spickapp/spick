@@ -22,7 +22,20 @@
 // (RPC-signatur + tabell-schema verifierat via migration-fil).
 // ──────────────────────────────────────────────────────────────────
 
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+// Minimal client-interface istället för `SupabaseClient`-import.
+// Förebygger type-mismatch mellan EF:er som importerar supabase-js@2
+// (latest) vs @2.49.4 (pinned). Eftersom denna helper bara behöver
+// .rpc() räcker en tunn definition som alla versions är kompatibla med.
+// (Pre-existing hygien-flag H5 dokumenterade samma issue mellan
+// resolvePricing och booking-create.)
+// rpc()-returtypen är `any` eftersom supabase-js faktiskt returnerar en
+// PostgrestFilterBuilder (thenable) som först vid await resolverar till
+// { data, error }. Att striktyp:a skulle bryta mot verklig supabase-js-
+// signatur. Konsumenter av helpern behöver inte se den komplexiteten.
+// deno-lint-ignore no-explicit-any
+export interface SupabaseRpcClient {
+  rpc: (name: string, args?: Record<string, unknown>) => any;
+}
 
 // ============================================================
 // Canonical event-types
@@ -168,7 +181,7 @@ export const EVENT_METADATA: Record<BookingEventType, string[]> = {
  * @returns true om RPC lyckades, false vid fel (loggat till konsol)
  */
 export async function logBookingEvent(
-  supabase: SupabaseClient,
+  supabase: SupabaseRpcClient,
   bookingId: string,
   eventType: BookingEventType,
   options: {

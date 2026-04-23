@@ -19,8 +19,8 @@ import {
   EVENT_METADATA,
   logBookingEvent,
   type BookingEventType,
+  type SupabaseRpcClient,
 } from "../../_shared/events.ts";
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 // ── Mock supabase-klient ──────────────────────────────────────────
 
@@ -29,11 +29,13 @@ type RpcCall = { name: string; args: Record<string, unknown> };
 function createMockSupabase(options: {
   rpcError?: { message: string } | null;
   throws?: Error;
-} = {}): { client: SupabaseClient; calls: RpcCall[] } {
+} = {}): { client: SupabaseRpcClient; calls: RpcCall[] } {
   const calls: RpcCall[] = [];
-  const mock = {
-    rpc(name: string, args: Record<string, unknown>) {
-      calls.push({ name, args });
+  const client: SupabaseRpcClient = {
+    rpc(name, args) {
+      // Interface tillåter args?=undefined, men logBookingEvent passar
+      // alltid ett objekt → normalisera till {} för stabil assertion.
+      calls.push({ name, args: args ?? {} });
       if (options.throws) {
         return Promise.reject(options.throws);
       }
@@ -43,7 +45,7 @@ function createMockSupabase(options: {
       });
     },
   };
-  return { client: mock as unknown as SupabaseClient, calls };
+  return { client, calls };
 }
 
 const VALID_UUID = "12345678-1234-1234-1234-123456789012";

@@ -19,6 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, log } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
 import { formatStockholmDate } from "../_shared/timezone.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -132,6 +133,18 @@ serve(async (req) => {
           reassignment_proposed_at: null,
           reassignment_attempts: (booking.reassignment_attempts || 0) + 1,
         }).eq("id", booking.id);
+
+        // Fas 6.3: logga cleaner_assigned för auto-delegation audit-trail
+        await logBookingEvent(sb, booking.id, "cleaner_assigned", {
+          actorType: "system",
+          metadata: {
+            cleaner_id: chosen.id,
+            assigned_by: "auto-delegate",
+            delegation_route: "auto_fallback",
+            previous_cleaner_id: booking.cleaner_id || null,
+            reassignment_attempts: (booking.reassignment_attempts || 0) + 1,
+          },
+        });
 
         // Notifiera båda parter om auto-tilldelning
         try {

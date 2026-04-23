@@ -35,6 +35,7 @@ import {
 } from "../_shared/pricing-engine.ts";
 import { resolvePricing } from "../_shared/pricing-resolver.ts";
 import { corsHeaders, encryptPnr, sendEmail, wrap, card } from "../_shared/email.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -524,20 +525,18 @@ serve(async (req) => {
     }
 
     // ── 11. LOGGA EVENT ────────────────────────────
-    try {
-      await supabase.rpc("log_booking_event", {
-        p_booking_id: bookingId,
-        p_event_type: "booking_created",
-        p_actor_type: "customer",
-        p_metadata: {
-          cleaner_tier: cleanerTier,
-          commission_pct: pricing.commissionPct,
-          discount_pct: pricing.discountPct,
-          net_margin_pct: pricing.netMarginPct,
-          credit_applied: pricing.creditApplied,
-        },
-      });
-    } catch (_) {} // Non-critical
+    // Fas 6.3: använd logBookingEvent-helper (typ-säker + best-effort,
+    // kastar aldrig → ingen try/catch behövs).
+    await logBookingEvent(supabase, bookingId, "booking_created", {
+      actorType: "customer",
+      metadata: {
+        cleaner_tier: cleanerTier,
+        commission_pct: pricing.commissionPct,
+        discount_pct: pricing.discountPct,
+        net_margin_pct: pricing.netMarginPct,
+        credit_applied: pricing.creditApplied,
+      },
+    });
 
     // ═══════════════════════════════════════════════════
     // GREN: stripe_subscription — bokning utan direkt betalning
