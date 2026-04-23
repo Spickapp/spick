@@ -101,20 +101,41 @@
 
 Nedan är **utkast-text** som underlag till jurist. Kopiera inte rakt av — låt jurist revidera.
 
-### Gap 1: Ansvarsbegränsnings-cap
+### Gap 1: Ansvarsbegränsning (FULLSTÄNDIG §14)
 
-**Nuvarande (Spick §7.2):** Ingen monetär gräns.
+**Nuvarande (Spick §7.2):** Ingen monetär gräns, inget spec om förslitning, ingen jämkning, ingen marknadsvärdesberäkning.
 
-**Hemfrid-ref (§14.2):** *"Hemfrids totala ansvar för skador som uppstår under Avtalet ska för varje kalenderår vara begränsat till ett maximalt belopp motsvarande ett (1) prisbasbelopp enligt socialförsäkringsbalken (2010:110)."*
+**Hemfrid-ref:** §14.1-14.6 (sex underpunkter, se Farhads delning 2026-04-23)
+
+**Farhads beslut 2026-04-23:** "Detta är nog välgenomtänkt och bör användas mot privatpersoner" → Hemfrids §14-struktur godkänd som bas för Spicks konsumentvillkor.
+
+**⚠️ Viktigt:** Copyright på juridiska villkor gäller formuleringen, inte konceptet. Text nedan är omformulerad med samma substans men egen språkdräkt — jurist ska slutgranska.
 
 **Lagrum:**
 - Socialförsäkringsbalken (2010:110) — prisbasbelopp fastställs årligen av regeringen (2024 = 57 300 kr)
 - Konsumenttjänstlagen (1985:716) §32 — tillåter avtalade begränsningar utom för personskada/grov vårdslöshet
+- Lag (1984:292) om avtalsvillkor i konsumentförhållanden — skydd mot oskäliga villkor (36§ avtalslagen)
 
-**Utkast (till jurist):**
-> *"Spicks totala ansvar för skador som uppstår under Avtalet ska för varje kalenderår vara begränsat till ett maximalt belopp motsvarande ett (1) prisbasbelopp enligt socialförsäkringsbalken (2010:110). Begränsningen gäller inte för personskada eller om grov vårdslöshet eller uppsåt föreligger på Spicks sida eller annars följer av tvingande lag."*
+**Utkast (till jurist — 6 underpunkter):**
 
-**Risk om utelämnas:** Kund med 500k kr i antika möbler som skadas → obegränsat skadeståndskrav mot Spick. Cap begränsar exponering.
+> **§X.1** *Spick ansvarar endast för direkta skador som åsamkas Kunden som en direkt följd av fel eller brist i Spicks utförande av Tjänsterna. Spick ansvarar inte för indirekta skador, exempelvis utebliven vinst, lönebortfall, semesterersättning eller annan följdskada.*
+
+> **§X.2** *Spicks totala ansvar för skador som uppstår under Avtalet ska för varje kalenderår vara begränsat till ett belopp motsvarande ett (1) prisbasbelopp enligt socialförsäkringsbalken (2010:110).*
+
+> **§X.3** *Begränsningarna i §X.1 och §X.2 gäller inte för personskador, om grov vårdslöshet eller uppsåt föreligger från Spicks sida, eller om annat följer av tvingande lag.*
+
+> **§X.4** *Spick ersätter inte skador som uppkommit till följd av att Kunden lämnat oriktig information eller underlåtit att informera om särskilt värdefulla eller ömtåliga föremål enligt §X [referens till kundens åtagande]. Spick ersätter inte heller förslitningsskador på fast eller lös egendom — såsom inventarier, golv eller fönster — som uppstår vid normalt och ansvarsfullt utförande av Tjänsterna. Vid reklamation av skada på fönster tillämpas branschstandard för kvalitetsbedömning enligt Svensk Planglasförening.*
+
+> **§X.5** *Om Kunden genom oaktsamhet eller försummelse har varit medvållande till skada, jämkas Spicks ansvar i förhållande till Kundens medvållande.*
+
+> **§X.6** *Ersättning för skadad egendom som Spick ansvarar för utgår från egendomens marknadsvärde vid skadetillfället och skadans omfattning. Avdrag kan göras för ålder och slitage mot egendomens inköpspris. Spick ansvarar inte för införskaffande av ersättningsegendom eller för reparation av skadad egendom.*
+
+**Risk om utelämnas:** Kund med 500k kr i antika möbler som skadas → obegränsat skadeståndskrav mot Spick. Cap begränsar exponering till 1 prisbasbelopp = 57 300 kr/år (2024-nivå). Med nuvarande försäkringsvolym och antal kunder: försäkring täcker detta, utan cap: försäkring kan nekas.
+
+**Not för jurist:**
+- §X.4:s förslitningsfriskrivning måste formuleras försiktigt enligt Konsumenttjänstlagen §21 — friskrivning får inte vara "oskälig"
+- §X.2:s cap kan angripas under Avtalslagen §36 om kund har extrem skada. Praxis (NJA 2009 s.846) visar att cap hålls om det är "gängse branschvillkor" — Hemfrid-reference styrker det
+- Svensk Planglasförening-referens förutsätter att Spick följer organisationens riktlinjer; verifiera om så är fallet
 
 ---
 
