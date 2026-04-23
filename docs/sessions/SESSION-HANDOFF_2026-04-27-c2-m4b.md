@@ -1,8 +1,30 @@
-# Session handoff — 2026-04-27 (Sprint C-2 + Model-4b + Fas 6.2 foundation)
+# Session handoff — 2026-04-27 (Sprint C-2 + Model-4b + Fas 6.2 + Team-aktivering + Model-4c LIVE)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-26-modell-b-c.md`
-**Denna session:** 2026-04-23 (morgon + dag, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
-**Status vid avslut:** 4 sprints shippade till main (C-2, Model-4b, Fas 6.2 foundation, Fas 6.3 retrofit 62.5%). Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
+**Denna session:** 2026-04-23 (morgon + dag + kväll, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
+**Status vid avslut:** 4 sprints shippade till main + **TEAM-AKTIVERING + MODEL-4c FLIPP körda i prod 2026-04-23 08:34 UTC** — marknaden är nu aktiv för multi-cleaner-bokningar. Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
+
+## 🎯 MAJOR MILESTONE — Marketplace aktiverad 2026-04-23
+
+Team-aktivering + Model-4c flipp exekverade av Farhad i Studio SQL. Verifierat live via matching-wrapper EF:
+
+```
+{"algorithm_version":"providers", "cleaners":[
+  {"provider_type":"solo", "display_name":"Farhad Haghighi", "team_size":1, "min_hourly_rate":100},
+  {"provider_type":"company", "display_name":"Solid Service", "team_size":4, "min_hourly_rate":390,
+   "representative_cleaner_id":"e43c819f... (Odilov Firdavsiy)"}
+]}
+```
+
+**Effekter LIVE för riktiga kunder:**
+- Solid Service visas första gången någonsin på boka.html steg 2
+- Model-4b `👥 Team med 4 städare`-badge triggar
+- C-2 deep-link profil→boka fungerar end-to-end med företagskontext
+- Shadow-mode fortsätter logga (kontinuerlig A/B)
+
+**Övervakning:** 48h post-flipp (sql-queries i [docs/deploy/2026-04-27-team-activation-and-model-4c-flip.md](../deploy/2026-04-27-team-activation-and-model-4c-flip.md) §Övervakning).
+
+**Cleanup-rest:** Test-probe `DELETE FROM booking_events WHERE booking_id='00000000-...' AND event_type='test_probe_ignore';`.
 
 ---
 
