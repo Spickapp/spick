@@ -12,6 +12,12 @@ const SPICK = Object.freeze({
   GOOGLE_PLACES_KEY: 'AIzaSyCScYORJPxXCyp0J-Wmr84HtiZc9FteVrs',
 });
 
+// Exponera globalt för pages som boot-checkar `window.SPICK`
+// (Sprint B-era: foretag-dashboard, join-team, registrera-foretag).
+// const-deklaration skapar INTE automatiskt window-property i moderna
+// browsers — måste sättas explicit.
+window.SPICK = SPICK;
+
 // Gemensamma headers för Supabase REST API
 const SPICK_HEADERS = Object.freeze({
   'Content-Type': 'application/json',

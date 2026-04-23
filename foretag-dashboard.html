@@ -211,8 +211,14 @@ function initial(name) {
 // Init
 // ─────────────────────────────────────────────
 async function init() {
+  // Bugfix 2026-04-23: skapa client-instans från libraryen.
+  // window.supabase är namespace (har createClient), inte en
+  // instans — auth-API bor på instansen. Mönster från
+  // mitt-konto.html:373-374.
+  const SB = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+
   // 1. Session
-  const { data: sessData } = await window.supabase.auth.getSession();
+  const { data: sessData } = await SB.auth.getSession();
   if (!sessData?.session) {
     window.location.href = '/mitt-konto.html?returnTo=foretag-dashboard.html';
     return;
@@ -221,13 +227,13 @@ async function init() {
   
   // 2. Ladda VD's cleaner + company via REST (RLS guard: authenticated ser egen rad)
   const authHeaders = {
-    apikey: window.SPICK.SUPABASE_ANON_KEY,
+    apikey: SPICK.SUPA_KEY,
     Authorization: 'Bearer ' + state.session.access_token,
   };
   
   try {
     const cRes = await fetch(
-      `${window.SPICK.SUPABASE_URL}/rest/v1/cleaners?auth_user_id=eq.${state.session.user.id}&select=id,full_name,company_id,is_company_owner,stripe_onboarding_status`,
+      `${SPICK.SUPA_URL}/rest/v1/cleaners?auth_user_id=eq.${state.session.user.id}&select=id,full_name,company_id,is_company_owner,stripe_onboarding_status`,
       { headers: authHeaders }
     );
     const cRows = await cRes.json();
@@ -246,7 +252,7 @@ async function init() {
     
     // 3. Ladda company via RPC (får onboarding-status + team-count + mer i en query)
     const rpcRes = await fetch(
-      `${window.SPICK.SUPABASE_URL}/rest/v1/rpc/get_company_onboarding_status`,
+      `${SPICK.SUPA_URL}/rest/v1/rpc/get_company_onboarding_status`,
       {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -281,20 +287,20 @@ async function init() {
 
 async function loadTeam() {
   const authHeaders = {
-    apikey: window.SPICK.SUPABASE_ANON_KEY,
+    apikey: SPICK.SUPA_KEY,
     Authorization: 'Bearer ' + state.session.access_token,
   };
   
   // Team (accepterade cleaners)
   const tRes = await fetch(
-    `${window.SPICK.SUPABASE_URL}/rest/v1/cleaners?company_id=eq.${state.cleaner.company_id}&is_company_owner=eq.false&select=id,full_name,email,phone,stripe_onboarding_status,status`,
+    `${SPICK.SUPA_URL}/rest/v1/cleaners?company_id=eq.${state.cleaner.company_id}&is_company_owner=eq.false&select=id,full_name,email,phone,stripe_onboarding_status,status`,
     { headers: authHeaders }
   );
   state.team = await tRes.json();
   
   // Pending invites
   const iRes = await fetch(
-    `${window.SPICK.SUPABASE_URL}/rest/v1/cleaner_applications?invited_by_company_id=eq.${state.cleaner.company_id}&status=eq.invited&select=id,full_name,invited_phone,created_at`,
+    `${SPICK.SUPA_URL}/rest/v1/cleaner_applications?invited_by_company_id=eq.${state.cleaner.company_id}&status=eq.invited&select=id,full_name,invited_phone,created_at`,
     { headers: authHeaders }
   );
   state.invites = await iRes.json();
@@ -350,7 +356,7 @@ function renderChecklist() {
 
 async function handleChecklistCta(action) {
   if (action === 'stripe') {
-    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/stripe-connect`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/stripe-connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'refresh_account_link', cleaner_id: state.cleaner.id }),
@@ -441,7 +447,7 @@ async function toggleMember(memberId, action, btnEl) {
   }
 
   try {
-    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/company-toggle-member`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/company-toggle-member`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -503,7 +509,7 @@ async function sendInvite() {
   btn.innerHTML = '<span class="spinner"></span> Skickar...';
   
   try {
-    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/company-invite-member`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/company-invite-member`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

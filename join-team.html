@@ -215,17 +215,21 @@ function esc(s) {
 async function init() {
   const urlParams = new URLSearchParams(window.location.search);
   state.application_id = urlParams.get('app_id');
-  
+
   if (!state.application_id) {
     show('invalidState');
     return;
   }
-  
+
+  // Bugfix 2026-04-23: window.supabase är namespace, inte client-instans
+  // — auth-API bor på instansen (mönster från mitt-konto.html:373-374).
+  state.sb = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+
   // Vänta på att Supabase-session etableras (via PKCE från magic-link)
   // Ge det några sekunder om behövs
   let session = null;
   for (let i = 0; i < 10; i++) {
-    const { data } = await window.supabase.auth.getSession();
+    const { data } = await state.sb.auth.getSession();
     if (data?.session) { session = data.session; break; }
     await new Promise(r => setTimeout(r, 500));
   }
@@ -238,9 +242,9 @@ async function init() {
   
   // Läs invitations-detaljer via REST (RLS tillåter authenticated att läsa egna apps)
   try {
-    const res = await fetch(`${window.SPICK.SUPABASE_URL}/rest/v1/cleaner_applications?id=eq.${state.application_id}&select=id,full_name,first_name,status,invited_by_company_id,companies:invited_by_company_id(name)`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/rest/v1/cleaner_applications?id=eq.${state.application_id}&select=id,full_name,first_name,status,invited_by_company_id,companies:invited_by_company_id(name)`, {
       headers: {
-        apikey: window.SPICK.SUPABASE_ANON_KEY,
+        apikey: SPICK.SUPA_KEY,
         Authorization: 'Bearer ' + session.access_token,
       }
     });
@@ -295,12 +299,12 @@ async function submitAccept() {
   errBox.style.display = 'none';
   
   try {
-    const { data } = await window.supabase.auth.getSession();
+    const { data } = await state.sb.auth.getSession();
     if (!data?.session) throw new Error('Din session har gått ut. Ladda om sidan.');
     
     const langs = Array.from(document.getElementById('languages').selectedOptions).map(o => o.value);
     
-    const res = await fetch(`${window.SPICK.SUPABASE_URL}/functions/v1/company-accept-invite`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/company-accept-invite`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
