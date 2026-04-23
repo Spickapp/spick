@@ -37,8 +37,9 @@
 -- =============================================================================
 
 -- Drop existing policies that we're replacing/expanding
-DROP POLICY IF EXISTS "Cleaner sees own blocked"   ON public.blocked_times;
-DROP POLICY IF EXISTS "Auth inserts blocked_times" ON public.blocked_times;
+DROP POLICY IF EXISTS "Cleaner sees own blocked"            ON public.blocked_times;
+DROP POLICY IF EXISTS "Auth inserts blocked_times"          ON public.blocked_times;
+DROP POLICY IF EXISTS "Cleaner or VD manages blocked_times" ON public.blocked_times;
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- New policy: cleaner OR VD-for-same-company kan manage blocked_times
