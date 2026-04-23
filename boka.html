@@ -1401,14 +1401,14 @@ function calcHours() {
   document.getElementById('hours-display').textContent = h + ' timmar';
   let notice = document.getElementById('large-apt-notice');
   if (!notice) { notice = document.createElement('div'); notice.id = 'large-apt-notice'; notice.style.cssText = 'margin-top:.5rem;padding:.5rem .75rem;background:#fff8e6;border:1px solid #f0d060;border-radius:8px;font-size:.85rem;color:#7a6200;display:none;'; document.getElementById('hours-display').parentElement.appendChild(notice); }
-  if (state.sqm >= 150) {
-    if (state.customerType === 'foretag' && state.hours > 8) {
-      notice.textContent = '\u2139\ufe0f Stort uppdrag \u2013 ' + state.hours + 'h arbete f\u00f6rdelas p\u00e5 flera st\u00e4dare. Kontakta oss om du beh\u00f6ver samordning: hello@spick.se';
-    } else {
-      notice.textContent = '\u2139\ufe0f ' + (state.customerType === 'foretag' ? 'Stort kontor' : 'Stor bostad') + ' \u2013 exakt tid bekr\u00e4ftas efter bokning';
-    }
+  // Stort företagsuppdrag → riktig banner med mailto-offert istället för text-notice.
+  // Tröskel 8h = standard arbetsdag. Over 8h kräver team-koordinering.
+  var needsQuote = state.customerType === 'foretag' && state.hours > 8;
+  if (state.sqm >= 150 && !needsQuote) {
+    notice.textContent = '\u2139\ufe0f ' + (state.customerType === 'foretag' ? 'Stort kontor' : 'Stor bostad') + ' \u2013 exakt tid bekr\u00e4ftas efter bokning';
     notice.style.display = 'block';
   } else { notice.style.display = 'none'; }
+  renderQuoteBanner(needsQuote);
   // Visa prisuppskattning direkt i steg 1
   const peEl = document.getElementById('price-estimate');
   if (peEl && state.sqm && state.service) {
@@ -1418,6 +1418,46 @@ function calcHours() {
     peEl.style.display = 'none';
   }
   updateSidebar();
+}
+
+// Stort företagsuppdrag (>8h) → banner med mailto-offertförfrågan.
+// Kunden kan antingen maila hello@spick.se (pre-ifyllt) eller stänga bannern och fortsätta.
+// Tröskel 8h = standard arbetsdag; jobb över kräver team-koordinering (Fas 3 bygger team-matchning in i RPC).
+function renderQuoteBanner(show) {
+  var id = 'quote-banner';
+  var existing = document.getElementById(id);
+  if (!show) { if (existing) existing.remove(); return; }
+  if (existing) {
+    // Uppdatera redan-visad banner (hours kan ha ändrats)
+    var hoursSpan = existing.querySelector('[data-quote-hours]');
+    if (hoursSpan) hoursSpan.textContent = state.hours;
+    existing.querySelector('a[data-quote-mailto]').href = buildQuoteMailto();
+    return;
+  }
+  var banner = document.createElement('div');
+  banner.id = id;
+  banner.style.cssText = 'margin-top:.75rem;padding:14px 16px;background:#EFF6FF;border:1.5px solid #3B82F6;border-radius:12px';
+  banner.innerHTML =
+    '<div style="font-weight:700;color:#1E40AF;font-size:.92rem;margin-bottom:6px">\u23f1\ufe0f Stort uppdrag \u2013 <span data-quote-hours>' + state.hours + '</span>h arbete</div>' +
+    '<div style="font-size:.82rem;color:#1E40AF;margin-bottom:12px">Detta kr\u00e4ver team-koordinering. F\u00e5 en skr\u00e4ddarsydd offert via e-post \u2013 vi svarar inom 24h.</div>' +
+    '<a href="' + buildQuoteMailto() + '" data-quote-mailto style="display:inline-block;background:#3B82F6;color:#fff;padding:10px 16px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;margin-right:8px">\ud83d\udce7 Beg\u00e4r offert</a>' +
+    '<button type="button" onclick="var b=document.getElementById(\'quote-banner\');if(b)b.remove();" style="background:transparent;color:#1E40AF;border:1.5px solid #93C5FD;padding:10px 16px;border-radius:8px;font-weight:600;font-size:.88rem;cursor:pointer;font-family:inherit">Forts\u00e4tt boka \u00e4nd\u00e5 \u2192</button>';
+  var hoursDisplayEl = document.getElementById('hours-display');
+  if (hoursDisplayEl && hoursDisplayEl.parentElement) {
+    hoursDisplayEl.parentElement.appendChild(banner);
+  }
+}
+
+function buildQuoteMailto() {
+  var subject = 'Offertf\u00f6rfr\u00e5gan ' + (state.sqm || '?') + ' kvm ' + (state.service || '');
+  var body = 'Hej Spick,\n\nJag vill ha offert f\u00f6r f\u00f6ljande uppdrag:\n' +
+    '- Tj\u00e4nst: ' + (state.service || '(ej vald)') + '\n' +
+    '- Yta: ' + (state.sqm || '') + ' kvm\n' +
+    '- Adress: ' + (state.address || '(ej angiven)') + '\n' +
+    '- Ber\u00e4knad tid\u00e5tg\u00e5ng: ' + state.hours + 'h\n' +
+    '- \u00d6nskat datum: ' + (state.date || '(ej valt)') + '\n' +
+    '- Kommentar: \n\nMed v\u00e4nliga h\u00e4lsningar,\n';
+  return 'mailto:hello@spick.se?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
 
 async function goStep2() {
