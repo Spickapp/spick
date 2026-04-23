@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (73 st)
+## Edge Functions (76 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -33,6 +33,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `charge-subscription-booking` | charge-subscription-booking — Debiterar sparade kort dagen innan städning ══════════════════════════════════════════════ |
 | `claude` |  |
 | `cleaner-booking-response` |  |
+| `cleaner-job-completed` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-job-completed (Fas 8 §8.2 wiring) |
 | `cleaner-og` |  |
 | `cleaner-optout` |  |
 | `cleanup-stale` |  |
@@ -45,7 +46,9 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `customer-check-auto-delegation` | ═══════════════════════════════════════════════════════════════ SPICK – customer-check-auto-delegation (Fas 1.2) |
 | `customer-upsert` | ═══════════════════════════════════════════════════════════════ SPICK – customer-upsert (Fas 1.2) |
 | `dispute-admin-decide` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-admin-decide (Fas 8 §8.14) |
+| `dispute-cleaner-respond` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-cleaner-respond (Fas 8 §8.9) |
 | `dispute-open` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-open (Fas 8 §8.8) |
+| `dispute-sla-check` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-sla-check (Fas 8 §8.12.2) |
 | `email-inbound` |  |
 | `escrow-auto-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-auto-release (Fas 8 §8.12) |
 | `escrow-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-release (Fas 8 §8.7) |
@@ -104,7 +107,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe.ts` |  |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (37 st)
+## GitHub Actions workflows (38 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -123,6 +126,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/deploy-stripe.yml`
 - `.github/workflows/deploy.yml`
 - `.github/workflows/disaster-recovery.yml`
+- `.github/workflows/dispute-sla-check.yml`
 - `.github/workflows/e2e-test.yml`
 - `.github/workflows/escrow-auto-release.yml`
 - `.github/workflows/generate-sitemap.yml`
