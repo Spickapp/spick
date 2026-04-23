@@ -32,7 +32,7 @@ ALTER TABLE public.bookings
 
 -- Giltiga states per architecture-doc §1.1 + 'released_legacy' för pre-Fas-8.
 -- Varje ny state måste läggas till här + i escrow-state-transition EF.
-DO $$
+DO $do$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
@@ -54,7 +54,7 @@ BEGIN
         'released_legacy'
       ));
   END IF;
-END $$;
+END $do$;
 
 CREATE INDEX IF NOT EXISTS idx_bookings_escrow_state
   ON public.bookings(escrow_state)
