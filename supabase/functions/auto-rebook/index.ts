@@ -22,6 +22,10 @@ import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BASE_URL     = Deno.env.get("BASE_URL") || "https://spick.se";
+// Fas 5 §5.3: 4-veckors-fönster för kund-synlighet framåt + minskar sista-minuten-friktion.
+// Dedup-check (line 149) garanterar max 1 bokning/sub/körning oavsett horisont → ingen burst.
+// Vid skala >1000 aktiva subs: överväg platform_settings-key + batchning (separat iteration).
+const HORIZON_DAYS = 28;
 
 serve(async (req) => {
   const CORS = corsHeaders(req);
@@ -35,11 +39,11 @@ serve(async (req) => {
   try {
     await req.json().catch(() => ({}));
 
-    // Datum att processa (default: 7 dagar framåt)
+    // Datum att processa (HORIZON_DAYS framåt, Fas 5 §5.3)
     // §49 Fas 3: svenskt kalenderdatum, inte UTC
     const todayStr = getStockholmDateString();
     const horizonDate = new Date();
-    horizonDate.setDate(horizonDate.getDate() + 7);
+    horizonDate.setDate(horizonDate.getDate() + HORIZON_DAYS);
     const horizonStr = getStockholmDateString(horizonDate);
 
     log("info", "auto-rebook", "Starting", { today: todayStr, horizon: horizonStr });
@@ -137,10 +141,10 @@ async function processSubscription(supabase: ReturnType<typeof createClient>, su
     }).eq("id", sub.id as string);
   }
 
-  // Kolla om bokningsdatum är inom horizon (7 dagar)
+  // Kolla om bokningsdatum är inom horizon (HORIZON_DAYS)
   // §49 Fas 3: svenskt kalenderdatum, inte UTC
   const horizonDate = new Date();
-  horizonDate.setDate(horizonDate.getDate() + 7);
+  horizonDate.setDate(horizonDate.getDate() + HORIZON_DAYS);
   const horizonStr = getStockholmDateString(horizonDate);
   if (bookingDate > horizonStr) {
     return { status: "skipped", reason: "not within horizon yet", next_date: bookingDate };
