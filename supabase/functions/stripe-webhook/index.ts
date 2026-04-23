@@ -21,6 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { sendMagicSms } from "../_shared/send-magic-sms.ts";
 import { logBookingEvent } from "../_shared/events.ts";
+import { sendAdminAlert } from "../_shared/alerts.ts";
 
 const STRIPE_SECRET_KEY       = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_SECRET_KEY_TEST  = Deno.env.get("STRIPE_SECRET_KEY_TEST") || "";
@@ -438,6 +439,18 @@ async function handlePaymentSuccess(session: Record<string, unknown>, stripeKey:
 </div>
 <p>Åtgärd: anropa generate-receipt manuellt via CLI eller admin-UI. EF:n är idempotent (F-R2-7) — retry säkert.</p>
 `)).catch((err: Error) => console.error("[STRIPE-WEBHOOK] Admin-fallback-notis misslyckades:", err.message));
+    // Fas 10: parallell webhook-alert (additivt, mail förblir tills webhook verifierad)
+    await sendAdminAlert({
+      severity: "warn",
+      title: "generate-receipt fallback",
+      source: "stripe-webhook",
+      message: "Kvitto-EF svarade inte OK — kunden fick fallback-bekräftelse utan kvitto. Retry via admin-UI.",
+      booking_id: bookingId,
+      metadata: {
+        customer_email: customerEmail || booking.customer_email,
+        error: errMsg,
+      },
+    });
   }
 
   // SMS-bekräftelse med magic-link (Fas 1.2)
@@ -548,6 +561,22 @@ ${!cleaner ? `<div style="background:#FFF5E5;border-left:4px solid #F59E0B;paddi
 <a href="https://spick.se/admin.html" class="btn">Admin-panel →</a>
 `);
   await sendEmail(ADMIN, `💰 Ny bokning: ${esc(name)} – ${price} – ${date}`, adminHtml);
+  // Fas 10: parallell webhook-alert
+  await sendAdminAlert({
+    severity: "info",
+    title: `Ny bokning: ${name}`,
+    source: "stripe-webhook",
+    booking_id: booking.id,
+    cleaner_id: cleaner?.id || undefined,
+    metadata: {
+      price,
+      service,
+      date,
+      auto_confirmed: autoConfirm,
+      cleaner_assigned: !!cleaner,
+      stripe_session: stripeSessionId,
+    },
+  });
 
   // RUT-ansökan flyttad till Fas 7.5 (2026-04-23).
   // Tidigare trigger bruten: kolumnmismatch + fel XML-matematik +
@@ -628,6 +657,17 @@ async function handleRefund(charge: Record<string, unknown>) {
 `)
   );
   await sendEmail(ADMIN, `↩️ Återbetalning: ${booking.customer_name} – ${Math.round(refundAmount)} kr`, wrap(`<h2>Återbetalning genomförd</h2><p>Kund: ${booking.customer_name}<br>Belopp: ${Math.round(refundAmount)} kr<br>Bokning: ${booking.booking_date}</p>`));
+  // Fas 10: parallell webhook-alert
+  await sendAdminAlert({
+    severity: "info",
+    title: `Refund: ${booking.customer_name}`,
+    source: "stripe-webhook",
+    booking_id: booking.id,
+    metadata: {
+      refund_sek: Math.round(refundAmount),
+      booking_date: booking.booking_date,
+    },
+  });
 }
 
 // ── Huvud-handler ──────────────────────────────────────────────────────────
@@ -817,6 +857,21 @@ async function handleDisputeCreated(dispute: Record<string, unknown>) {
       <p>Logga in på <a href="https://dashboard.stripe.com/disputes" style="color:#0F6E56">Stripe Dashboard</a> för att besvara tvisten.</p>
     `)
   );
+  // Fas 10: parallell webhook-alert (dispute = critical, EU-deadline 7 dagar)
+  await sendAdminAlert({
+    severity: "critical",
+    title: "Stripe dispute opened",
+    source: "stripe-webhook",
+    message: `Åtgärd krävs inom 7 dagar. Svara på dispute via Stripe Dashboard.`,
+    booking_id: booking.id,
+    cleaner_id: booking.cleaner_id || undefined,
+    metadata: {
+      customer: booking.customer_name,
+      amount_sek: amountSek,
+      reason,
+      booking_date: booking.booking_date,
+    },
+  });
 
   console.log("[SPICK] Dispute created:", { bookingId: booking.id, amount: amountSek, reason });
 }
@@ -862,6 +917,20 @@ async function handleDisputeClosed(dispute: Record<string, unknown>) {
       ${!won ? '<p style="color:#DC2626">Clawback: ' + (booking.total_price || 0) + ' kr tillagd på städarens balans.</p>' : ''}
     `)
   );
+  // Fas 10: parallell webhook-alert (won=info, lost=warn pga clawback-impact)
+  await sendAdminAlert({
+    severity: won ? "info" : "warn",
+    title: won ? "Dispute won" : "Dispute lost",
+    source: "stripe-webhook",
+    booking_id: booking.id,
+    cleaner_id: booking.cleaner_id || undefined,
+    metadata: {
+      customer: booking.customer_name,
+      result: won ? "won" : "lost",
+      clawback_sek: !won ? (booking.total_price || 0) : 0,
+      booking_date: booking.booking_date,
+    },
+  });
 
   console.log("[SPICK] Dispute closed:", { bookingId: booking.id, won, newStatus });
 }
