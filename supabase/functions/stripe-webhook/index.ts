@@ -20,6 +20,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { sendMagicSms } from "../_shared/send-magic-sms.ts";
+import { logBookingEvent } from "../_shared/events.ts";
 
 const STRIPE_SECRET_KEY     = Deno.env.get("STRIPE_SECRET_KEY")!;
 const RESEND_API_KEY        = Deno.env.get("RESEND_API_KEY")!;
@@ -295,6 +296,19 @@ async function handlePaymentSuccess(session: Record<string, unknown>) {
     ...(metadata.customer_notes ? { notes: metadata.customer_notes } : {}),
   }).eq("id", bookingId);
 
+  // Fas 6.3: logga payment_received (best-effort, ej i money-path)
+  await logBookingEvent(sb, bookingId, "payment_received", {
+    actorType: "system",
+    metadata: {
+      stripe_payment_intent_id: (session.payment_intent as string) || null,
+      stripe_session_id: (session.id as string) || null,
+      amount_total: (session.amount_total as number) || null,
+      currency: (session.currency as string) || "sek",
+      booking_status: bookingStatus,
+      auto_confirm: autoConfirm,
+    },
+  });
+
   // Om prenumeration: skapa subscription-rad
   if (metadata.frequency && metadata.frequency !== "once") {
     const nextDate = new Date(booking.booking_date);
@@ -551,6 +565,19 @@ async function handleRefund(charge: Record<string, unknown>) {
   await sb.from("bookings").update({ payment_status: "refunded" }).eq("id", booking.id);
 
   const refundAmount = ((charge.amount_refunded as number) || 0) / 100;
+
+  // Fas 6.3: logga refund_issued (stripe-webhook-initiated refund,
+  // särskiljs från noshow-refund EF via initiated_by-metadata)
+  await logBookingEvent(sb, booking.id, "refund_issued", {
+    actorType: "system",
+    metadata: {
+      amount_sek: Math.round(refundAmount),
+      stripe_charge_id: (charge.id as string) || null,
+      stripe_payment_intent_id: paymentIntentId,
+      initiated_by: "stripe-webhook",
+      reason: "stripe_refund",
+    },
+  });
   const fname = booking.customer_name?.split(" ")[0] || "där";
 
   await sendEmail(
