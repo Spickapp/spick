@@ -67,8 +67,18 @@ jobs:
           else
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
             git commit -m "chore(claude): uppdatera codebase-snapshot.md [skip ci]"
-            git push
-            echo "✅ Snapshot uppdaterad + pushad"
+            # Retry-loop mot race condition: andra push till main under körning
+            # kan orsaka "fetch first"-reject. Rebase + retry 3 ggr.
+            for i in 1 2 3; do
+              if git pull --rebase origin main && git push; then
+                echo "✅ Snapshot uppdaterad + pushad (försök $i)"
+                exit 0
+              fi
+              echo "⚠️ Push-försök $i misslyckades, väntar 5s..."
+              sleep 5
+            done
+            echo "❌ Push misslyckades efter 3 försök — skippar denna run"
+            exit 1
           fi
 
       - name: Flagga om CLAUDE.md är stale
