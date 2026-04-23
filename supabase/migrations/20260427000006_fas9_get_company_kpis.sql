@@ -32,7 +32,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $$
+AS $fn$
 DECLARE
   result jsonb;
   v_now timestamptz := now();
@@ -132,7 +132,7 @@ BEGIN
 
   RETURN result;
 END;
-$$;
+$fn$;
 
 ALTER FUNCTION public.get_company_kpis(uuid) OWNER TO postgres;
 GRANT EXECUTE ON FUNCTION public.get_company_kpis(uuid) TO authenticated;
