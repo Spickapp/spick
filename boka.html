@@ -2903,6 +2903,15 @@ async function setupAutoDelegationUI() {
     return;
   }
 
+  // Model-4c UX-fix: Om kund valde företagsaggregatet (provider_type='company')
+  // är delegation implicit — företaget väljer redan städare. Checkbox vore
+  // redundant och förvirrande. Visa endast för specifik team-medlem (fall 3
+  // per auto-delegation-analys 2026-04-23).
+  if (selectedCleaner.provider_type === 'company') {
+    section.style.display = 'none';
+    return;
+  }
+
   const companyName = selectedCleaner.company_display_name || selectedCleaner.company_name || 'företaget';
   const nameSpan = document.getElementById('auto-del-company-name');
   if (nameSpan) nameSpan.textContent = companyName;
