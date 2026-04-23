@@ -2,8 +2,26 @@
 
 **Öppnat:** 2026-04-23 kväll (efter commit 4400245-kedjan)
 **Prio:** MEDIUM — blockerar end-to-end-testning med 4242-kort
-**Status:** Dokumenterat, ej åtgärdat
+**Status:** ✅ RESOLVED 2026-04-23 — Hypotes 3 bekräftad (EF cold-start / gammal deploy)
 **Relaterade dokument:** docs/deploy/2026-04-27-stripe-dual-key-setup.md
+
+## RESOLUTION 2026-04-23
+
+Rotorsak: booking-create-EF:n i prod var deployad från commit `650270a` (Fas 6.3 retrofit), inte från commit `df37dca` (dual-key-infrastruktur). Den saknade därför hela `resolveStripeKey()`-funktionen och läste bara `STRIPE_SECRET_KEY` direkt (live-värdet).
+
+Fix:
+1. `supabase functions deploy booking-create --project-ref urjeijcncsyuletprydy` — re-deploy med dual-key-kod
+2. Toggla `stripe_test_mode='true'` via Studio SQL
+3. Test-bokning i incognito → Stripe Checkout-URL började med `cs_test_...` ✅
+4. Toggla tillbaka till `false`
+
+Hypoteser 1, 2, 4 behövde aldrig verifieras. Dual-key fungerar nu end-to-end.
+
+Lärdom: efter push av booking-create-kodändringar MÅSTE `supabase functions deploy` köras explicit — GitHub Pages auto-deploy täcker bara HTML/JS. Kommer fångas av §2.8 CI-workflow när den aktiveras (schema-drift-check + EF-deploy-sync).
+
+---
+
+## Originalt rapporterat problem (historiskt)
 
 ## Upptäckt 2026-04-23 kväll
 
