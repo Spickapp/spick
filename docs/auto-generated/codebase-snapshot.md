@@ -5,13 +5,14 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (76 st)
+## Edge Functions (77 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
 | `admin-approve-cleaner` |  |
 | `admin-approve-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-approve-company (Sprint B Dag 5) |
 | `admin-create-company` |  |
+| `admin-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – admin-dispute-decide (Fas 8 §8.14 wrapper) |
 | `admin-mark-payouts-paid` | Fas 1.10.2: Admin-trigger av payout-flode (ersatter direkt DB-PATCH) Primarkalla: docs/planning/spick-arkitekturplan-v3. |
 | `admin-morning-report` |  |
 | `admin-reject-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-reject-company (Sprint B Dag 5) |
@@ -148,8 +149,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (118 st)
+## Migrations (119 st)
 
-- Senaste: `20260427000009_fas8_rls_policies.sql`
-- Timestamp-prefix: `20260427000009`
+- Senaste: `20260427000010_fas8_add_escrow_state_to_customer_view.sql`
+- Timestamp-prefix: `20260427000010`
 
