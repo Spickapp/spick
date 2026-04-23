@@ -64,6 +64,15 @@ h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height
 .team-action.activate{color:var(--g);border-color:var(--gl)}
 .team-action.activate:hover:not(:disabled){background:var(--gp)}
 
+/* KPI-dashboard (Fas 9 §9.6) */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem}
+.kpi-box{padding:1rem 1.25rem;background:var(--bg);border:1px solid var(--border);border-radius:10px}
+.kpi-value{font-family:'Playfair Display',Georgia,serif;font-size:1.75rem;font-weight:700;color:var(--b);line-height:1.1;margin-bottom:0.25rem}
+.kpi-value.muted{color:var(--m);font-size:1.5rem}
+.kpi-label{color:var(--m);font-size:0.8125rem;line-height:1.35}
+.kpi-sub{color:var(--m);font-size:0.75rem;margin-top:0.25rem;opacity:0.7}
+.kpi-meta{color:var(--m);font-size:0.75rem;margin-top:0.75rem;text-align:right}
+
 .invite-form{display:grid;gap:0.75rem;margin-top:1rem;padding:1.25rem;background:var(--bg);border-radius:10px;border:1px dashed var(--border)}
 .invite-form input{padding:0.75rem 1rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.9375rem}
 .invite-form .row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
@@ -117,7 +126,16 @@ h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height
         <!-- Filled dynamically -->
       </div>
     </div>
-    
+
+    <!-- KPI-översikt (Fas 9 §9.6) -->
+    <div class="card" id="kpiCard" style="display:none">
+      <h2>Översikt</h2>
+      <div id="kpiGrid" class="kpi-grid">
+        <!-- Filled dynamically -->
+      </div>
+      <div id="kpiMeta" class="kpi-meta"></div>
+    </div>
+
     <!-- Team -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
@@ -266,11 +284,15 @@ async function init() {
     
     // 4. Ladda team + pending invites
     await loadTeam();
-    
-    // 5. Rendera
+
+    // 5. Ladda KPIs (Fas 9 §9.6, best-effort — RPC kan saknas i prod tills migration körts)
+    await loadKpis(authHeaders);
+
+    // 6. Rendera
     renderChecklist();
     renderTeam();
-    
+    renderKpis();
+
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('mainContent').style.display = '';
     
@@ -431,6 +453,103 @@ function renderTeam() {
       </div>
     `;
   }).join('');
+}
+
+// ─────────────────────────────────────────────
+// KPI-dashboard (Fas 9 §9.6)
+// ─────────────────────────────────────────────
+async function loadKpis(authHeaders) {
+  try {
+    const res = await fetch(
+      `${SPICK.SUPA_URL}/rest/v1/rpc/get_company_kpis`,
+      {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_company_id: state.cleaner.company_id }),
+      }
+    );
+    if (!res.ok) {
+      console.warn('[foretag-dashboard] loadKpis RPC ej tillgänglig:', res.status);
+      state.kpis = null;
+      return;
+    }
+    state.kpis = await res.json();
+  } catch (e) {
+    console.warn('[foretag-dashboard] loadKpis misslyckades:', e.message);
+    state.kpis = null;
+  }
+}
+
+function renderKpis() {
+  const card = document.getElementById('kpiCard');
+  const grid = document.getElementById('kpiGrid');
+  const meta = document.getElementById('kpiMeta');
+  const k = state.kpis;
+
+  // Graceful degradation: om RPC saknas eller misslyckades → dölj kortet helt
+  if (!k || typeof k !== 'object') {
+    card.style.display = 'none';
+    return;
+  }
+
+  const fmt = (v, suffix = '') => (v === null || v === undefined) ? '—' : (v + suffix);
+  const ratingStr = (k.avg_rating === null || k.avg_rating === undefined)
+    ? '—'
+    : Number(k.avg_rating).toFixed(2);
+  const completionStr = (k.completion_rate === null || k.completion_rate === undefined)
+    ? '—'
+    : Number(k.completion_rate).toFixed(1) + '%';
+
+  const boxes = [
+    {
+      value: fmt(k.bookings_this_week),
+      label: 'Bokningar denna vecka',
+      sub: k.bookings_last_4_weeks != null ? `${k.bookings_last_4_weeks} senaste 4 veckorna` : null,
+    },
+    {
+      value: fmt(k.completed_last_30_days),
+      label: 'Klara senaste 30 dagar',
+      sub: null,
+    },
+    {
+      value: ratingStr,
+      label: 'Snitt-betyg',
+      sub: k.rating_count > 0 ? `${k.rating_count} recensioner` : 'Inga recensioner ännu',
+      muted: k.avg_rating === null,
+    },
+    {
+      value: completionStr,
+      label: 'Completion-rate',
+      sub: 'senaste 90 dagar',
+      muted: k.completion_rate === null,
+    },
+    {
+      value: fmt(k.active_cleaners_this_week) + (k.total_team_size != null ? ' / ' + k.total_team_size : ''),
+      label: 'Aktiva städare',
+      sub: 'denna vecka',
+    },
+  ];
+
+  grid.innerHTML = boxes.map(b => `
+    <div class="kpi-box">
+      <div class="kpi-value ${b.muted ? 'muted' : ''}">${esc(String(b.value))}</div>
+      <div class="kpi-label">${esc(b.label)}</div>
+      ${b.sub ? `<div class="kpi-sub">${esc(b.sub)}</div>` : ''}
+    </div>
+  `).join('');
+
+  if (k.generated_at) {
+    try {
+      const d = new Date(k.generated_at);
+      meta.textContent = 'Uppdaterad ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      meta.textContent = '';
+    }
+  } else {
+    meta.textContent = '';
+  }
+
+  card.style.display = '';
 }
 
 // ─────────────────────────────────────────────
