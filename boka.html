@@ -939,6 +939,46 @@ document.addEventListener('DOMContentLoaded', () => {
     refBanner.textContent = '🎁 Referral-kod aktiv — du och din vän får 100 kr var!';
     document.querySelector('.booking-content, .step-panel, main')?.prepend(refBanner);
   }
+
+  // §5.6: Boka samma som sist — ?rebook=<booking_id> förfyller state från existing booking
+  const rebookId = p.get('rebook');
+  if (rebookId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rebookId)) {
+    fetch(SUPA + '/rest/v1/booking_confirmation?id=eq.' + encodeURIComponent(rebookId) + '&select=service_type,square_meters,booking_hours,customer_address,has_pets,has_materials,notes,cleaner_id,cleaner_name,customer_name,customer_email,customer_phone', {headers: H})
+      .then(function(r) { return r.json(); })
+      .then(function(rows) {
+        var b = rows && rows[0];
+        if (!b) return;
+        state.service = b.service_type || state.service;
+        state.services = b.service_type ? [b.service_type] : state.services;
+        state.sqm = b.square_meters || state.sqm;
+        state.hours = parseFloat(b.booking_hours) || state.hours;
+        state.address = b.customer_address || state.address;
+        state.hasPets = !!b.has_pets;
+        state.hasMaterials = !!b.has_materials;
+        state.notes = b.notes || state.notes;
+        state.customerName = b.customer_name || state.customerName;
+        state.email = b.customer_email || state.email;
+        state.phone = b.customer_phone || state.phone;
+        if (b.cleaner_id) state.cleanerId = b.cleaner_id;
+        if (b.cleaner_name) state.cleanerName = b.cleaner_name;
+        // UI-uppdatering (samma mönster som savedState-restore ovan)
+        setTimeout(function() {
+          if (state.service) selectService(state.service, '', '', '');
+          if (state.sqm) { var sq = document.getElementById('sqm'); if (sq) { sq.value = state.sqm; calcHours(); } }
+          if (state.address) {
+            var a1 = document.getElementById('step1-address'); if (a1) a1.value = state.address;
+            var a2 = document.getElementById('address'); if (a2) a2.value = state.address;
+          }
+          // Visuell bekräftelse
+          var rebookBanner = document.createElement('div');
+          rebookBanner.style.cssText = 'background:#E1F5EE;border:1.5px solid #6EE7B7;border-radius:12px;padding:10px 16px;margin:0 auto 1rem;max-width:700px;text-align:center;font-size:.85rem;color:#0F6E56;font-weight:600';
+          rebookBanner.textContent = '🔄 Förifyllt från tidigare bokning — justera vid behov';
+          document.querySelector('.booking-content, .step-panel, main')?.prepend(rebookBanner);
+        }, 150);
+      })
+      .catch(function(e) { console.warn('[SPICK] Rebook fetch failed:', e); });
+  }
+
   const now = new Date();
   state.calYear  = now.getFullYear();
   state.calMonth = now.getMonth();

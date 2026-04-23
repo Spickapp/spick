@@ -153,7 +153,7 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
   const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
   
   const data = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?payment_intent_id=eq.${sessionId}&select=id,service_type,booking_date,booking_time,customer_address,total_price,payment_status`,
+    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?payment_intent_id=eq.${sessionId}&select=id,service_type,booking_date,booking_time,customer_address,total_price,payment_status,cleaner_id,cleaner_name`,
     { headers: { 'apikey': SPICK.SUPA_KEY } }
   ).then(r => r.json()).catch(() => []);
 
@@ -167,6 +167,19 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
     const bookingBtn = document.getElementById('booking-btn');
     if (bookingBtn) bookingBtn.href = `min-bokning.html?bid=${b.id}`;
     document.getElementById('details').style.display = 'block';
+    // §5.7: Boka samma städare igen (C-2 deep-link)
+    if (b.cleaner_id && b.cleaner_name) {
+      window._spickLastCleaner = { id: b.cleaner_id, name: b.cleaner_name };
+      // Hämta hourly_rate + company_id för komplett C-2-länk
+      fetch(`${SPICK.SUPA_URL}/rest/v1/v_cleaners_public?id=eq.${b.cleaner_id}&select=id,hourly_rate,company_id`, {
+        headers: { 'apikey': SPICK.SUPA_KEY }
+      }).then(r => r.json()).then(rows => {
+        if (rows?.[0]) {
+          window._spickLastCleaner.rate = rows[0].hourly_rate;
+          window._spickLastCleaner.company_id = rows[0].company_id;
+        }
+      }).catch(() => {});
+    }
   } else if (attempts < maxAttempts) {
     // Webhook har inte hunnit köra än – försök igen
     setTimeout(() => fetchBookingBySession(sessionId, attempts + 1), delay);
@@ -175,6 +188,32 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
 
 if (!bid && sessionId) {
   fetchBookingBySession(sessionId);
+}
+
+// §5.7: hämta cleaner-info när vi har bid direkt (ingen session-fetch behövs)
+if (bid) {
+  (async () => {
+    try {
+      const bookingRes = await fetch(
+        `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?id=eq.${encodeURIComponent(bid)}&select=cleaner_id,cleaner_name`,
+        { headers: { 'apikey': SPICK.SUPA_KEY } }
+      );
+      const rows = await bookingRes.json();
+      const b = rows?.[0];
+      if (b?.cleaner_id && b?.cleaner_name) {
+        window._spickLastCleaner = { id: b.cleaner_id, name: b.cleaner_name };
+        const cleanerRes = await fetch(
+          `${SPICK.SUPA_URL}/rest/v1/v_cleaners_public?id=eq.${encodeURIComponent(b.cleaner_id)}&select=id,hourly_rate,company_id`,
+          { headers: { 'apikey': SPICK.SUPA_KEY } }
+        );
+        const cleanerRows = await cleanerRes.json();
+        if (cleanerRows?.[0]) {
+          window._spickLastCleaner.rate = cleanerRows[0].hourly_rate;
+          window._spickLastCleaner.company_id = cleanerRows[0].company_id;
+        }
+      }
+    } catch (e) { /* best-effort */ }
+  })();
 }
 
 if (service || date) {
@@ -217,18 +256,28 @@ if (typeof gtag !== 'undefined') {
 }
 </script>
 <script>
-// Lägg till betygsätt-länk efter 2 sekunder
+// Lägg till betygsätt-länk + §5.7 "Boka samma städare igen" efter 3 sekunder
 setTimeout(() => {
-  const bid = new URLSearchParams(location.search).get('bid') || 
+  const bid = new URLSearchParams(location.search).get('bid') ||
               new URLSearchParams(location.search).get('session_id');
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'text-align:center;margin:2rem 0;display:flex;flex-direction:column;gap:.75rem;align-items:center';
   if (bid) {
-    const link = document.createElement('div');
-    link.style.cssText = 'text-align:center;margin:2rem 0;';
-    link.innerHTML = `<a href="betygsatt.html?bid=${encodeURIComponent(bid)}" 
+    wrap.innerHTML += `<a href="betygsatt.html?bid=${encodeURIComponent(bid)}"
       style="display:inline-block;background:#F59E0B;color:#fff;padding:.875rem 2rem;border-radius:100px;font-weight:700;text-decoration:none;font-family:DM Sans,sans-serif">
       ⭐ Betygsätt din städare →</a>`;
-    document.body.appendChild(link);
   }
+  // §5.7: Boka samma städare igen (om cleaner-info finns)
+  const c = window._spickLastCleaner;
+  if (c && c.id) {
+    const firstName = (c.name || '').split(' ')[0] || 'städaren';
+    const rate = c.rate ? `&rate=${c.rate}` : '';
+    const company = c.company_id ? `&company=${encodeURIComponent(c.company_id)}` : '';
+    wrap.innerHTML += `<a href="boka.html?id=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.name)}${rate}${company}"
+      style="display:inline-block;background:#0F6E56;color:#fff;padding:.875rem 2rem;border-radius:100px;font-weight:600;text-decoration:none;font-family:DM Sans,sans-serif;font-size:.95rem">
+      🔄 Boka ${firstName} igen →</a>`;
+  }
+  if (wrap.children.length) document.body.appendChild(wrap);
 }, 3000);
 </script>
 
