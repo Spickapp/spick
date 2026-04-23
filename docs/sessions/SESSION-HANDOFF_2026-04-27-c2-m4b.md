@@ -1,25 +1,27 @@
-# Session handoff — 2026-04-27 (Sprint C-2 + Model-4b + verifiering)
+# Session handoff — 2026-04-27 (Sprint C-2 + Model-4b + Fas 6.2 foundation)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-26-modell-b-c.md`
 **Denna session:** 2026-04-23 (morgon, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
-**Status vid avslut:** 2 sprints shippade till main (C-2 + Model-4b). Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
+**Status vid avslut:** 3 sprints shippade till main (C-2, Model-4b, Fas 6.2). Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
 
 ---
 
 ## 1. Snabb-sammanfattning (läs först)
 
-Tre leveranser:
+Fyra leveranser:
 
 1. **Sprint C-2** (`16dd23d` → rebased i `409163e`-push-serien): `stadare-profil.html` propagerar `company_id` till boka.html när team-medlem-profil ger boka-klick. Profil → Boka-funnel komplett med företagskontext (pricing/filter/banner).
 
 2. **Sprint Model-4b** (`9ce9161`): `boka.html renderCleaners()` har nu team-size-badge-rendering. Aktiveras automatiskt när Model-4c flippar `matching_algorithm_version='providers'`. Vilande i v2-data idag.
 
-3. **Verifierat + audit'at utan kod-change:**
+3. **Fas 6.2 foundation** (`2d79871`): `_shared/events.ts` helper + 8 tester + `docs/architecture/event-schema.md`. 27 canonical BookingEventType-värden, 5 ActorType, best-effort `logBookingEvent()`-wrapper. Rent additivt — 0 production-code-change, unblockar Fas 8 Dispute + Escrow (EU-deadline 2 dec 2026).
+
+4. **Verifierat + audit'at utan kod-change:**
    - `foretag.html` per-team-member CTAs redan korrekt (`?company=X&cleaner_id=Y`) — audit §3.2-spec levereras utan extra arbete där
    - Prof-5 JSON-LD + VD-redirect + sitemap-EF fungerar (preview mot prod-data)
    - Rating-flöde robust: betyg.html + notify EF + auto-remind EF. 0 ratings = inga real-completed bookings, inte broken
 
-**Totalt: 3 commits (2 pushade av Claude + 1 bot-sitemap).**
+**Totalt: 4 commits (3 pushade av Claude + 1 bot-sitemap).**
 
 ---
 
@@ -30,8 +32,9 @@ Tre leveranser:
 | 1 | `16dd23d` | feat(profile): Sprint C-2 - stadare-profil skickar company_id till boka.html |
 | 2 | `536a4ae` | Auto-update sitemap.xml [skip ci] *(bot)* |
 | 3 | `9ce9161` | feat(matching): Sprint Model-4b - boka.html team-size-badge rendering |
+| 4 | `2d79871` | feat(events): Fas 6.2 foundation - _shared/events.ts helper + schema-doc |
 
-**Obs:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`.
+**Obs:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`. Tredje push (Fas 6.2) landade direkt.
 
 ---
 
@@ -102,6 +105,41 @@ Tre leveranser:
 - `compCard`-path (rad 2225-2281, `preCompanyId && !allow_customer_choice`) orörd — har redan egen `👥 N städare`.
 
 **Prod-påverkan nu:** Ingen. `providers-shadow` ger v2-data → conditional branches träffar inte providers-grenar. Koden väntar på Model-4c flipp.
+
+---
+
+## 5.5 Fas 6.2 foundation detaljer
+
+**Filer (3 nya, rent additivt):**
+- `supabase/functions/_shared/events.ts` — helper + typ-union (214 rader)
+- `supabase/functions/_tests/events/events.test.ts` — 8 tester (139 rader)
+- `docs/architecture/event-schema.md` — canonical event-taxonomy (198 rader)
+
+**Innehåll (events.ts):**
+- **`BookingEventType`** (27 värden) grupperat i livscykel (8) / betalning (5) / avbrott (4) / dispute (3) / kvalitet (1) / recurring (5) / ändring (1)
+- **`ActorType`** (5 värden): `system | customer | cleaner | admin | company_owner`
+- **`EVENT_METADATA`** const: metadata-nyckel-lista per event-type (single source of truth per regel #28)
+- **`logBookingEvent(supabase, bookingId, eventType, options)`** → best-effort wrapper runt `log_booking_event` RPC. Returnerar `true` vid success, `false` vid error/exception. Kastar ALDRIG (event-logging är audit, inte kritisk path).
+- **`buildEventMetadata<T>(eventType, fields)`** → compile-time-hjälp för retrofit call-sites
+
+**Test-resultat (`deno test _tests/events/events.test.ts --allow-env`):**
+```
+ok | 8 passed | 0 failed (21ms)
+```
+
+Tester täcker: happy-path, default values, RPC-error → false, exception → false, ogiltigt booking_id → 0 RPC-anrop, EVENT_METADATA-coverage för alla 27 event-types.
+
+**Verifierat (regel #31):**
+- `booking_events`-tabellen existerar i prod (REST 401 = RLS-block, inte 404)
+- Migration `20260401181153_sprint1_missing_tables.sql:92-123` definierar schema + RPC-signatur
+- `booking-create:528` är ENDA call-site idag (`event_type='booking_created'`)
+
+**Scope-gränser (regel #27):**
+- Ingen retrofit av befintliga EFs (§6.3 separat sprint, 4-6h, prio-lista i event-schema.md §6)
+- Ingen migration (tabellen räcker som den är)
+- Ingen frontend-integration (§6.4-6.6 kommer senare med event-timeline-UI)
+
+**Prod-påverkan nu:** Ingen. Ren infrastruktur som konsumeras av framtida retrofit + Fas 8 dispute/escrow + Fas 5 recurring.
 
 ---
 
@@ -215,9 +253,12 @@ Solo-rad `de4bec9b` kvarstår med `hourly_rate=100` (testdata). Sitemap-EF exklu
 1. **Farhad verifierar i prod:** /s/nasiba-kenjaeva → klick "Boka Nasiba" → boka.html ska visa "Boka via Solid Service" i H1.
 2. **Strategiskt beslut:** team-aktivering §6.1 + Model-4c flipp §6.2 (paras ihop).
 3. **Om team-aktiverad:** Model-4b team-badge blir live automatiskt. Ingen kod-ändring behövs.
-4. **Efteråt:** Sprint C-1 team-drawer på boka.html (3-4h, audit §3.1) eller Sprint C-4 addon-matching (4-5h, audit §4).
+4. **Fas 6.3 retrofit** (4-6h): migrera 8 prio-EFs att använda `logBookingEvent()` (prio-lista i `docs/architecture/event-schema.md` §6). Låg risk, bygger event-data för Fas 8.
+5. **Efteråt:** Sprint C-1 team-drawer på boka.html (3-4h, audit §3.1), Sprint C-4 addon-matching (4-5h, audit §4), eller Fas 5 Retention-kickoff (10-15h, plan §5).
 
-**Farhad vid paus:** Ville fortsätta enligt mitt rekommenderade flöde. Denna handoff är stängningen. Väntar på strategiska beslut §6 innan nästa kod-sprint.
+**Strategisk positionering:** Sessionen la foundation för Fas 6 (Event-system) som gates Fas 8 (Dispute + Escrow) som har icke-förhandlingsbar EU-deadline 2 dec 2026. Arkitekturplanens beroendegraf är nu en steg närmare EU-compliance.
+
+**Farhad vid paus:** Bad mig fortsätta enligt rekommenderat flöde med arkitekturplanen i åtanke. Denna handoff är stängningen. Väntar på strategiska beslut §6 innan nästa kod-sprint.
 
 ---
 
