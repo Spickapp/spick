@@ -1,14 +1,14 @@
 # Session handoff — 2026-04-27 (Sprint C-2 + Model-4b + Fas 6.2 foundation)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-26-modell-b-c.md`
-**Denna session:** 2026-04-23 (morgon, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
-**Status vid avslut:** 3 sprints shippade till main (C-2, Model-4b, Fas 6.2). Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
+**Denna session:** 2026-04-23 (morgon + dag, git-datum; filnamn 04-27 för glob-sort-kontinuitet)
+**Status vid avslut:** 4 sprints shippade till main (C-2, Model-4b, Fas 6.2 foundation, Fas 6.3 retrofit 62.5%). Prof-5 + rating-flöde verifierade. Inga blockerande buggar.
 
 ---
 
 ## 1. Snabb-sammanfattning (läs först)
 
-Fyra leveranser:
+Fem leveranser:
 
 1. **Sprint C-2** (`16dd23d` → rebased i `409163e`-push-serien): `stadare-profil.html` propagerar `company_id` till boka.html när team-medlem-profil ger boka-klick. Profil → Boka-funnel komplett med företagskontext (pricing/filter/banner).
 
@@ -16,12 +16,21 @@ Fyra leveranser:
 
 3. **Fas 6.2 foundation** (`2d79871`): `_shared/events.ts` helper + 8 tester + `docs/architecture/event-schema.md`. 27 canonical BookingEventType-värden, 5 ActorType, best-effort `logBookingEvent()`-wrapper. Rent additivt — 0 production-code-change, unblockar Fas 8 Dispute + Escrow (EU-deadline 2 dec 2026).
 
-4. **Verifierat + audit'at utan kod-change:**
+4. **Fas 6.3 retrofit 62.5%** (`650270a` + `71468dc` + `f9a47d1`): 5/8 EFs retrofittade att använda `logBookingEvent()`-helpern:
+   - `booking-create` → booking_created (migrerad)
+   - `auto-delegate` → cleaner_assigned (ny capture)
+   - `cleaner-booking-response` → cleaner_declined (ny)
+   - `booking-cancel-v2` → cancelled_by_customer (ny)
+   - `noshow-refund` → noshow_reported + refund_issued (ny, 2 events)
+   
+   Återstående 3/8 har specifika risker/scope-problem dokumenterade i §5.6. Se även §6.5 design-fråga för frontend-retrofit.
+
+5. **Verifierat + audit'at utan kod-change:**
    - `foretag.html` per-team-member CTAs redan korrekt (`?company=X&cleaner_id=Y`) — audit §3.2-spec levereras utan extra arbete där
    - Prof-5 JSON-LD + VD-redirect + sitemap-EF fungerar (preview mot prod-data)
    - Rating-flöde robust: betyg.html + notify EF + auto-remind EF. 0 ratings = inga real-completed bookings, inte broken
 
-**Totalt: 4 commits (3 pushade av Claude + 1 bot-sitemap).**
+**Totalt: 9 commits (8 pushade av Claude + 1 bot-sitemap).**
 
 ---
 
@@ -33,8 +42,12 @@ Fyra leveranser:
 | 2 | `536a4ae` | Auto-update sitemap.xml [skip ci] *(bot)* |
 | 3 | `9ce9161` | feat(matching): Sprint Model-4b - boka.html team-size-badge rendering |
 | 4 | `2d79871` | feat(events): Fas 6.2 foundation - _shared/events.ts helper + schema-doc |
+| 5 | `0ffc682` | docs(session): uppdatera handoff 2026-04-27 med Fas 6.2-addition |
+| 6 | `650270a` | feat(events): Fas 6.3 partial - retrofit booking-create + auto-delegate |
+| 7 | `71468dc` | feat(events): Fas 6.3 - retrofit cleaner-booking-response + booking-cancel-v2 |
+| 8 | `f9a47d1` | feat(events): Fas 6.3 - retrofit noshow-refund (noshow_reported + refund_issued) |
 
-**Obs:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`. Tredje push (Fas 6.2) landade direkt.
+**Obs:** Min första push (C-2) landade direkt. Andra push (Model-4b) blockerades av bot-commit `536a4ae`, rebasade rent, pushade som `409163e`. Tredje push (Fas 6.2) landade direkt. Efterföljande retrofit-commits landade direkt utan rebase.
 
 ---
 
@@ -143,6 +156,55 @@ Tester täcker: happy-path, default values, RPC-error → false, exception → f
 
 ---
 
+## 5.6 Fas 6.3 retrofit detaljer (5/8 EFs klara, 62.5%)
+
+**Commits:** `650270a` + `71468dc` + `f9a47d1`
+
+Tre batch-commits av EF-retrofit per `docs/architecture/event-schema.md §6` prio-lista.
+
+| # | EF | Event(s) | Typ | Commit |
+|---|---|---|---|---|
+| 1 | `booking-create` | `booking_created` | Migrerad (från direct RPC → helper) | `650270a` |
+| 2 | `auto-delegate` | `cleaner_assigned` | Ny event-capture | `650270a` |
+| 3 | `cleaner-booking-response` | `cleaner_declined` | Ny event-capture | `71468dc` |
+| 4 | `booking-cancel-v2` | `cancelled_by_customer` | Ny event-capture | `71468dc` |
+| 5 | `noshow-refund` | `noshow_reported` + `refund_issued` | Två nya events | `f9a47d1` |
+
+**Infrastructure-fix i `_shared/events.ts`:** `SupabaseClient`-typ-import bytt till minimal `SupabaseRpcClient`-interface (decouplar från supabase-js-versioner). Samma kategori som pre-existing H5.
+
+**Verifiering per commit:**
+- `deno check` på varje retrofittad EF: **PASS**
+- `deno test _tests/events/events.test.ts`: **8/8 PASS** (genomsnitt 20ms, 0 regression)
+- Enda kvarstående `deno check`-error i hela kedjan: pre-existing H5 i `booking-create:239` (orelaterat mina ändringar)
+
+**Återstående §6.3 retrofit (3/8 = 37.5%):**
+
+| EF | Event(s) | Varför inte denna session |
+|---|---|---|
+| `stripe-webhook` | `payment_received`, `refund_issued` | Money-critical file. Höjd riskprofil — behöver egen session med extra `deno check` + integration-test. |
+| `auto-remind` | Multiple (VD-timeout, customer-approval-timeout, admin-approve, reassignment-timeout-revert) | Komplex multi-path. 4-5 separata conditional flows. Behöver scope-split över flera commits. |
+| `betyg.html` (frontend) | `review_submitted` | **DESIGN-FRÅGA för Farhad**. RPC `log_booking_event` är callable från anon role (verifierat via curl HTTP 204). Men arkitektur-val: ska events logga:as via anon-frontend direkt, eller via server-side EF? Skillnad i säkerhetsprofil (anon kan logga valfritt event_type → noisy audit; EF = server-kontrollerat). |
+
+**Side-effect från verifiering:** En test-probe-rad inserterades i `booking_events` under anon-RPC-verifiering med `booking_id=00000000-0000-0000-0000-000000000000` + `event_type='test_probe_ignore'`. Harmlös (ingen FK till real booking), men kan städas bort via SQL:
+```sql
+DELETE FROM booking_events 
+WHERE booking_id = '00000000-0000-0000-0000-000000000000' 
+  AND event_type = 'test_probe_ignore';
+```
+
+**EF-deployment:** Inte auto på git push. Farhad ska deploya följande EFs manuellt via Supabase CLI efter verifiering:
+- booking-create
+- auto-delegate
+- cleaner-booking-response
+- booking-cancel-v2
+- noshow-refund
+
+Rollback per EF = revert commit + re-deploy tidigare version.
+
+**Prod-påverkan efter deploy:** Varje relevant state-transition skriver rad i `booking_events`. Ingen funktionell skillnad för användare. Admin kan börja bygga event-timeline (Fas 6.4) mot real data inom dagar.
+
+---
+
 ## 6. Öppna strategiska beslut (Farhad äger)
 
 ### 6.1 Team-aktivering (Modell B §9 #2)
@@ -202,6 +264,21 @@ Prof-5-commit (`88a7c90`) valde company-canonical medvetet. Att inkludera team-m
 
 Solo-rad `de4bec9b` kvarstår med `hourly_rate=100` (testdata). Sitemap-EF exkluderar även den eftersom slug saknas. Cleanup-beslut.
 
+### 6.5 Event-logging arkitektur för anon-frontends (Fas 6.3 forts.)
+
+**Kontext:** `log_booking_event` RPC är callable från anon role (verifierat). Gör att `betyg.html` (frontend, kör som anon) kan logga `review_submitted` direkt via fetch.
+
+**Designfråga:** Ska anon-frontends logga events direkt, eller gå via EF?
+
+| Modell | För | Mot |
+|---|---|---|
+| **Direkt (anon → RPC)** | Enkelt, låg latens, frontend äger eventet | Anon kan logga valfritt event_type för valfritt booking_id → noisy audit, potentiella fake events |
+| **Via EF** | Server-validerar booking_id, event_type, ownership | Mer kod, en EF-hop extra |
+
+Affekter `betyg.html` (Fas 6.3 §7), framtida recurring-pause/resume-UI (Fas 5.4), framtida dispute-open-UI (Fas 8.15), framtida attest-UI (Fas 8.14). Ett beslut lägger konvention för alla.
+
+**Rekommendation:** Via EF för customer-initiated state-changes. Direkt för pure "read-happened"-events. Men du äger valet.
+
 ---
 
 ## 7. Öppna hygien-flags (från 04-26 handoff, fortfarande aktuella)
@@ -253,12 +330,26 @@ Solo-rad `de4bec9b` kvarstår med `hourly_rate=100` (testdata). Sitemap-EF exklu
 1. **Farhad verifierar i prod:** /s/nasiba-kenjaeva → klick "Boka Nasiba" → boka.html ska visa "Boka via Solid Service" i H1.
 2. **Strategiskt beslut:** team-aktivering §6.1 + Model-4c flipp §6.2 (paras ihop).
 3. **Om team-aktiverad:** Model-4b team-badge blir live automatiskt. Ingen kod-ändring behövs.
-4. **Fas 6.3 retrofit** (4-6h): migrera 8 prio-EFs att använda `logBookingEvent()` (prio-lista i `docs/architecture/event-schema.md` §6). Låg risk, bygger event-data för Fas 8.
-5. **Efteråt:** Sprint C-1 team-drawer på boka.html (3-4h, audit §3.1), Sprint C-4 addon-matching (4-5h, audit §4), eller Fas 5 Retention-kickoff (10-15h, plan §5).
+4. **EF-deployment (Farhad):** Deploya 5 retrofittade EFs via Supabase CLI:
+   ```
+   booking-create, auto-delegate, cleaner-booking-response,
+   booking-cancel-v2, noshow-refund
+   ```
+   Clean up test-probe i booking_events (SQL i §5.6).
+5. **§6.3 forts. (3/8 retrofits kvar):**
+   - `stripe-webhook` — egen session (money-critical, extra testning)
+   - `auto-remind` — egen session (multi-path split-scope)
+   - `betyg.html` — väntar §6.5-beslut (anon direkt vs EF)
+6. **Efteråt:** Sprint C-1 team-drawer på boka.html (3-4h, audit §3.1), Sprint C-4 addon-matching (4-5h, audit §4), eller Fas 5 Retention-kickoff (10-15h, plan §5).
 
-**Strategisk positionering:** Sessionen la foundation för Fas 6 (Event-system) som gates Fas 8 (Dispute + Escrow) som har icke-förhandlingsbar EU-deadline 2 dec 2026. Arkitekturplanens beroendegraf är nu en steg närmare EU-compliance.
+**Strategisk positionering (efter 8 commits):** 
+- Sprint C-2 + Model-4b = Fas 3 konvergens-steg (profile → booking funnel komplett, team-badge-prep)
+- Fas 6.2 foundation + 6.3 62.5% = Fas 6 gates Fas 8 Dispute/Escrow EU-deadline 2 dec 2026
+- Plan-framsteg: Fas 3 ◑ → ◕, Fas 6 ◯ → ◑
 
-**Farhad vid paus:** Bad mig fortsätta enligt rekommenderat flöde med arkitekturplanen i åtanke. Denna handoff är stängningen. Väntar på strategiska beslut §6 innan nästa kod-sprint.
+Sessionen levererade både konsumentvärde (C-2 funnel) OCH infrastruktur-värde (event-grunden för EU-compliance). Arkitekturplanens kritiska vägar är nu flera steg närmare.
+
+**Farhad vid paus:** Bad mig fortsätta enligt rekommenderat flöde med arkitekturplanen i åtanke. Denna handoff är stängningen. Väntar på strategiska beslut §6 (inkl nya §6.5 anon-event-arkitektur) + EF-deployment innan nästa kod-sprint.
 
 ---
 
