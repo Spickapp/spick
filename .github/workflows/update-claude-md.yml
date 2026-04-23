@@ -1,0 +1,133 @@
+name: Update CLAUDE.md Snapshot
+
+# Fas 11.2 per arkitekturplan-v3 §11 — automatiskt uppdatera
+# docs/auto-generated/codebase-snapshot.md via scripts/generate-claude-md.ts.
+#
+# Regel #29-compliance: varje Claude-session startar med FÄRSK kontext
+# om EF-antal, workflow-antal, migrations-timestamp. CLAUDE.md (manuell
+# tier) kan uppdateras från snapshotet när Farhad vill.
+#
+# KÖR-FREKVENS: veckovis (måndag 07:00 UTC) + on-push när functions
+# eller workflows ändras + manuellt (workflow_dispatch).
+#
+# IMPACT: endast docs/auto-generated/codebase-snapshot.md. Auto-commit
+# med [skip ci] så inga andra workflows triggas.
+
+on:
+  schedule:
+    # Varje måndag 07:00 UTC (09:00 lokal tid) — efter schema-drift (06:00)
+    - cron: '0 7 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - '.github/workflows/**'
+      - 'supabase/migrations/**'
+      - 'scripts/generate-claude-md.ts'
+    paths-ignore:
+      - 'docs/auto-generated/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Kör generate-claude-md.ts
+        run: |
+          mkdir -p docs/auto-generated
+          deno run --allow-read scripts/generate-claude-md.ts > docs/auto-generated/codebase-snapshot.md
+          echo "Snapshot-rader: $(wc -l < docs/auto-generated/codebase-snapshot.md)"
+
+      - name: Commit snapshot (om ändrad)
+        id: commit
+        run: |
+          git config user.email "hello@spick.se"
+          git config user.name "Spick Bot"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Spickapp/spick.git
+          git add docs/auto-generated/codebase-snapshot.md
+          if git diff --cached --quiet; then
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            echo "✓ Inget att committa — snapshot oförändrad"
+          else
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            git commit -m "chore(claude): uppdatera codebase-snapshot.md [skip ci]"
+            git push
+            echo "✅ Snapshot uppdaterad + pushad"
+          fi
+
+      - name: Flagga om CLAUDE.md är stale
+        if: steps.commit.outputs.has_diff == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Kolla om det finns CLAUDE.md-drift-issue öppen (från tidigare run)
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'claude-md-drift'
+            });
+
+            if (existing.data.length > 0) {
+              // Kommentera på första existerande istället för ny issue
+              const today = new Date().toISOString().split('T')[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `Update ${today}: snapshot uppdaterad automatiskt (run ${context.runId}). CLAUDE.md kan behöva manuell sync.`
+              });
+              return;
+            }
+
+            // Första driften denna vecka — skapa issue
+            const today = new Date().toISOString().split('T')[0];
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `CLAUDE.md snapshot drift — ${today}`,
+              body: [
+                '## CLAUDE.md snapshot drift',
+                '',
+                'Auto-workflow upptäckte ändringar i kodbasen som gör CLAUDE.md potentiellt stale.',
+                '',
+                '### Nästa steg',
+                '1. Öppna `docs/auto-generated/codebase-snapshot.md` (just uppdaterad)',
+                '2. Jämför med relevanta sektioner i `CLAUDE.md`',
+                '3. Uppdatera CLAUDE.md manuellt där drift finns:',
+                '   - `## Edge Functions (N st)` — uppdatera N',
+                '   - `## GitHub Actions workflows` — uppdatera N',
+                '   - Migrations-senaste-timestamp',
+                '4. Commit till main',
+                '5. Stäng denna issue',
+                '',
+                '### Workflow',
+                `Run: [${context.runId}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+                `Tidpunkt: ${new Date().toUTCString()}`,
+                '',
+                '---',
+                '',
+                '*Auto-skapad av update-claude-md workflow (Fas 11.2). Stäng när sync är klar.*'
+              ].join('\n'),
+              labels: ['claude-md-drift', 'documentation']
+            });
+
+      - name: Rapportera no-drift
+        if: steps.commit.outputs.has_diff == 'false'
+        run: |
+          echo "::notice title=Claude Snapshot::Ingen drift — CLAUDE.md-snapshot matchar current state"
