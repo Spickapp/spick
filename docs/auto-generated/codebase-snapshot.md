@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (69 st)
+## Edge Functions (71 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -45,6 +45,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `customer-check-auto-delegation` | ═══════════════════════════════════════════════════════════════ SPICK – customer-check-auto-delegation (Fas 1.2) |
 | `customer-upsert` | ═══════════════════════════════════════════════════════════════ SPICK – customer-upsert (Fas 1.2) |
 | `email-inbound` |  |
+| `escrow-auto-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-auto-release (Fas 8 §8.12) |
+| `escrow-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-release (Fas 8 §8.7) |
 | `escrow-state-transition` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-state-transition (Fas 8 §8.6) |
 | `expire-team-invitations` | ═══════════════════════════════════════════════════════════════ SPICK – expire-team-invitations (Sprint B Dag 6) |
 | `generate-receipt` | ═══════════════════════════════════════════════════════════════ SPICK – Kundkvitto (Customer Receipt HTML + Email) |
@@ -100,7 +102,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe.ts` |  |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (36 st)
+## GitHub Actions workflows (37 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -120,6 +122,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/deploy.yml`
 - `.github/workflows/disaster-recovery.yml`
 - `.github/workflows/e2e-test.yml`
+- `.github/workflows/escrow-auto-release.yml`
 - `.github/workflows/generate-sitemap.yml`
 - `.github/workflows/inject-tracking.yml`
 - `.github/workflows/loopia-dns.yml`
@@ -139,8 +142,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (116 st)
+## Migrations (117 st)
 
-- Senaste: `20260427000007_fas8_escrow_dispute_schema.sql`
-- Timestamp-prefix: `20260427000007`
+- Senaste: `20260427000008_fas8_escrow_mode_flag.sql`
+- Timestamp-prefix: `20260427000008`
 
