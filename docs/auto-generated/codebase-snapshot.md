@@ -87,11 +87,12 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `swish` |  |
 | `team-sms-notify` |  |
 
-## Shared EF helpers (16 st)
+## Shared EF helpers (17 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
 | `_shared/alerts.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Admin-alert-helper (Fas 10 §10.1 + §10.2 partial |
+| `_shared/auth.ts` | supabase/functions/_shared/auth.ts ───────────────────────────────────────────────────────────────── |
 | `_shared/email.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Delad Edge Function-infrastruktur |
 | `_shared/escrow-state.ts` | supabase/functions/_shared/escrow-state.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/events.ts` | supabase/functions/_shared/events.ts ────────────────────────────────────────────────────────────────── |
