@@ -346,6 +346,40 @@ async function handlePaymentSuccess(session: Record<string, unknown>, stripeKey:
     },
   });
 
+  // Fas 8 §8.2: transitionera escrow-state om booking är i pending_payment
+  // (escrow_v2-flödet). Legacy-bokningar har escrow_state='released_legacy'
+  // och hoppas över här — de följer gamla destination-charge-flödet.
+  // Anropar escrow-state-transition-EF som validerar + skriver audit.
+  if ((booking as Record<string, unknown>).escrow_state === "pending_payment") {
+    try {
+      const transRes = await fetch(`${SUPABASE_URL}/functions/v1/escrow-state-transition`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          action: "charge_succeeded",
+          triggered_by: "system_webhook",
+          metadata: {
+            stripe_session_id: (session.id as string) || null,
+            stripe_payment_intent_id: (session.payment_intent as string) || null,
+            amount_total: (session.amount_total as number) || null,
+          },
+        }),
+      });
+      if (!transRes.ok) {
+        console.warn("[SPICK] escrow-state-transition failed (booking paid, state-transition skipped):", {
+          booking_id: bookingId,
+          status: transRes.status,
+        });
+      }
+    } catch (e) {
+      console.warn("[SPICK] escrow-state-transition exception:", (e as Error).message);
+    }
+  }
+
   // Om prenumeration: skapa subscription-rad
   if (metadata.frequency && metadata.frequency !== "once") {
     const nextDate = new Date(booking.booking_date);

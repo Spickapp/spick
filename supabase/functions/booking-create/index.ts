@@ -388,6 +388,19 @@ serve(async (req) => {
       .maybeSingle();
     const matchingVersion = versionRow?.value ?? "v1";
 
+    // Fas 8 §8.2: escrow-mode feature-flag (default legacy — befintligt beteende)
+    // 'legacy'     = destination charges + application_fee (pengar direkt till städare)
+    // 'escrow_v2'  = separate charges, pengar håll på plattform tills attest
+    const { data: escrowRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "escrow_mode")
+      .maybeSingle();
+    const escrowMode = escrowRow?.value === "escrow_v2" ? "escrow_v2" : "legacy";
+    const initialEscrowState = escrowMode === "escrow_v2"
+      ? "pending_payment"
+      : "released_legacy";
+
     const { error: insertErr } = await supabase.from("bookings").insert({
       id: bookingId,
       customer_name: name,
@@ -445,6 +458,9 @@ serve(async (req) => {
       subscription_id: subscription_id || null,
       manual_override_price: overrideActive ? Math.round(Number(manual_override_price)) : null,
       rut_application_status: (!!rut && effectiveCustomerType !== 'foretag') ? 'pending' : 'not_applicable',
+
+      // ── Fas 8 §8.2: escrow-state (flag-styrd, default 'released_legacy') ──
+      escrow_state: initialEscrowState,
     });
 
     if (insertErr) {
@@ -729,12 +745,24 @@ serve(async (req) => {
     params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
     params.append("billing_address_collection", "auto");
 
-    // ── STRIPE CONNECT: Destination charge ──────────
-    if (destinationAccountId) {
+    // ── STRIPE CONNECT: Destination charge (Fas 8 §8.2 flag-styrd) ──────
+    // Legacy: pengar går direkt till städare via transfer_data
+    // escrow_v2: pengar håll på plattform, transfer via escrow-release-EF
+    if (destinationAccountId && escrowMode === "legacy") {
       const applicationFee = Math.round(amountOre * commissionRate);
       params.append("payment_intent_data[transfer_data][destination]", destinationAccountId);
       params.append("payment_intent_data[application_fee_amount]", String(applicationFee));
-      console.log("[SPICK] Destination charge:", { destination: destinationAccountId, fee: applicationFee / 100 + " SEK" });
+      console.log("[SPICK] Destination charge (legacy):", {
+        destination: destinationAccountId,
+        fee: applicationFee / 100 + " SEK",
+      });
+    } else if (destinationAccountId && escrowMode === "escrow_v2") {
+      // Separate charges: INGEN transfer_data. Pengar stannar på plattform.
+      // stripe-webhook (charge.succeeded) transitionar escrow_state
+      // pending_payment → paid_held. Transfer sker senare via escrow-release-EF.
+      console.log("[SPICK] Escrow v2: funds held on platform, transfer after attest", {
+        destination: destinationAccountId,
+      });
     } else {
       console.log("[SPICK] No connected account — funds stay on platform");
     }
