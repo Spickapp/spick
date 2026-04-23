@@ -365,15 +365,24 @@ Alla nya kolumner `DROP COLUMN IF EXISTS`. customer_preferences `DROP TABLE IF E
 
 ---
 
-## 12. Öppna beslut (för Farhad att fastställa)
+## 12. Öppna beslut (FASTSTÄLLDA 2026-04-23 av Farhad)
 
-| # | Beslut | Rekommendation |
-|---|---|---|
-| 1 | `payment_mode` initial support | `per_occurrence` + `monthly_prepaid`. `full_prepaid` skjuts till iteration 2 (escrow-komplexitet) |
-| 2 | Svensk helgdag-källa | Hardcoded JSON-fil updated annually, hanteras i content-engine |
-| 3 | Pris-binding max duration | 12 månader sedan automatisk re-evaluering (anti-arbitrage) |
-| 4 | Min-tid mellan recurring-tillfällen | 3 dagar (anti-abuse) |
-| 5 | Auto-set favorit efter 3 bokningar | Opt-in popup (inte auto-set utan samtycke) |
+| # | Beslut | Fastställt värde | Status |
+|---|---|---|---|
+| 1 | `payment_mode` initial support | `per_occurrence` + `monthly_prepaid` | ✅ klar. `full_prepaid` **SKJUTS** — **kräver jurist** (Lag 2018:672 presentkort + moms-förskott) |
+| 2 | Svensk helgdag-källa | Hardcoded JSON + årlig CI-påminnelse | ✅ klar |
+| 3 | Pris-binding max duration | 12 månader + 30 dagars notice innan re-eval | ✅ klar (Konsumenttjänstlagen 36§) |
+| 4 | Min-tid mellan recurring-tillfällen | 3 dagar konsument, admin-override för B2B | ✅ klar |
+| 5 | Auto-set favorit efter 3 bokningar | **Opt-in popup** (GDPR Art. 6 — uttryckligt samtycke) | ✅ klar |
+
+**Besluts-motivering:** Se [session-handoff 2026-04-27 §10.4](../sessions/SESSION-HANDOFF_2026-04-27-c2-m4b.md) för jurist-risk-analys.
+
+**Full_prepaid blockeras pga:**
+- Kan tolkas som presentkort under Lag (2018:672) → konsumentskydd-regler
+- Moms-komplikation: när bokförs intäkt? Vid betalning eller leverans?
+- Vid uppsägning mid-period: återbetalningsplikt → cash-flow-risk
+
+Låses upp efter jurist-möte (oktober 2026 samordnat med EU PWD-research).
 
 ---
 

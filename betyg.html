@@ -213,6 +213,30 @@ async function submit() {
       throw new Error(errBody.message || 'Kunde inte spara betyg');
     }
 
+    // Fas 6.3 + §6.5: logga review_submitted via save-booking-event EF
+    // (server-validerar ownership via email-match, whitelistar event_type)
+    if (booking && booking.customer_email) {
+      fetch(SUPA + '/functions/v1/save-booking-event', {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({
+          booking_id: bid,
+          customer_email: booking.customer_email,
+          event_type: 'review_submitted',
+          metadata: {
+            rating: ratingVal,
+            cleaner_id: booking.cleaner_id || null,
+            has_comment: !!commentVal,
+            quality_rating: details.quality || null,
+            punctuality_rating: details.punctuality || null,
+            friendliness_rating: details.friendliness || null
+          }
+        })
+      }).catch(function(e) {
+        console.warn('[betyg] save-booking-event failed (non-critical):', e.message);
+      });
+    }
+
     // 4. Om betyg <= 2 → trigga nöjdhetsgaranti
     if (ratingVal <= 2 && booking && booking.customer_email) {
       await fetch(SUPA + '/functions/v1/notify', {

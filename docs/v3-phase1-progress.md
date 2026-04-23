@@ -44,10 +44,10 @@ Om något avviker → flagga innan fortsättning.
   - §6.4-§6.6 event-timeline-UI: ◯
   - §6.7 event-schema.md ✓
   - §6.8 recurring-events: ◯ (pendar Fas 5)
-- **Fas 7 Languages:** ◑ PARTIELLT REDAN GJORT (v2/pre-v3-arv) — **plan §7.1-§7.2 är REDUNDANT**
-  - **Prod-verklighet (verifierat 2026-04-27):** `cleaners.languages TEXT[]` + GIN-index finns via migration [20260402100001_slug_languages.sql](../supabase/migrations/20260402100001_slug_languages.sql)
-  - Plan §7.1 (separat `languages`-tabell) + §7.2 (`cleaner_languages` m2m): duplicerar embedded array = rule #28-brott
-  - **Scope-rekommendation:** Håll embedded array-design. Stäng §7.1-§7.2 som SUPERSEDED. Fokus på §7.4-§7.5 (UI) + §7.7 (matching-RPC `p_languages`-param) om sen aktualiseras
+- **Fas 7 Languages:** ◑ PARTIELLT REDAN GJORT (v2/pre-v3-arv) — **§7.1-§7.2 ⊘ SUPERSEDED 2026-04-23**
+  - **Prod-verklighet (verifierat 2026-04-23):** `cleaners.languages TEXT[]` + GIN-index finns via migration [20260402100001_slug_languages.sql](../supabase/migrations/20260402100001_slug_languages.sql)
+  - **§7.1 (separat `languages`-tabell) + §7.2 (`cleaner_languages` m2m):** ⊘ SUPERSEDED — duplicerar embedded array = rule #28-brott. Farhad-beslut 2026-04-23: behåll array-design.
+  - **Kvarvarande Fas 7-scope:** §7.4-§7.5 (UI picker i cleaner-profil + bli-stadare/join-team) + §7.7 (matching-RPC `p_languages`-param). Aktualiseras vid behov, ej blockerande.
   - §7.6 GIN-index: ✓ (redan i 20260402-migration)
 - **Fas 7.5 RUT-infrastruktur:** ◯ LÅST (25-35h, dokumenterat i [planen](planning/spick-arkitekturplan-v3.md) + [sanning/rut.md](sanning/rut.md))
 - **Fas 8-14:** ◯ ej påbörjade

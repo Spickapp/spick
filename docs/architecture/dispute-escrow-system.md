@@ -388,15 +388,24 @@ Per-steg rollback. Alla reverseringar har SQL-script eller feature-flagg.
 
 ---
 
-## 12. Ej beslutat
+## 12. Working defaults (FASTSTÄLLDA 2026-04-23 — kräver jurist-verifikation innan PROD)
 
-| Öppet beslut | Föreslagen standard | Notering |
+| Beslut | Working default | Jurist-verifiering behövs? |
 |---|---|---|
-| Auto-release timer (24h vs 48h) | 24h | Matchar industry-standard (Airbnb, Uber Eats) |
-| Max refund utan admin | 500 kr (VD tier-1) | Per plan §9.2 |
-| 2-ögon-krav | >5000 kr dispute | Diskutera med jurist |
-| Evidence-retention (GDPR) | 6 månader efter resolved | Alignar med bokföringslag 5 år men evidens är PII |
-| Klarna chargeback | Auto-move till disputed | §8.23 |
+| Auto-release timer | **24h** | ✅ Verifiera mot PWD "rimlig tid för bestridan" |
+| Max refund utan admin | **500 kr VD tier-1** + 10% random admin-sampling | ✅ Verifiera med styrelse/jurist |
+| 2-ögon-krav | **>5000 kr** dispute | ✅ **Primärt** — mot PWD "oberoende granskning"-krav |
+| Evidence-retention GDPR | **6 mån evidens (foto/text)** / **7 år meta (belopp/beslut)** | ✅ GDPR-jurist (Art. 4 PII + BokfL) |
+| Klarna chargeback | **Auto-move till `disputed`** + Slack-alert | ❌ Tekniskt beslut, ingen jurist |
+
+**Farhad-godkänt 2026-04-23 som working defaults för design + implementation.** PROD-aktivering av Fas 8.X kräver jurist-verifikation av ovan PWD-, GDPR- och Stripe-compliance-aspekter (senast oktober 2026).
+
+**Motivering för defaults:**
+- 24h: balans mellan cash-flow (cleaner) och bestridande-tid (kund). Industry-benchmark (Airbnb, Uber Eats).
+- 500 kr tier-1: täcker ~90% av customer-service-volym. Random sampling skyddar mot conflict-of-interest.
+- 5000 kr 2-ögon: ~1-2 städningar. Verifiera mot PWD-spec.
+- 6mån/7år split: separera PII-evidens från bokförings-meta. Minimerar GDPR-exposure utan att bryta BokfL.
+- Auto-move Klarna: konsekvent audit-trail + cleaner får chans att svara (48h).
 
 ---
 
