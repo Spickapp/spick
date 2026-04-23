@@ -2319,8 +2319,10 @@ function renderCleaners(cleaners) {
           ${hasRatings
             ? `<span class="cleaner-stars">${'★'.repeat(Math.round(cl.avg_rating))}</span>
                <span>${cl.avg_rating.toFixed(1)}</span>
-               <span>(${cl.review_count} rec.)</span>`
-            : '<span style="color:#6B6960;font-size:.75rem">Ny på Spick</span>'}
+               <span>(${cl.review_count} rec.)</span>${cl.provider_type === 'company' && cl.team_size > 1 ? ` <span style="color:var(--g);font-weight:600">👥 ${cl.team_size}</span>` : ''}`
+            : (cl.provider_type === 'company' && cl.team_size > 1
+                ? `<span style="color:var(--g);font-weight:600;font-size:.78rem">👥 Team med ${cl.team_size} städare</span>`
+                : '<span style="color:#6B6960;font-size:.75rem">Ny på Spick</span>')}
           ${cl.city ? `<span>📍 ${cl.city}</span>` : ''}
         </div>
         <div class="cleaner-tags">
