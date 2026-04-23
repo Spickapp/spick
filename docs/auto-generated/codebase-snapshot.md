@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (66 st)
+## Edge Functions (67 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -63,6 +63,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `push` | SPICK – Push Notifications med VAPID |
 | `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
 | `referral-register` |  |
+| `save-booking-event` | ═══════════════════════════════════════════════════════════════ SPICK – save-booking-event (Fas 6.3 + §6.5 beslut 2026-0 |
 | `serve-invoice` |  |
 | `services-list` | services-list: Public read of services + addons F1 Dag 1 - arkitekturplan v3 |
 | `setup-subscription` | supabase/functions/setup-subscription/index.ts SPICK: Subscription Setup |
@@ -76,7 +77,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `swish` |  |
 | `team-sms-notify` |  |
 
-## Shared EF helpers (13 st)
+## Shared EF helpers (14 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -86,6 +87,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/matching-diff.ts` | supabase/functions/_shared/matching-diff.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/money.ts` |  |
 | `_shared/notifications.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Multi-kanal notifikationer |
+| `_shared/preferences.ts` | supabase/functions/_shared/preferences.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/pricing-engine.ts` |  |
 | `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/send-magic-sms.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Magic-link hjälpare för publika auth-flows (Fas  |
@@ -94,7 +96,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe.ts` |  |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (35 st)
+## GitHub Actions workflows (36 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -129,11 +131,12 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/test-money.yml`
 - `.github/workflows/test.yml`
 - `.github/workflows/ui-monitor.yml`
+- `.github/workflows/update-claude-md.yml`
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (109 st)
+## Migrations (114 st)
 
-- Senaste: `20260426140000_model3_shadow_log_providers_col.sql`
-- Timestamp-prefix: `20260426140000`
+- Senaste: `20260427000005_p1_vd_team_block_dates.sql`
+- Timestamp-prefix: `20260427000005`
 
