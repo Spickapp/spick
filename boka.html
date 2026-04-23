@@ -437,6 +437,8 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <input type="checkbox" id="has-pets" style="accent-color:var(--g);width:18px;height:18px" onchange="state.hasPets=this.checked; this.parentElement.style.background=this.checked?'#F0FDF4':''; this.parentElement.style.borderColor=this.checked?'var(--g)':'var(--border)'">
             <span>🐾 Husdjur hemma</span>
           </label>
+          <!-- Husdjur-fältet döljs för företag via setCustomerType() — irrelevant för kontorsmiljö -->
+
           <button class="btn-primary" onclick="goStep2()" id="step1-next" style="margin-top:1.25rem">
             Boka städning →
           </button>
@@ -1260,6 +1262,15 @@ function setCustomerType(type) {
   // Fin-justering: dölj även om valda tjänster inte är RUT-berättigade
   if (type === 'privat') syncRutToggleVisibility();
 
+  // Husdjur-toggle: irrelevant för kontorsmiljö, dölj för företag
+  var petLabel = document.getElementById('pet-toggle-label');
+  if (petLabel) petLabel.style.display = type === 'foretag' ? 'none' : '';
+  if (type === 'foretag') {
+    state.hasPets = false;
+    var petCheckbox = document.getElementById('has-pets');
+    if (petCheckbox) petCheckbox.checked = false;
+  }
+
   // Företagsfält: visa/dölj (steg 3)
   var bizFields = document.getElementById('business-fields');
   if (bizFields) bizFields.style.display = type === 'foretag' ? 'block' : 'none';
@@ -1327,27 +1338,40 @@ function calcHours() {
     document.getElementById('tl-wrap').style.display = 'none';
     document.getElementById('tl-selected-block').style.display = 'none';
   }
-  let h = 2;
-  if      (sqm > 0  && sqm <= 40)  h = 2;
-  else if (sqm <= 60)  h = 2.5;
-  else if (sqm <= 80)  h = 3;
-  else if (sqm <= 100) h = 3.5;
-  else if (sqm <= 130) h = 4;
-  else if (sqm <= 160) h = 5;
-  else if (sqm <= 200) h = 6;
-  else h = Math.ceil(sqm / 35);
-  if (state.service === 'Storstädning') h = Math.ceil(h * 1.7 * 2) / 2;
-  else if (state.service === 'Flyttstädning') h = Math.ceil(h * 2.2 * 2) / 2;
-  else if (state.service === 'Kontorsstädning') {
-    // Kontor: snabbare per kvm (öppna ytor, inga kök/badrum att djuprengöra)
-    if (sqm <= 50) h = 1.5;
+  // Bas-timmar från yta. Kontor/företag har öppna ytor, inga kök/bad,
+  // färre möbler → snabbare per kvm än bostad. Två separata skalor.
+  var isForetag = state.customerType === 'foretag';
+  let h;
+  if (isForetag) {
+    if      (sqm <= 50)  h = 1.5;
     else if (sqm <= 100) h = 2;
     else if (sqm <= 150) h = 2.5;
     else if (sqm <= 200) h = 3;
     else if (sqm <= 300) h = 4;
     else if (sqm <= 400) h = 5;
     else h = 5 + Math.ceil((sqm - 400) / 200 * 2) / 2;
+  } else {
+    h = 2;
+    if      (sqm > 0  && sqm <= 40)  h = 2;
+    else if (sqm <= 60)  h = 2.5;
+    else if (sqm <= 80)  h = 3;
+    else if (sqm <= 100) h = 3.5;
+    else if (sqm <= 130) h = 4;
+    else if (sqm <= 160) h = 5;
+    else if (sqm <= 200) h = 6;
+    else h = Math.ceil(sqm / 35);
   }
+  // Tjänste-multiplier. Företag (kontor) får lägre multiplier pga mindre
+  // komplexa ytor (inga personliga möbler, inga kök att djuprengöra).
+  if (state.service === 'Storstädning') {
+    var _storMult = isForetag ? 1.3 : 1.7;
+    h = Math.ceil(h * _storMult * 2) / 2;
+  }
+  else if (state.service === 'Flyttstädning') {
+    var _flyttMult = isForetag ? 2.0 : 2.2;
+    h = Math.ceil(h * _flyttMult * 2) / 2;
+  }
+  // Kontorsstädning: isForetag-basformeln är redan rätt skala — ingen multiplier.
   else if (state.services && state.services.length === 1 && state.services[0] === 'Fönsterputs') h = Math.max(1, Math.ceil(sqm / 40 * 2) / 2);
     // Extra tid för kombinerade tjänster
     var _svcs = state.services || [state.service];
@@ -1376,7 +1400,14 @@ function calcHours() {
   document.getElementById('hours-display').textContent = h + ' timmar';
   let notice = document.getElementById('large-apt-notice');
   if (!notice) { notice = document.createElement('div'); notice.id = 'large-apt-notice'; notice.style.cssText = 'margin-top:.5rem;padding:.5rem .75rem;background:#fff8e6;border:1px solid #f0d060;border-radius:8px;font-size:.85rem;color:#7a6200;display:none;'; document.getElementById('hours-display').parentElement.appendChild(notice); }
-  if (state.sqm >= 150) { notice.textContent = '\u2139\ufe0f ' + (state.customerType === 'foretag' ? 'Stort kontor' : 'Stor bostad') + ' \u2013 exakt tid bekr\u00e4ftas efter bokning'; notice.style.display = 'block'; } else { notice.style.display = 'none'; }
+  if (state.sqm >= 150) {
+    if (state.customerType === 'foretag' && state.hours > 8) {
+      notice.textContent = '\u2139\ufe0f Stort uppdrag \u2013 ' + state.hours + 'h arbete f\u00f6rdelas p\u00e5 flera st\u00e4dare. Kontakta oss om du beh\u00f6ver samordning: hello@spick.se';
+    } else {
+      notice.textContent = '\u2139\ufe0f ' + (state.customerType === 'foretag' ? 'Stort kontor' : 'Stor bostad') + ' \u2013 exakt tid bekr\u00e4ftas efter bokning';
+    }
+    notice.style.display = 'block';
+  } else { notice.style.display = 'none'; }
   // Visa prisuppskattning direkt i steg 1
   const peEl = document.getElementById('price-estimate');
   if (peEl && state.sqm && state.service) {
