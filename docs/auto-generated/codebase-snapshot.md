@@ -88,7 +88,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `swish` |  |
 | `team-sms-notify` |  |
 
-## Shared EF helpers (17 st)
+## Shared EF helpers (18 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -105,6 +105,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/pricing-engine.ts` |  |
 | `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/send-magic-sms.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Magic-link hjälpare för publika auth-flows (Fas  |
+| `_shared/slot-holds.ts` | _shared/slot-holds.ts — Fas 5 §5.4.2 ═══════════════════════════════════════════════════════════════ |
 | `_shared/stripe-client.ts` |  |
 | `_shared/stripe-webhook-verify.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Stripe webhook HMAC-signature-validering (shared |
 | `_shared/stripe.ts` |  |
@@ -151,7 +152,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (120 st)
+## Migrations (121 st)
 
 - Senaste: `20260427000011_fas8_log_escrow_event_rpc.sql`
 - Timestamp-prefix: `20260427000011`
