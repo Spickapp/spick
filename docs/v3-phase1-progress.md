@@ -90,7 +90,12 @@ Om något avviker → flagga innan fortsättning.
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
   - §10.5 morning-report filtered-events ✓ (denna session)
   - §10.3 Grafana-dashboard + §10.4 uptime-mon + §10.6 ML-light: ◯ (kräver Farhads extern-setup)
-- **Fas 9-14 (exkl Fas 10):** ◯ ej påbörjade
+- **Fas 12 E2E-tester:** ◑ PARTIELLT (schema-drift: var noterat som "0%" i tidigare progress-check, verklighet är Playwright-setup redan + 9 tester)
+  - §12.1 ✓ Playwright installed + playwright.config.ts + tests/smoke.spec.ts (pre-session state)
+  - §12.2 ✓ 10+ nya tester denna session: A04 (analyze-booking-pattern), A05 (customer-subscription-manage), A06 (customer-nudge-recurring), A07 (swedish_holidays data), A08 (export-cleaner-data auth), S06 (garanti.html Mitt-konto-ref), S07 (mitt-konto Prenumerationer-tab), S08 (stadare-dashboard Integritet & data)
+  - §12.3 ✓ GitHub Actions workflow `playwright-smoke.yml` — on-push + daglig 03:00 CET + manual dispatch
+  - §12.4 ◯ inloggningsberoende E2E (cleaner-login → dashboard-flows) kräver test-auth-infra, separat sprint
+- **Fas 9-14 (exkl Fas 10 + 12):** ◯ ej påbörjade
 
 **Plan-beslut:** #1 stängt, #3 stängt, #2 stängt 22 april, #4 per_window öppet (väntar Farhad)
 

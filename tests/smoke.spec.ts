@@ -83,6 +83,97 @@ test.describe('API Tests', () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════
+// Fas 5 §5.x + Fas 7 + Fas 8 coverage (2026-04-24-session)
+// ═══════════════════════════════════════════════════════════
+
+test.describe('Fas 5 - Recurring / Retention', () => {
+  test('A04: analyze-booking-pattern svarar på POST (§5.8)', async ({ request }) => {
+    const res = await request.post(`${SUPA}/functions/v1/analyze-booking-pattern`, {
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+      data: { customer_email: 'never-exists@spick-test.se' }
+    });
+    // Förväntad 200 med has_pattern:false (inga bookings) — eller 4xx vid valideringsfel
+    expect([200, 400, 401]).toContain(res.status());
+    if (res.status() === 200) {
+      const body = await res.json();
+      expect(typeof body.has_pattern).toBe('boolean');
+    }
+  });
+
+  test('A05: customer-subscription-manage svarar rätt på missing fields (§5.4)', async ({ request }) => {
+    const res = await request.post(`${SUPA}/functions/v1/customer-subscription-manage`, {
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+      data: {} // tom body → 400 förväntad
+    });
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/missing|required/i);
+  });
+
+  test('A06: customer-nudge-recurring kör utan fel (§5.9)', async ({ request }) => {
+    const res = await request.post(`${SUPA}/functions/v1/customer-nudge-recurring`, {
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+      data: {}
+    });
+    expect([200, 401]).toContain(res.status()); // 401 om service_role krävs, 200 om öppen
+    if (res.status() === 200) {
+      const body = await res.json();
+      expect(body).toHaveProperty('processed');
+    }
+  });
+
+  test('A07: swedish_holidays-tabell har rader 2026 (§5.11)', async ({ request }) => {
+    const res = await request.get(
+      `${SUPA}/rest/v1/swedish_holidays?holiday_date=gte.2026-01-01&holiday_date=lte.2026-12-31&select=holiday_date,name`,
+      { headers: { apikey: ANON_KEY } }
+    );
+    expect(res.ok()).toBe(true);
+    const data = await res.json();
+    expect(data.length).toBeGreaterThanOrEqual(13); // minst 13 allmänna helgdagar 2026
+    expect(data.some((h: any) => h.name === 'Juldagen')).toBe(true);
+  });
+});
+
+test.describe('Fas 8 - GDPR / Dispute', () => {
+  test('A08: export-cleaner-data kräver auth (§8.20)', async ({ request }) => {
+    const res = await request.post(`${SUPA}/functions/v1/export-cleaner-data`, {
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+      data: {}
+    });
+    // Ska returnera 401 (anon-token) eller 403 (ingen cleaner kopplad)
+    expect([401, 403]).toContain(res.status());
+  });
+
+  test('S06: garanti.html refererar Mitt konto (§8.21)', async ({ page }) => {
+    await page.goto(`${BASE}/garanti.html`);
+    const content = await page.content();
+    expect(content).toContain('Mitt konto');
+    expect(content).toContain('/mitt-konto.html');
+  });
+});
+
+test.describe('Fas 5 §5.4 UI - Prenumerationer-tab', () => {
+  test('S07: mitt-konto har Prenumerationer-tab (§5.4)', async ({ page }) => {
+    await page.goto(`${BASE}/mitt-konto.html`);
+    await page.waitForLoadState('networkidle');
+    // Tab-knappen finns i DOM även utan login (portalSection hidden men renderad)
+    const tabs = await page.locator('.tab-btn').allTextContents();
+    const hasPrenum = tabs.some(t => t.includes('Prenumerationer') || t.includes('🔁'));
+    expect(hasPrenum).toBe(true);
+  });
+});
+
+test.describe('Fas 7 §7.4 UI - Language picker', () => {
+  test('S08: stadare-dashboard har Integritet & data-sektion (§8.20 UI)', async ({ page }) => {
+    await page.goto(`${BASE}/stadare-dashboard.html`);
+    await page.waitForLoadState('networkidle');
+    const content = await page.content();
+    expect(content).toContain('Integritet');
+    expect(content).toContain('Exportera mina data');
+  });
+});
+
 test.describe('Booking Flow E2E', () => {
   test('B01: steg 1 → steg 2 visar städare', async ({ page }) => {
     await page.goto(`${BASE}/boka.html`);
