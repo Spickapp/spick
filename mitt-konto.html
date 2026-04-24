@@ -261,6 +261,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('bookings')">📋 Mina bokningar</button>
     <button class="tab-btn" onclick="showTab('upcoming')">📅 Kommande</button>
+    <button class="tab-btn" onclick="showTab('subscriptions')">🔁 Prenumerationer</button>
     <button class="tab-btn" onclick="showTab('profile')">👤 Profil</button>
   </div>
 
@@ -277,6 +278,15 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 
   <div id="tabUpcoming" style="display:none">
     <div id="upcomingList"></div>
+  </div>
+
+  <div id="tabSubscriptions" style="display:none">
+    <div id="subscriptionsList">
+      <div class="skeleton-wrap" id="subs-skeleton">
+        <div style="height:120px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px;margin-bottom:10px"></div>
+        <div style="height:120px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px"></div>
+      </div>
+    </div>
   </div>
 
 
@@ -345,6 +355,26 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
         style="padding:10px 16px;background:#F3F4F6;border:none;border-radius:10px;cursor:pointer;font-family:inherit">
         Avbryt
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBSCRIPTION MODAL (Fas 5 §5.4) -->
+<div class="modal-bg" id="subModal">
+  <div class="modal">
+    <div class="modal-title" id="subModalTitle">Åtgärd</div>
+    <p class="modal-sub" id="subModalSub"></p>
+    <div id="subModalReasonWrap" class="field" style="display:none;margin-top:1rem">
+      <label>Anledning (frivilligt)</label>
+      <textarea id="subModalReason" rows="2" placeholder="t.ex. Reser bort några veckor" style="width:100%;padding:.75rem;border:1.5px solid var(--grd);border-radius:10px;font-family:inherit;font-size:.9rem;resize:vertical;box-sizing:border-box"></textarea>
+    </div>
+    <div id="subModalTimeWrap" class="field" style="display:none;margin-top:1rem">
+      <label>Ny tid</label>
+      <input type="time" id="subModalTime" style="width:100%;padding:.75rem;border:1.5px solid var(--grd);border-radius:10px;font-family:inherit;font-size:.95rem">
+    </div>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button class="btn-cancel-modal" onclick="closeSubModal()">Avbryt</button>
+      <button class="btn-primary" id="subModalConfirm" onclick="confirmSubAction()" style="flex:1;padding:.75rem;color:#fff;border:none;border-radius:10px;font-family:inherit;font-weight:600;cursor:pointer">Bekräfta</button>
     </div>
   </div>
 </div>
@@ -734,8 +764,189 @@ function showTab(tab) {
   event.target.classList.add('active');
   document.getElementById('tabBookings').style.display = tab === 'bookings' ? 'block' : 'none';
   document.getElementById('tabUpcoming').style.display = tab === 'upcoming' ? 'block' : 'none';
+  document.getElementById('tabSubscriptions').style.display = tab === 'subscriptions' ? 'block' : 'none';
   document.getElementById('tabProfile').style.display = tab === 'profile' ? 'block' : 'none';
   if (tab === 'upcoming') renderBookings('upcoming');
+  if (tab === 'subscriptions') loadSubscriptions();
+}
+
+// ── PRENUMERATIONER (Fas 5 §5.4) ─────────────
+let _subscriptions = [];
+let _subLoaded = false;
+let _subActionCtx = null; // { action, subId, ... }
+
+async function loadSubscriptions() {
+  if (_subLoaded) return; // cache en gång per sessionsladdning
+  const container = document.getElementById('subscriptionsList');
+  try {
+    let tok = SPICK.SUPA_KEY;
+    try { const s = await SB.auth.getSession(); if (s.data.session) tok = s.data.session.access_token; } catch(e) {}
+    const url = SPICK.SUPA_URL + '/rest/v1/subscriptions?customer_email=eq.' + encodeURIComponent(currentEmail) + '&order=created_at.desc';
+    const res = await fetch(url, { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + tok } });
+    _subscriptions = res.ok ? await res.json() : [];
+    _subLoaded = true;
+    renderSubscriptions();
+  } catch(e) {
+    console.error('[SPICK] loadSubscriptions error:', e);
+    container.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Kunde inte ladda prenumerationer</div><div class="empty-sub">Ladda om sidan och försök igen.</div></div>';
+  }
+}
+
+function renderSubscriptions() {
+  const container = document.getElementById('subscriptionsList');
+  if (!_subscriptions.length) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔁</div>
+        <div class="empty-title">Inga prenumerationer</div>
+        <div class="empty-sub">Boka en återkommande städning för att spara tid — samma städare, samma dag, varje vecka.</div>
+        <a href="prenumerera.html" class="btn-cta">Starta prenumeration →</a>
+      </div>`;
+    return;
+  }
+  container.innerHTML = _subscriptions.map(s => subscriptionCard(s)).join('');
+}
+
+function subscriptionCard(s) {
+  const freqLabel = { weekly: 'Varje vecka', biweekly: 'Varannan vecka', monthly: 'Varje månad' }[s.frequency] || s.frequency || '–';
+  const statusLabel = { active: 'Aktiv', paused: 'Pausad', cancelled: 'Avslutad' }[s.status] || s.status || '–';
+  const statusClass = { active: 'status-paid', paused: 'status-pending', cancelled: 'status-cancelled' }[s.status] || 'status-ny';
+  const dayNames = ['Söndag','Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag'];
+  const dayLabel = (typeof s.preferred_day === 'number') ? dayNames[s.preferred_day] : '–';
+  const timeLabel = (s.preferred_time || '').slice(0,5) || '–';
+  const nextLabel = s.next_booking_date
+    ? new Date(s.next_booking_date).toLocaleDateString('sv-SE', { weekday:'long', day:'numeric', month:'long' })
+    : '–';
+
+  let actions = '';
+  if (s.status === 'active') {
+    actions = `
+      <button class="btn-sm btn-outline" onclick="openSubModal('skip-next','${escHtml(s.id)}')">⏭ Hoppa över nästa</button>
+      <button class="btn-sm btn-outline" onclick="openSubModal('change-time','${escHtml(s.id)}')">🕐 Ändra tid</button>
+      <button class="btn-sm btn-outline" onclick="openSubModal('pause','${escHtml(s.id)}')">⏸ Pausa</button>
+      <button class="btn-sm btn-danger" onclick="openSubModal('cancel','${escHtml(s.id)}')">Avsluta</button>`;
+  } else if (s.status === 'paused') {
+    actions = `
+      <button class="btn-sm btn-link" onclick="openSubModal('resume','${escHtml(s.id)}')">▶️ Återuppta</button>
+      <button class="btn-sm btn-danger" onclick="openSubModal('cancel','${escHtml(s.id)}')">Avsluta</button>`;
+  } else {
+    actions = `<span style="font-size:.78rem;color:var(--m)">Avslutad ${s.cancelled_at ? new Date(s.cancelled_at).toLocaleDateString('sv-SE') : ''}</span>`;
+  }
+
+  const cleanerHtml = s.cleaner_id ? `
+    <div class="cleaner-info">
+      <div class="cleaner-avatar">${escHtml((s.cleaner_name || 'S').charAt(0))}</div>
+      <div style="flex:1">
+        <div class="cleaner-name">${escHtml(s.cleaner_name || 'Städare')}</div>
+        <div class="cleaner-rating">Fast städare för serien</div>
+      </div>
+    </div>` : '<div style="font-size:.82rem;color:var(--m);padding:8px 0">🎲 Flexibel städare per tillfälle</div>';
+
+  return `
+    <div class="booking-card">
+      <div class="bc-top">
+        <div class="bc-service">${escHtml(s.service_type || 'Hemstädning')} · ${escHtml(freqLabel)}</div>
+        <div class="bc-status ${statusClass}">${escHtml(statusLabel)}</div>
+      </div>
+      ${cleanerHtml}
+      <div class="bc-meta">
+        <div class="bc-item"><span>📅</span> ${escHtml(dayLabel)}</div>
+        <div class="bc-item"><span>🕐</span> ${escHtml(timeLabel)}</div>
+        <div class="bc-item"><span>⏱</span> ${parseInt(s.booking_hours) || '–'} timmar</div>
+        <div class="bc-item"><span>🔜</span> ${escHtml(nextLabel)}</div>
+      </div>
+      <div class="bc-bottom">
+        <div style="font-size:.82rem;color:var(--m)">${s.total_bookings_created || 0} bokningar skapade</div>
+        <div class="bc-actions" style="flex-wrap:wrap;gap:.4rem">${actions}</div>
+      </div>
+    </div>`;
+}
+
+function openSubModal(action, subId) {
+  _subActionCtx = { action, subId };
+  const sub = _subscriptions.find(x => x.id === subId);
+  if (!sub) return;
+  const m = document.getElementById('subModal');
+  const titles = {
+    'pause':       'Pausa prenumerationen?',
+    'resume':      'Återuppta prenumerationen?',
+    'skip-next':   'Hoppa över nästa tillfälle?',
+    'change-time': 'Ändra tid för framtida städningar',
+    'cancel':      'Avsluta prenumerationen?'
+  };
+  const subs = {
+    'pause':       'Inga nya bokningar skapas förrän du återupptar. Redan bokade städningar påverkas inte.',
+    'resume':      'Nya bokningar börjar skapas igen enligt ditt schema.',
+    'skip-next':   `Nästa tillfälle är <strong>${sub.next_booking_date || '–'}</strong>. Vi hoppar över detta och går vidare till nästa enligt frekvens.`,
+    'change-time': 'Den nya tiden gäller framtida bokningar. Redan bokade städningar påverkas inte.',
+    'cancel':      'Prenumerationen avslutas. Redan bokade städningar påverkas inte — de genomförs som planerat. Du kan alltid starta en ny prenumeration senare.'
+  };
+  document.getElementById('subModalTitle').textContent = titles[action];
+  document.getElementById('subModalSub').innerHTML = subs[action];
+
+  const reasonWrap = document.getElementById('subModalReasonWrap');
+  const timeWrap   = document.getElementById('subModalTimeWrap');
+  reasonWrap.style.display = (action === 'pause' || action === 'cancel') ? 'block' : 'none';
+  timeWrap.style.display   = (action === 'change-time') ? 'block' : 'none';
+  document.getElementById('subModalReason').value = '';
+  document.getElementById('subModalTime').value   = (sub.preferred_time || '09:00').slice(0,5);
+
+  const confirmBtn = document.getElementById('subModalConfirm');
+  confirmBtn.textContent = {
+    'pause':'Pausa','resume':'Återuppta','skip-next':'Hoppa över',
+    'change-time':'Spara tid','cancel':'Ja, avsluta'
+  }[action];
+  confirmBtn.className = (action === 'cancel') ? 'btn-confirm' : 'btn-primary';
+  confirmBtn.style.background = (action === 'cancel') ? 'var(--r)' : 'var(--g)';
+
+  m.classList.add('show');
+}
+
+function closeSubModal() {
+  document.getElementById('subModal').classList.remove('show');
+  _subActionCtx = null;
+}
+
+async function confirmSubAction() {
+  if (!_subActionCtx) return;
+  const { action, subId } = _subActionCtx;
+  const btn = document.getElementById('subModalConfirm');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Sparar...';
+
+  const data = {};
+  if (action === 'pause' || action === 'cancel') {
+    const reason = document.getElementById('subModalReason').value.trim();
+    if (reason) data.reason = reason;
+  }
+  if (action === 'change-time') {
+    const t = document.getElementById('subModalTime').value.trim();
+    if (!t) { spickToast('Välj en tid', 'warning'); btn.disabled=false; btn.textContent=origText; return; }
+    data.preferred_time = t;
+  }
+
+  try {
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/customer-subscription-manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ action, subscription_id: subId, customer_email: currentEmail, data })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      spickToast('⚠️ ' + (result.error || 'Något gick fel'), 'error', 5000);
+      btn.disabled = false; btn.textContent = origText;
+      return;
+    }
+    // Uppdatera lokal cache
+    _subscriptions = _subscriptions.map(s => s.id === subId ? { ...s, ...result.updated } : s);
+    closeSubModal();
+    showToast('✅ ' + result.message);
+    renderSubscriptions();
+  } catch(e) {
+    console.error('[SPICK] manageSubscription error:', e);
+    spickToast('⚠️ Nätverksfel. Försök igen.', 'error');
+    btn.disabled = false; btn.textContent = origText;
+  }
 }
 
 // ── AVBOKA ───────────────────────────────────
@@ -893,6 +1104,8 @@ function logout() {
   SB.auth.signOut();
   currentEmail = '';
   allBookings = [];
+  _subscriptions = [];
+  _subLoaded = false;
   document.getElementById('loginSection').style.display = 'block';
   document.getElementById('portalSection').style.display = 'none';
   var magicSent = document.getElementById('magicSent');
