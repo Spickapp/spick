@@ -95,7 +95,7 @@ ON CONFLICT (version) DO NOTHING;
 -- ─────────────────────────────────────────────────────────────
 -- 3. Verifiering
 -- ─────────────────────────────────────────────────────────────
-DO $$
+DO $do$
 DECLARE
   rut_col_exists boolean;
   missing_count integer;
@@ -139,7 +139,7 @@ BEGIN
   RAISE NOTICE '═══════════════════════════════════════';
   RAISE NOTICE ' H19 CATCHUP KOMPLETT';
   RAISE NOTICE '═══════════════════════════════════════';
-END $$;
+END $do$;
 
 COMMIT;
 
