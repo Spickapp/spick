@@ -5594,11 +5594,15 @@ async function submitRutBatch() {
     resultEl.style.display = 'block';
     resultEl.style.background = '#D1FAE5';
     resultEl.style.color = '#065F46';
+    // Spara URL + filnamn globalt för download-knappen
+    window._lastRutBatchUrl = data.download_url;
+    window._lastRutBatchFileName = data.file_name.split('/').pop();
+
     resultEl.innerHTML = '<strong>✅ XML-batch skapad!</strong><br>'
       + 'Fil: <code>' + escHtml(data.file_name) + '</code><br>'
       + 'Storlek: ' + (data.file_size_bytes || 0).toLocaleString('sv-SE') + ' bytes<br>'
       + 'SHA256: <code style="font-size:11px">' + (data.checksum_sha256 || '').slice(0, 16) + '...</code><br>'
-      + '<br><a href="' + data.download_url + '" download="' + data.file_name.split('/').pop() + '" class="btn btn-primary" style="display:inline-block;margin-top:8px">⬇️ Ladda ner XML-fil</a><br>'
+      + '<br><button onclick="downloadRutBatchXml()" class="btn btn-primary" style="display:inline-block;margin-top:8px">⬇️ Ladda ner XML-fil</button><br>'
       + '<br><strong>Nästa steg:</strong><ol style="margin:6px 0 0;padding-left:20px;font-size:.82rem">'
       + '<li>Ladda ner filen (länk giltig 1h)</li>'
       + '<li>Logga in på <a href="https://www7.skatteverket.se/portal/rotrut/begar-utbetalning/fil" target="_blank">SKV-portalen</a></li>'
@@ -5619,6 +5623,25 @@ async function submitRutBatch() {
     resultEl.innerHTML = '<strong>❌ Fel:</strong> ' + (e?.message || 'Något gick fel');
     btn.disabled = false;
     btn.textContent = 'Skapa XML';
+  }
+}
+
+// Force-download XML-fil (kringgår browser's "öppna-i-tab"-default för XML)
+async function downloadRutBatchXml() {
+  if (!window._lastRutBatchUrl) { alert('Ingen URL sparad'); return; }
+  try {
+    const res = await fetch(window._lastRutBatchUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = window._lastRutBatchFileName || 'rut-batch.xml';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  } catch (e) {
+    alert('Kunde inte ladda ner: ' + (e?.message || 'okänt fel'));
   }
 }
 
