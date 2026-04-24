@@ -699,6 +699,8 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <option value="exceeds">Överskrider 75k-tak</option>
           </select>
           <button class="btn btn-sm" onclick="exportRutQueueCSV()" style="background:#f5f5f3;border:1px solid #ddd;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Exportera CSV</button>
+          <button class="btn btn-primary btn-sm" id="rut-create-batch-btn" onclick="openRutBatchModal()" disabled style="opacity:.5">Skapa XML-batch (0)</button>
+          <button class="btn btn-sm" onclick="showRutHistory()" style="background:#f5f5f3;border:1px solid #ddd;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Batch-historik</button>
         </div>
       </div>
       <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
@@ -708,13 +710,16 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="kpi"><div class="kpi-val" id="rut-total-amount">–</div><div class="kpi-lbl">Total RUT-belopp</div></div>
       </div>
       <div style="background:#FEF3C7;border-left:4px solid #D97706;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px">
-        <strong>⚠️ Fas 7.5 EJ AKTIVERAD:</strong> Ingen faktisk ansökan skickas till Skatteverket förrän jurist-OK + SKV-API-integration klar.
-        Detta är en vy över bokningar som KOMMER att bli RUT-ansökningar. Ready-indikatorerna visar vilka uppgifter som finns.
+        <strong>⚠️ Fas 7.5 — manuell submission till Skatteverket.</strong>
+        1. Välj bokningar med checkboxes → klicka "Skapa XML-batch". 2. Ladda ner XML-filen.
+        3. Logga in på <a href="https://www7.skatteverket.se/portal/rotrut/begar-utbetalning/fil" target="_blank" style="color:#0F6E56">Skatteverkets portal</a> med BankID.
+        4. Välj "Importera fil" och ladda upp. 5. När SKV svarat — markera batchen som submitted/approved/rejected här.
       </div>
       <div class="card">
         <div class="table-wrap">
           <table>
             <thead><tr>
+              <th style="width:30px"><input type="checkbox" id="rut-select-all" onchange="toggleSelectAllRut(this)"></th>
               <th>Bokning</th>
               <th>Kund</th>
               <th>Datum</th>
@@ -727,7 +732,46 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
               <th>75k-status</th>
               <th>Status</th>
             </tr></thead>
-            <tbody id="rut-tbody"><tr><td colspan="11" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+            <tbody id="rut-tbody"><tr><td colspan="12" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fas 7.5 — RUT batch-modal för XML-export -->
+    <div id="rut-batch-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:28px">
+        <h3 style="font-family:Georgia,serif;font-size:1.3rem;margin:0 0 8px">Skapa RUT-batch</h3>
+        <p style="color:#6B6960;margin:0 0 20px;font-size:.88rem">XML-fil enligt Skatteverkets schema V6. Laddas upp manuellt till SKV-portalen.</p>
+
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-weight:600;font-size:.82rem;margin-bottom:6px">Namn på begäran (max 16 tecken)</label>
+          <input type="text" id="rut-batch-name" maxlength="16" placeholder="t.ex. Spick 2026-04" style="width:100%;padding:10px;border:1.5px solid #E8E8E4;border-radius:10px;font-family:inherit;font-size:.9rem" oninput="document.getElementById('rut-batch-name-count').textContent=this.value.length">
+          <div style="font-size:.72rem;color:#6B6960;margin-top:4px">Tecken: <span id="rut-batch-name-count">0</span>/16</div>
+        </div>
+
+        <div id="rut-batch-summary" style="background:#F7F7F5;border-radius:10px;padding:14px;margin-bottom:16px;font-size:.85rem"></div>
+
+        <div id="rut-batch-result" style="display:none;padding:16px;border-radius:10px;margin-bottom:16px;font-size:.88rem"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="closeRutBatchModal()" style="background:#f5f5f3;border:1px solid #ddd;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer">Avbryt</button>
+          <button id="rut-batch-submit-btn" onclick="submitRutBatch()" class="btn btn-primary" style="padding:10px 20px">Skapa XML</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fas 7.5 — batch-historik-modal -->
+    <div id="rut-history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:28px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 style="font-family:Georgia,serif;font-size:1.3rem;margin:0">RUT-batch-historik</h3>
+          <button onclick="document.getElementById('rut-history-modal').style.display='none'" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6B6960">×</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Namn</th><th>År</th><th>Bokningar</th><th>Begärt belopp</th><th>Skapad</th><th>Status</th><th>Åtgärder</th></tr></thead>
+            <tbody id="rut-history-tbody"><tr><td colspan="7" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -5388,7 +5432,7 @@ function renderRutQueue() {
 
   const tbody = document.getElementById('rut-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:#6B6960">Inga pending RUT-bokningar som matchar filtret.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:32px;color:#6B6960">Inga pending RUT-bokningar som matchar filtret.</td></tr>';
     return;
   }
 
@@ -5402,11 +5446,17 @@ function renderRutQueue() {
       : (b.approaches_75k_limit
         ? '<span style="color:#92400e;font-weight:700">⚠ Nära 75k</span>'
         : '<span style="color:#065f46">OK</span>');
-    const statusBadge = (b.has_pnr && b.has_gps_evidence && b.has_attest && b.past_dispute_window && !b.exceeds_75k_limit)
+    const isReady = b.has_pnr && b.has_gps_evidence && b.has_attest && b.past_dispute_window && !b.exceeds_75k_limit;
+    const statusBadge = isReady
       ? '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">✅ Redo</span>'
       : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">⏳ Inkomplett</span>';
+    const checked = _rutSelected.has(b.id) ? 'checked' : '';
+    // Disable checkbox för ej-redo bokningar — styr förhindrar admin att skicka icke-redo batch
+    // (EF:en blockar ändå, men UI-hint är bättre UX)
+    const canSelect = b.has_pnr; // minst PNR krävs
 
-    return '<tr>'
+    return '<tr' + (isReady ? '' : ' style="opacity:.7"') + '>'
+      + '<td><input type="checkbox" class="rut-row-checkbox" value="' + b.id + '" ' + checked + (canSelect ? '' : ' disabled title="Kräver minst PNR för export"') + ' onchange="toggleRutRow(this,\'' + b.id + '\')"></td>'
       + '<td>' + escHtml(b.booking_id || b.id.slice(0, 8)) + '</td>'
       + '<td>' + escHtml(b.customer_name || '–') + '<br><span style="font-size:11px;color:#6B6960">' + escHtml(b.customer_email || '') + '</span></td>'
       + '<td>' + escHtml(b.booking_date || '–') + '</td>'
@@ -5420,6 +5470,229 @@ function renderRutQueue() {
       + '<td>' + statusBadge + '</td>'
       + '</tr>';
   }).join('');
+
+  updateRutBatchButton();
+}
+
+// ───────────────────────────────────────────
+// Fas 7.5 — batch-selection + XML-export
+// ───────────────────────────────────────────
+var _rutSelected = new Set();
+
+function toggleSelectAllRut(cb) {
+  const checkboxes = document.querySelectorAll('.rut-row-checkbox');
+  _rutSelected.clear();
+  checkboxes.forEach(function(el) {
+    el.checked = cb.checked;
+    if (cb.checked) _rutSelected.add(el.value);
+  });
+  updateRutBatchButton();
+}
+
+function toggleRutRow(cb, bookingId) {
+  if (cb.checked) _rutSelected.add(bookingId);
+  else _rutSelected.delete(bookingId);
+  updateRutBatchButton();
+}
+
+function updateRutBatchButton() {
+  const btn = document.getElementById('rut-create-batch-btn');
+  if (!btn) return;
+  const n = _rutSelected.size;
+  btn.textContent = 'Skapa XML-batch (' + n + ')';
+  btn.disabled = n === 0 || n > 100;
+  btn.style.opacity = (n === 0 || n > 100) ? '.5' : '1';
+  if (n > 100) btn.title = 'Max 100 bokningar per batch (SKV-regel)';
+  else btn.title = '';
+}
+
+function openRutBatchModal() {
+  if (_rutSelected.size === 0) { alert('Välj minst en bokning först'); return; }
+  if (_rutSelected.size > 100) { alert('Max 100 bokningar per batch (SKV-regel)'); return; }
+
+  const selectedBookings = _rutQueue.filter(function(b) { return _rutSelected.has(b.id); });
+  const totalBegart = selectedBookings.reduce(function(s, b) { return s + (b.rut_amount || 0); }, 0);
+  const totalArbete = selectedBookings.reduce(function(s, b) { return s + ((b.total_price || 0) + (b.rut_amount || 0)); }, 0);
+  const years = [...new Set(selectedBookings.map(function(b) {
+    return (b.completed_at || b.booking_date || '').slice(0, 4);
+  }).filter(Boolean))];
+  const missingPnr = selectedBookings.filter(function(b) { return !b.has_pnr; }).length;
+  const missingGps = selectedBookings.filter(function(b) { return !b.has_gps_evidence; }).length;
+  const missingAttest = selectedBookings.filter(function(b) { return !b.has_attest; }).length;
+  const exceeds75k = selectedBookings.filter(function(b) { return b.exceeds_75k_limit; }).length;
+
+  let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  html += '<div><strong>Bokningar:</strong></div><div>' + selectedBookings.length + '</div>';
+  html += '<div><strong>Begärt från SKV:</strong></div><div>' + totalBegart.toLocaleString('sv-SE') + ' kr</div>';
+  html += '<div><strong>Arbetskostnad brutto:</strong></div><div>' + totalArbete.toLocaleString('sv-SE') + ' kr</div>';
+  html += '<div><strong>Betalningsår:</strong></div><div>' + (years.length === 1 ? years[0] : '<span style="color:#991b1b">⚠ Flera år: ' + years.join(', ') + '</span>') + '</div>';
+  html += '</div>';
+
+  if (missingPnr || missingGps || missingAttest || exceeds75k || years.length > 1) {
+    html += '<div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:10px 14px;border-radius:8px;margin-top:12px;font-size:.82rem">';
+    html += '<strong>⚠ Varningar:</strong><ul style="margin:6px 0 0;padding-left:18px">';
+    if (missingPnr) html += '<li>' + missingPnr + ' bokning(ar) saknar PNR — kommer att blockas av EF</li>';
+    if (missingGps) html += '<li>' + missingGps + ' bokning(ar) saknar GPS-bevis</li>';
+    if (missingAttest) html += '<li>' + missingAttest + ' bokning(ar) saknar kund-attest</li>';
+    if (exceeds75k) html += '<li>' + exceeds75k + ' bokning(ar) överskrider 75k-tak — SKV kan avslå</li>';
+    if (years.length > 1) html += '<li>SKV kräver samma betalningsår — EF kommer avslå</li>';
+    html += '</ul></div>';
+  }
+
+  document.getElementById('rut-batch-summary').innerHTML = html;
+  document.getElementById('rut-batch-name').value = 'Spick ' + new Date().toISOString().slice(0, 7);
+  document.getElementById('rut-batch-name-count').textContent = document.getElementById('rut-batch-name').value.length;
+  document.getElementById('rut-batch-result').style.display = 'none';
+  document.getElementById('rut-batch-submit-btn').disabled = false;
+  document.getElementById('rut-batch-submit-btn').textContent = 'Skapa XML';
+  document.getElementById('rut-batch-modal').style.display = 'flex';
+}
+
+function closeRutBatchModal() {
+  document.getElementById('rut-batch-modal').style.display = 'none';
+}
+
+async function submitRutBatch() {
+  const name = document.getElementById('rut-batch-name').value.trim();
+  if (!name || name.length > 16) { alert('Namn krävs, max 16 tecken'); return; }
+
+  const btn = document.getElementById('rut-batch-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Genererar...';
+
+  const resultEl = document.getElementById('rut-batch-result');
+  resultEl.style.display = 'none';
+
+  try {
+    const sess = await SB.auth.getSession();
+    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/rut-batch-export-xml', {
+      method: 'POST',
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_ids: Array.from(_rutSelected), batch_name: name }),
+    });
+    const data = await res.json().catch(function() { return null; });
+
+    if (!res.ok || !data?.success) {
+      resultEl.style.display = 'block';
+      resultEl.style.background = '#FEE2E2';
+      resultEl.style.color = '#991B1B';
+      let errHtml = '<strong>❌ Fel:</strong> ' + (data?.error || 'HTTP ' + res.status);
+      if (data?.details && Array.isArray(data.details)) {
+        errHtml += '<ul style="margin:6px 0 0;padding-left:18px">';
+        data.details.slice(0, 10).forEach(function(d) {
+          errHtml += '<li>' + (d.booking_id ? 'booking ' + d.booking_id.slice(0, 8) + ': ' : '') + (d.message || d.path || JSON.stringify(d)) + '</li>';
+        });
+        if (data.details.length > 10) errHtml += '<li>...och ' + (data.details.length - 10) + ' fler</li>';
+        errHtml += '</ul>';
+      }
+      resultEl.innerHTML = errHtml;
+      btn.disabled = false;
+      btn.textContent = 'Skapa XML';
+      return;
+    }
+
+    // Success
+    resultEl.style.display = 'block';
+    resultEl.style.background = '#D1FAE5';
+    resultEl.style.color = '#065F46';
+    resultEl.innerHTML = '<strong>✅ XML-batch skapad!</strong><br>'
+      + 'Fil: <code>' + escHtml(data.file_name) + '</code><br>'
+      + 'Storlek: ' + (data.file_size_bytes || 0).toLocaleString('sv-SE') + ' bytes<br>'
+      + 'SHA256: <code style="font-size:11px">' + (data.checksum_sha256 || '').slice(0, 16) + '...</code><br>'
+      + '<br><a href="' + data.download_url + '" download="' + data.file_name.split('/').pop() + '" class="btn btn-primary" style="display:inline-block;margin-top:8px">⬇️ Ladda ner XML-fil</a><br>'
+      + '<br><strong>Nästa steg:</strong><ol style="margin:6px 0 0;padding-left:20px;font-size:.82rem">'
+      + '<li>Ladda ner filen (länk giltig 1h)</li>'
+      + '<li>Logga in på <a href="https://www7.skatteverket.se/portal/rotrut/begar-utbetalning/fil" target="_blank">SKV-portalen</a></li>'
+      + '<li>Välj "Importera fil"</li>'
+      + '<li>När SKV svarat — markera batchen som submitted/approved/rejected i "Batch-historik"</li>'
+      + '</ol>';
+    btn.disabled = true;
+    btn.textContent = 'Klart';
+
+    // Uppdatera RUT-kön (markerade bokningar flyttade till 'pending')
+    _rutSelected.clear();
+    await loadRutQueue();
+    renderRutQueue();
+  } catch (e) {
+    resultEl.style.display = 'block';
+    resultEl.style.background = '#FEE2E2';
+    resultEl.style.color = '#991B1B';
+    resultEl.innerHTML = '<strong>❌ Fel:</strong> ' + (e?.message || 'Något gick fel');
+    btn.disabled = false;
+    btn.textContent = 'Skapa XML';
+  }
+}
+
+async function showRutHistory() {
+  const modal = document.getElementById('rut-history-modal');
+  modal.style.display = 'flex';
+  const tbody = document.getElementById('rut-history-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px"><div class="spin"></div></td></tr>';
+
+  try {
+    const sess = await SB.auth.getSession();
+    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
+    const res = await fetch(
+      SPICK.SUPA_URL + '/rest/v1/rut_batch_submissions?select=*&order=created_at.desc&limit=50',
+      { headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok } }
+    );
+    const rows = res.ok ? await res.json() : [];
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#6B6960">Inga batchar skapade än.</td></tr>';
+      return;
+    }
+
+    const statusLabels = {
+      draft: '📝 Draft', exported: '📤 XML-skapad', submitted: '🏛️ Skickad till SKV',
+      approved: '✅ Godkänd', partial: '⚠️ Delvis godkänd', rejected: '❌ Avslagen', cancelled: '🚫 Avbruten'
+    };
+
+    tbody.innerHTML = rows.map(function(b) {
+      const actions = [];
+      if (b.status === 'exported') actions.push('<button onclick="updateBatchStatus(\'' + b.id + '\',\'submitted\')" class="btn btn-sm" style="background:#DBEAFE;color:#1E40AF;padding:4px 10px;border-radius:6px;font-size:11px;border:none;cursor:pointer">Markera skickad</button>');
+      if (['submitted', 'partial'].includes(b.status)) {
+        actions.push('<button onclick="updateBatchStatus(\'' + b.id + '\',\'approved\')" class="btn btn-sm" style="background:#D1FAE5;color:#065F46;padding:4px 10px;border-radius:6px;font-size:11px;border:none;cursor:pointer">Godkänd</button>');
+        actions.push('<button onclick="updateBatchStatus(\'' + b.id + '\',\'rejected\')" class="btn btn-sm" style="background:#FEE2E2;color:#991B1B;padding:4px 10px;border-radius:6px;font-size:11px;border:none;cursor:pointer">Avslagen</button>');
+      }
+
+      return '<tr>'
+        + '<td>' + escHtml(b.batch_name) + '</td>'
+        + '<td>' + b.submission_year + '</td>'
+        + '<td>' + b.total_bookings + '</td>'
+        + '<td>' + (b.total_begart_belopp || 0).toLocaleString('sv-SE') + ' kr</td>'
+        + '<td style="font-size:11px">' + new Date(b.created_at).toLocaleDateString('sv-SE') + '</td>'
+        + '<td>' + (statusLabels[b.status] || b.status) + '</td>'
+        + '<td>' + (actions.join(' ') || '–') + '</td>'
+        + '</tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#991B1B">Fel: ' + escHtml(e?.message || 'Okänt') + '</td></tr>';
+  }
+}
+
+async function updateBatchStatus(batchId, newStatus) {
+  if (!confirm('Ändra status till: ' + newStatus + '?')) return;
+  try {
+    const sess = await SB.auth.getSession();
+    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
+    const extra = newStatus === 'submitted' ? { submitted_to_skv_at: new Date().toISOString() }
+      : (['approved', 'partial', 'rejected'].includes(newStatus) ? { skv_response_at: new Date().toISOString() } : {});
+    const res = await fetch(SPICK.SUPA_URL + '/rest/v1/rut_batch_submissions?id=eq.' + batchId, {
+      method: 'PATCH',
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(Object.assign({ status: newStatus }, extra)),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(function() { return {}; });
+      alert('Fel: ' + (err.message || res.status));
+      return;
+    }
+    showRutHistory();
+  } catch (e) {
+    alert('Fel: ' + (e?.message || 'Okänt'));
+  }
 }
 
 function exportRutQueueCSV() {
