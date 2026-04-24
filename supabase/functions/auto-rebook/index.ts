@@ -18,6 +18,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
 import { getStockholmDateString } from "../_shared/timezone.ts";
 import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
+import { findSlotConflict } from "../_shared/slot-holds.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -217,6 +218,33 @@ async function processSubscription(supabase: ReturnType<typeof createClient>, su
   const horizonStr = getStockholmDateString(horizonDate);
   if (bookingDate > horizonStr) {
     return { status: "skipped", reason: "not within horizon yet", next_date: bookingDate };
+  }
+
+  // §5.4.2 Slot-hold conflict-check: annan aktiv sub som delar cleaner+weekday+tid?
+  // Blockerar INTE skapandet (rule #27 — varna, inte hård-block). booking-create har
+  // calendar_events no_booking_overlap som hårt skydd mot faktiska dubbelbokningar.
+  if (sub.cleaner_id && typeof sub.preferred_day === "number" && sub.preferred_time && sub.booking_hours) {
+    try {
+      const conflict = await findSlotConflict(supabase, {
+        cleaner_id: sub.cleaner_id as string,
+        weekday: sub.preferred_day as number,
+        start_time: sub.preferred_time as string,
+        duration_hours: Number(sub.booking_hours),
+        exclude_subscription_id: sub.id as string,
+      });
+      if (conflict) {
+        log("warn", "auto-rebook", "Slot-hold-konflikt upptäckt — fortsätter ändå", {
+          sub_id: sub.id,
+          conflicting_sub_id: conflict.subscription_id,
+          cleaner_id: sub.cleaner_id,
+          weekday: sub.preferred_day,
+        });
+      }
+    } catch (e) {
+      log("warn", "auto-rebook", "Slot-hold-check misslyckades (non-fatal)", {
+        sub_id: sub.id, error: (e as Error).message,
+      });
+    }
   }
 
   // Dedup: finns redan bokning för denna sub + datum?

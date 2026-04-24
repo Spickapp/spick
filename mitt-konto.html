@@ -875,10 +875,10 @@ function openSubModal(action, subId) {
     'cancel':      'Avsluta prenumerationen?'
   };
   const subs = {
-    'pause':       'Inga nya bokningar skapas förrän du återupptar. Redan bokade städningar påverkas inte.',
-    'resume':      'Nya bokningar börjar skapas igen enligt ditt schema.',
+    'pause':       'Inga nya bokningar skapas förrän du återupptar. Redan bokade städningar påverkas inte.<br><br><span style="display:inline-block;background:#FEF3C7;color:#92400E;padding:8px 12px;border-radius:8px;font-size:.82rem;margin-top:4px">⚠️ Vid pauser över 4 veckor kan din städare behöva ta andra kunder i din slot. Du får notis vid återupptagning om tiden fortfarande är ledig.</span>',
+    'resume':      'Nya bokningar börjar skapas igen enligt ditt schema. Vi kollar samtidigt om din städares slot fortfarande är ledig.',
     'skip-next':   `Nästa tillfälle är <strong>${sub.next_booking_date || '–'}</strong>. Vi hoppar över detta och går vidare till nästa enligt frekvens.`,
-    'change-time': 'Den nya tiden gäller framtida bokningar. Redan bokade städningar påverkas inte.',
+    'change-time': 'Den nya tiden gäller framtida bokningar. Redan bokade städningar påverkas inte. Din städare får ett mejl om ändringen.',
     'cancel':      'Prenumerationen avslutas. Redan bokade städningar påverkas inte — de genomförs som planerat. Du kan alltid starta en ny prenumeration senare.'
   };
   document.getElementById('subModalTitle').textContent = titles[action];
@@ -949,6 +949,14 @@ async function confirmSubAction() {
     closeSubModal();
     showToast('✅ ' + result.message);
     renderSubscriptions();
+    // §5.4.1 visa EF-warnings (slot-konflikt, next-date-unavailable, etc)
+    if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+      setTimeout(() => {
+        result.warnings.forEach((w, i) => {
+          setTimeout(() => _subToast('⚠️ ' + w.message, 'warning'), i * 4500);
+        });
+      }, 1500);
+    }
   } catch(e) {
     console.error('[SPICK] manageSubscription error:', e);
     _subToast('⚠️ Nätverksfel. Försök igen.', 'error');

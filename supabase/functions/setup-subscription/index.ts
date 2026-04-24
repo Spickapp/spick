@@ -21,6 +21,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, sendEmail, wrap, card, encryptPnr } from "../_shared/email.ts";
+import { upsertHold, findSlotConflict } from "../_shared/slot-holds.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -184,6 +185,32 @@ serve(async (req) => {
     if (insertErr) {
       console.error("[SPICK] Subscription insert failed:", insertErr);
       return json(500, { error: "Kunde inte skapa prenumeration" });
+    }
+
+    // §5.4.2 Soft-reservation: skapa slot_hold för denna sub + varna kund om existing krock
+    try {
+      const holdInput = {
+        subscription_id: subscriptionId,
+        cleaner_id: cleaner_id,
+        weekday: preferred_day,
+        start_time: (time || "09:00") + (time && time.length === 5 ? ":00" : ""),
+        duration_hours: Number(hours),
+      };
+      const existingConflict = await findSlotConflict(supabase, {
+        cleaner_id: cleaner_id,
+        weekday: preferred_day,
+        start_time: holdInput.start_time,
+        duration_hours: Number(hours),
+      });
+      await upsertHold(supabase, holdInput);
+      if (existingConflict) {
+        console.warn("[SPICK] setup-subscription: slot-conflict existerade vid create", {
+          subscription_id: subscriptionId,
+          conflicting_sub: existingConflict.subscription_id,
+        });
+      }
+    } catch (e) {
+      console.warn("[SPICK] setup-subscription: slot-hold-create failed (non-fatal):", e);
     }
 
     // 7. Skapa Stripe Checkout Session (mode=setup)
