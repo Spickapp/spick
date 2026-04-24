@@ -68,7 +68,7 @@ Om något avviker → flagga innan fortsättning.
   - **§7.1 (separat `languages`-tabell) + §7.2 (`cleaner_languages` m2m):** ⊘ SUPERSEDED — duplicerar embedded array = rule #28-brott. Farhad-beslut 2026-04-23: behåll array-design.
   - **Kvarvarande Fas 7-scope:** §7.4-§7.5 (UI picker i cleaner-profil + bli-stadare/join-team) + §7.7 (matching-RPC `p_languages`-param). Aktualiseras vid behov, ej blockerande.
   - §7.4 ✓ språkpicker i cleaner-profil-edit (stadare-dashboard.html sv-profile med chip-select, cleaners.languages TEXT[] save)
-  - §7.5 ✓ join-team.html har redan multi-select (pre-v3-arv). bli-stadare.html är landing-page utan form — §7.5 N/A för den sidan. **H17 flaggad:** join-team använder språk-koder (sv/en/ar), stadare-dashboard använder full-text (Svenska/English/العربية). Inkonsekvens — separat sprint för harmonisering.
+  - §7.5 ✓ join-team.html har redan multi-select (pre-v3-arv). bli-stadare.html är landing-page utan form — §7.5 N/A för den sidan. **H17 FIXAT 2026-04-24:** join-team.html multi-select harmoniserad till full-text-values (Svenska/English/العربية/...), 17 språk-options matchar prod-data (verified via `SELECT unnest(languages)` — alla 9 distinct-värden är full-text). Fallback `['sv']` → `['Svenska']`. Rule #28 SSOT uppfylld.
   - §7.7 ⊘ DEFERRED — kräver full `find_nearby_cleaners`-body via `pg_get_functiondef` för säker DROP+CREATE. Separat sprint.
   - §7.6 GIN-index: ✓ (redan i 20260402-migration)
 - **Fas 7.5 RUT-infrastruktur:** ◯ LÅST (25-35h, dokumenterat i [planen](planning/spick-arkitekturplan-v3.md) + [sanning/rut.md](sanning/rut.md))

@@ -130,13 +130,25 @@ h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height
       
       <div class="field">
         <label for="languages">Språk du pratar</label>
-        <select id="languages" multiple size="4" style="padding:0.5rem">
-          <option value="sv" selected>Svenska</option>
-          <option value="en">Engelska</option>
-          <option value="es">Spanska</option>
-          <option value="ar">Arabiska</option>
-          <option value="fa">Persiska</option>
-          <option value="ru">Ryska</option>
+        <select id="languages" multiple size="6" style="padding:0.5rem">
+          <!-- H17 harmonisering 2026-04-24: full-text-values matchar prod-format i cleaners.languages -->
+          <option value="Svenska" selected>Svenska</option>
+          <option value="English">English</option>
+          <option value="العربية">العربية (arabiska)</option>
+          <option value="Français">Français (franska)</option>
+          <option value="Deutsch">Deutsch (tyska)</option>
+          <option value="فارسی">فارسی (persiska)</option>
+          <option value="Suomi">Suomi (finska)</option>
+          <option value="Soomaali">Soomaali (somaliska)</option>
+          <option value="Türkçe">Türkçe (turkiska)</option>
+          <option value="Українська">Українська (ukrainska)</option>
+          <option value="Polski">Polski (polska)</option>
+          <option value="Español">Español (spanska)</option>
+          <option value="Română">Română (rumänska)</option>
+          <option value="Bosanski">Bosanski</option>
+          <option value="Hrvatski">Hrvatski</option>
+          <option value="Srpski">Srpski</option>
+          <option value="Uzbekiska">Uzbekiska</option>
         </select>
         <div class="field-hint">Håll Ctrl/Cmd för att välja flera</div>
       </div>
@@ -314,7 +326,7 @@ async function submitAccept() {
         application_id: state.application_id,
         real_email: document.getElementById('realEmail').value.trim().toLowerCase(),
         hourly_rate: Number(document.getElementById('hourlyRate').value),
-        languages: langs.length ? langs : ['sv'],
+        languages: langs.length ? langs : ['Svenska'], // H17: full-text-format matchar prod
         has_fskatt: document.getElementById('hasFskatt').checked,
         consent_terms: true,
         consent_gdpr: true,
