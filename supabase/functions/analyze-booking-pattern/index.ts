@@ -70,9 +70,13 @@ Deno.serve(async (req) => {
     const lookback = new Date(Date.now() - LOOKBACK_DAYS * 24 * 3600 * 1000)
       .toISOString().slice(0, 10);
 
+    // Not: `rut` boolean-kolumn saknas i prod (migration 20260325000001 ej
+    // körd — schema-drift per CLAUDE.md §2.1). Deriverar rut-status från
+    // rut_amount > 0 istället. Rule #31: primärkälla = prod-schema, inte
+    // migrations-filer.
     const { data: bookings, error: bErr } = await sb
       .from("bookings")
-      .select("id, cleaner_id, cleaner_name, booking_date, booking_time, booking_hours, service_type, status, rut")
+      .select("id, cleaner_id, cleaner_name, booking_date, booking_time, booking_hours, service_type, status, rut_amount")
       .eq("customer_email", email)
       .gte("booking_date", lookback)
       .in("status", ["completed", "klar", "paid"])
@@ -135,7 +139,7 @@ Deno.serve(async (req) => {
           preferred_time: bookingTime,
           booking_hours: Number(b.booking_hours) || 3,
           service_type: (b.service_type as string) || "Hemstädning",
-          rut: b.rut === true,
+          rut: Number(b.rut_amount) > 0,
           match_count: 1,
           ratings: typeof r === "number" ? [r] : [],
         });
