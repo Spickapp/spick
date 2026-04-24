@@ -1,40 +1,15 @@
--- ============================================================
 -- Sprint C-4 (2026-04-28): Addon-matching RPC-patch
--- ============================================================
--- Syfte: Patcha find_nearby_providers med required_addons-param +
--- hjälp-function cleaner_can_perform_addons som centraliserar
--- capability-logiken (SSOT #28 — samma logik delas potentiellt med
--- cleaner-self-manage EF och admin-preview).
+-- Primarkalla: docs/audits/2026-04-26-modell-c-flexibel-matching.md §4
+-- Baseline: 20260426130000_model2a_find_nearby_providers.sql (9 args)
+-- Andring: lagg till required_addons uuid[] som 10:e param + helper
 --
--- Signaturändring: 9 args → 10 args (ny sista: required_addons uuid[]).
--- DROP FUNCTION med gamla 9-arg-signaturen + CREATE med 10-arg. Inte
--- bakåtkompatibelt utan en wrapper — matching-wrapper EF måste skicka
--- required_addons som null eller array i samma request.
---
--- Capability-logik (cleaner_can_perform_addons):
---   1. required_addons NULL eller tom → alla passerar
---   2. platform_settings.addon_matching_enabled='false' → kill-switch,
---      alla passerar
---   3. Per addon: läs cleaner_addon_capabilities. Finns rad →
---      can_perform avgör. Saknas rad → fallback till
---      platform_settings.addon_capabilities_default_allow
---   4. Cleaner passerar om bool_and alla krav
---
--- Regler:
---   #26 — läst hela find_nearby_providers-body från 20260426130000
---   #27 — scope: inkludera addon-filter i base CTE + ny RETURNS-signatur
---   #28 — cleaner_can_perform_addons är SSOT för capability-checkning,
---         återanvänds av admin-UI och framtida cleaner-self-manage
---   #30 — default_allow är config-driven (platform_settings), inte hårdkodad
---   #31 — platform_settings.value är TEXT (verifierat 2026-04-28), cast till
---         boolean via ('true'/'false')-format som schema.sql seed använder
--- ============================================================
+-- Studio-kompatibel: inget BEGIN/COMMIT-wrap, ingen DO-block, ingen unicode.
 
-BEGIN;
-
--- ============================================================
--- 1. Helper-function: cleaner_can_perform_addons
--- ============================================================
+-- 1. Helper: cleaner_can_perform_addons
+-- Logik:
+--   - required_addons NULL eller tom array -> alla passerar
+--   - platform_settings.addon_matching_enabled='false' -> kill-switch
+--   - Per addon: lookup capability. Fallback till default_allow om rad saknas.
 CREATE OR REPLACE FUNCTION public.cleaner_can_perform_addons(
   p_cleaner_id       uuid,
   p_required_addons  uuid[]
@@ -46,10 +21,8 @@ SET search_path = public
 AS $fn$
   SELECT
     CASE
-      -- Inga krav → alla passerar
       WHEN p_required_addons IS NULL THEN true
       WHEN cardinality(p_required_addons) = 0 THEN true
-      -- Kill-switch: matching avstängd → alla passerar
       WHEN NOT COALESCE(
         NULLIF(
           (SELECT value FROM public.platform_settings WHERE key = 'addon_matching_enabled'),
@@ -57,18 +30,15 @@ AS $fn$
         )::boolean,
         true
       ) THEN true
-      -- Annars: alla krav måste vara uppfyllda
       ELSE (
         SELECT bool_and(
           COALESCE(
-            -- Explicit capability finns → can_perform avgör
             (
               SELECT cac.can_perform
               FROM public.cleaner_addon_capabilities cac
               WHERE cac.cleaner_id = p_cleaner_id
                 AND cac.addon_id = req.addon_id
             ),
-            -- Fallback till platform_settings.addon_capabilities_default_allow
             COALESCE(
               NULLIF(
                 (SELECT value FROM public.platform_settings
@@ -85,23 +55,18 @@ AS $fn$
 $fn$;
 
 COMMENT ON FUNCTION public.cleaner_can_perform_addons(uuid, uuid[]) IS
-  'Sprint C-4: Returnerar true om cleaner_id kan utföra alla angivna addon_ids. '
-  'Läser cleaner_addon_capabilities + platform_settings fallback (default_allow). '
-  'Kill-switch via platform_settings.addon_matching_enabled=false.';
+  'Sprint C-4: Returnerar true om cleaner kan utfora alla angivna addon_ids. Las cleaner_addon_capabilities + platform_settings fallback. Kill-switch via addon_matching_enabled=false.';
 
 GRANT EXECUTE ON FUNCTION public.cleaner_can_perform_addons(uuid, uuid[])
   TO anon, authenticated, service_role;
 
--- ============================================================
--- 2. find_nearby_providers — ny signatur (10 args)
--- ============================================================
--- Idempotens: DROP gamla 9-arg + CREATE ny 10-arg
+-- 2. find_nearby_providers: 9 args -> 10 args (+ required_addons uuid[])
+-- Drop bada signaturer for idempotens
 DROP FUNCTION IF EXISTS public.find_nearby_providers(
   double precision, double precision,
   date, time, integer, boolean, boolean, text, uuid
 );
 
--- Även drop 10-arg ifall denna migration körs om
 DROP FUNCTION IF EXISTS public.find_nearby_providers(
   double precision, double precision,
   date, time, integer, boolean, boolean, text, uuid, uuid[]
@@ -146,7 +111,7 @@ AS $function$
     SELECT
       c.id,
       c.slug,
-      COALESCE(c.first_name || ' ' || c.last_name, c.first_name, 'Städare') AS full_name,
+      COALESCE(c.first_name || ' ' || c.last_name, c.first_name, 'Stadare') AS full_name,
       c.avatar_url,
       c.city,
       c.bio,
@@ -200,7 +165,6 @@ AS $function$
              AND av.end_time   >= (find_nearby_providers.booking_time + make_interval(hours => find_nearby_providers.booking_hours))
         )
       )
-      -- Sprint C-4: addon-capabilities filter
       AND public.cleaner_can_perform_addons(c.id, find_nearby_providers.required_addons)
   ),
   solos AS (
@@ -300,54 +264,4 @@ GRANT EXECUTE ON FUNCTION public.find_nearby_providers(
 COMMENT ON FUNCTION public.find_nearby_providers(
   double precision, double precision, date, time, integer, boolean, boolean, text, uuid, uuid[]
 ) IS
-  'Sprint C-4 (2026-04-28): utökat Model-2a med required_addons uuid[] som '
-  'filter via cleaner_can_perform_addons helper. NULL/tom array = ingen filter. '
-  'Kill-switch via platform_settings.addon_matching_enabled. Se audit '
-  '2026-04-26-modell-c-flexibel-matching.md §4.';
-
--- ============================================================
--- 3. Verifiering
--- ============================================================
--- Not: $do$ istället för $$ pga Supabase Studio SQL Editor-quirk
--- (tidigare fix i Fas 8 + Fas 9 §9.6).
-DO $do$
-DECLARE
-  v_helper_exists boolean;
-  v_rpc_exists boolean;
-BEGIN
-  SELECT EXISTS (
-    SELECT 1 FROM pg_proc p
-    JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'public' AND p.proname = 'cleaner_can_perform_addons'
-  ) INTO v_helper_exists;
-  IF NOT v_helper_exists THEN
-    RAISE EXCEPTION 'C-4: cleaner_can_perform_addons skapades inte';
-  END IF;
-
-  -- Kontrollera att find_nearby_providers nu har 10 args
-  SELECT EXISTS (
-    SELECT 1 FROM pg_proc p
-    JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'public'
-      AND p.proname = 'find_nearby_providers'
-      AND p.pronargs = 10
-  ) INTO v_rpc_exists;
-  IF NOT v_rpc_exists THEN
-    RAISE EXCEPTION 'C-4: find_nearby_providers 10-arg-version skapades inte';
-  END IF;
-
-  -- Smoke-test: helper med NULL
-  IF NOT public.cleaner_can_perform_addons(gen_random_uuid(), NULL) THEN
-    RAISE EXCEPTION 'C-4: cleaner_can_perform_addons returnerade false för NULL-param';
-  END IF;
-
-  -- Smoke-test: helper med empty array
-  IF NOT public.cleaner_can_perform_addons(gen_random_uuid(), ARRAY[]::uuid[]) THEN
-    RAISE EXCEPTION 'C-4: cleaner_can_perform_addons returnerade false för tom array';
-  END IF;
-
-  RAISE NOTICE 'C-4 RPC OK: cleaner_can_perform_addons, find_nearby_providers (10-arg)';
-END
-$do$;
-
-COMMIT;
+  'Sprint C-4 (2026-04-28): utokat Model-2a med required_addons uuid[] som filter via cleaner_can_perform_addons helper. NULL/tom array = ingen filter. Kill-switch via platform_settings.addon_matching_enabled.';
