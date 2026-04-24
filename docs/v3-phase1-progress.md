@@ -52,7 +52,7 @@ Om något avviker → flagga innan fortsättning.
   - §5.8 ✓ preference-learning pattern-detection (EF `analyze-booking-pattern` + suggestion-banner i mitt-konto.html, ≥3 bokningar samma weekday+time+cleaner + avg rating ≥4 → visa förslag med prefilled prenumerera.html-länk, commit d3f6285)
   - §5.9 ✓ email-nudges 7d efter första bokning (EF `customer-nudge-recurring` + migration `recurring_nudge_sent_at` + cron 09:00 CET)
   - §5.10 ✓ pris-binding verifierad (ae11f44)
-  - §5.11 ◯ helgdag-hantering (kräver swedish_holidays-tabell + research)
+  - §5.11 ✓ helgdag-hantering: migration `swedish_holidays` (39 rader 2026-2028) + `_shared/holidays.ts`-helper (isHoliday + nextNonHoliday med cache) + auto-rebook integration för `holiday_mode ∈ {auto_skip, auto_shift, manual}` (CHECK-constraint verifierad rule #31)
   - §5.12 ⊘ LÅST av Fas 7.5 (RUT-kvotsplitting kräver aktiv RUT-infrastruktur)
   - **Hygien-fynd §5.3 session:** prod-schema-status-drift (auto-rebook 'active', arkitektur-doc 'aktiv', BROKEN idx_sub_next index `WHERE status='aktiv'`). Flaggad separat.
 - **Fas 6 Event-system:** ◑ PÅGÅENDE (2026-04-27 sprint)

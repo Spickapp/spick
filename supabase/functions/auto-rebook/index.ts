@@ -19,6 +19,7 @@ import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
 import { getStockholmDateString } from "../_shared/timezone.ts";
 import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
 import { findSlotConflict } from "../_shared/slot-holds.ts";
+import { isHoliday, nextNonHoliday } from "../_shared/holidays.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -218,6 +219,39 @@ async function processSubscription(supabase: ReturnType<typeof createClient>, su
   const horizonStr = getStockholmDateString(horizonDate);
   if (bookingDate > horizonStr) {
     return { status: "skipped", reason: "not within horizon yet", next_date: bookingDate };
+  }
+
+  // §5.11 Helgdag-hantering: auto_skip | auto_shift | manual (null)
+  const holidayMode = (sub.holiday_mode as string) || null;
+  if (holidayMode && holidayMode !== "manual") {
+    try {
+      const holidayName = await isHoliday(supabase, bookingDate);
+      if (holidayName) {
+        if (holidayMode === "auto_skip") {
+          const next = nextDate(bookingDate, freq);
+          await supabase.from("subscriptions").update({
+            next_booking_date: next,
+            updated_at: new Date().toISOString(),
+          }).eq("id", sub.id as string);
+          log("info", "auto-rebook", "Skipped holiday (auto_skip)", {
+            sub_id: sub.id, holiday: holidayName, date: bookingDate, next_date: next,
+          });
+          return { status: "skipped", reason: "holiday_auto_skip", holiday: holidayName, next_date: next };
+        } else if (holidayMode === "auto_shift") {
+          const shifted = await nextNonHoliday(supabase, bookingDate);
+          if (shifted !== bookingDate) {
+            log("info", "auto-rebook", "Shifted from holiday (auto_shift)", {
+              sub_id: sub.id, holiday: holidayName, original: bookingDate, shifted,
+            });
+            bookingDate = shifted;
+          }
+        }
+      }
+    } catch (e) {
+      log("warn", "auto-rebook", "Holiday-check misslyckades (non-fatal)", {
+        sub_id: sub.id, error: (e as Error).message,
+      });
+    }
   }
 
   // §5.4.2 Slot-hold conflict-check: annan aktiv sub som delar cleaner+weekday+tid?
