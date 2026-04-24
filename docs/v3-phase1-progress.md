@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 morgon (§3.5 STÄNGD + status-sync)
+**Senast uppdaterad:** 2026-04-24 em (§12.5 CI-linter hardcoded-värden KLART + §12.6 confirmed existing)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -106,6 +106,9 @@ Om något avviker → flagga innan fortsättning.
   - §12.2 ✓ 10+ nya tester denna session: A04 (analyze-booking-pattern), A05 (customer-subscription-manage), A06 (customer-nudge-recurring), A07 (swedish_holidays data), A08 (export-cleaner-data auth), S06 (garanti.html Mitt-konto-ref), S07 (mitt-konto Prenumerationer-tab), S08 (stadare-dashboard Integritet & data)
   - §12.3 ✓ GitHub Actions workflow `playwright-smoke.yml` — on-push + daglig 03:00 CET + manual dispatch
   - §12.4 ◯ inloggningsberoende E2E (cleaner-login → dashboard-flows) kräver test-auth-infra, separat sprint
+  - §12.5 ✓ CI-linter hardcoded values (`scripts/lint-hardcoded-values.ts` + `.github/workflows/lint-hardcoded-values.yml` + ratchet-allow-list med 55 existerande fynd motiverade). Fångar: commission 0.17/17%, hourly_rate utan allow-list, RUT_SERVICES-arrays (rule #30), UPDATE/DELETE USING(true) för non-service_role. Blockerar PR:er som introducerar nya hardcoded värden. Deno task: `deno task lint:hardcoded`.
+  - §12.6 ✓ Schema-drift-check CI (pre-existing `.github/workflows/schema-drift-check.yml` — veckocron + auto-Issue vid drift)
+  - §12.7 ◯ Backup-restore-test (månadsvis disaster recovery-verifiering)
 - **Fas 9-14 (exkl Fas 10 + 12):** ◯ ej påbörjade
 
 **Plan-beslut:** #1 stängt, #3 stängt, #2 stängt 22 april, #4 per_window öppet (väntar Farhad)

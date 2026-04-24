@@ -1,0 +1,80 @@
+name: Lint Hardcoded Values
+
+# Fas 12 §12.5 — automatisk regel #28 SSOT-efterlevnad.
+# Blockerar PRs som introducerar hardcoded commission, hourly_rate,
+# RUT-services eller öppna RLS-policies utanför allow-list.
+#
+# Primärkälla: scripts/lint-hardcoded-values.ts + scripts/.lint-allow.json
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.html'
+      - '**.js'
+      - '**.ts'
+      - 'supabase/migrations/**'
+      - 'scripts/lint-hardcoded-values.ts'
+      - 'scripts/.lint-allow.json'
+      - '.github/workflows/lint-hardcoded-values.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**.html'
+      - '**.js'
+      - '**.ts'
+      - 'supabase/migrations/**'
+      - 'scripts/lint-hardcoded-values.ts'
+      - 'scripts/.lint-allow.json'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  lint:
+    name: Hardcoded-värde-lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Kör lint
+        run: deno task lint:hardcoded
+
+      - name: Kommentera på PR vid fel
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const msg = `## ⚠ Hardcoded-värde-lint fail
+
+            Nya hardcoded värden (commission / hourly_rate / RUT-services / öppna RLS) upptäckta i denna PR.
+
+            **Se workflow-loggen** för exakta filer och fix-förslag.
+
+            **Alternativ:**
+            1. **Fixa**: läs värdet från \`platform_settings\` eller relevant \`_shared/\`-helper (rule #28 SSOT).
+            2. **Allow-lista**: om det är legitimt (t.ex. dokumenterad drift eller medveten default),
+               kör \`deno task lint:hardcoded:regen\` lokalt och lägg till motivering i
+               \`scripts/.lint-allow.json\`.
+
+            Primärkällor:
+            - \`docs/sanning/provision.md\` (commission)
+            - \`platform_settings\`-tabellen (runtime-konfiguration)
+            - \`docs/sanning/rut.md\` (RUT-status)
+
+            Regel #28 (SSOT) + #30 (ingen regulator-gissning) kräver att dessa värden inte fragmenteras.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: msg
+            });

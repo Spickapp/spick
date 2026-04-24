@@ -110,6 +110,8 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 | supabase/functions/_shared/events.ts | Central event-logging (Fas 6.2) |
 | supabase/functions/_shared/preferences.ts | customer_preferences helpers (Fas 5.5a) |
 | scripts/generate-claude-md.ts | Auto-snapshot av codebase (Fas 11.1) |
+| scripts/lint-hardcoded-values.ts | CI-linter för hardcoded commission/hourly_rate/RUT_SERVICES/öppna RLS (Fas 12.5) |
+| scripts/.lint-allow.json | Ratchet-allow-list för lint-hardcoded-values (motiverade undantag) |
 | docs/sanning/*.md | Primärkällor för affärsregler (provision, rut, pnr-gdpr) |
 | docs/architecture/*.md | Design-docs per fas (matching, money, events, recurring, escrow) |
 | docs/auto-generated/codebase-snapshot.md | Auto-uppdaterad snapshot (Fas 11.2) |
@@ -123,6 +125,7 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 - Frontend queryar ALDRIG bookings-tabellen direkt — använd VIEWs
 - Supabase JS laddas utan defer (utom index.html som har DOMContentLoaded-wrapper)
 - Farhads PowerShell: använd semikolon (;) istf && för att kedja kommandon
+- Hardcoded commission/hourly_rate/RUT_SERVICES/öppna RLS-policies blockeras av CI-lint (`deno task lint:hardcoded`). Nya undantag kräver motivering i `scripts/.lint-allow.json`
 
 ## Obligatoriska regler (#26-#31)
 - **#26** Grep-före-edit: läs exakt text + verifiera surrounding code innan str_replace
