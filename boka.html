@@ -2437,6 +2437,14 @@ function renderCleaners(cleaners) {
     expandHTML += '<div class="cleaner-details-grid">' + expandTags.join('') + '</div>';
     expandHTML += '<a href="stadare-profil.html?id=' + cl.id + '" target="_blank" style="display:block;text-align:center;font-size:.78rem;color:var(--g);margin-bottom:.625rem;text-decoration:underline">Visa fullständig profil</a>';
     expandHTML += '<button class="cleaner-choose-btn">Välj ' + escHtml((cl.company_display_name || cl.company_name) ? (cl.company_display_name || cl.company_name).split(' ')[0] : (cl.full_name || '').split(' ')[0]) + ' →</button>';
+    // Fas 3 C-1: team-drawer för company-providers (UI-only expand; själva
+    // bokningen går genom befintlig selectCleaner-path → ingen ny mutation).
+    if (cl.provider_type === 'company' && cl.team_size > 1 && cl.provider_id) {
+      var _drawerId = 'team-drawer-' + cl.provider_id;
+      var _compName = (cl.display_name || cl.company_display_name || cl.company_name || '').trim();
+      expandHTML += '<button type="button" class="team-drawer-toggle" onclick="event.stopPropagation();toggleTeamDrawer(\'' + cl.provider_id + '\',\'' + encodeURIComponent(_compName) + '\',this)" style="width:100%;margin-top:.5rem;padding:.625rem;background:#F7F7F5;color:#0F6E56;border:1px solid #0F6E56;border-radius:8px;font-weight:600;cursor:pointer;font-size:.85rem">👥 Visa ' + cl.team_size + ' team-medlemmar ↓</button>';
+      expandHTML += '<div id="' + _drawerId + '" class="team-drawer" style="display:none;margin-top:.5rem" onclick="event.stopPropagation()"></div>';
+    }
     expandHTML += '</div>';
     var avatarHTML = cl.avatar_url
       ? '<div class="cleaner-av" style="padding:0;overflow:hidden"><img src="' + cl.avatar_url + '" alt="' + escHtml(cl.full_name||'') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
@@ -2622,6 +2630,96 @@ function selectCleaner(cl, cardEl) {
   updateSidebar();
   // Kort animering sedan gå vidare
   setStep(3);
+}
+
+// ── Fas 3 C-1: Team-drawer (expandera company-providers → visa individer) ──
+// UI-only lazy-load. Vid klick på "Boka [namn] →" anropar vi selectCleaner
+// med ett team-medlems-objekt som bär `provider_type='company'` + company-
+// kolumner → booking-create får samma shape som en representative-bokning
+// men med cleaner_id = specifik team-medlem (nivå 4 per Modell C §3.2).
+async function toggleTeamDrawer(companyId, companyDisplayNameEnc, btnEl) {
+  var drawerEl = document.getElementById('team-drawer-' + companyId);
+  if (!drawerEl) return;
+  var isOpen = drawerEl.style.display !== 'none';
+  if (isOpen) {
+    drawerEl.style.display = 'none';
+    btnEl.innerHTML = btnEl.innerHTML.replace('↑', '↓');
+    return;
+  }
+  drawerEl.style.display = 'block';
+  btnEl.innerHTML = btnEl.innerHTML.replace('↓', '↑');
+  if (drawerEl.dataset.loaded === '1') return;
+
+  drawerEl.innerHTML = '<div style="text-align:center;padding:.75rem;color:#6B6960;font-size:.85rem">Laddar team…</div>';
+  try {
+    var teamUrl = SUPA + '/rest/v1/v_cleaners_public?company_id=eq.' + encodeURIComponent(companyId) + '&is_company_owner=eq.false&status=eq.aktiv&is_approved=eq.true&select=id,full_name,first_name,avatar_url,avg_rating,review_count,hourly_rate,city,bio';
+    var pricesUrl = SUPA + '/rest/v1/cleaner_service_prices?select=cleaner_id,service_type,price_type,price';
+    var responses = await Promise.all([fetch(teamUrl, {headers:H}), fetch(pricesUrl, {headers:H})]);
+    var team = await responses[0].json();
+    var allPrices = await responses[1].json();
+    if (!Array.isArray(team) || team.length === 0) {
+      drawerEl.innerHTML = '<div style="padding:.75rem;color:#6B6960;font-size:.85rem">Inga enskilt bokningsbara team-medlemmar just nu. Använd "Välj" ovan för att låta företaget fördela bokningen.</div>';
+      drawerEl.dataset.loaded = '1';
+      return;
+    }
+    team.forEach(function(tm) {
+      tm._servicePrices = (allPrices || []).filter(function(p) { return p.cleaner_id === tm.id; });
+    });
+    drawerEl._teamData = team;
+    drawerEl._companyDisplayNameEnc = companyDisplayNameEnc;
+    drawerEl.innerHTML = '<div style="font-size:.78rem;color:#6B6960;margin-bottom:.5rem">Eller välj en specifik städare från teamet:</div>' + team.map(function(tm) {
+      var tmIni = (tm.full_name||'?').split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase();
+      var tmAvatar = tm.avatar_url
+        ? '<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0"><img src="' + escHtml(tm.avatar_url) + '" alt="' + escHtml(tm.full_name||'') + '" style="width:100%;height:100%;object-fit:cover"></div>'
+        : '<div style="width:40px;height:40px;border-radius:50%;background:#0F6E5620;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">' + escHtml(tmIni) + '</div>';
+      var ratingHTML = (tm.avg_rating != null && tm.review_count > 0)
+        ? '<span style="color:#0F6E56;font-weight:600">★ ' + tm.avg_rating.toFixed(1) + '</span> <span style="color:#6B6960;font-size:.75rem">(' + tm.review_count + ')</span>'
+        : '<span style="color:#6B6960;font-size:.75rem">Ny städare</span>';
+      var firstName = tm.first_name || (tm.full_name||'').split(' ')[0] || 'Städare';
+      return '<div style="display:flex;align-items:center;gap:.75rem;padding:.625rem;background:#fff;border:1px solid #E1F5EE;border-radius:10px;margin-bottom:.5rem">' +
+        tmAvatar +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(tm.full_name||'–') + '</div>' +
+          '<div style="font-size:.78rem">' + ratingHTML + (tm.city ? ' <span style="color:#6B6960">· 📍 ' + escHtml(tm.city) + '</span>' : '') + '</div>' +
+        '</div>' +
+        '<button type="button" onclick="event.stopPropagation();selectTeamMember(\'' + tm.id + '\',\'' + encodeURIComponent(companyId) + '\',this)" style="background:#0F6E56;color:#fff;border:none;border-radius:8px;padding:.5rem .75rem;font-weight:600;cursor:pointer;font-size:.82rem;white-space:nowrap">Boka ' + escHtml(firstName) + ' →</button>' +
+      '</div>';
+    }).join('');
+    drawerEl.dataset.loaded = '1';
+  } catch(e) {
+    console.warn('[SPICK] Team-drawer fetch failed:', e);
+    drawerEl.innerHTML = '<div style="padding:.75rem;color:#b91c1c;font-size:.85rem">Kunde inte ladda team-lista. Försök igen eller använd "Välj" ovan.</div>';
+  }
+}
+
+function selectTeamMember(teamMemberId, companyIdEnc, btnEl) {
+  var drawerEl = btnEl.closest('.team-drawer');
+  if (!drawerEl || !drawerEl._teamData) return;
+  var tm = drawerEl._teamData.find(function(m) { return m.id === teamMemberId; });
+  if (!tm) return;
+  var companyId = decodeURIComponent(companyIdEnc);
+  var companyDisplayName = decodeURIComponent(drawerEl._companyDisplayNameEnc || '');
+  // Provider-liknande cl-objekt. selectCleaner läser cl.id (→ state.cleanerId),
+  // cl.company_display_name/company_name (→ state.cleanerName), cl._servicePrices
+  // (→ state.cleanerRate), cl.city. provider_type='company' bevaras så booking-
+  // create kör company-branch; cleaner_id pekar dock på specifik team-medlem.
+  var clObj = {
+    id: tm.id,
+    provider_type: 'company',
+    provider_id: companyId,
+    representative_cleaner_id: tm.id,
+    full_name: tm.full_name,
+    display_name: tm.full_name,
+    company_name: companyDisplayName,
+    company_display_name: companyDisplayName,
+    company_id: companyId,
+    hourly_rate: tm.hourly_rate,
+    city: tm.city,
+    avatar_url: tm.avatar_url,
+    _servicePrices: tm._servicePrices || []
+  };
+  var parentCard = drawerEl.closest('.cleaner-card');
+  selectCleaner(clObj, parentCard);
 }
 
 // ── STEG 3: UPPGIFTER ─────────────────────────────────────────────────────────
