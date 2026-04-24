@@ -56,6 +56,29 @@ serve(async (req) => {
     const now = new Date();
     const today = getStockholmDateString(now);
 
+    // Idempotency: workflow är schemalagd 3 gånger/dag (01/03/05 UTC)
+    // för att absorbera GitHub Actions peak-delay. EF skickar rapport
+    // endast första körningen per svensk dag. Lagring i platform_settings
+    // (key='morning_report_last_sent_date', value=YYYY-MM-DD i svensk tid).
+    // Manual workflow_dispatch via ?force=1 bypassar guarden.
+    const urlObj = new URL(req.url);
+    const forceRun = urlObj.searchParams.get("force") === "1";
+    if (!forceRun) {
+      const { data: lastSent } = await sb
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "morning_report_last_sent_date")
+        .maybeSingle();
+      if (lastSent?.value === today) {
+        return new Response(JSON.stringify({
+          ok: true,
+          skipped: true,
+          reason: "already_sent_today",
+          today,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     // Igår i svensk tid — skapa via Stockholm-midnatt, inte UTC-midnatt
     const yDate = new Date(now);
     yDate.setUTCDate(yDate.getUTCDate() - 1);
@@ -209,6 +232,21 @@ ${indexAuditNeeded ? `
 `);
 
     const sent = await mail(ADMIN, subject, html);
+
+    // Idempotency-stämpel: markera att rapport skickats för svensk dag.
+    // Ny dag (efter midnatt CEST) → value uppdateras vid nästa körning.
+    // Gjort efter mail så vi inte stämplar om email failar (då försöker
+    // vi igen vid nästa cron-tick samma dag).
+    if (sent) {
+      await sb
+        .from("platform_settings")
+        .upsert({
+          key: "morning_report_last_sent_date",
+          value: today,
+          description: "Fas 6: idempotency-stämpel för admin-morning-report. Sätt via EF efter email skickats. Raderas manuellt vid behov för re-trigger.",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "key" });
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, stats }),

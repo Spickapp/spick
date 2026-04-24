@@ -9572,7 +9572,35 @@ async function doCheckin() {
   var bid = window._currentBookingId;
   if (!bid) { showToast('Inget jobb att checka in på'); return; }
   var btn = document.getElementById('hero-checkin-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Hämtar GPS...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verifierar betalning...'; }
+
+  // Payment-guard (rule #26: fetch real-time status före checkin). Blockerar
+  // städning av obetald bokning → förhindrar att städare arbetar utan att
+  // pengarna är på Spicks konto.
+  try {
+    var guardRes = await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + bid + '&select=payment_status,status', {
+      headers: _authHeadersLegacy()
+    });
+    var guardRows = guardRes.ok ? await guardRes.json() : [];
+    var pStatus = (guardRows && guardRows[0] && guardRows[0].payment_status) || 'unknown';
+    var bStatus = (guardRows && guardRows[0] && guardRows[0].status) || '';
+    if (pStatus !== 'paid') {
+      if (btn) { btn.disabled = false; btn.textContent = '📍 Checka in'; }
+      showToast('⚠️ Betalning ej registrerad (' + pStatus + '). Vänta med incheckning tills kund betalat.');
+      return;
+    }
+    if (bStatus === 'cancelled' || bStatus === 'avbokad') {
+      if (btn) { btn.disabled = false; btn.textContent = '📍 Checka in'; }
+      showToast('⚠️ Bokningen är avbokad — ingen städning ska utföras.');
+      return;
+    }
+  } catch(guardErr) {
+    console.warn('[checkin-guard] fetch failed, fortsätter ändå:', guardErr);
+    // Fail-open: om guarden inte går att köra (nätverksfel) tillåter vi
+    // städaren att checka in manuellt. Admin kan reverta om obetalt jobb.
+  }
+
+  if (btn) { btn.textContent = '⏳ Hämtar GPS...'; }
   try {
     var patchData = { checkin_time: new Date().toISOString(), status: 'pågår' };
     if (navigator.geolocation) {
