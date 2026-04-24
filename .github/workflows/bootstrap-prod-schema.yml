@@ -49,22 +49,12 @@ jobs:
             exit 1
           fi
 
-      - name: Commit snapshot
-        run: |
-          git config user.email "bot@spick.se"
-          git config user.name "Spick Bot"
-          git add prod-schema.sql
-          if git diff --staged --quiet; then
-            echo "Ingen ändring — schema är redan bootstrappad och up-to-date"
-            exit 0
-          fi
-          git commit -m "chore(schema): bootstrap/update prod-schema.sql baseline (H19)
-
-          Dumpad via supabase CLI. Används av schema-drift-check för att
-          detektera när prod-DB avviker från repo-baseline.
-
-          [skip ci]"
-          git push
+      - name: Upload schema som artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-schema-snapshot
+          path: prod-schema.sql
+          retention-days: 7
 
       - name: Summary
         if: always()
@@ -74,10 +64,15 @@ jobs:
           if [ -f prod-schema.sql ]; then
             SIZE=$(wc -c < prod-schema.sql)
             LINES=$(wc -l < prod-schema.sql)
-            echo "- prod-schema.sql: $SIZE bytes, $LINES rader" >> $GITHUB_STEP_SUMMARY
-            echo "- Committed/uppdaterad i main" >> $GITHUB_STEP_SUMMARY
+            echo "- prod-schema.sql: **$SIZE bytes, $LINES rader**" >> $GITHUB_STEP_SUMMARY
+            echo "- Uppladdad som artifact: **prod-schema-snapshot**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Nästa steg:** Kör 'Schema Drift Check' workflow manuellt för att se drift-fynd." >> $GITHUB_STEP_SUMMARY
+            echo "### Nästa steg (Farhads hand)" >> $GITHUB_STEP_SUMMARY
+            echo "1. Scrolla upp till denna körnings **Artifacts**-sektion" >> $GITHUB_STEP_SUMMARY
+            echo "2. Ladda ner **prod-schema-snapshot.zip**" >> $GITHUB_STEP_SUMMARY
+            echo "3. Extrahera \`prod-schema.sql\` till repo-root" >> $GITHUB_STEP_SUMMARY
+            echo "4. \`git add prod-schema.sql && git commit -m \"chore: prod-schema baseline\" && git push\`" >> $GITHUB_STEP_SUMMARY
+            echo "5. Kör 'Schema Drift Check' workflow" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ prod-schema.sql skapades inte" >> $GITHUB_STEP_SUMMARY
           fi
