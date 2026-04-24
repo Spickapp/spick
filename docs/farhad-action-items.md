@@ -33,7 +33,9 @@
 - [x] ✓ **Smoke-test `load-test.yml`** — Run #6 GRÖN 2026-04-24. 1569 requests, 0% custom_errors, latens-thresholds passerade. Fynd under load: health-EF returnerade 503 pga externa API-deps → fixat via critical/degraded-split. Thresholds justerade till GA-realistiska (50 VUs = spike, 5-10 = riktig trafik).
 - [ ] 🟡 **Smoke-test `customer-nudge-recurring.yml`** + **`preference-learn-favorite.yml`** + **`playwright-smoke.yml`** (från föregående session): Kör manuellt för att bekräfta fungerar.
 
-- [ ] 🟡 **A04 investigation — analyze-booking-pattern returnerar 500** (smoke-test 2026-04-24). Testet postar `never-exists@spick-test.se` och förväntar 200 med `has_pattern:false`. Troliga orsaker: (a) bookings-query failar pga oväntad status-enum, (b) EF inte fullt deployad, (c) ny bug. **Kolla Supabase EF-logs:** Dashboard → Edge Functions → analyze-booking-pattern → Logs. Dela output med Claude för fix.
+- [x] ✓ **A04 FIXAT 2026-04-24** — Root cause: `column bookings.rut does not exist` i prod. Migration 20260325000001 ej körd. Fix: EF använder `rut_amount > 0` istället (commit 6ebdda4). Rule #31-verify via curl + EF-logs.
+
+- [ ] 🔴 **H19 HYGIEN-INVESTIGATION: schema-drift i migrations** — Migration 20260325000001_production_ready.sql är EJ körd i prod (rut-kolumn saknas). Troligen finns FLER saknade migrationer. Kör `schema-drift-check.yml` manuellt för att lista alla drift-ytor. **Kritisk innan GA** — andra EFs kan ha samma bug vi bara inte triggat än. Se CLAUDE.md §2.1 hygien #25.
 
 - [x] ✓ **Load-test rerun efter health-fix** — #6 GRÖN 2026-04-24. Hela §12.4 STÄNGD.
 
@@ -82,7 +84,7 @@
 | 🟡 Legacy-handoff | 2 | ADMIN_ALERT_WEBHOOK_URL, escrow_mode-beslut |
 | 🟢 Quick-wins | 3 | Schema-drift, review-docs |
 
-**Total pending:** ~12 items, varav **4 är hårda GA-blockers** (alla externa möten: jurist, Skatteverket, revisor, pentester).
+**Total pending:** ~12 items, varav **5 är hårda GA-blockers** (4 externa möten + H19 schema-drift-investigation).
 
 ---
 
