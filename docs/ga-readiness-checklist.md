@@ -63,20 +63,28 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 
 ---
 
-### §13.3 Stripe rate-limit-verifiering
+### §13.3 Stripe rate-limit + retry/idempotency
 
-| Aspekt | Status | Anteckning |
+**Static audit klar:** [docs/audits/2026-04-24-stripe-retry-audit.md](audits/2026-04-24-stripe-retry-audit.md)
+
+| Aspekt | Status | Fynd |
 |---|---|---|
-| Dokumenterade rate-limits | ◯ | Stripe prod-mode: 100 read + 100 write req/s per account |
-| Retry-logik med backoff | ◯ | Behöver verifiera att alla Stripe-calls har exponential backoff |
-| Idempotency-keys överallt | ✓ | Verifierat för `booking-create` (Idempotency-Key). `stripe-webhook` använder `processed_webhook_events`-tabell. |
-| Webhook buffering vid peak | ◯ | Outbox-pattern ej implementerat |
+| Centraliserad Stripe-helper | ◑ Fragmenterad | `_shared/stripe.ts::stripeRequest` finns men bara 2 EFs använder den (escrow-release + triggerStripeTransfer). 10+ EFs anropar raw fetch direkt. |
+| Idempotency-keys på refunds | ✗ **HÅRDA GAPS** | 7 refund-sites utan idempotency-header: stripe-refund, booking-auto-timeout, auto-remind, booking-cancel-v2, booking-reassign, noshow-refund, stripe-webhook. Dubbel-refund-risk vid retry. |
+| Idempotency på payment_intents | ✗ **HÅRDGAP** | `charge-subscription-booking` saknar. Dubbeldebitering-risk. |
+| Retry-logik (429/5xx) | ✗ Saknas centralt | `stripeRequest` har ingen auto-retry. Application-level retry finns i 2 platser (charge-subscription + triggerStripeTransfer). |
+| Rate-limit-instrumentation | ◯ Saknas | Vi vet inte hur nära Stripe-limits vi är. |
+| Farhad-verify Stripe Dashboard rate-limits | ◯ | Rule #30 — kräver Farhads hand |
 
-**Regulator-flagg (⚠):** Stripe-regler + API-spec får inte gissas (rule #30). Verifiera mot Stripe docs + eventuell support-kontakt.
+**Rekommenderade fixes (audit §6):**
+- **R2** Auto-retry i stripeRequest (1-2h) — skyddar mot 429 spike
+- **R3** Idempotency per refund-site (2-3h) — eliminerar dubbel-refund-risk
+- **R1** Konsolidera alla Stripe-calls till stripeRequest (4-6h, rule #28)
+- **R5** Farhad verifierar Stripe Dashboard rate-limits
 
-**Owner:** Farhad (Stripe-konto-ägare) + Claude (kod-review)
+**Pre-GA kritisk:** R3. Total R2+R3 = 3-5h fix-scope.
 
-**Nästa steg:** Claude auditerar retry-logik i alla Stripe-calls. Farhad verifierar rate-limits i Stripe Dashboard.
+**Owner:** Claude (R1-R4 kod) + Farhad (R5 Dashboard)
 
 ---
 

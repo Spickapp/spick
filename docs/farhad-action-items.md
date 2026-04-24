@@ -20,6 +20,8 @@
 - [ ] 🔴 **Supabase Dashboard — skapa storage-bucket `dispute-evidence`:** Privat bucket, 5MB limit, MIME `image/jpeg, image/png, image/heic, application/pdf`. Unlocks Fas 8 §8.13 dispute-evidence-upload.
 - [ ] 🔴 **Stripe Dashboard — verifiera rate-limits:** Kolla prod-mode limits (standard 100 read + 100 write req/s per account). Dokumentera i §13.3. Kritisk för 1000+ bokningar/månad-skalan.
 
+- [ ] 🔴 **Beslut: fixa Stripe idempotency pre-GA?** §13.3-audit fynd: 7 refund-sites + charge-subscription-booking saknar idempotency-keys. Vid nätverks-retry kan kunden få DUBBEL refund eller DUBBEL debitering. Rekommenderade fixar R2 (auto-retry i stripeRequest) + R3 (idempotency per refund-site) = 3-5h implementation. Se [docs/audits/2026-04-24-stripe-retry-audit.md](audits/2026-04-24-stripe-retry-audit.md). Din beslut: pre-GA fix eller skjut med risk-acceptans?
+
 ---
 
 ## 🟡 Bör göras för ordning/trygghet
@@ -75,7 +77,7 @@
 | 🟡 Legacy-handoff | 2 | ADMIN_ALERT_WEBHOOK_URL, escrow_mode-beslut |
 | 🟢 Quick-wins | 3 | Schema-drift, review-docs |
 
-**Total pending:** ~17 items, varav **6 är hårda GA-blockers**.
+**Total pending:** ~18 items, varav **7 är hårda GA-blockers**.
 
 ---
 
