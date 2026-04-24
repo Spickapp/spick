@@ -54,7 +54,7 @@ Om något avviker → flagga innan fortsättning.
   - §5.10 ✓ pris-binding verifierad (ae11f44)
   - §5.11 ✓ helgdag-hantering: migration `swedish_holidays` (39 rader 2026-2028) + `_shared/holidays.ts`-helper (isHoliday + nextNonHoliday med cache) + auto-rebook integration för `holiday_mode ∈ {auto_skip, auto_shift, manual}` (CHECK-constraint verifierad rule #31)
   - §5.12 ⊘ LÅST av Fas 7.5 (RUT-kvotsplitting kräver aktiv RUT-infrastruktur)
-  - **Hygien-fynd §5.3 session:** prod-schema-status-drift (auto-rebook 'active', arkitektur-doc 'aktiv', BROKEN idx_sub_next index `WHERE status='aktiv'`). Flaggad separat.
+  - **Hygien-fynd §5.3 session:** prod-schema-status-drift (auto-rebook 'active', arkitektur-doc 'aktiv', BROKEN idx_sub_next index `WHERE status='aktiv'`). Flaggad separat. **H16 FIXAT 2026-04-24:** DROP + CREATE `idx_sub_next` med `WHERE status='active'` — index är nu funktionell.
 - **Fas 6 Event-system:** ◑ PÅGÅENDE (2026-04-27 sprint)
   - §6.2 foundation ✓ (`_shared/events.ts` + 27 canonical events + 8 tester)
   - §6.3 retrofit ✓ STÄNGD 8/8: booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund, stripe-webhook (09b0c89), betyg.html (via save-booking-event EF, §6.5-beslut a35505d), auto-remind (denna session — cancelled_by_cleaner + refund_issued i auto_timeout_90-path)
