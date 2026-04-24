@@ -77,12 +77,12 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 | Farhad-verify Stripe Dashboard rate-limits | ◯ | Rule #30 — kräver Farhads hand |
 
 **Rekommenderade fixes (audit §6):**
-- **R2** Auto-retry i stripeRequest (1-2h) — skyddar mot 429 spike
-- **R3** Idempotency per refund-site (2-3h) — eliminerar dubbel-refund-risk
-- **R1** Konsolidera alla Stripe-calls till stripeRequest (4-6h, rule #28)
-- **R5** Farhad verifierar Stripe Dashboard rate-limits
+- **R2** ✓ **KLART** Auto-retry i stripeRequest — exponential backoff 250/500/1000ms + Retry-After-header-support + network-error-retry. 12 nya tester, 146/146 total money-tests passerar. Commit pending.
+- **R3** ◯ Idempotency per refund-site (2-3h) — eliminerar dubbel-refund-risk. **Pre-GA kritisk.**
+- **R1** ◯ Konsolidera alla Stripe-calls till stripeRequest (4-6h, rule #28)
+- **R5** ◯ Farhad verifierar Stripe Dashboard rate-limits
 
-**Pre-GA kritisk:** R3. Total R2+R3 = 3-5h fix-scope.
+**Pre-GA kritisk:** R3. Total R3 = 2-3h kvar efter R2.
 
 **Owner:** Claude (R1-R4 kod) + Farhad (R5 Dashboard)
 

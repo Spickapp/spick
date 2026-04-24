@@ -113,7 +113,7 @@ Om något avviker → flagga innan fortsättning.
 - **Fas 13 GA-readiness:** ◑ PÅBÖRJAD
   - §13.1 Load-test 1000 VUs: ◯ blockad (kräver test-env)
   - §13.2 DB-index-audit: ◑ static v1 klar ([docs/audits/2026-04-24-db-indexes-static.md](audits/2026-04-24-db-indexes-static.md)). 126 indexes + 571 query-patterns mappade. Topp-gaps: platform_settings.key (18q), bookings.booking_date (14q), customer_profiles.email (8q), cleaners.auth_user_id (8q). **Nästa:** EXPLAIN ANALYZE mot prod + ev. migration för saknade indexes.
-  - §13.3 Stripe rate-limits: ◑ static audit klar ([docs/audits/2026-04-24-stripe-retry-audit.md](audits/2026-04-24-stripe-retry-audit.md)). **HÅRDA GAPS:** 7 refund-sites + charge-subscription-booking saknar idempotency-keys → dubbel-refund/debitering-risk vid retry. Rekommenderat fix R2+R3 pre-GA (3-5h).
+  - §13.3 Stripe rate-limits: ◕ audit + R2 implementerat. stripeRequest har nu auto-retry (429/5xx/network) med exponential backoff + Retry-After-support. 12 nya tester, 146/146 money-tests passerar. Kvarvarande: R3 idempotency per refund-site (pre-GA kritisk), R5 Farhad-Dashboard-verify.
   - §13.4 GDPR-audit: ◕ static audit ([docs/audits/2026-04-24-gdpr-static-audit.md](audits/2026-04-24-gdpr-static-audit.md)) + A1-A3 ✓ KLART (export-customer-data EF, mitt-konto UI, policy SSOT-konsolidering). B1-B4 (retention, DPA, delete-flow) jurist-beroende. C1 (PNR) blockad av Fas 7.5.
   - §13.5 RUT-automation: ⊘ blockad av Fas 7.5
   - §13.6 Moms-automation: ⚠ BokfL-regulator-känsligt (rule #30)
