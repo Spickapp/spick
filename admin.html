@@ -1305,6 +1305,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <button class="btn btn-primary btn-sm" id="modal-reassign-btn" style="display:none" onclick="reassignBooking()">🔄 Omtilldela</button>
       <button class="btn btn-outline btn-sm" id="modal-cancel-btn" style="display:none" onclick="cancelBooking()" style="color:#92400E;border-color:#F59E0B">❌ Avboka</button>
       <button class="btn btn-danger btn-sm" id="modal-refund-btn" style="display:none" onclick="refundBooking()">↩ Återbetala</button>
+      <button class="btn btn-outline btn-sm" id="modal-pdf-btn" onclick="downloadReceiptPdf()">📄 Ladda ner PDF</button>
     </div>
   </div>
 </div>
@@ -3785,8 +3786,14 @@ function showCleanerDetail(id) {
     <!-- Företag / Team -->
     ${c.company_id ? `
     <div id="admin-company-section" style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-size:.82rem;font-weight:700;color:#1E40AF">🏢 ${c.is_company_owner ? 'Företagsägare' : 'Teammedlem'}</div>
+        <!-- Fas F-RBAC: roll-dropdown. company_role CHECK-constraint i DB hanterar validering. -->
+        <select id="cleaner-company-role-${c.id}" data-original="${escHtml(c.company_role || (c.is_company_owner ? 'owner' : 'member'))}" onchange="saveCompanyRole('${c.id}', this)" style="font-size:.78rem;padding:4px 8px;border:1px solid #BFDBFE;border-radius:6px;background:#fff;color:#1E40AF;font-weight:600;cursor:pointer">
+          <option value="owner" ${(c.company_role || (c.is_company_owner ? 'owner' : 'member')) === 'owner' ? 'selected' : ''}>👑 VD</option>
+          <option value="manager" ${c.company_role === 'manager' ? 'selected' : ''}>🛠 Arbetsledare</option>
+          <option value="member" ${(c.company_role || 'member') === 'member' && !c.is_company_owner ? 'selected' : ''}>👤 Anställd</option>
+        </select>
       </div>
       <div id="admin-company-details" style="font-size:.85rem;color:#1E40AF">Laddar företagsinfo...</div>
       ${c.is_company_owner ? '<div id="admin-team-members" style="margin-top:12px;font-size:.85rem">Laddar teammedlemmar...</div>' : ''}
@@ -4235,6 +4242,47 @@ async function suspendCleaner() {
   await loadAll();
 }
 
+// Fas F-PDF (2026-04-28): Ladda ner kvitto/faktura som PDF.
+// Anropar generate-receipt-pdf EF med admin-JWT. EF:en validerar
+// ownership (admin eller customer) och returnerar application/pdf.
+async function downloadReceiptPdf() {
+  if (!currentBookingId) { showToast('Ingen bokning vald'); return; }
+  const btn = document.getElementById('modal-pdf-btn');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Genererar...'; }
+  try {
+    const headers = await _adminHeadersLegacy();
+    const res = await fetch(
+      SPICK.SUPA_URL + '/functions/v1/generate-receipt-pdf?booking_id=' + encodeURIComponent(currentBookingId),
+      { method: 'GET', headers: headers }
+    );
+    if (!res.ok) {
+      var errText = 'HTTP ' + res.status;
+      try { var j = await res.json(); errText = j.error || errText; } catch(_) {}
+      showToast('❌ PDF-fel: ' + errText);
+      return;
+    }
+    const blob = await res.blob();
+    const contentDisp = res.headers.get('Content-Disposition') || '';
+    var filename = 'kvitto.pdf';
+    var m = contentDisp.match(/filename="([^"]+)"/);
+    if (m) filename = m[1];
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    showToast('✅ PDF nedladdad');
+  } catch(e) {
+    showToast('❌ Nätverksfel: ' + (e.message || 'okänt'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+
 async function pauseCleaner() {
   var result = await showConfirmDialog({
     level: 'yellow',
@@ -4247,6 +4295,46 @@ async function pauseCleaner() {
   await auditLog('pause','cleaner', currentCleanerId, c ? {status:c.status} : null, {status:'pausad'});
   closeCleanerPanel();
   showToast('⏸ Städare pausad');
+  await loadAll();
+}
+
+// Fas F-RBAC: sätt company_role per cleaner (owner/manager/member).
+// Sync-trigger i DB håller is_company_owner i synk. Framtida RLS bygger
+// rättigheter på company_role. Existing VD kvar som owner tills admin
+// explicit demoterar — dubbel-VD-check via confirm.
+async function saveCompanyRole(cleanerId, selectEl) {
+  const newRole = selectEl.value;
+  const original = selectEl.dataset.original;
+  if (newRole === original) return;
+
+  const c = data.cleaners.find(x => x.id === cleanerId);
+  if (!c) return;
+
+  // Varning: byta till owner när en annan owner finns → dubbel-VD-situation
+  if (newRole === 'owner' && c.company_id) {
+    const existing = data.cleaners.find(x =>
+      x.company_id === c.company_id && x.is_company_owner && x.id !== cleanerId
+    );
+    if (existing) {
+      const msg = existing.full_name + ' är redan VD för detta företag.\n\nBefordra ' + (c.full_name || 'denna städare') + ' till VD också?\n\nOBS: gammal VD degraderas INTE automatiskt. Hantera separat om du vill byta.';
+      if (!confirm(msg)) { selectEl.value = original; return; }
+    }
+  }
+
+  const updates = { company_role: newRole, is_company_owner: newRole === 'owner' };
+  const res = await AR.update('cleaners', updates, 'id=eq.' + cleanerId);
+  if (res && res.error) {
+    showToast('❌ Kunde inte spara roll: ' + (res.error.message || 'okänt fel'));
+    selectEl.value = original;
+    return;
+  }
+  await auditLog('update_role', 'cleaner', cleanerId,
+    { company_role: original, is_company_owner: c.is_company_owner },
+    { company_role: newRole, is_company_owner: newRole === 'owner' }
+  );
+  selectEl.dataset.original = newRole;
+  var roleLabel = { owner: 'VD', manager: 'Arbetsledare', member: 'Anställd' }[newRole] || newRole;
+  showToast('✅ Roll uppdaterad: ' + roleLabel);
   await loadAll();
 }
 
