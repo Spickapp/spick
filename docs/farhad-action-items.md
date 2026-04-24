@@ -11,7 +11,7 @@
 ## 🔴 GA-blockers (måste göras före lansering)
 
 ### Regulator-känsliga (kräver jurist/expert)
-- [ ] 🔴 **Jurist-möte:** GDPR retention-policy + sub-processor-DPAs + delete-flow-design (§13.4 B1-B4). Också EU PWD-text-review (§13.8, deadline 2 dec 2026). Också RUT-infrastruktur-plan (Fas 7.5). Samla ihop i ett 2-3h möte.
+- [ ] 🔴 **Jurist-möte:** GDPR retention-policy + sub-processor-DPAs + delete-flow-design (§13.4 B1-B4). Också EU PWD-text-review (§13.8, deadline 2 dec 2026). Också RUT-infrastruktur-plan (Fas 7.5). **Underlag klart:** [docs/planning/fas-7-5-rut-legal-research-2026-04-24.md](planning/fas-7-5-rut-legal-research-2026-04-24.md) — skicka 48h innan möte. Samla ihop i ett 2-3h möte.
 - [ ] 🔴 **Skatteverket-kontakt:** API-spec 2026 verify för Fas 7.5 RUT-automation (se `docs/sanning/rut.md`).
 - [ ] 🔴 **Revisor-möte:** SIE-format-krav + moms-rapport-automation (§13.6). Ska det automatiseras eller manuellt?
 - [ ] 🔴 **Pentester-upphandling:** Identifiera 2-3 OWASP-certifierade. Boka 1-2v före GA (§13.7). Offert-inhämtning nu.
@@ -73,6 +73,8 @@
 - ✓ §12.4 k6 load-test STÄNGD 2026-04-24 — 50 VUs × 60s, 0% custom_errors. Health critical/degraded-split fixade 503-rate. Thresholds GA-realistiska (custom_errors = hård gate).
 - ✓ A04 analyze-booking-pattern STÄNGD 2026-04-24 — rule #31 root cause (bookings.rut saknades). EF-fix + H19 catchup-migration. End-to-end verifierad (HTTP 200).
 - ✓ H19 schema-drift STÄNGD 2026-04-24 — 43 missing migrations-versioner registrerade + bookings.rut tillagd. Catchup via Studio SQL. Future drift-check visar 0 diff.
+- ✓ Fas 7.5 bootstrap 2026-04-24 — migration + 75k-tracker + RUT-kö-dashboard i admin. 7 pending RUT-bokningar synliga. Fas 7.5 submission till SKV låst tills jurist-OK + BankID.
+- ✓ Morgon-rapport-cron 2026-04-24 — flyttad från 06:07→03:00 UTC för att kringgå GitHub Actions peak-delay (4-5h försening).
 
 ---
 

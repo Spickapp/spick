@@ -10,6 +10,17 @@ RUT-ombud GODKÄNT av Skatteverket 13 april 2026 (SNI 81.210).
 RUT-berättigade tjänster: Hemstädning, Storstädning, Flyttstädning, Fönsterputs, Trappstädning.
 EJ RUT-berättigade: Kontorsstädning, Byggstädning.
 
+## Fas 7.5 bootstrap (2026-04-24)
+
+- ✓ Migration `20260424231500_fas7_5_rut_readiness.sql` körd i prod
+- ✓ `customer_profiles.rut_ytd_{year,used_sek,reset_at}` — 75k-tracker-kolumner
+- ✓ VIEW `v_rut_pending_queue` — 7 rader redan (befintliga pending bokningar)
+- ✓ VIEW `v_customer_rut_summary` — kund-historik
+- ✓ RPC `increment_customer_rut_ytd` — ytd-tracker-update
+- ✓ Admin-dashboard `admin.html` → "🏠 RUT-kö" (readiness-indikatorer per bokning)
+
+**Fortfarande AVSTÄNGT:** RUT-submission till SKV (kräver jurist-OK + SKV-API-research + PNR-reaktivering + BankID-integration).
+
 ## Teknisk status (låst AVSTÄNGD)
 
 - `SKV_API_KEY` i PROD vault: **TOM** (får ALDRIG sättas innan Fas 7.5 är klar)
