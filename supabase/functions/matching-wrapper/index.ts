@@ -78,13 +78,21 @@ interface RequestBody {
 interface SettingsPair {
   version: AlgorithmVersion;
   shadowLogEnabled: boolean;
+  // Sprint 1 (2026-04-28, Farhad-mandat): gatekeeping av icke-verifierade
+  // cleaners/companies i matching. Default 'false' = nuvarande beteende
+  // (alla som passerar matching-RPC:s hard filter visas).
+  requireVerification: boolean;
 }
 
 async function readSettings(supabase: SupabaseClient): Promise<SettingsPair> {
   const { data } = await supabase
     .from("platform_settings")
     .select("key, value")
-    .in("key", ["matching_algorithm_version", "matching_shadow_log_enabled"]);
+    .in("key", [
+      "matching_algorithm_version",
+      "matching_shadow_log_enabled",
+      "matching_require_verification",
+    ]);
 
   const rows = (data ?? []) as Array<{ key: string; value: string }>;
   const rawVersion = rows.find((r) => r.key === "matching_algorithm_version")?.value ?? "v1";
@@ -95,8 +103,181 @@ async function readSettings(supabase: SupabaseClient): Promise<SettingsPair> {
       : "v1";
   const shadowLogEnabled =
     rows.find((r) => r.key === "matching_shadow_log_enabled")?.value === "true";
+  // Default false — om platform_settings-nyckeln saknas (ej seed:ad) behåller
+  // vi nuvarande beteende (bakåtkompat). Farhad aktiverar via:
+  //   INSERT INTO platform_settings (key,value)
+  //   VALUES ('matching_require_verification','true');
+  const requireVerification =
+    rows.find((r) => r.key === "matching_require_verification")?.value === "true";
 
-  return { version, shadowLogEnabled };
+  return { version, shadowLogEnabled, requireVerification };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 1 — Verifierings-filter (Alt B: application-lager)
+// ═══════════════════════════════════════════════════════════════
+// Farhad-mandat 2026-04-28: icke-verifierade cleaners/companies får INTE
+// dyka upp i matching. Öppen städar-signup är strategi — gatekeeping är
+// gjort på application-lagret (inte DB-lagret) av rule #27 + #31:
+//   - Rör ingen befintlig RPC
+//   - Kill-switch via platform_settings.matching_require_verification
+//   - Rollback = flippa kill-switch (INGEN kod-deploy behövs)
+//
+// Verifierings-krav:
+//   Solo cleaner (company_id IS NULL):
+//     - cleaners.f_skatt_verified = true
+//     - cleaners.underleverantor_agreement_accepted_at IS NOT NULL
+//   Company member (company_id IS NOT NULL):
+//     - companies.underleverantor_agreement_accepted_at IS NOT NULL
+//     - companies.onboarding_status = 'active'
+//
+// Observability: loggar antal filtrerade till console (picks upp av
+// Supabase EF logs + Discord alerts om signifikant avvikelse).
+// ═══════════════════════════════════════════════════════════════
+
+type VerifFilterRow = Record<string, unknown>;
+
+async function filterByVerification(
+  supabase: SupabaseClient,
+  rows: VerifFilterRow[],
+  mode: "cleaners" | "providers",
+  context: string,
+): Promise<VerifFilterRow[]> {
+  if (rows.length === 0) return rows;
+
+  // ─── Samla ids att kolla verifiering för ───
+  const soloCleanerIds = new Set<string>();
+  const companyIdsFromProviders = new Set<string>();
+
+  if (mode === "providers") {
+    for (const r of rows) {
+      if (r.provider_type === "solo") {
+        const id = String(r.representative_cleaner_id ?? r.provider_id ?? "");
+        if (id) soloCleanerIds.add(id);
+      } else if (r.provider_type === "company") {
+        const id = String(r.provider_id ?? "");
+        if (id) companyIdsFromProviders.add(id);
+      }
+    }
+  } else {
+    // cleaners-mode: raderna är platta cleaner-rader från v1/v2 RPC
+    for (const r of rows) {
+      const id = String(r.id ?? "");
+      if (id) soloCleanerIds.add(id);
+    }
+  }
+
+  // ─── Fetch cleaner-verifiering (+ deras company_id för member-check) ───
+  interface CleanerRow {
+    id: string;
+    f_skatt_verified: boolean | null;
+    underleverantor_agreement_accepted_at: string | null;
+    company_id: string | null;
+  }
+  let cleanerRows: CleanerRow[] = [];
+  if (soloCleanerIds.size > 0) {
+    const { data, error } = await supabase
+      .from("cleaners")
+      .select("id, f_skatt_verified, underleverantor_agreement_accepted_at, company_id")
+      .in("id", Array.from(soloCleanerIds));
+    if (error) {
+      console.error(JSON.stringify({
+        level: "error", fn: "matching-wrapper", msg: "verif_filter_cleaner_fetch_failed",
+        context, error: error.message,
+      }));
+      // Fail-safe: returnera ofiltrerat (hellre visa alla än ingen)
+      return rows;
+    }
+    cleanerRows = (data ?? []) as CleanerRow[];
+  }
+
+  // ─── Member-companies: samla company_ids från cleaners med company_id ───
+  const memberCompanyIds = new Set<string>();
+  for (const c of cleanerRows) {
+    if (c.company_id) memberCompanyIds.add(c.company_id);
+  }
+  // ─── Union med provider-companies för en enda company-fetch ───
+  const allCompanyIds = new Set<string>([
+    ...memberCompanyIds,
+    ...companyIdsFromProviders,
+  ]);
+
+  // ─── Fetch company-verifiering ───
+  interface CompanyRow {
+    id: string;
+    underleverantor_agreement_accepted_at: string | null;
+    onboarding_status: string | null;
+  }
+  const verifiedCompanyIds = new Set<string>();
+  if (allCompanyIds.size > 0) {
+    const { data, error } = await supabase
+      .from("companies")
+      .select("id, underleverantor_agreement_accepted_at, onboarding_status")
+      .in("id", Array.from(allCompanyIds));
+    if (error) {
+      console.error(JSON.stringify({
+        level: "error", fn: "matching-wrapper", msg: "verif_filter_company_fetch_failed",
+        context, error: error.message,
+      }));
+      return rows;
+    }
+    for (const co of (data ?? []) as CompanyRow[]) {
+      if (co.underleverantor_agreement_accepted_at && co.onboarding_status === "active") {
+        verifiedCompanyIds.add(co.id);
+      }
+    }
+  }
+
+  // ─── Bedöm varje cleaner ───
+  const cleanerVerified = new Map<string, boolean>();
+  for (const c of cleanerRows) {
+    if (!c.company_id) {
+      // Solo: egen F-skatt + eget UA
+      cleanerVerified.set(
+        c.id,
+        c.f_skatt_verified === true &&
+        c.underleverantor_agreement_accepted_at !== null,
+      );
+    } else {
+      // Member: företaget måste vara verifierat
+      cleanerVerified.set(c.id, verifiedCompanyIds.has(c.company_id));
+    }
+  }
+
+  // ─── Applicera filter ───
+  const filtered = rows.filter((r) => {
+    if (mode === "providers") {
+      if (r.provider_type === "solo") {
+        const id = String(r.representative_cleaner_id ?? r.provider_id ?? "");
+        return cleanerVerified.get(id) === true;
+      }
+      if (r.provider_type === "company") {
+        const id = String(r.provider_id ?? "");
+        return verifiedCompanyIds.has(id);
+      }
+      return false;
+    }
+    // cleaners-mode
+    const id = String(r.id ?? "");
+    return cleanerVerified.get(id) === true;
+  });
+
+  // ─── Observability ───
+  const removed = rows.length - filtered.length;
+  if (removed > 0) {
+    console.log(JSON.stringify({
+      level: "info",
+      fn: "matching-wrapper",
+      msg: "verif_filter_applied",
+      context,
+      mode,
+      before: rows.length,
+      after: filtered.length,
+      removed,
+    }));
+  }
+
+  return filtered;
 }
 
 serve(async (req) => {
@@ -121,7 +302,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { version, shadowLogEnabled } = await readSettings(supabase);
+    const { version, shadowLogEnabled, requireVerification } = await readSettings(supabase);
 
     // ── v1: distance-sort (ingen shadow) ──────────────────────────
     if (version === "v1") {
@@ -130,8 +311,12 @@ serve(async (req) => {
         customer_lng,
       });
       if (error) return json(500, { error: "v1-RPC misslyckades", detail: error.message });
+      let rows = (data ?? []) as Array<Record<string, unknown>>;
+      if (requireVerification) {
+        rows = await filterByVerification(supabase, rows, "cleaners", "v1");
+      }
       return json(200, {
-        cleaners: mapV1ToV2Schema((data ?? []) as Array<Record<string, unknown>>),
+        cleaners: mapV1ToV2Schema(rows),
         algorithm_version: "v1",
       });
     }
@@ -158,8 +343,12 @@ serve(async (req) => {
       if (error) {
         return json(500, { error: "providers-RPC misslyckades", detail: error.message });
       }
+      let rows = (data ?? []) as Array<Record<string, unknown>>;
+      if (requireVerification) {
+        rows = await filterByVerification(supabase, rows, "providers", "providers");
+      }
       return json(200, {
-        cleaners: mapProvidersToV2Cleaners((data ?? []) as Array<Record<string, unknown>>),
+        cleaners: mapProvidersToV2Cleaners(rows),
         algorithm_version: "providers",
       });
     }
@@ -178,8 +367,12 @@ serve(async (req) => {
         customer_id: body.customer_id ?? null,
       });
       if (error) return json(500, { error: "v2-RPC misslyckades", detail: error.message });
+      let rows = (data ?? []) as Array<Record<string, unknown>>;
+      if (requireVerification) {
+        rows = await filterByVerification(supabase, rows, "cleaners", "v2");
+      }
       return json(200, {
-        cleaners: (data ?? []) as V2Cleaner[],
+        cleaners: rows as unknown as V2Cleaner[],
         algorithm_version: "v2",
       });
     }
@@ -211,8 +404,12 @@ serve(async (req) => {
 
     if (v1Result.error) {
       // v2 funkade — returnera v2 istället för att blockera kund
+      let rows = (v2Result.data ?? []) as Array<Record<string, unknown>>;
+      if (requireVerification) {
+        rows = await filterByVerification(supabase, rows, "cleaners", "shadow_v2_fallback");
+      }
       return json(200, {
-        cleaners: (v2Result.data ?? []) as V2Cleaner[],
+        cleaners: rows as unknown as V2Cleaner[],
         algorithm_version: "v2_fallback_from_shadow",
         shadow_warning: `v1 failade: ${v1Result.error.message}`,
       });
@@ -220,8 +417,12 @@ serve(async (req) => {
 
     if (v2Result.error) {
       // v1 funkade — returnera v1
+      let rows = (v1Result.data ?? []) as Array<Record<string, unknown>>;
+      if (requireVerification) {
+        rows = await filterByVerification(supabase, rows, "cleaners", "shadow_v1_fallback");
+      }
       return json(200, {
-        cleaners: mapV1ToV2Schema((v1Result.data ?? []) as Array<Record<string, unknown>>),
+        cleaners: mapV1ToV2Schema(rows),
         algorithm_version: "v1_fallback_from_shadow",
         shadow_warning: `v2 failade: ${v2Result.error.message}`,
       });
@@ -272,9 +473,17 @@ serve(async (req) => {
     // Shadow-mode definition (designdok §10.1): "RPC returnerar v1-ordning
     // till boka.html, men loggar även v2-score för jämförelse". Vi returnerar
     // v1, mappad till v2-schema för att klient-kod inte ska behöva veta mode.
+    //
+    // Sprint 1 (2026-04-28): filter appliceras på RETURNERAD data (inte på
+    // shadow-log) så analys-integriteten behålls. shadow_log har rå v1/v2-data
+    // för pilot-analys; klienten får bara verifierade.
     if (version === "shadow") {
+      let v1Out = v1Cleaners;
+      if (requireVerification) {
+        v1Out = await filterByVerification(supabase, v1Cleaners, "cleaners", "shadow_return");
+      }
       return json(200, {
-        cleaners: mapV1ToV2Schema(v1Cleaners),
+        cleaners: mapV1ToV2Schema(v1Out),
         algorithm_version: "shadow",
         shadow_meta: {
           shadow_log_id: shadowLogId, // §3.9b: klient skickar med till booking-create
@@ -283,6 +492,7 @@ serve(async (req) => {
           v1_count: v1Cleaners.length,
           v2_count: v2Cleaners.length,
           logged: shadowLogEnabled,
+          verification_filter_applied: requireVerification,
         },
       });
     }
@@ -330,8 +540,12 @@ serve(async (req) => {
     }
     if (providersResult.error) {
       // providers failade — returnera v2, skippa shadow-logging
+      let rows = (v2ResultM3.data ?? []) as Array<Record<string, unknown>>;
+      if (requireVerification) {
+        rows = await filterByVerification(supabase, rows, "cleaners", "providers_shadow_v2_fallback");
+      }
       return json(200, {
-        cleaners: (v2ResultM3.data ?? []) as V2Cleaner[],
+        cleaners: rows as unknown as V2Cleaner[],
         algorithm_version: "v2_fallback_from_providers_shadow",
         shadow_warning: `providers failade: ${providersResult.error.message}`,
       });
@@ -390,9 +604,14 @@ serve(async (req) => {
       }
     }
 
-    // Returnera v2-data till klient (Model-3 håller klient-schemat stabilt)
+    // Returnera v2-data till klient (Model-3 håller klient-schemat stabilt).
+    // Sprint 1 (2026-04-28): filter på returnerad data, inte på shadow-log.
+    let v2Out = v2CleanersM3;
+    if (requireVerification) {
+      v2Out = await filterByVerification(supabase, v2CleanersM3, "cleaners", "providers_shadow_return");
+    }
     return json(200, {
-      cleaners: v2CleanersM3 as unknown as V2Cleaner[],
+      cleaners: v2Out as unknown as V2Cleaner[],
       algorithm_version: "providers-shadow",
       shadow_meta: {
         shadow_log_id: shadowLogIdM3,
@@ -401,6 +620,7 @@ serve(async (req) => {
         v2_count: v2CleanersM3.length,
         providers_count: providersRows.length,
         logged: shadowLogEnabled,
+        verification_filter_applied: requireVerification,
       },
     });
   } catch (err) {
