@@ -1,0 +1,83 @@
+name: Bootstrap Prod Schema
+
+# H19-fix (2026-04-24): schema-drift-check kräver prod-schema.sql
+# som baseline i repo. Denna workflow dumpar nuvarande prod-schema
+# och commitar som baseline. Körs EN gång manuellt, sen tar
+# schema-drift-check över för löpande jämförelse.
+#
+# Efter första bootstrap: kör schema-drift-check för att se vilka
+# migrations i repo saknas i prod (drift-fynd).
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref urjeijcncsyuletprydy
+
+      - name: Dump prod-schema
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db dump --schema public -f prod-schema.sql
+          SIZE=$(wc -c < prod-schema.sql)
+          LINES=$(wc -l < prod-schema.sql)
+          echo "Dump: $SIZE bytes, $LINES rader"
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "::error::Dump verkar misstänkt liten — abort"
+            exit 1
+          fi
+
+      - name: Commit snapshot
+        run: |
+          git config user.email "bot@spick.se"
+          git config user.name "Spick Bot"
+          git add prod-schema.sql
+          if git diff --staged --quiet; then
+            echo "Ingen ändring — schema är redan bootstrappad och up-to-date"
+            exit 0
+          fi
+          git commit -m "chore(schema): bootstrap/update prod-schema.sql baseline (H19)
+
+          Dumpad via supabase CLI. Används av schema-drift-check för att
+          detektera när prod-DB avviker från repo-baseline.
+
+          [skip ci]"
+          git push
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Bootstrap Prod Schema" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f prod-schema.sql ]; then
+            SIZE=$(wc -c < prod-schema.sql)
+            LINES=$(wc -l < prod-schema.sql)
+            echo "- prod-schema.sql: $SIZE bytes, $LINES rader" >> $GITHUB_STEP_SUMMARY
+            echo "- Committed/uppdaterad i main" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Nästa steg:** Kör 'Schema Drift Check' workflow manuellt för att se drift-fynd." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ prod-schema.sql skapades inte" >> $GITHUB_STEP_SUMMARY
+          fi
