@@ -402,6 +402,10 @@ ${isPaid && !isPast ? `
 <div style="display:flex;flex-direction:column;gap:8px">
   <a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" style="padding:.625rem 1.25rem;border:1.5px solid #E8E8E4;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;color:#1C1C1A;text-decoration:none;text-align:center">📅 Boka om</a>
 </div>` : ''}
+${isPaid ? `
+<div style="margin-top:8px">
+  <button id="pdf-download-btn" onclick="downloadBookingPdf('${b.id}')" style="width:100%;padding:.625rem 1.25rem;border:1.5px solid #E8E8E4;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;color:#1C1C1A">📄 Ladda ner kvitto (PDF)</button>
+</div>` : ''}
 ${!isPaid && b.payment_status === 'pending' ? `<a href="boka.html" class="btn btn-primary" style="margin-top:8px">Försök betala igen →</a>` : ''}
 ${!isPast && isPaid && !['cancelled','avbokad','klar'].includes(b.status) ? `
   <div style="text-align:center;margin-top:1rem">
@@ -437,6 +441,52 @@ ${isPast && isPaid && !b.review_requested ? `<a href="betygsatt.html?bid=${b.id}
 }
 
 var _chatPoll = null;
+
+// Fas F-PDF kund-UI (2026-04-28): Ladda ner kvitto som PDF.
+// Anropar generate-receipt-pdf EF med customer-JWT. EF:en validerar
+// ownership via email-match (user.email === booking.customer_email)
+// eller admin-role.
+async function downloadBookingPdf(bookingId) {
+  if (!bookingId) { alert('Ingen bokning vald'); return; }
+  var btn = document.getElementById('pdf-download-btn');
+  var originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Genererar PDF...'; }
+  try {
+    var sess = await SB.auth.getSession();
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) {
+      alert('Logga in med din e-post för att ladda ner kvittot.');
+      return;
+    }
+    var res = await fetch(
+      SPICK.SUPA_URL + '/functions/v1/generate-receipt-pdf?booking_id=' + encodeURIComponent(bookingId),
+      { method: 'GET', headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + token } }
+    );
+    if (!res.ok) {
+      var errText = 'HTTP ' + res.status;
+      try { var j = await res.json(); errText = j.error || errText; } catch(_) {}
+      alert('Kunde inte ladda ner PDF: ' + errText);
+      return;
+    }
+    var blob = await res.blob();
+    var contentDisp = res.headers.get('Content-Disposition') || '';
+    var filename = 'kvitto.pdf';
+    var m = contentDisp.match(/filename="([^"]+)"/);
+    if (m) filename = m[1];
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  } catch(e) {
+    alert('Nätverksfel: ' + (e.message || 'okänt'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+}
 
 async function loadChatMessages() {
   var bid = new URLSearchParams(location.search).get('bid');
