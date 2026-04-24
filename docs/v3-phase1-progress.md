@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2 + §13.4 A1-A3 + §13.9)
+**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2 + §13.4 A1-A3 + §13.9 + H18 deploy-workflow auto-gen)
 
 ## Session 2026-04-22 – Startpunkt
 
