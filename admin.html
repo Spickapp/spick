@@ -263,6 +263,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script src="js/config.js"></script>
 <script src="js/commission-helpers.js"></script>
+<script src="js/event-timeline.js"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico">
@@ -3349,6 +3350,9 @@ function showBookingDetail(id) {
     <p style="font-size:.72rem;color:var(--m);font-weight:600;margin-bottom:8px">💬 CHATTLOGG</p>
     <div id="admin-chat-log" style="font-size:.82rem;color:var(--m);max-height:300px;overflow-y:auto">Laddar...</div>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <p style="font-size:.72rem;color:var(--m);font-weight:600;margin-bottom:8px">⏱ EVENT-TIMELINE</p>
+    <div id="admin-events-timeline" style="font-size:.82rem;color:var(--m);max-height:300px;overflow-y:auto">Laddar...</div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="min-bokning.html?bid=${b.id}" target="_blank"
          style="flex:1;padding:8px;background:#EFF6FF;color:#1D4ED8;border:none;border-radius:8px;text-align:center;font-weight:600;text-decoration:none;font-size:.82rem">
@@ -3414,6 +3418,17 @@ function showBookingDetail(id) {
         '</div>';
       }).join('');
     }).catch(function() {});
+
+  // Fas 6 §6.4: event-timeline via get-booking-events EF (RLS blockar direkt
+  // SELECT på booking_events — EF:en bypassar via service_role + role-check).
+  (async function() {
+    var el = document.getElementById('admin-events-timeline');
+    if (!el || typeof renderBookingTimeline !== 'function') return;
+    try {
+      var authHeaders = await _adminHeadersLegacy();
+      await renderBookingTimeline(el, id, authHeaders);
+    } catch(e) { console.warn('[admin] events-timeline failed:', e); }
+  })();
 
   document.getElementById('booking-modal').classList.add('open');
 }

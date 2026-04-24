@@ -706,6 +706,7 @@ body{top:0!important}
 </style>
 <script src="js/config.js"></script>
 <script src="js/commission-helpers.js"></script>
+<script src="js/event-timeline.js"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico">
@@ -1785,6 +1786,12 @@ body{top:0!important}
             <a id="bd-whatsapp" href="#" target="_blank" style="background:#25D36615;color:#128C7E">WhatsApp</a>
             <a id="bd-email-link" href="#" style="background:var(--gray-100);color:var(--gray-700)">Mejla</a>
           </div>
+        </div>
+
+        <!-- Händelser (Fas 6 §6.6) -->
+        <div class="bd-section">
+          <div class="bd-section-title">Historik</div>
+          <div id="bd-events-timeline" style="font-size:.82rem;color:var(--m)">Laddar…</div>
         </div>
 
         <!-- Åtgärder -->
@@ -7941,6 +7948,24 @@ function openBD(bookingId, eventId) {
     }
   }
   actionsEl.innerHTML = actionsHtml;
+
+  // Fas 6 §6.6: event-timeline — cleaner-whitelist i get-booking-events EF
+  (async function() {
+    var el = document.getElementById('bd-events-timeline');
+    if (!el || typeof renderBookingTimeline !== 'function') return;
+    try {
+      var sess = await SB.auth.getSession();
+      var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+      if (!token) {
+        el.innerHTML = '<div style="color:#6B6960;font-size:.82rem">Logga in igen för att se historiken.</div>';
+        return;
+      }
+      await renderBookingTimeline(el, bookingId, {
+        apikey: SPICK.SUPA_KEY,
+        Authorization: 'Bearer ' + token
+      });
+    } catch(e) { console.warn('[stadare-dashboard] events-timeline failed:', e); }
+  })();
 
   overlay.classList.add('open');
 }

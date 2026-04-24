@@ -97,6 +97,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 <!-- Google Analytics -->
 <script src="js/config.js"></script>
 <script src="js/contact-guard.js"></script>
+<script src="js/event-timeline.js"></script>
 <script src="js/components.js" defer></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
@@ -391,6 +392,12 @@ ${isPaid ? `
   </div>
 </div>` : ''}
 
+${isPaid ? `
+<div style="background:#fff;border-radius:14px;padding:1.25rem;margin-top:1rem;box-shadow:0 2px 6px rgba(0,0,0,0.04)">
+  <p style="font-size:.8rem;color:var(--m);margin-bottom:12px;font-weight:600">⏱ HISTORIK FÖR DIN BOKNING</p>
+  <div id="booking-events-timeline" style="font-size:.82rem;color:var(--m)">Laddar…</div>
+</div>` : ''}
+
 ${isPaid && !isPast ? `
 <div style="display:flex;flex-direction:column;gap:8px">
   <a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" style="padding:.625rem 1.25rem;border:1.5px solid #E8E8E4;border-radius:99px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;color:#1C1C1A;text-decoration:none;text-align:center">📅 Boka om</a>
@@ -409,6 +416,24 @@ ${isPast && isPaid && !b.review_requested ? `<a href="betygsatt.html?bid=${b.id}
   setTimeout(loadChatMessages, 500);
   clearInterval(_chatPoll);
   _chatPoll = setInterval(loadChatMessages, 5000);
+
+  // Fas 6 §6.5: event-timeline (customer-whitelist i get-booking-events EF)
+  (async function() {
+    var el = document.getElementById('booking-events-timeline');
+    if (!el || typeof renderBookingTimeline !== 'function') return;
+    try {
+      var sess = await SB.auth.getSession();
+      var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+      if (!token) {
+        el.innerHTML = '<div style="padding:.5rem;color:#6B6960;font-size:.82rem">Logga in med din e-post för att se historik.</div>';
+        return;
+      }
+      await renderBookingTimeline(el, b.id, {
+        apikey: SPICK.SUPA_KEY,
+        Authorization: 'Bearer ' + token
+      });
+    } catch(e) { console.warn('[min-bokning] events-timeline failed:', e); }
+  })();
 }
 
 var _chatPoll = null;
