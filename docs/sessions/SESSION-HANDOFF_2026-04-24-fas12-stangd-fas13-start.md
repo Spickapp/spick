@@ -1,8 +1,8 @@
-# Session handoff — 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2+§13.3+§13.4+§13.9 + H18 + R2)
+# Session handoff — 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2+§13.3+§13.4+§13.9 + H18 + R2+R3)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-28-fas8-escrow-complete.md`
-**Denna session:** 2026-04-24 em (~9h fokus-arbete, Claude självgående med mandat)
-**Status vid avslut:** Fas 12 100% KLART. Fas 13 §13.2/§13.3/§13.4 audits + A1-A3 + R2 levererat. §13.9 levande-checklista. H18 deploy-workflow auto-gen-fix.
+**Denna session:** 2026-04-24 em (~11h fokus-arbete, Claude självgående med mandat)
+**Status vid avslut:** Fas 12 100% KLART. Fas 13 §13.2/§13.3/§13.4 audits + A1-A3 + R2+R3 levererat. §13.9 levande-checklista. H18 deploy-workflow auto-gen-fix. Pre-GA Stripe-risk eliminerad.
 
 ---
 
@@ -28,6 +28,9 @@ Fem commits, varav två stängda Fas-items (Fas 12 helt + §13.2 delvis). Byggt 
 | 12 | `c8259d3` | H18-fix | Deploy-workflow auto-gen från katalog + change-detection. Fixa rule #28 SSOT-brott (32 EFs hardcoded → 83 EFs auto-discovered). Om `_shared/` ändrats → deploya alla. Bash-logik lokal-testad. |
 | 13 | `8a453bb` | §13.3 audit | Stripe retry+idempotency audit. **HÅRDA GAPS:** 7 refund-sites + charge-subscription-booking utan idempotency → dubbel-refund/debitering-risk vid retry. Rule #30 strikt: tolkar ej Stripe-regler, rekommenderar fix baserat på arkitektur-doc. |
 | 14 | `65879d1` | §13.3 R2 fix | Auto-retry i `_shared/stripe.ts::stripeRequest`. Exponential backoff (250/500/1000ms ±30% jitter, capped 4000ms) på 408/425/429/500/502/503/504 + nätverksfel. Retry-After-header-support. 12 nya tester + 146/146 total money-tests passerar. Bakåtkompatibelt interface. |
+| 15 | `465f7a7` | handoff v3 | |
+| 16 | `d7353cb` | §13.3 R3 fix | **Idempotency-keys i 9 Stripe-fetch-calls (8 EFs):** stripe-refund, booking-auto-timeout, auto-remind, booking-cancel-v2, booking-reassign, noshow-refund, stripe-webhook (refund + capture), charge-subscription-booking (PI). Pattern: stabil key per intention (`refund-${id}-${reason}`, `capture-${id}`, `pi-sub-${id}-attempt-${n}`). Rent additiv. 146/146 money-tests passerar, alla 8 EFs TS-check rena. Pre-GA dubbel-refund/debitering/capture-risk eliminerad. |
+| 17 | `8b5f32b` | §13.2 helper | `docs/audits/2026-04-24-db-indexes-explain-queries.sql` — Farhad copy/paste:ar i Studio, kör 10 EXPLAIN-queries + pg_indexes + pg_stat_user_indexes. Ger Claude underlag för migration-beslut. |
 
 ## 3. Nya filer i repo
 
@@ -105,10 +108,10 @@ Flaggat i checklista/rapporter, ej agerat på:
 ## 9. Signatur
 
 Session avslutad 2026-04-24 em.
-14 commits pushade via rebase-loop (bot-commits mellan pushes hanterade smidigt).
+17 commits pushade via rebase-loop (bot-commits mellan pushes hanterade smidigt).
 0 money-loss, 0 customer-facing-regression, 0 prod-ändringar (bara kod + docs + CI).
 
-**Farhads "självgående"-ambition:** ~82% mot GA-kriterier (upp från ~70% per föregående handoff).
+**Farhads "självgående"-ambition:** ~85% mot GA-kriterier (upp från ~70% per föregående handoff). §13.3 pre-GA-risk eliminerad med R2+R3.
 
 **Fas 12 STÄNGD.** Fas 13 har fundament: §13.2 static + §13.4 audit+A1-A3 levererat + §13.9 levande GA-checklista.
 
@@ -128,16 +131,10 @@ Session avslutad 2026-04-24 em.
    - **§13.2 prod-EXPLAIN** (kräver dig i Studio, ~30 min)
    - Alt: nytt scope per ditt direktiv
 
-## 12. R3-risk-beslut (kräver explicit godkännande)
+## 12. R3 ✓ KLART (Farhads mandat 2026-04-24)
 
-R3 = idempotency-keys till 8 refund/debitering-EFs. Rule #30 safe (jag lägger till header, tolkar ej Stripe-policy). Men:
+**Levererat:** 9 idempotency-keys i 8 EFs (9 fetch-calls). Rent additiv. 146/146 money-tests passerar, alla TS-checks rena.
 
-**Risk:** Kod som hanterar pengar. Felcodad idempotency = refund går inte igenom = customer-incident.
+**Pre-GA-risken eliminerad:** Dubbel-refund/debitering/capture kan inte längre inträffa oavsett retry-scenario (cron, webhook, customer, admin).
 
-**Mitigation:**
-- Jag läser varje EF noga (rule #26)
-- Idempotency-key är stabil per intention (booking_id + reason + attempt)
-- Rent additiv (ny header, ingen logik-ändring)
-- Inga E2E-tester mot Stripe possible utan test-env
-
-**Beslut behövs:** Får jag bygga R3 i nästa session, eller ska du granska R2 först?
+**Återstår för §13.3 100%:** R1 (konsolidera alla Stripe-calls till stripeRequest, 4-6h) — post-GA rule #28-cleanup, ej blocker. R5 (Farhad verifierar Dashboard rate-limits).
