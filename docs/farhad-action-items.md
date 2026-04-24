@@ -31,7 +31,8 @@
 - [ ] 🟡 **§13.4 A1 — Manuell deploy av `export-customer-data`:** Nästa push triggar auto-deploy (workflow uppdaterad i commit 7389377). Alternativt manuellt: `supabase functions deploy export-customer-data --project-ref urjeijcncsyuletprydy --no-verify-jwt`. Sen smoke-test via mitt-konto.html inloggad.
 - [ ] 🟡 **Smoke-test `backup-verify-monthly.yml`:** Actions → "Backup Verify (Monthly)" → Run workflow. Bekräfta att den verifierar 5 kritiska tabeller utan fel.
 - [x] ✓ **Smoke-test `load-test.yml`** — Run #6 GRÖN 2026-04-24. 1569 requests, 0% custom_errors, latens-thresholds passerade. Fynd under load: health-EF returnerade 503 pga externa API-deps → fixat via critical/degraded-split. Thresholds justerade till GA-realistiska (50 VUs = spike, 5-10 = riktig trafik).
-- [ ] 🟡 **Smoke-test `customer-nudge-recurring.yml`** + **`preference-learn-favorite.yml`** + **`playwright-smoke.yml`** (från föregående session): Kör manuellt för att bekräfta fungerar.
+- [x] ✓ **Smoke-test `playwright-smoke.yml`** — 17/17 grönt 2026-04-24 efter A04-fix (commit 6ebdda4).
+- [ ] 🟡 **Smoke-test `customer-nudge-recurring.yml`** + **`preference-learn-favorite.yml`** — Kör manuellt för att bekräfta fungerar.
 
 - [x] ✓ **A04 FIXAT 2026-04-24** — Root cause: `column bookings.rut does not exist` i prod. Migration 20260325000001 ej körd. Fix: EF använder `rut_amount > 0` istället (commit 6ebdda4). Rule #31-verify via curl + EF-logs.
 
