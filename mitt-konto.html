@@ -892,6 +892,7 @@ function openSubModal(action, subId) {
   document.getElementById('subModalTime').value   = (sub.preferred_time || '09:00').slice(0,5);
 
   const confirmBtn = document.getElementById('subModalConfirm');
+  confirmBtn.disabled = false; // alltid reset (undvik stuck-state från tidigare silent-fel)
   confirmBtn.textContent = {
     'pause':'Pausa','resume':'Återuppta','skip-next':'Hoppa över',
     'change-time':'Spara tid','cancel':'Ja, avsluta'
@@ -907,6 +908,14 @@ function closeSubModal() {
   _subActionCtx = null;
 }
 
+function _subToast(msg, type) {
+  try {
+    if (typeof spickToast === 'function') { spickToast(msg, type || 'info', 5000); return; }
+  } catch(_) {}
+  // Fallback: showToast finns alltid i denna fil
+  showToast(msg);
+}
+
 async function confirmSubAction() {
   if (!_subActionCtx) return;
   const { action, subId } = _subActionCtx;
@@ -914,37 +923,37 @@ async function confirmSubAction() {
   const origText = btn.textContent;
   btn.disabled = true; btn.textContent = 'Sparar...';
 
-  const data = {};
-  if (action === 'pause' || action === 'cancel') {
-    const reason = document.getElementById('subModalReason').value.trim();
-    if (reason) data.reason = reason;
-  }
-  if (action === 'change-time') {
-    const t = document.getElementById('subModalTime').value.trim();
-    if (!t) { spickToast('Välj en tid', 'warning'); btn.disabled=false; btn.textContent=origText; return; }
-    data.preferred_time = t;
-  }
-
   try {
+    const data = {};
+    if (action === 'pause' || action === 'cancel') {
+      const reason = document.getElementById('subModalReason').value.trim();
+      if (reason) data.reason = reason;
+    }
+    if (action === 'change-time') {
+      const t = document.getElementById('subModalTime').value.trim();
+      if (!t) { _subToast('Välj en tid', 'warning'); return; }
+      data.preferred_time = t;
+    }
+
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/customer-subscription-manage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
       body: JSON.stringify({ action, subscription_id: subId, customer_email: currentEmail, data })
     });
-    const result = await res.json();
+    const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.success) {
-      spickToast('⚠️ ' + (result.error || 'Något gick fel'), 'error', 5000);
-      btn.disabled = false; btn.textContent = origText;
+      _subToast('⚠️ ' + (result.error || 'Något gick fel'), 'error');
       return;
     }
-    // Uppdatera lokal cache
     _subscriptions = _subscriptions.map(s => s.id === subId ? { ...s, ...result.updated } : s);
     closeSubModal();
     showToast('✅ ' + result.message);
     renderSubscriptions();
   } catch(e) {
     console.error('[SPICK] manageSubscription error:', e);
-    spickToast('⚠️ Nätverksfel. Försök igen.', 'error');
+    _subToast('⚠️ Nätverksfel. Försök igen.', 'error');
+  } finally {
+    // GARANTERAR reset även om något kastar mid-flight
     btn.disabled = false; btn.textContent = origText;
   }
 }
