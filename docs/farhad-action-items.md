@@ -38,8 +38,8 @@
 
 ### Från föregående handoffs (fortfarande öppna)
 - [ ] 🟡 **Stripe-saldo -895 kr → positivt** (igång 2026-04-24, bank-transfer 1-2 dagar). Efter clearing: bekräfta i Dashboard att saldo är positivt igen. Tills dess: refund-calls kan fail:a med `insufficient_funds`.
-- [ ] 🟡 **Sätt `ADMIN_ALERT_WEBHOOK_URL`** (Slack eller Discord webhook) i Supabase Secrets. Utan detta: alerts använder console-fallback (fungerar men ingen aktiv notifiering).
-- [ ] 🟡 **Beslut: escrow_mode=escrow_v2 för alla kunder?** Nu aktivt (live-verifierat). Ska vi behålla som default eller flippa tillbaka till `legacy` som säkerhet? Farhads beslut.
+- [x] ✓ **`ADMIN_ALERT_WEBHOOK_URL` satt 2026-04-24** — Discord-server `Spick Ops`, kanal `#alerts`, webhook i Supabase Secrets. Prod-alerts pingar Discord-mobilen.
+- [x] ✓ **Beslut: behåll `escrow_mode=escrow_v2`** — 2026-04-24. Motivering: EU PWD-deadline 2 dec 2026, dispute-flow kräver escrow, live-verifierat utan incidenter. Mitigation för saldo-svängningar: håll 5-10k buffer på Stripe-kontot.
 
 ---
 
@@ -61,6 +61,8 @@
 - ✓ §13.2 DB-index audit — prod-verifierad 2026-04-24. Seq Scan optimalt vid 0-84 rader. Re-audit vid >1000 bookings.
 - ✓ Storage-bucket `dispute-evidence` skapad 2026-04-24 (Farhad manuellt i Dashboard).
 - ✓ Stripe rate-limits verifierade 2026-04-24 via Stripe Support — 100/15/30 ops/sec. Räcker för 1000+ bokningar/månad.
+- ✓ Discord alerts aktiverat 2026-04-24 — `Spick Ops`-server, `#alerts`-kanal, webhook i Supabase Secrets.
+- ✓ escrow_mode=escrow_v2 beslutat behållas 2026-04-24 — EU PWD-compliance + dispute-flow-support.
 
 ---
 
@@ -75,7 +77,7 @@
 | 🟡 Legacy-handoff | 2 | ADMIN_ALERT_WEBHOOK_URL, escrow_mode-beslut |
 | 🟢 Quick-wins | 3 | Schema-drift, review-docs |
 
-**Total pending:** ~14 items, varav **4 är hårda GA-blockers** (R2+R3 + §13.2 + storage-bucket + Stripe-rate-limits avklarade 2026-04-24).
+**Total pending:** ~12 items, varav **4 är hårda GA-blockers** (alla externa möten: jurist, Skatteverket, revisor, pentester).
 
 ---
 
