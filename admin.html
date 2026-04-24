@@ -2372,6 +2372,16 @@ async function loadAll() {
       AR.select('companies', 'select=id,name,display_name,org_number,owner_cleaner_id,commission_rate,slug'),
     ]);
 
+    // Auth-UX: om flera responses gav 400/401 (PGRST301 JWT expired eller
+    // invalid token) visar vi en tydlig toast istället för tyst tom lista.
+    // Tidigare bugg: admin såg "Inga städare matchar filtret" utan att förstå
+    // att sessionen gått ut.
+    var _authFail = [bookings, cleaners, applications, customers, reviews, companies]
+      .find(function(r) { return r && r.error && (r.error.status === 400 || r.error.status === 401); });
+    if (_authFail) {
+      showToast('⚠️ ' + (_authFail.error.message || 'Din session har gått ut — ladda om sidan och logga in igen.'));
+    }
+
     data.bookings = bookings.data || [];
     data.cleaners = cleaners.data || [];
     data.applications = applications.data || [];
@@ -2677,7 +2687,18 @@ function setCleanerFilter(filter, btn) {
 function renderCleaners() {
   const q = document.getElementById('cleaner-search').value.toLowerCase();
   let filtered = data.cleaners; // Visa ALLA städare (ej bara godkända)
-  if (q) filtered = filtered.filter(c => `${c.full_name||''} ${c.city||''} ${c.email||''} ${c.status||''}`.toLowerCase().includes(q));
+  if (q) {
+    // Bygg sökbar company-sträng (name + display_name + org_number) för
+    // att sök på "Solid Service" eller "559537-7523" ska träffa VD-raden.
+    var companySearchMap = {};
+    if (data.companies) data.companies.forEach(function(co) {
+      companySearchMap[co.id] = ((co.name || '') + ' ' + (co.display_name || '') + ' ' + (co.org_number || '')).trim();
+    });
+    filtered = filtered.filter(function(c) {
+      var companySearch = c.company_id ? (companySearchMap[c.company_id] || '') : '';
+      return (`${c.full_name||''} ${c.city||''} ${c.email||''} ${c.status||''} ${companySearch}`).toLowerCase().includes(q);
+    });
+  }
 
   // Bygg company name lookup (cachas tills loadAll() rensar)
   if (!window._companyNames) {
