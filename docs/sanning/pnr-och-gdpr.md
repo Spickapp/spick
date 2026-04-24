@@ -45,9 +45,29 @@ Alla bokningar är Stripe testmode. 0 kr verkliga pengar. Inga RUT-ansökningar 
 | Risk | Nivå | Anledning |
 |---|---|---|
 | Aktiv insamling fortsätter | 🟢 | Stoppad 2026-04-24 via PNR_FIELD_DISABLED + disabled-attribut |
-| GDPR-överträdelse befintlig data | 🟡 | Art. 9 särskild kategori. 3 personer. Ej incident-rapporterbar ännu. Kvarstår tills Fas 7.5. |
+| GDPR-överträdelse befintlig data | 🟡 | IMY-art. 33-bedömning pending Farhad. 3 personer. Kvarstår tills åtgärd 2. |
 | Ekonomisk | 🟢 | 0 kr (testmode) |
-| Förtroende | 🟡 | Kunder lämnade PNR i god tro på kryptering. Åtgärdas via Åtgärd 2 (jurist). |
+| Förtroende | 🟡 | Kunder lämnade PNR i god tro på kryptering. Åtgärdas via Åtgärd 2 (Farhads bedömning). |
+
+**MVP-kontext (2026-04-28-verifiering):** 0 jobb utförda totalt över hela cleaner-flottan (18 cleaners, alla `total_jobs=0`). Ingen RUT-ansökan skickad (SKV_API_KEY tom). Ingen verklig ekonomisk exposure. Risken är **förebyggande** inför Rafa-pilot-skalning + Fas 7.5-aktivering, inte retroaktiv.
+
+## derin Bahram — dubbelroll (kund + cleaner)
+
+**Fynd 2026-04-28:** Samma person (`derin.bahram@ivory.se` / `Derin.bahram@ivory.se` — case-insensitive email) existerar i prod som:
+
+1. **Kund** — 1 bokning (avbokad 6 apr 2026), 12-tecken klartext-PNR i `bookings.customer_pnr`
+2. **Cleaner** — avstängd, `status='avstängd'`, `company_role='member'`, `fskatt_needs_help=true`, 0 jobb utförda
+
+**Korsroller-konsekvens:** Åtgärd på kund-PNR-raden (radering/anonymisering) påverkar inte cleaner-raden. Åtgärd på cleaner-raden (dataminimering) påverkar inte kund-raden. Separat hantering krävs per roll.
+
+**Datapunkter för Farhads bedömning:**
+- GDPR Art 17 (rätt till radering) för kund-rollen — möjlig om ej behövs för rättslig förpliktelse
+- BokfL 7 kap 2 § — 7 års retention kan gälla **om** bokningen ledde till ekonomisk transaktion (vilken den inte gjorde — avbokad)
+- Information till person: en eller två gånger? Informationen kan täcka båda rollerna i samma kommunikation.
+
+**Operativ status:**
+- Cleaner-rad: dataminimering pending (Fix 3 — SQL levererad 2026-04-28)
+- Kund-rad + PNR: orörd tills Farhads separata beslut (åtgärd 2 i planen)
 
 ## Hårda låsningar
 
@@ -59,8 +79,8 @@ Alla bokningar är Stripe testmode. 0 kr verkliga pengar. Inga RUT-ansökningar 
 
 Full plan i `docs/planning/todo-pnr-infrastructure-2026-04-23.md` — 4 steg:
 1. ✅ **KLART 2026-04-24** — Dölja PNR-fält i boka.html (snabb, stoppar ackumulation). Implementerat via PNR_FIELD_DISABLED kill-switch.
-2. GDPR-hantering av 3 riktiga kunders data (kräver jurist)
-3. Fixa `rut_amount`-bugg (50%-beräkning)
+2. GDPR-hantering av 3 riktiga kunders data — Farhads bedömning (jurist intern)
+3. Fixa `rut_amount`-bugg — ⊘ SUPERSEDED 2026-04-24: verifierat att `rut_amount` är korrekt idag (se rut.md)
 4. Integrera i Fas 7.5
 
 ## Ändringar av denna fil
@@ -69,3 +89,4 @@ Full plan i `docs/planning/todo-pnr-infrastructure-2026-04-23.md` — 4 steg:
 |---|---|---|
 | 2026-04-23 | Fil skapad. Fynd dokumenterat efter commit 4400245. | Farhad + Claude session |
 | 2026-04-24 | Sprint 1 Dag 1 — PNR-fält avstängt i boka.html via PNR_FIELD_DISABLED. Ackumulation stoppad. | Farhad + Claude session |
+| 2026-04-28 | MVP-kontext tillagd (0 jobb utförda). derin-dubbelroll dokumenterad. Paternalistiska "kräver jurist"-formuleringar ersatta med "Farhads bedömning" efter omkalibrering. | Farhad + Claude session |
