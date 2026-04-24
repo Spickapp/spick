@@ -45,21 +45,23 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 
 ---
 
-### §13.2 DB-index-audit
+### §13.2 DB-index-audit — ✓ KLART (vid aktuell volym)
 
-| Aspekt | Status | Anteckning |
-|---|---|---|
-| Critical-path-queries inventerade | ✓ | 571 query-patterns mappade, rapport: `docs/audits/2026-04-24-db-indexes-static.md` |
-| EXPLAIN ANALYZE mot 100k-data | ◯ | Kräver testmiljö eller prod-seed |
-| Indexes review | ✓ | 126 indexes identifierade (explicit CREATE INDEX + PK/UNIQUE). Gap-analys + oanvända-kandidater flaggade. |
-| Materialized views för stats | ◯ | `public_stats` view finns (CLAUDE.md), oklart om materialized |
-| Audit-script underhållbart | ✓ | `scripts/audit-db-indexes.ts` (regenererbar) |
+**Static audit:** [docs/audits/2026-04-24-db-indexes-static.md](audits/2026-04-24-db-indexes-static.md)
+**Prod-verifierad 2026-04-24 (rule #31):** Row-counts + Gap #6 EXPLAIN-sample.
 
-**Topp-gaps (static):** platform_settings.key (18 queries), bookings.booking_date (14), customer_profiles.email (8), cleaners.auth_user_id (8), admin_users.email (7), cleaners.is_company_owner (7). Dessa kan ha indexes i prod som inte är i migrations-filer — rule #31 verify mot prod innan migration skrivs.
+| Aspekt | Status |
+|---|---|
+| Critical-path-queries inventerade | ✓ 571 mappade |
+| Indexes inventerade | ✓ 126 (explicit + PK/UNIQUE) |
+| EXPLAIN mot prod | ✓ Sample verifierad. Data-volym 0-84 rader per tabell → Seq Scan är optimalt val. |
+| Migrations behövs nu | ✗ **NEJ** vid aktuell volym. Index skulle göra queries långsammare. |
+| Audit-script underhållbart | ✓ `scripts/audit-db-indexes.ts` regenererbar |
+| Re-audit-trigger dokumenterad | ✓ [rapportens §0.1](audits/2026-04-24-db-indexes-static.md) |
 
-**Owner:** Claude (script + static-rapport ✓) + Farhad (prod-EXPLAIN-beslut)
+**Re-audit-trigger:** När någon kritisk tabell når 1000+ rader (bookings) eller EXPLAIN visar > 100 ms. Övervakas via admin-morning-report + pg_stat_user_tables.
 
-**Nästa steg:** Farhad kör `EXPLAIN ANALYZE` för top-10 gap-queries i Studio. Beroende på query-plan: migration för saknade indexes. Detta blir §13.2-slutfas.
+**Owner:** Claude (re-audit vid trigger) + Farhad (trigger-notifiering från morning-report)
 
 ---
 

@@ -2,14 +2,54 @@
 
 **Genererad:** 2026-04-24 via `deno run scripts/audit-db-indexes.ts`
 **Källor:** `supabase/migrations/*.sql` (indexes) + `supabase/functions/**/*.ts` + `js/*.js` (query-patterns)
+**Status:** ✓ KLAR vid aktuell data-volym (se §0 nedan)
 
-## Sammanfattning
+## 0. Prod-verifierade fynd 2026-04-24 (rule #31)
+
+Farhad körde row-counts + ett EXPLAIN-sample i Supabase Studio. Resultat:
+
+| Tabell | Rader | EXPLAIN-sample |
+|---|---|---|
+| payout_audit_log | 84 | (ej körd — liten) |
+| bookings | 52 | (ej körd — liten) |
+| platform_settings | 28 | (ej körd — liten) |
+| cleaner_applications | 23 | (ej körd — liten) |
+| cleaners | 18 | Seq Scan 0.055 ms (optimal) |
+| customer_profiles | 7 | (ej körd — liten) |
+| admin_users | 1 | — |
+| subscriptions | 1 | — |
+| customer_credits | 0 | — |
+| reviews | 0 | — |
+
+**Slutsats:** Vid aktuell data-volym väljer Postgres **Seq Scan korrekt** för alla queries. Att lägga till indexes nu skulle göra queries **långsammare** (index-traversal overhead > full-scan vid <1000 rader). Alla query-plans förväntas visa:
+
+- Seq Scan (korrekt val)
+- Execution Time < 1 ms
+- Planning Time ≥ Execution Time (index ger negativ ROI)
+
+**§13.2-status: ✓ OK-för-nu.** Ingen migration behövs.
+
+## 0.1 Re-audit-trigger
+
+Kör `deno run scripts/audit-db-indexes.ts` + denna rapports `docs/audits/2026-04-24-db-indexes-explain-queries.sql` igen när **någon av följande sker**:
+
+- `bookings` når 1000+ rader
+- `cleaners` når 500+ rader
+- `payout_audit_log` når 10 000+ rader
+- Någon EXPLAIN-query visar > 100 ms execution time
+- `pg_stat_user_tables.seq_tup_read` för bookings eller cleaners växer > 1M/dag
+
+Förslagsvis mät månadsvis via admin-morning-report (Fas 10 §10.5). Ny sektion i rapporten: "Data-volym-trend". Claude bygger om trigger bekräftas pre-GA.
+
+## Sammanfattning (original static-scan)
 
 - Totalt **126** CREATE INDEX i migrations
 - Totalt **571** distinct-query-patterns (tabell+kolumn+operation) i kod
 - **75** tabeller involverade
 - **110** potentiella gap (queryas utan index)
 - **97** potentiellt oanvända indexes (kolumn queryas aldrig i kod)
+
+**Not:** Dessa siffror speglar teoretisk static analys. Vid nuvarande prod-volym (max 84 rader per tabell, se §0) är "gap"-listan inte actionable — Postgres-planner väljer redan optimalt. Listan blir actionable först vid skalning (se §0.1).
 
 ## Begränsningar
 

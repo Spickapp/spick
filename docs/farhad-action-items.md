@@ -34,8 +34,7 @@
 - [ ] 🟡 **Smoke-test `customer-nudge-recurring.yml`** + **`preference-learn-favorite.yml`** + **`playwright-smoke.yml`** (från föregående session): Kör manuellt för att bekräfta fungerar.
 
 ### §13.2 DB-index follow-up (kräver prod-access)
-- [ ] 🟡 **Kör EXPLAIN ANALYZE i Studio:** Copy/paste hela filen [docs/audits/2026-04-24-db-indexes-explain-queries.sql](audits/2026-04-24-db-indexes-explain-queries.sql) i Supabase Studio SQL Editor. Kör sektionerna i ordning: row-counts, 10 EXPLAIN-queries, pg_indexes-lista, pg_stat_user_indexes. Spara output.
-- [ ] 🟡 **Efter EXPLAIN-resultat:** Ge till Claude. Claude bygger migration för de saknade indexes där Seq Scan faktiskt visas vid din data-volym (inte i teori).
+- [x] ✓ **§13.2 EXPLAIN verifierad 2026-04-24** — Prod har 0-84 rader per tabell. Seq Scan är optimalt val. Ingen migration behövs nu. Re-audit trigger när bookings >1000 rader.
 
 ### Från föregående handoffs (fortfarande öppna)
 - [ ] 🟡 **Sätt `ADMIN_ALERT_WEBHOOK_URL`** (Slack eller Discord webhook) i Supabase Secrets. Utan detta: alerts använder console-fallback (fungerar men ingen aktiv notifiering).
@@ -58,6 +57,7 @@
 - ✓ Farhad satt `INTERNAL_EF_SECRET` i Supabase Secrets (Fas 8)
 - ✓ Test VD AB skapad för VD-flow-tester
 - ✓ Stripe idempotency-fix (R2 + R3) — Farhads mandat 2026-04-24, byggt + testat samma dag. Pre-GA-risken eliminerad.
+- ✓ §13.2 DB-index audit — prod-verifierad 2026-04-24. Seq Scan optimalt vid 0-84 rader. Re-audit vid >1000 bookings.
 
 ---
 
@@ -72,7 +72,7 @@
 | 🟡 Legacy-handoff | 2 | ADMIN_ALERT_WEBHOOK_URL, escrow_mode-beslut |
 | 🟢 Quick-wins | 3 | Schema-drift, review-docs |
 
-**Total pending:** ~17 items, varav **6 är hårda GA-blockers** (R2+R3 avklarade 2026-04-24).
+**Total pending:** ~16 items, varav **6 är hårda GA-blockers** (R2+R3 + §13.2 avklarade 2026-04-24).
 
 ---
 
