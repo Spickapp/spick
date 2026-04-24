@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (85 st)
+## Edge Functions (86 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -64,6 +64,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `generate-receipt` | ═══════════════════════════════════════════════════════════════ SPICK – Kundkvitto (Customer Receipt HTML + Email) |
 | `generate-self-invoice` | ═══════════════════════════════════════════════════════════════ SPICK – Självfaktura-generator (Self-billing invoice) |
 | `geo` | SPICK – Geo Matching |
+| `get-booking-events` | ═══════════════════════════════════════════════════════════════ SPICK – get-booking-events (Fas 6 §6.4-§6.6) |
 | `get-cleaner-contact` |  |
 | `health` |  |
 | `matching-wrapper` | supabase/functions/matching-wrapper/index.ts §3.7-full Step 2b — Matching-wrapper EF (shadow-mode A/B-ramverk) |
