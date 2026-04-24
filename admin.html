@@ -5385,24 +5385,39 @@ var _rutQueue = [];
 
 async function loadRutQueue() {
   console.log('[rut-queue] loadRutQueue start');
-  try {
-    let tok = SPICK.SUPA_KEY;
+
+  // getSession med 2s-timeout så vi inte hänger
+  async function getTokenWithTimeout() {
     try {
-      const sess = await SB.auth.getSession();
-      if (sess?.data?.session?.access_token) tok = sess.data.session.access_token;
-    } catch (e) {
-      console.warn('[rut-queue] getSession failed, fallback to anon:', e);
-    }
+      const result = await Promise.race([
+        SB.auth.getSession().then(function(s) { return s?.data?.session?.access_token || null; }),
+        new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 2000); })
+      ]);
+      return result || SPICK.SUPA_KEY;
+    } catch (_) { return SPICK.SUPA_KEY; }
+  }
+
+  try {
+    const tok = await getTokenWithTimeout();
+    const usingAdminToken = tok !== SPICK.SUPA_KEY;
+    console.log('[rut-queue] got token, using', usingAdminToken ? 'admin' : 'anon');
 
     const url = SPICK.SUPA_URL + '/rest/v1/v_rut_pending_queue?select=*';
     console.log('[rut-queue] fetching', url);
+
+    // Även fetch med 10s-timeout
+    const ctrl = new AbortController();
+    const tid = setTimeout(function() { ctrl.abort(); }, 10000);
+
     const res = await fetch(url, {
       headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok },
+      signal: ctrl.signal,
     });
+    clearTimeout(tid);
     console.log('[rut-queue] HTTP', res.status, res.statusText);
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
+      const body = await res.text().catch(function() { return ''; });
       console.error('[rut-queue] fetch failed:', res.status, body);
       _rutQueue = [];
       return;
