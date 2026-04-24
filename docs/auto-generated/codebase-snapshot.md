@@ -92,7 +92,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `swish` |  |
 | `team-sms-notify` |  |
 
-## Shared EF helpers (18 st)
+## Shared EF helpers (19 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -102,6 +102,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/escrow-state.ts` | supabase/functions/_shared/escrow-state.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/events.ts` | supabase/functions/_shared/events.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/fonts.ts` |  |
+| `_shared/holidays.ts` | _shared/holidays.ts — Fas 5 §5.11 ═══════════════════════════════════════════════════════════════ |
 | `_shared/matching-diff.ts` | supabase/functions/_shared/matching-diff.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/money.ts` |  |
 | `_shared/notifications.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Multi-kanal notifikationer |
@@ -158,7 +159,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (122 st)
+## Migrations (123 st)
 
 - Senaste: `20260427000011_fas8_log_escrow_event_rpc.sql`
 - Timestamp-prefix: `20260427000011`
