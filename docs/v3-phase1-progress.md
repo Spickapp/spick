@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2 + §13.4 A1-A3 + §13.9 + H18 deploy-workflow auto-gen)
+**Senast uppdaterad:** 2026-04-24 kväll (MASSIVE session: Fas 12 STÄNGD + Fas 13 §13.2-§13.4 KLART + Fas 7.5 80% + H18/H19-fix, ~45 commits)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -71,7 +71,18 @@ Om något avviker → flagga innan fortsättning.
   - §7.5 ✓ join-team.html har redan multi-select (pre-v3-arv). bli-stadare.html är landing-page utan form — §7.5 N/A för den sidan. **H17 FIXAT 2026-04-24:** join-team.html multi-select harmoniserad till full-text-values (Svenska/English/العربية/...), 17 språk-options matchar prod-data (verified via `SELECT unnest(languages)` — alla 9 distinct-värden är full-text). Fallback `['sv']` → `['Svenska']`. Rule #28 SSOT uppfylld.
   - §7.7 ⊘ DEFERRED — kräver full `find_nearby_cleaners`-body via `pg_get_functiondef` för säker DROP+CREATE. Separat sprint.
   - §7.6 GIN-index: ✓ (redan i 20260402-migration)
-- **Fas 7.5 RUT-infrastruktur:** ◯ LÅST (25-35h, dokumenterat i [planen](planning/spick-arkitekturplan-v3.md) + [sanning/rut.md](sanning/rut.md))
+- **Fas 7.5 RUT-infrastruktur:** ◕ **80% KLART** (2026-04-24 massive session)
+  - ✓ **XML-export end-to-end verifierat LIVE** (klient-test-körning 2026-04-24 producerade valid V6-XML)
+  - ✓ `rut_batch_submissions`-tabell + views `v_rut_pending_queue` + `v_customer_rut_summary`
+  - ✓ `customer_profiles.rut_ytd_*`-tracker (75k-tak-varning)
+  - ✓ `_shared/rut-xml-builder.ts` — 36 tester, V6-schema-compliant
+  - ✓ EF `rut-batch-export-xml` — pre-validering + XML-generering + storage-upload
+  - ✓ Admin-UI: "RUT-kö"-tab med checkboxes + batch-modal + historik + status-tracking
+  - ✓ Storage-bucket `rut-batches` skapad (privat, XML-only)
+  - ✓ Jurist-underlag: [docs/planning/fas-7-5-rut-legal-research-2026-04-24.md](planning/fas-7-5-rut-legal-research-2026-04-24.md) (427 rader)
+  - ✓ SKV-primärkälla committad: [docs/skatteverket/xsd-v6/](skatteverket/xsd-v6/) + README
+  - ◯ **Blockat till jurist-OK:** PNR-aktivering (PNR_FIELD_DISABLED=true), kund-avtal + städar-avtal-uppdatering
+  - ◯ **Blockat till extern:** BankID-integration för PNR-verifiering (Signicat/Freja/Fritid — Farhad väljer)
 - **Fas 8 Dispute + Full Escrow:** ◑ PÅBÖRJAD (EU-deadline 2 dec 2026, 60-80h total)
   - §8.1 Design-skelett ✓ ([dispute-escrow-system.md](architecture/dispute-escrow-system.md), commit b273d4b)
   - §8.3 escrow_state-kolumn + CHECK constraint ✓ (migration 20260427000007, pending deploy)
