@@ -1,5 +1,6 @@
 # CLAUDE.md – Spick Projektkontext
-> Uppdaterad: 2026-04-23 – Manuell sync från codebase-snapshot + sanning/-filer
+> **Uppdaterad:** 2026-04-24 · Manuell sync från codebase-snapshot + sanning/-filer.
+> **Verifieringskonvention (§11.3):** Varje infrastruktur-sektion markerar "Senast verifierad: YYYY-MM-DD" när datan senast kontrollerades mot prod eller auto-snapshot. Datum äldre än 14 dagar → verifiera innan du bygger på påståendet.
 
 ## Projekt
 **Spick** — Sveriges städplattform. Uber-modellen för städning.
@@ -12,12 +13,14 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 - **Bolag:** Haghighi Consulting AB (559402-4522), bifirma Spick
 
 ## Tech Stack
+*Senast verifierad: 2026-04-24 (EF-count mot `docs/auto-generated/codebase-snapshot.md`).*
+
 | Komponent | Teknik |
 |-----------|--------|
 | Frontend | Vanilla HTML/CSS/JS (64 sidor), components.js (nav/footer) |
 | Typsnitt | Playfair Display (rubriker) + DM Sans (brödtext) |
 | Färger | #0F6E56 primär, #1D9E75 accent, #E1F5EE pale, #F7F7F5 bg |
-| Backend/DB | Supabase PostgreSQL + 66 Edge Functions + 3 VIEWs |
+| Backend/DB | Supabase PostgreSQL + 78 Edge Functions + 3 VIEWs |
 | Hosting | GitHub Pages (auto-deploy vid push till main) |
 | E-post | Resend (verifierad) + Google Workspace hello@spick.se |
 | Betalning | Stripe live mode (kort + Klarna) + dual-key test/live-toggle (`platform_settings.stripe_test_mode`) |
@@ -25,7 +28,8 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | Analytics | GA4 (G-CP115M45TT) + Meta Pixel + Microsoft Clarity (w1ep5s1zm6) |
 | PWA | Service Worker (stale-while-revalidate) + manifest.json |
 
-## Edge Functions (66 st — fullständig lista + beskrivningar)
+## Edge Functions (78 st — fullständig lista + beskrivningar)
+*Senast verifierad: 2026-04-24 (auto-snapshot).*
 
 **Full canonical snapshot:** `docs/auto-generated/codebase-snapshot.md` (auto-uppdateras veckovis via workflow `update-claude-md.yml` — Fas 11.2).
 
@@ -54,6 +58,8 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 **Shared helpers** (13 st i `_shared/`): money.ts, events.ts, preferences.ts, matching-diff.ts, pricing-engine.ts, pricing-resolver.ts, stripe.ts, stripe-client.ts, stripe-webhook-verify.ts, email.ts, notifications.ts, send-magic-sms.ts, timezone.ts, fonts.ts.
 
 ## Databasvyer (säkra, anon-åtkomst)
+*Senast verifierad: 2026-04-24. Notera: `v_customer_bookings` + `v_calendar_slots` finns också i prod (Fas 8 + Fas 1) men är cleaner/customer-scopade, inte publika stats.*
+
 | View | Syfte | Exponerade kolumner |
 |------|-------|-------------------|
 | booking_slots | Kalender (boka.html) | cleaner_id, date, time, hours |
@@ -61,6 +67,7 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | public_stats | Homepage-statistik | total_bookings, bookings_today, active_cleaners, avg_rating |
 
 ## Säkerhet (efter audit 2026-03-30)
+*Senast verifierad: 2026-04-24. Full audit nästa: §13.7 pentest (Fas 13).*
 - **XSS:** escHtml() i 29 filer, 174 sanerade renderingspunkter
 - **RLS:** Alla öppna USING(true) UPDATE-policies borttagna
 - **CSP:** Utan unsafe-eval, med HSTS (max-age=31536000)
@@ -80,6 +87,8 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 - [ ] Astro-migrering (64 HTML → komponentbaserat) — framtid
 
 ## GitHub Secrets
+*Senast verifierad: 2026-04-24. Plus Supabase-secrets (server-side): `INTERNAL_EF_SECRET`, `ADMIN_ALERT_WEBHOOK_URL` (EJ satt — console-fallback), `RUT_PNR_ENCRYPTION_KEY` (legacy, låst till Fas 7.5).*
+
 ```
 STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET,
 RESEND_API_KEY, ANTHROPIC_API_KEY, SUPABASE_ACCESS_TOKEN,
@@ -88,6 +97,7 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 ```
 
 ## Viktiga filer
+*Senast verifierad: 2026-04-24.*
 | Fil | Syfte |
 |-----|-------|
 | js/config.js | Config (SUPA_URL, SUPA_KEY, escHtml, spickFetch, error handling) |

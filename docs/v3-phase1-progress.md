@@ -78,7 +78,9 @@ Om något avviker → flagga innan fortsättning.
   - §8.6 escrow-state-transition EF: ◯
   - §8.7 escrow-release EF: ◯
   - §8.8-§8.14 dispute-UI + SLA-cronner + admin-beslut: ◯
-  - §8.15-§8.25 data-export + EU PWD-compliance-hårdning: ◯
+  - §8.15-§8.19 compliance-hårdning: ◯
+  - §8.20 ✓ export-cleaner-data EF + UI-knapp (commit 691df41, GDPR Art 15 + Art 20 + EU PWD)
+  - §8.21-§8.25 dispute-formell-process + refund-migration + Klarna-chargeback: ◯
 - **Fas 10 Observability:** ◑ DELVIS
   - §10.1 alerts-helper ✓
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
