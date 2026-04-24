@@ -11,14 +11,6 @@ const SUPA_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
 
-// §13.3 load-test-fix 2026-04-24: in-memory cache 30s TTL.
-// Under load returnerar samma instance cached-svar istället för att
-// köra 4 checks per request. Drastiskt p95-latency-reduktion.
-// Best-effort — Deno EF skalar med flera instanser, men inom en
-// instans samlar 50 VUs på samma cache.
-const HEALTH_CACHE_TTL_MS = 30_000;
-let cachedResult: { body: string; status: number; expiresAt: number } | null = null;
-
 serve(async (req) => {
   // CORS
   const CORS = {
@@ -29,22 +21,7 @@ serve(async (req) => {
   };
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  // Cache-hit: returnera omedelbart om < TTL sedan
-  const now = Date.now();
-  const bypassCache = new URL(req.url).searchParams.get("fresh") === "true";
-  if (!bypassCache && cachedResult && now < cachedResult.expiresAt) {
-    return new Response(cachedResult.body, {
-      status: cachedResult.status,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache",
-        "X-Cache": "HIT",
-        ...CORS,
-      },
-    });
-  }
-
-  const start = now;
+  const start = Date.now();
   const checks: Record<string, {
     ok: boolean;
     ms: number;
@@ -154,30 +131,18 @@ serve(async (req) => {
   const responseStatus = criticalOk ? 200 : 503;
   const statusLabel = allOk ? "healthy" : (criticalOk ? "degraded" : "down");
 
-  const bodyStr = JSON.stringify({
+  return new Response(JSON.stringify({
     status: statusLabel,
     timestamp: new Date().toISOString(),
     total_ms: totalMs,
     checks,
     critical_checks: CRITICAL_CHECKS,
-    version: "3.0.2-health-cache",
-  });
-
-  // Cache-spara vid OK-svar (inte 503 — om EF är nere, retry fast)
-  if (responseStatus === 200) {
-    cachedResult = {
-      body: bodyStr,
-      status: responseStatus,
-      expiresAt: Date.now() + HEALTH_CACHE_TTL_MS,
-    };
-  }
-
-  return new Response(bodyStr, {
+    version: "3.0.1-health-policy-split",
+  }), {
     status: responseStatus,
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
-      "X-Cache": "MISS",
       ...CORS,
     },
   });
