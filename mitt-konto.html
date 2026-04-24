@@ -774,6 +774,7 @@ function showTab(tab) {
 let _subscriptions = [];
 let _subLoaded = false;
 let _subActionCtx = null; // { action, subId, ... }
+let _patternSuggestion = null; // §5.8 pattern-detection cache
 
 async function loadSubscriptions() {
   if (_subLoaded) return; // cache en gång per sessionsladdning
@@ -785,6 +786,17 @@ async function loadSubscriptions() {
     const res = await fetch(url, { headers: { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + tok } });
     _subscriptions = res.ok ? await res.json() : [];
     _subLoaded = true;
+    // §5.8: Hämta pattern-suggestion parallellt (endast relevant om inga subs finns)
+    if (!_subscriptions.length) {
+      try {
+        const pRes = await fetch(SPICK.SUPA_URL + '/functions/v1/analyze-booking-pattern', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
+          body: JSON.stringify({ customer_email: currentEmail })
+        });
+        if (pRes.ok) _patternSuggestion = await pRes.json();
+      } catch(_) { /* non-fatal */ }
+    }
     renderSubscriptions();
   } catch(e) {
     console.error('[SPICK] loadSubscriptions error:', e);
@@ -795,7 +807,10 @@ async function loadSubscriptions() {
 function renderSubscriptions() {
   const container = document.getElementById('subscriptionsList');
   if (!_subscriptions.length) {
-    container.innerHTML = `
+    const suggestionBanner = (_patternSuggestion && _patternSuggestion.has_pattern && _patternSuggestion.suggestion)
+      ? patternSuggestionBanner(_patternSuggestion.suggestion)
+      : '';
+    container.innerHTML = suggestionBanner + `
       <div class="empty">
         <div class="empty-icon">🔁</div>
         <div class="empty-title">Inga prenumerationer</div>
@@ -805,6 +820,39 @@ function renderSubscriptions() {
     return;
   }
   container.innerHTML = _subscriptions.map(s => subscriptionCard(s)).join('');
+}
+
+function patternSuggestionBanner(sug) {
+  const dayNames = ['', 'måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag'];
+  const dayLabel = dayNames[sug.weekday] || '–';
+  const cleanerName = sug.cleaner_name || 'din städare';
+  const time = (sug.preferred_time || '').slice(0, 5);
+  const ratingText = sug.avg_rating ? ` (snitt ${sug.avg_rating.toFixed(1)}⭐)` : '';
+  // Bygg prenumerera-URL med förifyllda params
+  const params = new URLSearchParams({
+    source: 'pattern',
+    cleaner_id: sug.cleaner_id || '',
+    weekday: String(sug.weekday),
+    preferred_time: time,
+    hours: String(sug.booking_hours || 3),
+    service: sug.service_type || 'Hemstädning',
+    rut: sug.rut ? '1' : '0'
+  });
+  return `
+    <div style="background:linear-gradient(135deg,#E1F5EE,#F0FAF5);border:1.5px solid #0F6E56;border-radius:16px;padding:18px;margin-bottom:16px">
+      <div style="display:flex;align-items:start;gap:12px">
+        <div style="font-size:2rem;flex-shrink:0">💡</div>
+        <div style="flex:1">
+          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#0F6E56;margin-bottom:6px">
+            Vi märker ett mönster
+          </div>
+          <div style="font-size:.88rem;color:var(--t);line-height:1.5;margin-bottom:12px">
+            Du har bokat <strong>${escHtml(cleanerName)}</strong> på <strong>${escHtml(dayLabel + ' kl ' + time)}</strong> ${escHtml(sug.match_count + ' gånger')}${ratingText}. Vill du lägga in detta som en fast återkommande städning?
+          </div>
+          <a href="prenumerera.html?${params.toString()}" style="display:inline-block;background:var(--g);color:#fff;padding:10px 18px;border-radius:100px;font-weight:600;text-decoration:none;font-size:.85rem">Starta prenumeration →</a>
+        </div>
+      </div>
+    </div>`;
 }
 
 function subscriptionCard(s) {
@@ -1123,6 +1171,7 @@ function logout() {
   allBookings = [];
   _subscriptions = [];
   _subLoaded = false;
+  _patternSuggestion = null;
   document.getElementById('loginSection').style.display = 'block';
   document.getElementById('portalSection').style.display = 'none';
   var magicSent = document.getElementById('magicSent');
