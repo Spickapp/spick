@@ -19,11 +19,17 @@ jobs:
       - name: "🔍 Sök hårdkodade hemligheter (ej anon-nycklar)"
         run: |
           echo "=== Söker efter service_role i klientkod ==="
-          if grep -rn "service_role" --include="*.html" --include="*.js" .; then
+          # Exkludera kommentarer (//, <!-- -->, /* */) — hittade tidigare
+          # false positives på rad som dokumenterar att EF:er använder
+          # service_role server-side. Fångar bara riktiga usages.
+          MATCHES=$(grep -rn "service_role" --include="*.html" --include="*.js" . \
+            | grep -vE "(//|<!--|^\s*\*|\*\s).*service_role" || true)
+          if [ -n "$MATCHES" ]; then
             echo "❌ KRITISKT: service_role-nyckel hittad i klientkod!"
+            echo "$MATCHES"
             exit 1
           else
-            echo "✅ Inga service_role-nycklar i klientkod"
+            echo "✅ Inga service_role-nycklar i klientkod (kommentarer exkluderade)"
           fi
           
           echo ""
