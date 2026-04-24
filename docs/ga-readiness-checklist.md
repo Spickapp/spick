@@ -82,22 +82,29 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 
 ### §13.4 GDPR-audit
 
-| Aspekt | Status | Anteckning |
-|---|---|---|
-| Art 15 (access) — export-flow | ✓ | `export-cleaner-data` EF (commit 691df41). Customer-export via `mitt-konto.html` finns som länk men EF-bekräftelse pending. |
-| Art 16 (rättelse) | ◯ | Cleaner/kund kan ändra egna profiler i respektive dashboard |
-| Art 17 (radering) | ◯ | Delete-flow ej dokumenterad. 36 PNR-rader kvarstår (docs/sanning/pnr-och-gdpr.md). |
-| Art 18 (begräsning) | ◯ | Inte implementerat som separat feature |
-| Art 20 (portabilitet) | ✓ | `export-cleaner-data` returnerar JSON |
-| Retention-policy | ◯ | Ej formellt dokumenterad (bokningar, recensioner, emails, etc.) |
-| DPO-kontakt | ◯ | Inget formellt DPO utsett |
-| Data-processing-agreement med Supabase/Stripe/Resend | ⚠ | Verifiera att DPA finns för varje sub-processor |
+**Static audit klar:** [docs/audits/2026-04-24-gdpr-static-audit.md](audits/2026-04-24-gdpr-static-audit.md)
 
-**Regulator-flagg (⚠):** GDPR-tolkningar kräver jurist-input. Rule #30.
+| Rättighet (policy §7) | Städare | Kund | Kommentar |
+|---|---|---|---|
+| 7.1 Tillgång | ✓ EF+UI | ✗ **GAP** | Customer-export-EF saknas |
+| 7.2 Rättelse | ✓ Self-service | ◑ Delvis | Historiska bokningar immutable |
+| 7.3 Radering | ◯ Manuell | ✗ **GAP** | Delete-EF saknas helt |
+| 7.4 Begränsning | ◯ | ◯ | Ej implementerat |
+| 7.5 Dataportabilitet | ✓ JSON | ✗ **GAP** | Samma som 7.1 |
+| 7.6 Invändning | ◯ | ◯ | Ej implementerat |
+| 7.7 Återkalla samtycke | ◑ Delvis | ◑ Delvis | Cookie-banner + auto-delegation opt-out |
 
-**Owner:** Farhad (jurist-kontakt) + Claude (tekniska verifieringar)
+**Retention-policy:** ◯ ej dokumenterad (rapport §3).
+**Sub-processors i policy:** ✗ 5 saknade (Stripe/Resend/GA4/Clarity/Nominatim) — rapport §4.
 
-**Nästa steg:** Claude kör end-to-end-test av export-cleaner-data. Farhad kontaktar jurist för retention-policy + delete-flow-utformning.
+**Prioriterade åtgärder:**
+- **A1-A3** (Claude-kan-göra, ~4h): customer-export-EF, mitt-konto-UI, policy-konsolidering
+- **B1-B4** (jurist-beroende): retention-matris, sub-processor-DPA, delete-flow, audit-trail
+- **C1** (Fas 7.5): 36 PNR-rader
+
+**Regulator-flagg (⚠):** Slutbedömning av GDPR-compliance kräver jurist. Audit tolkar INTE artiklarna, bara verifierar gap mot egen policy.
+
+**Owner:** Claude (A1-A3) + Farhad + jurist (B1-B4, C1)
 
 ---
 
