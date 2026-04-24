@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (79 st)
+## Edge Functions (81 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -45,6 +45,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `company-toggle-member` | ═══════════════════════════════════════════════════════════════ SPICK – company-toggle-member (Fas 9 §9.1) |
 | `customer-approve-proposal` |  |
 | `customer-check-auto-delegation` | ═══════════════════════════════════════════════════════════════ SPICK – customer-check-auto-delegation (Fas 1.2) |
+| `customer-nudge-recurring` | customer-nudge-recurring — Fas 5 §5.9 ═══════════════════════════════════════════════════════════════ |
 | `customer-subscription-manage` | customer-subscription-manage — Fas 5 §5.4 ═══════════════════════════════════════════════════════════ |
 | `customer-upsert` | ═══════════════════════════════════════════════════════════════ SPICK – customer-upsert (Fas 1.2) |
 | `dispute-admin-decide` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-admin-decide (Fas 8 §8.14) |
@@ -70,6 +71,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `onboarding-save` |  |
 | `places-autocomplete` |  |
 | `poll-stripe-onboarding-status` | ═══════════════════════════════════════════════════════════════ SPICK – poll-stripe-onboarding-status (Sprint B Dag 6) |
+| `preference-learn-favorite` | preference-learn-favorite — Fas 5 §5.5b ═══════════════════════════════════════════════════════════════ |
 | `public-auth-exchange` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-exchange (Fas 1.2) |
 | `public-auth-link` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-link (Fas 1.2) |
 | `push` | SPICK – Push Notifications med VAPID |
@@ -112,7 +114,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe.ts` |  |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (38 st)
+## GitHub Actions workflows (40 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -124,6 +126,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/claude.yml`
 - `.github/workflows/cleanup-stale.yml`
 - `.github/workflows/content-engine.yml`
+- `.github/workflows/customer-nudge-recurring.yml`
 - `.github/workflows/daily-automation.yml`
 - `.github/workflows/db-audit.yml`
 - `.github/workflows/deploy-edge-functions.yml`
@@ -138,6 +141,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/inject-tracking.yml`
 - `.github/workflows/loopia-dns.yml`
 - `.github/workflows/monthly-invoices.yml`
+- `.github/workflows/preference-learn-favorite.yml`
 - `.github/workflows/run-migrations.yml`
 - `.github/workflows/schema-drift-check.yml`
 - `.github/workflows/security-scan.yml`
@@ -153,7 +157,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (121 st)
+## Migrations (122 st)
 
 - Senaste: `20260427000011_fas8_log_escrow_event_rpc.sql`
 - Timestamp-prefix: `20260427000011`
