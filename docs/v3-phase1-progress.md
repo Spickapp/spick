@@ -83,7 +83,8 @@ Om något avviker → flagga innan fortsättning.
   - §8.8-§8.14 dispute-UI + SLA-cronner + admin-beslut: ◯
   - §8.15-§8.19 compliance-hårdning: ◯
   - §8.20 ✓ export-cleaner-data EF + UI-knapp (commit 691df41, GDPR Art 15 + Art 20 + EU PWD)
-  - §8.21-§8.25 dispute-formell-process + refund-migration + Klarna-chargeback: ◯
+  - §8.21 ✓ garanti.html + nojdhetsgaranti.html uppdaterade: "maila hello@spick.se" → "Öppna ärende via Mitt konto" som primär väg, email som backup
+  - §8.22-§8.25 refund-migration + Klarna-chargeback + övrigt: ◯
 - **Fas 10 Observability:** ◑ DELVIS
   - §10.1 alerts-helper ✓
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
