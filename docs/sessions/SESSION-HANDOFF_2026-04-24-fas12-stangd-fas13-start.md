@@ -1,8 +1,8 @@
-# Session handoff — 2026-04-24 em (Fas 12 STÄNGD + Fas 13 påbörjad)
+# Session handoff — 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2+§13.4+§13.9)
 
 **Föregående handoff:** `SESSION-HANDOFF_2026-04-28-fas8-escrow-complete.md`
-**Denna session:** 2026-04-24 em (~4h fokus-arbete, Claude självgående med mandat)
-**Status vid avslut:** Fas 12 100% KLART. Fas 13 påbörjad (§13.2 static + §13.9 levande-doc).
+**Denna session:** 2026-04-24 em (~6h fokus-arbete, Claude självgående med mandat)
+**Status vid avslut:** Fas 12 100% KLART. Fas 13 påbörjad (§13.2 static audit + §13.4 A1-A3 levererat + §13.9 levande-doc).
 
 ---
 
@@ -19,6 +19,10 @@ Fem commits, varav två stängda Fas-items (Fas 12 helt + §13.2 delvis). Byggt 
 | 3 | `af32824` | §12.4 | k6 load-test för read-path (50 VUs × 60s). Manuell CI-trigger för att undvika Supabase-kvot-belastning. Write-path-load-test medvetet utelämnat (rule #27 + #30 + prod-säkerhet). **Fas 12 nu helt KLART.** |
 | 4 | `31d1b86` | §13.9 | GA-readiness checklista som levande-dokument ([docs/ga-readiness-checklist.md](../ga-readiness-checklist.md)). Aggregerar §13.1-§13.8-status + 9 externa Farhad-dependencies + hård/mjuk GA-blocker-matris. |
 | 5 | `07a2583` | §13.2 | DB-index static audit v1. 126 indexes + 571 query-patterns mappade. Topp-gaps: platform_settings.key (18q), bookings.booking_date (14q), customer_profiles.email (8q), cleaners.auth_user_id (8q). Regenererbar via `deno run scripts/audit-db-indexes.ts`. |
+| 6 | `56f3f77` | handoff v1 | Session-handoff dokumenterad. |
+| 7 | `00fcad5` | §13.4 audit | GDPR static audit — verifierar gap mellan `integritetspolicy.html` §7-löften och implementation. 4 hårda + 4 mjuka gaps. Rule #30 strikt: tolkar ej GDPR-artiklar, bara gap mot egen policy. |
+| 8 | `7c218c3` | §13.4 A1-A3 | **A1:** `export-customer-data` EF (speglar export-cleaner-data, 10 sektioner, JWT → customer_email-match). **A2:** `mitt-konto.html` UI-knapp + `exportMyCustomerData()` JS-funktion (browser-verifierad ✓). **A3:** `pages/integritetspolicy.html` → redirect till rot-versionen (rule #28 SSOT). |
+| 9 | `7389377` | deploy-fix | `export-customer-data` tillagd i deploy-workflow. Flaggar hygien-H18: workflow har 32 EFs hardcoded men repo har 78 EFs. |
 
 ## 3. Nya filer i repo
 
@@ -96,14 +100,25 @@ Flaggat i checklista/rapporter, ej agerat på:
 ## 9. Signatur
 
 Session avslutad 2026-04-24 em.
-5 commits pushade via rebase-loop (bot-commits mellan pushes hanterade smidigt).
-0 money-loss, 0 customer-facing-regression, 0 prod-änrdningar (bara kod + docs + CI).
+9 commits pushade via rebase-loop (bot-commits mellan pushes hanterade smidigt).
+0 money-loss, 0 customer-facing-regression, 0 prod-ändringar (bara kod + docs + CI).
 
-**Farhads "självgående"-ambition:** ~75% mot GA-kriterier (upp från ~70% per föregående handoff).
+**Farhads "självgående"-ambition:** ~78% mot GA-kriterier (upp från ~70% per föregående handoff).
 
-**Fas 12 STÄNGD.** Fas 13 har fundament: §13.2 static v1 + §13.9 levande GA-checklista.
+**Fas 12 STÄNGD.** Fas 13 har fundament: §13.2 static + §13.4 audit+A1-A3 levererat + §13.9 levande GA-checklista.
 
-**Nästa session starta-punkt:**
+## 10. Viktigt pending (post-commit)
+
+1. **Deploy `export-customer-data` EF:** Nästa push till main trigger:ar deploy-workflow som nu inkluderar denna. Eller manuellt: `supabase functions deploy export-customer-data --project-ref urjeijcncsyuletprydy --no-verify-jwt`.
+2. **Hygien H18 — deploy-workflow-stale:** 46 EFs i repo saknas från deploy-listan. Separat hygien-sprint behövs för auto-gen från katalogstrukturen.
+3. **UI smoke-test:** När EF deployat → testa "Ladda ner mina data"-knappen i mitt-konto.html med inloggad kund. Verifiera att JSON-fil laddas ner.
+
+## 11. Nästa session starta-punkt
+
 1. "Läs START_HERE.md + denna handoff"
-2. Verifiera pending §4.1-actions
-3. Fortsätt med önskad Fas 13-prio (se §6 + §8 i GA-checklista)
+2. Verifiera pending actions från §6 + §10
+3. Fortsätt med önskad Fas 13-prio:
+   - **§13.3 Stripe retry-audit** (Claude + Farhad, ~2-3h)
+   - **Hygien H18 deploy-workflow-auto-gen** (~2h, värdefullt SSOT-fix)
+   - **§13.4 B1-B4** (kräver Farhads jurist-möte först)
+   - **§13.2 prod-EXPLAIN** (kräver Farhad i Studio)
