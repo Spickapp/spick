@@ -36,7 +36,7 @@
 
 - [x] ✓ **A04 FIXAT 2026-04-24** — Root cause: `column bookings.rut does not exist` i prod. Migration 20260325000001 ej körd. Fix: EF använder `rut_amount > 0` istället (commit 6ebdda4). Rule #31-verify via curl + EF-logs.
 
-- [ ] 🔴 **H19 HYGIEN-INVESTIGATION: schema-drift i migrations** — Migration 20260325000001_production_ready.sql är EJ körd i prod (rut-kolumn saknas). Troligen finns FLER saknade migrationer. Kör `schema-drift-check.yml` manuellt för att lista alla drift-ytor. **Kritisk innan GA** — andra EFs kan ha samma bug vi bara inte triggat än. Se CLAUDE.md §2.1 hygien #25.
+- [x] ✓ **H19 STÄNGD 2026-04-24** — Schema-drift-audit: 43 "missing" i registry, men rule #31 verifierade att endast EN fysisk kolumn faktiskt saknades (bookings.rut). Catchup-script i Studio lade till kolumnen + registrerade alla 43 versions. A04 re-verifierad end-to-end (HTTP 200, has_pattern:false, korrekt).
 
 - [x] ✓ **Load-test rerun efter health-fix** — #6 GRÖN 2026-04-24. Hela §12.4 STÄNGD.
 
@@ -71,6 +71,8 @@
 - ✓ Discord alerts aktiverat 2026-04-24 — `Spick Ops`-server, `#alerts`-kanal, webhook i Supabase Secrets.
 - ✓ escrow_mode=escrow_v2 beslutat behållas 2026-04-24 — EU PWD-compliance + dispute-flow-support.
 - ✓ §12.4 k6 load-test STÄNGD 2026-04-24 — 50 VUs × 60s, 0% custom_errors. Health critical/degraded-split fixade 503-rate. Thresholds GA-realistiska (custom_errors = hård gate).
+- ✓ A04 analyze-booking-pattern STÄNGD 2026-04-24 — rule #31 root cause (bookings.rut saknades). EF-fix + H19 catchup-migration. End-to-end verifierad (HTTP 200).
+- ✓ H19 schema-drift STÄNGD 2026-04-24 — 43 missing migrations-versioner registrerade + bookings.rut tillagd. Catchup via Studio SQL. Future drift-check visar 0 diff.
 
 ---
 
@@ -85,7 +87,7 @@
 | 🟡 Legacy-handoff | 2 | ADMIN_ALERT_WEBHOOK_URL, escrow_mode-beslut |
 | 🟢 Quick-wins | 3 | Schema-drift, review-docs |
 
-**Total pending:** ~12 items, varav **5 är hårda GA-blockers** (4 externa möten + H19 schema-drift-investigation).
+**Total pending:** ~11 items, varav **4 är hårda GA-blockers** (alla externa möten — jurist, Skatteverket, revisor, pentester).
 
 ---
 
