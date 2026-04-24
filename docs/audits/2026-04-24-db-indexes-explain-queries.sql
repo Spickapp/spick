@@ -17,18 +17,20 @@
 -- ═══════════════════════════════════════════════════════════════════
 
 -- Först: kolla row-counts för context
-SELECT
-  'bookings' AS table_name, COUNT(*) AS rows FROM bookings
-UNION ALL SELECT 'cleaners', COUNT(*) FROM cleaners
-UNION ALL SELECT 'customer_profiles', COUNT(*) FROM customer_profiles
-UNION ALL SELECT 'platform_settings', COUNT(*) FROM platform_settings
-UNION ALL SELECT 'subscriptions', COUNT(*) FROM subscriptions
-UNION ALL SELECT 'admin_users', COUNT(*) FROM admin_users
-UNION ALL SELECT 'cleaner_applications', COUNT(*) FROM cleaner_applications
-UNION ALL SELECT 'payout_audit_log', COUNT(*) FROM payout_audit_log
-UNION ALL SELECT 'customer_credits', COUNT(*) FROM customer_credits
-UNION ALL SELECT 'reviews', COUNT(*) FROM reviews
-ORDER BY rows DESC;
+-- Not: UNION ALL + ORDER BY kräver subquery-wrap i Postgres
+SELECT * FROM (
+  SELECT 'bookings' AS table_name, COUNT(*) AS row_count FROM bookings
+  UNION ALL SELECT 'cleaners', COUNT(*) FROM cleaners
+  UNION ALL SELECT 'customer_profiles', COUNT(*) FROM customer_profiles
+  UNION ALL SELECT 'platform_settings', COUNT(*) FROM platform_settings
+  UNION ALL SELECT 'subscriptions', COUNT(*) FROM subscriptions
+  UNION ALL SELECT 'admin_users', COUNT(*) FROM admin_users
+  UNION ALL SELECT 'cleaner_applications', COUNT(*) FROM cleaner_applications
+  UNION ALL SELECT 'payout_audit_log', COUNT(*) FROM payout_audit_log
+  UNION ALL SELECT 'customer_credits', COUNT(*) FROM customer_credits
+  UNION ALL SELECT 'reviews', COUNT(*) FROM reviews
+) counts
+ORDER BY row_count DESC;
 
 -- ───────────────────────────────────────────────────────────────────
 -- Gap #1: platform_settings.key (18 query-ställen)
