@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2 static audit + §13.9 GA-checklista)
+**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2 + §13.4 A1-A3 + §13.9)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -114,7 +114,7 @@ Om något avviker → flagga innan fortsättning.
   - §13.1 Load-test 1000 VUs: ◯ blockad (kräver test-env)
   - §13.2 DB-index-audit: ◑ static v1 klar ([docs/audits/2026-04-24-db-indexes-static.md](audits/2026-04-24-db-indexes-static.md)). 126 indexes + 571 query-patterns mappade. Topp-gaps: platform_settings.key (18q), bookings.booking_date (14q), customer_profiles.email (8q), cleaners.auth_user_id (8q). **Nästa:** EXPLAIN ANALYZE mot prod + ev. migration för saknade indexes.
   - §13.3 Stripe rate-limits: ◯ Farhad-hand + Claude-review
-  - §13.4 GDPR-audit: ◑ static audit klar ([docs/audits/2026-04-24-gdpr-static-audit.md](audits/2026-04-24-gdpr-static-audit.md)). Hårda gaps: customer-export-EF saknas, delete-flow saknas, retention-policy odokumenterad, 5 sub-processors ej i policy. A1-A3 Claude-kan-göra (~4h), B1-B4 jurist-beroende.
+  - §13.4 GDPR-audit: ◕ static audit ([docs/audits/2026-04-24-gdpr-static-audit.md](audits/2026-04-24-gdpr-static-audit.md)) + A1-A3 ✓ KLART (export-customer-data EF, mitt-konto UI, policy SSOT-konsolidering). B1-B4 (retention, DPA, delete-flow) jurist-beroende. C1 (PNR) blockad av Fas 7.5.
   - §13.5 RUT-automation: ⊘ blockad av Fas 7.5
   - §13.6 Moms-automation: ⚠ BokfL-regulator-känsligt (rule #30)
   - §13.7 Pentest: ◯ Farhads hand (auditor-kontrakt)

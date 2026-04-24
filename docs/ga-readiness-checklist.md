@@ -98,9 +98,11 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 **Sub-processors i policy:** ✗ 5 saknade (Stripe/Resend/GA4/Clarity/Nominatim) — rapport §4.
 
 **Prioriterade åtgärder:**
-- **A1-A3** (Claude-kan-göra, ~4h): customer-export-EF, mitt-konto-UI, policy-konsolidering
-- **B1-B4** (jurist-beroende): retention-matris, sub-processor-DPA, delete-flow, audit-trail
-- **C1** (Fas 7.5): 36 PNR-rader
+- **A1** ✓ KLART (export-customer-data EF + browser-verifierad) — `supabase/functions/export-customer-data/index.ts`
+- **A2** ✓ KLART (mitt-konto-UI + JS-funktion + knapp renderad + funktion registrerad) — `mitt-konto.html:324-335, 1175-1225`
+- **A3** ✓ KLART (policy-konsolidering) — `pages/integritetspolicy.html` är nu redirect till `/integritetspolicy.html` (rot-version). SSOT uppfyllt.
+- **B1-B4** (jurist-beroende): retention-matris, sub-processor-DPA, delete-flow, audit-trail — pending Farhads jurist-möte
+- **C1** (Fas 7.5): 36 PNR-rader — blockad
 
 **Regulator-flagg (⚠):** Slutbedömning av GDPR-compliance kräver jurist. Audit tolkar INTE artiklarna, bara verifierar gap mot egen policy.
 
