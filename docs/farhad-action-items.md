@@ -33,6 +33,10 @@
 - [ ] 🟡 **Smoke-test `load-test.yml`:** Actions → "Load Test (read-endpoints)" → Run workflow. 50 VUs × 60s. Mäta p95-latens + error-rate.
 - [ ] 🟡 **Smoke-test `customer-nudge-recurring.yml`** + **`preference-learn-favorite.yml`** + **`playwright-smoke.yml`** (från föregående session): Kör manuellt för att bekräfta fungerar.
 
+- [ ] 🟡 **A04 investigation — analyze-booking-pattern returnerar 500** (smoke-test 2026-04-24). Testet postar `never-exists@spick-test.se` och förväntar 200 med `has_pattern:false`. Troliga orsaker: (a) bookings-query failar pga oväntad status-enum, (b) EF inte fullt deployad, (c) ny bug. **Kolla Supabase EF-logs:** Dashboard → Edge Functions → analyze-booking-pattern → Logs. Dela output med Claude för fix.
+
+- [ ] 🟡 **Load-test rerun efter health-fix** (commit pending). Kör `Load Test (read-endpoints)` igen. Förväntad resultat efter fix: `latency_health p95 < 800ms` + `http_req_failed < 2%` ska passera. Om fortfarande fail → djupare analys.
+
 ### §13.2 DB-index follow-up (kräver prod-access)
 - [x] ✓ **§13.2 EXPLAIN verifierad 2026-04-24** — Prod har 0-84 rader per tabell. Seq Scan är optimalt val. Ingen migration behövs nu. Re-audit trigger när bookings >1000 rader.
 

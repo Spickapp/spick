@@ -22,7 +22,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   const start = Date.now();
-  const checks: Record<string, { ok: boolean; ms: number; error?: string }> = {};
+  const checks: Record<string, {
+    ok: boolean;
+    ms: number;
+    error?: string;
+    metrics?: Record<string, number>;
+    minutes_since_last_run?: number;
+  }> = {};
 
   // 1. Database connectivity + business metrics
   try {
@@ -110,17 +116,30 @@ serve(async (req) => {
   // 5. Edge runtime
   checks.runtime = { ok: true, ms: 0 };
 
+  // Health-status-policy (§13.3 load-test-fix 2026-04-24):
+  // - 503 = EF är otillgänglig (DB nere). Uptime-monitor triggar larm.
+  // - 200 + status="degraded" = EF svarar men någon integration har issues
+  //   (Resend/Stripe timeout etc.). Uptime OK men monitoring-dashboards
+  //   kan flagga. Förhindrar false alarms vid normala API-hiccups och
+  //   cascading failures under load (load-test 2026-04-24 visade 100%
+  //   503-rate vid 50 VUs pga Resend/Stripe timeouts).
+  const CRITICAL_CHECKS = ["database", "runtime"];
+  const criticalOk = CRITICAL_CHECKS.every(k => checks[k]?.ok);
   const allOk = Object.values(checks).every(c => c.ok);
   const totalMs = Date.now() - start;
 
+  const responseStatus = criticalOk ? 200 : 503;
+  const statusLabel = allOk ? "healthy" : (criticalOk ? "degraded" : "down");
+
   return new Response(JSON.stringify({
-    status: allOk ? "healthy" : "degraded",
+    status: statusLabel,
     timestamp: new Date().toISOString(),
     total_ms: totalMs,
     checks,
-    version: "3.0.0-security-sprint",
+    critical_checks: CRITICAL_CHECKS,
+    version: "3.0.1-health-policy-split",
   }), {
-    status: allOk ? 200 : 503,
+    status: responseStatus,
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
