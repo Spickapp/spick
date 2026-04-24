@@ -169,8 +169,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (126 st)
+## Migrations (128 st)
 
-- Senaste: `20260427000011_fas8_log_escrow_event_rpc.sql`
-- Timestamp-prefix: `20260427000011`
+- Senaste: `20260428000002_fas3_c4_addon_rpc.sql`
+- Timestamp-prefix: `20260428000002`
 
