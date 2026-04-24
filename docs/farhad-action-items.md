@@ -2,9 +2,42 @@
 
 **Syfte:** Allt som kräver Farhads manuella hand — tester, deploys, möten, externa bekräftelser. Claude uppdaterar när nya items upptäcks. Farhad kryssar av när klara.
 
-**Senast uppdaterad:** 2026-04-24 em
+**Senast uppdaterad:** 2026-04-28 kväll (BankID-scope + data-hygien + sanning-filer)
 
 **Status-symboler:** ⏳ pending · 🔴 blocker för GA · 🟡 bör göras · 🟢 quick-win · ✓ klart
+
+---
+
+## 🟡 Nya från 2026-04-28-kväll-sessionen (PENDING verifikation)
+
+### Browser-tester (efter magic-link-cap återställd)
+
+- [ ] 🟡 **Testa PDF-knapp på min-bokning.html** — Logga in som riktig kund med paid booking → klicka "📄 Ladda ner kvitto (PDF)" → verifiera att PDF laddas ner och innehåller korrekt data. Commit `5b57f74`.
+- [ ] 🟡 **Verifiera Haghighi Consulting AB ej syns i matchning** — boka.html → Hemstädning → scroll cleaners-listan. Haghighi ska INTE dyka upp. (SQL körd: `cleaners.owner_only=true` på farrehagge@gmail.com.)
+- [ ] 🟡 **Verifiera att admin.html visar farrehagge@gmail.com som owner av Haghighi Consulting AB** — admin → cleaners → leta upp riktiga Farhad-kontot → `company_role='owner'` + `is_company_owner=true`.
+
+### GitHub Pages deploy
+
+- [ ] 🟡 **Bekräfta deploy av commits `47a6b94`, `6055590`, `5b57f74`** — Actions-tab på github.com/Spickapp/spick. Senaste deploy ska vara grön.
+- [ ] 🟡 **Öppna https://spick.se/min-bokning.html (inkognito)** — laddas filen utan 404? (Verifiera att 3 pushade commits landade rätt.)
+
+### Mikro-beslut
+
+- [ ] 🟡 **Test VD AB (org 000000-0000)** — markera som testdata eller låt vara? (Sista oklara datapunkt i hygien-städningen.)
+
+---
+
+## 📋 Scope-låsta beslut från 2026-04-28 (informerande, ej pending)
+
+- ✓ **A1: Spick = utförare** (inte förmedlare)
+- ✓ **Betalningsmodell: efter-RUT + ensteg-payout + SKV-avslag mot kund** (Vardagsfrid-paritet)
+- ✓ **BankID-scope smalt:** Kund-flöde + Farhad-ombud kvar · städar-onboarding deferred
+- ✓ **Leverantör: TIC** (redan integrerad)
+- ✓ **Avtalsutkast deferred** (reaktiveras vid konkret problem)
+
+Källa: [docs/sanning/payment-model.md](sanning/payment-model.md) + [docs/sessions/SESSION-HANDOFF_2026-04-28-bankid-scope-datahygien.md](sessions/SESSION-HANDOFF_2026-04-28-bankid-scope-datahygien.md).
+
+---
 
 ---
 
