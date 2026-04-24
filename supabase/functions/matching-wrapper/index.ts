@@ -70,6 +70,9 @@ interface RequestBody {
   has_elevator?: boolean | null;
   booking_materials?: string | null;
   customer_id?: string | null;
+  // Sprint C-4 (2026-04-28): kund-valda addons — skickas ENDAST till
+  // find_nearby_providers (Model-2a). v1/v2 har inte addon-filter.
+  required_addons?: string[] | null;
 }
 
 interface SettingsPair {
@@ -149,6 +152,8 @@ serve(async (req) => {
         has_elevator: body.has_elevator ?? null,
         booking_materials: body.booking_materials ?? null,
         customer_id: body.customer_id ?? null,
+        // Sprint C-4: addon-filter (NULL = inga krav)
+        required_addons: body.required_addons ?? null,
       });
       if (error) {
         return json(500, { error: "providers-RPC misslyckades", detail: error.message });
@@ -298,9 +303,14 @@ serve(async (req) => {
       booking_materials: body.booking_materials ?? null,
       customer_id: body.customer_id ?? null,
     };
+    // Sprint C-4: providers-RPC kan ta required_addons (v2 saknar param)
+    const providersParamsM3 = {
+      ...v2ParamsM3,
+      required_addons: body.required_addons ?? null,
+    };
     const [v2ResultM3, providersResult] = await Promise.all([
       supabase.rpc("find_nearby_cleaners", v2ParamsM3),
-      supabase.rpc("find_nearby_providers", v2ParamsM3),
+      supabase.rpc("find_nearby_providers", providersParamsM3),
     ]);
 
     if (v2ResultM3.error && providersResult.error) {

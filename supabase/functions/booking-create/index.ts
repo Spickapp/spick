@@ -136,6 +136,8 @@ serve(async (req) => {
       company_id,                // uuid — VD:s företag (vid manuell bokning)
       subscription_id,           // uuid — om genererad av subscription-engine
       manual_entry,              // boolean — flagga för manuella bokningar
+      // ── Sprint C-4 (2026-04-28): kund-valda addons ──
+      selected_addons,           // Array<{addon_id: uuid}> — valideras + berikas nedan
     } = body;
 
     // Validera payment_mode (CHECK constraint i DB)
@@ -337,7 +339,42 @@ serve(async (req) => {
     const rutDeduction = useRut
       ? Math.floor(pricing.customerTotal * 0.5)
       : 0;
-    const netPrice = pricing.customerTotal - rutDeduction;
+
+    // ── Sprint C-4 (2026-04-28): addon-validering + pris-snapshot ──
+    // Addons adderas som engångs-summa ovanpå basepriset. Default: INGEN
+    // RUT-applicering på addons (rule #30 — RUT-berättigande för addons
+    // kräver jurist-verifikation i C-4.1). Om RUT-beslut faller att addons
+    // är RUT-berättigade när parent-tjänsten är det → ändra här + spec.
+    let addonsTotal = 0;
+    let validatedAddons: Array<{ addon_id: string; key: string; label: string; price_sek_snapshot: number }> = [];
+    if (Array.isArray(selected_addons) && selected_addons.length > 0) {
+      const addonIds = selected_addons
+        .map((a: unknown) => (a && typeof a === 'object' ? (a as Record<string, unknown>).addon_id : null))
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0);
+      if (addonIds.length > 0) {
+        const { data: addonRows, error: addonErr } = await supabase
+          .from("service_addons")
+          .select("id, key, label_sv, price_sek, active")
+          .in("id", addonIds);
+        if (addonErr) {
+          console.warn("[booking-create] addon lookup failed, skipping:", addonErr.message);
+        } else if (addonRows && addonRows.length > 0) {
+          for (const row of addonRows) {
+            if (row.active === false) continue;
+            const priceSek = Number(row.price_sek) || 0;
+            addonsTotal += priceSek;
+            validatedAddons.push({
+              addon_id: row.id as string,
+              key: (row.key as string) || "",
+              label: (row.label_sv as string) || "",
+              price_sek_snapshot: priceSek,
+            });
+          }
+        }
+      }
+    }
+
+    const netPrice = pricing.customerTotal - rutDeduction + addonsTotal;
 
     // Stripe-belopp = det kunden faktiskt betalar (efter RUT + kredit)
     const stripeAmount = Math.max(
@@ -415,6 +452,7 @@ serve(async (req) => {
       status: "pending",
       payment_status: "pending",
       rut_amount: useRut ? Math.round(rutDeduction) : 0,
+      selected_addons: validatedAddons, // Sprint C-4 snapshot (jsonb)
       frequency: frequency || "once",
       cleaner_id: cleaner.id,
       cleaner_name: displayName || cleaner_name,
