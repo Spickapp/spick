@@ -103,8 +103,28 @@ Standard-pattern: `refund-${booking_id}-${reason}-${attempt}`. Unik per scenario
 ### R4: Rate-limit-instrumentation (~2-3h)
 Logga antal Stripe-calls per minut via `admin-morning-report` eller Grafana (blockad av §10.3).
 
-### R5: Farhad verifierar faktiska Stripe-limits i Dashboard
-Rule #30 — jag tolkar inte dokumentationen. Farhad → Stripe Dashboard → Rate Limits. Dokumentera faktiska gränser.
+### R5 ✓ KLART — Stripe-bekräftade gränser för Spick live-account (2026-04-24)
+
+Farhad fick skriftlig bekräftelse från Stripe Support:
+
+| Endpoint | Gräns | Spick-behov | Marginal |
+|---|---|---|---|
+| Global live-mode | 100 ops/sec | ~5-10/sec | 10x |
+| Global sandbox | 25 ops/sec | test-only | — |
+| Payment Intents updates | 1000/PI/timme | ~2-3/PI | massivt |
+| Files API | 20 read + 20 write/sec | låg användning | OK |
+| Search API | 20 read/sec | låg användning | OK |
+| Subscriptions nya fakturor | 10/sub/min, 20/dag | 1/sub/dag | 10-20x |
+| Subscriptions qty-uppdateringar | 200/timme | minimal | OK |
+| Create Payout | 15/sec, 30 samtidiga | ~1/sec | 15x |
+| Connect Accounts | 30/sec live | ~1/sec | 30x |
+| Meter Events | 1000/sec | ej använt | — |
+| Default per endpoint | 25/sec | varierar | OK för de flesta |
+
+**Slutsats:** Nuvarande gränser räcker för **>1000 bokningar/månad**. Vid 10 000+/månad behöver Farhad kontakta Stripe Support **6 veckor i förväg** för höjning.
+
+**Rule #30 uppfyllt:** Gränser är Stripe-bekräftade för vårt konto, inte antagande.
+**R2-verifiering:** Vid 429-fel retry:ar stripeRequest automatiskt — exakt som Stripe docs rekommenderar.
 
 ## 7. Prioriteringsförslag
 
@@ -112,7 +132,7 @@ Om §13.3 ska stängas före GA:
 - **Kritisk (fix före GA):** R3 för refund-sites (dubbel-refund är reell money-loss).
 - **Bör (pre-GA):** R2 retry-logik i stripeRequest. Skyddar mot 429 under spike.
 - **Kan vänta:** R1 refaktor-konsolidering (större scope).
-- **Extern:** R5 Stripe Dashboard-verify.
+- **Extern:** R5 ✓ Stripe-bekräftat 2026-04-24 (se §6 R5).
 
 **Uppskattning:** R2 + R3 = 3-5h. R1 = 4-6h. Total pre-GA-fix: 7-11h. Farhad beslutar.
 

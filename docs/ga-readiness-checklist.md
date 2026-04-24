@@ -82,9 +82,9 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 - **R2** ✓ **KLART** Auto-retry i stripeRequest — exponential backoff 250/500/1000ms + Retry-After-header-support + network-error-retry. 12 nya tester.
 - **R3** ✓ **KLART** Idempotency-keys per refund-site + PI-creation + capture. 9 fetch-calls fixade i 8 EFs: stripe-refund (`refund-${id}-admin`), booking-auto-timeout (`refund-${id}-auto-timeout`), auto-remind (`refund-${id}-auto-timeout-90`), booking-cancel-v2 (`refund-${id}-cancel-${pct}`), booking-reassign (`refund-${id}-reassign-reject`), noshow-refund (`refund-${id}-noshow`), stripe-webhook (`refund-${id}-double-booking` + `capture-${id}`), charge-subscription-booking (`pi-sub-${id}-attempt-${n}`). Rent additiv — 146/146 money-tests passerar, alla 8 TS-checks rena.
 - **R1** ◯ Konsolidera alla Stripe-calls till stripeRequest (4-6h, rule #28) — post-GA.
-- **R5** ◯ Farhad verifierar Stripe Dashboard rate-limits
+- **R5** ✓ **KLART** Stripe-bekräftade gränser 2026-04-24: 100 ops/sec globalt, 15/sec payouts, 30/sec Connect. Räcker för 1000+ bokningar/månad. Vid 10k+/månad: kontakta Stripe 6v innan.
 
-**Pre-GA §13.3:** KLART. Farhad kan fortfarande reviewa R5 Dashboard-verify.
+**Pre-GA §13.3:** ✓ FULLT KLART (R2+R3+R5).
 
 **Owner:** Claude (R1-R4 kod) + Farhad (R5 Dashboard)
 

@@ -17,8 +17,8 @@
 - [ ] 🔴 **Pentester-upphandling:** Identifiera 2-3 OWASP-certifierade. Boka 1-2v före GA (§13.7). Offert-inhämtning nu.
 
 ### Tekniska GA-blockers (Farhads dashboard-ägarskap)
-- [ ] 🔴 **Supabase Dashboard — skapa storage-bucket `dispute-evidence`:** Privat bucket, 5MB limit, MIME `image/jpeg, image/png, image/heic, application/pdf`. Unlocks Fas 8 §8.13 dispute-evidence-upload.
-- [ ] 🔴 **Stripe Dashboard — verifiera rate-limits:** Kolla prod-mode limits (standard 100 read + 100 write req/s per account). Dokumentera i §13.3. Kritisk för 1000+ bokningar/månad-skalan.
+- [x] ✓ **Supabase Dashboard — storage-bucket `dispute-evidence`** skapad 2026-04-24. Unlocks Fas 8 §8.13.
+- [x] ✓ **Stripe rate-limits verifierade 2026-04-24** via Stripe Support. 100 ops/sec live, 15/sec payouts, 30/sec Connect. Räcker för 1000+ bokningar/månad. Vid 10k+ kontakta Stripe 6v innan.
 
 - [x] ✓ **Beslut: fixa Stripe idempotency pre-GA** — Farhad gav mandat 2026-04-24. R2 + R3 KLART. 9 fetch-calls i 8 EFs har idempotency-keys. Dubbel-refund/debitering-risken eliminerad.
 
@@ -58,6 +58,8 @@
 - ✓ Test VD AB skapad för VD-flow-tester
 - ✓ Stripe idempotency-fix (R2 + R3) — Farhads mandat 2026-04-24, byggt + testat samma dag. Pre-GA-risken eliminerad.
 - ✓ §13.2 DB-index audit — prod-verifierad 2026-04-24. Seq Scan optimalt vid 0-84 rader. Re-audit vid >1000 bookings.
+- ✓ Storage-bucket `dispute-evidence` skapad 2026-04-24 (Farhad manuellt i Dashboard).
+- ✓ Stripe rate-limits verifierade 2026-04-24 via Stripe Support — 100/15/30 ops/sec. Räcker för 1000+ bokningar/månad.
 
 ---
 
@@ -72,7 +74,7 @@
 | 🟡 Legacy-handoff | 2 | ADMIN_ALERT_WEBHOOK_URL, escrow_mode-beslut |
 | 🟢 Quick-wins | 3 | Schema-drift, review-docs |
 
-**Total pending:** ~16 items, varav **6 är hårda GA-blockers** (R2+R3 + §13.2 avklarade 2026-04-24).
+**Total pending:** ~14 items, varav **4 är hårda GA-blockers** (R2+R3 + §13.2 + storage-bucket + Stripe-rate-limits avklarade 2026-04-24).
 
 ---
 
