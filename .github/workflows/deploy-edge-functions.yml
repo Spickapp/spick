@@ -19,7 +19,11 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy all 32 Edge Functions
+      # Hygien-flagg H18 (2026-04-24): Listan nedan täcker INTE alla 78 EFs
+      # i repo (per CLAUDE.md). Rule #28 SSOT-brott — listan är stale sedan
+      # många EFs lades till utan att uppdateras här. Flaggat för separat
+      # hygien-sprint: auto-generera lista från `supabase/functions/`-katalogen.
+      - name: Deploy Edge Functions
         run: |
           REF="${{ secrets.SUPABASE_PROJECT_ID }}"
 
@@ -36,6 +40,7 @@ jobs:
             cleaner-optout
             cleanup-stale
             email-inbound
+            export-customer-data
             generate-receipt
             geo
             get-cleaner-contact
