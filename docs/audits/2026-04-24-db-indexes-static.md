@@ -29,17 +29,24 @@ Farhad körde row-counts + ett EXPLAIN-sample i Supabase Studio. Resultat:
 
 **§13.2-status: ✓ OK-för-nu.** Ingen migration behövs.
 
-## 0.1 Re-audit-trigger
+## 0.1 Re-audit-trigger (automatiserad)
 
-Kör `deno run scripts/audit-db-indexes.ts` + denna rapports `docs/audits/2026-04-24-db-indexes-explain-queries.sql` igen när **någon av följande sker**:
+**Trigger-thresholds (hardcodade i `admin-morning-report/index.ts`):**
+- `bookings` ≥ 1000 rader
+- `cleaners` ≥ 500 rader
+- `payout_audit_log` ≥ 10 000 rader
 
-- `bookings` når 1000+ rader
-- `cleaners` når 500+ rader
-- `payout_audit_log` når 10 000+ rader
+När någon uppnås:
+1. Morning-report visar **⚠️ §13.2 DB-index re-audit behövs**-varning dagligen tills hanterat.
+2. Kör lokalt: `deno run --allow-read --allow-write scripts/audit-db-indexes.ts` för ny static-rapport.
+3. Kör `docs/audits/2026-04-24-db-indexes-explain-queries.sql` i Supabase Studio mot prod.
+4. Bygg migration för de queries som nu visar Seq Scan + långsam Execution Time.
+5. Stäng trigger genom att lösa grundorsak eller justera thresholds i EF (om false alarm).
+
+**Kompletterande manuell-trigger** (sätter morgon-alert om data-volym-check missas):
 - Någon EXPLAIN-query visar > 100 ms execution time
 - `pg_stat_user_tables.seq_tup_read` för bookings eller cleaners växer > 1M/dag
-
-Förslagsvis mät månadsvis via admin-morning-report (Fas 10 §10.5). Ny sektion i rapporten: "Data-volym-trend". Claude bygger om trigger bekräftas pre-GA.
+- Customer rapporterar latens-problem
 
 ## Sammanfattning (original static-scan)
 

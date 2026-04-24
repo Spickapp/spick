@@ -131,6 +131,25 @@ serve(async (req) => {
       interesting_events_24h: Object.values(eventCounts).reduce((a, b) => a + b, 0),
     };
 
+    // §13.2 re-audit-trigger (Fas 13 §13.2-stängning 2026-04-24)
+    // När kritiska tabeller växer över threshold → trigga re-audit av
+    // DB-indexes mot faktisk query-plan. Static-rapporten i
+    // docs/audits/2026-04-24-db-indexes-static.md §0.1 dokumenterar
+    // gränserna.
+    const INDEX_AUDIT_THRESHOLDS = {
+      bookings: 1000,
+      cleaners: 500,
+      payout_audit_log: 10000,
+    };
+    const indexAuditTriggers: Array<{ table: string; count: number; threshold: number }> = [];
+    for (const [table, threshold] of Object.entries(INDEX_AUDIT_THRESHOLDS)) {
+      const { count } = await sb.from(table).select("*", { count: "exact", head: true });
+      if ((count ?? 0) >= threshold) {
+        indexAuditTriggers.push({ table, count: count ?? 0, threshold });
+      }
+    }
+    const indexAuditNeeded = indexAuditTriggers.length > 0;
+
     const dateLabel = now.toLocaleDateString("sv-SE", {
       weekday: "long", day: "numeric", month: "long",
     });
@@ -175,6 +194,17 @@ serve(async (req) => {
   ${eventsHtml}
 </div>
 ${quietDay ? `<div class="quiet">Lugnt idag — fokus på rekrytering! 💪</div>` : ""}
+${indexAuditNeeded ? `
+<div class="card" style="background:#FEF3C7;border-left:4px solid #D97706">
+  <div style="font-weight:700;color:#92400E;margin-bottom:6px">⚠️ §13.2 DB-index re-audit behövs</div>
+  <p style="color:#78350F;font-size:13px;margin:0 0 8px">
+    Följande kritiska tabeller har passerat threshold — kör re-audit av query-plans mot prod:
+  </p>
+  ${indexAuditTriggers.map(t => `<div class="row"><span class="lbl">${t.table}</span><span class="val">${t.count.toLocaleString("sv-SE")} rader (>${t.threshold})</span></div>`).join("")}
+  <p style="color:#78350F;font-size:12px;margin:10px 0 0">
+    Följ trigger-procedur i <code>docs/audits/2026-04-24-db-indexes-static.md</code> §0.1.
+  </p>
+</div>` : ""}
 <a href="https://spick.se/admin.html" class="btn">Öppna admin →</a>
 `);
 
