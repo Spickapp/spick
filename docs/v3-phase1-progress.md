@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 em (Fas 12 helt KLART: §12.4 k6 load-test + §12.5 CI-linter + §12.6 schema-drift + §12.7 backup-verify-monthly)
+**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.9 GA-checklista skapad som levande-dokument)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -110,7 +110,17 @@ Om något avviker → flagga innan fortsättning.
   - §12.5 ✓ CI-linter hardcoded values (`scripts/lint-hardcoded-values.ts` + `.github/workflows/lint-hardcoded-values.yml` + ratchet-allow-list med 55 existerande fynd motiverade). Fångar: commission 0.17/17%, hourly_rate utan allow-list, RUT_SERVICES-arrays (rule #30), UPDATE/DELETE USING(true) för non-service_role. Blockerar PR:er som introducerar nya hardcoded värden. Deno task: `deno task lint:hardcoded`.
   - §12.6 ✓ Schema-drift-check CI (pre-existing `.github/workflows/schema-drift-check.yml` — veckocron + auto-Issue vid drift)
   - §12.7 ✓ Backup-verify-månadsvis (`.github/workflows/backup-verify-monthly.yml`). Kör första dagen varje månad, verifierar 5 kritiska tabeller (bookings/cleaners/subscriptions/reviews/invoices): ålder ≤ 35d, valid JSON, rimlig storlek, ej tom där det är kritiskt. Skapar auto-issue vid fel (labels: backup-integrity + infrastructure). Komplement till existerande backup.yml (nattlig) + disaster-recovery.yml (manuell restore-dry-run).
-- **Fas 9-14 (exkl Fas 10 + 12):** ◯ ej påbörjade
+- **Fas 13 GA-readiness:** ◑ PÅBÖRJAD
+  - §13.1 Load-test 1000 VUs: ◯ blockad (kräver test-env)
+  - §13.2 DB-index-audit: ◯ nästa prio (static audit möjlig utan test-env)
+  - §13.3 Stripe rate-limits: ◯ Farhad-hand + Claude-review
+  - §13.4 GDPR-audit: ◑ delvis (§8.20 export ✓ finns, delete-flow + retention pending)
+  - §13.5 RUT-automation: ⊘ blockad av Fas 7.5
+  - §13.6 Moms-automation: ⚠ BokfL-regulator-känsligt (rule #30)
+  - §13.7 Pentest: ◯ Farhads hand (auditor-kontrakt)
+  - §13.8 Privacy + EU PWD: ⚠ deadline 2 dec 2026, jurist-input krävs
+  - §13.9 GA-checklista signoff: ✓ levande-dokument skapat ([docs/ga-readiness-checklist.md](ga-readiness-checklist.md))
+- **Fas 14 Systemic Polish:** ◯ ej påbörjad (valfri)
 
 **Plan-beslut:** #1 stängt, #3 stängt, #2 stängt 22 april, #4 per_window öppet (väntar Farhad)
 
