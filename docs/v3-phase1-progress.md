@@ -90,6 +90,17 @@ Om något avviker → flagga innan fortsättning.
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
   - §10.5 morning-report filtered-events ✓ (denna session)
   - §10.3 Grafana-dashboard + §10.4 uptime-mon + §10.6 ML-light: ◯ (kräver Farhads extern-setup)
+- **Fas 9 VD-autonomi:** ◑ DELVIS (verifierat 2026-04-24 code-check — progress-doc-drift: tidigare rapporterat 30%, verklig ~50%)
+  - §9.1 ⊘ REVERTED (commit 5fed270 — duplikat mot existing stadare-dashboard)
+  - §9.2 ◯ VD dispute-tier-1 (upp till 500 kr utan admin) — ej byggt
+  - §9.3 ✓ Company service-priser UI (saveCompanyPrices/loadCompanyPrices/renderCompanyPrices rad 9263-9342)
+  - §9.4 ✓ Per-cleaner prisoverride UI (cleaner_service_prices rad 6166 + 8686)
+  - §9.5 ✓ Tillgänglighets-editor (saveSchedule rad 5847 + saveTeamMemberSchedule rad 8447)
+  - §9.6 ⊘ REVERTED (samma commit som §9.1)
+  - §9.7 ◯ SIE-export (BokfL-blocked, rule #30 regulator-känsligt)
+  - §9.8 ◯ RUT-rapport (RUT-blocked — Fas 7.5)
+  - §9.9 ◯ underleverantörsavtal UI
+  - §9.10 ✓ generate-self-invoice EF (månatlig bokföringsunderlag)
 - **Fas 12 E2E-tester:** ◑ PARTIELLT (schema-drift: var noterat som "0%" i tidigare progress-check, verklighet är Playwright-setup redan + 9 tester)
   - §12.1 ✓ Playwright installed + playwright.config.ts + tests/smoke.spec.ts (pre-session state)
   - §12.2 ✓ 10+ nya tester denna session: A04 (analyze-booking-pattern), A05 (customer-subscription-manage), A06 (customer-nudge-recurring), A07 (swedish_holidays data), A08 (export-cleaner-data auth), S06 (garanti.html Mitt-konto-ref), S07 (mitt-konto Prenumerationer-tab), S08 (stadare-dashboard Integritet & data)
