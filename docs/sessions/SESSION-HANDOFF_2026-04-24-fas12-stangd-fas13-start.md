@@ -31,6 +31,10 @@ Fem commits, varav två stängda Fas-items (Fas 12 helt + §13.2 delvis). Byggt 
 | 15 | `465f7a7` | handoff v3 | |
 | 16 | `d7353cb` | §13.3 R3 fix | **Idempotency-keys i 9 Stripe-fetch-calls (8 EFs):** stripe-refund, booking-auto-timeout, auto-remind, booking-cancel-v2, booking-reassign, noshow-refund, stripe-webhook (refund + capture), charge-subscription-booking (PI). Pattern: stabil key per intention (`refund-${id}-${reason}`, `capture-${id}`, `pi-sub-${id}-attempt-${n}`). Rent additiv. 146/146 money-tests passerar, alla 8 EFs TS-check rena. Pre-GA dubbel-refund/debitering/capture-risk eliminerad. |
 | 17 | `8b5f32b` | §13.2 helper | `docs/audits/2026-04-24-db-indexes-explain-queries.sql` — Farhad copy/paste:ar i Studio, kör 10 EXPLAIN-queries + pg_indexes + pg_stat_user_indexes. Ger Claude underlag för migration-beslut. |
+| 18 | `5543595` | handoff v4 |
+| 19 | `2b84b69` | §13.2 SQL-fix | UNION ALL + ORDER BY kräver subquery-wrap. |
+| 20 | `1d9fcba` | **§13.2 STÄNGD** | Prod-verifierad 2026-04-24: 0-84 rader per tabell. Seq Scan optimalt val av Postgres-planner. **Ingen migration behövs nu.** Rule #31: beslut bygger på prod-data, inte teoretisk static analys. Re-audit-trigger dokumenterad. |
+| 21 | `cc4a9cd` | §13.2 trigger-automation | Data-volym-check i admin-morning-report. Vid bookings ≥1000 / cleaners ≥500 / payout_audit_log ≥10k → gul varning dagligen tills re-audit körd. Rule #28 SSOT-reference till audit-rapport §0.1. |
 
 ## 3. Nya filer i repo
 
@@ -108,10 +112,10 @@ Flaggat i checklista/rapporter, ej agerat på:
 ## 9. Signatur
 
 Session avslutad 2026-04-24 em.
-17 commits pushade via rebase-loop (bot-commits mellan pushes hanterade smidigt).
+21 commits pushade via rebase-loop (bot-commits mellan pushes hanterade smidigt).
 0 money-loss, 0 customer-facing-regression, 0 prod-ändringar (bara kod + docs + CI).
 
-**Farhads "självgående"-ambition:** ~85% mot GA-kriterier (upp från ~70% per föregående handoff). §13.3 pre-GA-risk eliminerad med R2+R3.
+**Farhads "självgående"-ambition:** ~88% mot GA-kriterier (upp från ~70% per föregående handoff). §13.2 + §13.3 pre-GA-risk eliminerad. Fas 12 + §13.2 + §13.3 + §13.9 STÄNGDA.
 
 **Fas 12 STÄNGD.** Fas 13 har fundament: §13.2 static + §13.4 audit+A1-A3 levererat + §13.9 levande GA-checklista.
 
