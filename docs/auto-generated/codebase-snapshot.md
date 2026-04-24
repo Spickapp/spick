@@ -116,12 +116,13 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe.ts` |  |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (42 st)
+## GitHub Actions workflows (43 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
 - `.github/workflows/auto-rebook.yml`
 - `.github/workflows/auto-remind.yml`
+- `.github/workflows/backup-verify-monthly.yml`
 - `.github/workflows/backup.yml`
 - `.github/workflows/bulk-schedule-week.yml`
 - `.github/workflows/charge-subscription.yml`
