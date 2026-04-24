@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 em (§12.5 CI-linter + §12.6 schema-drift + §12.7 backup-verify-monthly KLART — Fas 12 nu 6/7)
+**Senast uppdaterad:** 2026-04-24 em (Fas 12 helt KLART: §12.4 k6 load-test + §12.5 CI-linter + §12.6 schema-drift + §12.7 backup-verify-monthly)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -101,11 +101,12 @@ Om något avviker → flagga innan fortsättning.
   - §9.8 ◯ RUT-rapport (RUT-blocked — Fas 7.5)
   - §9.9 ◯ underleverantörsavtal UI
   - §9.10 ✓ generate-self-invoice EF (månatlig bokföringsunderlag)
-- **Fas 12 E2E-tester:** ◕ NÄRA KLART (§12.1-§12.3 E2E ✓ + §12.5 CI-linter ✓ + §12.6 schema-drift ✓ + §12.7 backup-verify ✓, endast §12.4 k6 load-test kvar)
+- **Fas 12 E2E-tester:** ✓ KLART (§12.1-§12.3 E2E ✓ + §12.4 k6 load-test ✓ + §12.5 CI-linter ✓ + §12.6 schema-drift ✓ + §12.7 backup-verify-monthly ✓). Nästa: Fas 13 GA-readiness.
   - §12.1 ✓ Playwright installed + playwright.config.ts + tests/smoke.spec.ts (pre-session state)
   - §12.2 ✓ 10+ nya tester denna session: A04 (analyze-booking-pattern), A05 (customer-subscription-manage), A06 (customer-nudge-recurring), A07 (swedish_holidays data), A08 (export-cleaner-data auth), S06 (garanti.html Mitt-konto-ref), S07 (mitt-konto Prenumerationer-tab), S08 (stadare-dashboard Integritet & data)
   - §12.3 ✓ GitHub Actions workflow `playwright-smoke.yml` — on-push + daglig 03:00 CET + manual dispatch
-  - §12.4 ◯ inloggningsberoende E2E (cleaner-login → dashboard-flows) kräver test-auth-infra, separat sprint
+  - §12.4 ✓ k6 load-test read-path (`tests/load/read-endpoints.k6.js` + `.github/workflows/load-test.yml`). 50 VUs × 60s mot health/services-list/geo. Thresholds: p95 < 1500ms, error rate < 2%. Write-path-load-test (booking-create + Stripe) medvetet utelämnat — rule #27 + #30 + prod-säkerhet. Skjuts till Fas 13 §13.1 (1000 VUs) med separat test-env.
+  - Not: progress-doc-etiketten sa tidigare "inloggningsberoende E2E" för §12.4 — det var drift. Primärkällan (arkitekturplan v3) säger §12.4 = load-test. Auth-beroende E2E är separat scope som kräver test-auth-infra.
   - §12.5 ✓ CI-linter hardcoded values (`scripts/lint-hardcoded-values.ts` + `.github/workflows/lint-hardcoded-values.yml` + ratchet-allow-list med 55 existerande fynd motiverade). Fångar: commission 0.17/17%, hourly_rate utan allow-list, RUT_SERVICES-arrays (rule #30), UPDATE/DELETE USING(true) för non-service_role. Blockerar PR:er som introducerar nya hardcoded värden. Deno task: `deno task lint:hardcoded`.
   - §12.6 ✓ Schema-drift-check CI (pre-existing `.github/workflows/schema-drift-check.yml` — veckocron + auto-Issue vid drift)
   - §12.7 ✓ Backup-verify-månadsvis (`.github/workflows/backup-verify-monthly.yml`). Kör första dagen varje månad, verifierar 5 kritiska tabeller (bookings/cleaners/subscriptions/reviews/invoices): ålder ≤ 35d, valid JSON, rimlig storlek, ej tom där det är kritiskt. Skapar auto-issue vid fel (labels: backup-integrity + infrastructure). Komplement till existerande backup.yml (nattlig) + disaster-recovery.yml (manuell restore-dry-run).

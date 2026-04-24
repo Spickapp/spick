@@ -1,0 +1,70 @@
+name: Load Test (read-endpoints)
+
+# Fas 12 §12.4 — k6 load-test för 50 samtidiga användare
+# mot read-path. Manuell trigger för att undvika onödig
+# Supabase-kvot-belastning.
+#
+# För write-path load-test: separat scope (Fas 13 §13.1).
+
+on:
+  workflow_dispatch:
+    inputs:
+      vus:
+        description: 'Antal virtuella användare (default 50)'
+        required: false
+        default: '50'
+      duration:
+        description: 'Peak-duration (default 30s)'
+        required: false
+        default: '30s'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  load-test:
+    name: k6 load-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installera k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Kör load-test
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          k6 run \
+            --summary-export=tests/load/summary.json \
+            tests/load/read-endpoints.k6.js
+
+      - name: Ladda upp resultat
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: |
+            tests/load/latest-result.json
+            tests/load/summary.json
+          retention-days: 30
+
+      - name: Rapportera till GITHUB_STEP_SUMMARY
+        if: always()
+        run: |
+          echo "## k6 Load Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f tests/load/summary.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat tests/load/summary.json | python3 -m json.tool >> $GITHUB_STEP_SUMMARY 2>/dev/null || cat tests/load/summary.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Inget summary-fil genererat (test kan ha misslyckats tidigt)" >> $GITHUB_STEP_SUMMARY
+          fi
