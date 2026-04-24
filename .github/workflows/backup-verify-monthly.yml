@@ -1,0 +1,203 @@
+name: Backup Verify (Monthly)
+
+# Fas 12 §12.7 — automatisk verifiering av att disaster recovery
+# faktiskt fungerar. Kör första dagen varje månad och validerar att
+# senaste backupen är läsbar, har data och inte har tydliga anomalier.
+#
+# Vid fel: skapar GitHub Issue (labels: backup-integrity, infrastructure).
+#
+# Manuell körning: workflow_dispatch finns också.
+#
+# Relaterat:
+#  - backup.yml (nattlig backup som producerar backups/*.json)
+#  - disaster-recovery.yml (manuell restore-dry-run + verify)
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'  # 03:00 UTC, första dagen varje månad
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    name: Verifiera senaste backup-integritet
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Kör integritet-check på senaste backups
+        id: verify
+        run: |
+          set +e
+
+          if [ ! -d backups ]; then
+            echo "has_error=true" >> "$GITHUB_OUTPUT"
+            echo "error_summary=backups/-katalogen saknas helt" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CRITICAL_TABLES="bookings cleaners subscriptions reviews invoices"
+          MAX_AGE_DAYS=35  # senaste backup får inte vara äldre än 35 dgr
+          NOW_EPOCH=$(date +%s)
+
+          ERRORS=()
+          WARNINGS=()
+          CHECKED=0
+
+          for TABLE in $CRITICAL_TABLES; do
+            LATEST=$(ls -t backups/${TABLE}_*.json 2>/dev/null | head -1)
+            if [ -z "$LATEST" ]; then
+              ERRORS+=("$TABLE: ingen backup-fil hittades")
+              continue
+            fi
+
+            CHECKED=$((CHECKED+1))
+
+            # Ålder
+            FILE_EPOCH=$(date -r "$LATEST" +%s)
+            AGE_DAYS=$(( (NOW_EPOCH - FILE_EPOCH) / 86400 ))
+            if [ "$AGE_DAYS" -gt "$MAX_AGE_DAYS" ]; then
+              ERRORS+=("$TABLE: senaste backup ($LATEST) är $AGE_DAYS dagar gammal")
+            fi
+
+            # Storlek
+            SIZE=$(wc -c < "$LATEST")
+            if [ "$SIZE" -lt 100 ]; then
+              ERRORS+=("$TABLE: $LATEST är bara $SIZE bytes — troligen RLS-problem eller tom tabell")
+              continue
+            fi
+
+            # JSON-validitet + rad-antal
+            ROWS=$(python3 -c "
+          import json, sys
+          try:
+            d = json.load(open('$LATEST'))
+            if not isinstance(d, list):
+              print('not-list')
+              sys.exit(0)
+            print(len(d))
+          except Exception as e:
+            print(f'invalid-json:{e}')
+          " 2>&1)
+
+            case "$ROWS" in
+              not-list)
+                ERRORS+=("$TABLE: $LATEST är inte en JSON-array")
+                ;;
+              invalid-json:*)
+                ERRORS+=("$TABLE: $LATEST är ogiltig JSON (${ROWS#invalid-json:})")
+                ;;
+              0)
+                # bookings kan vara tom i ett nytt system men inte cleaners
+                if [ "$TABLE" = "cleaners" ]; then
+                  ERRORS+=("$TABLE: 0 rader — kritiskt, cleaners kan inte vara tom")
+                else
+                  WARNINGS+=("$TABLE: 0 rader i senaste backup")
+                fi
+                ;;
+              *)
+                echo "  ✓ $TABLE: $ROWS rader i $LATEST ($AGE_DAYS dagar gammal, $SIZE bytes)"
+                ;;
+            esac
+          done
+
+          if [ "$CHECKED" -eq 0 ]; then
+            ERRORS+=("Inga av de ${CRITICAL_TABLES// /, }-tabellerna har någon backup alls")
+          fi
+
+          echo ""
+          echo "=== Resultat ==="
+          echo "Kontrollerade: $CHECKED / $(echo $CRITICAL_TABLES | wc -w) kritiska tabeller"
+          echo "Fel: ${#ERRORS[@]}"
+          echo "Varningar: ${#WARNINGS[@]}"
+
+          if [ "${#ERRORS[@]}" -gt 0 ]; then
+            echo "has_error=true" >> "$GITHUB_OUTPUT"
+            {
+              echo 'error_summary<<ERREOF'
+              printf '%s\n' "${ERRORS[@]}"
+              if [ "${#WARNINGS[@]}" -gt 0 ]; then
+                echo ""
+                echo "Varningar:"
+                printf '%s\n' "${WARNINGS[@]}"
+              fi
+              echo 'ERREOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "has_error=false" >> "$GITHUB_OUTPUT"
+            echo "✓ Alla kontroller passerade"
+          fi
+
+      - name: Skapa Issue vid fel
+        if: steps.verify.outputs.has_error == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().split('T')[0];
+            const errorSummary = `${{ steps.verify.outputs.error_summary }}`;
+            const body = [
+              '## Backup-integritet: verifiering misslyckades',
+              '',
+              'Automatisk månads-check (backup-verify-monthly) upptäckte problem med senaste backup-filer.',
+              '',
+              '### Fynd',
+              '```',
+              errorSummary,
+              '```',
+              '',
+              '### Förväntad åtgärd',
+              '1. Kolla senaste körning av `backup.yml` (nattlig backup) — fungerade den?',
+              '2. Verifiera `SUPABASE_SERVICE_ROLE_KEY`-secret (kan ha roterats).',
+              '3. Kolla RLS-policies på berörd tabell — service_role ska ha full access.',
+              '4. Kör `disaster-recovery.yml` manuellt med action=verify_backup för att få detaljer per fil.',
+              '5. När rotorsak åtgärdad: stäng detta issue och kör workflow manuellt för att bekräfta.',
+              '',
+              '### Workflow',
+              `Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `Datum: ${today}`,
+            ].join('\n');
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'backup-integrity',
+            });
+
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `Update ${today}: backup-verifiering misslyckades igen.\n\n${body}`,
+              });
+              console.log('Kommenterade på existing issue');
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Backup-integritet: verifiering misslyckades — ${today}`,
+              body,
+              labels: ['backup-integrity', 'infrastructure'],
+            });
+
+      - name: Rapportera framgång
+        if: steps.verify.outputs.has_error == 'false'
+        run: |
+          echo "::notice title=Backup Verify::Alla kritiska tabeller har giltig backup (< 35 dgr gammal, valid JSON, rimlig storlek)"
