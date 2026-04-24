@@ -308,11 +308,12 @@ COMMENT ON FUNCTION public.find_nearby_providers(
 -- ============================================================
 -- 3. Verifiering
 -- ============================================================
-DO $$
+-- Not: $do$ istället för $$ pga Supabase Studio SQL Editor-quirk
+-- (tidigare fix i Fas 8 + Fas 9 §9.6).
+DO $do$
 DECLARE
   v_helper_exists boolean;
   v_rpc_exists boolean;
-  v_addon_id uuid;
 BEGIN
   SELECT EXISTS (
     SELECT 1 FROM pg_proc p
@@ -345,7 +346,8 @@ BEGIN
     RAISE EXCEPTION 'C-4: cleaner_can_perform_addons returnerade false för tom array';
   END IF;
 
-  RAISE NOTICE 'C-4 RPC OK: cleaner_can_perform_addons ✓, find_nearby_providers(10-arg) ✓';
-END $$;
+  RAISE NOTICE 'C-4 RPC OK: cleaner_can_perform_addons, find_nearby_providers (10-arg)';
+END
+$do$;
 
 COMMIT;

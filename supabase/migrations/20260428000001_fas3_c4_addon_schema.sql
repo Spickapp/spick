@@ -109,7 +109,9 @@ ON CONFLICT (key) DO NOTHING;
 -- ============================================================
 -- 4. Verifiering
 -- ============================================================
-DO $$
+-- Not: $do$ istället för $$ pga Supabase Studio SQL Editor-quirk
+-- (tidigare fix i Fas 8 + Fas 9 §9.6).
+DO $do$
 DECLARE
   v_table_exists boolean;
   v_column_exists boolean;
@@ -138,7 +140,8 @@ BEGIN
     RAISE EXCEPTION 'C-4: platform_settings-seed ofullständig (% av 2)', v_setting_count;
   END IF;
 
-  RAISE NOTICE 'C-4 schema OK: cleaner_addon_capabilities ✓, bookings.selected_addons ✓, platform_settings ✓';
-END $$;
+  RAISE NOTICE 'C-4 schema OK: cleaner_addon_capabilities, bookings.selected_addons, platform_settings';
+END
+$do$;
 
 COMMIT;
