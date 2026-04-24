@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (83 st)
+## Edge Functions (84 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -79,6 +79,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `push` | SPICK – Push Notifications med VAPID |
 | `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
 | `referral-register` |  |
+| `rut-batch-export-xml` | rut-batch-export-xml — Fas 7.5 §7.5.x ═══════════════════════════════════════════════════════════════ |
 | `save-booking-event` | ═══════════════════════════════════════════════════════════════ SPICK – save-booking-event (Fas 6.3 + §6.5 beslut 2026-0 |
 | `serve-invoice` |  |
 | `services-list` | services-list: Public read of services + addons F1 Dag 1 - arkitekturplan v3 |
@@ -93,7 +94,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `swish` |  |
 | `team-sms-notify` |  |
 
-## Shared EF helpers (19 st)
+## Shared EF helpers (20 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -110,6 +111,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/preferences.ts` | supabase/functions/_shared/preferences.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/pricing-engine.ts` |  |
 | `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/rut-xml-builder.ts` |  |
 | `_shared/send-magic-sms.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Magic-link hjälpare för publika auth-flows (Fas  |
 | `_shared/slot-holds.ts` | _shared/slot-holds.ts — Fas 5 §5.4.2 ═══════════════════════════════════════════════════════════════ |
 | `_shared/stripe-client.ts` |  |
@@ -165,7 +167,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (124 st)
+## Migrations (125 st)
 
 - Senaste: `20260427000011_fas8_log_escrow_event_rpc.sql`
 - Timestamp-prefix: `20260427000011`
