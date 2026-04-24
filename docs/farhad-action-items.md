@@ -34,14 +34,8 @@
 - [ ] 🟡 **Smoke-test `customer-nudge-recurring.yml`** + **`preference-learn-favorite.yml`** + **`playwright-smoke.yml`** (från föregående session): Kör manuellt för att bekräfta fungerar.
 
 ### §13.2 DB-index follow-up (kräver prod-access)
-- [ ] 🟡 **Kör EXPLAIN ANALYZE i Studio** för topp-10 gap-queries från `docs/audits/2026-04-24-db-indexes-static.md`:
-  - `SELECT * FROM platform_settings WHERE key = 'commission_standard';`
-  - `SELECT * FROM bookings WHERE booking_date >= '2026-04-24' ORDER BY booking_date;`
-  - `SELECT * FROM customer_profiles WHERE email = '...';`
-  - `SELECT * FROM cleaners WHERE auth_user_id = '...';`
-  - `SELECT * FROM admin_users WHERE email = '...';`
-  - Kopiera QUERY PLAN-output. Om Seq Scan → migration för index behövs.
-- [ ] 🟡 **Efter EXPLAIN-resultat:** Claude bygger migration för saknade indexes om Seq Scan visas vid relevant data-volym.
+- [ ] 🟡 **Kör EXPLAIN ANALYZE i Studio:** Copy/paste hela filen [docs/audits/2026-04-24-db-indexes-explain-queries.sql](audits/2026-04-24-db-indexes-explain-queries.sql) i Supabase Studio SQL Editor. Kör sektionerna i ordning: row-counts, 10 EXPLAIN-queries, pg_indexes-lista, pg_stat_user_indexes. Spara output.
+- [ ] 🟡 **Efter EXPLAIN-resultat:** Ge till Claude. Claude bygger migration för de saknade indexes där Seq Scan faktiskt visas vid din data-volym (inte i teori).
 
 ### Från föregående handoffs (fortfarande öppna)
 - [ ] 🟡 **Sätt `ADMIN_ALERT_WEBHOOK_URL`** (Slack eller Discord webhook) i Supabase Secrets. Utan detta: alerts använder console-fallback (fungerar men ingen aktiv notifiering).
