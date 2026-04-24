@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (81 st)
+## Edge Functions (82 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -16,6 +16,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `admin-mark-payouts-paid` | Fas 1.10.2: Admin-trigger av payout-flode (ersatter direkt DB-PATCH) Primarkalla: docs/planning/spick-arkitekturplan-v3. |
 | `admin-morning-report` |  |
 | `admin-reject-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-reject-company (Sprint B Dag 5) |
+| `analyze-booking-pattern` | analyze-booking-pattern — Fas 5 §5.8 ═══════════════════════════════════════════════════════════════ |
 | `auto-approve-check` |  |
 | `auto-delegate` |  |
 | `auto-rebook` | auto-rebook — Skapar bokningar för aktiva prenumerationer ═══════════════════════════════════════════════════════════ |
