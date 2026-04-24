@@ -320,6 +320,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="nav-section">Ekonomi</div>
       <div class="nav-item" onclick="showPage('payouts')"><span class="icon">💸</span>Utbetalningar</div>
       <div class="nav-item" onclick="showPage('self-invoices')"><span class="icon">📄</span>Självfakturor</div>
+      <div class="nav-item" onclick="showPage('rut-queue')"><span class="icon">🏠</span>RUT-kö <span class="badge-count" id="badge-rut">0</span></div>
 
 
       <div class="nav-section">Support & Kvalitet</div>
@@ -683,6 +684,55 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     </div>
 
     <!-- SELF-INVOICES -->
+    <!-- Fas 7.5: RUT-kö (§13.x dashboard) — pending RUT-ansökningar med readiness-status -->
+    <div class="page" id="page-rut-queue">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">RUT-kö 🏠</div>
+          <div class="page-sub">Pending RUT-ansökningar med readiness-status. Fas 7.5 (ej aktiverad tills jurist-OK).</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="rut-filter" onchange="renderRutQueue()" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit">
+            <option value="all">Alla pending</option>
+            <option value="ready">Redo för ansökan</option>
+            <option value="missing">Saknar uppgifter</option>
+            <option value="exceeds">Överskrider 75k-tak</option>
+          </select>
+          <button class="btn btn-sm" onclick="exportRutQueueCSV()" style="background:#f5f5f3;border:1px solid #ddd;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Exportera CSV</button>
+        </div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi"><div class="kpi-val" id="rut-total-count">–</div><div class="kpi-lbl">Pending totalt</div></div>
+        <div class="kpi"><div class="kpi-val" id="rut-ready-count">–</div><div class="kpi-lbl">Redo för ansökan</div></div>
+        <div class="kpi"><div class="kpi-val" id="rut-missing-count">–</div><div class="kpi-lbl">Saknar uppgifter</div></div>
+        <div class="kpi"><div class="kpi-val" id="rut-total-amount">–</div><div class="kpi-lbl">Total RUT-belopp</div></div>
+      </div>
+      <div style="background:#FEF3C7;border-left:4px solid #D97706;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px">
+        <strong>⚠️ Fas 7.5 EJ AKTIVERAD:</strong> Ingen faktisk ansökan skickas till Skatteverket förrän jurist-OK + SKV-API-integration klar.
+        Detta är en vy över bokningar som KOMMER att bli RUT-ansökningar. Ready-indikatorerna visar vilka uppgifter som finns.
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Bokning</th>
+              <th>Kund</th>
+              <th>Datum</th>
+              <th>Arbetskostnad</th>
+              <th>RUT</th>
+              <th>PNR</th>
+              <th>GPS</th>
+              <th>Attest</th>
+              <th>Klar</th>
+              <th>75k-status</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody id="rut-tbody"><tr><td colspan="11" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-self-invoices">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
         <div>
@@ -1963,6 +2013,7 @@ function showPage(id) {
   if (id === 'settings') renderSettings();
   if (id === 'inbox') setTimeout(loadInbox, 100);
   if (id === 'self-invoices') loadSelfInvoices();
+  if (id === 'rut-queue') loadRutQueue().then(renderRutQueue);
   if (id === 'company-wizard') cwInit();
   if (id === 'reassignments') renderReassignments();
 }
@@ -5278,6 +5329,121 @@ function populateSiMonthFilter() {
     opts += '<option value="' + m + '">' + m + '</option>';
   });
   sel.innerHTML = opts;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Fas 7.5 — RUT-kö dashboard
+// ═══════════════════════════════════════════════════════════════
+// Läser v_rut_pending_queue (migration 20260424231500). Rule #30:
+// ingen auto-submission till SKV — bara vy + readiness-indikatorer.
+
+var _rutQueue = [];
+
+async function loadRutQueue() {
+  try {
+    const sess = await SB.auth.getSession();
+    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
+    const res = await fetch(
+      SPICK.SUPA_URL + '/rest/v1/v_rut_pending_queue?select=*',
+      { headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok } }
+    );
+    if (!res.ok) {
+      _rutQueue = [];
+      return;
+    }
+    _rutQueue = await res.json();
+    // Uppdatera badge i sidomenyn
+    const badge = document.getElementById('badge-rut');
+    if (badge) {
+      const missing = _rutQueue.filter(function(b) { return !b.has_pnr || !b.has_gps_evidence || !b.has_attest; }).length;
+      badge.textContent = missing;
+      badge.style.display = missing > 0 ? 'inline-block' : 'none';
+    }
+  } catch (e) {
+    console.error('[rut-queue] load fail:', e);
+    _rutQueue = [];
+  }
+}
+
+function renderRutQueue() {
+  const filter = document.getElementById('rut-filter')?.value || 'all';
+  let rows = _rutQueue.slice();
+  if (filter === 'ready') {
+    rows = rows.filter(function(b) { return b.has_pnr && b.has_gps_evidence && b.has_attest && b.past_dispute_window && !b.exceeds_75k_limit; });
+  } else if (filter === 'missing') {
+    rows = rows.filter(function(b) { return !b.has_pnr || !b.has_gps_evidence || !b.has_attest; });
+  } else if (filter === 'exceeds') {
+    rows = rows.filter(function(b) { return b.exceeds_75k_limit; });
+  }
+
+  // KPI:er (oberoende av filter — visar totaler)
+  const total = _rutQueue.length;
+  const ready = _rutQueue.filter(function(b) { return b.has_pnr && b.has_gps_evidence && b.has_attest && b.past_dispute_window && !b.exceeds_75k_limit; }).length;
+  const missing = _rutQueue.filter(function(b) { return !b.has_pnr || !b.has_gps_evidence || !b.has_attest; }).length;
+  const sum = _rutQueue.reduce(function(s, b) { return s + (b.rut_amount || 0); }, 0);
+  document.getElementById('rut-total-count').textContent = total;
+  document.getElementById('rut-ready-count').textContent = ready;
+  document.getElementById('rut-missing-count').textContent = missing;
+  document.getElementById('rut-total-amount').textContent = sum.toLocaleString('sv-SE') + ' kr';
+
+  const tbody = document.getElementById('rut-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:#6B6960">Inga pending RUT-bokningar som matchar filtret.</td></tr>';
+    return;
+  }
+
+  function yn(v, green, red) {
+    return v ? '<span style="color:#065f46;font-weight:600">' + (green || '✓') + '</span>' : '<span style="color:#991b1b;font-weight:600">' + (red || '✗') + '</span>';
+  }
+
+  tbody.innerHTML = rows.map(function(b) {
+    const limitWarn = b.exceeds_75k_limit
+      ? '<span style="color:#991b1b;font-weight:700">🛑 Över 75k</span>'
+      : (b.approaches_75k_limit
+        ? '<span style="color:#92400e;font-weight:700">⚠ Nära 75k</span>'
+        : '<span style="color:#065f46">OK</span>');
+    const statusBadge = (b.has_pnr && b.has_gps_evidence && b.has_attest && b.past_dispute_window && !b.exceeds_75k_limit)
+      ? '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">✅ Redo</span>'
+      : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">⏳ Inkomplett</span>';
+
+    return '<tr>'
+      + '<td>' + escHtml(b.booking_id || b.id.slice(0, 8)) + '</td>'
+      + '<td>' + escHtml(b.customer_name || '–') + '<br><span style="font-size:11px;color:#6B6960">' + escHtml(b.customer_email || '') + '</span></td>'
+      + '<td>' + escHtml(b.booking_date || '–') + '</td>'
+      + '<td>' + (b.gross_arbetskostnad || 0).toLocaleString('sv-SE') + ' kr</td>'
+      + '<td><strong>' + (b.rut_amount || 0).toLocaleString('sv-SE') + ' kr</strong></td>'
+      + '<td>' + yn(b.has_pnr, '✓', '✗ Saknas') + '</td>'
+      + '<td>' + yn(b.has_gps_evidence, '✓', '✗') + '</td>'
+      + '<td>' + yn(b.has_attest, '✓', '⏳') + '</td>'
+      + '<td>' + yn(b.past_dispute_window, '✓', '⏳ < 7d') + '</td>'
+      + '<td>' + limitWarn + '</td>'
+      + '<td>' + statusBadge + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function exportRutQueueCSV() {
+  if (!_rutQueue.length) { alert('Inga bokningar att exportera'); return; }
+  const headers = ['booking_id', 'customer_name', 'customer_email', 'customer_phone', 'customer_address',
+    'booking_date', 'gross_arbetskostnad', 'rut_amount', 'has_pnr', 'has_gps_evidence',
+    'has_attest', 'past_dispute_window', 'exceeds_75k_limit', 'customer_rut_ytd_used'];
+  const rows = _rutQueue.map(function(b) {
+    return headers.map(function(h) {
+      const v = b[h];
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'boolean') return v ? 'ja' : 'nej';
+      return String(v).replace(/"/g, '""');
+    }).map(function(s) { return '"' + s + '"'; }).join(',');
+  });
+  const csv = headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'spick-rut-queue-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 }
 
 function renderSelfInvoices() {

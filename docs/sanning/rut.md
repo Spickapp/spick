@@ -23,7 +23,15 @@ EJ RUT-berättigade: Kontorsstädning, Byggstädning.
 
 `bookings.customer_pnr` har 36 rader (varav 11 klartext). Se `docs/sanning/pnr-och-gdpr.md` för full kontext.
 
-`rut_amount = total_price` är BUGG i booking-create. Ska vara 50% av arbetskostnad, inte hela priset. Fixas i Fas 7.5 eller tidigare punktfix.
+**Uppdaterat 2026-04-24 (rule #31 prod-verifiering):**
+Tidigare påstående om `rut_amount = total_price` bugg är **föråldrat**. Prod-data + kodverifiering visar:
+- `total_price` = kundens nettopris efter RUT-avdrag
+- `rut_amount` = RUT-avdraget (50% av arbetskostnad)
+- Brutto-arbetskostnad (för SKV) = `total_price + rut_amount`
+
+Exempel: bokning SP-2026-0087 (2026-04-23): total_price=390, rut_amount=390 → arbetskostnad=780 kr ✓ korrekt.
+
+Kvarvarande fix för Fas 7.5: separat kolumn `rut_gross_amount` för explicit arbetskostnad (idag beräknas on-the-fly). Föräldring: ingen blockerare.
 
 ## Primärkälla för alla framtida RUT-beslut
 
