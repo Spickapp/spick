@@ -5563,11 +5563,10 @@ async function submitRutBatch() {
   resultEl.style.display = 'none';
 
   try {
-    const sess = await SB.auth.getSession();
-    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
+    const headers = await _adminHeadersLegacy();
     const res = await fetch(SPICK.SUPA_URL + '/functions/v1/rut-batch-export-xml', {
       method: 'POST',
-      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ booking_ids: Array.from(_rutSelected), batch_name: name }),
     });
     const data = await res.json().catch(function() { return null; });
