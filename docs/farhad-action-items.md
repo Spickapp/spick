@@ -37,6 +37,7 @@
 - [x] ✓ **§13.2 EXPLAIN verifierad 2026-04-24** — Prod har 0-84 rader per tabell. Seq Scan är optimalt val. Ingen migration behövs nu. Re-audit trigger när bookings >1000 rader.
 
 ### Från föregående handoffs (fortfarande öppna)
+- [ ] 🟡 **Stripe-saldo -895 kr → positivt** (igång 2026-04-24, bank-transfer 1-2 dagar). Efter clearing: bekräfta i Dashboard att saldo är positivt igen. Tills dess: refund-calls kan fail:a med `insufficient_funds`.
 - [ ] 🟡 **Sätt `ADMIN_ALERT_WEBHOOK_URL`** (Slack eller Discord webhook) i Supabase Secrets. Utan detta: alerts använder console-fallback (fungerar men ingen aktiv notifiering).
 - [ ] 🟡 **Beslut: escrow_mode=escrow_v2 för alla kunder?** Nu aktivt (live-verifierat). Ska vi behålla som default eller flippa tillbaka till `legacy` som säkerhet? Farhads beslut.
 
