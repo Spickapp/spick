@@ -2,9 +2,24 @@
 
 > **Syfte:** Registrera platser där samma logik finns på flera ställen i kodbasen.  
 > **Vid ändring — kolla ALLA ställen, inte bara en.**  
-> **Senast verifierad:** 2026-04-22 via grep + kodläsning + Fas 1-leverans-spårning.
+> **Senast verifierad:** 2026-04-24 via grep + kodläsning + session-spårning.
 
 Detta dokument är den **permanenta referensen** för fragmenterad logik. När framtida Claude-sessioner planerar ändringar i pricing, commission, auth, status eller översättning — **läs denna FÖRST**.
+
+## Auto-genererad källa (§11.4)
+
+För **infrastruktur-inventering** (Edge Functions, databas-views, migrationer) är källan av sanning **[docs/auto-generated/codebase-snapshot.md](auto-generated/codebase-snapshot.md)** — uppdateras veckovis via workflow [`update-claude-md.yml`](../.github/workflows/update-claude-md.yml).
+
+| Fråga | Primärkälla |
+|---|---|
+| "Hur många Edge Functions finns det nu?" | `codebase-snapshot.md` |
+| "Vilka tjänster finns?" | `codebase-snapshot.md` |
+| "Vilka migrations har körts?" | `codebase-snapshot.md` + `information_schema`-query |
+| "Vilka affärsregler gäller?" | `docs/sanning/*.md` (provision, rut, pnr-och-gdpr) |
+| "Vilka kolumner har tabellen X?" | `information_schema`-query mot prod (rule #31) |
+| "Vad är latest fas-status?" | `docs/v3-phase1-progress.md` |
+
+Detta dokument (7-ARKITEKTUR-SANNING.md) fokuserar istället på **fragmenterad logik** (pricing på 14 ställen, commission-läsning, status-drift etc) — information som inte genereras av snapshot-scriptet.
 
 > **Status post-Fas 1 (2026-04-22):** 9 av 10 sub-faser klara + §2.7 (19 fix-skript raderade). Många "BUG"-rader i tabellerna nedan är åtgärdade — sök efter "✓ åtgärdat §X.Y"-noteringar. Rader med 🔍-flagga kräver verifiering vid eventuell §2.9b-omräkning. Se [docs/v3-phase1-progress.md](v3-phase1-progress.md) för exakt status per sub-fas.
 
