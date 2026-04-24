@@ -699,11 +699,14 @@ ${(() => { const mi = getMaterialInfo(b.service_type); return mi.emoji === "🧰
             const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY");
             if (b.payment_intent_id && STRIPE_KEY) {
               try {
+                // R3 (§13.3): idempotency-key förhindrar dubbel refund vid cron-retry
+                const idempotencyKey = `refund-${b.id}-auto-timeout-90`;
                 const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
                   method: "POST",
                   headers: {
                     Authorization: `Basic ${btoa(STRIPE_KEY + ":")}`,
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "Idempotency-Key": idempotencyKey,
                   },
                   body: `payment_intent=${b.payment_intent_id}`,
                 });

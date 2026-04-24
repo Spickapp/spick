@@ -138,11 +138,15 @@ Deno.serve(async (req) => {
     let stripeRefundId: string | null = null;
     if (booking.payment_intent_id && refundAmount > 0 && STRIPE_KEY) {
       try {
+        // R3 (§13.3): idempotency-key förhindrar dubbel refund vid customer-retry
+        // refundPercent i key → om cancellation tajming ändras (100% vs 50%) = ny key
+        const idempotencyKey = `refund-${booking.id}-cancel-${refundPercent}`;
         const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${STRIPE_KEY}`,
             "Content-Type": "application/x-www-form-urlencoded",
+            "Idempotency-Key": idempotencyKey,
           },
           body: new URLSearchParams({
             payment_intent: booking.payment_intent_id,

@@ -302,9 +302,15 @@ async function handlePaymentSuccess(session: Record<string, unknown>, stripeKey:
     // Trigger Stripe refund
     if (session.payment_intent) {
       try {
+        // R3 (§13.3): idempotency-key förhindrar dubbel refund om webhook retry:as
+        const idempotencyKey = `refund-${bookingId}-double-booking`;
         const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
           method: "POST",
-          headers: { Authorization: `Bearer ${stripeKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+          headers: {
+            Authorization: `Bearer ${stripeKey}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Idempotency-Key": idempotencyKey,
+          },
           body: `payment_intent=${session.payment_intent}`,
         });
         console.log("Auto-refund result:", refundRes.status);
@@ -750,13 +756,16 @@ async function capturePayment(bookingId: string) {
   if (!booking?.payment_intent_id) return;
 
   // Capture payment via Stripe API
+  // R3 (§13.3): idempotency-key förhindrar dubbel capture om webhook retry:as
+  const idempotencyKey = `capture-${bookingId}`;
   const captureRes = await fetch(
     `https://api.stripe.com/v1/payment_intents/${booking.payment_intent_id}/capture`,
     {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${stripeKey}`,
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Idempotency-Key": idempotencyKey,
       }
     }
   );

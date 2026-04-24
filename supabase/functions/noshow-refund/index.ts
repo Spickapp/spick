@@ -60,11 +60,14 @@ serve(async (req) => {
     // Stripe refund
     let refundStatus = "skipped";
     if (booking.payment_intent_id && STRIPE_KEY) {
+      // R3 (§13.3): idempotency-key förhindrar dubbel refund vid retry
+      const idempotencyKey = `refund-${booking.id}-noshow`;
       const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
         method: "POST",
         headers: {
           Authorization: `Basic ${btoa(STRIPE_KEY + ":")}`,
           "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": idempotencyKey,
         },
         body: `payment_intent=${booking.payment_intent_id}`,
       });

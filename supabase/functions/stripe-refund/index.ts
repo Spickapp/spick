@@ -72,11 +72,15 @@ serve(async (req) => {
       });
     }
 
+    // R3 (§13.3): idempotency-key förhindrar dubbel refund vid retry
+    // Stabil per booking+reason → samma admin-klick 2x = en refund
+    const idempotencyKey = `refund-${booking_id}-admin`;
     const res = await fetch("https://api.stripe.com/v1/refunds", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${STRIPE_KEY}`,
         "Content-Type": "application/x-www-form-urlencoded",
+        "Idempotency-Key": idempotencyKey,
       },
       body: `payment_intent=${booking.payment_intent_id}&reason=requested_by_customer`,
     });

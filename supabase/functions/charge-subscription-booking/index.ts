@@ -209,11 +209,15 @@ async function chargeBooking(
     piParams.append("application_fee_amount", String(applicationFee));
   }
 
+  // R3 (§13.3): idempotency-key förhindrar dubbeldebitering vid cron-retry
+  // attempt+1 i key → nästa retry får ny key om denna sluträknas som failed
+  const idempotencyKey = `pi-sub-${bookingId}-attempt-${attempts + 1}`;
   const piRes = await fetch("https://api.stripe.com/v1/payment_intents", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${STRIPE_KEY}`,
       "Content-Type": "application/x-www-form-urlencoded",
+      "Idempotency-Key": idempotencyKey,
     },
     body: piParams.toString(),
   });

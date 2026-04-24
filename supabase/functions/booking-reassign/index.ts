@@ -39,11 +39,14 @@ serve(async (req) => {
       if (paymentIntentId) {
         try {
           const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+          // R3 (§13.3): idempotency-key förhindrar dubbel refund vid customer-retry
+          const idempotencyKey = `refund-${booking.id}-reassign-reject`;
           const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${STRIPE_KEY}`,
               "Content-Type": "application/x-www-form-urlencoded",
+              "Idempotency-Key": idempotencyKey,
             },
             body: `payment_intent=${paymentIntentId}`,
           });

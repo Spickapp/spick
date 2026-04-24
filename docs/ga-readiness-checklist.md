@@ -77,12 +77,12 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 | Farhad-verify Stripe Dashboard rate-limits | ◯ | Rule #30 — kräver Farhads hand |
 
 **Rekommenderade fixes (audit §6):**
-- **R2** ✓ **KLART** Auto-retry i stripeRequest — exponential backoff 250/500/1000ms + Retry-After-header-support + network-error-retry. 12 nya tester, 146/146 total money-tests passerar. Commit pending.
-- **R3** ◯ Idempotency per refund-site (2-3h) — eliminerar dubbel-refund-risk. **Pre-GA kritisk.**
-- **R1** ◯ Konsolidera alla Stripe-calls till stripeRequest (4-6h, rule #28)
+- **R2** ✓ **KLART** Auto-retry i stripeRequest — exponential backoff 250/500/1000ms + Retry-After-header-support + network-error-retry. 12 nya tester.
+- **R3** ✓ **KLART** Idempotency-keys per refund-site + PI-creation + capture. 9 fetch-calls fixade i 8 EFs: stripe-refund (`refund-${id}-admin`), booking-auto-timeout (`refund-${id}-auto-timeout`), auto-remind (`refund-${id}-auto-timeout-90`), booking-cancel-v2 (`refund-${id}-cancel-${pct}`), booking-reassign (`refund-${id}-reassign-reject`), noshow-refund (`refund-${id}-noshow`), stripe-webhook (`refund-${id}-double-booking` + `capture-${id}`), charge-subscription-booking (`pi-sub-${id}-attempt-${n}`). Rent additiv — 146/146 money-tests passerar, alla 8 TS-checks rena.
+- **R1** ◯ Konsolidera alla Stripe-calls till stripeRequest (4-6h, rule #28) — post-GA.
 - **R5** ◯ Farhad verifierar Stripe Dashboard rate-limits
 
-**Pre-GA kritisk:** R3. Total R3 = 2-3h kvar efter R2.
+**Pre-GA §13.3:** KLART. Farhad kan fortfarande reviewa R5 Dashboard-verify.
 
 **Owner:** Claude (R1-R4 kod) + Farhad (R5 Dashboard)
 
