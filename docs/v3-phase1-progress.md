@@ -4,7 +4,7 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.9 GA-checklista skapad som levande-dokument)
+**Senast uppdaterad:** 2026-04-24 em (Fas 12 STÄNGD + Fas 13 §13.2 static audit + §13.9 GA-checklista)
 
 ## Session 2026-04-22 – Startpunkt
 
@@ -112,7 +112,7 @@ Om något avviker → flagga innan fortsättning.
   - §12.7 ✓ Backup-verify-månadsvis (`.github/workflows/backup-verify-monthly.yml`). Kör första dagen varje månad, verifierar 5 kritiska tabeller (bookings/cleaners/subscriptions/reviews/invoices): ålder ≤ 35d, valid JSON, rimlig storlek, ej tom där det är kritiskt. Skapar auto-issue vid fel (labels: backup-integrity + infrastructure). Komplement till existerande backup.yml (nattlig) + disaster-recovery.yml (manuell restore-dry-run).
 - **Fas 13 GA-readiness:** ◑ PÅBÖRJAD
   - §13.1 Load-test 1000 VUs: ◯ blockad (kräver test-env)
-  - §13.2 DB-index-audit: ◯ nästa prio (static audit möjlig utan test-env)
+  - §13.2 DB-index-audit: ◑ static v1 klar ([docs/audits/2026-04-24-db-indexes-static.md](audits/2026-04-24-db-indexes-static.md)). 126 indexes + 571 query-patterns mappade. Topp-gaps: platform_settings.key (18q), bookings.booking_date (14q), customer_profiles.email (8q), cleaners.auth_user_id (8q). **Nästa:** EXPLAIN ANALYZE mot prod + ev. migration för saknade indexes.
   - §13.3 Stripe rate-limits: ◯ Farhad-hand + Claude-review
   - §13.4 GDPR-audit: ◑ delvis (§8.20 export ✓ finns, delete-flow + retention pending)
   - §13.5 RUT-automation: ⊘ blockad av Fas 7.5

@@ -49,16 +49,17 @@ Status-symboler: ✓ klart · ◑ pågår · ◯ ej påbörjat · ⊘ blockerad 
 
 | Aspekt | Status | Anteckning |
 |---|---|---|
-| Critical-path-queries inventerade | ◯ | Behövs: grep EFs för alla `.from()`-calls |
+| Critical-path-queries inventerade | ✓ | 571 query-patterns mappade, rapport: `docs/audits/2026-04-24-db-indexes-static.md` |
 | EXPLAIN ANALYZE mot 100k-data | ◯ | Kräver testmiljö eller prod-seed |
-| Indexes review | ◯ | Auto-snapshot finns (`docs/auto-generated/codebase-snapshot.md`), inte explicit index-lista |
+| Indexes review | ✓ | 126 indexes identifierade (explicit CREATE INDEX + PK/UNIQUE). Gap-analys + oanvända-kandidater flaggade. |
 | Materialized views för stats | ◯ | `public_stats` view finns (CLAUDE.md), oklart om materialized |
+| Audit-script underhållbart | ✓ | `scripts/audit-db-indexes.ts` (regenererbar) |
 
-**Blocker:** Ingen. Kan påbörjas när §13.1 test-env finns, eller som static code analysis först.
+**Topp-gaps (static):** platform_settings.key (18 queries), bookings.booking_date (14), customer_profiles.email (8), cleaners.auth_user_id (8), admin_users.email (7), cleaners.is_company_owner (7). Dessa kan ha indexes i prod som inte är i migrations-filer — rule #31 verify mot prod innan migration skrivs.
 
-**Owner:** Claude
+**Owner:** Claude (script + static-rapport ✓) + Farhad (prod-EXPLAIN-beslut)
 
-**Nästa steg:** Static audit — grep alla EF-queries, mappa mot indexes i prod-schema. Flagga missing indexes. Beräknat 3-4h.
+**Nästa steg:** Farhad kör `EXPLAIN ANALYZE` för top-10 gap-queries i Studio. Beroende på query-plan: migration för saknade indexes. Detta blir §13.2-slutfas.
 
 ---
 
