@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (86 st)
+## Edge Functions (87 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -62,6 +62,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `export-cleaner-data` | export-cleaner-data — Fas 8 §8.20 ═══════════════════════════════════════════════════════════════ |
 | `export-customer-data` | export-customer-data — Fas 13 §13.4 gap A1 ═══════════════════════════════════════════════════════════════ |
 | `generate-receipt` | ═══════════════════════════════════════════════════════════════ SPICK – Kundkvitto (Customer Receipt HTML + Email) |
+| `generate-receipt-pdf` | ═══════════════════════════════════════════════════════════════ SPICK – generate-receipt-pdf (Fas F-PDF, 2026-04-28) |
 | `generate-self-invoice` | ═══════════════════════════════════════════════════════════════ SPICK – Självfaktura-generator (Self-billing invoice) |
 | `geo` | SPICK – Geo Matching |
 | `get-booking-events` | ═══════════════════════════════════════════════════════════════ SPICK – get-booking-events (Fas 6 §6.4-§6.6) |
@@ -169,8 +170,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (128 st)
+## Migrations (129 st)
 
-- Senaste: `20260428000002_fas3_c4_addon_rpc.sql`
-- Timestamp-prefix: `20260428000002`
+- Senaste: `20260428000003_fas_rbac_company_role.sql`
+- Timestamp-prefix: `20260428000003`
 
