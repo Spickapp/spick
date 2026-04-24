@@ -52,10 +52,13 @@ export const options = {
   // - Health är inte user-facing (uptime-monitor träffar 1/30s) —
   //   generös threshold räcker.
   // - Services/geo är user-facing i booking-flow — tajtare thresholds.
-  // - custom_errors = 0% är hård GA-gate (no silent failures).
+  // - custom_errors = 0% är HÅRD GA-gate (no silent failures).
+  // - http_req_failed medvetet EJ threshold:ad — k6 räknar status 400
+  //   som "failed" by default, men geo-EF returnerar 400 vid giltiga
+  //   inputs (vi accepterar i custom check). custom_errors är vår
+  //   sanningsmätare för "faktiska problem".
   thresholds: {
     http_req_duration: ['p(95)<3000'],
-    http_req_failed: ['rate<0.05'],
     custom_errors: ['rate<0.02'],
     latency_health: ['p(95)<2500'],
     latency_services: ['p(95)<2000'],
