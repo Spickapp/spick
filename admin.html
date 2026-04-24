@@ -5385,45 +5385,15 @@ var _rutQueue = [];
 
 async function loadRutQueue() {
   console.log('[rut-queue] loadRutQueue start');
-
-  // getSession med 2s-timeout så vi inte hänger
-  async function getTokenWithTimeout() {
-    try {
-      const result = await Promise.race([
-        SB.auth.getSession().then(function(s) { return s?.data?.session?.access_token || null; }),
-        new Promise(function(resolve) { setTimeout(function() { resolve(null); }, 2000); })
-      ]);
-      return result || SPICK.SUPA_KEY;
-    } catch (_) { return SPICK.SUPA_KEY; }
-  }
-
   try {
-    const tok = await getTokenWithTimeout();
-    const usingAdminToken = tok !== SPICK.SUPA_KEY;
-    console.log('[rut-queue] got token, using', usingAdminToken ? 'admin' : 'anon');
-
-    const url = SPICK.SUPA_URL + '/rest/v1/v_rut_pending_queue?select=*';
-    console.log('[rut-queue] fetching', url);
-
-    // Även fetch med 10s-timeout
-    const ctrl = new AbortController();
-    const tid = setTimeout(function() { ctrl.abort(); }, 10000);
-
-    const res = await fetch(url, {
-      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok },
-      signal: ctrl.signal,
-    });
-    clearTimeout(tid);
-    console.log('[rut-queue] HTTP', res.status, res.statusText);
-
-    if (!res.ok) {
-      const body = await res.text().catch(function() { return ''; });
-      console.error('[rut-queue] fetch failed:', res.status, body);
+    // Använd AR-helper (samma admin-auth-pattern som loadAll)
+    const { data, error } = await AR.select('v_rut_pending_queue', 'select=*');
+    if (error) {
+      console.error('[rut-queue] fetch failed:', error);
       _rutQueue = [];
       return;
     }
-
-    _rutQueue = await res.json();
+    _rutQueue = data || [];
     console.log('[rut-queue] loaded', _rutQueue.length, 'rows');
 
     const badge = document.getElementById('badge-rut');
@@ -5660,13 +5630,11 @@ async function showRutHistory() {
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px"><div class="spin"></div></td></tr>';
 
   try {
-    const sess = await SB.auth.getSession();
-    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
-    const res = await fetch(
-      SPICK.SUPA_URL + '/rest/v1/rut_batch_submissions?select=*&order=created_at.desc&limit=50',
-      { headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok } }
-    );
-    const rows = res.ok ? await res.json() : [];
+    const { data: rows = [], error } = await AR.select('rut_batch_submissions', 'select=*&order=created_at.desc&limit=50');
+    if (error) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#991B1B">' + (error.message || 'Fel') + '</td></tr>';
+      return;
+    }
 
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#6B6960">Inga batchar skapade än.</td></tr>';
@@ -5704,18 +5672,11 @@ async function showRutHistory() {
 async function updateBatchStatus(batchId, newStatus) {
   if (!confirm('Ändra status till: ' + newStatus + '?')) return;
   try {
-    const sess = await SB.auth.getSession();
-    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
     const extra = newStatus === 'submitted' ? { submitted_to_skv_at: new Date().toISOString() }
       : (['approved', 'partial', 'rejected'].includes(newStatus) ? { skv_response_at: new Date().toISOString() } : {});
-    const res = await fetch(SPICK.SUPA_URL + '/rest/v1/rut_batch_submissions?id=eq.' + batchId, {
-      method: 'PATCH',
-      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify(Object.assign({ status: newStatus }, extra)),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(function() { return {}; });
-      alert('Fel: ' + (err.message || res.status));
+    const { error } = await AR.update('rut_batch_submissions', Object.assign({ status: newStatus }, extra), 'id=eq.' + batchId);
+    if (error) {
+      alert('Fel: ' + (error.message || error.status));
       return;
     }
     showRutHistory();
