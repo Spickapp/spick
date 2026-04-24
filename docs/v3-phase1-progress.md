@@ -42,7 +42,9 @@ Om något avviker → flagga innan fortsättning.
   - §5.3a ✓ recurring_generated event i auto-rebook (denna session)
   - §5.3b ✓ horizon 7d → 28d / 4 veckor (denna session)
   - §5.3c ✓ duration_mode stop-check (fixed_count + end_date → status='cancelled' + recurring_cancelled event)
-  - §5.4 ◯ pause/skip/ändra-tid/avsluta-UI
+  - §5.4 ✓ pause/skip/ändra-tid/avsluta-UI + EF + modal z-index + disabled-reset (commits 7128483, b2bf237, 5101ec7)
+  - §5.4.1 ✓ conflict-warnings: pre-pause UI-varning, resume conflict-check (slot_holds + calendar_events), change-time cleaner-notify-email (verifierat via mottaget mail 2026-04-24)
+  - §5.4.2 ✓ soft-reservation: migration `subscription_slot_holds` + `_shared/slot-holds.ts`-helper + integration i setup-subscription/customer-subscription-manage/auto-rebook (commit 104ecad)
   - §5.5a ✓ customer_preferences foundation (997557f)
   - §5.5b ◯ preference-learning (auto-favorit efter 3 bokningar rating≥4)
   - §5.6 ✓ Boka samma igen (8d56324)
