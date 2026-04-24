@@ -26,7 +26,11 @@ Enormt produktiv session där vi levererade retention-infrastruktur, GDPR-compli
 | 10 | `50a510e` | §8.21 | Garanti-sidor → Mitt konto formell process |
 | 11 | `fbf0b10` | §5.11 | Helgdag-hantering (swedish_holidays + auto-rebook) |
 | 12 | `fc93e04` | Fas 12 | 9 nya Playwright-tester + CI workflow |
-| 13 | TBD | H16-fix | idx_sub_next DROP+CREATE (aktiv→active) |
+| 13 | `13a4ecc` | Handoff v1 | Mega-handoff-dokumentation (12 items) |
+| 14 | `b241c1b` | §11.4 | 7-ARKITEKTUR-SANNING pekar till auto-genererad källa |
+| 15 | `495d584` | H17 | join-team.html → full-text format (17 språk, matchar prod) |
+| 16 | `a1f5010` | Fas 9 rule #31 SAVE | Progress-doc-drift: Fas 9 faktiskt ~50% (§9.3/9.4/9.5/9.10 byggt) |
+| 17 | TBD | Handoff v2 | Denna uppdatering |
 
 ## 3. Prod-state vid avslut
 
@@ -147,4 +151,11 @@ Session avslutad 2026-04-24 ~slutet av dagen.
 
 **Farhads grad av "självgående"-ambition: nu ~70% mot GA-kriterier** (tidigare ~60% per förra handoff).
 
-**Två rule #31-saves under sessionen** — primärkälle-verifiering är fortfarande kritisk. Fas 2.X Replayability Sprint behövs långsiktigt.
+**FYRA rule #31-saves under sessionen:**
+1. `auto_shift_forward` gissning → fixad till `auto_shift` (CHECK-constraint-verify)
+2. Fas 12 progress-drift (0% → 15%, Playwright redan setup)
+3. Fas 9 progress-drift (30% → 50%, §9.3/9.4/9.5/9.10 delvis byggt)
+4. §9.3 "pending" → verkligheten: `saveCompanyPrices` finns på rad 9309
+
+Primärkälle-verifiering är fortfarande kritisk. Fas 2.X Replayability Sprint
+behövs långsiktigt för att auto-generera status istället för manuell sync.
