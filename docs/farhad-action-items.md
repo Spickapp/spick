@@ -74,6 +74,7 @@
 - ✓ A04 analyze-booking-pattern STÄNGD 2026-04-24 — rule #31 root cause (bookings.rut saknades). EF-fix + H19 catchup-migration. End-to-end verifierad (HTTP 200).
 - ✓ H19 schema-drift STÄNGD 2026-04-24 — 43 missing migrations-versioner registrerade + bookings.rut tillagd. Catchup via Studio SQL. Future drift-check visar 0 diff.
 - ✓ Fas 7.5 bootstrap 2026-04-24 — migration + 75k-tracker + RUT-kö-dashboard i admin. 7 pending RUT-bokningar synliga. Fas 7.5 submission till SKV låst tills jurist-OK + BankID.
+- ✓ Fas 7.5 XML-export-flöde 2026-04-24 — komplett: rut_batch_submissions-tabell, _shared/rut-xml-builder.ts (36 tester), EF rut-batch-export-xml, admin-UI med checkboxes + batch-modal + historik, storage-bucket rut-batches. Produktionsklart. Blockers: PNR-aktivering (jurist) + tvåstegs-payout-avtal.
 - ✓ Morgon-rapport-cron 2026-04-24 — flyttad från 06:07→03:00 UTC för att kringgå GitHub Actions peak-delay (4-5h försening).
 
 ---
