@@ -2057,7 +2057,7 @@ function showPage(id) {
   if (id === 'settings') renderSettings();
   if (id === 'inbox') setTimeout(loadInbox, 100);
   if (id === 'self-invoices') loadSelfInvoices();
-  if (id === 'rut-queue') loadRutQueue().then(renderRutQueue);
+  if (id === 'rut-queue') loadRutQueue().finally(function(){ try { renderRutQueue(); } catch(e) { console.error('[rut-queue] render fail:', e); } });
   if (id === 'company-wizard') cwInit();
   if (id === 'reassignments') renderReassignments();
 }
@@ -5384,19 +5384,33 @@ function populateSiMonthFilter() {
 var _rutQueue = [];
 
 async function loadRutQueue() {
+  console.log('[rut-queue] loadRutQueue start');
   try {
-    const sess = await SB.auth.getSession();
-    const tok = sess.data.session?.access_token || SPICK.SUPA_KEY;
-    const res = await fetch(
-      SPICK.SUPA_URL + '/rest/v1/v_rut_pending_queue?select=*',
-      { headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok } }
-    );
+    let tok = SPICK.SUPA_KEY;
+    try {
+      const sess = await SB.auth.getSession();
+      if (sess?.data?.session?.access_token) tok = sess.data.session.access_token;
+    } catch (e) {
+      console.warn('[rut-queue] getSession failed, fallback to anon:', e);
+    }
+
+    const url = SPICK.SUPA_URL + '/rest/v1/v_rut_pending_queue?select=*';
+    console.log('[rut-queue] fetching', url);
+    const res = await fetch(url, {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok },
+    });
+    console.log('[rut-queue] HTTP', res.status, res.statusText);
+
     if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[rut-queue] fetch failed:', res.status, body);
       _rutQueue = [];
       return;
     }
+
     _rutQueue = await res.json();
-    // Uppdatera badge i sidomenyn
+    console.log('[rut-queue] loaded', _rutQueue.length, 'rows');
+
     const badge = document.getElementById('badge-rut');
     if (badge) {
       const missing = _rutQueue.filter(function(b) { return !b.has_pnr || !b.has_gps_evidence || !b.has_attest; }).length;
