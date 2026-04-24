@@ -49,7 +49,7 @@ Om något avviker → flagga innan fortsättning.
   - §5.5b ✓ preference-learning auto-favorite (EF `preference-learn-favorite` + cron 06:00 CET, ≥3 ratings ≥4 → auto-set favorit om NULL)
   - §5.6 ✓ Boka samma igen (8d56324)
   - §5.7 ✓ Boka samma städaren igen (8d56324)
-  - §5.8 ◯ preference-learning pattern-detection (dag-tid-städare)
+  - §5.8 ✓ preference-learning pattern-detection (EF `analyze-booking-pattern` + suggestion-banner i mitt-konto.html, ≥3 bokningar samma weekday+time+cleaner + avg rating ≥4 → visa förslag med prefilled prenumerera.html-länk, commit d3f6285)
   - §5.9 ✓ email-nudges 7d efter första bokning (EF `customer-nudge-recurring` + migration `recurring_nudge_sent_at` + cron 09:00 CET)
   - §5.10 ✓ pris-binding verifierad (ae11f44)
   - §5.11 ◯ helgdag-hantering (kräver swedish_holidays-tabell + research)
@@ -67,6 +67,9 @@ Om något avviker → flagga innan fortsättning.
   - **Prod-verklighet (verifierat 2026-04-23):** `cleaners.languages TEXT[]` + GIN-index finns via migration [20260402100001_slug_languages.sql](../supabase/migrations/20260402100001_slug_languages.sql)
   - **§7.1 (separat `languages`-tabell) + §7.2 (`cleaner_languages` m2m):** ⊘ SUPERSEDED — duplicerar embedded array = rule #28-brott. Farhad-beslut 2026-04-23: behåll array-design.
   - **Kvarvarande Fas 7-scope:** §7.4-§7.5 (UI picker i cleaner-profil + bli-stadare/join-team) + §7.7 (matching-RPC `p_languages`-param). Aktualiseras vid behov, ej blockerande.
+  - §7.4 ✓ språkpicker i cleaner-profil-edit (stadare-dashboard.html sv-profile med chip-select, cleaners.languages TEXT[] save)
+  - §7.5 ✓ join-team.html har redan multi-select (pre-v3-arv). bli-stadare.html är landing-page utan form — §7.5 N/A för den sidan. **H17 flaggad:** join-team använder språk-koder (sv/en/ar), stadare-dashboard använder full-text (Svenska/English/العربية). Inkonsekvens — separat sprint för harmonisering.
+  - §7.7 ⊘ DEFERRED — kräver full `find_nearby_cleaners`-body via `pg_get_functiondef` för säker DROP+CREATE. Separat sprint.
   - §7.6 GIN-index: ✓ (redan i 20260402-migration)
 - **Fas 7.5 RUT-infrastruktur:** ◯ LÅST (25-35h, dokumenterat i [planen](planning/spick-arkitekturplan-v3.md) + [sanning/rut.md](sanning/rut.md))
 - **Fas 8 Dispute + Full Escrow:** ◑ PÅBÖRJAD (EU-deadline 2 dec 2026, 60-80h total)
