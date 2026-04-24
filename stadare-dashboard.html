@@ -1247,6 +1247,21 @@ body{top:0!important}
           </div>
         </div>
 
+        <!-- Fas 8 §8.20 — Data-exporträtt (GDPR Art 15 + EU PWD) -->
+        <div class="settings-section">
+          <div class="settings-section-title">Integritet &amp; data</div>
+          <div class="card">
+            <div class="card-title">📥 Exportera mina data</div>
+            <p style="color:var(--m);font-size:.82rem;margin-bottom:12px;line-height:1.5">
+              Enligt GDPR Art. 15 och EU Platform Work Directive har du rätt att få en kopia av all data Spick lagrar om dig — profil, bokningar, betyg, utbetalningar, kalender och mer.
+            </p>
+            <button id="btn-export-data" onclick="exportMyData(this)" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">
+              Ladda ner mina data (JSON)
+            </button>
+            <div id="export-status" style="margin-top:10px;font-size:.78rem;color:var(--m);text-align:center;min-height:16px"></div>
+          </div>
+        </div>
+
         <div class="settings-section">
           <div class="settings-section-title">Behöver du hjälp?</div>
           <div class="card" style="text-align:center">
@@ -2838,6 +2853,61 @@ async function doLogout() {
   await SB.auth.signOut().catch(() => {});
   cleaner = null; jobs = [];
   showScreen('login');
+}
+
+// ── Fas 8 §8.20 — Exportera cleaner-data (GDPR Art 15 / EU PWD) ────
+async function exportMyData(btn) {
+  const status = document.getElementById('export-status');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Genererar export...';
+  status.textContent = '';
+
+  try {
+    var token = SPICK.SUPA_KEY;
+    try {
+      var sess = await SB.auth.getSession();
+      if (sess.data.session) token = sess.data.session.access_token;
+    } catch(_) {}
+
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/export-cleaner-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+      },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) {
+      const msg = (data && data.error) || ('HTTP ' + res.status);
+      status.textContent = '⚠️ ' + msg;
+      status.style.color = '#DC2626';
+      return;
+    }
+
+    // Browser-download av JSON
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = 'spick-export-' + ts + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+
+    const sizeKb = Math.round(blob.size / 1024);
+    status.textContent = '✅ Export nedladdad (' + sizeKb + ' KB)';
+    status.style.color = '#0F6E56';
+  } catch(e) {
+    console.error('[SPICK] exportMyData error:', e);
+    status.textContent = '⚠️ Nätverksfel. Försök igen.';
+    status.style.color = '#DC2626';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 }
 
 // ── LOAD CLEANER ─────────────────────────────────────────────
