@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
       consent_terms,
       consent_gdpr,
       consent_authority,
+      // §B2B.3 (2026-04-25): TIC BankID-verifiering av firmatecknare
+      tic_session_id,
     } = body;
     
     // ── Validering ──
@@ -226,7 +228,69 @@ Deno.serve(async (req) => {
         detail: lastCompErr?.message ?? "slug_conflict_unresolvable"
       });
     }
-    
+
+    // §B2B.3 (2026-04-25): TIC BankID firmatecknare-verifiering
+    // Om frontend skickade tic_session_id (efter company-bankid-verify
+    // returnerade verified=true) → UPDATE companies.firmatecknare_*.
+    // Best-effort: om consent saknas/ogiltig → company skapas ändå, men
+    // firmatecknare_verified_at förblir NULL (admin kan manuellt verifiera).
+    if (typeof tic_session_id === "string" && tic_session_id.length > 8) {
+      try {
+        const { data: consent } = await sb
+          .from("rut_consents")
+          .select("id, customer_email, purpose, pnr_hash, spar_full_name, signing_authority_jsonb, verified_org_number, consumed_at")
+          .eq("tic_session_id", tic_session_id)
+          .maybeSingle();
+        if (
+          consent &&
+          consent.purpose === "company_signup" &&
+          consent.customer_email === emailNorm &&
+          consent.consumed_at &&
+          consent.pnr_hash !== "PENDING" &&
+          consent.verified_org_number === orgFormatted
+        ) {
+          // Verifiera signing-authority från jsonb-data
+          const sa = consent.signing_authority_jsonb as Record<string, unknown> | null;
+          const isSignatory = !!sa && (
+            sa.is_signatory === true ||
+            sa.isSignatory === true ||
+            sa.canSign === true
+          );
+          if (isSignatory) {
+            await sb
+              .from("companies")
+              .update({
+                firmatecknare_verified_at: new Date().toISOString(),
+                firmatecknare_personnr_hash: consent.pnr_hash,
+                firmatecknare_full_name: consent.spar_full_name,
+                firmatecknare_tic_session_id: tic_session_id,
+              })
+              .eq("id", company.id);
+            // Länka consent → company via booking_id-fältet (overload — TODO: ny kolumn company_id i rut_consents om scope tillåter)
+            log("info", "TIC firmatecknare verified", {
+              company_id: company.id,
+              consent_id: consent.id,
+            });
+          } else {
+            log("warn", "TIC consent finns men signing-authority=false", {
+              company_id: company.id,
+              consent_id: consent.id,
+            });
+          }
+        } else {
+          log("warn", "TIC consent ej giltig för company-link", {
+            company_id: company.id,
+            has_consent: !!consent,
+            email_match: consent?.customer_email === emailNorm,
+            org_match: consent?.verified_org_number === orgFormatted,
+            consumed: !!consent?.consumed_at,
+          });
+        }
+      } catch (e) {
+        log("warn", "TIC firmatecknare-link exception", { error: (e as Error).message });
+      }
+    }
+
     // ── Skapa cleaner (VD) ──
     const nameParts = vd_name.trim().split(/\s+/);
     const firstName = nameParts[0];

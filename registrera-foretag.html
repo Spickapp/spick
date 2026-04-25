@@ -251,8 +251,33 @@ h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height
         <span>Jag bekräftar att jag är firmatecknare för detta företag och har rätt att registrera det på Spick.</span>
       </label>
       
+      <!-- §B2B.4 (2026-04-25): TIC BankID-verifiering av firmatecknare -->
+      <div id="company-bankid-wrap" style="display:none;margin-top:1.5rem;background:#E1F5EE;border:1.5px solid var(--g);border-radius:12px;padding:1rem">
+        <div id="company-bankid-idle" style="display:block">
+          <div style="font-size:.9rem;font-weight:600;color:var(--g);margin-bottom:.4rem">🔒 Verifiera firmatecknare (rekommenderat)</div>
+          <div style="font-size:.82rem;color:var(--m);margin-bottom:.6rem;line-height:1.4">Logga in med BankID. Vi verifierar att du är firmatecknare för bolaget via Bolagsverket. <strong>Vi lagrar aldrig ditt personnummer i klartext.</strong></div>
+          <button type="button" id="company-bankid-start-btn" onclick="startCompanyBankid()" style="padding:.6rem 1rem;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:.85rem">Verifiera med BankID →</button>
+        </div>
+        <div id="company-bankid-pending" style="display:none;text-align:center;padding:.5rem">
+          <div style="font-size:.85rem;font-weight:600;color:var(--g);margin-bottom:.4rem">Öppna BankID-appen…</div>
+          <div style="margin:.5rem 0">
+            <a id="company-bankid-app-link" href="#" style="display:inline-block;padding:.55rem 1rem;background:var(--g);color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600">Öppna BankID på denna enhet</a>
+          </div>
+          <div style="font-size:.75rem;color:var(--m)">Status: <span id="company-bankid-hint">Initierar…</span></div>
+          <button type="button" onclick="cancelCompanyBankid()" style="margin-top:.6rem;background:none;border:none;color:var(--m);text-decoration:underline;font-size:.78rem;cursor:pointer">Avbryt</button>
+        </div>
+        <div id="company-bankid-success" style="display:none">
+          <div style="font-size:.9rem;font-weight:600;color:var(--g);margin-bottom:.4rem">✓ Firmatecknare verifierad</div>
+          <div style="font-size:.82rem;color:var(--t)">Verifierad person: <strong id="company-bankid-name">–</strong></div>
+        </div>
+        <div id="company-bankid-error" style="display:none">
+          <div style="font-size:.85rem;color:#b91c1c;margin-bottom:.4rem">⚠ <span id="company-bankid-error-msg">Något gick fel</span></div>
+          <button type="button" onclick="resetCompanyBankid()" style="padding:.45rem 1rem;background:#fff;color:var(--g);border:1.5px solid var(--g);border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer">Försök igen</button>
+        </div>
+      </div>
+
       <div id="submitError" class="alert alert-error" style="display:none;margin-top:1.5rem"></div>
-      
+
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="goStep2()">← Tillbaka</button>
         <button class="btn btn-primary" id="submitBtn" onclick="submitRegistration()" disabled>Skicka in registrering</button>
@@ -407,6 +432,134 @@ function updateSubmitBtn(){
 // ─────────────────────────────────────────────
 // Submit
 // ─────────────────────────────────────────────
+// §B2B.4 TIC BankID firmatecknare-verifiering (optional bonus)
+state.ticSessionId = null;
+state.ticVerified = false;
+state.ticPolling = null;
+
+async function loadCompanyBankidVisibility() {
+  // Visa wrap bara om tic_enabled='true' i platform_settings
+  try {
+    const res = await fetch(`${SPICK.SUPA_URL}/rest/v1/platform_settings?key=eq.tic_enabled&select=value`, {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY }
+    });
+    const rows = await res.json();
+    if (rows && rows[0] && rows[0].value === 'true') {
+      const wrap = document.getElementById('company-bankid-wrap');
+      if (wrap) wrap.style.display = 'block';
+    }
+  } catch(e) { /* tyst — flag-check är best-effort */ }
+}
+loadCompanyBankidVisibility();
+
+async function startCompanyBankid() {
+  if (!state.vdEmail || !state.orgNumber) {
+    showCompanyBankidError('Fyll i steg 1 och 2 först');
+    return;
+  }
+  showCompanyBankidPending();
+  try {
+    const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/company-bankid-init`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ vd_email: state.vdEmail, org_number: state.orgNumber })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showCompanyBankidError(data.details || data.error || ('HTTP ' + res.status));
+      return;
+    }
+    state.ticSessionId = data.session_id;
+    const appLink = document.getElementById('company-bankid-app-link');
+    if (appLink && data.auto_start_token) {
+      appLink.href = 'bankid:///?autostarttoken=' + encodeURIComponent(data.auto_start_token) + '&redirect=null';
+    }
+    pollCompanyBankid();
+  } catch(e) {
+    showCompanyBankidError(e && e.message ? e.message : 'Något gick fel');
+  }
+}
+
+function pollCompanyBankid() {
+  if (state.ticPolling) clearInterval(state.ticPolling);
+  let attempts = 0;
+  state.ticPolling = setInterval(async () => {
+    attempts++;
+    if (attempts > 90) { cancelCompanyBankid(); showCompanyBankidError('Tidsgräns nådd'); return; }
+    if (!state.ticSessionId) { clearInterval(state.ticPolling); state.ticPolling = null; return; }
+    try {
+      const res = await fetch(`${SPICK.SUPA_URL}/functions/v1/company-bankid-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+        body: JSON.stringify({ session_id: state.ticSessionId, vd_email: state.vdEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        clearInterval(state.ticPolling); state.ticPolling = null;
+        showCompanyBankidError(data.details || data.error || ('HTTP ' + res.status));
+        return;
+      }
+      if (data.status === 'complete' || data.already_consumed) {
+        clearInterval(state.ticPolling); state.ticPolling = null;
+        if (data.verified) {
+          state.ticVerified = true;
+          showCompanyBankidSuccess(data.full_name);
+        } else {
+          showCompanyBankidError('Du verkar inte vara firmatecknare för ' + (data.org_number || 'detta bolag') + '. Kontakta support@spick.se om du tror detta är fel.');
+        }
+      } else {
+        const hintEl = document.getElementById('company-bankid-hint');
+        if (hintEl) {
+          const hintMap = { outstandingTransaction: 'Öppna BankID-appen', userSign: 'Skriv in säkerhetskod', noClient: 'Väntar på BankID-app' };
+          hintEl.textContent = hintMap[data.hint] || hintMap[data.status] || (data.status || 'Väntar…');
+        }
+      }
+    } catch(e) { /* tyst */ }
+  }, 2000);
+}
+
+function cancelCompanyBankid() {
+  if (state.ticPolling) { clearInterval(state.ticPolling); state.ticPolling = null; }
+  state.ticSessionId = null;
+  resetCompanyBankid();
+}
+
+function resetCompanyBankid() {
+  state.ticSessionId = null;
+  state.ticVerified = false;
+  document.getElementById('company-bankid-idle').style.display = 'block';
+  document.getElementById('company-bankid-pending').style.display = 'none';
+  document.getElementById('company-bankid-success').style.display = 'none';
+  document.getElementById('company-bankid-error').style.display = 'none';
+}
+
+function showCompanyBankidPending() {
+  document.getElementById('company-bankid-idle').style.display = 'none';
+  document.getElementById('company-bankid-pending').style.display = 'block';
+  document.getElementById('company-bankid-success').style.display = 'none';
+  document.getElementById('company-bankid-error').style.display = 'none';
+  const hintEl = document.getElementById('company-bankid-hint');
+  if (hintEl) hintEl.textContent = 'Initierar…';
+}
+
+function showCompanyBankidSuccess(name) {
+  document.getElementById('company-bankid-idle').style.display = 'none';
+  document.getElementById('company-bankid-pending').style.display = 'none';
+  document.getElementById('company-bankid-success').style.display = 'block';
+  document.getElementById('company-bankid-error').style.display = 'none';
+  const nameEl = document.getElementById('company-bankid-name');
+  if (nameEl) nameEl.textContent = name || '(verifierad)';
+}
+
+function showCompanyBankidError(msg) {
+  document.getElementById('company-bankid-idle').style.display = 'none';
+  document.getElementById('company-bankid-pending').style.display = 'none';
+  document.getElementById('company-bankid-success').style.display = 'none';
+  document.getElementById('company-bankid-error').style.display = 'block';
+  const msgEl = document.getElementById('company-bankid-error-msg');
+  if (msgEl) msgEl.textContent = msg || 'Något gick fel';
+}
+
 async function submitRegistration(){
   const btn = document.getElementById('submitBtn');
   const errBox = document.getElementById('submitError');
@@ -432,6 +585,8 @@ async function submitRegistration(){
         consent_terms: true,
         consent_gdpr: true,
         consent_authority: true,
+        // §B2B.4: skicka tic_session_id om kund verifierat firmatecknare via BankID
+        tic_session_id: (state.ticVerified && state.ticSessionId) ? state.ticSessionId : undefined,
       })
     });
     
