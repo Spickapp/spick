@@ -34,6 +34,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 import { corsHeaders } from "../_shared/email.ts";
+import { createLogger } from "../_shared/log.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -125,12 +126,7 @@ function isValidUuid(id: unknown): boolean {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-function log(level: string, msg: string, extra: Record<string, unknown> = {}) {
-  console.log(JSON.stringify({
-    level, fn: "generate-receipt-pdf", msg, ...extra,
-    ts: new Date().toISOString(),
-  }));
-}
+const log = createLogger("generate-receipt-pdf");
 
 async function fetchCompanyInfo() {
   const { data: rows } = await sbService
