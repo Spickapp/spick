@@ -56,6 +56,58 @@ function translateService(type: string): string {
   return map[(type || "").toLowerCase()] || type || "Städning";
 }
 
+// ── Document-classifier (Iteration 1, 2026-04-25) ──
+// Mappar payment_status × customer_type till PDF-titel + status-text +
+// refund-flag. Tidigare hade EF:n binär logik (KVITTO/FAKTURA + paid/Ej
+// betald) som visade "Ej betald" för refunded-bokningar — BokfL-vilseledande.
+//
+// Källor:
+//   - BokfL 5 kap 7§: kvitto = dokumentation av affärshändelse
+//   - SSOT för status-mapping: denna funktion (rule #28)
+//
+// Default = pending → ORDERBEKRÄFTELSE (säker fallback för okända status).
+type DocumentMode = {
+  title: string;
+  statusText: string;
+  showRefund: boolean;
+  isReceipt: boolean;       // true om "kvitto" (paid eller refunded privat)
+  fileLabel: string;        // för filnamn + footer-text
+};
+
+function classifyDocument(
+  paymentStatus: string,
+  isCompanyCustomer: boolean,
+): DocumentMode {
+  const ps = (paymentStatus || "").toLowerCase();
+
+  // B2B: alltid faktura/fakturaunderlag oavsett payment-status
+  if (isCompanyCustomer) {
+    if (ps === "refunded") {
+      return { title: "FAKTURA (krediterad)", statusText: "Krediterad", showRefund: true, isReceipt: false, fileLabel: "faktura" };
+    }
+    if (ps === "paid") {
+      return { title: "FAKTURA", statusText: "Betald", showRefund: false, isReceipt: false, fileLabel: "faktura" };
+    }
+    if (ps === "cancelled") {
+      return { title: "FAKTURA (avbruten)", statusText: "Avbruten", showRefund: false, isReceipt: false, fileLabel: "faktura" };
+    }
+    return { title: "FAKTURAUNDERLAG", statusText: "Ej betald", showRefund: false, isReceipt: false, fileLabel: "fakturaunderlag" };
+  }
+
+  // Privat
+  if (ps === "paid") {
+    return { title: "KVITTO", statusText: "Betald", showRefund: false, isReceipt: true, fileLabel: "kvitto" };
+  }
+  if (ps === "refunded") {
+    return { title: "KVITTO (återbetald)", statusText: "Återbetald", showRefund: true, isReceipt: true, fileLabel: "kvitto" };
+  }
+  if (ps === "cancelled") {
+    return { title: "AVBOKNINGSBEKRÄFTELSE", statusText: "Avbruten", showRefund: false, isReceipt: false, fileLabel: "avbokningsbekraftelse" };
+  }
+  // pending / okänt — säker default
+  return { title: "ORDERBEKRÄFTELSE", statusText: "Ej betald", showRefund: false, isReceipt: false, fileLabel: "orderbekraftelse" };
+}
+
 function isValidUuid(id: unknown): boolean {
   return typeof id === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -158,13 +210,19 @@ Deno.serve(async (req) => {
     let authorized = jwtEmail && bookingEmail && jwtEmail === bookingEmail;
 
     if (!authorized) {
-      // Admin-check
-      const { data: adminRow } = await sbService
-        .from("admin_users")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (adminRow) authorized = true;
+      // Admin-check via email (admin_users.email är primärnyckel,
+      // matchar is_admin()-funktionen + get-booking-events EF).
+      // Tidigare bug: refererade admin_users.user_id (kolumn finns ej)
+      // → admin-fallback failade tyst, admins kunde inte ladda PDF.
+      const adminEmail = user.email?.toLowerCase().trim() || "";
+      if (adminEmail) {
+        const { data: adminRow } = await sbService
+          .from("admin_users")
+          .select("id")
+          .eq("email", adminEmail)
+          .maybeSingle();
+        if (adminRow) authorized = true;
+      }
     }
 
     if (!authorized) {
@@ -232,8 +290,14 @@ Deno.serve(async (req) => {
       y -= 10;
     }
 
+    // ── Document-klassificering (titel, status, refund-flag) ──
+    const doc = classifyDocument(
+      String(booking.payment_status || "pending"),
+      isCompanyCustomer,
+    );
+
     // ── Header ──
-    text(isCompanyCustomer ? "FAKTURA" : "KVITTO", M, y, { size: 22, bold: true, color: dark });
+    text(doc.title, M, y, { size: 22, bold: true, color: dark });
     y -= 28;
     text(`Nr: ${receiptNumber}`, M, y, { size: 11, color: grey });
     text(`Utställt: ${issueDate}`, M + 280, y, { size: 11, color: grey });
@@ -295,18 +359,50 @@ Deno.serve(async (req) => {
     y -= 20;
     divider();
 
+    // ── Återbetalning (visas bara om payment_status=refunded) ──
+    // BokfL: dokumenterad credit/återbetalning ska vara synlig på kvittot
+    // för audit-trail. Använder bookings.updated_at som refund-datum
+    // (refunded_at-kolumn finns inte i prod 2026-04-25).
+    if (doc.showRefund) {
+      const refundAmount = Number(booking.refund_amount || 0);
+      const refundDate = booking.updated_at
+        ? new Date(booking.updated_at as string).toLocaleDateString("sv-SE")
+        : "–";
+      text("ÅTERBETALNING", M, y, { size: 9, bold: true, color: dark });
+      y -= 14;
+      if (refundAmount > 0) {
+        row("Belopp", `-${fmtKr(refundAmount)} kr`);
+      }
+      row("Datum", refundDate);
+      row("Metod", company.paymentProvider);
+      y -= 6;
+      divider();
+    }
+
     // ── Betalning ──
     text("BETALNING", M, y, { size: 9, bold: true, color: dark });
     y -= 14;
-    row("Status", String(booking.payment_status || "pending") === "paid" ? "Betald" : "Ej betald");
+    row("Status", doc.statusText);
     row("Leverantör", company.paymentProvider);
     if (booking.stripe_session_id) row("Ref", String(booking.stripe_session_id).slice(0, 28) + "…");
     y -= 8;
 
     // ── Fotnot ──
+    // BokfL/MervL gäller bara faktiska kvitton + fakturor (faktiska
+    // affärshändelser). Orderbekräftelse + avbokningsbekräftelse
+    // refererar inte regulator-spec.
     y = M + 20;
+    const isBokfMaterial = doc.isReceipt || (isCompanyCustomer && doc.fileLabel === "faktura");
+    const docArticle = doc.fileLabel === "orderbekraftelse" ? "en"
+      : doc.fileLabel === "avbokningsbekraftelse" ? "en"
+      : "ett";
+    const docNoun = doc.fileLabel === "orderbekraftelse" ? "orderbekräftelse"
+      : doc.fileLabel === "avbokningsbekraftelse" ? "avbokningsbekräftelse"
+      : doc.fileLabel === "fakturaunderlag" ? "fakturaunderlag"
+      : doc.fileLabel;
     text(
-      "Detta dokument är ett automatgenererat " + (isCompanyCustomer ? "fakturaunderlag" : "kvitto") + " och uppfyller BokfL 5 kap 7 § samt MervL 11 kap 8 §.",
+      `Detta dokument är ${docArticle} automatgenererad ${docNoun}` +
+        (isBokfMaterial ? " och uppfyller BokfL 5 kap 7 § samt MervL 11 kap 8 §." : "."),
       M, y, { size: 8, color: grey }
     );
 
@@ -314,7 +410,7 @@ Deno.serve(async (req) => {
     // Kopiera till standard Uint8Array<ArrayBuffer> för Response-body-kompat
     const pdfBytes = new Uint8Array(pdfBytesRaw);
 
-    const filename = `${isCompanyCustomer ? "faktura" : "kvitto"}-${receiptNumber}.pdf`;
+    const filename = `${doc.fileLabel}-${receiptNumber}.pdf`;
 
     log("info", "PDF generated", {
       booking_id: bookingId,
