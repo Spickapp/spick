@@ -359,17 +359,39 @@ serve(async (req) => {
           // Per cleaner kan välja included_free=true (addon gratis) eller
           // custom_price_sek (annat än default). NULL custom_price + false
           // included_free → använd default service_addons.price_sek.
-          const overrideMap = new Map<string, { custom_price_sek: number | null; included_free: boolean }>();
+          const overrideMap = new Map<string, { custom_price_sek: number | null; included_free: boolean; not_offered: boolean }>();
           if (cleaner?.id) {
             const { data: overrides } = await supabase
               .from("cleaner_addon_prices")
-              .select("addon_id, custom_price_sek, included_free")
+              .select("addon_id, custom_price_sek, included_free, not_offered")
               .eq("cleaner_id", cleaner.id)
               .in("addon_id", addonIds);
             for (const o of (overrides ?? [])) {
               overrideMap.set(o.addon_id as string, {
                 custom_price_sek: o.custom_price_sek as number | null,
                 included_free: !!o.included_free,
+                not_offered: !!o.not_offered,
+              });
+            }
+          }
+
+          // §4.8e validation: om vald cleaner har not_offered=true för någon
+          // av de valda addons → vägra bokningen FÖRE INSERT (rec finns inte
+          // ännu). Kund måste välja annan städare ELLER ta bort tillvalet.
+          // (Long-term: matching-filter exkluderar dessa cleaners FÖRE-match
+          // — separat commit.)
+          for (const row of addonRows) {
+            if (row.active === false) continue;
+            const override = overrideMap.get(row.id as string);
+            if (override?.not_offered === true) {
+              return json(422, {
+                error: "addon_not_offered_by_cleaner",
+                details: {
+                  addon_id: row.id,
+                  addon_label: row.label_sv,
+                  cleaner_name: displayName || cleaner_name || (cleaner as { full_name?: string })?.full_name || "Städaren",
+                  message: `${displayName || cleaner_name || "Städaren"} erbjuder inte "${row.label_sv}". Välj annan städare eller ta bort tillvalet.`,
+                },
               });
             }
           }
