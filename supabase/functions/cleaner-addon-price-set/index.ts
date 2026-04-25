@@ -111,13 +111,13 @@ Deno.serve(async (req) => {
     if (b.target_cleaner_id !== undefined && b.target_cleaner_id !== null && !isValidUuid(b.target_cleaner_id)) {
       return json(CORS, 400, { error: "invalid_target_cleaner_id" });
     }
-    if (typeof b.action !== "string" || !["custom", "free", "reset"].includes(b.action)) {
+    if (typeof b.action !== "string" || !["custom", "free", "not_offered", "reset"].includes(b.action)) {
       return json(CORS, 400, {
         error: "invalid_action",
-        details: { allowed: ["custom", "free", "reset"] },
+        details: { allowed: ["custom", "free", "not_offered", "reset"] },
       });
     }
-    const action = b.action as "custom" | "free" | "reset";
+    const action = b.action as "custom" | "free" | "not_offered" | "reset";
     const addonId = b.addon_id as string;
     // Admin MÅSTE explicit ange target_cleaner_id (de har ingen "egen" cleaner-row)
     if (isAdmin && !b.target_cleaner_id) {
@@ -196,7 +196,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // UPSERT (custom eller free)
+    // UPSERT (custom, free eller not_offered) — exklusiva flaggor enligt
+    // CHECK-constraint cleaner_addon_prices_logic_check.
     const { error: upsertErr } = await sb
       .from("cleaner_addon_prices")
       .upsert({
@@ -204,6 +205,7 @@ Deno.serve(async (req) => {
         addon_id: addonId,
         custom_price_sek: customPriceSek,
         included_free: action === "free",
+        not_offered: action === "not_offered",
         updated_at: new Date().toISOString(),
       }, { onConflict: "cleaner_id,addon_id" });
 

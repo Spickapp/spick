@@ -9516,7 +9516,7 @@ async function loadAddonPrices() {
     var headers = { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY };
     var promises = [
       fetch(SPICK.SUPA_URL + '/functions/v1/services-list?cb=' + Date.now(), { headers: headers }),
-      fetch(SPICK.SUPA_URL + '/rest/v1/cleaner_addon_prices?cleaner_id=eq.' + encodeURIComponent(cleaner.id) + '&select=addon_id,custom_price_sek,included_free', { headers: headers })
+      fetch(SPICK.SUPA_URL + '/rest/v1/cleaner_addon_prices?cleaner_id=eq.' + encodeURIComponent(cleaner.id) + '&select=addon_id,custom_price_sek,included_free,not_offered', { headers: headers })
     ];
     var results = await Promise.all(promises);
     var svcData = await results[0].json();
@@ -9592,7 +9592,10 @@ function renderAddonPrices(addons) {
     if (!a.id) continue; // skip om id-lookup misslyckats
     var statusText = 'Default ' + a.price_sek + ' kr';
     var statusColor = 'var(--m)';
-    if (a.override && a.override.included_free) {
+    if (a.override && a.override.not_offered) {
+      statusText = 'Erbjuder ej';
+      statusColor = '#b91c1c';
+    } else if (a.override && a.override.included_free) {
       statusText = 'Ingår gratis';
       statusColor = '#16a34a';
     } else if (a.override && a.override.custom_price_sek != null) {
@@ -9605,6 +9608,7 @@ function renderAddonPrices(addons) {
     html += '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">';
     html += '<button onclick="setAddonCustomPrompt(\'' + a.id + '\',' + a.price_sek + ')" style="padding:6px 10px;background:var(--w);border:1.5px solid var(--g);color:var(--g);border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Eget pris</button>';
     html += '<button onclick="setAddonFreeConfirm(\'' + a.id + '\')" style="padding:6px 10px;background:var(--w);border:1.5px solid #16a34a;color:#16a34a;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Ingår gratis</button>';
+    html += '<button onclick="setAddonNotOfferedConfirm(\'' + a.id + '\')" style="padding:6px 10px;background:var(--w);border:1.5px solid #b91c1c;color:#b91c1c;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Erbjuder ej</button>';
     html += '<button onclick="resetAddonPriceConfirm(\'' + a.id + '\')" style="padding:6px 10px;background:var(--w);border:1.5px solid var(--gray-300);color:var(--m);border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Default</button>';
     html += '</div></div>';
   }
@@ -9659,6 +9663,11 @@ function setAddonCustomPrompt(addonId, defaultPrice) {
 function setAddonFreeConfirm(addonId) {
   if (!confirm('Markera detta tillval som "Ingår gratis"? Kunden får addonen utan extra kostnad.')) return;
   _callAddonPriceSet(addonId, 'free', null);
+}
+
+function setAddonNotOfferedConfirm(addonId) {
+  if (!confirm('Markera detta tillval som "Erbjuder ej"? Kunder som kräver det matchas inte med dig.')) return;
+  _callAddonPriceSet(addonId, 'not_offered', null);
 }
 
 function resetAddonPriceConfirm(addonId) {
