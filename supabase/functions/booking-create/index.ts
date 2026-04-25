@@ -138,6 +138,8 @@ serve(async (req) => {
       manual_entry,              // boolean — flagga för manuella bokningar
       // ── Sprint C-4 (2026-04-28): kund-valda addons ──
       selected_addons,           // Array<{addon_id: uuid}> — valideras + berikas nedan
+      // ── §7.5 TIC BankID: länkar rut_consents-rad till denna booking ──
+      rut_bankid_session_id,     // string — TIC session_id om kund verifierat via BankID
     } = body;
 
     // Validera payment_mode (CHECK constraint i DB)
@@ -565,6 +567,43 @@ serve(async (req) => {
     if (insertErr) {
       console.error("Booking insert failed:", insertErr);
       return json(500, { error: "Kunde inte skapa bokning" });
+    }
+
+    // §7.5 TIC BankID: länka rut_consents-rad till denna booking om
+    // kund-flow inkluderade BankID-verifiering. Pnr-hash är redan satt
+    // av rut-bankid-status-EFen. UPDATE booking_id + customer_pnr_hash
+    // härifrån (booking_id är NULL i consent-raden tills nu).
+    const rutSessionId = (typeof rut_bankid_session_id === 'string' && rut_bankid_session_id.length > 8)
+      ? rut_bankid_session_id
+      : null;
+    if (rutSessionId) {
+      try {
+        const { data: consent } = await supabase
+          .from("rut_consents")
+          .select("id, pnr_hash, customer_email, consumed_at")
+          .eq("tic_session_id", rutSessionId)
+          .maybeSingle();
+        if (consent && consent.customer_email === email && consent.consumed_at && consent.pnr_hash !== "PENDING") {
+          await supabase
+            .from("rut_consents")
+            .update({ booking_id: bookingId })
+            .eq("id", consent.id);
+          await supabase
+            .from("bookings")
+            .update({ customer_pnr_hash: consent.pnr_hash })
+            .eq("id", bookingId);
+          console.log("[booking-create] TIC BankID linked", { booking_id: bookingId, consent_id: consent.id });
+        } else {
+          console.warn("[booking-create] TIC consent ej giltig för länkning", {
+            booking_id: bookingId,
+            has_consent: !!consent,
+            email_match: consent?.customer_email === email,
+            consumed: !!consent?.consumed_at,
+          });
+        }
+      } catch (e) {
+        console.warn("[booking-create] TIC consent-link exception", (e as Error).message);
+      }
     }
 
     // §3.9b (Sprint 2 Dag 3b): korrelera bokning med shadow-log-rad.

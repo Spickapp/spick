@@ -3624,6 +3624,10 @@ async function doBook() {
         discount_code: state.discountCode || undefined,
         referral_code: state.referralCode || undefined,
         customer_pnr: rawPnr || undefined,
+        // §7.5 TIC BankID: skicka session_id om kund verifierat via BankID
+        rut_bankid_session_id: (state.rutBankidVerified && state.rutBankidSession)
+          ? state.rutBankidSession.session_id
+          : undefined,
         // Sprint C-4: addon-snapshot för booking-create. EF validerar mot
         // service_addons + adderar summa till total_price (utan RUT per default,
         // C-4.1 jurist-beslut för RUT-applicering).
