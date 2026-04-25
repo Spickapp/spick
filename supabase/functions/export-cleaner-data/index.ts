@@ -85,7 +85,6 @@ Deno.serve(async (req) => {
     calendarEvents,
     availabilityV2,
     blockedDates,
-    languages,
     slotHolds,
     referrals,
     customerRelations,
@@ -106,7 +105,8 @@ Deno.serve(async (req) => {
     fetchCleanerTable("calendar_events"),
     fetchCleanerTable("cleaner_availability_v2"),
     fetchCleanerTable("cleaner_blocked_dates"),
-    fetchCleanerTable("cleaner_languages"),
+    // cleaner_languages borttagen 2026-04-25 (Fas 2-utökning §2.1.2):
+    // tabellen DROP:ad, embedded cleaners.languages TEXT[] är SSOT (rule #28).
     fetchCleanerTable("subscription_slot_holds"),
     fetchCleanerTable("cleaner_referrals"),
     fetchCleanerTable("cleaner_customer_relations"),
@@ -185,7 +185,6 @@ Deno.serve(async (req) => {
     calendar_events: calendarEvents,
     availability_v2: availabilityV2,
     blocked_dates: blockedDates,
-    languages,
     subscription_slot_holds: slotHolds,
     referrals,
     customer_relations: customerRelations,
