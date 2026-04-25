@@ -152,7 +152,7 @@ const MOB_HTML = `
     <a href="${P}bli-stadare.html">Bli städare</a>
     <a href="${P}bli-foretag.html">Bli partner</a>
     <a href="${P}mitt-konto.html">Mina bokningar</a>
-    <a href="${P}foretag-dashboard.html" data-vd-only>Företagsdashboard</a>
+    <a href="${P}stadare-dashboard.html#team" data-vd-only>Företagsdashboard</a>
     <a href="${P}stadare-dashboard.html">Städarportalen</a>
     <a href="${P}boka.html" style="background:var(--g);color:#fff;border-radius:100px;text-align:center;padding:.75rem 1.5rem;border:none;">Boka nu →</a>
   </div>
