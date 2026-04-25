@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (87 st)
+## Edge Functions (88 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -68,6 +68,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `get-booking-events` | ═══════════════════════════════════════════════════════════════ SPICK – get-booking-events (Fas 6 §6.4-§6.6) |
 | `get-cleaner-contact` |  |
 | `health` |  |
+| `manual-booking-create` | ═══════════════════════════════════════════════════════════════ SPICK – manual-booking-create (Fas A) |
 | `matching-wrapper` | supabase/functions/matching-wrapper/index.ts §3.7-full Step 2b — Matching-wrapper EF (shadow-mode A/B-ramverk) |
 | `noshow-refund` |  |
 | `notify` |  |
