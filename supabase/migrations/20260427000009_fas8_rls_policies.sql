@@ -22,8 +22,14 @@
 -- ─────────────────────────────────────────────────────────────
 -- 0. Säker admin-check-funktion (om den inte finns)
 -- ─────────────────────────────────────────────────────────────
--- Använder auth.uid() + admin_users-tabellen för role-check.
+-- Använder auth.jwt()->>'email' + admin_users-tabellen för role-check.
 -- Defensiv: returnerar false om admin_users saknas.
+--
+-- KORRIGERAD 2026-04-29: tidigare definition refererade admin_users.user_id
+-- (kolumn som inte finns i prod) → 42703-fel som dödade ~25 RLS-policies.
+-- Fix-migration: 20260429000001_fix_is_admin_user_id_to_email.sql.
+-- Email är primärnyckeln för admin-identifiering (matchar
+-- admin.html:1441/4975 + 00000_fas_2_1_1_bootstrap_dependencies.sql:194).
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
@@ -38,7 +44,7 @@ BEGIN
     RETURN false;
   END IF;
   RETURN EXISTS (
-    SELECT 1 FROM admin_users WHERE user_id = auth.uid()
+    SELECT 1 FROM admin_users WHERE email = (auth.jwt() ->> 'email')
   );
 END
 $fn$;
