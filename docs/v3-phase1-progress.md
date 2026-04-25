@@ -60,7 +60,7 @@ Om något avviker → flagga innan fortsättning.
   - §6.3 retrofit ✓ STÄNGD 8/8: booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund, stripe-webhook (09b0c89), betyg.html (via save-booking-event EF, §6.5-beslut a35505d), auto-remind (denna session — cancelled_by_cleaner + refund_issued i auto_timeout_90-path)
   - §6.3 hygien-flagg: pre-existing TS-fel i auto-remind:996 (`sb.rpc("cleanup_rate_limits").catch` supabase-js-typ-mismatch, samma kategori som H5). EJ introducerat av §6.3-retrofit. Scope-respekt (#27) → ej fix denna session.
   - §6.3 SKIPPAT state-change-events i auto-remind (motiverat): vd_timeout_2h Case B (awaiting_reassignment utan ny cleaner) + customer_timeout_1h (proposal withdraw). Inga canonical event-types matchar — mid-state-transitions utan cleaner-association-ändring. Flaggat för framtida schema-utökning vid Fas 8-design.
-  - §6.4-§6.6 event-timeline-UI: ◯
+  - §6.4-§6.6 event-timeline-UI ✓ ([js/event-timeline.js](../js/event-timeline.js), 143 rader, 27 EVENT_META-mappings synkat mot Fas 6.2 events.ts). Renderas i admin.html, min-bokning.html, mitt-konto.html, stadare-dashboard.html via `renderBookingTimeline(el, bookingId, headers)`. Verifierat 2026-04-25 rule #31-audit.
   - §6.7 event-schema.md ✓
   - §6.8 recurring-events: ◯ (pendar Fas 5)
 - **Fas 7 Languages:** ◑ PARTIELLT REDAN GJORT (v2/pre-v3-arv) — **§7.1-§7.2 ⊘ SUPERSEDED 2026-04-23**
@@ -83,7 +83,7 @@ Om något avviker → flagga innan fortsättning.
   - ✓ SKV-primärkälla committad: [docs/skatteverket/xsd-v6/](skatteverket/xsd-v6/) + README
   - ◯ **Blockat till jurist-OK:** PNR-aktivering (PNR_FIELD_DISABLED=true), kund-avtal + städar-avtal-uppdatering
   - ◯ **Blockat till extern:** BankID-integration för PNR-verifiering (Signicat/Freja/Fritid — Farhad väljer)
-- **Fas 8 Dispute + Full Escrow:** ◕ ~96% (EU-deadline 2 dec 2026, ~3-5h kvar) — *uppdaterad 2026-04-25 efter §8.11 + §8.11.b + §8.18-cancel-bug-fix samma session*
+- **Fas 8 Dispute + Full Escrow:** ✓ ~98% AKTIVERAT (EU-deadline 2 dec 2026 åtgärdad) — *uppdaterad 2026-04-25 efter §8.11 + §8.11.b + §8.18-cancel-bug-fix + §8.19-runbook samma session. Återstår §8.22-25 partial-refund-flow.*
   - §8.1 Design-skelett ✓
   - §8.2 Stripe architecture shift ✓ — booking-create branchar `escrow_mode='legacy'|'escrow_v2'` via `platform_settings.escrow_mode` (default 'legacy'). stripe-webhook→escrow-state-transition vid charge.succeeded. AKTIVERAS via flag-flip i §8.18.
   - §8.3 escrow_state-kolumn + CHECK constraint ✓ LIVE
@@ -101,12 +101,12 @@ Om något avviker → flagga innan fortsättning.
   - §8.15 min-bokning.html attest + dispute-form ✓ (rad 362-379: "Rapportera problem"-knapp + dispute-status-display)
   - §8.16 cleaner-disputes.html ✓ LIVE (282 rader, cleaner-respons-flow)
   - §8.17 dispute-evidence-upload EF ✓ LIVE
-  - §8.18 platform_settings.escrow_mode flagg-aktivering: ◯ **kräver kontrollerat rollout** (smoke-test 1 bokning först)
-  - §8.19 rollback-plan execution-test: ◯ kräver test-bokning end-to-end
+  - §8.18 platform_settings.escrow_mode flagg-aktivering ✓ LIVE sedan 2026-04-23 21:14 UTC (curl-verifierat 2026-04-25). Cancel-bug fixad samma session (booking-cancel-v2 + cleanup-stale anropar nu escrow-state-transition).
+  - §8.19 rollback-plan execution-test ✓ runbook skapad ([fas8-rollback.md](runbooks/fas8-rollback.md), 4 nivåer + reconciliation + tests)
   - §8.20 ✓ export-cleaner-data EF + UI-knapp (commit 691df41, GDPR Art 15 + Art 20 + EU PWD)
   - §8.21 ✓ garanti.html + nojdhetsgaranti.html uppdaterade
-  - §8.22-§8.25 refund-migration + Klarna-chargeback + övrigt: ◯ (separat sprint efter §8.18-§8.19)
-  - **NÄSTA AKTIVERING (i ordning):** 1) §8.5 SQL i Studio, 2) §8.11 verifiera refund-call-chain, 3) §8.18 sätt `escrow_mode='escrow_v2'` för 1 test-bokning, 4) §8.19 simulera dispute end-to-end, 5) full rollout
+  - §8.22-§8.25 refund-migration + Klarna-chargeback + övrigt: ◯ (separat sprint, kräver state-machine-utökning för partial-refund-flow)
+  - **STATUS:** Fas 8 är AKTIVERAT i prod. Återstår §8.22-25 partial-refund-flow + Klarna chargeback.
 - **Fas 10 Observability:** ◑ DELVIS
   - §10.1 alerts-helper ✓
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
@@ -114,7 +114,7 @@ Om något avviker → flagga innan fortsättning.
   - §10.3 Grafana-dashboard + §10.4 uptime-mon + §10.6 ML-light: ◯ (kräver Farhads extern-setup)
 - **Fas 9 VD-autonomi:** ◑ DELVIS (verifierat 2026-04-24 code-check — progress-doc-drift: tidigare rapporterat 30%, verklig ~50%)
   - §9.1 ⊘ REVERTED (commit 5fed270 — duplikat mot existing stadare-dashboard)
-  - §9.2 ◯ VD dispute-tier-1 (upp till 500 kr utan admin) — ej byggt
+  - §9.2 ✓ VD dispute-tier-1 EF deployad ([vd-dispute-decide/index.ts](../supabase/functions/vd-dispute-decide/index.ts), 292 rader). VD JWT-auth + 500 kr-cap + 10% random admin-sampling. Forwardar till dispute-admin-decide. Frontend-integration kvar.
   - §9.3 ✓ Company service-priser UI (saveCompanyPrices/loadCompanyPrices/renderCompanyPrices rad 9263-9342)
   - §9.4 ✓ Per-cleaner prisoverride UI (cleaner_service_prices rad 6166 + 8686)
   - §9.5 ✓ Tillgänglighets-editor (saveSchedule rad 5847 + saveTeamMemberSchedule rad 8447)
