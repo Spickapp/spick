@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (81 st)
+## Edge Functions (83 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -76,6 +76,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `push` | SPICK – Push Notifications med VAPID |
 | `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
 | `refund-booking` | ═══════════════════════════════════════════════════════════════ SPICK – refund-booking (Fas 8 §8.11) |
+| `register-bankid-init` | ═══════════════════════════════════════════════════════════════ SPICK – register-bankid-init (Item 1 Etapp 2) |
+| `register-bankid-status` | ═══════════════════════════════════════════════════════════════ SPICK – register-bankid-status (Item 1 Etapp 2) |
 | `rut-bankid-init` | ═══════════════════════════════════════════════════════════════ SPICK – rut-bankid-init (Fas 7.5 §RUT.1 — TIC.io BankID- |
 | `rut-bankid-status` | ═══════════════════════════════════════════════════════════════ SPICK – rut-bankid-status (Fas 7.5 §RUT.2 — TIC poll + S |
 | `rut-batch-export-xml` | rut-batch-export-xml — Fas 7.5 §7.5.x ═══════════════════════════════════════════════════════════════ |
