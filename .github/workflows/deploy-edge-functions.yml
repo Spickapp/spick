@@ -30,7 +30,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # behövs för git-diff mot föregående commit
+          fetch-depth: 0  # H18-fix 2026-04-25: behövs för git-diff över push
+          # med flera commits. Tidigare fetch-depth=2 misslyckades tyst när
+          # github.event.before pekade >1 commit bakåt → CHANGED=tom →
+          # workflow rapporterade success utan att deploya nya EFs (manifest
+          # som 404 vid första anrop). cleaner-addon-price-set 2026-04-25.
 
       - uses: supabase/setup-cli@v1
         with:
@@ -67,10 +71,27 @@ jobs:
           if [ "$DEPLOY_ALL" = "true" ]; then
             TO_DEPLOY=("${ALL_EFS[@]}")
           else
-            # Git-diff mot föregående commit
-            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- supabase/functions/ || echo "")
-            echo "Changed files:"
-            echo "$CHANGED"
+            # Git-diff mot föregående commit. fetch-depth=0 ovan säkerställer
+            # full history. Om before-SHA inte hittas (force-push eller orphan)
+            # → fallback till deploy_all för säkerhet.
+            BEFORE_SHA="${{ github.event.before }}"
+            FALLBACK_DEPLOY_ALL="false"
+            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              echo "⚠ before-SHA saknas (initial push?) → deploya ALLA"
+              FALLBACK_DEPLOY_ALL="true"
+              CHANGED=""
+            elif ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+              echo "⚠ before-SHA $BEFORE_SHA ej i lokal historik (orphan?) → deploya ALLA"
+              FALLBACK_DEPLOY_ALL="true"
+              CHANGED=""
+            else
+              CHANGED=$(git diff --name-only "$BEFORE_SHA" "${{ github.sha }}" -- supabase/functions/)
+              echo "Changed files:"
+              echo "$CHANGED"
+            fi
+            if [ "$FALLBACK_DEPLOY_ALL" = "true" ]; then
+              TO_DEPLOY=("${ALL_EFS[@]}")
+            fi
 
             # Om _shared/ ändrats → deploy alla (de importerar från _shared)
             if echo "$CHANGED" | grep -q "^supabase/functions/_shared/"; then
