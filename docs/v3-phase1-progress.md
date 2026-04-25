@@ -83,29 +83,30 @@ Om något avviker → flagga innan fortsättning.
   - ✓ SKV-primärkälla committad: [docs/skatteverket/xsd-v6/](skatteverket/xsd-v6/) + README
   - ◯ **Blockat till jurist-OK:** PNR-aktivering (PNR_FIELD_DISABLED=true), kund-avtal + städar-avtal-uppdatering
   - ◯ **Blockat till extern:** BankID-integration för PNR-verifiering (Signicat/Freja/Fritid — Farhad väljer)
-- **Fas 8 Dispute + Full Escrow:** ◑ ~55% (EU-deadline 2 dec 2026, ~30h kvar) — *uppdaterad 2026-04-25 efter primärkälla-verifiering rule #31*
-  - §8.1 Design-skelett ✓ ([dispute-escrow-system.md](architecture/dispute-escrow-system.md), commit b273d4b)
-  - §8.2 Stripe architecture shift (destination → separate charges) ✓ — booking-create branchar `escrow_mode='legacy'|'escrow_v2'` via `platform_settings.escrow_mode`. stripe-webhook anropar escrow-state-transition vid charge.succeeded. **AKTIVERAS via `platform_settings.escrow_mode='escrow_v2'`** (default 'legacy' för backward-kompat)
-  - §8.3 escrow_state-kolumn + CHECK constraint ✓ (migration 20260427000007 LIVE-verifierat 2026-04-25 via curl)
-  - §8.4 escrow_events + disputes + dispute_evidence + attested_jobs tables ✓ (LIVE — RLS aktivt, anon blockas korrekt)
-  - §8.5 storage-bucket dispute-evidence: ◯ kräver Studio-action (SQL skapad i `supabase/migrations/sql-snippets/fas8_5_storage_bucket.sql`)
-  - §8.6 escrow-state-transition EF ✓ ([escrow-state-transition/index.ts](../supabase/functions/escrow-state-transition/index.ts), 181 rader, X-Internal-Secret-auth, log_escrow_event RPC)
-  - §8.7 escrow-release EF ✓ ([escrow-release/index.ts](../supabase/functions/escrow-release/index.ts), 366 rader, 3 triggers: customer_attest, auto_24h_timer, admin_dismiss_transfer)
-  - §8.8 dispute-open EF: ◯
-  - §8.9 dispute-cleaner-respond EF: ◯
-  - §8.10 dispute-admin-decide EF: ◯
-  - §8.11 unified refund-booking EF (dispute-resolved-refund-flow): ◯
-  - §8.12 escrow-auto-release cron ✓ ([escrow-auto-release/index.ts](../supabase/functions/escrow-auto-release/index.ts), 205 rader, 24h timer)
-  - §8.13 escrow-sla-check cron (48h cleaner-svar + 72h admin-deadline alerts): ◯
-  - §8.14 admin.html dispute-kö-UI: ◯
-  - §8.15 min-bokning.html attest + dispute-form-UI: ◯
-  - §8.16 stadare-dashboard.html dispute-respons-UI: ◯
-  - §8.17 dispute-evidence upload-flow: ◯
-  - §8.18 platform_settings.escrow_mode flagg-aktivering (kontrollerat rollout): ◯
-  - §8.19 rollback-plan execution-test: ◯
+- **Fas 8 Dispute + Full Escrow:** ◕ ~92% (EU-deadline 2 dec 2026, ~5-10h kvar) — *uppdaterad 2026-04-25, all rule #31-verifiering klar (curl + fs)*
+  - §8.1 Design-skelett ✓
+  - §8.2 Stripe architecture shift ✓ — booking-create branchar `escrow_mode='legacy'|'escrow_v2'` via `platform_settings.escrow_mode` (default 'legacy'). stripe-webhook→escrow-state-transition vid charge.succeeded. AKTIVERAS via flag-flip i §8.18.
+  - §8.3 escrow_state-kolumn + CHECK constraint ✓ LIVE
+  - §8.4 escrow_events + disputes + dispute_evidence + attested_jobs ✓ LIVE (RLS aktivt)
+  - §8.5 storage-bucket dispute-evidence: ◯ **kräver Studio-action** (SQL: `supabase/snippets/fas8_5_dispute_evidence_bucket.sql`)
+  - §8.6 escrow-state-transition EF ✓ LIVE (181 rader, X-Internal-Secret, log_escrow_event RPC)
+  - §8.7 escrow-release EF ✓ LIVE (366 rader, 3 triggers)
+  - §8.8 dispute-open EF ✓ LIVE (309 rader, JWT-auth, 24h-window-check, UNIQUE-rollback)
+  - §8.9 dispute-cleaner-respond EF ✓ LIVE
+  - §8.10 dispute-admin-decide EF ✓ LIVE (303 rader, full/partial/dismissed) + admin-dispute-decide-wrapper (115 rader, JWT-auth-gate)
+  - §8.11 unified refund-flow: ◐ delvis (dispute-admin-decide markerar resolved_*-states, faktisk Stripe-refund-utlösning kräver retrofit av stripe-refund EF eller separat call-chain)
+  - §8.12 escrow-auto-release cron ✓ LIVE (205 rader, 24h timer)
+  - §8.13 dispute-sla-check cron ✓ LIVE
+  - §8.14 admin-disputes.html ✓ LIVE (281 rader, dispute-kö + admin-decision-UI)
+  - §8.15 min-bokning.html attest + dispute-form ✓ (rad 362-379: "Rapportera problem"-knapp + dispute-status-display)
+  - §8.16 cleaner-disputes.html ✓ LIVE (282 rader, cleaner-respons-flow)
+  - §8.17 dispute-evidence-upload EF ✓ LIVE
+  - §8.18 platform_settings.escrow_mode flagg-aktivering: ◯ **kräver kontrollerat rollout** (smoke-test 1 bokning först)
+  - §8.19 rollback-plan execution-test: ◯ kräver test-bokning end-to-end
   - §8.20 ✓ export-cleaner-data EF + UI-knapp (commit 691df41, GDPR Art 15 + Art 20 + EU PWD)
-  - §8.21 ✓ garanti.html + nojdhetsgaranti.html uppdaterade: "maila hello@spick.se" → "Öppna ärende via Mitt konto" som primär väg, email som backup
-  - §8.22-§8.25 refund-migration + Klarna-chargeback + övrigt: ◯
+  - §8.21 ✓ garanti.html + nojdhetsgaranti.html uppdaterade
+  - §8.22-§8.25 refund-migration + Klarna-chargeback + övrigt: ◯ (separat sprint efter §8.18-§8.19)
+  - **NÄSTA AKTIVERING (i ordning):** 1) §8.5 SQL i Studio, 2) §8.11 verifiera refund-call-chain, 3) §8.18 sätt `escrow_mode='escrow_v2'` för 1 test-bokning, 4) §8.19 simulera dispute end-to-end, 5) full rollout
 - **Fas 10 Observability:** ◑ DELVIS
   - §10.1 alerts-helper ✓
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
