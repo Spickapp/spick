@@ -42,6 +42,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
 import { createLogger } from "../_shared/log.ts";
+import { encryptPnr } from "../_shared/encryption.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -244,13 +245,32 @@ Deno.serve(async (req) => {
     }
 
     // ── UPDATE booking om kopplad ──
+    // Alt B (2026-04-25): kryptera klartext-PNR med AES-256-GCM och spara
+    // i bookings.customer_pnr. Hash kvar som anti-replay/audit-spår.
+    // Klartext krävs vid framtida RUT-batch-export till SKV — kryptering
+    // tillåter detta utan att ha klartext at-rest i DB.
     if (consent.booking_id) {
+      let pnrEncrypted: string | null = null;
+      try {
+        pnrEncrypted = await encryptPnr(personalNumber);
+      } catch (e) {
+        log("error", "PNR-encryption failed — booking sparas med bara hash, RUT-batch kommer inte kunna dekryptera", {
+          booking_id: consent.booking_id,
+          error: (e as Error).message,
+        });
+      }
+
+      const bookingUpdate: Record<string, unknown> = { customer_pnr_hash: pnrHash };
+      if (pnrEncrypted) {
+        bookingUpdate.customer_pnr = pnrEncrypted;
+      }
+
       const { error: bookingErr } = await sb
         .from("bookings")
-        .update({ customer_pnr_hash: pnrHash })
+        .update(bookingUpdate)
         .eq("id", consent.booking_id);
       if (bookingErr) {
-        log("warn", "booking customer_pnr_hash UPDATE failed (consent-rad sparad, manual reconciliation kan behövas)", {
+        log("warn", "booking customer_pnr/hash UPDATE failed (consent-rad sparad, manual reconciliation kan behövas)", {
           booking_id: consent.booking_id, error: bookingErr.message,
         });
       }

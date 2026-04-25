@@ -1,7 +1,7 @@
 # Sanning: Personnummer + GDPR
 
-**Senaste verifiering:** 2026-04-24 (Sprint 1 Dag 1 — PNR-fält avstängt i boka.html)
-**Status:** STABILISERAT — ackumulation stoppad. Befintliga 36 rader kvarstår för GDPR-beslut.
+**Senaste verifiering:** 2026-04-25 (Alt B AES-256-GCM-encryption-helper deployad)
+**Status:** STABILISERAT + krypterings-infrastruktur live. Ackumulation stoppad. Befintliga 36 rader kvar att migrera till Alt B-format via scripts/migrate-pnr-encrypt.ts (Farhad-action när TIC-flow ska aktiveras).
 
 ## Nuläge (verifierat i PROD 2026-04-24)
 
@@ -82,6 +82,27 @@ Full plan i `docs/planning/todo-pnr-infrastructure-2026-04-23.md` — 4 steg:
 2. GDPR-hantering av 3 riktiga kunders data — Farhads bedömning (jurist intern)
 3. Fixa `rut_amount`-bugg — ⊘ SUPERSEDED 2026-04-24: verifierat att `rut_amount` är korrekt idag (se rut.md)
 4. Integrera i Fas 7.5
+
+## Alt B — AES-256-GCM-kryptering (2026-04-25)
+
+Infrastruktur klar för krypterad PNR-lagring (Hemfrid-modell men säkrare):
+
+- ✅ `_shared/encryption.ts` — encryptPnr/decryptPnr/isEncrypted-helpers (8/8 tester passerar)
+- ✅ `rut-bankid-status` EF — skriver krypterad PNR till `bookings.customer_pnr` efter SPAR-enrichment
+- ✅ `PNR_ENCRYPTION_KEY` Supabase secret satt 2026-04-25 (44-tecken base64, 32 bytes)
+- ✅ `scripts/migrate-pnr-encrypt.ts` — engångs-migration av 11 befintliga klartext-rader
+- ⏳ Migration ej körd än (Farhad-action när TIC-flow ska aktiveras)
+- ⏳ `tic_enabled = false` i prod (vänta tills Farhad är OK med PNR-lagrings-policy)
+
+**Format:** `bookings.customer_pnr = "AES-GCM:v1:" + base64(IV || ciphertext+authTag)`
+
+**Vid framtida RUT-batch-export:** EF importerar `decryptPnr()` från `_shared/encryption.ts` och dekrypterar för SKV-XML.
+
+**Säkerhet:**
+- AES-256-GCM med slumpmässig IV per kryptering (NIST SP 800-38D)
+- Nyckeln endast i Supabase secrets (aldrig i git, logs eller DB)
+- Auth-tag verifierar mot tampering
+- Version-prefix tillåter framtida key-rotation (v2 → v3)
 
 ## Ändringar av denna fil
 
