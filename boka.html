@@ -2861,18 +2861,42 @@ async function loadAddonsForService(serviceLabelSv) {
   }
 }
 
-// §4.8g (2026-04-25): Cleaner-addon-compatibility-filter. När cleaner är
-// vald + kund kryssar i en addon som cleaner markerat "Erbjuder ej" →
-// uncheck + toast. Pre-fetchas när cleanerId ändras.
+// §4.8g + §4.8h (2026-04-25): Cleaner-addon-context-loader. Hämtar ALLA
+// cleaner_addon_prices för vald cleaner: not_offered (compatibility-filter),
+// custom_price_sek (override-pris), included_free (gratis-tillval).
+// Sätter state.cleanerNotOfferedAddons (Set) + state.cleanerAddonOverrides (Map).
+// Pre-fetchas när cleanerId ändras.
 state.cleanerNotOfferedAddons = state.cleanerNotOfferedAddons || new Set();
+state.cleanerAddonOverrides = state.cleanerAddonOverrides || new Map();
 async function loadCleanerNotOfferedAddons() {
-  if (!state.cleanerId) { state.cleanerNotOfferedAddons = new Set(); return; }
+  if (!state.cleanerId) {
+    state.cleanerNotOfferedAddons = new Set();
+    state.cleanerAddonOverrides = new Map();
+    return;
+  }
   try {
     var headers = { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY };
-    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/cleaner_addon_prices?cleaner_id=eq.' + encodeURIComponent(state.cleanerId) + '&not_offered=eq.true&select=addon_id', { headers: headers });
-    if (!res.ok) { state.cleanerNotOfferedAddons = new Set(); return; }
+    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/cleaner_addon_prices?cleaner_id=eq.' + encodeURIComponent(state.cleanerId) + '&select=addon_id,custom_price_sek,included_free,not_offered', { headers: headers });
+    if (!res.ok) {
+      state.cleanerNotOfferedAddons = new Set();
+      state.cleanerAddonOverrides = new Map();
+      return;
+    }
     var rows = await res.json();
-    state.cleanerNotOfferedAddons = new Set((rows || []).map(function(r) { return r.addon_id; }));
+    state.cleanerNotOfferedAddons = new Set();
+    state.cleanerAddonOverrides = new Map();
+    (rows || []).forEach(function(r) {
+      state.cleanerAddonOverrides.set(r.addon_id, {
+        custom_price_sek: r.custom_price_sek,
+        included_free: !!r.included_free,
+        not_offered: !!r.not_offered,
+      });
+      if (r.not_offered) state.cleanerNotOfferedAddons.add(r.addon_id);
+    });
+    // §4.8h: applicera resolved-priser + dölj not_offered i UI
+    if (typeof applyCleanerAddonOverridesToUI === 'function') {
+      applyCleanerAddonOverridesToUI();
+    }
     // Auto-uncheck redan-valda blocked-addons
     if (state.cleanerNotOfferedAddons.size > 0) {
       var checked = Array.from(document.querySelectorAll('.addon-cb:checked'));
@@ -2893,7 +2917,45 @@ async function loadCleanerNotOfferedAddons() {
   } catch (e) {
     console.warn('[SPICK] loadCleanerNotOfferedAddons failed:', e);
     state.cleanerNotOfferedAddons = new Set();
+    state.cleanerAddonOverrides = new Map();
   }
+}
+
+// §4.8h: applicera cleaner-overrides på addon-grid efter cleaner valts.
+// Uppdaterar pris-display ("+99 kr" → "+200 kr (egen)" / "Gratis") + döljer
+// raden helt om cleaner.not_offered=true.
+function applyCleanerAddonOverridesToUI() {
+  var checkboxes = document.querySelectorAll('.addon-cb');
+  if (!checkboxes.length) return;
+  checkboxes.forEach(function(cb) {
+    var aid = decodeURIComponent(cb.dataset.addonId || '');
+    if (!aid) return;
+    var label = cb.closest('label');
+    if (!label) return;
+    var override = state.cleanerAddonOverrides && state.cleanerAddonOverrides.get(aid);
+    if (override && override.not_offered) {
+      label.style.display = 'none';
+      cb.checked = false;
+      return;
+    }
+    label.style.display = '';
+    var defaultPrice = parseInt(cb.dataset.addonDefaultPrice || cb.dataset.addonPrice, 10) || 0;
+    if (!cb.dataset.addonDefaultPrice) cb.dataset.addonDefaultPrice = String(defaultPrice);
+    var resolvedPrice = defaultPrice;
+    var freeFlag = false;
+    if (override) {
+      if (override.included_free) { resolvedPrice = 0; freeFlag = true; }
+      else if (override.custom_price_sek !== null && override.custom_price_sek !== undefined) {
+        resolvedPrice = Number(override.custom_price_sek) || 0;
+      }
+    }
+    cb.dataset.addonPrice = String(resolvedPrice);
+    var spans = label.querySelectorAll('span');
+    var priceSpan = spans[spans.length - 1];
+    if (priceSpan) {
+      priceSpan.textContent = freeFlag ? 'Gratis' : '+' + resolvedPrice + ' kr';
+    }
+  });
 }
 
 function updateAddons() {
