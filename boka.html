@@ -884,6 +884,10 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cleanerId   = preCleanerId;
     state.cleanerName = preCleanerName;
     state.cleanerRate = Math.min(Math.max(preRate, 100), 1000); // Clamp rate 100-1000
+    // §4.8g: pre-fetch cleaner not_offered-addons för auto-uncheck
+    if (typeof loadCleanerNotOfferedAddons === 'function') {
+      setTimeout(loadCleanerNotOfferedAddons, 100);
+    }
   }
   // Kombinera sparad state med pre-vald städare
   if (isUUID && savedState && savedState.service && savedState.date) {
@@ -892,6 +896,9 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cleanerId = preCleanerId;
     state.cleanerName = preCleanerName;
     state.cleanerRate = Math.min(Math.max(preRate, 100), 1000);
+    if (typeof loadCleanerNotOfferedAddons === 'function') {
+      setTimeout(loadCleanerNotOfferedAddons, 100);
+    }
     setTimeout(function() {
       if (state.service) selectService(state.service, '', '', '');
       if (state.sqm) { var sq = document.getElementById('sqm'); if (sq) { sq.value = state.sqm; calcHours(); } }
@@ -974,6 +981,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.phone = b.customer_phone || state.phone;
         if (b.cleaner_id) state.cleanerId = b.cleaner_id;
         if (b.cleaner_name) state.cleanerName = b.cleaner_name;
+        if (b.cleaner_id && typeof loadCleanerNotOfferedAddons === 'function') {
+          setTimeout(loadCleanerNotOfferedAddons, 100);
+        }
         // UI-uppdatering (samma mönster som savedState-restore ovan)
         setTimeout(function() {
           if (state.service) selectService(state.service, '', '', '');
@@ -2851,7 +2861,60 @@ async function loadAddonsForService(serviceLabelSv) {
   }
 }
 
+// §4.8g (2026-04-25): Cleaner-addon-compatibility-filter. När cleaner är
+// vald + kund kryssar i en addon som cleaner markerat "Erbjuder ej" →
+// uncheck + toast. Pre-fetchas när cleanerId ändras.
+state.cleanerNotOfferedAddons = state.cleanerNotOfferedAddons || new Set();
+async function loadCleanerNotOfferedAddons() {
+  if (!state.cleanerId) { state.cleanerNotOfferedAddons = new Set(); return; }
+  try {
+    var headers = { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY };
+    var res = await fetch(SPICK.SUPA_URL + '/rest/v1/cleaner_addon_prices?cleaner_id=eq.' + encodeURIComponent(state.cleanerId) + '&not_offered=eq.true&select=addon_id', { headers: headers });
+    if (!res.ok) { state.cleanerNotOfferedAddons = new Set(); return; }
+    var rows = await res.json();
+    state.cleanerNotOfferedAddons = new Set((rows || []).map(function(r) { return r.addon_id; }));
+    // Auto-uncheck redan-valda blocked-addons
+    if (state.cleanerNotOfferedAddons.size > 0) {
+      var checked = Array.from(document.querySelectorAll('.addon-cb:checked'));
+      var unchecked = [];
+      checked.forEach(function(cb) {
+        var aid = decodeURIComponent(cb.dataset.addonId || '');
+        if (state.cleanerNotOfferedAddons.has(aid)) {
+          cb.checked = false;
+          unchecked.push(decodeURIComponent(cb.dataset.addonLabel || ''));
+        }
+      });
+      if (unchecked.length && typeof showToast === 'function') {
+        var nm = (state.cleanerName || 'Städaren').split(' ')[0];
+        showToast(nm + ' erbjuder ej: ' + unchecked.join(', '));
+      }
+      if (unchecked.length) updateAddons();
+    }
+  } catch (e) {
+    console.warn('[SPICK] loadCleanerNotOfferedAddons failed:', e);
+    state.cleanerNotOfferedAddons = new Set();
+  }
+}
+
 function updateAddons() {
+  // §4.8g compatibility-filter: blockera addons som cleaner ej erbjuder.
+  // (Pre-loaded via loadCleanerNotOfferedAddons när cleanerId ändras.)
+  if (state.cleanerNotOfferedAddons && state.cleanerNotOfferedAddons.size > 0) {
+    var checkedBoxes = Array.from(document.querySelectorAll('.addon-cb:checked'));
+    var blocked = [];
+    checkedBoxes.forEach(function(cb) {
+      var aid = decodeURIComponent(cb.dataset.addonId || '');
+      if (state.cleanerNotOfferedAddons.has(aid)) {
+        cb.checked = false;
+        blocked.push(decodeURIComponent(cb.dataset.addonLabel || ''));
+      }
+    });
+    if (blocked.length && typeof showToast === 'function') {
+      var nm = (state.cleanerName || 'Städaren').split(' ')[0];
+      showToast(nm + ' erbjuder ej: ' + blocked.join(', '));
+    }
+  }
+
   // Sprint C-4: bygg state.selectedAddons från DB-driven data-attributes.
   // encodeURIComponent vid render → decode här.
   var checked = Array.from(document.querySelectorAll('.addon-cb:checked'));
