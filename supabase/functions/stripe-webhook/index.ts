@@ -91,6 +91,27 @@ async function resolveStripeKeyFromFlag(): Promise<string> {
   return STRIPE_SECRET_KEY;
 }
 
+/**
+ * Returnerar `true` om DB-flaggan platform_settings.stripe_test_mode='true'.
+ * Default: false (live-mode) vid fel/okänt värde.
+ *
+ * Används av webhook-mode-guarden för att blocka events där
+ * event.livemode och DB-flagga inte matchar (hygien #21,
+ * defense-in-depth mot cs_test_*-sessions i live-mode-prod).
+ */
+async function getStripeTestModeFlag(): Promise<boolean> {
+  try {
+    const { data } = await sb
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "stripe_test_mode")
+      .single();
+    return data?.value === 'true';
+  } catch (_) {
+    return false;
+  }
+}
+
 // ── Email wrapper ──────────────────────────────────────────────────────────
 // XSS-skydd
 function esc(s: unknown): string {
@@ -1036,6 +1057,23 @@ serve(async (req) => {
   if (isTestEvent) {
     console.log(`[stripe-webhook] TEST event received: ${eventId} (${event.type})`);
   }
+
+  // ── Mode-mismatch guard (hygien #21, defense-in-depth) ──────────────────
+  // Stripe accepterar ibland test-keys i live-konto-konfiguration. Om
+  // DB-flaggan säger live (stripe_test_mode=false) men event är test
+  // (livemode=false) → reject. Förebygger cs_test_*-sessions i prod-DB.
+  // Returnerar 200 så Stripe inte retryr (mismatch är permanent).
+  const flagSaysTestMode = await getStripeTestModeFlag();
+  if (flagSaysTestMode !== isTestEvent) {
+    console.warn(
+      `[stripe-webhook] BLOCKED mode-mismatch: ` +
+      `flag=${flagSaysTestMode ? 'test' : 'live'} ` +
+      `event=${isTestEvent ? 'test' : 'live'} ` +
+      `eventId=${eventId} type=${event.type}`
+    );
+    return new Response("OK (blocked: mode mismatch)", { status: 200 });
+  }
+
   if (eventId) {
     const isReal = await verifyEventWithStripe(eventId, stripeKey);
     if (!isReal) {
