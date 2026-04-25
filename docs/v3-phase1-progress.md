@@ -33,9 +33,14 @@ Om något avviker → flagga innan fortsättning.
   - **Modell B (företag vs städare)** ✓ Model-1 till Model-4a (providers-shadow LIVE)
   - **Modell C (flexibel matchning)**: C-2 ✓ (2026-04-27 sprint), C-1/C-3/C-4/C-5 ◯
   - **Model-4b boka.html team-badge rendering** ✓ (2026-04-27 sprint, vilande tills Model-4c flipp)
-- **Fas 4 Services genomgående:** ◯ EJ PÅBÖRJAD (v2-arv)
+- **Fas 4 Services genomgående:** ✓ ~95% (frontend-migration klar 2026-04-25, flag-aktivering kvar)
   - `services` + `service_addons` + `services-list` EF + `services-loader.js` + `boka.html` DB-driven: ✓ (pre-v3-arv)
-  - §4.1-§4.7 frontend-migration av 7 filer: ◯
+  - §4.1 boka.html ✓ retrofittad till SPICK_RUT_SERVICES (commit 9dadf09)
+  - §4.2-§4.4 stadare-dashboard.html (RUT) + foretag.html + stadare-profil.html ✓ (commit 3ca0abb)
+  - §4.5-§4.6 stadare-dashboard.html (_allServices) + admin.html ✓ (commit 9ded6b7)
+  - §4.7 platform_settings.F1_USE_DB_SERVICES flag-flip: ◯ kräver Studio-action (SQL: `supabase/snippets/fas4_activate_db_services.sql`)
+  - tjanster.html: SKIP (JSON-LD schema.org microdata, inte funktionell array)
+  - services-loader.js exponerar window.SPICK_RUT_SERVICES + window.SPICK_ALL_SERVICES när flag=true
 - **Fas 5 Kundretention + Recurring:** ◑ PÅGÅENDE (oberoende, 10-15h)
   - §5.1 ✓ subscriptions inventerad (Model B)
   - §5.2 ✓ schema utökad 12 nya kolumner (a6ec8a5 + d90f8f3)
