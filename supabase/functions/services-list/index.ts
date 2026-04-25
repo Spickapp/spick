@@ -54,6 +54,35 @@ Deno.serve(async (req) => {
       );
     }
 
+    // §4.8 Coverage-filter (Farhad-direktiv 2026-04-25): visa bara
+    // tjänster som minst en aktiv cleaner faktiskt erbjuder. Undviker
+    // "tom-tjänst-känsla" där kund kan välja t.ex. Mattrengöring men
+    // inga städare matchar. Aktiva cleaners: status IN ('aktiv',
+    // 'company_owner'). Testdata/onboarding-cleaners exkluderas.
+    const { data: activeCleaners, error: cleanerErr } = await supabase
+      .from('v_cleaners_public')
+      .select('services, status')
+      .in('status', ['aktiv', 'company_owner']);
+
+    let filteredServices = services ?? [];
+    if (cleanerErr) {
+      console.warn('services-list: cleaner-coverage-fetch failed, returnerar alla services', cleanerErr);
+      // Fail-soft: om coverage-filter misslyckas → returnera alla services
+      // (gamla beteendet, ingen breaking change vid DB-issue).
+    } else {
+      const offeredLabels = new Set<string>();
+      for (const c of (activeCleaners ?? [])) {
+        if (Array.isArray((c as { services?: unknown }).services)) {
+          for (const s of (c as { services: string[] }).services) {
+            if (typeof s === 'string') offeredLabels.add(s);
+          }
+        }
+      }
+      filteredServices = filteredServices.filter((s: { label_sv: string }) =>
+        offeredLabels.has(s.label_sv)
+      );
+    }
+
     // Read addons with service_id join (RLS filters active=true for anon)
     const { data: addonRows, error: addonError } = await supabase
       .from('service_addons')
@@ -84,7 +113,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ services: services ?? [], addons }),
+      JSON.stringify({ services: filteredServices, addons }),
       {
         status: 200,
         headers: {
