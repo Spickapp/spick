@@ -147,6 +147,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 </style>
 <script src="js/config.js"></script>
 <script src="js/contact-guard.js"></script>
+<script src="js/event-timeline.js"></script>
 <script src="js/components.js" defer></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
@@ -763,13 +764,53 @@ function bookingCard(b) {
           ${b.rut ? `<span class="bc-rut">med RUT-avdrag</span>` : ''}
         </div>
         <div class="bc-actions">
+          <button class="btn-sm btn-outline" onclick="toggleBookingTimeline('${escHtml(b.id)}')" id="tl-btn-${escHtml(b.id)}">📜 Historik</button>
           <a href="min-bokning.html?bid=${encodeURIComponent(b.id)}" class="btn-sm btn-outline">Detaljer</a>
           ${canReview ? `<button class="btn-sm btn-link" onclick="openInlineReview('${escHtml(b.id)}','${escHtml((b.cleaner_name||'').replace(/'/g,''))}')" style="background:var(--gp);color:var(--g);border:none;cursor:pointer">⭐ Betygsätt</button>` : ''}
           ${canCancel ? `<button class="btn-sm btn-danger" onclick="openCancelModal('${escHtml(b.id)}', '${escHtml(b.service || 'städning')}')">Avboka</button>` : ''}
           ${['cancelled','avbokad','klar','completed'].includes(status) ? `<a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" class="btn-sm btn-outline">🔄 Boka igen</a>` : ''}
         </div>
       </div>
+      <div id="bk-timeline-${escHtml(b.id)}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--grd)"></div>
     </div>`;
+}
+
+// Fas 6 §6.4-§6.6: event-timeline expand/collapse på booking-card.
+// Lazy-load via get-booking-events EF (RLS-bypass + role-filter).
+// Pattern matchar min-bokning.html:424-440 men anpassad för list-vy.
+async function toggleBookingTimeline(bookingId) {
+  const el = document.getElementById('bk-timeline-' + bookingId);
+  const btn = document.getElementById('tl-btn-' + bookingId);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    if (btn) btn.textContent = '📜 Dölj historik';
+    if (!el.dataset.loaded) {
+      try {
+        const sess = await SB.auth.getSession();
+        const token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+        if (!token) {
+          el.innerHTML = '<div style="padding:.5rem;color:var(--m);font-size:.82rem">Logga in med din e-post för att se historik.</div>';
+          return;
+        }
+        if (typeof renderBookingTimeline !== 'function') {
+          el.innerHTML = '<div style="padding:.5rem;color:var(--m);font-size:.82rem">Timeline-komponenten kunde inte laddas.</div>';
+          return;
+        }
+        await renderBookingTimeline(el, bookingId, {
+          apikey: SPICK.SUPA_KEY,
+          Authorization: 'Bearer ' + token
+        });
+        el.dataset.loaded = '1';
+      } catch (e) {
+        console.warn('[mitt-konto] events-timeline failed:', e);
+        el.innerHTML = '<div style="padding:.5rem;color:var(--r);font-size:.82rem">Kunde inte ladda historik.</div>';
+      }
+    }
+  } else {
+    el.style.display = 'none';
+    if (btn) btn.textContent = '📜 Historik';
+  }
 }
 
 // ── TABS ─────────────────────────────────────
