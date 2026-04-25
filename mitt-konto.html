@@ -608,7 +608,10 @@ function showPortal(bookings, email) {
 
   // Stats
   const paid = bookings.filter(b => b.payment_status === 'paid');
-  const rutSaved = paid.reduce((s, b) => s + (b.rut ? (b.total_price || 0) * 0.5 : 0), 0);
+  // total_price är NETTO efter RUT (per docs/sanning/rut.md).
+  // RUT-besparingen är b.rut_amount, inte total_price × 0.5 (vilket
+  // skulle vara dubbelt RUT-avdrag).
+  const rutSaved = paid.reduce((s, b) => s + (b.rut ? Number(b.rut_amount || 0) : 0), 0);
   document.getElementById('statBookings').textContent = bookings.length;
   document.getElementById('statSpent').textContent = Math.round(rutSaved);
 
@@ -711,8 +714,8 @@ function bookingCard(b) {
   const date = b.date || b.scheduled_date || '';
   const time = b.time || b.scheduled_time || '';
   const status = b.payment_status || b.status || 'ny';
+  // total_price är NETTO efter RUT (per docs/sanning/rut.md). Visa direkt.
   const price = b.total_price || 0;
-  const rutPrice = b.rut ? Math.round(price * 0.5) : price;
 
   const statusLabel = {
     'paid': 'Betald', 'pending': 'Inväntar betalning', 'ny': 'Ny',
@@ -760,7 +763,7 @@ function bookingCard(b) {
       </div>
       <div class="bc-bottom">
         <div>
-          <span class="bc-price">${parseInt(rutPrice)} kr</span>
+          <span class="bc-price">${parseInt(price)} kr</span>
           ${b.rut ? `<span class="bc-rut">med RUT-avdrag</span>` : ''}
         </div>
         <div class="bc-actions">
