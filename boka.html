@@ -766,6 +766,8 @@ const COLORS  = ['#0F6E56','#7C3AED','#DC2626','#2563EB','#D97706','#0891B2','#9
 // window.SPICK_RUT_SERVICES av services-loader.js. Hardcoded array
 // är fallback om services-loader inte hunnit ladda eller flag=false.
 // Endast hushållsnära tjänster ger RUT-avdrag (50%).
+// Premiumstädning finns i DB (rut_eligible=true) men är active=false → exponeras inte via services-list EF.
+// Aktiveras via: UPDATE services SET active=true WHERE key='premiumstadning';
 var RUT_SERVICES_FALLBACK = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs', 'Mattrengöring'];
 function getRutServices() {
   return (window.SPICK_RUT_SERVICES && window.SPICK_RUT_SERVICES.length > 0)
