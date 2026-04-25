@@ -1545,6 +1545,15 @@ body{top:0!important}
           <button id="save-company-prices-btn" onclick="saveCompanyPrices()" style="width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.85rem;cursor:pointer">Spara priser</button>
         </div>
 
+        <!-- §4.8c: Tillval & material — per-cleaner-addon-priser -->
+        <div style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px" id="addon-prices-section">
+          <div style="margin-bottom:12px">
+            <div style="font-weight:600;font-size:.92rem">Tillval & material</div>
+            <div style="font-size:.72rem;color:var(--m);margin-top:2px">Sätt eget pris eller markera "Ingår gratis" per tillval. Använd default annars.</div>
+          </div>
+          <div id="addon-prices-list" style="margin-bottom:8px"><div style="text-align:center;padding:16px;color:var(--gray-400);font-size:.85rem">Laddar...</div></div>
+        </div>
+
         <!-- Uppgifter (VD) -->
         <div class="card" style="padding:20px;margin-top:12px" id="team-tasks-section">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -6175,6 +6184,7 @@ function switchTab(tab) {
     renderTeam();
     if (typeof loadTasks === 'function') loadTasks();
     if (typeof loadVdInvoices === 'function') loadVdInvoices();
+    if (typeof loadAddonPrices === 'function') loadAddonPrices();
     if (window._isCompanyOwner && typeof loadPendingReassignments === 'function') loadPendingReassignments();
   }
 }
@@ -9489,6 +9499,162 @@ async function saveCompanyPrices() {
     showToast('Kunde inte spara: ' + e.message);
   }
   if (btn) { btn.disabled = false; btn.textContent = 'Spara priser'; }
+}
+
+// ═══ ADDON-PRICES (Fas 4 §4.8c) ═══════════════════════════════════
+// Per-cleaner addon-priser (custom/free/reset). Read via REST + write
+// via cleaner-addon-price-set EF.
+
+async function loadAddonPrices() {
+  var wrap = document.getElementById('addon-prices-list');
+  if (!wrap) return;
+  if (!cleaner || !cleaner.id) {
+    wrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:.85rem">Logga in för att se tillval</div>';
+    return;
+  }
+  try {
+    var headers = { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY };
+    var promises = [
+      fetch(SPICK.SUPA_URL + '/functions/v1/services-list?cb=' + Date.now(), { headers: headers }),
+      fetch(SPICK.SUPA_URL + '/rest/v1/cleaner_addon_prices?cleaner_id=eq.' + encodeURIComponent(cleaner.id) + '&select=addon_id,custom_price_sek,included_free', { headers: headers })
+    ];
+    var results = await Promise.all(promises);
+    var svcData = await results[0].json();
+    var overrides = await results[1].json();
+
+    var overrideMap = {};
+    if (Array.isArray(overrides)) {
+      for (var i = 0; i < overrides.length; i++) {
+        overrideMap[overrides[i].addon_id] = overrides[i];
+      }
+    }
+
+    var cleanerSvcs = Array.isArray(cleaner.services) ? cleaner.services : [];
+    var allAddons = [];
+    var addonsBySvc = svcData.addons || {};
+    var services = svcData.services || [];
+    for (var s = 0; s < services.length; s++) {
+      var svc = services[s];
+      if (cleanerSvcs.length > 0 && cleanerSvcs.indexOf(svc.label_sv) === -1) continue;
+      var svcAddons = addonsBySvc[svc.key] || [];
+      for (var a = 0; a < svcAddons.length; a++) {
+        // services-list svar har INTE 'id' i addon (per services-list EF). Måste fetcha separat.
+        // För enkelhet: använd key+service som identifierare och lookup id via REST.
+        allAddons.push({
+          key: svcAddons[a].key,
+          label_sv: svcAddons[a].label_sv,
+          price_sek: svcAddons[a].price_sek,
+          service_label: svc.label_sv,
+          service_key: svc.key
+        });
+      }
+    }
+    // Hämta addon-IDs från service_addons för att kunna anropa cleaner-addon-price-set
+    if (allAddons.length === 0) {
+      wrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:.85rem">Inga tillval för dina tjänster</div>';
+      return;
+    }
+    var addonKeys = Array.from(new Set(allAddons.map(function(a) { return a.key; })));
+    var addonRowsRes = await fetch(SPICK.SUPA_URL + '/rest/v1/service_addons?key=in.(' + addonKeys.map(encodeURIComponent).join(',') + ')&select=id,key,service_id', { headers: headers });
+    var addonRows = await addonRowsRes.json();
+    var idMap = {};
+    if (Array.isArray(addonRows)) {
+      for (var r = 0; r < addonRows.length; r++) {
+        idMap[addonRows[r].service_id + '|' + addonRows[r].key] = addonRows[r].id;
+      }
+    }
+    // Fetcha service-IDs
+    var svcIdsRes = await fetch(SPICK.SUPA_URL + '/rest/v1/services?key=in.(' + Array.from(new Set(allAddons.map(function(a) { return encodeURIComponent(a.service_key); }))).join(',') + ')&select=id,key', { headers: headers });
+    var svcIdRows = await svcIdsRes.json();
+    var svcKeyToId = {};
+    if (Array.isArray(svcIdRows)) {
+      for (var k = 0; k < svcIdRows.length; k++) svcKeyToId[svcIdRows[k].key] = svcIdRows[k].id;
+    }
+    for (var x = 0; x < allAddons.length; x++) {
+      var sId = svcKeyToId[allAddons[x].service_key];
+      allAddons[x].id = idMap[sId + '|' + allAddons[x].key] || null;
+      allAddons[x].override = allAddons[x].id ? (overrideMap[allAddons[x].id] || null) : null;
+    }
+
+    renderAddonPrices(allAddons);
+  } catch (e) {
+    console.warn('[SPICK] loadAddonPrices error:', e);
+    wrap.innerHTML = '<div style="text-align:center;padding:16px;color:#b91c1c;font-size:.85rem">Kunde inte ladda tillval</div>';
+  }
+}
+
+function renderAddonPrices(addons) {
+  var wrap = document.getElementById('addon-prices-list');
+  if (!wrap) return;
+  var html = '';
+  for (var i = 0; i < addons.length; i++) {
+    var a = addons[i];
+    if (!a.id) continue; // skip om id-lookup misslyckats
+    var statusText = 'Default ' + a.price_sek + ' kr';
+    var statusColor = 'var(--m)';
+    if (a.override && a.override.included_free) {
+      statusText = 'Ingår gratis';
+      statusColor = '#16a34a';
+    } else if (a.override && a.override.custom_price_sek != null) {
+      statusText = a.override.custom_price_sek + ' kr (egen)';
+      statusColor = 'var(--g)';
+    }
+    html += '<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:8px">';
+    html += '<div style="font-weight:600;font-size:.85rem">' + escHtml(a.label_sv) + ' <span style="font-size:.7rem;color:var(--m);font-weight:400">(' + escHtml(a.service_label) + ')</span></div>';
+    html += '<div style="font-size:.72rem;color:' + statusColor + ';margin-top:4px;font-weight:500">Status: ' + escHtml(statusText) + '</div>';
+    html += '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">';
+    html += '<button onclick="setAddonCustomPrompt(\'' + a.id + '\',' + a.price_sek + ')" style="padding:6px 10px;background:var(--w);border:1.5px solid var(--g);color:var(--g);border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Eget pris</button>';
+    html += '<button onclick="setAddonFreeConfirm(\'' + a.id + '\')" style="padding:6px 10px;background:var(--w);border:1.5px solid #16a34a;color:#16a34a;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Ingår gratis</button>';
+    html += '<button onclick="resetAddonPriceConfirm(\'' + a.id + '\')" style="padding:6px 10px;background:var(--w);border:1.5px solid var(--gray-300);color:var(--m);border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer">Default</button>';
+    html += '</div></div>';
+  }
+  if (!html) html = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:.85rem">Inga tillval matchar dina tjänster</div>';
+  wrap.innerHTML = html;
+}
+
+async function _callAddonPriceSet(addonId, action, customPriceSek) {
+  try {
+    var session = await sb.auth.getSession();
+    var token = session && session.data && session.data.session ? session.data.session.access_token : null;
+    if (!token) { showToast('Du måste vara inloggad'); return; }
+    var body = { addon_id: addonId, action: action };
+    if (action === 'custom') body.custom_price_sek = customPriceSek;
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/cleaner-addon-price-set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (!res.ok) {
+      showToast('Kunde inte spara: ' + (data.error || 'okänt fel'));
+      return;
+    }
+    showToast(action === 'custom' ? 'Pris uppdaterat' : action === 'free' ? 'Markerat som gratis' : 'Återställt till default');
+    loadAddonPrices();
+  } catch (e) {
+    console.warn('[SPICK] _callAddonPriceSet error:', e);
+    showToast('Något gick fel');
+  }
+}
+
+function setAddonCustomPrompt(addonId, defaultPrice) {
+  var input = prompt('Ditt pris i kr (0-5000):', defaultPrice);
+  if (input === null) return;
+  var num = Number(input);
+  if (!Number.isFinite(num) || num < 0 || num > 5000) {
+    showToast('Ogiltigt pris');
+    return;
+  }
+  _callAddonPriceSet(addonId, 'custom', Math.round(num));
+}
+
+function setAddonFreeConfirm(addonId) {
+  if (!confirm('Markera detta tillval som "Ingår gratis"? Kunden får addonen utan extra kostnad.')) return;
+  _callAddonPriceSet(addonId, 'free', null);
+}
+
+function resetAddonPriceConfirm(addonId) {
+  _callAddonPriceSet(addonId, 'reset', null);
 }
 
 // ═══ LÖNEUNDERLAG ═══════════════════════════════════════════════
