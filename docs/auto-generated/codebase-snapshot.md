@@ -92,13 +92,14 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `team-sms-notify` |  |
 | `vd-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-decide (Fas 9 §9.2 — VD dispute-tier- |
 
-## Shared EF helpers (21 st)
+## Shared EF helpers (22 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
 | `_shared/alerts.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Admin-alert-helper (Fas 10 §10.1 + §10.2 partial |
 | `_shared/auth.ts` | supabase/functions/_shared/auth.ts ───────────────────────────────────────────────────────────────── |
 | `_shared/email.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Delad Edge Function-infrastruktur |
+| `_shared/encryption.ts` | supabase/functions/_shared/encryption.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/escrow-state.ts` | supabase/functions/_shared/escrow-state.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/events.ts` | supabase/functions/_shared/events.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/fonts.ts` |  |
