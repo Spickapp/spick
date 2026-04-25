@@ -1054,7 +1054,15 @@ ${b.payment_intent_id ? `<p><strong>Full återbetalning är på väg</strong> �
     } catch (e) { console.warn("GDPR cleanup:", (e as Error).message); }
 
     // ── RATE LIMIT CLEANUP ────────────────────────────────────
-    await sb.rpc("cleanup_rate_limits").catch((e) => { console.warn("auto-remind: suppressed error", e); });
+    // Audit 2026-04-25: tidigare .rpc(...).catch(...) kraschade EF med
+    // "sb.rpc(...).catch is not a function" pga supabase-js@2.49.4
+    // PostgrestFilterBuilder är thenable men inte Promise → .catch ej giltig
+    // chain. Hela EF returnerade 500 varje cron-körning.
+    try {
+      await sb.rpc("cleanup_rate_limits");
+    } catch (e) {
+      console.warn("auto-remind: suppressed error", e);
+    }
 
     // ── HEALTH HEARTBEAT ──────────────────────────────────────
     try {
