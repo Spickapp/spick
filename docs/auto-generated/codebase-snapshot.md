@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (89 st)
+## Edge Functions (90 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -34,6 +34,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `calendar-sync` | calendar-sync — Synkronisera Google Calendar ↔ Spick Triggas av: |
 | `charge-subscription-booking` | charge-subscription-booking — Debiterar sparade kort dagen innan städning ══════════════════════════════════════════════ |
 | `claude` |  |
+| `cleaner-addon-price-set` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-addon-price-set (Fas 4 §4.8c) |
 | `cleaner-booking-response` |  |
 | `cleaner-job-completed` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-job-completed (Fas 8 §8.2 wiring) |
 | `cleaner-og` |  |
