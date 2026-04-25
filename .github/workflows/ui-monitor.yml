@@ -21,6 +21,9 @@ jobs:
         env:
           SUPA_ANON: ${{ secrets.SUPABASE_ANON_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # §10.6 (2026-04-25): primary alert-leverans till Discord, fallback email
+          ADMIN_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+          DISABLE_ADMIN_EMAIL: ${{ secrets.DISABLE_ADMIN_EMAIL }}
         run: python3 .github/scripts/ui_monitor.py
 
       - name: Skicka varning vid fel

@@ -24,6 +24,41 @@ def log_fail(test, detail=""):
     print(f"  ❌ {test}" + (f" – {detail}" if detail else ""), file=sys.stderr)
 
 def send_alert(failures):
+    """§10.6 (2026-04-25): primary delivery via Discord webhook,
+    fallback till Resend-email om webhook saknas eller failar.
+    Discord-format: red embed med fields per failure."""
+    webhook_url = os.environ.get("ADMIN_ALERT_WEBHOOK_URL", "")
+    discord_ok = False
+    if webhook_url and ("discord.com/api/webhooks" in webhook_url or "discordapp.com/api/webhooks" in webhook_url):
+        try:
+            fields = [{"name": t[:256], "value": (d or "(ingen detalj)")[:1024], "inline": False}
+                      for _, t, d in failures[:10]]
+            payload = {
+                "embeds": [{
+                    "title": f"🚨 Spick UI Monitor — {len(failures)} fel hittade",
+                    "description": "Live-monitoring av spick.se kritiska sidor",
+                    "color": 0xDC2626,  # Red
+                    "fields": fields,
+                    "footer": {"text": "ui_monitor.py · github.com/Spickapp/spick/actions"},
+                }]
+            }
+            req = urllib.request.Request(
+                webhook_url,
+                json.dumps(payload).encode(),
+                {"Content-Type": "application/json"},
+                method="POST"
+            )
+            urllib.request.urlopen(req, timeout=10)
+            discord_ok = True
+            print(f"  📡 Discord-alert skickad ({len(failures)} fel)")
+        except Exception as e:
+            print(f"  ⚠️ Discord-webhook failade: {e}")
+    if discord_ok:
+        return
+    # Fallback: email via Resend (om DISABLE_ADMIN_EMAIL inte satt)
+    if os.environ.get("DISABLE_ADMIN_EMAIL", "").lower() == "true":
+        print("  [ALERT SKIP – DISABLE_ADMIN_EMAIL=true + Discord ej tillgänglig]")
+        return
     if not RESEND:
         print("  [ALERT SKIP – ingen RESEND_KEY]")
         return
@@ -57,7 +92,7 @@ def send_alert(failures):
     )
     try:
         urllib.request.urlopen(req, timeout=10)
-        print(f"  📧 Varningsmail skickat till {ADMIN}")
+        print(f"  📧 Varningsmail skickat till {ADMIN} (fallback)")
     except Exception as e:
         print(f"  ⚠️ Kunde inte skicka mail: {e}")
 
