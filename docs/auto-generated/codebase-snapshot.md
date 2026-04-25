@@ -91,7 +91,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `team-sms-notify` |  |
 | `vd-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-decide (Fas 9 §9.2 — VD dispute-tier- |
 
-## Shared EF helpers (22 st)
+## Shared EF helpers (23 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -116,6 +116,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe-client.ts` |  |
 | `_shared/stripe-webhook-verify.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Stripe webhook HMAC-signature-validering (shared |
 | `_shared/stripe.ts` |  |
+| `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
 ## GitHub Actions workflows (37 st)
@@ -158,7 +159,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (137 st)
+## Migrations (138 st)
 
 - Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
 - Timestamp-prefix: `20260429000003`
