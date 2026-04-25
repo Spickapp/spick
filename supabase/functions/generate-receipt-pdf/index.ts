@@ -72,7 +72,19 @@ type DocumentMode = {
   showRefund: boolean;
   isReceipt: boolean;       // true om "kvitto" (paid eller refunded privat)
   fileLabel: string;        // för filnamn + footer-text
+  // Iteration 2 (2026-04-25): status-badge-färg [r, g, b] 0-1
+  statusColor: [number, number, number];
 };
+
+// Status-badge-färger (Iteration 2). Matchar UI-konventioner:
+//   Grön = positivt slutfört (Betald)
+//   Orange = övergångstillstånd (Återbetald, Krediterad)
+//   Röd = negativt avslut (Avbruten)
+//   Grå = väntande (Ej betald)
+const COLOR_PAID: [number, number, number] = [0.09, 0.40, 0.17];     // #16a34a
+const COLOR_REFUNDED: [number, number, number] = [0.96, 0.62, 0.04]; // #F59E0B
+const COLOR_CANCELLED: [number, number, number] = [0.73, 0.11, 0.11]; // #b91c1c
+const COLOR_PENDING: [number, number, number] = [0.42, 0.41, 0.38];   // grey
 
 function classifyDocument(
   paymentStatus: string,
@@ -83,29 +95,29 @@ function classifyDocument(
   // B2B: alltid faktura/fakturaunderlag oavsett payment-status
   if (isCompanyCustomer) {
     if (ps === "refunded") {
-      return { title: "FAKTURA (krediterad)", statusText: "Krediterad", showRefund: true, isReceipt: false, fileLabel: "faktura" };
+      return { title: "FAKTURA (krediterad)", statusText: "Krediterad", showRefund: true, isReceipt: false, fileLabel: "faktura", statusColor: COLOR_REFUNDED };
     }
     if (ps === "paid") {
-      return { title: "FAKTURA", statusText: "Betald", showRefund: false, isReceipt: false, fileLabel: "faktura" };
+      return { title: "FAKTURA", statusText: "Betald", showRefund: false, isReceipt: false, fileLabel: "faktura", statusColor: COLOR_PAID };
     }
     if (ps === "cancelled") {
-      return { title: "FAKTURA (avbruten)", statusText: "Avbruten", showRefund: false, isReceipt: false, fileLabel: "faktura" };
+      return { title: "FAKTURA (avbruten)", statusText: "Avbruten", showRefund: false, isReceipt: false, fileLabel: "faktura", statusColor: COLOR_CANCELLED };
     }
-    return { title: "FAKTURAUNDERLAG", statusText: "Ej betald", showRefund: false, isReceipt: false, fileLabel: "fakturaunderlag" };
+    return { title: "FAKTURAUNDERLAG", statusText: "Ej betald", showRefund: false, isReceipt: false, fileLabel: "fakturaunderlag", statusColor: COLOR_PENDING };
   }
 
   // Privat
   if (ps === "paid") {
-    return { title: "KVITTO", statusText: "Betald", showRefund: false, isReceipt: true, fileLabel: "kvitto" };
+    return { title: "KVITTO", statusText: "Betald", showRefund: false, isReceipt: true, fileLabel: "kvitto", statusColor: COLOR_PAID };
   }
   if (ps === "refunded") {
-    return { title: "KVITTO (återbetald)", statusText: "Återbetald", showRefund: true, isReceipt: true, fileLabel: "kvitto" };
+    return { title: "KVITTO (återbetald)", statusText: "Återbetald", showRefund: true, isReceipt: true, fileLabel: "kvitto", statusColor: COLOR_REFUNDED };
   }
   if (ps === "cancelled") {
-    return { title: "AVBOKNINGSBEKRÄFTELSE", statusText: "Avbruten", showRefund: false, isReceipt: false, fileLabel: "avbokningsbekraftelse" };
+    return { title: "AVBOKNINGSBEKRÄFTELSE", statusText: "Avbruten", showRefund: false, isReceipt: false, fileLabel: "avbokningsbekraftelse", statusColor: COLOR_CANCELLED };
   }
   // pending / okänt — säker default
-  return { title: "ORDERBEKRÄFTELSE", statusText: "Ej betald", showRefund: false, isReceipt: false, fileLabel: "orderbekraftelse" };
+  return { title: "ORDERBEKRÄFTELSE", statusText: "Ej betald", showRefund: false, isReceipt: false, fileLabel: "orderbekraftelse", statusColor: COLOR_PENDING };
 }
 
 function isValidUuid(id: unknown): boolean {
@@ -280,12 +292,14 @@ Deno.serve(async (req) => {
       y -= size + 6;
     }
 
+    // Iteration 2: tunnare + ljusare separator-linjer för mer luft.
+    const lightGrey = rgb(0.85, 0.85, 0.85);
     function divider() {
       page.drawLine({
         start: { x: M, y: y + 4 },
         end: { x: M + W, y: y + 4 },
-        thickness: 0.5,
-        color: grey,
+        thickness: 0.3,
+        color: lightGrey,
       });
       y -= 10;
     }
@@ -296,12 +310,35 @@ Deno.serve(async (req) => {
       isCompanyCustomer,
     );
 
-    // ── Header ──
-    text(doc.title, M, y, { size: 22, bold: true, color: dark });
-    y -= 28;
-    text(`Nr: ${receiptNumber}`, M, y, { size: 11, color: grey });
-    text(`Utställt: ${issueDate}`, M + 280, y, { size: 11, color: grey });
+    // ── Header — Iteration 2 ──
+    // Logo "Spick" överst i grön Helvetica Bold (Playfair-font kräver
+    // separat embedding, skjuts till Iteration 3).
+    text("Spick", M, y, { size: 24, bold: true, color: dark });
+    y -= 32;
+
+    // Titel + status-badge på samma höjd
+    text(doc.title, M, y, { size: 20, bold: true, color: dark });
+
+    // Status-badge — colored pill till höger
+    const badgeText = doc.statusText.toUpperCase();
+    // Approximation av textbredd (pdf-lib font.widthOfTextAtSize finns
+    // men kostar en async-operation; för status-text räcker char-count).
+    const charW = 5.5;
+    const badgePadding = 10;
+    const badgeWidth = badgeText.length * charW + 2 * badgePadding;
+    const badgeHeight = 16;
+    const badgeX = M + W - badgeWidth;
+    const badgeY = y - 1;
+    page.drawRectangle({
+      x: badgeX, y: badgeY, width: badgeWidth, height: badgeHeight,
+      color: rgb(doc.statusColor[0], doc.statusColor[1], doc.statusColor[2]),
+    });
+    text(badgeText, badgeX + badgePadding, badgeY + 5, { size: 8, bold: true, color: rgb(1, 1, 1) });
+
     y -= 24;
+    text(`Nr: ${receiptNumber}`, M, y, { size: 10, color: grey });
+    text(`Utställt: ${issueDate}`, M + 280, y, { size: 10, color: grey });
+    y -= 22;
     divider();
 
     // ── Säljare (BokfL 5 kap 7§ pt 2) ──
@@ -354,9 +391,20 @@ Deno.serve(async (req) => {
       row("RUT-avdrag 50 %", `-${fmtKr(rutAmount)} kr`);
     }
     y -= 4;
-    text("Att betala", M, y, { size: 13, bold: true, color: dark });
-    text(`${fmtKr(totalPrice)} kr`, M + 180, y, { size: 13, bold: true, color: dark });
-    y -= 20;
+
+    // Iteration 2: "Att betala"-box med ljusgrå bakgrund för fokus.
+    const attBetalaBoxH = 32;
+    const attBetalaBoxY = y - attBetalaBoxH + 6;
+    page.drawRectangle({
+      x: M, y: attBetalaBoxY, width: W, height: attBetalaBoxH,
+      color: rgb(0.96, 0.96, 0.93),  // ljus beige/grå
+    });
+    text("Att betala", M + 12, y - 14, { size: 13, bold: true, color: dark });
+    // Höger-justera beloppet via approximerad bredd
+    const amountStr = `${fmtKr(totalPrice)} kr`;
+    const amountW = amountStr.length * 8.5;
+    text(amountStr, M + W - amountW - 12, y - 14, { size: 15, bold: true, color: dark });
+    y -= attBetalaBoxH + 10;
     divider();
 
     // ── Återbetalning (visas bara om payment_status=refunded) ──
