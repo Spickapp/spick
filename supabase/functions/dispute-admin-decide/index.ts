@@ -258,9 +258,11 @@ Deno.serve(async (req) => {
     });
 
     // ── §8.11.b: Auto-genomför money-op efter resolution ──
-    // full_refund   → refund-booking EF (Stripe refund + transfer_full_refund)
-    // dismissed     → escrow-release EF (transfer till städare, admin_dismiss_transfer)
-    // partial_refund → MANUELL (transfer_partial_refund-transition saknas i state-machine)
+    // full_refund    → refund-booking EF (Stripe refund + transfer_full_refund)
+    // partial_refund → refund-booking EF med partial_amount_sek (§8.22, 2026-04-25)
+    //                  Stripe partial-refund + transfer_partial_refund.
+    //                  Cleaner-andel kvar för MANUELL transfer (§8.23 DEFERRED).
+    // dismissed      → escrow-release EF (transfer till städare, admin_dismiss_transfer)
     let autoOpResult: Record<string, unknown> | null = null;
     const internalSecret = Deno.env.get("INTERNAL_EF_SECRET") || "";
     if (decision === "full_refund") {
@@ -284,6 +286,29 @@ Deno.serve(async (req) => {
       } catch (e) {
         autoOpResult = { op: "refund-booking", error: (e as Error).message };
         log("warn", "Auto-refund-booking exception", { dispute_id: disputeId, error: (e as Error).message });
+      }
+    } else if (decision === "partial_refund") {
+      try {
+        const refundRes = await fetch(`${SUPABASE_URL}/functions/v1/refund-booking`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            admin_id: adminId,
+            reason: `dispute_partial_refund: ${dispute.reason}`,
+            partial_amount_sek: refundAmountSek,
+          }),
+        });
+        const refundJson = await refundRes.json().catch(() => ({}));
+        autoOpResult = { op: "refund-booking", mode: "partial", status: refundRes.status, ...refundJson };
+        if (!refundRes.ok) {
+          log("warn", "Auto-refund-booking (partial) failed (state är resolved_partial_refund, manual retry möjlig)", {
+            dispute_id: disputeId, status: refundRes.status, error: (refundJson as { error?: string }).error,
+          });
+        }
+      } catch (e) {
+        autoOpResult = { op: "refund-booking", mode: "partial", error: (e as Error).message };
+        log("warn", "Auto-refund-booking (partial) exception", { dispute_id: disputeId, error: (e as Error).message });
       }
     } else if (decision === "dismissed") {
       try {

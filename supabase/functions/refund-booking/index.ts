@@ -110,10 +110,11 @@ Deno.serve(async (req) => {
       return json(CORS, 400, { error: "invalid_body" });
     }
 
-    const { booking_id, admin_id, reason } = body as {
+    const { booking_id, admin_id, reason, partial_amount_sek } = body as {
       booking_id?: unknown;
       admin_id?: unknown;
       reason?: unknown;
+      partial_amount_sek?: unknown;  // §8.22 (2026-04-25): om satt → partial-flow
     };
 
     if (!isValidUuid(booking_id)) {
@@ -125,9 +126,17 @@ Deno.serve(async (req) => {
 
     const bookingIdStr = booking_id as string;
     const adminIdStr = (admin_id as string | undefined) ?? null;
+    const isPartial = partial_amount_sek !== undefined && partial_amount_sek !== null;
+    const partialAmountSek = isPartial ? Number(partial_amount_sek) : null;
+    if (isPartial && (!Number.isFinite(partialAmountSek) || partialAmountSek! <= 0)) {
+      return json(CORS, 400, {
+        error: "invalid_partial_amount_sek",
+        details: { received: partial_amount_sek, note: "Måste vara positivt tal." },
+      });
+    }
     const reasonStr = typeof reason === "string"
       ? reason.slice(0, 500)
-      : "dispute_full_refund";
+      : (isPartial ? "dispute_partial_refund" : "dispute_full_refund");
 
     // ── Fetch booking ──
     const { data: booking, error: fetchErr } = await sb
@@ -146,15 +155,18 @@ Deno.serve(async (req) => {
       return json(CORS, 404, { error: "booking_not_found" });
     }
 
-    // ── State-validering: bara resolved_full_refund tillåtet (Alt A scope) ──
+    // ── State-validering ──
+    // §8.22 (2026-04-25): partial-flow accepterar resolved_partial_refund.
+    // full-flow accepterar resolved_full_refund (oförändrat).
     const fromState = booking.escrow_state as string;
-    if (fromState !== "resolved_full_refund") {
+    const expectedState = isPartial ? "resolved_partial_refund" : "resolved_full_refund";
+    if (fromState !== expectedState) {
       return json(CORS, 422, {
         error: "invalid_escrow_state",
         details: {
           current: fromState,
-          expected: "resolved_full_refund",
-          note: "Partial-refund-flow är inte implementerat (DEFERRED till §8.22-25).",
+          expected: expectedState,
+          mode: isPartial ? "partial" : "full",
         },
       });
     }
@@ -179,17 +191,37 @@ Deno.serve(async (req) => {
       return json(CORS, 422, { error: "invalid_total_price", details: { total_price: totalPrice } });
     }
 
+    // §8.22 partial-validering: amount måste vara < total_price (annars använd full-flow)
+    if (isPartial && partialAmountSek! >= totalPrice) {
+      return json(CORS, 422, {
+        error: "partial_amount_too_high",
+        details: {
+          partial_amount_sek: partialAmountSek,
+          total_price: totalPrice,
+          note: "Använd full_refund-flowen för hela beloppet.",
+        },
+      });
+    }
+
+    const refundAmountSek = isPartial ? partialAmountSek! : totalPrice;
+
     // ── Stripe refund ──
-    // Idempotency-Key per booking — skyddar mot dubbla refunds vid retry.
+    // Idempotency-Key inkluderar belopp → distinkt nyckel per refund-mode/-belopp.
     const stripeKey = await resolveStripeKey(sb);
-    const idempotencyKey = `refund-booking-${bookingIdStr}-full`;
+    const idempotencyKey = isPartial
+      ? `refund-booking-${bookingIdStr}-partial-${refundAmountSek}`
+      : `refund-booking-${bookingIdStr}-full`;
 
     const refundParams = new URLSearchParams();
     refundParams.append("payment_intent", paymentIntentId);
     refundParams.append("reason", "requested_by_customer");
     refundParams.append("metadata[booking_id]", bookingIdStr);
-    refundParams.append("metadata[refund_type]", "dispute_full");
+    refundParams.append("metadata[refund_type]", isPartial ? "dispute_partial" : "dispute_full");
     refundParams.append("metadata[reason_internal]", reasonStr);
+    if (isPartial) {
+      // Stripe API tar amount i öre (SEK lägsta enhet = öre, multiplicera med 100)
+      refundParams.append("amount", String(Math.round(refundAmountSek * 100)));
+    }
 
     const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
       method: "POST",
@@ -232,11 +264,12 @@ Deno.serve(async (req) => {
 
     // ── UPDATE bookings (refund-metadata) ──
     // Skild från escrow_state-update — den går via state-transition-EF.
+    // §8.22: vid partial används partial_amount, vid full används totalPrice.
     const { error: updateErr } = await sb
       .from("bookings")
       .update({
-        payment_status: "refunded",
-        refund_amount: totalPrice,
+        payment_status: isPartial ? "partially_refunded" : "refunded",
+        refund_amount: refundAmountSek,
       })
       .eq("id", bookingIdStr);
 
@@ -249,7 +282,11 @@ Deno.serve(async (req) => {
       // reconcileras manuellt.
     }
 
-    // ── Transition escrow_state: resolved_full_refund → refunded ──
+    // ── Transition escrow_state ──
+    // full:    resolved_full_refund → refunded
+    // partial: resolved_partial_refund → released_partial (§8.22)
+    const transitionAction = isPartial ? "transfer_partial_refund" : "transfer_full_refund";
+    const expectedNewState = isPartial ? "released_partial" : "refunded";
     const transRes = await fetch(`${SUPABASE_URL}/functions/v1/escrow-state-transition`, {
       method: "POST",
       headers: {
@@ -258,13 +295,18 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         booking_id: bookingIdStr,
-        action: "transfer_full_refund",
+        action: transitionAction,
         triggered_by: adminIdStr ? "admin" : "system_webhook",
         triggered_by_id: adminIdStr,
         metadata: {
           stripe_refund_id: stripeRefundId,
-          refund_amount_sek: totalPrice,
+          refund_amount_sek: refundAmountSek,
           reason: reasonStr,
+          mode: isPartial ? "partial" : "full",
+          ...(isPartial && {
+            cleaner_share_remaining_sek: totalPrice - refundAmountSek,
+            transfer_to_cleaner_pending: true,
+          }),
         },
       }),
     });
@@ -303,28 +345,39 @@ Deno.serve(async (req) => {
     }
 
     // ── Audit-log + admin-alert (best-effort) ──
-    await logBookingEvent(sb, bookingIdStr, "refunded", {
+    // Canonical event-type "refund_issued" per _shared/events.ts BookingEventType.
+    await logBookingEvent(sb, bookingIdStr, "refund_issued", {
       actorType: adminIdStr ? "admin" : "system",
       metadata: {
         stripe_refund_id: stripeRefundId,
-        refund_amount_sek: totalPrice,
+        refund_amount_sek: refundAmountSek,
         reason: reasonStr,
         triggered_by_admin: adminIdStr,
+        mode: isPartial ? "partial" : "full",
+        ...(isPartial && { cleaner_share_remaining_sek: totalPrice - refundAmountSek }),
       },
     });
 
     try {
+      const alertTitle = isPartial
+        ? `Partial refund: ${refundAmountSek} kr (kvar ${totalPrice - refundAmountSek} kr till cleaner — MANUELL transfer krävs §8.23)`
+        : `Refund genomförd: ${refundAmountSek} kr`;
       await sendAdminAlert({
-        severity: "info",
-        title: `Refund genomförd: ${totalPrice} kr`,
+        severity: isPartial ? "warn" : "info",
+        title: alertTitle,
         source: "refund-booking",
         booking_id: bookingIdStr,
+        message: isPartial
+          ? "PARTIAL refund klar mot kund. Transfer av återstående belopp till cleaner via Stripe Connect är §8.23 (DEFERRED) — gör manuellt i Stripe Dashboard tills auto-flow byggs."
+          : undefined,
         metadata: {
           customer_email: booking.customer_email,
           customer_name: booking.customer_name,
           cleaner_id: booking.cleaner_id,
           stripe_refund_id: stripeRefundId,
-          refund_amount_sek: totalPrice,
+          refund_amount_sek: refundAmountSek,
+          total_price: totalPrice,
+          mode: isPartial ? "partial" : "full",
           reason: reasonStr,
         },
       });
@@ -335,15 +388,21 @@ Deno.serve(async (req) => {
     log("info", "Refund-booking complete", {
       booking_id: bookingIdStr,
       stripe_refund_id: stripeRefundId,
-      amount_sek: totalPrice,
+      amount_sek: refundAmountSek,
+      mode: isPartial ? "partial" : "full",
     });
 
     return json(CORS, 200, {
       ok: true,
       booking_id: bookingIdStr,
       stripe_refund_id: stripeRefundId,
-      refund_amount_sek: totalPrice,
-      new_escrow_state: "refunded",
+      refund_amount_sek: refundAmountSek,
+      new_escrow_state: expectedNewState,
+      mode: isPartial ? "partial" : "full",
+      ...(isPartial && {
+        cleaner_share_remaining_sek: totalPrice - refundAmountSek,
+        cleaner_transfer_status: "pending_manual_§8.23",
+      }),
     });
   } catch (err) {
     log("error", "Unexpected error", { error: (err as Error).message });
