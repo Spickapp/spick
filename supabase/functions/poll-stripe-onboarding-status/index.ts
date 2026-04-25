@@ -12,6 +12,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createLogger } from "../_shared/log.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -20,9 +21,7 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
 const sb = createClient(SUPA_URL, SERVICE_KEY);
 
-function log(level: string, msg: string, extra: Record<string,unknown> = {}) {
-  console.log(JSON.stringify({ level, fn: "poll-stripe-onboarding-status", msg, ...extra, ts: new Date().toISOString() }));
-}
+const log = createLogger("poll-stripe-onboarding-status");
 
 // ── Hämta Stripe-account-status ──
 async function fetchStripeAccount(accountId: string): Promise<{

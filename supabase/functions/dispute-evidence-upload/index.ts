@@ -45,6 +45,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
+import { createLogger } from "../_shared/log.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -73,15 +74,7 @@ function json(cors: Record<string, string>, status: number, body: unknown) {
   });
 }
 
-function log(level: string, msg: string, extra: Record<string, unknown> = {}) {
-  console.log(JSON.stringify({
-    level,
-    fn: "dispute-evidence-upload",
-    msg,
-    ...extra,
-    ts: new Date().toISOString(),
-  }));
-}
+const log = createLogger("dispute-evidence-upload");
 
 function isValidUuid(id: unknown): boolean {
   return typeof id === "string" &&

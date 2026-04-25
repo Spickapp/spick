@@ -45,6 +45,7 @@ import { corsHeaders } from "../_shared/email.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
 import { verifyInternalSecret } from "../_shared/auth.ts";
+import { createLogger } from "../_shared/log.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -67,15 +68,7 @@ function json(cors: Record<string, string>, status: number, body: unknown) {
   });
 }
 
-function log(level: string, msg: string, extra: Record<string, unknown> = {}) {
-  console.log(JSON.stringify({
-    level,
-    fn: "dispute-admin-decide",
-    msg,
-    ...extra,
-    ts: new Date().toISOString(),
-  }));
-}
+const log = createLogger("dispute-admin-decide");
 
 function isValidUuid(id: unknown): boolean {
   return typeof id === "string" &&
