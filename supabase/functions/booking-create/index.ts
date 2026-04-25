@@ -346,7 +346,7 @@ serve(async (req) => {
     // kräver jurist-verifikation i C-4.1). Om RUT-beslut faller att addons
     // är RUT-berättigade när parent-tjänsten är det → ändra här + spec.
     let addonsTotal = 0;
-    let validatedAddons: Array<{ addon_id: string; key: string; label: string; price_sek_snapshot: number }> = [];
+    let validatedAddons: Array<{ addon_id: string; key: string; label: string; price_sek_snapshot: number; included_free: boolean }> = [];
     if (Array.isArray(selected_addons) && selected_addons.length > 0) {
       const addonIds = selected_addons
         .map((a: unknown) => (a && typeof a === 'object' ? (a as Record<string, unknown>).addon_id : null))
@@ -359,15 +359,45 @@ serve(async (req) => {
         if (addonErr) {
           console.warn("[booking-create] addon lookup failed, skipping:", addonErr.message);
         } else if (addonRows && addonRows.length > 0) {
+          // §4.8b: resolva cleaner-overrides via cleaner_addon_prices.
+          // Per cleaner kan välja included_free=true (addon gratis) eller
+          // custom_price_sek (annat än default). NULL custom_price + false
+          // included_free → använd default service_addons.price_sek.
+          const overrideMap = new Map<string, { custom_price_sek: number | null; included_free: boolean }>();
+          if (cleaner?.id) {
+            const { data: overrides } = await supabase
+              .from("cleaner_addon_prices")
+              .select("addon_id, custom_price_sek, included_free")
+              .eq("cleaner_id", cleaner.id)
+              .in("addon_id", addonIds);
+            for (const o of (overrides ?? [])) {
+              overrideMap.set(o.addon_id as string, {
+                custom_price_sek: o.custom_price_sek as number | null,
+                included_free: !!o.included_free,
+              });
+            }
+          }
+
           for (const row of addonRows) {
             if (row.active === false) continue;
-            const priceSek = Number(row.price_sek) || 0;
+            const override = overrideMap.get(row.id as string);
+            let priceSek: number;
+            let includedFree = false;
+            if (override?.included_free === true) {
+              priceSek = 0;
+              includedFree = true;
+            } else if (override?.custom_price_sek !== null && override?.custom_price_sek !== undefined) {
+              priceSek = Number(override.custom_price_sek) || 0;
+            } else {
+              priceSek = Number(row.price_sek) || 0;
+            }
             addonsTotal += priceSek;
             validatedAddons.push({
               addon_id: row.id as string,
               key: (row.key as string) || "",
               label: (row.label_sv as string) || "",
               price_sek_snapshot: priceSek,
+              included_free: includedFree,
             });
           }
         }
