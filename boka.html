@@ -1136,9 +1136,15 @@ function selectService(name, icon, desc, time) {
           // — material räknas inte som arbetskostnad).
           aGrid.innerHTML = addons.map(function(a) {
             var price = parseInt(a.price_sek, 10) || 0;
+            // §4.8d: addon.rut_eligible (från services-list EF) avgör badge.
+            // RUT-eligible addons (Ugnsrengöring som arbete) ger 50% RUT-avdrag.
+            // Material-addons (Eget städmaterial) är ej RUT-berättigade.
+            var rutBadge = a.rut_eligible
+              ? ' <span style="font-size:.68rem;color:var(--g);font-weight:500;background:#E1F5EE;padding:1px 5px;border-radius:4px;margin-left:4px;white-space:nowrap">ingår i RUT</span>'
+              : ' <span style="font-size:.68rem;color:var(--m);font-weight:500;background:#FEF3C7;padding:1px 5px;border-radius:4px;margin-left:4px;white-space:nowrap">ej RUT</span>';
             return '<label style="display:flex;align-items:center;gap:.5rem;border:1.5px solid var(--border);border-radius:10px;padding:.625rem .875rem;cursor:pointer;font-size:.82rem;transition:all .15s">' +
-              '<input type="checkbox" class="addon-cb" data-addon-id="' + encodeURIComponent(a.id) + '" data-addon-key="' + encodeURIComponent(a.key || '') + '" data-addon-label="' + encodeURIComponent(a.label_sv || '') + '" data-addon-price="' + price + '" style="accent-color:var(--g)" onchange="updateAddons()">' +
-              '<span style="flex:1">' + escHtml(a.label_sv || '') + ' <span style="font-size:.68rem;color:var(--m);font-weight:500;background:#FEF3C7;padding:1px 5px;border-radius:4px;margin-left:4px;white-space:nowrap">ej RUT</span></span>' +
+              '<input type="checkbox" class="addon-cb" data-addon-id="' + encodeURIComponent(a.id) + '" data-addon-key="' + encodeURIComponent(a.key || '') + '" data-addon-label="' + encodeURIComponent(a.label_sv || '') + '" data-addon-price="' + price + '" data-addon-rut="' + (a.rut_eligible ? '1' : '0') + '" style="accent-color:var(--g)" onchange="updateAddons()">' +
+              '<span style="flex:1">' + escHtml(a.label_sv || '') + rutBadge + '</span>' +
               '<span style="color:var(--g);font-weight:600;font-size:.75rem">+' + price + ' kr</span>' +
             '</label>';
           }).join('');

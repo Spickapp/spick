@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     // Read addons with service_id join (RLS filters active=true for anon)
     const { data: addonRows, error: addonError } = await supabase
       .from('service_addons')
-      .select('key, label_sv, label_en, price_sek, display_order, service_id, services!inner(key)')
+      .select('id, key, label_sv, label_en, price_sek, display_order, service_id, rut_eligible, services!inner(key)')
       .order('display_order', { ascending: true });
 
     if (addonError) {
@@ -104,11 +104,13 @@ Deno.serve(async (req) => {
       if (!serviceKey) continue;
       if (!addons[serviceKey]) addons[serviceKey] = [];
       addons[serviceKey].push({
+        id: row.id,
         key: row.key,
         label_sv: row.label_sv,
         label_en: row.label_en,
         price_sek: row.price_sek,
         display_order: row.display_order,
+        rut_eligible: row.rut_eligible === true,
       });
     }
 

@@ -332,21 +332,17 @@ serve(async (req) => {
       return json(400, { error: "Minimipris är 100 kr" });
     }
 
-    // ── 7. RUT-BERÄKNING ───────────────────────────
+    // ── 7. RUT-BERÄKNING (Fas 4 §4.8d: split-by-addon-rut-eligibility) ───
     // §2.7.3: använd effectiveCustomerType (post-validering) istället för
     // rå customer_type från body.
     const useRut = !!rut && effectiveCustomerType !== 'foretag';
-    const rutDeduction = useRut
-      ? Math.floor(pricing.customerTotal * 0.5)
-      : 0;
 
-    // ── Sprint C-4 (2026-04-28): addon-validering + pris-snapshot ──
-    // Addons adderas som engångs-summa ovanpå basepriset. Default: INGEN
-    // RUT-applicering på addons (rule #30 — RUT-berättigande för addons
-    // kräver jurist-verifikation i C-4.1). Om RUT-beslut faller att addons
-    // är RUT-berättigade när parent-tjänsten är det → ändra här + spec.
-    let addonsTotal = 0;
-    let validatedAddons: Array<{ addon_id: string; key: string; label: string; price_sek_snapshot: number; included_free: boolean }> = [];
+    // Addons: validate + split i RUT-eligible (ingår i RUT-base) + non-RUT
+    // (adderas efter RUT-deduction). RUT-eligible addons = arbete (t.ex.
+    // Ugnsrengöring), non-RUT = material/varor (Eget städmaterial).
+    let addonsTotalRutEligible = 0;
+    let addonsTotalNonRut = 0;
+    let validatedAddons: Array<{ addon_id: string; key: string; label: string; price_sek_snapshot: number; included_free: boolean; rut_eligible: boolean }> = [];
     if (Array.isArray(selected_addons) && selected_addons.length > 0) {
       const addonIds = selected_addons
         .map((a: unknown) => (a && typeof a === 'object' ? (a as Record<string, unknown>).addon_id : null))
@@ -354,7 +350,7 @@ serve(async (req) => {
       if (addonIds.length > 0) {
         const { data: addonRows, error: addonErr } = await supabase
           .from("service_addons")
-          .select("id, key, label_sv, price_sek, active")
+          .select("id, key, label_sv, price_sek, active, rut_eligible")
           .in("id", addonIds);
         if (addonErr) {
           console.warn("[booking-create] addon lookup failed, skipping:", addonErr.message);
@@ -391,20 +387,33 @@ serve(async (req) => {
             } else {
               priceSek = Number(row.price_sek) || 0;
             }
-            addonsTotal += priceSek;
+            const rutEligibleAddon = row.rut_eligible === true;
+            if (rutEligibleAddon) {
+              addonsTotalRutEligible += priceSek;
+            } else {
+              addonsTotalNonRut += priceSek;
+            }
             validatedAddons.push({
               addon_id: row.id as string,
               key: (row.key as string) || "",
               label: (row.label_sv as string) || "",
               price_sek_snapshot: priceSek,
               included_free: includedFree,
+              rut_eligible: rutEligibleAddon,
             });
           }
         }
       }
     }
 
-    const netPrice = pricing.customerTotal - rutDeduction + addonsTotal;
+    // RUT-base inkluderar rut-eligible addons. Non-RUT addons adderas efter.
+    const rutBase = pricing.customerTotal + addonsTotalRutEligible;
+    const rutDeduction = useRut
+      ? Math.floor(rutBase * 0.5)
+      : 0;
+    const addonsTotal = addonsTotalRutEligible + addonsTotalNonRut; // för bakåtkompat
+
+    const netPrice = rutBase - rutDeduction + addonsTotalNonRut;
 
     // Stripe-belopp = det kunden faktiskt betalar (efter RUT + kredit)
     const stripeAmount = Math.max(
