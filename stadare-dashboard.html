@@ -3735,16 +3735,20 @@ function updateVdOnboarding() {
   var stripeDone = cleaner.stripe_onboarding_complete === true
     || cleaner.stripe_onboarding_status === 'complete';
   var pricesDone = (window._companyPrices || []).length > 0;
-  var profileDone = !!(cleaner.avatar_url && window._companyData && window._companyData.description);
+  // Audit 2026-04-25 (Farhad-rapport): tidigare krävdes cleaner.avatar_url
+  // (personlig avatar) men UI för företagsprofil i Företag-tabben saknar
+  // avatar-upload helt. Avatar uppladdas bara i Jag-tabben (sv-profile).
+  // Resultat: Farhad fyllde i beskrivning + sparade men punkt 1 förblev
+  // omarkerad (avatar saknades). Fix: kolla bara företags-beskrivning.
+  // Personlig avatar är frivillig "nice-to-have" i Jag-tab.
+  var profileDone = !!(window._companyData && window._companyData.description);
   // Sprint 2 Dag 3 bug-fix: server-side persistens via cleaners.profile_shared_at.
   // localStorage kvar som fallback för enheter där DB-uppdatering failade.
   var shareDone = !!(cleaner.profile_shared_at || localStorage.getItem('spick-profile-shared'));
 
   var steps = [
     { key:'profile', label:'Fyll i företagsprofil',
-      // Sprint 2 Dag 3 bug-fix: texten reflekterar verklig condition
-      // (cleaner.avatar_url + companies.description — INTE företagslogo).
-      desc: profileDone ? 'Klart ✓' : 'Ladda upp profilbild och skriv företagsbeskrivning',
+      desc: profileDone ? 'Klart ✓' : 'Skriv företagsbeskrivning som visas för kunder',
       done:profileDone,
       actionLabel:'Redigera profil →',
       onClick:function(){
