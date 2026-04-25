@@ -19,6 +19,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, sendEmail, wrap } from "../_shared/email.ts";
 import { sendSms } from "../_shared/notifications.ts";
+import { createLogger } from "../_shared/log.ts";
+
+const log = createLogger("company-self-signup");
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -120,7 +123,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     
     if (existingCompany) {
-      log("warn", "company-self-signup", "Duplicate org_number", { org_number: orgFormatted });
+      log("warn", "Duplicate org_number", { org_number: orgFormatted });
       return json(CORS, 409, {
         error: "company_already_registered",
         message: "Detta företag är redan registrerat hos Spick. Kontakta hello@spick.se om du tror detta är fel.",
@@ -134,7 +137,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     
     if (existingCleaner) {
-      log("warn", "company-self-signup", "Duplicate cleaner email", { email: emailNorm });
+      log("warn", "Duplicate cleaner email", { email: emailNorm });
       return json(CORS, 409, {
         error: "email_already_registered",
         message: "Denna e-postadress är redan registrerad. Logga in istället, eller använd en annan e-post.",
@@ -150,7 +153,7 @@ Deno.serve(async (req) => {
     
     const commissionRate = Number(commissionSetting?.value ?? 12);
     if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 50) {
-      log("error", "company-self-signup", "Invalid commission config", { raw: commissionSetting?.value });
+      log("error", "Invalid commission config", { raw: commissionSetting?.value });
       return json(CORS, 500, { error: "config_error" });
     }
     
@@ -166,7 +169,7 @@ Deno.serve(async (req) => {
     });
     
     if (authErr || !authData?.user?.id) {
-      log("error", "company-self-signup", "Auth user create failed", { error: authErr?.message });
+      log("error", "Auth user create failed", { error: authErr?.message });
       return json(CORS, 500, { error: "auth_create_failed", detail: authErr?.message });
     }
     
@@ -206,14 +209,14 @@ Deno.serve(async (req) => {
       }
 
       // Slug-conflict → try nästa
-      log("info", "company-self-signup", "Slug conflict, retrying", {
+      log("info", "Slug conflict, retrying", {
         attempt: attempt + 1,
         tried_slug: trySlug
       });
     }
 
     if (!company) {
-      log("error", "company-self-signup", "Company insert failed", {
+      log("error", "Company insert failed", {
         error: lastCompErr?.message ?? "slug conflict after 10 attempts"
       });
       // Rollback: radera auth-user (ingen company skapad — ingen FK-issue)
@@ -255,7 +258,7 @@ Deno.serve(async (req) => {
       .single();
     
     if (cleanErr || !cleaner) {
-      log("error", "company-self-signup", "Cleaner insert failed, rolling back", { error: cleanErr?.message });
+      log("error", "Cleaner insert failed, rolling back", { error: cleanErr?.message });
       // Rollback company-raden (ingen owner_cleaner_id satt än här, ingen cirkel — säkert att radera direkt)
       await sb.from("companies").delete().eq("id", company.id);
       await sb.auth.admin.deleteUser(authUserId).catch(() => {});
@@ -272,7 +275,7 @@ Deno.serve(async (req) => {
       .eq("id", company.id);
 
     if (ownerErr) {
-      log("error", "company-self-signup", "Failed to set owner_cleaner_id", {
+      log("error", "Failed to set owner_cleaner_id", {
         error: ownerErr.message,
         company_id: company.id,
         cleaner_id: cleaner.id,
@@ -326,13 +329,13 @@ Deno.serve(async (req) => {
       if (stripeRes.ok && stripeData.ok && stripeData.url) {
         stripeUrl = stripeData.url;
       } else {
-        log("warn", "company-self-signup", "Stripe onboarding init failed (not fatal)", {
+        log("warn", "Stripe onboarding init failed (not fatal)", {
           status: stripeRes.status,
           error: stripeData?.error,
         });
       }
     } catch (e) {
-      log("warn", "company-self-signup", "Stripe call exception (not fatal)", { error: (e as Error).message });
+      log("warn", "Stripe call exception (not fatal)", { error: (e as Error).message });
     }
     
     // ── Notifiera VD (email + SMS) ──
@@ -353,7 +356,7 @@ Deno.serve(async (req) => {
         `)
       );
     } catch (e) {
-      log("warn", "company-self-signup", "Email send failed (not fatal)", { error: (e as Error).message });
+      log("warn", "Email send failed (not fatal)", { error: (e as Error).message });
     }
     
     // ── Notifiera admin ──
@@ -371,10 +374,10 @@ Deno.serve(async (req) => {
         `)
       );
     } catch (e) {
-      log("warn", "company-self-signup", "Admin email failed (not fatal)", { error: (e as Error).message });
+      log("warn", "Admin email failed (not fatal)", { error: (e as Error).message });
     }
     
-    log("info", "company-self-signup", "Company registered", {
+    log("info", "Company registered", {
       company_id: company.id,
       cleaner_id: cleaner.id,
       org_number: orgFormatted,
@@ -390,7 +393,7 @@ Deno.serve(async (req) => {
     });
     
   } catch (err) {
-    log("error", "company-self-signup", "Unhandled exception", { error: (err as Error).message });
+    log("error", "Unhandled exception", { error: (err as Error).message });
     return json(CORS, 500, { error: "internal_error" });
   }
 });
@@ -405,6 +408,4 @@ function json(cors: Record<string,string>, status: number, body: unknown) {
   });
 }
 
-function log(level: string, fn: string, msg: string, extra: Record<string,unknown> = {}) {
-  console.log(JSON.stringify({ level, fn, msg, ...extra, ts: new Date().toISOString() }));
-}
+// log() ersatt av createLogger("company-self-signup") i header (rad 24)
