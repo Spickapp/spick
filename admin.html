@@ -2528,10 +2528,21 @@ async function submitManualBooking() {
   btn.disabled = true;
   var origText = btn.textContent;
   btn.textContent = '⏳ Skapar...';
+  var resultEl = document.getElementById('mb-result');
+
+  // Defensive: AbortController med 30s-timeout så fetch inte hänger
+  var ctrl = new AbortController();
+  var timeoutId = setTimeout(function () { ctrl.abort(); }, 30000);
+
   try {
+    console.log('[manual-booking] start submit');
     var sess = await SB.auth.getSession();
     var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
-    if (!token) { alert('Din session har gått ut — ladda om sidan.'); return; }
+    if (!token) {
+      alert('Din session har gått ut — ladda om sidan.');
+      return;
+    }
+
     var payload = {
       customer_email: document.getElementById('mb-customer-email').value.trim(),
       customer_name: document.getElementById('mb-customer-name').value.trim(),
@@ -2545,6 +2556,8 @@ async function submitManualBooking() {
       cleaner_id: document.getElementById('mb-cleaner-id').value.trim() || undefined,
       checkout_expires_in_hours: parseInt(document.getElementById('mb-checkout-expires').value, 10),
     };
+    console.log('[manual-booking] payload:', payload);
+
     var res = await fetch(SPICK.SUPA_URL + '/functions/v1/manual-booking-create', {
       method: 'POST',
       headers: {
@@ -2553,30 +2566,66 @@ async function submitManualBooking() {
         'Authorization': 'Bearer ' + token,
       },
       body: JSON.stringify(payload),
+      signal: ctrl.signal,
     });
-    var data = await res.json();
-    var resultEl = document.getElementById('mb-result');
+    console.log('[manual-booking] response status:', res.status);
+
+    var data = null;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.warn('[manual-booking] response was not JSON');
+    }
+    console.log('[manual-booking] response data:', data);
+
     if (!res.ok) {
+      var errMsg = (data && data.error) || ('HTTP ' + res.status);
+      var errDetail = (data && data.message) || (data && data.detail) || '';
       resultEl.innerHTML = '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:1rem;color:#991B1B">' +
-        '<strong>❌ Fel:</strong> ' + escHtml(data.error || 'okänt') +
-        (data.message ? '<div style="margin-top:.5rem;font-size:.85rem">' + escHtml(data.message) + '</div>' : '') +
+        '<strong>❌ Fel:</strong> ' + escHtml(errMsg) +
+        (errDetail ? '<div style="margin-top:.5rem;font-size:.85rem">' + escHtml(errDetail) + '</div>' : '') +
         '</div>';
       resultEl.style.display = 'block';
       return;
     }
+
+    if (!data || !data.booking_id) {
+      resultEl.innerHTML = '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:1rem;color:#991B1B">' +
+        '<strong>❌ Oväntat svar:</strong> servern returnerade tom data trots HTTP 200. Kolla EF-loggar.' +
+        '</div>';
+      resultEl.style.display = 'block';
+      return;
+    }
+
     resultEl.innerHTML = '<div style="background:#E1F5EE;border:1px solid #0F6E56;border-radius:10px;padding:1rem">' +
       '<strong>✅ Bokning skapad!</strong>' +
       '<div style="margin-top:.5rem;font-size:.85rem">Booking ID: <code>' + escHtml(data.booking_id) + '</code></div>' +
-      '<div style="font-size:.85rem">Pris: ' + Math.round(data.total_price) + ' kr · Email: ' + (data.email_sent ? '✅ skickad' : '⚠️ ej skickad — kopiera länken nedan') + '</div>' +
-      '<div style="margin-top:.5rem"><a href="' + escHtml(data.checkout_url) + '" target="_blank" rel="noopener" style="color:#0F6E56;font-weight:600">🔗 Öppna Stripe Checkout-länk</a></div>' +
-      '<div style="font-size:.75rem;color:#6B6960;margin-top:.5rem">Länk giltig till ' + new Date(data.checkout_expires_at).toLocaleString('sv-SE') + '</div>' +
+      '<div style="font-size:.85rem">Pris: ' + Math.round(data.total_price || 0) + ' kr · Email: ' + (data.email_sent ? '✅ skickad' : '⚠️ ej skickad — kopiera länken nedan') + '</div>' +
+      (data.checkout_url
+        ? '<div style="margin-top:.5rem"><a href="' + escHtml(data.checkout_url) + '" target="_blank" rel="noopener" style="color:#0F6E56;font-weight:600">🔗 Öppna Stripe Checkout-länk</a></div>'
+        : '') +
+      (data.checkout_expires_at
+        ? '<div style="font-size:.75rem;color:#6B6960;margin-top:.5rem">Länk giltig till ' + new Date(data.checkout_expires_at).toLocaleString('sv-SE') + '</div>'
+        : '') +
       '</div>';
     resultEl.style.display = 'block';
     // Refresh booking-list
     if (typeof loadBookings === 'function') loadBookings();
   } catch (e) {
-    alert('Nätverksfel: ' + (e.message || 'okänt'));
+    var errLabel = (e && e.name === 'AbortError')
+      ? 'Timeout efter 30 sekunder — EF svarade aldrig. Kolla EF-loggar.'
+      : 'Nätverksfel: ' + ((e && e.message) || 'okänt');
+    console.error('[manual-booking] submit failed:', e);
+    if (resultEl) {
+      resultEl.innerHTML = '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:1rem;color:#991B1B">' +
+        '<strong>❌ ' + escHtml(errLabel) + '</strong>' +
+        '</div>';
+      resultEl.style.display = 'block';
+    } else {
+      alert(errLabel);
+    }
   } finally {
+    clearTimeout(timeoutId);
     btn.disabled = false;
     btn.textContent = origText || 'Skapa & skicka länk';
   }
