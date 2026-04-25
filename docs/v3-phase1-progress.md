@@ -73,14 +73,14 @@ Om något avviker → flagga innan fortsättning.
   - §5.11 ✓ helgdag-hantering: migration `swedish_holidays` (39 rader 2026-2028) + `_shared/holidays.ts`-helper (isHoliday + nextNonHoliday med cache) + auto-rebook integration för `holiday_mode ∈ {auto_skip, auto_shift, manual}` (CHECK-constraint verifierad rule #31)
   - §5.12 ⊘ LÅST av Fas 7.5 (RUT-kvotsplitting kräver aktiv RUT-infrastruktur)
   - **Hygien-fynd §5.3 session:** prod-schema-status-drift (auto-rebook 'active', arkitektur-doc 'aktiv', BROKEN idx_sub_next index `WHERE status='aktiv'`). Flaggad separat. **H16 FIXAT 2026-04-24:** DROP + CREATE `idx_sub_next` med `WHERE status='active'` — index är nu funktionell.
-- **Fas 6 Event-system:** ◑ PÅGÅENDE (2026-04-27 sprint)
+- **Fas 6 Event-system:** ✓ KLAR (2026-04-25 — §6.8 retrofit av customer-subscription-manage stängde sista sub-fasen)
   - §6.2 foundation ✓ (`_shared/events.ts` + 27 canonical events + 8 tester)
   - §6.3 retrofit ✓ STÄNGD 8/8: booking-create, auto-delegate, cleaner-booking-response, booking-cancel-v2, noshow-refund, stripe-webhook (09b0c89), betyg.html (via save-booking-event EF, §6.5-beslut a35505d), auto-remind (denna session — cancelled_by_cleaner + refund_issued i auto_timeout_90-path)
   - §6.3 hygien-flagg: pre-existing TS-fel i auto-remind:996 (`sb.rpc("cleanup_rate_limits").catch` supabase-js-typ-mismatch, samma kategori som H5). EJ introducerat av §6.3-retrofit. Scope-respekt (#27) → ej fix denna session.
   - §6.3 SKIPPAT state-change-events i auto-remind (motiverat): vd_timeout_2h Case B (awaiting_reassignment utan ny cleaner) + customer_timeout_1h (proposal withdraw). Inga canonical event-types matchar — mid-state-transitions utan cleaner-association-ändring. Flaggat för framtida schema-utökning vid Fas 8-design.
   - §6.4-§6.6 event-timeline-UI ✓ ([js/event-timeline.js](../js/event-timeline.js), 143 rader, 27 EVENT_META-mappings synkat mot Fas 6.2 events.ts). Renderas i admin.html, min-bokning.html, mitt-konto.html, stadare-dashboard.html via `renderBookingTimeline(el, bookingId, headers)`. Verifierat 2026-04-25 rule #31-audit.
   - §6.7 event-schema.md ✓
-  - §6.8 recurring-events: ◯ (pendar Fas 5)
+  - §6.8 recurring-events: ✓ STÄNGD (auto-rebook har redan recurring_generated + recurring_cancelled, customer-subscription-manage retrofittad denna session med 5 events: recurring_paused/resumed/skipped/cancelled + schedule_changed via sub.last_booking_id-ankarpattern, actorType='customer'). charge-subscription-booking + setup-subscription skapar inga bokningar → inget event-behov. customer-nudge-recurring är notify-only.
 - **Fas 7 Languages:** ◑ PARTIELLT REDAN GJORT (v2/pre-v3-arv) — **§7.1-§7.2 ⊘ SUPERSEDED 2026-04-23**
   - **Prod-verklighet (verifierat 2026-04-23):** `cleaners.languages TEXT[]` + GIN-index finns via migration [20260402100001_slug_languages.sql](../supabase/migrations/20260402100001_slug_languages.sql)
   - **§7.1 (separat `languages`-tabell) + §7.2 (`cleaner_languages` m2m):** ⊘ SUPERSEDED — duplicerar embedded array = rule #28-brott. Farhad-beslut 2026-04-23: behåll array-design.
@@ -106,7 +106,7 @@ Om något avviker → flagga innan fortsättning.
   - §8.2 Stripe architecture shift ✓ — booking-create branchar `escrow_mode='legacy'|'escrow_v2'` via `platform_settings.escrow_mode` (default 'legacy'). stripe-webhook→escrow-state-transition vid charge.succeeded. AKTIVERAS via flag-flip i §8.18.
   - §8.3 escrow_state-kolumn + CHECK constraint ✓ LIVE
   - §8.4 escrow_events + disputes + dispute_evidence + attested_jobs ✓ LIVE (RLS aktivt)
-  - §8.5 storage-bucket dispute-evidence: ◯ **kräver Studio-action** (SQL: `supabase/snippets/fas8_5_dispute_evidence_bucket.sql`)
+  - §8.5 storage-bucket dispute-evidence: ✓ LIVE (verifierat 2026-04-25 — bucket skapad 2026-04-24 09:30 UTC, public=false, 5MB-limit, mime: jpeg/png/heic/pdf)
   - §8.6 escrow-state-transition EF ✓ LIVE (181 rader, X-Internal-Secret, log_escrow_event RPC)
   - §8.7 escrow-release EF ✓ LIVE (366 rader, 3 triggers)
   - §8.8 dispute-open EF ✓ LIVE (309 rader, JWT-auth, 24h-window-check, UNIQUE-rollback)

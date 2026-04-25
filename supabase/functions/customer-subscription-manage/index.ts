@@ -25,6 +25,7 @@ import {
   updateHoldTime,
   findSlotConflict,
 } from "../_shared/slot-holds.ts";
+import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
   // Verifiera ownership + hämta fält för slot-holds + cleaner-notify
   const { data: sub, error: fetchErr } = await supabase
     .from("subscriptions")
-    .select("id, customer_email, customer_name, status, frequency, next_booking_date, preferred_day, preferred_time, booking_hours, cleaner_id, cleaner_name, service_type, customer_address")
+    .select("id, customer_email, customer_name, status, frequency, next_booking_date, preferred_day, preferred_time, booking_hours, cleaner_id, cleaner_name, service_type, customer_address, last_booking_id")
     .eq("id", subscription_id)
     .eq("customer_email", email)
     .maybeSingle();
@@ -263,6 +264,48 @@ Deno.serve(async (req) => {
     log("warn", "customer-subscription-manage", "Slot-hold sync failed", {
       subscription_id, action, error: (e as Error).message,
     });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Fas 6 §6.8: logga subscription-action som booking_event.
+  // Använder sub.last_booking_id som ankarpunkt (samma pattern som
+  // auto-rebook). Skip om sub aldrig genererat en bokning än —
+  // booking_events.booking_id är NOT NULL.
+  // ═══════════════════════════════════════════════════════
+  if (sub.last_booking_id) {
+    const eventTypeMap: Record<Action, "recurring_paused" | "recurring_resumed" | "recurring_skipped" | "recurring_cancelled" | "schedule_changed"> = {
+      "pause": "recurring_paused",
+      "resume": "recurring_resumed",
+      "skip-next": "recurring_skipped",
+      "cancel": "recurring_cancelled",
+      "change-time": "schedule_changed",
+    };
+    const eventType = eventTypeMap[action as Action];
+    const metadata: Record<string, unknown> = {
+      subscription_id,
+    };
+    if (action === "pause") {
+      metadata.paused_by = "customer";
+      if (updateData.pause_reason) metadata.reason = updateData.pause_reason;
+    } else if (action === "resume") {
+      metadata.resumed_by = "customer";
+    } else if (action === "skip-next") {
+      metadata.skip_reason = "customer_initiated";
+      if (updateData.next_booking_date) metadata.new_next_date = updateData.next_booking_date;
+    } else if (action === "cancel") {
+      metadata.cancelled_by = "customer";
+      if (updateData.cancel_reason) metadata.reason = updateData.cancel_reason;
+    } else if (action === "change-time") {
+      metadata.changed_by = "customer";
+      if (sub.preferred_time) metadata.from_time = sub.preferred_time;
+      if (updateData.preferred_time) metadata.to_time = updateData.preferred_time;
+    }
+    await logBookingEvent(
+      supabase as unknown as SupabaseRpcClient,
+      sub.last_booking_id as string,
+      eventType,
+      { actorType: "customer", metadata },
+    );
   }
 
   // §5.4.1 change-time: notifiera städaren via email.
