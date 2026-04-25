@@ -1,7 +1,12 @@
 # Manual-bokning med BankID + RUT-flöde — design-spec
 
-**Status:** PLANNING-DOC, inte implementerad
+**Status:** DEFERRED 2026-04-25 — Farhad valde att hantera manuella
+bokningar via stadare-dashboard.html istället. Funktionen byggdes
+delvis (Fas A) och rollbackades samma dag pga "onödigt överflöd".
+Doc behållen som referens om vi behöver återta scope senare.
+
 **Skapad:** 2026-04-25
+**Deferred:** 2026-04-25
 **Vision-källa:** Farhad 2026-04-25 ("när man lägger till jobb manuellt
 att bank id skickas med när kundens personnummer efterfrågas så att man
 godkänner rut, även det betalningsflödet får inte missas")

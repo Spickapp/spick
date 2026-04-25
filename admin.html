@@ -491,7 +491,6 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <option value="job:pending_confirmation">⏳ Väntar bekräftelse</option>
           </select>
           <button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Uppdatera</button>
-          <button class="btn btn-primary btn-sm" onclick="openManualBookingModal()">➕ Skapa bokning</button>
           <button class="btn btn-primary btn-sm" onclick="autoAssignAll()">🤖 Auto-tilldela alla</button>
           <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportera CSV</button>
           <button class="btn btn-outline btn-sm" onclick="runBookingTimeout(this)">🕐 Hantera timeout</button>
@@ -805,80 +804,6 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <thead><tr><th>Fakturanr</th><th>Städare</th><th>Period</th><th>Brutto</th><th>Provision</th><th>Netto</th><th>Status</th><th></th></tr></thead>
             <tbody id="si-tbody"><tr><td colspan="8" style="text-align:center;padding:32px"><div class="spin"></div></td></tr></tbody>
           </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Fas A: Manual-booking modal ───────────────────────────── -->
-    <div id="manual-booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
-      <div style="background:#fff;border-radius:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
-          <div>
-            <h3 style="margin:0;font-family:'Playfair Display',serif;color:#0F6E56">➕ Skapa bokning manuellt</h3>
-            <p style="margin:4px 0 0;font-size:.82rem;color:#6B6960">Kund får email med Stripe Checkout-länk för betalning</p>
-          </div>
-          <button onclick="closeManualBookingModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9E9E9A">&times;</button>
-        </div>
-        <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:.75rem;font-size:.78rem;color:#854D0E;margin-bottom:1rem">
-          ⚠️ <strong>Fas A:</strong> RUT-bokningar är blockerade (kräver BankID-signering, Fas C). För privat-RUT använd boka.html.
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Kund-email *</label>
-            <input id="mb-customer-email" type="email" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px" placeholder="kund@exempel.se">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Kund-namn *</label>
-            <input id="mb-customer-name" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Telefon</label>
-            <input id="mb-customer-phone" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px" placeholder="+46...">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Kundtyp</label>
-            <select id="mb-customer-type" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px">
-              <option value="privat">Privatperson</option>
-              <option value="foretag">Företag (B2B)</option>
-            </select>
-          </div>
-          <div style="grid-column:1/-1">
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Adress *</label>
-            <input id="mb-customer-address" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px" placeholder="Gatuadress, postnr, ort">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Tjänst *</label>
-            <input id="mb-service-type" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px" placeholder="t.ex. Kontorsstädning">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Städare ID (UUID)</label>
-            <input id="mb-cleaner-id" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px" placeholder="Lämna tom om VD/member">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Datum *</label>
-            <input id="mb-booking-date" type="date" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Tid *</label>
-            <input id="mb-booking-time" type="time" value="08:00" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Timmar *</label>
-            <input id="mb-booking-hours" type="number" min="1" max="12" value="2" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px">
-          </div>
-          <div>
-            <label style="display:block;font-size:.75rem;color:#6B6960;margin-bottom:4px">Stripe-länk giltig</label>
-            <select id="mb-checkout-expires" style="width:100%;padding:.5rem;border:1px solid #E8E8E4;border-radius:8px">
-              <option value="48">48 timmar (rekommenderas)</option>
-              <option value="24">24 timmar</option>
-              <option value="168">7 dagar</option>
-            </select>
-          </div>
-        </div>
-        <div id="mb-result" style="display:none;margin-top:1rem"></div>
-        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #E8E8E4">
-          <button onclick="closeManualBookingModal()" class="btn btn-outline btn-sm">Avbryt</button>
-          <button id="mb-submit-btn" onclick="submitManualBooking()" class="btn btn-primary btn-sm">Skapa & skicka länk</button>
         </div>
       </div>
     </div>
@@ -2497,139 +2422,17 @@ async function loadAll() {
 
 function loadBookings() { loadAll().then(() => renderBookings()); }
 
-// ── Fas A: manual-booking-create modal ──────────────────────────
-// Admin/VD skapar bokning manuellt → kund får email + Stripe Checkout-länk.
-// RUT BLOCKAS server-side (services.rut_eligible + customer_type=privat).
+// ── Fas A manual-booking ROLLBACKAD 2026-04-25 ──────────────────
+// Farhad valde att hantera manuella bokningar via stadare-dashboard.html
+// istället. Funktionerna nedan är borttagna. Se planning-doc:
+// docs/planning/manual-booking-bankid-rut-flow.md ("DEFERRED").
+//
+// Stub kvar så eventuella gamla browser-cachade onclick-handlers inte
+// kraschar. Tar bort när cache rotated.
 function openManualBookingModal() {
-  var modal = document.getElementById('manual-booking-modal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  document.getElementById('mb-result').style.display = 'none';
-  ['mb-customer-email','mb-customer-name','mb-customer-phone','mb-customer-address','mb-service-type','mb-cleaner-id'].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.value = '';
-  });
-  document.getElementById('mb-customer-type').value = 'privat';
-  document.getElementById('mb-booking-time').value = '08:00';
-  document.getElementById('mb-booking-hours').value = '2';
-  document.getElementById('mb-checkout-expires').value = '48';
-  // Default datum = imorgon
-  var tomorrow = new Date(Date.now() + 24*60*60*1000);
-  document.getElementById('mb-booking-date').value = tomorrow.toISOString().slice(0,10);
+  console.warn('[manual-booking] funktion borttagen — använd stadare-dashboard.html');
 }
-
-function closeManualBookingModal() {
-  var modal = document.getElementById('manual-booking-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-async function submitManualBooking() {
-  var btn = document.getElementById('mb-submit-btn');
-  if (!btn) return;
-  btn.disabled = true;
-  var origText = btn.textContent;
-  btn.textContent = '⏳ Skapar...';
-  var resultEl = document.getElementById('mb-result');
-
-  // Defensive: AbortController med 30s-timeout så fetch inte hänger
-  var ctrl = new AbortController();
-  var timeoutId = setTimeout(function () { ctrl.abort(); }, 30000);
-
-  try {
-    console.log('[manual-booking] start submit');
-    var sess = await SB.auth.getSession();
-    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
-    if (!token) {
-      alert('Din session har gått ut — ladda om sidan.');
-      return;
-    }
-
-    var payload = {
-      customer_email: document.getElementById('mb-customer-email').value.trim(),
-      customer_name: document.getElementById('mb-customer-name').value.trim(),
-      customer_phone: document.getElementById('mb-customer-phone').value.trim() || undefined,
-      customer_address: document.getElementById('mb-customer-address').value.trim(),
-      customer_type: document.getElementById('mb-customer-type').value,
-      service_type: document.getElementById('mb-service-type').value.trim(),
-      booking_date: document.getElementById('mb-booking-date').value,
-      booking_time: document.getElementById('mb-booking-time').value,
-      booking_hours: parseInt(document.getElementById('mb-booking-hours').value, 10),
-      cleaner_id: document.getElementById('mb-cleaner-id').value.trim() || undefined,
-      checkout_expires_in_hours: parseInt(document.getElementById('mb-checkout-expires').value, 10),
-    };
-    console.log('[manual-booking] payload:', payload);
-
-    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/manual-booking-create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SPICK.SUPA_KEY,
-        'Authorization': 'Bearer ' + token,
-      },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal,
-    });
-    console.log('[manual-booking] response status:', res.status);
-
-    var data = null;
-    try {
-      data = await res.json();
-    } catch (parseErr) {
-      console.warn('[manual-booking] response was not JSON');
-    }
-    console.log('[manual-booking] response data:', data);
-
-    if (!res.ok) {
-      var errMsg = (data && data.error) || ('HTTP ' + res.status);
-      var errDetail = (data && data.message) || (data && data.detail) || '';
-      resultEl.innerHTML = '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:1rem;color:#991B1B">' +
-        '<strong>❌ Fel:</strong> ' + escHtml(errMsg) +
-        (errDetail ? '<div style="margin-top:.5rem;font-size:.85rem">' + escHtml(errDetail) + '</div>' : '') +
-        '</div>';
-      resultEl.style.display = 'block';
-      return;
-    }
-
-    if (!data || !data.booking_id) {
-      resultEl.innerHTML = '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:1rem;color:#991B1B">' +
-        '<strong>❌ Oväntat svar:</strong> servern returnerade tom data trots HTTP 200. Kolla EF-loggar.' +
-        '</div>';
-      resultEl.style.display = 'block';
-      return;
-    }
-
-    resultEl.innerHTML = '<div style="background:#E1F5EE;border:1px solid #0F6E56;border-radius:10px;padding:1rem">' +
-      '<strong>✅ Bokning skapad!</strong>' +
-      '<div style="margin-top:.5rem;font-size:.85rem">Booking ID: <code>' + escHtml(data.booking_id) + '</code></div>' +
-      '<div style="font-size:.85rem">Pris: ' + Math.round(data.total_price || 0) + ' kr · Email: ' + (data.email_sent ? '✅ skickad' : '⚠️ ej skickad — kopiera länken nedan') + '</div>' +
-      (data.checkout_url
-        ? '<div style="margin-top:.5rem"><a href="' + escHtml(data.checkout_url) + '" target="_blank" rel="noopener" style="color:#0F6E56;font-weight:600">🔗 Öppna Stripe Checkout-länk</a></div>'
-        : '') +
-      (data.checkout_expires_at
-        ? '<div style="font-size:.75rem;color:#6B6960;margin-top:.5rem">Länk giltig till ' + new Date(data.checkout_expires_at).toLocaleString('sv-SE') + '</div>'
-        : '') +
-      '</div>';
-    resultEl.style.display = 'block';
-    // Refresh booking-list
-    if (typeof loadBookings === 'function') loadBookings();
-  } catch (e) {
-    var errLabel = (e && e.name === 'AbortError')
-      ? 'Timeout efter 30 sekunder — EF svarade aldrig. Kolla EF-loggar.'
-      : 'Nätverksfel: ' + ((e && e.message) || 'okänt');
-    console.error('[manual-booking] submit failed:', e);
-    if (resultEl) {
-      resultEl.innerHTML = '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:1rem;color:#991B1B">' +
-        '<strong>❌ ' + escHtml(errLabel) + '</strong>' +
-        '</div>';
-      resultEl.style.display = 'block';
-    } else {
-      alert(errLabel);
-    }
-  } finally {
-    clearTimeout(timeoutId);
-    btn.disabled = false;
-    btn.textContent = origText || 'Skapa & skicka länk';
-  }
-}
+function closeManualBookingModal() { /* stub */ }
 
 function updateBadges() {
   const pending = data.bookings.filter(b => b.payment_status === 'pending');
