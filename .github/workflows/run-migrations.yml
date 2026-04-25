@@ -111,3 +111,38 @@ jobs:
           echo "denna workflow. Registret är känd ur sync (Fas 2.X Replayability"
           echo "Sprint 30-50h). Denna workflow appliceras via Management API och"
           echo "är idempotent via DROP IF EXISTS / CREATE OR REPLACE."
+
+      # Fas 48.4 punkt 3 (2026-04-25): notification vid migration-fel.
+      # set -e + supabase db query failar ovan → denna step kör bara vid
+      # failure och skapar GitHub issue så drift inte sväljs i workflow-log.
+      - name: Skapa GitHub issue vid migration-fel
+        if: failure() && steps.diff.outputs.files != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = `${{ steps.diff.outputs.files }}`.trim();
+            const sha = context.sha.substring(0, 7);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Migration-deploy failed (${sha})`,
+              body: [
+                `**Workflow run:** ${runUrl}`,
+                `**Commit:** ${sha}`,
+                ``,
+                `**Försökta migrations:**`,
+                '```',
+                files,
+                '```',
+                ``,
+                `**Åtgärder att checka:**`,
+                `1. Öppna workflow-run-loggen ovan för exakt SQL-fel.`,
+                `2. Verifiera att migration följer idempotens-konvention (DROP IF EXISTS / CREATE OR REPLACE / IF NOT EXISTS).`,
+                `3. Verifiera att inga beroenden saknas i prod (curl mot information_schema).`,
+                `4. Vid manuell Studio-fix: skapa kompenserande migration-fil — bryt INTE konvention från CLAUDE.md ("ingen Studio SQL för strukturella ändringar utan motsvarande migration-fil").`,
+                ``,
+                `Auto-skapad av .github/workflows/run-migrations.yml (Fas 48.4 punkt 3).`,
+              ].join('\n'),
+              labels: ['migration-failed', 'infrastructure']
+            });
