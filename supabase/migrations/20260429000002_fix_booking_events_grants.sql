@@ -1,0 +1,57 @@
+-- ═══════════════════════════════════════════════════════════════
+-- SPICK – Fix: booking_events saknar GRANT till service_role
+-- ═══════════════════════════════════════════════════════════════
+--
+-- BAKGRUND
+-- Migration 20260401181153_sprint1_missing_tables.sql skapade
+-- booking_events-tabellen rad 92-105 med:
+--   - CREATE TABLE booking_events (...)
+--   - ALTER TABLE ... ENABLE ROW LEVEL SECURITY
+--   - CREATE POLICY "Service role manage booking_events"
+--     USING (auth.role() = 'service_role')
+--
+-- Men INGEN explicit GRANT-statement. PostgreSQL kollar GRANT FÖRE
+-- RLS-policy. Utan GRANT → "permission denied" (42501) oavsett policy.
+-- Supabase ger normalt auto-GRANT till postgres/service_role/etc via
+-- default privileges, men det fångade inte denna tabell.
+--
+-- KONSEKVENS
+-- get-booking-events EF (Fas 6 §6.4-§6.6) kraschade med 500 vid
+-- SELECT på booking_events. Frontend visade "Kunde inte ladda
+-- händelser (HTTP 500)" på alla event-timeline-sidor (admin.html,
+-- min-bokning.html, stadare-dashboard.html, mitt-konto.html).
+--
+-- VERIFIERAT 2026-04-25 via EF-logs:
+--   {"level":"error","msg":"Events fetch failed",
+--    "error":"permission denied for table booking_events"}
+--
+-- FIX
+-- Explicit GRANT till postgres + service_role + authenticated.
+-- - postgres: superuser + ägare av migrations-roll
+-- - service_role: används av EFs (booking-create event-log,
+--   stripe-webhook payment_received, get-booking-events SELECT)
+-- - authenticated: defense-in-depth om RLS-policies senare läggs
+--   till för customer/cleaner/company_owner direktläsning. Faktisk
+--   access fortfarande via RLS — GRANT är bara "förbi GRANT-check"
+-- ═══════════════════════════════════════════════════════════════
+
+GRANT ALL ON TABLE public.booking_events TO postgres;
+GRANT ALL ON TABLE public.booking_events TO service_role;
+GRANT SELECT ON TABLE public.booking_events TO authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- VERIFIERING (kör efter migration)
+-- ─────────────────────────────────────────────────────────────
+-- 1. GRANTS finns:
+--    SELECT grantee, privilege_type FROM information_schema.role_table_grants
+--    WHERE table_name = 'booking_events' ORDER BY grantee, privilege_type;
+--    Förväntat: postgres ALL, service_role ALL, authenticated SELECT.
+--
+-- 2. service_role kan SELECT:
+--    -- I Studio (kör som postgres-roll): SET ROLE service_role;
+--    -- SELECT COUNT(*) FROM booking_events;
+--    -- Förväntat: count utan 42501-fel.
+--
+-- 3. Frontend-test:
+--    Klicka "Historik" på en bokning i mitt-konto.html / min-bokning.html.
+--    Förväntat: events visas (eller "Inga loggade händelser").
