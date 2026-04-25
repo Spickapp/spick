@@ -524,17 +524,17 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
               <div class="f">
                 <label>Företagsnamn *</label>
-                <input type="text" id="biz-name" placeholder="AB Städarna" autocomplete="organization">
+                <input type="text" id="biz-name" placeholder="AB Städarna" autocomplete="organization" oninput="onBizFieldInput('bizName', this.value)">
               </div>
               <div class="f">
                 <label>Org.nummer *</label>
-                <input type="text" id="biz-org" placeholder="556677-8899" autocomplete="off">
+                <input type="text" id="biz-org" placeholder="556677-8899" autocomplete="off" oninput="this.value = formatOrgNumber(this.value); onBizFieldInput('bizOrg', this.value)">
               </div>
             </div>
 
             <div class="f" style="margin-top:.75rem">
               <label>Momsregistreringsnummer <span style="font-size:.75rem;color:var(--m)">(valfritt)</span></label>
-              <input type="text" id="biz-vat" placeholder="SE559402452201" autocomplete="off" oninput="onBizFieldInput('bizVat', this.value)">
+              <input type="text" id="biz-vat" placeholder="SE559402452201" autocomplete="off" oninput="this.value = formatVatNumber(this.value); onBizFieldInput('bizVat', this.value)">
               <div class="field-hint" style="font-size:.75rem;color:var(--m);margin-top:4px">Krävs om moms över 2000 kr. Format: SE + 10 siffror + 01.</div>
             </div>
 
@@ -576,7 +576,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
 
             <div class="f" style="margin-top:.75rem">
               <label>Fakturareferens <span style="font-size:.75rem;color:var(--m)">(valfritt)</span></label>
-              <input type="text" id="biz-ref" placeholder="Kostnadsställe, referens eller PO-nummer" autocomplete="off">
+              <input type="text" id="biz-ref" placeholder="Kostnadsställe, referens eller PO-nummer" autocomplete="off" oninput="onBizFieldInput('bizRef', this.value)">
             </div>
           </div>
 
@@ -816,7 +816,8 @@ let state = {
   // Referral
   referralCode: '',
   customerType: 'privat',
-  // B2B-utökning (§2.7.2). Gamla biz-name/biz-org/biz-ref kvar i DOM (hygien #38).
+  // B2B-utökning (§2.7.2 + hygien #38/#39 stängda 2026-04-25). Alla biz-fält i state.
+  bizName: '', bizOrg: '', bizRef: '',
   bizVat: '', bizContact: '', bizInvoiceEmail: '',
   invoiceAddressDiffers: false,
   invoiceStreet: '', invoicePostal: '', invoiceCity: ''
@@ -1298,12 +1299,32 @@ function setCustomerType(type) {
   updateSidebar();
 }
 
-// ── B2B-fält event-handlers (§2.7.2) ─────────────────────────
-// Uppdaterar state när användaren skriver i nya B2B-fälten.
-// Befintliga biz-name/biz-org/biz-ref läses fortfarande direkt från DOM
-// i submit — hygien #38 öppen för framtida harmonisering.
+// ── B2B-fält event-handlers (§2.7.2 + hygien #38/#39 stängda 2026-04-25) ─
+// Uppdaterar state när användaren skriver i B2B-fälten. Alla biz-* går
+// nu via state (hygien #38). Auto-format för org.nr + VAT-nr triggas
+// vid exakt 10 obrutna siffror (hygien #39, UX-förbättring).
 function onBizFieldInput(stateKey, value) {
   state[stateKey] = (value || '').trim();
+}
+
+// Auto-insert dash i org.nr när exakt 10 obrutna siffror skrivits.
+// Triggar bara vid längd 10 (inte under-skrivning) för att undvika
+// markörhopp medan användaren skriver.
+function formatOrgNumber(value) {
+  if (/^\d{10}$/.test(value)) {
+    return value.slice(0, 6) + '-' + value.slice(6);
+  }
+  return value;
+}
+
+// Auto-format SE+10siffror+01 när exakt 10 obrutna siffror skrivits.
+// Speglar svensk VAT-konvention: SE<orgnr>01. Validering accepterar
+// fortfarande manuellt skrivet format (regex /^SE\d{10}01$/ orörd).
+function formatVatNumber(value) {
+  if (/^\d{10}$/.test(value)) {
+    return 'SE' + value + '01';
+  }
+  return value;
 }
 
 // Fakturaadress-checkbox-toggle (§2.7.2).
@@ -2992,8 +3013,8 @@ function goStep4() {
   
   // Företagsfält-validering (§2.7.2 utökad)
   if (state.customerType === 'foretag') {
-    var bizName = document.getElementById('biz-name')?.value.trim();
-    var bizOrg = document.getElementById('biz-org')?.value.trim();
+    var bizName = (state.bizName || '').trim();
+    var bizOrg = (state.bizOrg || '').trim();
     if (!bizName) {
       showFieldError(document.getElementById('biz-name'), 'Ange företagsnamn');
       errors.push('biz-name');
@@ -3265,9 +3286,9 @@ async function doBook() {
         shadow_log_id: state.shadowLogId || undefined,
         rut: state.customerType === 'privat' && useRut,
         customer_type: state.customerType,
-        business_name: state.customerType === 'foretag' ? (document.getElementById('biz-name')?.value.trim() || null) : null,
-        business_org_number: state.customerType === 'foretag' ? (document.getElementById('biz-org')?.value.trim() || null) : null,
-        business_reference: state.customerType === 'foretag' ? (document.getElementById('biz-ref')?.value.trim() || null) : null,
+        business_name: state.customerType === 'foretag' ? (state.bizName || null) : null,
+        business_org_number: state.customerType === 'foretag' ? (state.bizOrg || null) : null,
+        business_reference: state.customerType === 'foretag' ? (state.bizRef || null) : null,
         // §2.7.2 — B2B-utökning. NULL för privat (och för foretag om fältet är tomt).
         business_vat_number: state.customerType === 'foretag' ? (state.bizVat || null) : null,
         business_contact_person: state.customerType === 'foretag' ? (state.bizContact || null) : null,
