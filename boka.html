@@ -589,6 +589,32 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
             </div>
           </div>
 
+          <!-- §7.5 TIC BankID-flow för RUT-PNR. Visas bara om tic_enabled='true' i platform_settings (servern returnerar 503 annars). -->
+          <div id="rut-bankid-wrap" style="display:none;margin-bottom:1rem;background:#E1F5EE;border:1.5px solid var(--g);border-radius:12px;padding:1rem">
+            <div id="rut-bankid-idle" style="display:block">
+              <div style="font-size:.85rem;font-weight:600;color:var(--g);margin-bottom:.4rem">🔒 Verifiera personnummer för RUT-avdrag</div>
+              <div style="font-size:.78rem;color:var(--m);margin-bottom:.6rem;line-height:1.4">Du loggar in med BankID. Vi hämtar ditt personnummer och adress säkert från Skatteverket. <strong>Vi lagrar aldrig ditt personnummer i klartext.</strong></div>
+              <button type="button" id="rut-bankid-start-btn" onclick="startRutBankid()" style="width:100%;padding:.75rem 1rem;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:.88rem">Verifiera med BankID →</button>
+            </div>
+            <div id="rut-bankid-pending" style="display:none;text-align:center;padding:.5rem">
+              <div style="font-size:.85rem;font-weight:600;color:var(--g);margin-bottom:.4rem">Öppna BankID-appen…</div>
+              <div id="rut-bankid-link-row" style="margin:.5rem 0">
+                <a id="rut-bankid-app-link" href="#" style="display:inline-block;padding:.6rem 1rem;background:var(--g);color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600">Öppna BankID på denna enhet</a>
+              </div>
+              <div style="font-size:.72rem;color:var(--m)">Status: <span id="rut-bankid-hint">Initierar…</span></div>
+              <button type="button" onclick="cancelRutBankid()" style="margin-top:.6rem;background:none;border:none;color:var(--m);text-decoration:underline;font-size:.78rem;cursor:pointer">Avbryt</button>
+            </div>
+            <div id="rut-bankid-success" style="display:none">
+              <div style="font-size:.85rem;font-weight:600;color:var(--g);margin-bottom:.4rem">✓ RUT-verifiering klar</div>
+              <div style="font-size:.8rem;color:var(--t)">Verifierad person: <strong id="rut-bankid-name">–</strong></div>
+              <div style="font-size:.75rem;color:var(--m);margin-top:.2rem" id="rut-bankid-address">–</div>
+            </div>
+            <div id="rut-bankid-error" style="display:none">
+              <div style="font-size:.82rem;color:#b91c1c;margin-bottom:.4rem">⚠ <span id="rut-bankid-error-msg">Något gick fel</span></div>
+              <button type="button" onclick="resetRutBankid()" style="padding:.5rem 1rem;background:var(--w);color:var(--g);border:1.5px solid var(--g);border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer">Försök igen</button>
+            </div>
+          </div>
+
           
           <!-- Nyckelhantering -->
           <div style="margin-top:1rem">
@@ -788,6 +814,8 @@ function syncRutToggleVisibility() {
     var sRutRow = document.getElementById('s-rut-row');
     if (sRutRow) sRutRow.style.display = 'none';
   }
+  // §7.5: synka TIC BankID-flow visibility
+  if (typeof syncRutBankidVisibility === 'function') syncRutBankidVisibility();
 }
 
 // ── SAFETY FALLBACK ──────────────────────────────────────────────────────────
@@ -2801,6 +2829,8 @@ function toggleRut() {
   if (!PNR_FIELD_DISABLED) {
     document.getElementById('pnr-wrap').style.display = useRut ? 'block' : 'none';
   }
+  // §7.5: synka TIC BankID-flow visibility
+  if (typeof syncRutBankidVisibility === 'function') syncRutBankidVisibility();
   updateSidebar();
 }
 
@@ -2956,6 +2986,156 @@ function applyCleanerAddonOverridesToUI() {
       priceSpan.textContent = freeFlag ? 'Gratis' : '+' + resolvedPrice + ' kr';
     }
   });
+}
+
+// §7.5 TIC BankID RUT-flow (state + helpers).
+state.rutBankidSession = null;     // { session_id, expires_at }
+state.rutBankidPolling = null;     // setInterval-id
+state.rutBankidVerified = false;   // true om SPAR-data hämtad
+
+async function startRutBankid() {
+  if (!state.email) {
+    showRutBankidError('Ange din e-post först (steg 4)');
+    return;
+  }
+  showRutBankidPending();
+  try {
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/rut-bankid-init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ customer_email: state.email })
+    });
+    var data = await res.json();
+    if (!res.ok) {
+      if (res.status === 503) {
+        showRutBankidError('BankID-verifiering är inte aktiv än. Kontakta hello@spick.se.');
+      } else {
+        showRutBankidError(data.details || data.error || ('HTTP ' + res.status));
+      }
+      return;
+    }
+    state.rutBankidSession = { session_id: data.session_id, expires_at: data.expires_at };
+    var appLink = document.getElementById('rut-bankid-app-link');
+    if (appLink && data.auto_start_token) {
+      // bankid:// URI startar BankID-app på samma enhet
+      appLink.href = 'bankid:///?autostarttoken=' + encodeURIComponent(data.auto_start_token) + '&redirect=null';
+    }
+    pollRutBankidStatus();
+  } catch (e) {
+    console.warn('[SPICK] startRutBankid error:', e);
+    showRutBankidError(e && e.message ? e.message : 'Något gick fel');
+  }
+}
+
+function pollRutBankidStatus() {
+  if (state.rutBankidPolling) clearInterval(state.rutBankidPolling);
+  var attempts = 0;
+  var maxAttempts = 90; // 90 * 2s = 3 min (TIC consent-window är 30 min, men UX-rimligt)
+  state.rutBankidPolling = setInterval(async function() {
+    attempts++;
+    if (attempts > maxAttempts) {
+      cancelRutBankid();
+      showRutBankidError('Tidsgräns nådd. Försök igen.');
+      return;
+    }
+    if (!state.rutBankidSession || !state.email) {
+      clearInterval(state.rutBankidPolling);
+      state.rutBankidPolling = null;
+      return;
+    }
+    try {
+      var res = await fetch(SPICK.SUPA_URL + '/functions/v1/rut-bankid-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
+        body: JSON.stringify({ session_id: state.rutBankidSession.session_id, customer_email: state.email })
+      });
+      var data = await res.json();
+      if (!res.ok) {
+        clearInterval(state.rutBankidPolling);
+        state.rutBankidPolling = null;
+        showRutBankidError(data.details || data.error || ('HTTP ' + res.status));
+        return;
+      }
+      var hintEl = document.getElementById('rut-bankid-hint');
+      if (data.status === 'complete' || data.already_consumed) {
+        clearInterval(state.rutBankidPolling);
+        state.rutBankidPolling = null;
+        state.rutBankidVerified = true;
+        showRutBankidSuccess(data.customer_name, data.address);
+      } else if (hintEl) {
+        // Visa TIC's hint-code översatt
+        var hintMap = { outstandingTransaction: 'Öppna BankID-appen', userSign: 'Skriv in säkerhetskod', noClient: 'Väntar på BankID-app' };
+        hintEl.textContent = hintMap[data.hint] || hintMap[data.status] || (data.status || 'Väntar…');
+      }
+    } catch (e) {
+      console.warn('[SPICK] pollRutBankidStatus exception:', e);
+    }
+  }, 2000);
+}
+
+function cancelRutBankid() {
+  if (state.rutBankidPolling) {
+    clearInterval(state.rutBankidPolling);
+    state.rutBankidPolling = null;
+  }
+  state.rutBankidSession = null;
+  resetRutBankid();
+}
+
+function resetRutBankid() {
+  state.rutBankidSession = null;
+  state.rutBankidVerified = false;
+  document.getElementById('rut-bankid-idle').style.display = 'block';
+  document.getElementById('rut-bankid-pending').style.display = 'none';
+  document.getElementById('rut-bankid-success').style.display = 'none';
+  document.getElementById('rut-bankid-error').style.display = 'none';
+}
+
+function showRutBankidPending() {
+  document.getElementById('rut-bankid-idle').style.display = 'none';
+  document.getElementById('rut-bankid-pending').style.display = 'block';
+  document.getElementById('rut-bankid-success').style.display = 'none';
+  document.getElementById('rut-bankid-error').style.display = 'none';
+  var hintEl = document.getElementById('rut-bankid-hint');
+  if (hintEl) hintEl.textContent = 'Initierar…';
+}
+
+function showRutBankidSuccess(name, address) {
+  document.getElementById('rut-bankid-idle').style.display = 'none';
+  document.getElementById('rut-bankid-pending').style.display = 'none';
+  document.getElementById('rut-bankid-success').style.display = 'block';
+  document.getElementById('rut-bankid-error').style.display = 'none';
+  var nameEl = document.getElementById('rut-bankid-name');
+  var addrEl = document.getElementById('rut-bankid-address');
+  if (nameEl) nameEl.textContent = name || '(verifierad)';
+  if (addrEl) addrEl.textContent = address || '';
+}
+
+function showRutBankidError(msg) {
+  document.getElementById('rut-bankid-idle').style.display = 'none';
+  document.getElementById('rut-bankid-pending').style.display = 'none';
+  document.getElementById('rut-bankid-success').style.display = 'none';
+  document.getElementById('rut-bankid-error').style.display = 'block';
+  var msgEl = document.getElementById('rut-bankid-error-msg');
+  if (msgEl) msgEl.textContent = msg || 'Något gick fel';
+}
+
+// Visa rut-bankid-wrap när RUT är aktivt (synkat med syncRutToggleVisibility)
+function syncRutBankidVisibility() {
+  var wrap = document.getElementById('rut-bankid-wrap');
+  if (!wrap) return;
+  // Visa bara för privat-customers med RUT aktivt + service är RUT-eligible
+  var customerType = state.customerType || 'privat';
+  if (state.useRut && customerType === 'privat' && state.service && isRutEligible(state.service)) {
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+    // Reset state om hidden
+    if (state.rutBankidPolling) {
+      clearInterval(state.rutBankidPolling);
+      state.rutBankidPolling = null;
+    }
+  }
 }
 
 function updateAddons() {
