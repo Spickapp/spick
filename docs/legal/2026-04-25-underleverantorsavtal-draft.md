@@ -33,6 +33,10 @@
 - A-kassa, försäkringar, pensionssparande
 - Egen utrustning utöver vad Kund tillhandahåller
 
+**1.3.1 Spicks roll varierar per tjänstetyp** — utförare för RUT-berättigade tjänster, förmedlare för icke-RUT (kontors-/byggstädning). Spicks roll för aktuell bokning anges i bokningsacceptansen i Spick-appen. Underleverantörens kontraktuella ansvar mot Spick gäller oavsett Spick-roll, men Kund-ansvarets fördelning skiftar (se [`2026-04-25-utforare-vs-formedlare-hybrid-analys.md`](2026-04-25-utforare-vs-formedlare-hybrid-analys.md)):
+- **Spick-utförare-uppdrag:** Spick bär kund-ansvar primärt; Underleverantörens skuld är mot Spick
+- **Spick-förmedlar-uppdrag:** Underleverantören bär kund-ansvar primärt; Spick förmedlar + fakturerar
+
 **1.4** Definitioner:
 - "Tjänsten" = den städning som Spick förmedlar till Underleverantören
 - "Kund" = den fysiska person som beställer Tjänsten via Spick
@@ -165,6 +169,18 @@ c) Vid systematisk brist (3+ tillfällen inom 90 dagar): avstängning från plat
 **5.4 Tekniska fel.** Vid bevisat tekniskt fel i Spick-appen (server-nedtid, GPS-fel pga app-bug, etc.) gäller §5.2 inte. Spick verifierar tekniska fel via egna logs och meddelar Underleverantören skriftligen om undantag.
 
 **5.5 Manipulation av Check-in/ut.** Försök att manipulera Check-in/ut (felaktig GPS, falsk tidsstämpel, kollegas check-in på annan plats, mock-locations) klassas som **bedrägeri** per §17 och §18 vite-tabell rad 1-3.
+
+**5.6 Underleverantörens medvetenhet om Kund-RUT-mekanismen.** Underleverantören är medveten om och accepterar att:
+
+a) Spick har enligt Kundvillkor §10.3 rätt att efterdebitera Kund 50 % av arbetskostnaden om Skatteverket nekar RUT-avdrag av kund-orsakade skäl (fel personnummer, RUT-tak överskridet, ej folkbokförd på adressen).
+
+b) **Kund-orsakade nekanden** påverkar inte Underleverantörens utbetalning negativt. Spick efterdebiterar Kund + Underleverantören får sin normala utbetalning per §4.
+
+c) **Underleverantör-orsakade nekanden** (otillräckligt Check-in/ut-bevis enligt §5.2, falskt RUT-underlag enligt §17.1 rad 3) hanteras enligt §5.2 b) — permanent 50 %-drag av Underleverantörens arbetskostnad. Detta är en separat mekanism från §10.3 i Kundvillkor.
+
+d) **Spick-orsakade nekanden** (felaktigt RUT-XML-underlag, system-bug, fel registrerad personuppgift hos Spick) bär Spick risken för. Varken Kund eller Underleverantör drabbas.
+
+**5.6.1 Bevisbörda.** Klassificering av "vem orsakade nekandet" görs av Spick vid första bedömning. Underleverantören kan överklaga enligt §12.4 inom 14 dagar från beslut.
 
 ---
 

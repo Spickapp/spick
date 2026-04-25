@@ -3,9 +3,10 @@
 **STATUS:** ⚠️ DRAFT för Farhads jurist-bedömning. **Inte juridiskt giltigt utan din review.** Klausuler kan vara oskäliga per Avtalsvillkorslagen och jämkas av Konsumentverket/domstol. Du som jurist bedömer.
 
 **Datum:** 2026-04-25
-**Version:** Draft v0.1
+**Version:** Draft v0.2 (uppdaterad — hybrid-roll + 50%-drag-mot-kund-vid-RUT-nekande)
 **Källor:** Hemfrid, Vardagsfrid, Städade Hem (se `2026-04-25-konkurrent-research-villkor.md`)
-**Spicks position:** Plattform/förmedlare (RUT-ombud sen 13 apr 2026)
+**Spicks position:** **Hybrid** — utförare för RUT-berättigade tjänster, förmedlare för icke-RUT (kontors-/byggstädning). Se [`2026-04-25-utforare-vs-formedlare-hybrid-analys.md`](2026-04-25-utforare-vs-formedlare-hybrid-analys.md).
+**Ändring v0.1 → v0.2:** §1.3 hybrid-roll-clarification + §10.3 explicit 50%-drag vid RUT-nekande
 
 ---
 
@@ -15,7 +16,15 @@
 
 **1.2** Villkoren accepteras genom att Kunden klickar "Beställ" eller motsvarande bekräftelse i bokningsflödet. Villkoren är då en del av avtalet mellan parterna.
 
-**1.3** Spick förmedlar städtjänster utförda av oberoende underleverantörer ("Städaren"). Spick är inte arbetsgivare till Städaren. Spick är RUT-ombud godkänt av Skatteverket per 13 april 2026 (SNI 81.210).
+**1.3 Spicks roll varierar per tjänstetyp:**
+
+a) **Utförare** för RUT-berättigade tjänster (Hemstädning, Storstädning, Flyttstädning, Fönsterputs, Trappstädning). Spick åtar sig direkt utförande via godkända oberoende underleverantörer ("Städaren"). Spick bär kund-ansvar enligt Konsumenttjänstlagen.
+
+b) **Förmedlare** för icke-RUT-tjänster (Kontorsstädning, Byggstädning). Spick förmedlar avtal mellan Kund och Städare, hanterar betalning + kvalitetskontroll. Städaren är direkt avtalspart för utförandet.
+
+c) Spicks roll för aktuell bokning anges i bokningsbekräftelsen och kvitto. Olika villkors-sektioner gäller per roll — se §7 (försäkring) och §8 (dispute) för rolljämförelse.
+
+d) Spick är inte arbetsgivare till Städaren oavsett roll. Spick är RUT-ombud godkänt av Skatteverket per 13 april 2026 (SNI 81.210).
 
 **1.4** Definitioner:
 - "Tjänsten" = den städning som Kunden bokat enligt bokningsbekräftelse
@@ -186,13 +195,17 @@ b) Öppna dispute (se §8.2) → escrow hålls tills tvisten är löst
 - Att bostaden är folkbokförd för Kunden eller dennes hushållsmedlem
 - Att andra Skatteverkets krav uppfylls
 
-**10.3 Vid nekat RUT-avdrag** av Skatteverket pga Kundens bristande uppgifter eller överskridet tak:
+**10.3 Vid nekat RUT-avdrag** av Skatteverket pga Kundens bristande uppgifter eller överskridet tak har Spick rätt att:
 
-a) Spick fakturerar Kunden för **fullt belopp** utan RUT-avdrag (motsvarande Vardagsfrid §3.7 + Städade Hem §4.4)
+a) **Efterdebitera Kunden för 50 % av arbetskostnaden** (motsvarande den RUT-andel som Skatteverket inte godkände). Detta innebär att Kunden i praktiken betalar fullt belopp utan RUT-avdrag (motsvarande Vardagsfrid §3.7 + Städade Hem §4.4 + Hemfrid praxis).
 
-b) Spick debiterar en **administrativ avgift om 500 kr** per nekat avdrag för manuell hantering mot Skatteverket
+b) Debitera en **administrativ avgift om 500 kr** per nekat avdrag för manuell hantering mot Skatteverket.
 
-c) Kunden förbinder sig att betala dessa belopp inom 30 dagar från krav
+c) Kunden förbinder sig att betala dessa belopp inom 30 dagar från krav.
+
+**10.3.1 Avgränsning av §10.3.** §10.3 gäller endast vid Kund-orsakat RUT-nekande. Vid nekande pga Spicks fel (felaktigt RUT-XML-underlag, fel personuppgift sparad, system-bug) bär Spick risken — Kunden faktureras endast netto-priset.
+
+**10.3.2 Bevisbörda.** Vid tvist om vem som orsakade nekandet ligger bevisbördan på den part som hävdar att andra parten orsakade det.
 
 **10.4** Om Kunden förändrar förhållanden som påverkar RUT-rätten under avtalstiden (t.ex. flytt, ändrad folkbokföring) ska Kunden skriftligen underrätta Spick utan dröjsmål via [hello@spick.se](mailto:hello@spick.se).
 

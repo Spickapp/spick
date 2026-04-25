@@ -247,8 +247,72 @@ Specifika sifferförslag (1 PBB cap, 48 h reklamation, 30 dagar lång frist, 500
 | Deliverable | Status | Fil |
 |---|---|---|
 | Konkurrent-research | ✅ KLAR | [2026-04-25-konkurrent-research-villkor.md](2026-04-25-konkurrent-research-villkor.md) |
-| Kundvillkor draft v0.1 | ✅ KLAR | [2026-04-25-kundvillkor-draft.md](2026-04-25-kundvillkor-draft.md) |
-| Underleverantörsavtal draft v0.1 | ✅ KLAR | [2026-04-25-underleverantorsavtal-draft.md](2026-04-25-underleverantorsavtal-draft.md) |
-| Jurist-checklist | ✅ KLAR | [2026-04-25-jurist-checklist.md](2026-04-25-jurist-checklist.md) (denna fil) |
+| Kundvillkor draft v0.2 | ✅ KLAR (uppdaterad — hybrid-roll + 50%-drag-RUT) | [2026-04-25-kundvillkor-draft.md](2026-04-25-kundvillkor-draft.md) |
+| Underleverantörsavtal draft v0.2 | ✅ KLAR (anti-fraud + vite-skala + hybrid-roll-medvetenhet) | [2026-04-25-underleverantorsavtal-draft.md](2026-04-25-underleverantorsavtal-draft.md) |
+| Utförare-vs-förmedlare-analys | ✅ KLAR (NY) | [2026-04-25-utforare-vs-formedlare-hybrid-analys.md](2026-04-25-utforare-vs-formedlare-hybrid-analys.md) |
+| Jurist-checklist | ✅ KLAR (utökad §11-12 nedan) | [2026-04-25-jurist-checklist.md](2026-04-25-jurist-checklist.md) (denna fil) |
 | Farhads bedömning | ⏳ Väntar på dig | — |
-| Konvertering till HTML | ⏳ Efter din OK | `villkor.html` + `villkor-stadare.html` |
+| Konvertering till HTML | ⏳ Efter din OK | `villkor.html` + `villkor-stadare.html` (eller två filer per hybrid-modell) |
+
+---
+
+## 11. NYA BESLUTSPUNKTER v0.2 — Hybrid-roll (utförare/förmedlare)
+
+Per din 2026-04-25-fråga: "RUT-krav är obligatoriskt att Spick är utföraren, men i de fall RUT inte gäller så kan förmedlarroll vara mer intressant."
+
+Min analys: [`2026-04-25-utforare-vs-formedlare-hybrid-analys.md`](2026-04-25-utforare-vs-formedlare-hybrid-analys.md). Min rekommendation: hybridmodell.
+
+### 11.1 Hybrid eller enhets-modell?
+- [ ] **Hybrid (rek):** Spick = utförare för RUT-tjänster, förmedlare för icke-RUT
+- [ ] **Bara utförare:** enklare avtal, högre risk för icke-RUT-tjänster
+- [ ] **Bara förmedlare:** lägre risk men kan ifrågasätta RUT-ombud-status
+
+### 11.2 Verifiering Skatteverket
+- [ ] **VIKTIGT:** Verifiera att Spick kan vara förmedlare för icke-RUT-tjänster utan att RUT-ombud-status (godkänd 13 apr 2026) påverkas. Kontakta SKV direkt eller läs RUT-ombud-villkoren noga.
+
+### 11.3 Avtals-strukturering
+- [ ] **Variant A (rek):** Två separata kundvillkor — `villkor-rut.html` (Spick = utförare) + `villkor-formedlare.html` (Spick = förmedlare)
+- [ ] **Variant B:** Ett avtal med roll-flagga per tjänstetyp
+
+### 11.4 Backend-impl (om hybrid-OK)
+- [ ] `services.spick_role_default` — kolumn per tjänst-typ
+- [ ] `bookings.spick_role` — kolumn per bokning (snapshot)
+- [ ] EF-logik för dispute-flow per Spick-roll
+
+### 11.5 Frontend-impl
+- [ ] `boka.html` — laddar rätt villkor-länk per vald tjänst
+- [ ] Bokningsbekräftelse — anger explicit Spick-roll
+- [ ] FAQ-sida om "Vad innebär det att Spick är utförare/förmedlare?"
+
+---
+
+## 12. NYA BESLUTSPUNKTER v0.2 — 50%-drag-mot-kund vid RUT-nekande
+
+Per din 2026-04-25-fråga: "Spick har rätten till 50 % avdrag i de fall slutkundens rutansökan inte beviljas av vissa skäl, och att underleverantörer är medveten om det."
+
+### 12.1 Kundvillkor §10.3 (uppdaterad v0.2)
+- [ ] **§10.3 a)** Spick efterdebiterar Kund 50 % av arbetskostnaden vid RUT-nekande pga kund-orsak. Bedöm formulering.
+- [ ] **§10.3.1 Avgränsning:** §10.3 gäller bara kund-orsakat nekande — inte Spick-orsakat. Acceptabel formulering?
+- [ ] **§10.3.2 Bevisbörda:** Vid tvist om vem som orsakade — bevisbörda på den part som hävdar. Bedöm rimlighet.
+
+### 12.2 Underleverantörsavtal §5.6 (NY)
+- [ ] **§5.6 a-c)** Underleverantörens medvetenhet om §10.3-mekanismen + skiljelinjen kund-orsak / underleverantör-orsak / Spick-orsak. Bedöm pedagogiken.
+- [ ] **§5.6 d)** Spick bär risk vid Spick-orsakade nekanden. OK?
+- [ ] **§5.6.1 Bevisbörda + överklagande inom 14 dagar.** OK?
+
+### 12.3 Operativa frågor
+- [ ] **Hur kommunicera till kund?** Vid bokning? Vid nekande?
+- [ ] **Vilka är "kund-orsakade skäl"?** Lista att precisera (fel PNR, RUT-tak, ej folkbokförd, andra?)
+- [ ] **Vilka är "Spick-orsakade skäl"?** Lista att precisera (XML-fel, fel sparad PNR, system-bug, andra?)
+- [ ] **Beslut hos Spick — appeal till ARN/domstol om kund vägrar?** Workflow-design.
+
+---
+
+## 13. KORS-REFERENS NYA SEKTIONER
+
+| Beslut | Påverkar |
+|---|---|
+| 11.1 Hybrid-modell | Kundvillkor §1.3, §7, §8; Underleverantörsavtal §1.3.1 |
+| 11.3 Variant A vs B | Hela kundvillkor-strukturen |
+| 12.1 50%-drag-mot-kund | Kundvillkor §10.3, §10.3.1, §10.3.2 |
+| 12.2 Underleverantörens medvetenhet | Underleverantörsavtal §5.6, §5.6.1 |
