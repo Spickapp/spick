@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (82 st)
+## Edge Functions (81 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -88,7 +88,6 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `stripe-connect-webhook` | ═══════════════════════════════════════════════════════════════ SPICK – stripe-connect-webhook (Sprint B Dag 1) |
 | `stripe-refund` |  |
 | `stripe-webhook` |  |
-| `swish` |  |
 | `team-sms-notify` |  |
 | `vd-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-decide (Fas 9 §9.2 — VD dispute-tier- |
 
