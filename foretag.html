@@ -700,9 +700,13 @@ async function init() {
       var simRes = await fetch(simUrl, { headers: H });
       var sims = simRes.ok ? await simRes.json() : [];
       // Bara VD eller solo-städare (team-members bokas via företaget)
+      // Plus: defensiv exklusion av testdata (name-prefix [TEST] eller "test"-keywords).
+      // owner_only=true skyddar primärt; namn-check är defense-in-depth om flag missas.
       sims = sims.filter(function(s) {
         if (s.owner_only) return false;
         if (s.company_id && !s.is_company_owner) return false;
+        var nm = (s.full_name || '').toLowerCase();
+        if (nm.startsWith('[test]') || nm.includes(' test ') || nm.endsWith(' test')) return false;
         return true;
       }).slice(0, 3);
       if (sims.length > 0) {
