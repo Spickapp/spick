@@ -107,7 +107,7 @@ SELECT
   b.escrow_state,
   COUNT(*) AS stuck,
   MIN(b.created_at) AS oldest,
-  ARRAY_AGG(b.id ORDER BY b.created_at LIMIT 5) AS sample_ids
+  (ARRAY_AGG(b.id ORDER BY b.created_at))[1:5] AS sample_ids
 FROM bookings b
 WHERE b.escrow_state IN ('resolved_full_refund', 'resolved_partial_refund', 'resolved_dismissed')
 GROUP BY b.escrow_state;
