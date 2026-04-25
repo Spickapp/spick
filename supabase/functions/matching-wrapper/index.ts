@@ -73,6 +73,10 @@ interface RequestBody {
   // Sprint C-4 (2026-04-28): kund-valda addons — skickas ENDAST till
   // find_nearby_providers (Model-2a). v1/v2 har inte addon-filter.
   required_addons?: string[] | null;
+  // Fas 7 §7.7 (2026-04-25): kund-valda språk-krav. NULL/[] = ignorera filter.
+  // Skickas till v2 + shadow + providers-shadow (alla v2-kompatibla RPCs).
+  // v1 (find_nearby_cleaners_v1) har inte param — ignoreras där.
+  languages?: string[] | null;
 }
 
 interface SettingsPair {
@@ -365,6 +369,7 @@ serve(async (req) => {
         has_elevator: body.has_elevator ?? null,
         booking_materials: body.booking_materials ?? null,
         customer_id: body.customer_id ?? null,
+        p_languages: body.languages ?? null,
       });
       if (error) return json(500, { error: "v2-RPC misslyckades", detail: error.message });
       let rows = (data ?? []) as Array<Record<string, unknown>>;
@@ -390,6 +395,7 @@ serve(async (req) => {
         has_elevator: body.has_elevator ?? null,
         booking_materials: body.booking_materials ?? null,
         customer_id: body.customer_id ?? null,
+        p_languages: body.languages ?? null,
       }),
     ]);
 
@@ -512,10 +518,21 @@ serve(async (req) => {
       has_elevator: body.has_elevator ?? null,
       booking_materials: body.booking_materials ?? null,
       customer_id: body.customer_id ?? null,
+      p_languages: body.languages ?? null,
     };
-    // Sprint C-4: providers-RPC kan ta required_addons (v2 saknar param)
+    // Sprint C-4: providers-RPC kan ta required_addons (v2 saknar param).
+    // Fas 7 §7.7 (2026-04-25): p_languages är v2-only — providers-RPC har INTE
+    // den param ännu (separat sprint). Spread:a inte v2ParamsM3 → bygg explicit.
     const providersParamsM3 = {
-      ...v2ParamsM3,
+      customer_lat,
+      customer_lng,
+      booking_date: body.booking_date ?? null,
+      booking_time: body.booking_time ?? null,
+      booking_hours: body.booking_hours ?? null,
+      has_pets: body.has_pets ?? null,
+      has_elevator: body.has_elevator ?? null,
+      booking_materials: body.booking_materials ?? null,
+      customer_id: body.customer_id ?? null,
       required_addons: body.required_addons ?? null,
     };
     const [v2ResultM3, providersResult] = await Promise.all([
