@@ -21,12 +21,14 @@ import {
   type EscrowState,
 } from "../../_shared/escrow-state.ts";
 
-// CHECK-constraint-listan från migration 20260427000007
+// CHECK-constraint-listan från migration 20260427000007 + §8.22 utökning
+// (released_partial via 20260425XXXXXX_fas_8_22_released_partial.sql)
 const VALID_STATES: EscrowState[] = [
   "pending_payment",
   "paid_held",
   "awaiting_attest",
   "released",
+  "released_partial",          // §8.22 (2026-04-25)
   "disputed",
   "resolved_full_refund",
   "resolved_partial_refund",
@@ -39,10 +41,12 @@ const VALID_STATES: EscrowState[] = [
 // Terminal-states (inga transitions ut per design)
 const TERMINAL_STATES: EscrowState[] = [
   "released",
+  "released_partial",          // §8.22: terminal efter partial-refund + transfer
   "refunded",
   "cancelled",
   "released_legacy",
-  "resolved_partial_refund", // medveten gap — se rule #30 i index.ts
+  // resolved_partial_refund borttagen från terminal-listan §8.22 — nu har
+  // den transition ut via transfer_partial_refund → released_partial.
 ];
 
 const baseValid = {
@@ -102,6 +106,11 @@ Deno.test("TRANSITIONS: 3 admin-beslut från disputed", () => {
   assertEquals(TRANSITIONS.admin_full_refund.to, "resolved_full_refund");
   assertEquals(TRANSITIONS.admin_partial_refund.to, "resolved_partial_refund");
   assertEquals(TRANSITIONS.admin_dismiss.to, "resolved_dismissed");
+});
+
+Deno.test("TRANSITIONS §8.22: transfer_partial_refund eskorterar resolved_partial_refund → released_partial", () => {
+  assertEquals(TRANSITIONS.transfer_partial_refund.from, ["resolved_partial_refund"]);
+  assertEquals(TRANSITIONS.transfer_partial_refund.to, "released_partial");
 });
 
 Deno.test("TRANSITIONS: transfer_full_refund eskorterar resolved_full_refund → refunded", () => {

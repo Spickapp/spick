@@ -25,6 +25,7 @@ export type EscrowState =
   | "paid_held"
   | "awaiting_attest"
   | "released"
+  | "released_partial"          // §8.22 (2026-04-25): efter partial-refund + transfer-rest
   | "disputed"
   | "resolved_full_refund"
   | "resolved_partial_refund"
@@ -45,6 +46,7 @@ export type EscrowAction =
   | "admin_partial_refund"
   | "admin_dismiss"
   | "transfer_full_refund"
+  | "transfer_partial_refund"   // §8.22 (2026-04-25)
   | "transfer_dismissed";
 
 export type TriggeredBy =
@@ -60,23 +62,24 @@ export interface Transition {
 }
 
 // Primärkälla: dispute-escrow-system.md §1.2.
-// Rule #30: resolved_partial_refund är de facto terminal tills
-// arkitektur-docen klargör "released+refunded"-scenario. Ingen
-// transition ut — resolved_partial_refund blir vid behov manuell
-// admin-adjustment (separat session).
+// §8.22 (2026-04-25): transfer_partial_refund stänger partial-refund-flowen.
+// Efter admin_partial_refund → resolved_partial_refund, refund-booking EF
+// gör Stripe partial refund + transfer av rest till cleaner → därefter
+// transfer_partial_refund-action sätter released_partial som terminal.
 export const TRANSITIONS: Record<EscrowAction, Transition> = {
-  charge_succeeded:     { from: ["pending_payment"],      to: "paid_held" },
-  cancel_before_charge: { from: ["pending_payment"],      to: "cancelled" },
-  job_completed:        { from: ["paid_held"],            to: "awaiting_attest" },
-  cancel_pre_service:   { from: ["paid_held"],            to: "refunded" },
-  customer_attest:      { from: ["awaiting_attest"],      to: "released" },
-  auto_release_24h:     { from: ["awaiting_attest"],      to: "released" },
-  dispute_open:         { from: ["awaiting_attest"],      to: "disputed" },
-  admin_full_refund:    { from: ["disputed"],             to: "resolved_full_refund" },
-  admin_partial_refund: { from: ["disputed"],             to: "resolved_partial_refund" },
-  admin_dismiss:        { from: ["disputed"],             to: "resolved_dismissed" },
-  transfer_full_refund: { from: ["resolved_full_refund"], to: "refunded" },
-  transfer_dismissed:   { from: ["resolved_dismissed"],   to: "released" },
+  charge_succeeded:        { from: ["pending_payment"],         to: "paid_held" },
+  cancel_before_charge:    { from: ["pending_payment"],         to: "cancelled" },
+  job_completed:           { from: ["paid_held"],               to: "awaiting_attest" },
+  cancel_pre_service:      { from: ["paid_held"],               to: "refunded" },
+  customer_attest:         { from: ["awaiting_attest"],         to: "released" },
+  auto_release_24h:        { from: ["awaiting_attest"],         to: "released" },
+  dispute_open:            { from: ["awaiting_attest"],         to: "disputed" },
+  admin_full_refund:       { from: ["disputed"],                to: "resolved_full_refund" },
+  admin_partial_refund:    { from: ["disputed"],                to: "resolved_partial_refund" },
+  admin_dismiss:           { from: ["disputed"],                to: "resolved_dismissed" },
+  transfer_full_refund:    { from: ["resolved_full_refund"],    to: "refunded" },
+  transfer_partial_refund: { from: ["resolved_partial_refund"], to: "released_partial" },
+  transfer_dismissed:      { from: ["resolved_dismissed"],      to: "released" },
 };
 
 export const VALID_TRIGGERED_BY: ReadonlyArray<TriggeredBy> = [
