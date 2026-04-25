@@ -1,4 +1,4 @@
-# Codebase Snapshot (auto-generated 2026-04-24)
+# Codebase Snapshot (auto-generated 2026-04-25)
 
 Genererad av `scripts/generate-claude-md.ts`. Kopiera valda sektioner
 till CLAUDE.md för att fixa Regel #29-drift.
@@ -170,8 +170,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (129 st)
+## Migrations (130 st)
 
-- Senaste: `20260428000003_fas_rbac_company_role.sql`
-- Timestamp-prefix: `20260428000003`
+- Senaste: `20260429000001_fix_is_admin_user_id_to_email.sql`
+- Timestamp-prefix: `20260429000001`
 
