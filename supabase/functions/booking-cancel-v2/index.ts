@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
     // 1. Fetch booking
     const { data: booking, error: fetchErr } = await sb
       .from("bookings")
-      .select("id, customer_email, customer_name, cleaner_id, booking_date, booking_time, status, payment_status, total_price, rut_amount, payment_intent_id")
+      .select("id, customer_email, customer_name, cleaner_id, booking_date, booking_time, status, payment_status, total_price, rut_amount, payment_intent_id, escrow_state")
       .eq("id", booking_id)
       .maybeSingle();
 
@@ -183,6 +183,48 @@ Deno.serve(async (req) => {
     if (updateErr) {
       console.error("Update error:", updateErr);
       return json({ error: "Kunde inte avboka bokningen" }, 500);
+    }
+
+    // 6b. Fas 8 §8.18: transitionera escrow_state via EF (best-effort).
+    // Cancel-flödet uppdaterar status='cancelled' + payment_status, men
+    // escrow_state är separat state-machine. Mappar from-state till action:
+    //   pending_payment  → cancel_before_charge → cancelled
+    //   paid_held        → cancel_pre_service → refunded
+    //   released_legacy  → skip (legacy-flow utan state-machine)
+    //   awaiting_attest+ → skip (för sent för cancel, kund får dispute)
+    const escrowState = (booking as { escrow_state?: string }).escrow_state;
+    let escrowAction: string | null = null;
+    if (escrowState === "pending_payment") escrowAction = "cancel_before_charge";
+    else if (escrowState === "paid_held") escrowAction = "cancel_pre_service";
+    if (escrowAction) {
+      try {
+        const transRes = await fetch(`${SUPA_URL}/functions/v1/escrow-state-transition`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Secret": Deno.env.get("INTERNAL_EF_SECRET") || "",
+          },
+          body: JSON.stringify({
+            booking_id,
+            action: escrowAction,
+            triggered_by: auth.isAdmin ? "admin" : (auth.isVD ? "cleaner" : "customer"),
+            metadata: {
+              cancellation_reason: reason || null,
+              refund_amount_sek: refundAmount,
+              refund_percent: refundPercent,
+              stripe_refund_id: stripeRefundId || null,
+              from_booking_status: oldStatus,
+            },
+          }),
+        });
+        if (!transRes.ok) {
+          console.warn("[booking-cancel-v2] escrow-state-transition failed (cancel done, audit-state-drift)", {
+            booking_id, action: escrowAction, status: transRes.status,
+          });
+        }
+      } catch (e) {
+        console.warn("[booking-cancel-v2] escrow-state-transition exception", (e as Error).message);
+      }
     }
 
     // 7. Log in booking_status_log

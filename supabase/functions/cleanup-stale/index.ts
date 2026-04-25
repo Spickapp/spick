@@ -22,7 +22,7 @@ serve(async (_req) => {
     // 1. Find stale bookings (unpaid >30 min)
     const { data: stale, error: fetchErr } = await sb
       .from("bookings")
-      .select("id, created_at")
+      .select("id, created_at, escrow_state")
       .eq("payment_status", "pending")
       .in("status", ["pending", "ny"])
       .lt("created_at", cutoff);
@@ -48,6 +48,32 @@ serve(async (_req) => {
       .in("id", staleIds);
 
     if (updateErr) throw updateErr;
+
+    // 2b. Fas 8 §8.18: transitionera escrow_state för pending_payment-rader.
+    // Stale pending bokningar ska gå pending_payment→cancelled. Best-effort
+    // per booking — om transition failar fortsätter vi (state-drift loggas).
+    const SUPA_URL_LOCAL = SUPABASE_URL;
+    const internalSecret = Deno.env.get("INTERNAL_EF_SECRET") || "";
+    for (const b of stale) {
+      if ((b as { escrow_state?: string }).escrow_state !== "pending_payment") continue;
+      try {
+        const transRes = await fetch(`${SUPA_URL_LOCAL}/functions/v1/escrow-state-transition`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+          body: JSON.stringify({
+            booking_id: b.id,
+            action: "cancel_before_charge",
+            triggered_by: "system_timer",
+            metadata: { source: "cleanup-stale", age_minutes: 30 },
+          }),
+        });
+        if (!transRes.ok) {
+          console.warn(`[cleanup-stale] escrow-state-transition failed for ${b.id}: ${transRes.status}`);
+        }
+      } catch (e) {
+        console.warn(`[cleanup-stale] escrow-state-transition exception for ${b.id}: ${(e as Error).message}`);
+      }
+    }
 
     // 3. Log in booking_status_log (non-critical)
     try {
