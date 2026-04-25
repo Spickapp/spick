@@ -78,25 +78,24 @@ Deno.serve(async (req) => {
       return json(CORS, 401, { error: "email_missing_in_token" });
     }
 
-    // ── Resolve callern: cleaner-row ELLER admin ──
-    const { data: caller } = await sb
-      .from("cleaners")
-      .select("id, company_id, is_company_owner")
-      .eq("email", userEmail)
-      .maybeSingle();
-
-    let isAdmin = false;
-    if (!caller) {
-      // Fallback: kontrollera om user är admin (admin-vy från admin.html / admin-as)
-      const { data: adminRow } = await sb
-        .from("admin_users")
+    // ── Resolve callern: cleaner-row OCH/ELLER admin ──
+    // Farhad och andra owners är BÅDE cleaner (company_owner) OCH admin.
+    // Båda lookups parallellt — admin-flag override:ar VD-company-check
+    // så admin kan sätta priser för cleaners i ANNAN company (admin-vy via view_as).
+    const [cleanerRes, adminRes] = await Promise.all([
+      sb.from("cleaners")
+        .select("id, company_id, is_company_owner")
+        .eq("email", userEmail)
+        .maybeSingle(),
+      sb.from("admin_users")
         .select("id")
         .eq("email", userEmail)
-        .maybeSingle();
-      if (!adminRow) {
-        return json(CORS, 403, { error: "not_a_cleaner_or_admin" });
-      }
-      isAdmin = true;
+        .maybeSingle(),
+    ]);
+    const caller = cleanerRes.data;
+    const isAdmin = !!adminRes.data;
+    if (!caller && !isAdmin) {
+      return json(CORS, 403, { error: "not_a_cleaner_or_admin" });
     }
 
     // ── Input ──
