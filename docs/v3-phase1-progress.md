@@ -101,7 +101,7 @@ Om något avviker → flagga innan fortsättning.
   - ✓ SKV-primärkälla committad: [docs/skatteverket/xsd-v6/](skatteverket/xsd-v6/) + README
   - ◯ **Blockat till jurist-OK:** PNR-aktivering (PNR_FIELD_DISABLED=true), kund-avtal + städar-avtal-uppdatering
   - ◯ **Blockat till extern:** BankID-integration för PNR-verifiering (Signicat/Freja/Fritid — Farhad väljer)
-- **Fas 8 Dispute + Full Escrow:** ✓ ~98% AKTIVERAT (EU-deadline 2 dec 2026 åtgärdad) — *uppdaterad 2026-04-25 efter §8.11 + §8.11.b + §8.18-cancel-bug-fix + §8.19-runbook samma session. Återstår §8.22-25 partial-refund-flow.*
+- **Fas 8 Dispute + Full Escrow:** ✓ ~99% AKTIVERAT (EU-deadline 2 dec 2026 åtgärdad) — *uppdaterad 2026-04-25 efter §8.22 partial-refund-flow KLAR. §8.23 (Stripe Connect cleaner-transfer-rest) + §8.24-25 (Klarna chargeback + refund-migration) ◯ DEFERRED.*
   - §8.1 Design-skelett ✓
   - §8.2 Stripe architecture shift ✓ — booking-create branchar `escrow_mode='legacy'|'escrow_v2'` via `platform_settings.escrow_mode` (default 'legacy'). stripe-webhook→escrow-state-transition vid charge.succeeded. AKTIVERAS via flag-flip i §8.18.
   - §8.3 escrow_state-kolumn + CHECK constraint ✓ LIVE
@@ -123,8 +123,12 @@ Om något avviker → flagga innan fortsättning.
   - §8.19 rollback-plan execution-test ✓ runbook skapad ([fas8-rollback.md](runbooks/fas8-rollback.md), 4 nivåer + reconciliation + tests)
   - §8.20 ✓ export-cleaner-data EF + UI-knapp (commit 691df41, GDPR Art 15 + Art 20 + EU PWD)
   - §8.21 ✓ garanti.html + nojdhetsgaranti.html uppdaterade
-  - §8.22-§8.25 refund-migration + Klarna-chargeback + övrigt: ◯ (separat sprint, kräver state-machine-utökning för partial-refund-flow)
-  - **STATUS:** Fas 8 är AKTIVERAT i prod. Återstår §8.22-25 partial-refund-flow + Klarna chargeback.
+  - §8.22 ✅ KLAR (2026-04-25) — partial-refund-flow:
+    - Step 1 commit `b6fb146`: state-machine utökad med `released_partial` + `transfer_partial_refund` + migration `20260425190000_fas_8_22_released_partial.sql` (kräver Studio-körning)
+    - Step 2 commit `0f76d67`: `refund-booking` accepterar `partial_amount_sek` + Stripe partial-refund + state-transition. `dispute-admin-decide` auto-callar refund-booking för partial_refund. 19/19 escrow-state-tester PASS.
+  - §8.23 ◯ DEFERRED — Stripe Connect transfer av cleaner-andel kvar manuell (admin-alert flaggar). Kräver Stripe-Connect-flow-design-beslut innan auto-flow byggs.
+  - §8.24-§8.25 ◯ Klarna chargeback + refund-migration: separat sprint
+  - **STATUS:** Fas 8 är AKTIVERAT i prod. §8.22 KLAR, §8.23-25 DEFERRED.
 - **Fas 10 Observability:** ◑ DELVIS
   - §10.1 alerts-helper ✓
   - §10.2 retrofit: 26/27 mail(ADMIN)-calls → sendAdminAlert ✓
