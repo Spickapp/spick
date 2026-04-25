@@ -3062,6 +3062,14 @@ function pollRutBankidStatus() {
         state.rutBankidPolling = null;
         state.rutBankidVerified = true;
         showRutBankidSuccess(data.customer_name, data.address);
+        // Rensa eventuell error-styling från goStep4 BankID-required-check
+        var bankidWrap = document.getElementById('rut-bankid-wrap');
+        if (bankidWrap) {
+          bankidWrap.style.borderColor = '';
+          bankidWrap.style.boxShadow = '';
+          var existingErr = bankidWrap.querySelector('.bankid-required-err');
+          if (existingErr) existingErr.remove();
+        }
       } else if (hintEl) {
         // Visa TIC's hint-code översatt
         var hintMap = { outstandingTransaction: 'Öppna BankID-appen', userSign: 'Skriv in säkerhetskod', noClient: 'Väntar på BankID-app' };
@@ -3285,6 +3293,38 @@ function goStep4() {
   if (useRut && !PNR_FIELD_DISABLED) {
     document.getElementById('pnr-wrap').style.display = 'block';
     fields.pnr = { el: document.getElementById('pnr'), val: document.getElementById('pnr').value.trim(), label: 'Personnummer' };
+  }
+
+  // Fas 7.5 + Farhad-mandat 2026-04-25: BankID-verifiering OBLIGATORISK
+  // för RUT-bokningar. Tidigare kunde kund gå vidare utan BankID = potentiellt
+  // RUT-fusk-risk + inget bevis för Spicks RUT-ombud-rapportering till SKV.
+  // Vid tic_enabled=false i platform_settings kommer BankID-knappen returnera
+  // 503 — då blockeras bokningen tills TIC aktiveras eller alternativ flow byggs.
+  var bankidRequired = (
+    useRut &&
+    (state.customerType || 'privat') === 'privat' &&
+    state.service &&
+    typeof isRutEligible === 'function' &&
+    isRutEligible(state.service)
+  );
+  if (bankidRequired && !state.rutBankidVerified) {
+    var bankidWrap = document.getElementById('rut-bankid-wrap');
+    if (bankidWrap) {
+      bankidWrap.style.borderColor = '#dc2626';
+      bankidWrap.style.boxShadow = '0 0 0 2px rgba(220,38,38,.15)';
+      // Lägg in inline-error om inte redan där
+      var existingErr = bankidWrap.querySelector('.bankid-required-err');
+      if (!existingErr) {
+        var errDiv = document.createElement('div');
+        errDiv.className = 'bankid-required-err';
+        errDiv.style.cssText = 'font-size:.78rem;color:#dc2626;font-weight:600;margin-top:.5rem;padding-top:.5rem;border-top:1px solid #fca5a5';
+        errDiv.textContent = '⚠ BankID-verifiering krävs för att boka med RUT-avdrag';
+        bankidWrap.appendChild(errDiv);
+      }
+      // Scrolla till BankID-blocket
+      bankidWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    errors.push('rut-bankid');
   }
   
   // ── VALIDATE EACH FIELD ──────────────────────────────────
