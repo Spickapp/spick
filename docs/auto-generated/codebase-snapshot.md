@@ -97,7 +97,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `swish` |  |
 | `team-sms-notify` |  |
 
-## Shared EF helpers (20 st)
+## Shared EF helpers (21 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -108,6 +108,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/events.ts` | supabase/functions/_shared/events.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/fonts.ts` |  |
 | `_shared/holidays.ts` | _shared/holidays.ts — Fas 5 §5.11 ═══════════════════════════════════════════════════════════════ |
+| `_shared/log.ts` | supabase/functions/_shared/log.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/matching-diff.ts` | supabase/functions/_shared/matching-diff.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/money.ts` |  |
 | `_shared/notifications.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Multi-kanal notifikationer |
