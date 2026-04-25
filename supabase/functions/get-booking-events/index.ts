@@ -145,13 +145,35 @@ Deno.serve(async (req) => {
     }
 
     // ── Fetch booking ──
-    const { data: booking } = await sbService
+    // OBS: bookings.company_id finns INTE i prod (rule #31, dokumenterat
+    // CLAUDE.md 2026-04-23). Company-tillhörighet härleds via
+    // bookings.cleaner_id → cleaners.company_id.
+    const { data: booking, error: bookingErr } = await sbService
       .from("bookings")
-      .select("id, customer_email, cleaner_id, company_id")
+      .select("id, customer_email, cleaner_id")
       .eq("id", bookingId as string)
       .maybeSingle();
 
+    if (bookingErr) {
+      log("error", "Booking fetch failed", {
+        booking_id: bookingId,
+        error: bookingErr.message,
+        code: bookingErr.code,
+      });
+      return json(CORS, 500, { error: "booking_fetch_failed" });
+    }
     if (!booking) return json(CORS, 404, { error: "booking_not_found" });
+
+    // Härled bookings company via cleaner som utför den.
+    let bookingCompanyId: string | null = null;
+    if (booking.cleaner_id) {
+      const { data: bc } = await sbService
+        .from("cleaners")
+        .select("company_id")
+        .eq("id", booking.cleaner_id as string)
+        .maybeSingle();
+      bookingCompanyId = (bc?.company_id as string | null) || null;
+    }
 
     const jwtEmail = user.email?.toLowerCase().trim() || "";
     const bookingEmail = (booking.customer_email as string | null)?.toLowerCase().trim() || "";
@@ -190,8 +212,8 @@ Deno.serve(async (req) => {
       if (cleaner) {
         if (
           cleaner.is_company_owner &&
-          booking.company_id &&
-          cleaner.company_id === booking.company_id
+          bookingCompanyId &&
+          cleaner.company_id === bookingCompanyId
         ) {
           role = "company_owner";
         } else if (booking.cleaner_id === cleaner.id) {
