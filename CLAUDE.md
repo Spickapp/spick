@@ -63,7 +63,7 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | View | Syfte | Exponerade kolumner |
 |------|-------|-------------------|
 | booking_slots | Kalender (boka.html) | cleaner_id, date, time, hours |
-| booking_confirmation | Tack/betyg-sidor | id, service, date, city, total_price, cleaner_name, customer_name |
+| booking_confirmation | Tack/betyg-sidor | id, booking_id, service_type, booking_date, booking_time, customer_address, total_price, cleaner_name, customer_name, customer_email, payment_intent_id, payment_status (m.fl.) |
 | public_stats | Homepage-statistik | total_bookings, bookings_today, active_cleaners, avg_rating |
 
 ## Säkerhet (efter audit 2026-03-30)
