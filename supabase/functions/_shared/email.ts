@@ -88,6 +88,15 @@ export async function sendEmail(
   subject: string,
   html: string
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
+  // §10.6 (2026-04-25): admin-email-disable-flag.
+  // När DISABLE_ADMIN_EMAIL='true' i env → admin-emails (to=ADMIN) skippas.
+  // Discord-webhook (sendAdminAlert) fortsätter funka parallellt eftersom
+  // alla call-sites redan har sendAdminAlert-anrop. Customer-emails
+  // (bekräftelser, kvitton) påverkas INTE.
+  const disableAdminEmail = (Deno.env.get("DISABLE_ADMIN_EMAIL") || "").toLowerCase() === "true";
+  if (disableAdminEmail && to === ADMIN) {
+    return { ok: true, id: "skipped-admin-email-disabled" };
+  }
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
