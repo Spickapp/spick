@@ -4,7 +4,13 @@
 
 **Syfte:** Status-overlay som mappar v3-sub-fas → commit + status. Denna fil är INTE en plan – alla scope-beslut refererar v3.md.
 
-**Senast uppdaterad:** 2026-04-24 kväll (MASSIVE session: Fas 12 STÄNGD + Fas 13 §13.2-§13.4 KLART + Fas 7.5 80% + H18/H19-fix, ~45 commits)
+**Senast uppdaterad:** 2026-04-25 (MASSIVE session: TIC-integration #1 SPAR + Fas 4 services-flow + Fas 8 cancel-bug-fix + §8.11 refund + §8.19 runbook + Fas 9 §9.2 + Discord-only-routing + workflows-rensning 46→38 + EFs-rensning 92→81 (10 prod-deletes), ~75 commits)
+
+## EF / Workflow-cleanup 2026-04-25
+- **Prod-EFs:** 91 → 80 (11 ORPHANED deletes via Supabase CLI, verifierat via curl 404)
+- **Lokala EFs:** 92 → 82 (10 deletes, 1 (company-bankid-init) var lokal-deleted men prod-kvar tills CLI-cleanup)
+- **Workflows:** 46 → 38 (8 deletes — alla workflow_dispatch-only / explicit-disabled / 100%-verifierat-dubblet)
+- **Effekt:** ~10 prod-slots frigjorda inom Supabase Free-limit ~75. TIC #2 reactivation nu möjlig.
 
 ## Session 2026-04-22 – Startpunkt
 
