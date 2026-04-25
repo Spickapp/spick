@@ -159,14 +159,20 @@ Deno.serve(async (req) => {
     // ── Determine role ──
     let role: "admin" | "customer" | "cleaner" | "company_owner" | null = null;
 
-    // 1) Admin-check (admin_users-tabell om den finns; annars service_role-probe)
+    // 1) Admin-check via email (admin_users.email är primärnyckeln,
+    // matchar is_admin()-funktionen i 20260429000001-fixen).
+    // Tidigare bug: refererade admin_users.user_id (kolumn finns ej) →
+    // admin-check failade tyst, admins fick customer-events istället.
     try {
-      const { data: adminRow } = await sbService
-        .from("admin_users")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (adminRow) role = "admin";
+      const adminEmail = user.email?.toLowerCase().trim() || "";
+      if (adminEmail) {
+        const { data: adminRow } = await sbService
+          .from("admin_users")
+          .select("id")
+          .eq("email", adminEmail)
+          .maybeSingle();
+        if (adminRow) role = "admin";
+      }
     } catch (_) { /* tabell kanske inte existerar — fortsätt */ }
 
     // 2) Customer-check
