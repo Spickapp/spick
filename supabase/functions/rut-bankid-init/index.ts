@@ -119,18 +119,24 @@ Deno.serve(async (req) => {
     const bookingIdStr = (booking_id as string | undefined) ?? null;
 
     // ── POST TIC BankID start ──
-    // TIC API-shape verifieras vid första integration-test (förväntar
-    // standard BankID-flow per docs).
+    // VERIFIERAD shape mot TIC docs/api/authentication 2026-04-25:
+    // - Header: X-Api-Key (rå key, INGEN Bearer-prefix)
+    // - Body: { endUserIp, userAgent? } — INGEN userVisibleData/Format
+    //   (de tillhör /sign, inte /start)
+    // - Tenant-isolation via API-key (ingen INSTANCE_ID i header)
+    const endUserIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("x-real-ip")
+      || "0.0.0.0";
+    const userAgent = req.headers.get("user-agent") || "Spick/1.0";
     const ticRes = await fetch(`${TIC_BASE_URL}/api/v1/auth/bankid/start`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${TIC_API_KEY}`,
+        "X-Api-Key": TIC_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        userVisibleData: CONSENT_TEXT,
-        // Per TIC-docs: simpleMarkdownV1-format stöds
-        userVisibleDataFormat: "simpleMarkdownV1",
+        endUserIp,
+        userAgent,
       }),
     });
 
