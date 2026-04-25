@@ -91,8 +91,17 @@ Infrastruktur klar för krypterad PNR-lagring (Hemfrid-modell men säkrare):
 - ✅ `rut-bankid-status` EF — skriver krypterad PNR till `bookings.customer_pnr` efter SPAR-enrichment
 - ✅ `PNR_ENCRYPTION_KEY` Supabase secret satt 2026-04-25 (44-tecken base64, 32 bytes)
 - ✅ `scripts/migrate-pnr-encrypt.ts` — engångs-migration av 11 befintliga klartext-rader
-- ⏳ Migration ej körd än (Farhad-action när TIC-flow ska aktiveras)
+- ✅ **Migration KÖRD 2026-04-25:** 8 klartext-PNR krypterade till Alt B. 27 legacy 56-tecken + 1 legacy 48-tecken kvar (okänd ursprungsnyckel — kan inte dekrypteras).
 - ⏳ `tic_enabled = false` i prod (vänta tills Farhad är OK med PNR-lagrings-policy)
+
+### Legacy 28 rader — Farhad-beslut 2026-04-25 (val b)
+
+De 27+1 legacy-rader (56/48 tecken) som inte kunde migreras är **alla Stripe testmode-bokningar** (per §1 ovan: "Alla bokningar är Stripe testmode. 0 kr verkliga pengar. Inga RUT-ansökningar skickade"). Konsekvens:
+- Kan inte användas för RUT-ansökan eftersom klartext inte är återvinningsbart
+- **Ingen verklig RUT-förlust** (testdata)
+- Accepterat som-är. Ingen åtgärd planerad.
+
+Vid framtida real-mode-bokningar börjar Alt B-flowen direkt → inga nya legacy-rader.
 
 **Format:** `bookings.customer_pnr = "AES-GCM:v1:" + base64(IV || ciphertext+authTag)`
 
