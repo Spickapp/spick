@@ -762,10 +762,17 @@ const DAYS_SV = ['sön','mån','tis','ons','tor','fre','lör'];
 const COLORS  = ['#0F6E56','#7C3AED','#DC2626','#2563EB','#D97706','#0891B2','#9333EA','#059669'];
 
 // ── RUT-berättigade tjänster ──────────────────────────────────────
-// Endast hushållsnära tjänster ger RUT-avdrag (50%). Företagstjänster
-// (kontor, trapp, skola, vård, hotell/restaurang) är ej RUT-berättigade.
-var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
-function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
+// Primärkälla: services.rut_eligible-kolumn i DB, exponerad via
+// window.SPICK_RUT_SERVICES av services-loader.js. Hardcoded array
+// är fallback om services-loader inte hunnit ladda eller flag=false.
+// Endast hushållsnära tjänster ger RUT-avdrag (50%).
+var RUT_SERVICES_FALLBACK = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs', 'Mattrengöring'];
+function getRutServices() {
+  return (window.SPICK_RUT_SERVICES && window.SPICK_RUT_SERVICES.length > 0)
+    ? window.SPICK_RUT_SERVICES
+    : RUT_SERVICES_FALLBACK;
+}
+function isRutEligible(svc) { return getRutServices().indexOf(svc) !== -1; }
 function syncRutToggleVisibility() {
   var selected = (state.services && state.services.length) ? state.services : (state.service ? [state.service] : []);
   var anyRut = selected.length === 0 ? true : selected.some(function(s) { return isRutEligible(s); });

@@ -126,6 +126,15 @@
       window.SPICK_SERVICES.services = Array.isArray(data.services) ? data.services : [];
       window.SPICK_SERVICES.addons = data.addons && typeof data.addons === 'object' ? data.addons : {};
 
+      // §4 services-migration (rule #28 SSOT + rule #30 Skatteverket): expose
+      // RUT-eligible service-labels som primärkälla från DB. Konsumerande sidor
+      // (boka.html, stadare-dashboard.html, admin.html etc) ska använda
+      // window.SPICK_RUT_SERVICES med fallback till hardcoded-default vid
+      // load-fail. services.rut_eligible-kolumn är primärkällan.
+      window.SPICK_RUT_SERVICES = window.SPICK_SERVICES.services
+        .filter(function(s) { return s.rut_eligible === true; })
+        .map(function(s) { return s.label_sv; });
+
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', triggerRender);
       } else {
