@@ -6512,6 +6512,9 @@ async function renderTeam() {
           '</div>' +
         '</div>' +
         actions +
+        // Historik-expand (Fas 6 §6.6 SSOT-integration på team-bookings)
+        '<div style="margin-top:6px"><button onclick="toggleTeamBookingTimeline(\'' + b.id + '\')" id="ttl-btn-' + b.id + '" style="padding:4px 10px;background:transparent;color:var(--m);border:1px solid var(--gray-200);border-radius:6px;font-size:.7rem;cursor:pointer;font-family:inherit">📜 Historik</button></div>' +
+        '<div id="ttl-' + b.id + '" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-200)"></div>' +
       '</div>';
     }
 
@@ -8299,6 +8302,45 @@ function calInit() {
 function calPrevWeek() { ganttNav(-1); }
 function calNextWeek() { ganttNav(1); }
 function calGoToday()  { ganttToday(); }
+
+// Fas 6 §6.6: Event-timeline expand på team-bookings för VD.
+// Pattern matchar mitt-konto.html toggleBookingTimeline anpassad för
+// team-context (id-prefix "ttl-" istället för "bk-timeline-").
+async function toggleTeamBookingTimeline(bookingId) {
+  var el = document.getElementById('ttl-' + bookingId);
+  var btn = document.getElementById('ttl-btn-' + bookingId);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    if (btn) btn.textContent = '📜 Dölj';
+    if (!el.dataset.loaded) {
+      try {
+        var SBClient = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+        var sess = await SBClient.auth.getSession();
+        var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+        if (!token) {
+          el.innerHTML = '<div style="padding:.5rem;color:var(--m);font-size:.78rem">Sessionen har gått ut.</div>';
+          return;
+        }
+        if (typeof renderBookingTimeline !== 'function') {
+          el.innerHTML = '<div style="padding:.5rem;color:var(--m);font-size:.78rem">Timeline-komponenten kunde inte laddas.</div>';
+          return;
+        }
+        await renderBookingTimeline(el, bookingId, {
+          apikey: SPICK.SUPA_KEY,
+          Authorization: 'Bearer ' + token,
+        });
+        el.dataset.loaded = '1';
+      } catch (e) {
+        console.warn('[stadare-dashboard] team-events-timeline failed:', e);
+        el.innerHTML = '<div style="padding:.5rem;color:var(--err);font-size:.78rem">Kunde inte ladda historik.</div>';
+      }
+    }
+  } else {
+    el.style.display = 'none';
+    if (btn) btn.textContent = '📜 Historik';
+  }
+}
 
 function renderTeamCalendar() {
   // Legacy wrapper — rendering sker nu via Gantt-motorn
