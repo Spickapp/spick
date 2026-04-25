@@ -170,8 +170,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (130 st)
+## Migrations (131 st)
 
-- Senaste: `20260429000001_fix_is_admin_user_id_to_email.sql`
-- Timestamp-prefix: `20260429000001`
+- Senaste: `20260429000002_fix_booking_events_grants.sql`
+- Timestamp-prefix: `20260429000002`
 
