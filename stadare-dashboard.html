@@ -6498,7 +6498,17 @@ async function renderTeam() {
           '</div>' +
           '<div style="text-align:right">' +
             '<span style="font-size:.72rem;font-weight:600;color:' + stColor + ';background:' + stColor + '15;padding:2px 8px;border-radius:99px">' + escHtml(stLabel) + '</span>' +
-            (b.total_price ? '<div style="font-size:.85rem;font-weight:700;color:var(--g);margin-top:4px">' + b.total_price + ' kr</div>' : '') +
+            // SSOT-konsolidering: VD ser cleaner-perspektiv (vad cleaner tjänar = brutto * keepRate).
+            // Tidigare visades b.total_price direkt = kundens netto efter RUT, vilket är fel
+            // signal till VD som hanterar cleaner-utbetalningar.
+            (b.total_price && typeof calcBookingPrice === 'function' && typeof getKeepRate === 'function'
+              ? (function(){
+                  var bp = calcBookingPrice(b);
+                  var earn = Math.round(bp.gross * getKeepRate());
+                  return '<div style="font-size:.88rem;font-weight:700;color:var(--g);margin-top:4px">' + earn + ' kr</div>' +
+                         '<div style="font-size:.68rem;color:var(--m);margin-top:1px">cleaner tjänar · brutto ' + Math.round(bp.gross) + ' kr</div>';
+                })()
+              : (b.total_price ? '<div style="font-size:.85rem;font-weight:700;color:var(--g);margin-top:4px">' + b.total_price + ' kr</div>' : '')) +
           '</div>' +
         '</div>' +
         actions +
