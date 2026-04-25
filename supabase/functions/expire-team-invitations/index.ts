@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
             <p>${data.count} av dina teaminbjudningar för <strong>${company.name}</strong> har gått ut (inte accepterats inom 7 dagar):</p>
             <ul>${nameList}${moreText}</ul>
             <p>Vill du bjuda in dem igen? Öppna företagsdashboarden:</p>
-            <p><a href="https://spick.se/foretag-dashboard.html" style="display:inline-block;padding:12px 24px;background:#0F6E56;color:white;text-decoration:none;border-radius:10px;font-weight:600">Skicka nya inbjudningar →</a></p>
+            <p><a href="https://spick.se/stadare-dashboard.html#team" style="display:inline-block;padding:12px 24px;background:#0F6E56;color:white;text-decoration:none;border-radius:10px;font-weight:600">Skicka nya inbjudningar →</a></p>
           `)
         );
         emailsSent++;

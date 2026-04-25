@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
           <h2>Grattis, ${vd.first_name || vd.full_name}!</h2>
           <p>Ditt företag <strong>${company.name}</strong> är nu godkänt och aktivt på Spick.</p>
           <p>${stripeHint}</p>
-          <p><a href="https://spick.se/foretag-dashboard.html" style="display:inline-block;padding:12px 24px;background:#0F6E56;color:white;text-decoration:none;border-radius:10px;font-weight:600">Öppna företagsdashboard →</a></p>
+          <p><a href="https://spick.se/stadare-dashboard.html#team" style="display:inline-block;padding:12px 24px;background:#0F6E56;color:white;text-decoration:none;border-radius:10px;font-weight:600">Öppna företagsdashboard →</a></p>
           ${notes ? `<div style="margin-top:20px;padding:12px;background:#F7F7F5;border-radius:8px"><strong>Meddelande från Spick:</strong><br>${notes}</div>` : ""}
         `)
       );
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       try {
         await sendSms(
           vd.phone,
-          `Spick: Ditt företag ${company.name} är nu godkänt och aktivt! Öppna: spick.se/foretag-dashboard.html`
+          `Spick: Ditt företag ${company.name} är nu godkänt och aktivt! Öppna: spick.se/stadare-dashboard.html#team`
         );
       } catch (e) {
         log("warn", "SMS failed (not fatal)", { error: (e as Error).message });
