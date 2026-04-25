@@ -106,7 +106,13 @@
         return;
       }
       var data = await res.json();
+      var role = data && data.role || null;
       var events = Array.isArray(data && data.events) ? data.events : [];
+      // Customer ser INTE drill-down JSON — det är dev/operational data.
+      // Backend strippar redan känsliga keys (commission_pct etc), men
+      // även strippad JSON är dålig UX för kund. Admin/cleaner/company_owner
+      // får full drill-down för felsökning.
+      var hideRawMetadata = role === "customer";
       if (events.length === 0) {
         containerEl.innerHTML = '<div style="padding:.75rem;color:#6B6960;font-size:.85rem">Inga loggade händelser för den här bokningen ännu.</div>';
         return;
@@ -115,7 +121,7 @@
         var meta = EVENT_META[ev.event_type] || { icon: '•', label: ev.event_type || 'Okänd händelse', color: '#6B6960' };
         var actor = ACTOR_LABEL[ev.actor_type] || ev.actor_type || 'system';
         var time = formatTime(ev.created_at);
-        var metaJson = prettyMetadata(ev.metadata);
+        var metaJson = hideRawMetadata ? '' : prettyMetadata(ev.metadata);
         return '<div class="event-row" style="display:flex;gap:.75rem;padding:.625rem;border-left:3px solid ' + meta.color + ';background:#F7F7F5;border-radius:0 8px 8px 0">' +
           '<div style="font-size:1.1rem;line-height:1.3">' + meta.icon + '</div>' +
           '<div style="flex:1;min-width:0">' +

@@ -86,6 +86,52 @@ const CLEANER_WHITELIST = new Set([
   "schedule_changed",
 ]);
 
+// Metadata-keys som INTE får exponeras till customer. Defense-in-depth:
+// även om frontend försöker visa det, finns det inte i payload.
+//
+// PRIMÄRKÄLLOR:
+// - docs/sanning/provision.md: "Strategisk not (INTERN — får aldrig
+//   kommuniceras utåt): 12% under uppbyggnad..." → cleaner_tier,
+//   commission_pct, net_margin_pct.
+// - GDPR dataminimering: actor-IDs (admin_id, paused_by etc) är intern
+//   audit-data, inte kund-relevant.
+//
+// REGEL #28: Denna lista är SSOT för "vad customer EJ ser". Nya
+// metadata-keys i EVENT_METADATA (_shared/events.ts) som är intern måste
+// läggas till här explicit.
+const CUSTOMER_METADATA_DENYLIST = new Set([
+  // Intern affärsdata (provision, marginal, klassificering)
+  "cleaner_tier",
+  "commission_pct",
+  "net_margin_pct",
+  "amount_to_cleaner",
+  "delegation_route",
+  // Intern actor-tracking (vem inom organisationen utförde åtgärden)
+  "assigned_by",
+  "admin_id",
+  "initiated_by",
+  "paused_by",
+  "resumed_by",
+  "cancelled_by",
+  "changed_by",
+  "reported_by",
+  // Personintegritet (rå URL kan ha personlig info)
+  "evidence_urls",
+]);
+
+function stripMetadataForCustomer(metadata: unknown): Record<string, unknown> {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return {};
+  }
+  const safe: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(metadata as Record<string, unknown>)) {
+    if (!CUSTOMER_METADATA_DENYLIST.has(k)) {
+      safe[k] = v;
+    }
+  }
+  return safe;
+}
+
 function json(cors: Record<string, string>, status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
@@ -244,9 +290,13 @@ Deno.serve(async (req) => {
     }
 
     // ── Role-filter ──
+    // event_type-whitelist + customer metadata-strip (defense-in-depth
+    // mot affärsdata-läckage av commission_pct/net_margin_pct etc).
     let filtered = events || [];
     if (role === "customer") {
-      filtered = filtered.filter((e) => CUSTOMER_WHITELIST.has(e.event_type as string));
+      filtered = filtered
+        .filter((e) => CUSTOMER_WHITELIST.has(e.event_type as string))
+        .map((e) => ({ ...e, metadata: stripMetadataForCustomer(e.metadata) }));
     } else if (role === "cleaner") {
       filtered = filtered.filter((e) => CLEANER_WHITELIST.has(e.event_type as string));
     }
