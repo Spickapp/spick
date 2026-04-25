@@ -280,14 +280,35 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "pricing_failed" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
-    // RUT-bedömning: bara privat + RUT-services (Hemstädning/Storstädning/Flyttstädning/Fönsterputs/Trappstädning)
+    // RUT-bedömning: bara privat + RUT-services (rut_eligible=true).
     // Använd services-tabell istället för hardcoded lista (rule #28/#30).
-    const { data: serviceRow } = await sbService
-      .from("services")
-      .select("rut_eligible")
-      .eq("name", serviceType)
-      .maybeSingle();
-    const isRutEligible = serviceRow?.rut_eligible === true;
+    // Schema (verifierat 2026-04-25): services har key (slug) + label_sv,
+    // INTE 'name'. Försök båda för admin-friendly input.
+    let serviceRow: { rut_eligible: boolean | null } | null = null;
+    {
+      const { data: byKey } = await sbService
+        .from("services")
+        .select("rut_eligible")
+        .eq("key", serviceType.toLowerCase())
+        .maybeSingle();
+      serviceRow = byKey as typeof serviceRow;
+      if (!serviceRow) {
+        const { data: byLabel } = await sbService
+          .from("services")
+          .select("rut_eligible")
+          .ilike("label_sv", serviceType)
+          .maybeSingle();
+        serviceRow = byLabel as typeof serviceRow;
+      }
+    }
+    if (!serviceRow) {
+      log("warn", "Service not found in services-table", { serviceType });
+      return new Response(JSON.stringify({
+        error: "service_not_found",
+        message: `Tjänsten "${serviceType}" hittades inte. Ange exakt key (t.ex. 'hemstadning') eller label_sv (t.ex. 'Hemstädning').`,
+      }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+    const isRutEligible = (serviceRow as { rut_eligible: boolean | null }).rut_eligible === true;
     const isPrivate = customerType === "privat";
     const wantsRut = isPrivate && isRutEligible;
 
