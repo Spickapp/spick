@@ -35,6 +35,14 @@ html{font-size:17px}
   --g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--gl:#9FE1CB;
   --b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;--w:#fff;
 }
+/* TOUCH-TARGETS (Fix #3, 2026-04-25) — WCAG 2.5.5 + Apple HIG ≥44px */
+@media (max-width:768px){
+  button:not(.tab-btn):not(.svc-btn):not(.icon-only),
+  a.btn, a.cta, a.nl-btn, a.nl-out,
+  input[type="button"], input[type="submit"]{
+    min-height:44px;
+  }
+}
 /* NAV */
 nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
   justify-content:space-between;border-bottom:1px solid #E8E8E4;
