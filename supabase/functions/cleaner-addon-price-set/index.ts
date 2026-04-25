@@ -205,7 +205,9 @@ Deno.serve(async (req) => {
       default_price_sek: addonRow.price_sek,
     });
   } catch (err) {
-    log("error", "Unexpected error", { error: (err as Error).message });
-    return json(CORS, 500, { error: "internal_error" });
+    const errorMsg = (err as Error).message || String(err);
+    const errorStack = (err as Error).stack || '';
+    log("error", "Unexpected error", { error: errorMsg, stack: errorStack.slice(0, 500) });
+    return json(CORS, 500, { error: "internal_error", details: errorMsg });
   }
 });
