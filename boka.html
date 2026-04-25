@@ -713,7 +713,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
         <div class="sum-row"><span class="lbl" id="s-rate-label">Timpris</span><span class="val" id="s-rate">–</span></div>
         <div class="sum-row"><span class="lbl">Brutto</span><span class="val" id="s-gross">–</span></div>
         <div class="sum-row" id="s-rut-row"><span class="lbl" style="color:var(--g)">RUT-avdrag 50%</span><span class="val" style="color:var(--g)" id="s-rut">–</span></div>
-        <div class="sum-row" id="s-addons-row" style="display:none"><span class="lbl">Tillägg</span><span class="val" id="s-addons">–</span></div>
+        <div class="sum-row" id="s-addons-row" style="display:none"><span class="lbl">Tillägg <span style="font-size:.68rem;color:#92400E;font-weight:500;background:#FEF3C7;padding:1px 5px;border-radius:4px;margin-left:4px">ej RUT</span></span><span class="val" id="s-addons">–</span></div>
         <div class="sum-divider"></div>
         <div class="sum-total"><span>Du betalar</span><span class="price" id="s-total">–</span></div>
         <div class="sum-rut-note" id="s-rut-note"></div>
@@ -1131,11 +1131,14 @@ function selectService(name, icon, desc, time) {
         var primarySvc = (state.services && state.services[0]) || name;
         var addons = await loadAddonsForService(primarySvc);
         if (addons && addons.length) {
+          // Sprint C-4 (2026-04-25): visa "ej RUT" badge per addon eftersom
+          // tillägg/material aldrig är RUT-berättigade (rule #30 Skatteverket
+          // — material räknas inte som arbetskostnad).
           aGrid.innerHTML = addons.map(function(a) {
             var price = parseInt(a.price_sek, 10) || 0;
             return '<label style="display:flex;align-items:center;gap:.5rem;border:1.5px solid var(--border);border-radius:10px;padding:.625rem .875rem;cursor:pointer;font-size:.82rem;transition:all .15s">' +
               '<input type="checkbox" class="addon-cb" data-addon-id="' + encodeURIComponent(a.id) + '" data-addon-key="' + encodeURIComponent(a.key || '') + '" data-addon-label="' + encodeURIComponent(a.label_sv || '') + '" data-addon-price="' + price + '" style="accent-color:var(--g)" onchange="updateAddons()">' +
-              '<span style="flex:1">' + escHtml(a.label_sv || '') + '</span>' +
+              '<span style="flex:1">' + escHtml(a.label_sv || '') + ' <span style="font-size:.68rem;color:var(--m);font-weight:500;background:#FEF3C7;padding:1px 5px;border-radius:4px;margin-left:4px;white-space:nowrap">ej RUT</span></span>' +
               '<span style="color:var(--g);font-weight:600;font-size:.75rem">+' + price + ' kr</span>' +
             '</label>';
           }).join('');
