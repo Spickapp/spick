@@ -6533,10 +6533,13 @@ async function renderTeam() {
     if (typeof updateBadge === 'function') updateBadge();
     calInit();
     // Value metrics
-    // RUT-estimat: exkludera avbokade bokningar
+    // RUT-estimat: faktisk RUT-summa per bokning (rut_amount), inte
+    // total_price × 0.5 vilket var dubbelt RUT-avdrag (per
+    // docs/sanning/rut.md: total_price är NETTO efter RUT, brutto =
+    // total_price + rut_amount).
     var rutTotal = teamBookings.filter(function(b) {
-      return b.total_price && !isCancelled(b);
-    }).reduce(function(s,b) { return s + (b.total_price * 0.5); }, 0);
+      return Number(b.rut_amount || 0) > 0 && !isCancelled(b);
+    }).reduce(function(s,b) { return s + Number(b.rut_amount || 0); }, 0);
     document.getElementById('team-rut-total').textContent = Math.round(rutTotal).toLocaleString('sv') + ' kr';
     // Estimated time saved: 15 min per booking (admin, invoicing, scheduling)
     var timeSaved = Math.round(totalJobs * 0.25 * 10) / 10;

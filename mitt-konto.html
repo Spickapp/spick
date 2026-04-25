@@ -148,6 +148,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;justify
 <script src="js/config.js"></script>
 <script src="js/contact-guard.js"></script>
 <script src="js/event-timeline.js?v=2026-04-25-privacy"></script>
+<script src="js/booking-price.js?v=2026-04-25-altb"></script>
 <script src="js/components.js" defer></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/icon-192.svg" type="image/svg+xml">
@@ -763,8 +764,9 @@ function bookingCard(b) {
       </div>
       <div class="bc-bottom">
         <div>
-          <span class="bc-price">${parseInt(price)} kr</span>
-          ${b.rut ? `<span class="bc-rut">med RUT-avdrag</span>` : ''}
+          ${typeof formatCustomerBookingPrice === 'function'
+            ? formatCustomerBookingPrice(b)
+            : `<span class="bc-price">${parseInt(price)} kr</span>${b.rut ? '<span class="bc-rut">med RUT-avdrag</span>' : ''}`}
         </div>
         <div class="bc-actions">
           <button class="btn-sm btn-outline" onclick="toggleBookingTimeline('${escHtml(b.id)}')" id="tl-btn-${escHtml(b.id)}">📜 Historik</button>
