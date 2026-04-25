@@ -1,2 +1,11 @@
 [functions.health]
 verify_jwt = false
+
+# Stripe webhooks — Stripe skickar bara Stripe-Signature-header, inte JWT.
+# Utan verify_jwt = false returnerar Supabase gateway 401 → Stripe disablear
+# webhooken efter ~3 dagars failures (mejl 2026-04-25 om 28 apr-deadline).
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.stripe-connect-webhook]
+verify_jwt = false
