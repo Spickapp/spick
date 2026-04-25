@@ -766,6 +766,7 @@ function bookingCard(b) {
         <div class="bc-actions">
           <button class="btn-sm btn-outline" onclick="toggleBookingTimeline('${escHtml(b.id)}')" id="tl-btn-${escHtml(b.id)}">📜 Historik</button>
           <a href="min-bokning.html?bid=${encodeURIComponent(b.id)}" class="btn-sm btn-outline">Detaljer</a>
+          ${(['paid','refunded'].includes(b.payment_status) || ['completed','klar'].includes(status)) ? `<button class="btn-sm btn-outline" onclick="downloadBookingPdf('${escHtml(b.id)}')" id="pdf-btn-${escHtml(b.id)}">📄 Kvitto</button>` : ''}
           ${canReview ? `<button class="btn-sm btn-link" onclick="openInlineReview('${escHtml(b.id)}','${escHtml((b.cleaner_name||'').replace(/'/g,''))}')" style="background:var(--gp);color:var(--g);border:none;cursor:pointer">⭐ Betygsätt</button>` : ''}
           ${canCancel ? `<button class="btn-sm btn-danger" onclick="openCancelModal('${escHtml(b.id)}', '${escHtml(b.service || 'städning')}')">Avboka</button>` : ''}
           ${['cancelled','avbokad','klar','completed'].includes(status) ? `<a href="boka.html?service=${encodeURIComponent(b.service||'Hemstädning')}" class="btn-sm btn-outline">🔄 Boka igen</a>` : ''}
@@ -773,6 +774,53 @@ function bookingCard(b) {
       </div>
       <div id="bk-timeline-${escHtml(b.id)}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--grd)"></div>
     </div>`;
+}
+
+// Fas F-PDF kund-UI (mitt-konto-version, 2026-04-25): Ladda ner kvitto.
+// Återanvänder generate-receipt-pdf EF som redan validerar ownership
+// (customer-email-match + admin-fallback) och bygger BokfL-kompatibel
+// PDF (BokfL 5 kap 7§ + MervL 11 kap 8§). Pattern matchar
+// min-bokning.html:449-489 anpassad för list-vy med per-booking knapp.
+async function downloadBookingPdf(bookingId) {
+  if (!bookingId) { alert('Ingen bokning vald'); return; }
+  var btn = document.getElementById('pdf-btn-' + bookingId);
+  var originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Genererar...'; }
+  try {
+    var sess = await SB.auth.getSession();
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) {
+      alert('Logga in med din e-post för att ladda ner kvittot.');
+      return;
+    }
+    var res = await fetch(
+      SPICK.SUPA_URL + '/functions/v1/generate-receipt-pdf?booking_id=' + encodeURIComponent(bookingId),
+      { method: 'GET', headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + token } }
+    );
+    if (!res.ok) {
+      var errText = 'HTTP ' + res.status;
+      try { var j = await res.json(); errText = j.error || errText; } catch(_) {}
+      alert('Kunde inte ladda ner PDF: ' + errText);
+      return;
+    }
+    var blob = await res.blob();
+    var contentDisp = res.headers.get('Content-Disposition') || '';
+    var filename = 'kvitto.pdf';
+    var m = contentDisp.match(/filename="([^"]+)"/);
+    if (m) filename = m[1];
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  } catch (e) {
+    alert('Nätverksfel: ' + (e.message || 'okänt'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
 }
 
 // Fas 6 §6.4-§6.6: event-timeline expand/collapse på booking-card.
