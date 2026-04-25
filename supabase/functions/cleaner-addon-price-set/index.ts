@@ -78,15 +78,25 @@ Deno.serve(async (req) => {
       return json(CORS, 401, { error: "email_missing_in_token" });
     }
 
-    // ── Resolve callern (cleaner-row) ──
+    // ── Resolve callern: cleaner-row ELLER admin ──
     const { data: caller } = await sb
       .from("cleaners")
       .select("id, company_id, is_company_owner")
       .eq("email", userEmail)
       .maybeSingle();
 
+    let isAdmin = false;
     if (!caller) {
-      return json(CORS, 403, { error: "not_a_cleaner" });
+      // Fallback: kontrollera om user är admin (admin-vy från admin.html / admin-as)
+      const { data: adminRow } = await sb
+        .from("admin_users")
+        .select("id")
+        .eq("email", userEmail)
+        .maybeSingle();
+      if (!adminRow) {
+        return json(CORS, 403, { error: "not_a_cleaner_or_admin" });
+      }
+      isAdmin = true;
     }
 
     // ── Input ──
@@ -110,12 +120,26 @@ Deno.serve(async (req) => {
     }
     const action = b.action as "custom" | "free" | "reset";
     const addonId = b.addon_id as string;
-    const targetCleanerId = (b.target_cleaner_id as string | undefined) ?? caller.id as string;
+    // Admin MÅSTE explicit ange target_cleaner_id (de har ingen "egen" cleaner-row)
+    if (isAdmin && !b.target_cleaner_id) {
+      return json(CORS, 400, { error: "admin_requires_target_cleaner_id" });
+    }
+    const targetCleanerId = (b.target_cleaner_id as string | undefined) ?? (caller!.id as string);
 
-    // ── Auth check: caller sätter för sig själv ELLER VD för team-member ──
-    if (targetCleanerId !== caller.id) {
+    // ── Auth check ──
+    if (isAdmin) {
+      // Admin: target måste vara giltig cleaner-row (validering)
+      const { data: targetCleaner } = await sb
+        .from("cleaners")
+        .select("id")
+        .eq("id", targetCleanerId)
+        .maybeSingle();
+      if (!targetCleaner) {
+        return json(CORS, 404, { error: "target_cleaner_not_found" });
+      }
+    } else if (targetCleanerId !== caller!.id) {
       // VD-flow: target måste vara i samma company
-      if (!caller.is_company_owner || !caller.company_id) {
+      if (!caller!.is_company_owner || !caller!.company_id) {
         return json(CORS, 403, { error: "not_authorized_for_target" });
       }
       const { data: targetCleaner } = await sb
@@ -123,7 +147,7 @@ Deno.serve(async (req) => {
         .select("company_id")
         .eq("id", targetCleanerId)
         .maybeSingle();
-      if (!targetCleaner || targetCleaner.company_id !== caller.company_id) {
+      if (!targetCleaner || targetCleaner.company_id !== caller!.company_id) {
         return json(CORS, 403, { error: "target_not_in_company" });
       }
     }
@@ -163,7 +187,7 @@ Deno.serve(async (req) => {
         log("error", "Reset DELETE failed", { target: targetCleanerId, addon: addonId, error: deleteErr.message });
         return json(CORS, 500, { error: "reset_failed" });
       }
-      log("info", "Addon-price reset", { caller: caller.id, target: targetCleanerId, addon_id: addonId });
+      log("info", "Addon-price reset", { caller: caller?.id || `admin:${userEmail}`, target: targetCleanerId, addon_id: addonId, is_admin: isAdmin });
       return json(CORS, 200, {
         ok: true,
         action: "reset",
@@ -190,8 +214,8 @@ Deno.serve(async (req) => {
     }
 
     log("info", "Addon-price set", {
-      caller: caller.id, target: targetCleanerId, addon_id: addonId,
-      action, custom_price_sek: customPriceSek,
+      caller: caller?.id || `admin:${userEmail}`, target: targetCleanerId, addon_id: addonId,
+      action, custom_price_sek: customPriceSek, is_admin: isAdmin,
     });
 
     return json(CORS, 200, {

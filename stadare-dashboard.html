@@ -9622,7 +9622,8 @@ async function _callAddonPriceSet(addonId, action, customPriceSek) {
       try { token = JSON.parse(raw).access_token || null; } catch (parseErr) { token = null; }
     }
     if (!token) { showToast('Du måste vara inloggad — uppdatera sidan'); return; }
-    var body = { addon_id: addonId, action: action };
+    if (!cleaner || !cleaner.id) { showToast('Cleaner saknas i kontext'); return; }
+    var body = { addon_id: addonId, action: action, target_cleaner_id: cleaner.id };
     if (action === 'custom') body.custom_price_sek = customPriceSek;
     var res = await fetch(SPICK.SUPA_URL + '/functions/v1/cleaner-addon-price-set', {
       method: 'POST',
