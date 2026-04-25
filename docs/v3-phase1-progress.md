@@ -83,7 +83,7 @@ Om något avviker → flagga innan fortsättning.
   - ✓ SKV-primärkälla committad: [docs/skatteverket/xsd-v6/](skatteverket/xsd-v6/) + README
   - ◯ **Blockat till jurist-OK:** PNR-aktivering (PNR_FIELD_DISABLED=true), kund-avtal + städar-avtal-uppdatering
   - ◯ **Blockat till extern:** BankID-integration för PNR-verifiering (Signicat/Freja/Fritid — Farhad väljer)
-- **Fas 8 Dispute + Full Escrow:** ◕ ~92% (EU-deadline 2 dec 2026, ~5-10h kvar) — *uppdaterad 2026-04-25, all rule #31-verifiering klar (curl + fs)*
+- **Fas 8 Dispute + Full Escrow:** ◕ ~96% (EU-deadline 2 dec 2026, ~3-5h kvar) — *uppdaterad 2026-04-25 efter §8.11 + §8.11.b + §8.18-cancel-bug-fix samma session*
   - §8.1 Design-skelett ✓
   - §8.2 Stripe architecture shift ✓ — booking-create branchar `escrow_mode='legacy'|'escrow_v2'` via `platform_settings.escrow_mode` (default 'legacy'). stripe-webhook→escrow-state-transition vid charge.succeeded. AKTIVERAS via flag-flip i §8.18.
   - §8.3 escrow_state-kolumn + CHECK constraint ✓ LIVE
@@ -94,7 +94,7 @@ Om något avviker → flagga innan fortsättning.
   - §8.8 dispute-open EF ✓ LIVE (309 rader, JWT-auth, 24h-window-check, UNIQUE-rollback)
   - §8.9 dispute-cleaner-respond EF ✓ LIVE
   - §8.10 dispute-admin-decide EF ✓ LIVE (303 rader, full/partial/dismissed) + admin-dispute-decide-wrapper (115 rader, JWT-auth-gate)
-  - §8.11 unified refund-flow: ◐ delvis (dispute-admin-decide markerar resolved_*-states, faktisk Stripe-refund-utlösning kräver retrofit av stripe-refund EF eller separat call-chain)
+  - §8.11 unified refund-flow ✓ (full_refund + dismissed-paths) — refund-booking EF (Stripe refund + transfer_full_refund-state-transition) + dispute-admin-decide auto-callar refund-booking/escrow-release efter resolved_*-state. Partial-refund DEFERRED §8.22-25 (transfer_partial_refund saknas i state-machine).
   - §8.12 escrow-auto-release cron ✓ LIVE (205 rader, 24h timer)
   - §8.13 dispute-sla-check cron ✓ LIVE
   - §8.14 admin-disputes.html ✓ LIVE (281 rader, dispute-kö + admin-decision-UI)
