@@ -14,6 +14,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { SWEDEN_TZ } from "../_shared/timezone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -124,11 +125,11 @@ function generateICal(
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:Spick - ${icalEscape(cleaner.full_name)}`,
-    "X-WR-TIMEZONE:Europe/Stockholm",
+    `X-WR-TIMEZONE:${SWEDEN_TZ}`,
 
     // Timezone definition
     "BEGIN:VTIMEZONE",
-    "TZID:Europe/Stockholm",
+    `TZID:${SWEDEN_TZ}`,
     "BEGIN:STANDARD",
     "DTSTART:19701025T030000",
     "RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10",
@@ -165,8 +166,8 @@ function generateICal(
       lines.push(`DTSTART;VALUE=DATE:${startDate}`);
       lines.push(`DTEND;VALUE=DATE:${endDateStr}`);
     } else {
-      lines.push(`DTSTART;TZID=Europe/Stockholm:${formatICalDateTime(ev.start_at)}`);
-      lines.push(`DTEND;TZID=Europe/Stockholm:${formatICalDateTime(ev.end_at)}`);
+      lines.push(`DTSTART;TZID=${SWEDEN_TZ}:${formatICalDateTime(ev.start_at)}`);
+      lines.push(`DTEND;TZID=${SWEDEN_TZ}:${formatICalDateTime(ev.end_at)}`);
     }
 
     lines.push(`SUMMARY:${icalEscape(summary)}`);

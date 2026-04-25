@@ -11,6 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { SWEDEN_TZ } from "../_shared/timezone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -267,10 +268,10 @@ async function googleOutbound(supabase: any, conn: any, accessToken: string): Pr
         location: ev.address || "",
         start: ev.is_all_day
           ? { date: ev.start_at.slice(0, 10) }
-          : { dateTime: ev.start_at, timeZone: "Europe/Stockholm" },
+          : { dateTime: ev.start_at, timeZone: SWEDEN_TZ },
         end: ev.is_all_day
           ? { date: ev.end_at.slice(0, 10) }
-          : { dateTime: ev.end_at, timeZone: "Europe/Stockholm" },
+          : { dateTime: ev.end_at, timeZone: SWEDEN_TZ },
       };
 
       const res = await fetch(

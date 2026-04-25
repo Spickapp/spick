@@ -13,7 +13,7 @@
 // — ingen DB-lookup per anrop i hot paths.
 // ─────────────────────────────────────────────────────────────
 
-const SWEDEN_TZ = "Europe/Stockholm";
+export const SWEDEN_TZ = "Europe/Stockholm";
 
 /**
  * Tolkar ett svenskt lokaldatum + lokaltid och returnerar
