@@ -3186,6 +3186,14 @@ async function loadCleanerByEmail(email, authUserId) {
 
   showScreen('app');
 
+  // Item 1 Etapp 3 (2026-04-25): kolla terms-acceptance i bakgrunden.
+  // Visar mjuk banner ELLER blockerande modal beroende på platform_settings.
+  // terms_signing_required-flagga. Befintliga cleaners utan accept ser banner
+  // tills Farhad markerar v1.0 som binding + flippar flaggan.
+  setTimeout(function() {
+    try { checkAndShowTermsModal(); } catch(e) { console.warn('[SPICK] terms check init error:', e); }
+  }, 1000);
+
   // VD: preload all team data (no auto-redirect, stay on Hem)
   if (cleaner.is_company_owner) {
     try { await renderTeam(); } catch(e) { console.error('[SPICK] renderTeam init error:', e); }
@@ -10728,6 +10736,192 @@ function startReassignmentRefresh() {
   _reassignmentRefreshTimer = setInterval(function() {
     if (window._isCompanyOwner) loadPendingReassignments();
   }, 30000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Item 1 Etapp 3 (2026-04-25) — Terms-acceptance check + modal
+// ═══════════════════════════════════════════════════════════════
+//
+// Vid login: kolla check-terms-acceptance EF. Render flow:
+//   - acceptance.current=true   → ingen modal
+//   - acceptance.current=false:
+//     - signing_required=true → BLOCKERANDE modal (ingen "Senare")
+//     - signing_required=false → MJUK banner (kan stängas, sparas i localStorage)
+//
+// Befintliga 9 cleaners + Solid Service-team får "never=true" första gången.
+// Per Farhad-mandate: flowen är klar att aktivera när jurist har bedömt drafts.
+// ═══════════════════════════════════════════════════════════════
+
+async function checkAndShowTermsModal() {
+  if (!cleaner || !cleaner.id) return;
+
+  // Anropa check-terms-acceptance EF
+  let result;
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/check-terms-acceptance', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        subject_type: 'cleaner',
+        subject_id: cleaner.id,
+        avtal_typ: 'underleverantorsavtal',
+      }),
+    });
+    if (!res.ok) {
+      console.warn('[SPICK] terms-check failed:', res.status);
+      return;
+    }
+    result = await res.json();
+  } catch (e) {
+    console.warn('[SPICK] terms-check exception:', e);
+    return;
+  }
+
+  if (!result || !result.acceptance) return;
+
+  // Om current → ingen modal/banner
+  if (result.acceptance.current) return;
+
+  // Om ingen binding-version finns → ingen modal (drafts är ej-bindande)
+  if (!result.acceptance.current_version) return;
+
+  const isBlocking = !!result.signing_required;
+
+  // Soft-mode: kolla localStorage så vi inte spam:ar varje load
+  if (!isBlocking) {
+    const dismissedKey = 'spick-terms-banner-' + result.acceptance.current_version;
+    if (localStorage.getItem(dismissedKey)) return;
+  }
+
+  showTermsModal({
+    blocking: isBlocking,
+    currentVersion: result.acceptance.current_version,
+    acceptedVersion: result.acceptance.accepted_version,
+    isOutdated: result.acceptance.outdated,
+    isNever: result.acceptance.never,
+    draftUrl: result.draft_url,
+    pdfUrl: result.pdf_url,
+  });
+}
+
+function showTermsModal(opts) {
+  // Render-modal i body
+  let modal = document.getElementById('terms-acceptance-modal');
+  if (modal) modal.remove();
+
+  modal = document.createElement('div');
+  modal.id = 'terms-acceptance-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+
+  const isBlocking = !!opts.blocking;
+  const headline = opts.isNever
+    ? '🤝 Välkommen — godkänn underleverantörsavtalet'
+    : '📋 Avtalen har uppdaterats';
+  const intro = opts.isNever
+    ? 'Du har inte ännu godkänt Spicks underleverantörsavtal. Granska det och signera med BankID för att aktivera ditt konto.'
+    : 'Vi har uppdaterat avtalsvillkoren. Granska den nya versionen ' + (opts.currentVersion || '') + ' och signera för att fortsätta jobba.';
+
+  const docUrl = opts.pdfUrl || opts.draftUrl || '#';
+
+  modal.innerHTML = '' +
+    '<div style="background:#fff;border-radius:18px;padding:24px;max-width:520px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.25)">' +
+      '<h2 style="font-family:Playfair Display,serif;font-size:1.4rem;margin:0 0 8px">' + escHtml(headline) + '</h2>' +
+      '<p style="color:var(--m);font-size:.92rem;line-height:1.5;margin:0 0 16px">' + escHtml(intro) + '</p>' +
+      '<div style="background:var(--gp);border-radius:12px;padding:14px;margin-bottom:16px;font-size:.85rem">' +
+        '<div style="color:var(--g);font-weight:600;margin-bottom:4px">Aktuell version: ' + escHtml(opts.currentVersion || '?') + '</div>' +
+        (opts.acceptedVersion ? '<div style="color:var(--m);font-size:.78rem">Du accepterade tidigare: ' + escHtml(opts.acceptedVersion) + '</div>' : '') +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<a href="' + escHtml(docUrl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:10px 16px;background:var(--w);color:var(--g);border:1.5px solid var(--g);border-radius:10px;text-decoration:none;font-weight:600;font-size:.85rem">📄 Granska avtalet</a>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button onclick="startTermsBankidFlow(\'' + escHtml(opts.currentVersion || '') + '\')" style="flex:1;padding:12px 16px;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.9rem">🔒 Acceptera + signera med BankID</button>' +
+        (isBlocking ? '' : '<button onclick="dismissTermsModal(\'' + escHtml(opts.currentVersion || '') + '\')" style="padding:12px 16px;background:var(--w);color:var(--m);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.9rem">Senare</button>') +
+      '</div>' +
+      (isBlocking ? '<div style="margin-top:12px;font-size:.78rem;color:var(--err);font-weight:600">⚠ Acceptans krävs för att fortsätta använda Spick</div>' : '<div style="margin-top:12px;font-size:.75rem;color:var(--m)">Acceptans rekommenderas — kommer att krävas vid nästa avtals-uppdatering.</div>') +
+      '<div id="terms-bankid-status" style="display:none;margin-top:12px;padding:10px;background:var(--gp);border-radius:8px;font-size:.82rem"></div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+}
+
+function dismissTermsModal(version) {
+  if (version) {
+    localStorage.setItem('spick-terms-banner-' + version, '1');
+  }
+  const modal = document.getElementById('terms-acceptance-modal');
+  if (modal) modal.remove();
+}
+
+async function startTermsBankidFlow(version) {
+  const statusEl = document.getElementById('terms-bankid-status');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.textContent = '⏳ Initierar BankID...';
+  }
+
+  try {
+    const initRes = await fetch(SUPA_URL + '/functions/v1/register-bankid-init', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        purpose: 'cleaner_registration',
+        cleaner_id: cleaner.id,
+        terms_versions: { underleverantorsavtal: version || 'v1.0' },
+      }),
+    });
+
+    const initData = await initRes.json();
+    if (!initRes.ok) {
+      if (statusEl) {
+        statusEl.style.color = 'var(--err)';
+        statusEl.textContent = '⚠ ' + (initData.details || initData.error || 'BankID-init misslyckades');
+      }
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.innerHTML = '🔒 Öppna BankID-appen och signera. <a href="bankid:///?autostarttoken=' + initData.auto_start_token + '&redirect=null" style="color:var(--g);font-weight:600">Öppna BankID på denna enhet</a>';
+    }
+
+    // Polla register-bankid-status
+    const sessionId = initData.session_id;
+    let attempts = 0;
+    const maxAttempts = 90;  // ~3 min @ 2s
+    const poll = setInterval(async function() {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(poll);
+        if (statusEl) statusEl.textContent = '⚠ Timeout — försök igen';
+        return;
+      }
+      try {
+        const statusRes = await fetch(SUPA_URL + '/functions/v1/register-bankid-status', {
+          method: 'POST',
+          headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        const statusData = await statusRes.json();
+        if (statusData.status === 'complete') {
+          clearInterval(poll);
+          if (statusEl) {
+            statusEl.style.color = 'var(--g)';
+            statusEl.textContent = '✓ Signerat! Avtalet är nu accepterat (' + (statusData.accepted_version || version) + ').';
+          }
+          setTimeout(function() { dismissTermsModal(version); location.reload(); }, 2000);
+        } else if (statusEl && statusData.hint) {
+          statusEl.textContent = '⏳ Status: ' + statusData.hint;
+        }
+      } catch (e) {
+        // Continue polling on transient errors
+      }
+    }, 2000);
+  } catch (e) {
+    if (statusEl) {
+      statusEl.style.color = 'var(--err)';
+      statusEl.textContent = '⚠ Tekniskt fel: ' + (e.message || 'okänt');
+    }
+  }
 }
 
 </script>
