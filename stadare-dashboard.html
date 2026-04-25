@@ -9614,9 +9614,14 @@ function renderAddonPrices(addons) {
 
 async function _callAddonPriceSet(addonId, action, customPriceSek) {
   try {
-    var session = await sb.auth.getSession();
-    var token = session && session.data && session.data.session ? session.data.session.access_token : null;
-    if (!token) { showToast('Du måste vara inloggad'); return; }
+    // Använd localStorage-baserad auth (samma pattern som _authHeadersLegacy
+    // rad 2292-2296). sb.auth.getSession() funkar inte konsekvent i denna sida.
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var token = null;
+    if (raw) {
+      try { token = JSON.parse(raw).access_token || null; } catch (parseErr) { token = null; }
+    }
+    if (!token) { showToast('Du måste vara inloggad — uppdatera sidan'); return; }
     var body = { addon_id: addonId, action: action };
     if (action === 'custom') body.custom_price_sek = customPriceSek;
     var res = await fetch(SPICK.SUPA_URL + '/functions/v1/cleaner-addon-price-set', {
@@ -9624,16 +9629,18 @@ async function _callAddonPriceSet(addonId, action, customPriceSek) {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
       body: JSON.stringify(body)
     });
-    var data = await res.json();
+    var data = null;
+    try { data = await res.json(); } catch (e) { data = {}; }
     if (!res.ok) {
-      showToast('Kunde inte spara: ' + (data.error || 'okänt fel'));
+      console.warn('[SPICK] addon-price-set failed:', res.status, data);
+      showToast('Kunde inte spara: ' + (data.error || ('HTTP ' + res.status)));
       return;
     }
     showToast(action === 'custom' ? 'Pris uppdaterat' : action === 'free' ? 'Markerat som gratis' : 'Återställt till default');
     loadAddonPrices();
   } catch (e) {
     console.warn('[SPICK] _callAddonPriceSet error:', e);
-    showToast('Något gick fel');
+    showToast('Något gick fel: ' + (e && e.message ? e.message : 'okänt'));
   }
 }
 
