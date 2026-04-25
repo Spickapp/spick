@@ -3466,7 +3466,11 @@ async function doBook() {
     if (!bcRes.ok) {
       const bcBody = await bcRes.json().catch(() => ({}));
       console.error('booking-create failed:', bcRes.status, bcBody);
-      throw new Error(bcBody.error || 'Booking ' + bcRes.status);
+      // §4.8i: prefer user-friendly message från details (t.ex. addon_not_offered_by_cleaner)
+      const userMsg = (bcBody.details && bcBody.details.message)
+        ? bcBody.details.message
+        : (bcBody.error || 'Booking ' + bcRes.status);
+      throw new Error(userMsg);
     }
     const { url } = await bcRes.json();
     if (url) {
