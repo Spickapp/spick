@@ -4325,9 +4325,17 @@ function jobCard(j) {
   const isActive = isMine && j.checked_in_at && !isDone;
   const keepRate = getKeepRate();
   const hours = parseInt(j.booking_hours) || 3;
-  const grossPay = (cleaner.hourly_rate || 350) * hours;
+  // SSOT (rule #28): för bokningar med betald pricing, härled brutto från
+  // total_price + rut_amount via calcBookingPrice (booking-price.js).
+  // Fallback till cleaner.hourly_rate × hours för open-jobs eller om helper saknas.
+  let grossPay;
+  if (typeof calcBookingPrice === 'function' && j.total_price) {
+    grossPay = calcBookingPrice(j).gross;
+  } else {
+    grossPay = (cleaner.hourly_rate || 350) * hours;
+  }
   const pay = Math.round(grossPay * keepRate);
-  const effectiveRate = Math.round(pay / hours);
+  const effectiveRate = hours > 0 ? Math.round(pay / hours) : 0;
   const rateColor = effectiveRate < 200 ? 'var(--r)' : 'var(--g)';
   const rateWarning = effectiveRate < 200 ? ' ⚠️' : '';
   const dateStr = d.toLocaleDateString('sv-SE', { month:'short', day:'numeric' });
@@ -4463,10 +4471,19 @@ function jobCard(j) {
 
 // ── GOAL WIDGET ──────────────────────────────────────────────
 function jobEarning(j) {
+  // Team-member: får cleaner.hourly_rate × hours direkt från VD (ingen
+  // kommission på member-nivå — VD står för Spick-provisionen).
   if (cleaner.company_id && !cleaner.is_company_owner) {
     return Math.round((cleaner.hourly_rate || 350) * (parseInt(j.booking_hours) || 3));
   }
+  // Solo: cleaner får brutto × keepRate. SSOT (rule #28): använd
+  // calcBookingPrice som härleder brutto = total_price + rut_amount.
+  // Tidigare beräkning j.total_price × keepRate var fel (total_price är
+  // NETTO efter RUT per docs/sanning/rut.md, inte brutto).
   var keepRate = getKeepRate();
+  if (typeof calcBookingPrice === 'function' && j.total_price) {
+    return Math.round(calcBookingPrice(j).gross * keepRate);
+  }
   return Math.round((j.total_price || 0) * keepRate);
 }
 
