@@ -257,6 +257,58 @@ Deno.serve(async (req) => {
       },
     });
 
+    // ── §8.11.b: Auto-genomför money-op efter resolution ──
+    // full_refund   → refund-booking EF (Stripe refund + transfer_full_refund)
+    // dismissed     → escrow-release EF (transfer till städare, admin_dismiss_transfer)
+    // partial_refund → MANUELL (transfer_partial_refund-transition saknas i state-machine)
+    let autoOpResult: Record<string, unknown> | null = null;
+    const internalSecret = Deno.env.get("INTERNAL_EF_SECRET") || "";
+    if (decision === "full_refund") {
+      try {
+        const refundRes = await fetch(`${SUPABASE_URL}/functions/v1/refund-booking`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            admin_id: adminId,
+            reason: `dispute_full_refund: ${dispute.reason}`,
+          }),
+        });
+        const refundJson = await refundRes.json().catch(() => ({}));
+        autoOpResult = { op: "refund-booking", status: refundRes.status, ...refundJson };
+        if (!refundRes.ok) {
+          log("warn", "Auto-refund-booking failed (state är resolved_full_refund, manual retry möjlig)", {
+            dispute_id: disputeId, status: refundRes.status, error: (refundJson as { error?: string }).error,
+          });
+        }
+      } catch (e) {
+        autoOpResult = { op: "refund-booking", error: (e as Error).message };
+        log("warn", "Auto-refund-booking exception", { dispute_id: disputeId, error: (e as Error).message });
+      }
+    } else if (decision === "dismissed") {
+      try {
+        const releaseRes = await fetch(`${SUPABASE_URL}/functions/v1/escrow-release`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            trigger: "admin_dismiss_transfer",
+          }),
+        });
+        const releaseJson = await releaseRes.json().catch(() => ({}));
+        autoOpResult = { op: "escrow-release", status: releaseRes.status, ...releaseJson };
+        if (!releaseRes.ok) {
+          log("warn", "Auto-escrow-release failed (state är resolved_dismissed, manual retry möjlig)", {
+            dispute_id: disputeId, status: releaseRes.status, error: (releaseJson as { error?: string }).error,
+          });
+        }
+      } catch (e) {
+        autoOpResult = { op: "escrow-release", error: (e as Error).message };
+        log("warn", "Auto-escrow-release exception", { dispute_id: disputeId, error: (e as Error).message });
+      }
+    }
+    // partial_refund: ingen auto-op (DEFERRED till §8.22-25)
+
     await sendAdminAlert({
       severity: "info",
       title: `Dispute-beslut: ${decision}`,
@@ -266,11 +318,12 @@ Deno.serve(async (req) => {
         dispute_id: disputeId,
         decision,
         refund_amount_sek: refundAmountSek,
-        next_step: decision === "full_refund"
-          ? "Kör refund-booking EF för att genomföra Stripe-refund."
-          : decision === "partial_refund"
-          ? "Kör refund-booking EF + escrow-release (partial transfer-path är TBD)."
-          : "Kör escrow-release med trigger='admin_dismiss_transfer' för att transferera till städare.",
+        auto_op_result: autoOpResult,
+        next_step: decision === "partial_refund"
+          ? "MANUELL: partial-refund-flow ej implementerad (DEFERRED §8.22-25)."
+          : autoOpResult && (autoOpResult as { ok?: boolean }).ok
+          ? "Auto-op klar."
+          : "Auto-op failed — kör refund-booking eller escrow-release manuellt.",
       },
     });
 
@@ -279,6 +332,7 @@ Deno.serve(async (req) => {
       booking_id: bookingId,
       decision,
       refund_amount_sek: refundAmountSek,
+      auto_op_ok: autoOpResult ? (autoOpResult as { ok?: boolean }).ok ?? false : null,
     });
 
     return json(CORS, 200, {
@@ -288,13 +342,16 @@ Deno.serve(async (req) => {
       decision,
       refund_amount_sek: refundAmountSek,
       new_escrow_state: decision === "full_refund"
-        ? "resolved_full_refund"
+        ? (autoOpResult && (autoOpResult as { ok?: boolean }).ok ? "refunded" : "resolved_full_refund")
         : decision === "partial_refund"
         ? "resolved_partial_refund"
-        : "resolved_dismissed",
-      next_step: decision === "dismissed"
-        ? "Transfer till städare: call escrow-release med trigger='admin_dismiss_transfer'"
-        : "Stripe refund: implementation i separat refund-booking EF",
+        : (autoOpResult && (autoOpResult as { ok?: boolean }).ok ? "released" : "resolved_dismissed"),
+      auto_op: autoOpResult,
+      next_step: decision === "partial_refund"
+        ? "MANUELL: partial-refund-flow ej implementerad."
+        : autoOpResult && (autoOpResult as { ok?: boolean }).ok
+        ? "Klart — escrow-state har transitionerat till final-state."
+        : "Auto-op failed — admin behöver retry refund-booking/escrow-release manuellt.",
     });
   } catch (err) {
     log("error", "Unexpected", { error: (err as Error).message });
