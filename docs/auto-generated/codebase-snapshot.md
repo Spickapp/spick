@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (92 st)
+## Edge Functions (82 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -37,14 +37,11 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `cleaner-addon-price-set` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-addon-price-set (Fas 4 §4.8c) |
 | `cleaner-booking-response` |  |
 | `cleaner-job-completed` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-job-completed (Fas 8 §8.2 wiring) |
-| `cleaner-og` |  |
 | `cleaner-optout` |  |
 | `cleanup-stale` |  |
 | `company-accept-invite` | ═══════════════════════════════════════════════════════════════ SPICK – company-accept-invite (Sprint B Dag 4) |
-| `company-invite-member` | ═══════════════════════════════════════════════════════════════ SPICK – company-invite-member (Sprint B Dag 4) |
 | `company-propose-substitute` |  |
 | `company-self-signup` | ═══════════════════════════════════════════════════════════════ SPICK – company-self-signup (Sprint B Dag 3) |
-| `company-toggle-member` | ═══════════════════════════════════════════════════════════════ SPICK – company-toggle-member (Fas 9 §9.1) |
 | `customer-approve-proposal` |  |
 | `customer-check-auto-delegation` | ═══════════════════════════════════════════════════════════════ SPICK – customer-check-auto-delegation (Fas 1.2) |
 | `customer-nudge-recurring` | customer-nudge-recurring — Fas 5 §5.9 ═══════════════════════════════════════════════════════════════ |
@@ -72,17 +69,12 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `matching-wrapper` | supabase/functions/matching-wrapper/index.ts §3.7-full Step 2b — Matching-wrapper EF (shadow-mode A/B-ramverk) |
 | `noshow-refund` |  |
 | `notify` |  |
-| `notify-new-application` |  |
-| `onboarding-reminders` |  |
-| `onboarding-save` |  |
 | `places-autocomplete` |  |
-| `poll-stripe-onboarding-status` | ═══════════════════════════════════════════════════════════════ SPICK – poll-stripe-onboarding-status (Sprint B Dag 6) |
 | `preference-learn-favorite` | preference-learn-favorite — Fas 5 §5.5b ═══════════════════════════════════════════════════════════════ |
 | `public-auth-exchange` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-exchange (Fas 1.2) |
 | `public-auth-link` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-link (Fas 1.2) |
 | `push` | SPICK – Push Notifications med VAPID |
 | `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
-| `referral-register` |  |
 | `refund-booking` | ═══════════════════════════════════════════════════════════════ SPICK – refund-booking (Fas 8 §8.11) |
 | `rut-bankid-init` | ═══════════════════════════════════════════════════════════════ SPICK – rut-bankid-init (Fas 7.5 §RUT.1 — TIC.io BankID- |
 | `rut-bankid-status` | ═══════════════════════════════════════════════════════════════ SPICK – rut-bankid-status (Fas 7.5 §RUT.2 — TIC poll + S |
@@ -91,9 +83,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `serve-invoice` |  |
 | `services-list` | services-list: Public read of services + addons F1 Dag 1 - arkitekturplan v3 |
 | `setup-subscription` | supabase/functions/setup-subscription/index.ts SPICK: Subscription Setup |
-| `sitemap-profiles` | supabase/functions/sitemap-profiles/index.ts Sprint Prof-5: Dynamisk sitemap för profil-URL:er (/f/<slug>, /s/<slug>) |
 | `sms` |  |
-| `social-media` |  |
 | `stripe-connect` |  |
 | `stripe-connect-webhook` | ═══════════════════════════════════════════════════════════════ SPICK – stripe-connect-webhook (Sprint B Dag 1) |
 | `stripe-refund` |  |
