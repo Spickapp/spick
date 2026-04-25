@@ -6189,7 +6189,13 @@ function showToast(msg) {
 var _servicePrices = [];
 var _editingTeamMemberId = null;
 var _editingMemberPrices = [];
-var _allServices = ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning'];
+// Primärkälla: window.SPICK_ALL_SERVICES via services-loader.js. Hardcoded är fallback.
+var _allServicesFallback = ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning'];
+function _getAllServices() {
+  return (window.SPICK_ALL_SERVICES && window.SPICK_ALL_SERVICES.length > 0)
+    ? window.SPICK_ALL_SERVICES
+    : _allServicesFallback;
+}
 
 async function loadPricing() {
   if (!cleaner) return;
@@ -6198,7 +6204,7 @@ async function loadPricing() {
     _servicePrices = res.data || [];
   } catch(e) { _servicePrices = []; }
 
-  var svcs = Array.isArray(cleaner.services) ? cleaner.services : _allServices;
+  var svcs = Array.isArray(cleaner.services) ? cleaner.services : _getAllServices();
   var html = svcs.map(function(svc) {
     var existing = _servicePrices.find(function(p) { return p.service_type === svc; });
     var priceType = existing ? existing.price_type : 'hourly';

@@ -135,6 +135,12 @@
         .filter(function(s) { return s.rut_eligible === true; })
         .map(function(s) { return s.label_sv; });
 
+      // §4.5 ALL services (RUT + non-RUT). Konsumerande sidor använder för
+      // dropdown/checkbox-listor, t.ex. cleaner-services-edit (väljer vilka
+      // tjänster städaren erbjuder).
+      window.SPICK_ALL_SERVICES = window.SPICK_SERVICES.services
+        .map(function(s) { return s.label_sv; });
+
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', triggerRender);
       } else {

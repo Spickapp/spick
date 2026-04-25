@@ -263,6 +263,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script src="js/config.js"></script>
 <script src="js/commission-helpers.js"></script>
+<script src="js/services-loader.js" defer></script>
 <script src="js/event-timeline.js?v=2026-04-25-privacy"></script>
 <script src="js/booking-price.js?v=2026-04-25-altb"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -4088,7 +4089,7 @@ function showCleanerDetail(id) {
     var prices = res.data || [];
     var el = document.getElementById('admin-service-prices');
     if (!el) return;
-    var svcs = Array.isArray(c.services) ? c.services : ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning'];
+    var svcs = Array.isArray(c.services) ? c.services : (window.SPICK_ALL_SERVICES || ['Hemstädning','Storstädning','Flyttstädning','Fönsterputs','Kontorsstädning']);
     el.innerHTML = '<div style="display:grid;gap:8px">' + svcs.map(function(svc) {
       var existing = prices.find(function(p) { return p.service_type === svc; });
       var priceType = existing ? existing.price_type : 'hourly';
