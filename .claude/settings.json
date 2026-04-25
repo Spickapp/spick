@@ -13,5 +13,19 @@
       "Write",
       "Edit"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"OBLIGATORISKA REGLER FOR DENNA COMMIT - verifiera explicit innan du fortsatter:\\n#26 Grep-fore-edit: last EXAKT text + surrounding kod for varje str_replace?\\n#27 Scope-respekt: bara det Farhad bett om - inga sido-stadningar/refactor inbakade?\\n#28 SSOT: inga nya hardcodes (commission/hourly_rate/RUT_SERVICES/oppna RLS)? business-data centraliserad i platform_settings + _shared/?\\n#29 Audit-forst: lasta hela primarkallan (audit/sanning/progress) innan agerade?\\n#30 Ingen regulator-gissning: inga antaganden om Skatteverket/GDPR/BokfL/Stripe/EU PWD?\\n#31 Primarkalla over memory: schema/RPC/EF curl-verifierat mot prod (information_schema), INTE bara migration-filen i repo?\\nOm nagon regel inte uppfylld: STOPPA, atgarda, sen committa.\"}}'"
+          }
+        ]
+      }
+    ]
   }
 }

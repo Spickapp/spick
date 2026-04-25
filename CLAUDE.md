@@ -117,6 +117,7 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 | docs/auto-generated/codebase-snapshot.md | Auto-uppdaterad snapshot (Fas 11.2) |
 | docs/OPERATIONS_RUNBOOK.md | Komplett drifthandbok |
 | scripts/verify-deploy.sh | Post-deploy verifiering (18 checks) |
+| .claude/settings.json | Projekt-level Claude Code-config inkl. PreToolUse-hook för regel #26-#32-enforcement (committad, gäller alla teammates) |
 
 ## Konventioner
 - Alla innerHTML med DB-data MÅSTE använda escHtml()
@@ -126,13 +127,15 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 - Supabase JS laddas utan defer (utom index.html som har DOMContentLoaded-wrapper)
 - Farhads PowerShell: använd semikolon (;) istf && för att kedja kommandon
 - Hardcoded commission/hourly_rate/RUT_SERVICES/öppna RLS-policies blockeras av CI-lint (`deno task lint:hardcoded`). Nya undantag kräver motivering i `scripts/.lint-allow.json`
+- Alla `git commit*`-kommandon triggar automatisk regel #26-#32-checklista via PreToolUse-hook i [.claude/settings.json](.claude/settings.json). Om hook saknas (ny dator/klon/disabled) → kör `/hooks` i Claude-prompten för reload, eller manuellt gå igenom checklistan + curl-verifiera mot prod innan commit.
 
-## Obligatoriska regler (#26-#31)
+## Obligatoriska regler (#26-#32)
 - **#26** Grep-före-edit: läs exakt text + verifiera surrounding code innan str_replace
 - **#27** Scope-respekt: gör exakt det du blev ombedd, flagga observationer istället för att agera
 - **#28** Single source of truth: business-data centraliserad i `platform_settings` + `_shared/`-helpers. Ingen fragmentering.
 - **#29** Audit-först: läs audit-filen i sin helhet innan du agerar på "audit säger X"
 - **#30** Regulator-gissning FÖRBJUDEN: Skatteverket, GDPR, BokfL, Stripe-regler, EU PWD får aldrig antas. Verifiera mot spec eller fråga Farhad.
 - **#31** Primärkälla över memory: prod-schema (via `information_schema`-query) + `docs/sanning/*.md` är sanning. Migrations-filer kan vara stale. Memory är hypotes.
+- **#32** Hook-baserad enforcement: regel #26-#31 ska automatiskt påminnas via PreToolUse-hook i `.claude/settings.json` (matchar `Bash(git commit*)`). Om hook saknas (ny dator/klon/disabled) → kör `/hooks` för reload, eller manuellt gå igenom checklistan innan varje commit. Hook är enforcement-mekanism, inte ersättning för verkligt regel-följande.
 
 **Lärdom 2026-04-23:** Tre rule #31-brott i samma session — alla fall av antagande om DB-kolumner (bookings.company_id, subscriptions.favorite_cleaner_email, subscriptions.price). **ALL schema-verification MÅSTE ske via `information_schema`-query mot prod INNAN kod/SQL skrivs.** Migration-filer i repo är ej tillförlitliga pga §2.1-hygien #25 drift. Fas 2.X Replayability Sprint löser detta långsiktigt.
