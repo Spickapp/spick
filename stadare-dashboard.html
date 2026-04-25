@@ -706,6 +706,7 @@ body{top:0!important}
 </style>
 <script src="js/config.js"></script>
 <script src="js/commission-helpers.js"></script>
+<script src="js/services-loader.js" defer></script>
 <script src="js/event-timeline.js?v=2026-04-25-privacy"></script>
 <script src="js/booking-price.js?v=2026-04-25-altb"></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -2266,10 +2267,15 @@ const SB = supabase.createClient(SUPA_URL, ANON_KEY, {
 
 // ── RUT-berättigade tjänster ────────────────────────────────
 // RUT-avdrag (50%) gäller endast för hushållsnära tjänster.
-// Kontors-, trapp-, skol-, vård-, hotell- och restaurangstädning
-// räknas som företagstjänster och är EJ RUT-berättigade.
-var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
-function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
+// Primärkälla: services.rut_eligible-kolumn via window.SPICK_RUT_SERVICES
+// (services-loader.js). Hardcoded array är defensive fallback.
+var RUT_SERVICES_FALLBACK = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs', 'Mattrengöring'];
+function getRutServices() {
+  return (window.SPICK_RUT_SERVICES && window.SPICK_RUT_SERVICES.length > 0)
+    ? window.SPICK_RUT_SERVICES
+    : RUT_SERVICES_FALLBACK;
+}
+function isRutEligible(svc) { return getRutServices().indexOf(svc) !== -1; }
 
 // ── REST helpers — bypass SB.from() to avoid navigator.locks deadlock ──
 // Legacy-formen: returnerar bara headers, fallback till ANON_KEY om ej inloggad.

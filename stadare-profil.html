@@ -20,6 +20,7 @@
 <script type="application/ld+json" id="schema-json"></script>
 <script src="js/config.js"></script>
 <script src="js/components.js" defer></script>
+<script src="js/services-loader.js" defer></script>
 <style>
 :root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--bg:#FAFAF8;--b:#1C1C1A;--m:#6B6960;--border:#E8E8E4;--gold:#D4A853;--r:#DC2626;--shadow-sm:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 16px rgba(0,0,0,.08);--radius:16px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -315,8 +316,14 @@ let _cleaner = null;
 function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 var svcIcons = {'Hemstädning':'🏠','Storstädning':'✨','Flyttstädning':'📦','Fönsterputs':'🪟','Kontorsstädning':'🏢'};
-var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
-function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
+// Primärkälla: services.rut_eligible-kolumn via window.SPICK_RUT_SERVICES.
+var RUT_SERVICES_FALLBACK = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs', 'Mattrengöring'];
+function getRutServices() {
+  return (window.SPICK_RUT_SERVICES && window.SPICK_RUT_SERVICES.length > 0)
+    ? window.SPICK_RUT_SERVICES
+    : RUT_SERVICES_FALLBACK;
+}
+function isRutEligible(svc) { return getRutServices().indexOf(svc) !== -1; }
 
 // Sprint Prof-2a: Dynamic accent-color från entitetens namn (hash→HSL).
 // Undviker röd (0-30, 330-360) och gul (45-65) för professionell look.

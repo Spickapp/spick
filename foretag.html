@@ -289,6 +289,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 </div>
 
 <script src="js/config.js"></script>
+<script src="js/services-loader.js" defer></script>
 <!-- Prof-3: QR-generator CDN (~5kB, cached). Används för shareable profile-QR. -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
@@ -297,8 +298,14 @@ var H = { 'apikey': SK, 'Authorization': 'Bearer ' + SK };
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
-var RUT_SERVICES = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs'];
-function isRutEligible(svc) { return RUT_SERVICES.indexOf(svc) !== -1; }
+// Primärkälla: services.rut_eligible-kolumn via window.SPICK_RUT_SERVICES.
+var RUT_SERVICES_FALLBACK = ['Hemstädning', 'Storstädning', 'Flyttstädning', 'Fönsterputs', 'Mattrengöring'];
+function getRutServices() {
+  return (window.SPICK_RUT_SERVICES && window.SPICK_RUT_SERVICES.length > 0)
+    ? window.SPICK_RUT_SERVICES
+    : RUT_SERVICES_FALLBACK;
+}
+function isRutEligible(svc) { return getRutServices().indexOf(svc) !== -1; }
 
 // ── DYNAMIC ACCENT COLOR from company name ──
 function nameToColor(name) {
