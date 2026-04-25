@@ -128,7 +128,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/stripe.ts` |  |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (45 st)
+## GitHub Actions workflows (40 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -136,7 +136,6 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/auto-remind.yml`
 - `.github/workflows/backup-verify-monthly.yml`
 - `.github/workflows/backup.yml`
-- `.github/workflows/bootstrap-prod-schema.yml`
 - `.github/workflows/bulk-schedule-week.yml`
 - `.github/workflows/charge-subscription.yml`
 - `.github/workflows/claude.yml`
@@ -146,15 +145,12 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/daily-automation.yml`
 - `.github/workflows/db-audit.yml`
 - `.github/workflows/deploy-edge-functions.yml`
-- `.github/workflows/deploy-loopia.yml`
-- `.github/workflows/deploy-stripe.yml`
 - `.github/workflows/deploy.yml`
 - `.github/workflows/disaster-recovery.yml`
 - `.github/workflows/dispute-sla-check.yml`
 - `.github/workflows/e2e-test.yml`
 - `.github/workflows/escrow-auto-release.yml`
 - `.github/workflows/generate-sitemap.yml`
-- `.github/workflows/inject-tracking.yml`
 - `.github/workflows/lint-hardcoded-values.yml`
 - `.github/workflows/load-test.yml`
 - `.github/workflows/loopia-dns.yml`
@@ -167,7 +163,6 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/set-secrets.yml`
 - `.github/workflows/social-media.yml`
 - `.github/workflows/ssl-monitor.yml`
-- `.github/workflows/stripe-setup.yml`
 - `.github/workflows/team-sms.yml`
 - `.github/workflows/test-money.yml`
 - `.github/workflows/test.yml`
