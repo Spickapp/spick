@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (83 st)
+## Edge Functions (84 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -33,6 +33,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `calendar-ical-feed` | supabase/functions/calendar-ical-feed/index.ts Genererar iCal (.ics) feed för en städare. |
 | `calendar-sync` | calendar-sync — Synkronisera Google Calendar ↔ Spick Triggas av: |
 | `charge-subscription-booking` | charge-subscription-booking — Debiterar sparade kort dagen innan städning ══════════════════════════════════════════════ |
+| `check-terms-acceptance` | ═══════════════════════════════════════════════════════════════ SPICK – check-terms-acceptance (Item 1 Etapp 3) |
 | `claude` |  |
 | `cleaner-addon-price-set` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-addon-price-set (Fas 4 §4.8c) |
 | `cleaner-booking-response` |  |
