@@ -1,16 +1,13 @@
 name: Admin Morning Report
 'on':
   schedule:
-    # 3 körningar per dygn för att absorbera GitHub Actions peak-delay.
-    # EF:n har idempotency-guard (platform_settings.morning_report_last_sent_
-    # date=YYYY-MM-DD svensk tid) — bara första lyckade körningen per dag
-    # skickar mail, resterande returnerar {skipped:true}.
-    # Tidigare 06:07 UTC försenades 4-5h (peak); 03:00 UTC försenades 8-9h
-    # vid extrema peaks. 3 ancharkar garanterar leverans före 08:00 CEST
-    # i 99%+ av fallen.
-    - cron: '0 1 * * *'  # 01:00 UTC = 03:00 CEST (off-peak)
-    - cron: '0 3 * * *'  # 03:00 UTC = 05:00 CEST (primär)
-    - cron: '0 5 * * *'  # 05:00 UTC = 07:00 CEST (backup)
+    # Etapp 1 IO-fix 2026-04-25: 3 stages → 1 stage. Spara ~67% IO.
+    # 03:00 UTC är off-peak för GitHub Actions (lägre delay-risk).
+    # Risk: om GH Actions är ner 03:00 UTC missas dagens rapport — kan
+    # triggas manuellt via workflow_dispatch om så.
+    # EF idempotency-guard kvar (platform_settings.morning_report_last_sent_
+    # date=YYYY-MM-DD svensk tid) → manuell re-run inte dubbel-skickar.
+    - cron: '0 1 * * *'  # 01:00 UTC = 03:00 CEST (off-peak primär)
   workflow_dispatch: {}
 
 jobs:

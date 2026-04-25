@@ -1,7 +1,11 @@
-name: Dispute SLA-check (varje timme)
+name: Dispute SLA-check (1 ggr/dag)
+# Etapp 1 IO-fix 2026-04-25: ändrat från varje timme till 1 ggr/dag.
+# Spara ~96% IO. Vid låg dispute-volym är hourly överkill. SLA-warnings
+# batchas och skickas 09:05 UTC (vardag-morgon). Vid hög dispute-volym
+# återställ till hourly.
 'on':
   schedule:
-    - cron: '5 * * * *'
+    - cron: '5 9 * * *'
   workflow_dispatch: {}
 
 jobs:

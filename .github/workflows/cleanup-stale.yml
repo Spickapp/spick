@@ -1,7 +1,11 @@
 name: Cleanup Stale Bookings
+# Etapp 1 IO-fix 2026-04-25: ändrat från varje timme till var 6:e.
+# Spara ~83% IO. Pending bookings >30 min raderas — 6 h vs 1 h ger
+# marginell extra-fönster för zombie-pending men ingen faktisk påverkan
+# på kund (de är redan över abandonment-trösken).
 'on':
   schedule:
-    - cron: '0 * * * *'    # Varje hel timme
+    - cron: '0 */6 * * *'    # Var 6:e timme (00, 06, 12, 18 UTC)
   workflow_dispatch: {}      # Manuell trigger
 
 jobs:

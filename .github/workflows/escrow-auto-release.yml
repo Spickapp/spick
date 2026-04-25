@@ -1,7 +1,10 @@
-name: Escrow auto-release (var 15:e minut)
+name: Escrow auto-release (varje timme)
+# Etapp 1 IO-fix 2026-04-25: ändrat från */15 till hourly. Spara ~75%
+# IO. Acceptabel risk: escrow-release-latency max 60 min vs 15 min.
+# Total escrow-period är 24 h så marginal påverkan.
 'on':
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 * * * *'
   workflow_dispatch: {}
 
 jobs:

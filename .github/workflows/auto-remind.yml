@@ -1,7 +1,11 @@
-name: Auto-remind (var 30:e minut)
+name: Auto-remind (2 ggr/dag)
+# Etapp 1 IO-fix 2026-04-25: ändrat från 30-min till 2 ggr/dag. Spara
+# ~95% IO. Påminnelser går ut max 6-8 h efter optimal tidpunkt — fortfarande
+# nyttigt för 24h-före-bokning-påminnelser.
 'on':
   schedule:
-    - cron: '7-59/30 * * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 15 * * *'
   workflow_dispatch: {}
 
 jobs:
