@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (88 st)
+## Edge Functions (89 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -97,6 +97,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `stripe-webhook` |  |
 | `swish` |  |
 | `team-sms-notify` |  |
+| `vd-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-decide (Fas 9 §9.2 — VD dispute-tier- |
 
 ## Shared EF helpers (21 st)
 
