@@ -3,11 +3,64 @@
 <head>
 <script>if(top!==self){top.location=self.location}</script>
 <script>
+// Sprint 6 routing: /blogg/{slug} → /blogg/post.html?slug={slug}
+// Statiska blogg-filer (t.ex. /blogg/rut-avdrag-guide.html) serveras direkt av GitHub Pages
+// och triggar EJ 404. Bara nya DB-driven slugs (utan .html-ändelse) hamnar här.
+if (location.pathname.startsWith('/blogg/')) {
+  var blogSlug = location.pathname.replace(/^\/blogg\//, '').replace(/\/$/, '');
+  if (blogSlug && !/\.html?$/i.test(blogSlug) && blogSlug !== 'post' && blogSlug !== 'index') {
+    location.replace('/blogg/post.html?slug=' + encodeURIComponent(blogSlug));
+  }
+}
 // Routing: /s/slug → stadare-profil.html?s=slug
 if (location.pathname.startsWith('/s/')) {
   var slug = location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
   if (slug) { location.replace('/stadare-profil.html?s=' + encodeURIComponent(slug)); }
 }
+// Routing (Sprint 4B): SEO-aggregat-sidor stad+tjänst.
+//   /{tjanst}-{stad}     → seo-page-stad-tjanst EF (t.ex. /hemstadning-stockholm)
+//   /stadning/{stad}     → seo-page-stad-tjanst med default service (hemstadning)
+//
+// EF:n returnerar SSR-HTML direkt, så vi proxyar via fetch + document.write.
+// Detta kör innan resten av 404-sidan renderas (script i <head>).
+(function(){
+  var SUPA_URL_SEO = 'https://urjeijcncsyuletprydy.supabase.co';
+  var CITIES = ['stockholm','goteborg','malmo','uppsala','linkoping'];
+  var SERVICES = ['hemstadning','storstadning','flyttstadning','fonsterputs','kontorsstadning'];
+  var path = location.pathname.replace(/^\//, '').replace(/\/$/, '');
+  var stad = null, tjanst = null;
+
+  // /stadning/{stad} → default-service hemstadning
+  var stadningMatch = path.match(/^stadning\/([a-z0-9-]+)$/);
+  if (stadningMatch && CITIES.indexOf(stadningMatch[1]) >= 0) {
+    stad = stadningMatch[1];
+    tjanst = 'hemstadning';
+  }
+
+  // /{tjanst}-{stad} (mer SEO-friendly)
+  if (!stad) {
+    var combo = path.match(/^([a-z]+)-([a-z]+)$/);
+    if (combo && SERVICES.indexOf(combo[1]) >= 0 && CITIES.indexOf(combo[2]) >= 0) {
+      tjanst = combo[1];
+      stad = combo[2];
+    }
+  }
+
+  if (stad && tjanst) {
+    var seoUrl = SUPA_URL_SEO + '/functions/v1/seo-page-stad-tjanst?stad=' + encodeURIComponent(stad) + '&tjanst=' + encodeURIComponent(tjanst);
+    fetch(seoUrl)
+      .then(function(r){ return r.text().then(function(html){ return { ok: r.ok, html: html, status: r.status }; }); })
+      .then(function(res){
+        if (res.ok && res.html) {
+          // Replace hela dokumentet med SSR-HTML
+          document.open();
+          document.write(res.html);
+          document.close();
+        }
+      })
+      .catch(function(){ /* fall back till 404-sidan */ });
+  }
+})();
 // Routing: /f/company-slug → foretag.html?slug=company-slug
 // Routing: /f/company-slug/cleaner-slug → foretag.html?slug=company-slug&cleaner=cleaner-slug
 if (location.pathname.startsWith('/f/')) {

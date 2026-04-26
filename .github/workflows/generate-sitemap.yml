@@ -68,6 +68,19 @@ jobs:
           # Bloggindex
           echo "  <url><loc>https://spick.se/blogg/</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>" >> sitemap.xml
 
+          # ── Sprint 4C (2026-04-26): Stad+Tjänst-aggregat-sidor ──
+          # 5 städer × 5 tjänster = 25 SEO-landningssidor.
+          # Källa: SUPPORTED_CITIES + SUPPORTED_SERVICES i
+          # supabase/functions/seo-page-stad-tjanst/index.ts.
+          # Listan här MÅSTE hållas synkad med EF — om EF utökas, lägg
+          # till motsvarande slugs här (annars indexeras inte de nya).
+          echo "  <!-- Stad+Tjänst SEO-aggregat (Sprint 4) -->" >> sitemap.xml
+          for stad in stockholm goteborg malmo uppsala linkoping; do
+            for tjanst in hemstadning storstadning flyttstadning fonsterputs kontorsstadning; do
+              echo "  <url><loc>https://spick.se/${tjanst}-${stad}</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>" >> sitemap.xml
+            done
+          done
+
           # ── Sprint B4 (2026-04-26): Profil-URLs ──
           # Hämtar aktiva städare + företag från Supabase via REST + ANON_KEY
           # (publik info, ingen RLS-bypass behövs). VD-profiler (is_company_owner)
