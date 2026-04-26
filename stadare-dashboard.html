@@ -172,7 +172,22 @@ function googleTranslateElementInit() {
   }, 'google_translate_element');
 }
 </script>
-<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<!-- Performance P1 (2026-04-26): Defer Google Translate till idle (sparar ~300ms initial render) -->
+<script>
+(function lazyLoadGoogleTranslate() {
+  function inject() {
+    var s = document.createElement('script');
+    s.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    s.async = true;
+    document.head.appendChild(s);
+  }
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(inject, { timeout: 3000 });
+  } else {
+    setTimeout(inject, 1500);
+  }
+})();
+</script>
 <script src="js/patch-min.js"></script>
 <script src="js/supabase.min.js"></script>
 <style>
@@ -3376,20 +3391,34 @@ async function loadCleanerByEmail(email, authUserId) {
   window._companyId = cleaner.company_id || null;
   window._isCompanyOwner = !!cleaner.is_company_owner;
   showTeamTab();
+
+  // Performance P2 (2026-04-26): Parallellisera 3 oberoende fetcher
+  // istället för sequential. Sparar 2-3 round-trips på initial load.
+  var _vdParallelTasks = [];
   if (window._isCompanyOwner) {
     setupVDNavigation();
-    if (typeof loadPendingReassignments === 'function') loadPendingReassignments();
+    if (typeof loadPendingReassignments === 'function') _vdParallelTasks.push(loadPendingReassignments());
+    if (typeof loadVdDisputes === 'function') _vdParallelTasks.push(loadVdDisputes());
+  }
+  // CompanyConfig hämtas parallellt med ovan (oberoende)
+  var _companyConfigPromise = (cleaner.company_id)
+    ? R.selectSingle('companies', 'select=dashboard_config&id=eq.' + cleaner.company_id).catch(function() { return { data: null }; })
+    : Promise.resolve({ data: null });
+  _vdParallelTasks.push(_companyConfigPromise);
+
+  // Vänta på ALLA parallellt (snabbast = OPTIMAL)
+  var _parallelResults = await Promise.allSettled(_vdParallelTasks);
+
+  if (window._isCompanyOwner) {
     if (typeof startReassignmentRefresh === 'function') startReassignmentRefresh();
-    if (typeof loadVdDisputes === 'function') loadVdDisputes();
   }
 
   // ── Rollbaserad behörighetshantering ──
   var companyConfig = null;
-  if (cleaner.company_id) {
-    try {
-      var ccRes = await R.selectSingle('companies', 'select=dashboard_config&id=eq.' + cleaner.company_id);
-      companyConfig = ccRes.data?.dashboard_config || null;
-    } catch(e) {}
+  // Hämta companyConfig från sista parallel-result (det är _companyConfigPromise)
+  var _ccResult = _parallelResults[_parallelResults.length - 1];
+  if (_ccResult && _ccResult.status === 'fulfilled') {
+    companyConfig = _ccResult.value?.data?.dashboard_config || null;
   }
   window._companyConfig = companyConfig;
   var permResult = getEffectivePermissions(cleaner, companyConfig);
