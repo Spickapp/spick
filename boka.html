@@ -3166,9 +3166,10 @@ function pollRutBankidStatus() {
         body: JSON.stringify({ session_id: state.rutBankidSession.session_id, customer_email: state.email })
       });
       var data = await res.json();
-      // Debug: logga första 5 polls så vi kan diagnosa "stuck on pending"
+      // Debug: logga första 5 polls + var 10:e så vi kan diagnosa "stuck on pending"
+      // Använd JSON.stringify så DevTools visar hela objektet (inte "Object")
       if (attempts <= 5 || attempts % 10 === 0) {
-        console.log('[BankID poll #' + attempts + ']', { status: data.status, hint: data.hint, raw: data.raw });
+        console.log('[BankID poll #' + attempts + '] status=' + data.status + ' hint=' + data.hint + ' raw=' + JSON.stringify(data.raw));
       }
       if (!res.ok) {
         clearInterval(state.rutBankidPolling);
