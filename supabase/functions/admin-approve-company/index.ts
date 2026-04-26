@@ -150,12 +150,21 @@ Deno.serve(async (req) => {
       return json(CORS, 500, { error: "vd_update_failed", detail: updateVdErr.message });
     }
     
+    // Audit-fix P1-2 (2026-04-26): tidigare loggades email/SMS-fail
+    // bara som warn → company godkänt men VD fick ingen onboarding-hint
+    // (Stripe-block synlig först när första bokning fallerar). Rollback
+    // av godkännande är dåligt UX för admin (måste göra om manuellt). Fix:
+    // skicka sendAdminAlert vid delivery-fail så Farhad kan följa upp
+    // med VD direkt utan att behöva re-approva.
+    let emailFailed = false;
+    let smsFailed = false;
+
     // ── Email till VD ──
     try {
       const stripeHint = vd.stripe_onboarding_status === "complete"
         ? "Du kan direkt börja ta bokningar."
         : "Slutför din Stripe-registrering så utbetalningar kan starta.";
-      
+
       await sendEmail(
         vd.email,
         `${company.name} är godkänt på Spick!`,
@@ -168,9 +177,10 @@ Deno.serve(async (req) => {
         `)
       );
     } catch (e) {
+      emailFailed = true;
       log("warn", "Welcome email failed (not fatal)", { error: (e as Error).message });
     }
-    
+
     // ── SMS ──
     if (vd.phone) {
       try {
@@ -179,7 +189,25 @@ Deno.serve(async (req) => {
           `Spick: Ditt företag ${company.name} är nu godkänt och aktivt! Öppna: spick.se/stadare-dashboard.html#team`
         );
       } catch (e) {
+        smsFailed = true;
         log("warn", "SMS failed (not fatal)", { error: (e as Error).message });
+      }
+    }
+
+    // Audit-fix P1-2: ping admin om VD inte fick onboarding-meddelandet
+    if (emailFailed || smsFailed) {
+      try {
+        const { sendAdminAlert } = await import("../_shared/alerts.ts");
+        await sendAdminAlert({
+          severity: "warn",
+          title: "Företag godkänt men VD-onboarding-leverans misslyckades",
+          source: "admin-approve-company",
+          company_id: company.id,
+          message: `${company.name} (VD: ${vd.full_name}, ${vd.email}, ${vd.phone || "ingen tel"}) är godkänt men ${emailFailed ? "email" : ""}${emailFailed && smsFailed ? " + " : ""}${smsFailed ? "SMS" : ""} misslyckades. Följ upp manuellt.`,
+          metadata: { email_failed: emailFailed, sms_failed: smsFailed, vd_email: vd.email, vd_phone: vd.phone || null },
+        });
+      } catch (e) {
+        console.error("[admin-approve-company] sendAdminAlert failed:", (e as Error).message);
       }
     }
     
