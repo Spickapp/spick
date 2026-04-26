@@ -97,7 +97,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `vd-dispute-list` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-list (Fas 9 §9.2 — VD dispute-tab lis |
 | `vd-payment-summary` | ═══════════════════════════════════════════════════════════════ SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26) |
 
-## Shared EF helpers (28 st)
+## Shared EF helpers (29 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -122,6 +122,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/rut-xml-builder.ts` |  |
 | `_shared/send-magic-sms.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Magic-link hjälpare för publika auth-flows (Fas  |
+| `_shared/sentry.ts` | ═══════════════════════════════════════════════════════════════ SPICK — Sentry-wrapper för Edge Functions (Fas 10 Observ |
 | `_shared/slot-holds.ts` | _shared/slot-holds.ts — Fas 5 §5.4.2 ═══════════════════════════════════════════════════════════════ |
 | `_shared/sms-billing.ts` | supabase/functions/_shared/sms-billing.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/stripe-client.ts` |  |
@@ -171,7 +172,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (149 st)
+## Migrations (150 st)
 
 - Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
 - Timestamp-prefix: `20260429000003`
