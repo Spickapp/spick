@@ -2231,6 +2231,35 @@ body{top:0!important}
     </div>
   </div>
 
+    <!-- ═══ TAB: TVISTER (only visible for VD when count > 0, Fas 9 §9.2) ═══ -->
+    <div class="tab-content" id="tab-tvister">
+      <div class="tab-pad">
+        <div style="margin-bottom:14px">
+          <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:4px">Tvister i mitt team</h2>
+          <p style="font-size:.82rem;color:var(--m)" id="vd-disputes-summary">Laddar...</p>
+        </div>
+        <div id="vd-disputes-list" style="display:grid;gap:14px">
+          <div style="text-align:center;padding:32px 0;color:var(--m);font-size:.85rem">Laddar tvister...</div>
+        </div>
+      </div>
+    </div>
+
+  <!-- VD-DISPUTE-DECIDE MODAL -->
+  <div id="vd-dispute-decide-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeVdDisputeModal()">
+    <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="font-size:1.05rem;font-weight:700" id="vd-dispute-modal-title">Bekräfta beslut</h3>
+        <button onclick="closeVdDisputeModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--m)">×</button>
+      </div>
+      <div id="vd-dispute-modal-body" style="font-size:.9rem;line-height:1.5;color:#3f3d36;margin-bottom:18px"></div>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeVdDisputeModal()" style="flex:1;padding:12px;background:#F3F4F6;color:#3f3d36;border:none;border-radius:var(--radius-full);font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
+        <button id="vd-dispute-modal-confirm-btn" style="flex:1;padding:12px;background:#0F6E56;color:#fff;border:none;border-radius:var(--radius-full);font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit">Bekräfta</button>
+      </div>
+      <div id="vd-dispute-modal-msg" style="font-size:.8rem;text-align:center;margin-top:10px;display:none"></div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV — 5 tabs + conditional Team -->
   <div class="bottom-nav">
     <button class="nav-btn active" id="nav-hem" onclick="switchTab('hem')">
@@ -2255,6 +2284,13 @@ body{top:0!important}
         <span id="nav-team-badge" class="nbadge" style="display:none">0</span>
       </span>
       <span>Team</span>
+    </button>
+    <button class="nav-btn" id="nav-tvister" onclick="switchTab('tvister')" style="display:none">
+      <span class="ni-wrap">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v3.75M12 16.5h.008v.008H12v-.008zM10.05 3.41 1.95 17.84A1.91 1.91 0 0 0 3.6 20.66h16.8a1.91 1.91 0 0 0 1.65-2.82L13.95 3.41a1.91 1.91 0 0 0-3.3 0z"/></svg>
+        <span id="nav-tvister-badge" class="nbadge" style="display:none">0</span>
+      </span>
+      <span>Tvister</span>
     </button>
     <button class="nav-btn" id="nav-inst" onclick="switchTab('inst')">
       <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -3214,6 +3250,7 @@ async function loadCleanerByEmail(email, authUserId) {
     setupVDNavigation();
     if (typeof loadPendingReassignments === 'function') loadPendingReassignments();
     if (typeof startReassignmentRefresh === 'function') startReassignmentRefresh();
+    if (typeof loadVdDisputes === 'function') loadVdDisputes();
   }
 
   // ── Rollbaserad behörighetshantering ──
@@ -6248,6 +6285,10 @@ function switchTab(tab) {
     if (typeof loadVdInvoices === 'function') loadVdInvoices();
     if (typeof loadAddonPrices === 'function') loadAddonPrices();
     if (window._isCompanyOwner && typeof loadPendingReassignments === 'function') loadPendingReassignments();
+  }
+
+  if (tab === 'tvister') {
+    if (window._isCompanyOwner && typeof loadVdDisputes === 'function') loadVdDisputes();
   }
 }
 
@@ -10851,6 +10892,205 @@ async function loadVdPaymentSummary() {
     }
   } catch (e) {
     console.warn('[SPICK] loadVdPaymentSummary exception:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Fas 9 §9.2 (2026-04-26) — VD dispute-tab list + decide
+// ═══════════════════════════════════════════════════════════════
+
+var _vdDisputesCache = [];
+
+async function loadVdDisputes() {
+  if (!cleaner || !cleaner.is_company_owner) return;
+  const listEl = document.getElementById('vd-disputes-list');
+  const summaryEl = document.getElementById('vd-disputes-summary');
+  const navBtn = document.getElementById('nav-tvister');
+  const navBadge = document.getElementById('nav-tvister-badge');
+  if (!listEl || !summaryEl) return;
+
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/vd-dispute-list', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      listEl.innerHTML = '<div style="color:#B91C1C;text-align:center;padding:20px;font-size:.85rem">Kunde inte ladda tvister (HTTP ' + res.status + ').</div>';
+      return;
+    }
+    const data = await res.json();
+    _vdDisputesCache = Array.isArray(data.disputes) ? data.disputes : [];
+    const total = data.total || 0;
+    const overCap = data.over_500_count || 0;
+
+    // Sync nav-tab visibility (tab visas bara om det finns öppna tvister)
+    if (navBtn) navBtn.style.display = total > 0 ? '' : 'none';
+    if (navBadge) {
+      if (total > 0) {
+        navBadge.textContent = String(total);
+        navBadge.style.display = '';
+      } else {
+        navBadge.style.display = 'none';
+      }
+    }
+
+    if (total === 0) {
+      summaryEl.textContent = 'Inga öppna tvister i ditt team. 🎉';
+      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--m);font-size:.9rem">Inga öppna tvister just nu. När en kund öppnar en tvist visas den här.</div>';
+      return;
+    }
+
+    summaryEl.textContent = total + (total === 1 ? ' öppen' : ' öppna') +
+      (overCap > 0 ? ' · ' + overCap + ' över 500 kr (kräver admin)' : '');
+
+    listEl.innerHTML = _vdDisputesCache.map(renderVdDisputeCard).join('');
+  } catch (e) {
+    console.warn('[SPICK] loadVdDisputes exception:', e);
+    listEl.innerHTML = '<div style="color:#B91C1C;text-align:center;padding:20px;font-size:.85rem">Något gick fel. Försök igen.</div>';
+  }
+}
+
+function renderVdDisputeCard(d) {
+  const totalKr = (d.total_price_sek || 0).toLocaleString('sv-SE');
+  const openedAt = d.opened_at ? new Date(d.opened_at).toLocaleString('sv-SE') : '';
+  const evidenceTotal = (d.evidence_customer_count || 0) + (d.evidence_cleaner_count || 0);
+
+  let actions;
+  if (d.over_vd_cap) {
+    actions = '<div style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:8px 12px;border-radius:6px;font-size:.82rem;margin-top:10px">' +
+      '⚠ Över 500 kr — kräver admin-beslut. Eskalera via Spick admin.' +
+      '</div>';
+  } else {
+    actions = '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+      '<button onclick="openVdDisputeModal(\'' + escHtml(d.dispute_id) + '\',\'dismissed\')" style="flex:1;min-width:130px;padding:10px;background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">✓ Avvisa tvist</button>' +
+      '<button onclick="openVdDisputeModal(\'' + escHtml(d.dispute_id) + '\',\'full_refund\')" style="flex:1;min-width:130px;padding:10px;background:#0F6E56;color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">💸 Full återbet (' + totalKr + ' kr)</button>' +
+      '</div>';
+  }
+
+  const cleanerResp = d.cleaner_response
+    ? '<div style="background:#F7F7F5;border-left:3px solid #0F6E56;padding:8px 12px;border-radius:6px;font-size:.82rem;margin-top:8px"><div style="font-weight:600;color:var(--m);font-size:.72rem;text-transform:uppercase;margin-bottom:3px">Städarens svar</div>' + escHtml(d.cleaner_response) + '</div>'
+    : '<div style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:8px 12px;border-radius:6px;font-size:.82rem;margin-top:8px;color:#92400E">⏳ Städaren har inte svarat ännu</div>';
+
+  return '<div class="card" style="padding:16px;border-left:4px solid ' + (d.over_vd_cap ? '#F59E0B' : '#0F6E56') + '">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">' +
+      '<div>' +
+        '<div style="font-size:.72rem;color:var(--m);font-family:monospace">SP-' + escHtml(d.booking_short_id || '') + '</div>' +
+        '<div style="font-weight:700;font-size:.95rem">' + escHtml(d.service_type || 'Bokning') + ' · ' + totalKr + ' kr</div>' +
+        '<div style="font-size:.78rem;color:var(--m)">' +
+          escHtml(d.customer_name || 'Kund') + ' → ' + escHtml(d.cleaner_name || 'Städare') +
+          (d.booking_date ? ' · ' + escHtml(d.booking_date) : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:.72rem;color:var(--m);text-align:right">Öppnad ' + escHtml(openedAt) + '</div>' +
+    '</div>' +
+    '<div style="background:#FFF1F2;border-left:3px solid #E11D48;padding:8px 12px;border-radius:6px;font-size:.82rem"><div style="font-weight:600;color:#9F1239;font-size:.72rem;text-transform:uppercase;margin-bottom:3px">Kundens anledning</div>' +
+      escHtml(d.reason || '') +
+      (d.customer_description ? '<div style="margin-top:5px;color:#3f3d36;font-style:italic">"' + escHtml(d.customer_description) + '"</div>' : '') +
+    '</div>' +
+    cleanerResp +
+    (evidenceTotal > 0
+      ? '<div style="margin-top:8px;font-size:.78rem;color:var(--m)">📷 ' + evidenceTotal + ' bilder bifogade (' + (d.evidence_customer_count || 0) + ' från kund, ' + (d.evidence_cleaner_count || 0) + ' från städare)</div>'
+      : '') +
+    actions +
+  '</div>';
+}
+
+var _vdDisputeModalState = { dispute_id: null, decision: null };
+
+function openVdDisputeModal(disputeId, decision) {
+  const dispute = _vdDisputesCache.find(function(d) { return d.dispute_id === disputeId; });
+  if (!dispute) return;
+  _vdDisputeModalState = { dispute_id: disputeId, decision: decision };
+
+  const modal = document.getElementById('vd-dispute-decide-modal');
+  const titleEl = document.getElementById('vd-dispute-modal-title');
+  const bodyEl = document.getElementById('vd-dispute-modal-body');
+  const confirmBtn = document.getElementById('vd-dispute-modal-confirm-btn');
+  const msgEl = document.getElementById('vd-dispute-modal-msg');
+  if (!modal || !titleEl || !bodyEl || !confirmBtn) return;
+
+  msgEl.style.display = 'none';
+  msgEl.textContent = '';
+
+  if (decision === 'dismissed') {
+    titleEl.textContent = 'Avvisa tvist?';
+    bodyEl.innerHTML = '<p style="margin-bottom:8px"><strong>SP-' + escHtml(dispute.booking_short_id) + '</strong> · ' + escHtml(dispute.service_type || '') + '</p>' +
+      '<p style="color:#3f3d36">Kunden får inget tillbaka. Städaren får sin betalning.</p>' +
+      '<p style="color:#92400E;background:#FEF3C7;padding:8px;border-radius:6px;margin-top:10px;font-size:.82rem">⚠ Beslutet är slutgiltigt. Kunden kan inte överklaga via Spick.</p>';
+    confirmBtn.textContent = 'Ja, avvisa';
+    confirmBtn.style.background = '#3f3d36';
+  } else if (decision === 'full_refund') {
+    const kr = (dispute.total_price_sek || 0).toLocaleString('sv-SE');
+    titleEl.textContent = 'Full återbetalning?';
+    bodyEl.innerHTML = '<p style="margin-bottom:8px"><strong>SP-' + escHtml(dispute.booking_short_id) + '</strong> · ' + escHtml(dispute.service_type || '') + '</p>' +
+      '<p style="color:#3f3d36">Kunden får tillbaka <strong>' + kr + ' kr</strong>. Städaren får ingen betalning för detta jobb.</p>' +
+      '<p style="color:#92400E;background:#FEF3C7;padding:8px;border-radius:6px;margin-top:10px;font-size:.82rem">⚠ Beslutet är slutgiltigt.</p>';
+    confirmBtn.textContent = 'Ja, återbetala';
+    confirmBtn.style.background = '#0F6E56';
+  } else {
+    return;
+  }
+
+  confirmBtn.disabled = false;
+  confirmBtn.onclick = submitVdDisputeDecision;
+  modal.style.display = 'flex';
+}
+
+function closeVdDisputeModal() {
+  const modal = document.getElementById('vd-dispute-decide-modal');
+  if (modal) modal.style.display = 'none';
+  _vdDisputeModalState = { dispute_id: null, decision: null };
+}
+
+async function submitVdDisputeDecision() {
+  const { dispute_id, decision } = _vdDisputeModalState;
+  if (!dispute_id || !decision) return;
+
+  const confirmBtn = document.getElementById('vd-dispute-modal-confirm-btn');
+  const msgEl = document.getElementById('vd-dispute-modal-msg');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Skickar...'; }
+  if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; }
+
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/vd-dispute-decide', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ dispute_id: dispute_id, decision: decision }),
+    });
+    const data = await res.json().catch(function() { return {}; });
+    if (!res.ok) {
+      const err = (data && data.error) || ('HTTP ' + res.status);
+      if (msgEl) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#B91C1C';
+        msgEl.textContent = err === 'amount_exceeds_vd_tier_1'
+          ? 'Beloppet överskrider VD-gränsen (500 kr). Eskalera till admin.'
+          : 'Fel: ' + err;
+      }
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Försök igen'; }
+      return;
+    }
+
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#0F6E56';
+      msgEl.textContent = '✓ Beslut registrerat. Tvisten är stängd.';
+    }
+    if (data.audit_flagged) {
+      showToast('Detta beslut valdes för slumpvis admin-granskning.');
+    }
+    setTimeout(function() {
+      closeVdDisputeModal();
+      loadVdDisputes();
+    }, 1400);
+  } catch (e) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#B91C1C';
+      msgEl.textContent = 'Något gick fel. Försök igen.';
+    }
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Försök igen'; }
   }
 }
 
