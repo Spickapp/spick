@@ -456,6 +456,9 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .gantt-event{position:absolute;top:4px;bottom:4px;border-radius:6px;padding:3px 6px;font-size:.7rem;line-height:1.2;overflow:hidden;cursor:grab;z-index:2;border-left:3px solid;transition:box-shadow .15s,opacity .15s;user-select:none;touch-action:none}
 .gantt-event:hover{box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5}
 .gantt-event.dragging{opacity:.7;cursor:grabbing;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.gantt-event-resize{position:absolute;top:0;right:0;width:8px;height:100%;cursor:ew-resize;z-index:8;background:transparent}
+.gantt-event-resize:hover{background:rgba(15,110,86,.3);border-right:2px solid #0F6E56}
+.gantt-event.resizing{opacity:.85;z-index:11;box-shadow:0 4px 16px rgba(15,110,86,.3)}
 .gantt-event.confirmed{background:#D1FAE5;border-color:#059669;color:#065F46}
 .gantt-event.bekräftad{background:#D1FAE5;border-color:#059669;color:#065F46}
 .gantt-event.bekr\00e4ftad{background:#D1FAE5;border-color:#059669;color:#065F46}
@@ -7950,6 +7953,10 @@ function renderGanttDay(wrap) {
         html += '<div style="font-size:.6rem;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
           escHtml(ev.address || '') + '</div>';
       }
+      // F4 (2026-04-26): resize-handle på östra kanten — bara för Spick-bookings
+      if (isDraggable && widthPx >= 30) {
+        html += '<div class="gantt-event-resize" onpointerdown="ganttResizeStart(event,this.parentElement)" title="Dra för att ändra duration"></div>';
+      }
       html += '</div>';
     });
 
@@ -8286,6 +8293,128 @@ async function ganttMoveBooking(bookingId, newCleanerId, newTime, newDate) {
     }
   } catch(e) {
     showToast('Nätverksfel: ' + (e.message || e));
+    loadGanttData();
+  }
+}
+
+// ── F4 (2026-04-26): Resize-handle för booking-duration ──
+// Drag östra kanten av en booking-block → ändra end_at + booking_hours.
+// Pris-omräkning sker inte automatiskt (VD justerar manuellt om nödvändigt).
+
+var _ganttResizeState = null;
+
+function ganttResizeStart(evt, eventEl) {
+  evt.stopPropagation();
+  evt.preventDefault();
+  var cells = eventEl.closest('.gantt-row-cells');
+  if (!cells) return;
+  var rect = cells.getBoundingClientRect();
+
+  _ganttResizeState = {
+    el: eventEl,
+    eventId: eventEl.dataset.eventId,
+    bookingId: eventEl.dataset.bookingId,
+    cellsLeft: rect.left,
+    origLeftPx: parseFloat(eventEl.style.left) || 0,
+    origWidthPx: parseFloat(eventEl.style.width) || 50,
+    startClientX: evt.clientX
+  };
+  eventEl.classList.add('resizing');
+  document.addEventListener('pointermove', _ganttResizeMove);
+  document.addEventListener('pointerup', _ganttResizeEnd, { once: true });
+  document.addEventListener('pointercancel', _ganttResizeEnd, { once: true });
+}
+
+function _ganttResizeMove(e) {
+  if (!_ganttResizeState) return;
+  var s = _ganttResizeState;
+  var dx = e.clientX - s.startClientX;
+  var newWidth = s.origWidthPx + dx;
+  // Snap 25px (30 min), min 25px
+  newWidth = Math.max(25, Math.round(newWidth / 25) * 25);
+  // Max: rest of timeline från left
+  var maxWidth = (_ganttHourCount * _ganttHourPx) - s.origLeftPx;
+  newWidth = Math.min(newWidth, maxWidth);
+  s.el.style.width = newWidth + 'px';
+
+  // Visa duration-label live
+  var newHours = newWidth / _ganttHourPx;
+  var label = s.el.querySelector('.gantt-resize-label');
+  if (!label) {
+    label = document.createElement('div');
+    label.className = 'gantt-resize-label';
+    label.style.cssText = 'position:absolute;bottom:-20px;right:0;background:#0F6E56;color:#fff;font-size:.7rem;padding:2px 8px;border-radius:6px;z-index:12;white-space:nowrap';
+    s.el.appendChild(label);
+  }
+  label.textContent = newHours.toFixed(1) + 'h';
+}
+
+async function _ganttResizeEnd(_e) {
+  document.removeEventListener('pointermove', _ganttResizeMove);
+  if (!_ganttResizeState) return;
+  var s = _ganttResizeState;
+  _ganttResizeState = null;
+
+  s.el.classList.remove('resizing');
+  var label = s.el.querySelector('.gantt-resize-label');
+  if (label) label.remove();
+
+  var newWidthPx = parseFloat(s.el.style.width) || s.origWidthPx;
+  if (Math.abs(newWidthPx - s.origWidthPx) < 5) {
+    s.el.style.width = s.origWidthPx + 'px';
+    return;
+  }
+
+  var newHours = Math.max(0.5, Math.round((newWidthPx / _ganttHourPx) * 2) / 2);
+  var origHours = s.origWidthPx / _ganttHourPx;
+
+  if (!confirm('Ändra duration från ' + origHours.toFixed(1) + 'h till ' + newHours.toFixed(1) + 'h?\n\nObs: Priset uppdateras INTE automatiskt — justera manuellt om kunden ska debiteras nytt belopp.')) {
+    s.el.style.width = s.origWidthPx + 'px';
+    return;
+  }
+
+  // Beräkna nya end_at
+  var ev = _ganttTeamEvents.find(function(x) { return x.id === s.eventId; });
+  if (!ev) { showToast('Kunde inte hitta event'); loadGanttData(); return; }
+  var startMs = new Date(ev.start_at).getTime();
+  var newEndMs = startMs + (newHours * 3600000);
+  var newEndIso = new Date(newEndMs).toISOString();
+
+  try {
+    var sess = (await SB.auth.getSession()).data.session;
+    var tok = sess ? sess.access_token : ANON_KEY;
+
+    // 1) Update calendar_events.end_at
+    var calRes = await fetch(SUPA_URL + '/rest/v1/calendar_events?id=eq.' + s.eventId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + tok, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ end_at: newEndIso })
+    });
+    if (!calRes.ok) {
+      var errBody = await calRes.json().catch(function() { return {}; });
+      var errMsg = (errBody && (errBody.message || errBody.hint || errBody.details)) || 'Kunde inte uppdatera';
+      if (String(errMsg).indexOf('overlap') !== -1) {
+        showToast('Tiden krockar med annan bokning');
+      } else {
+        showToast('Fel: ' + errMsg);
+      }
+      loadGanttData();
+      return;
+    }
+
+    // 2) Update bookings.booking_hours om event har booking_id
+    if (s.bookingId) {
+      await fetch(SUPA_URL + '/rest/v1/bookings?id=eq.' + s.bookingId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + tok, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ booking_hours: newHours })
+      });
+    }
+
+    showToast('Duration ändrad till ' + newHours.toFixed(1) + 'h');
+    loadGanttData();
+  } catch (err) {
+    showToast('Nätverksfel: ' + (err.message || err));
     loadGanttData();
   }
 }
