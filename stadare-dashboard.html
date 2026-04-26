@@ -7566,7 +7566,43 @@ async function loadGanttData() {
     _ganttTeamEvents = []; _ganttTeamAvail = [];
   }
 
+  // F5 (2026-04-26): Hämta RUT-status för bookings i Gantt — för färgkant
+  try {
+    var bookingIds = _ganttTeamEvents
+      .filter(function(ev) { return ev.event_type === 'booking' && ev.booking_id; })
+      .map(function(ev) { return ev.booking_id; });
+    if (bookingIds.length > 0) {
+      var rutFilter = bookingIds.map(function(id) { return 'id.eq.' + id; }).join(',');
+      var rutRes = await fetch(SUPA_URL + '/rest/v1/v_rut_pending_queue?or=(' + rutFilter + ')&select=id,has_pnr,has_attest,safe_to_apply,exceeds_75k_limit,approaches_75k_limit,rut_application_status', { headers: _authHeadersLegacy() });
+      if (rutRes.ok) {
+        var rutData = await rutRes.json();
+        window._rutStatusByBookingId = {};
+        rutData.forEach(function(r) { window._rutStatusByBookingId[r.id] = r; });
+      }
+    }
+  } catch(e) {
+    console.warn('[SPICK] RUT-status fetch failed:', e);
+  }
+
   renderGantt();
+}
+
+// F5 (2026-04-26): Returnera färgkant-CSS för en booking baserat på RUT-status.
+// Grön = safe_to_apply, gul = väntar PNR, orange = väntar attest, röd = exceeds 75k.
+// Grå = inte RUT-relevant (icke-RUT-tjänst).
+function _ganttRutBorderColor(bookingId) {
+  if (!bookingId || !window._rutStatusByBookingId) return null;
+  var s = window._rutStatusByBookingId[bookingId];
+  if (!s) return null;
+  if (s.exceeds_75k_limit) return { color: '#DC2626', label: 'RUT-tak överskridet (>75k)' };
+  if (s.rut_application_status === 'submitted' || s.rut_application_status === 'approved') {
+    return { color: '#1D9E75', label: 'RUT-ansökt' };
+  }
+  if (s.safe_to_apply) return { color: '#0F6E56', label: 'RUT-OK (klart för ansökan)' };
+  if (!s.has_pnr) return { color: '#F59E0B', label: 'Väntar PNR-verifiering' };
+  if (!s.has_attest) return { color: '#FB923C', label: 'Väntar kund-godkännande' };
+  if (s.approaches_75k_limit) return { color: '#FBBF24', label: 'Närmar sig 75k-tak' };
+  return null;
 }
 
 // ── NAVIGATION & MODE ───────────────────────────────────────
@@ -7702,11 +7738,19 @@ function renderGanttDay(wrap) {
         : ev.event_type;
       var isDraggable = ev.event_type === 'booking' && ev.source === 'spick' && !!ev.booking_id;
 
+      // F5 RUT-status-färgkant (override default border-left-color om RUT-relevant)
+      var rutBorder = ev.event_type === 'booking' && typeof _ganttRutBorderColor === 'function'
+        ? _ganttRutBorderColor(ev.booking_id)
+        : null;
+      var rutStyle = rutBorder ? ';border-left-color:' + rutBorder.color + ';border-left-width:5px' : '';
+      var rutTitleAttr = rutBorder ? ' data-rut-status="' + escHtml(rutBorder.label) + '"' : '';
+
       html += '<div class="gantt-event ' + statusClass + '"' +
-        ' style="left:' + startPx + 'px;width:' + Math.max(widthPx, 30) + 'px"' +
+        ' style="left:' + startPx + 'px;width:' + Math.max(widthPx, 30) + 'px' + rutStyle + '"' +
         ' data-event-id="' + escHtml(ev.id) + '"' +
         ' data-booking-id="' + escHtml(ev.booking_id || '') + '"' +
         ' data-cleaner-id="' + escHtml(ev.cleaner_id) + '"' +
+        rutTitleAttr +
         (isDraggable ? ' onpointerdown="ganttDragStart(event,this)"' : ' onclick="openBD(\'' + escHtml(ev.booking_id || '') + '\',\'' + escHtml(ev.id) + '\')"') +
         ' onmouseenter="ganttShowTooltip(event,this)" onmouseleave="ganttHideTooltip()"' +
         '>';
@@ -8654,6 +8698,12 @@ function ganttShowTooltip(e, el) {
     html += '</div>';
   }
   if (ev.source && ev.source !== 'spick') html += '<div style="opacity:.6;margin-top:4px">Källa: ' + escHtml(ev.source) + '</div>';
+
+  // F5 (2026-04-26): Visa RUT-status i tooltip om relevant
+  var rutStatus = el.dataset.rutStatus;
+  if (rutStatus) {
+    html += '<div style="margin-top:4px;border-top:1px solid rgba(255,255,255,.2);padding-top:4px;font-size:.78rem">RUT: ' + escHtml(rutStatus) + '</div>';
+  }
 
   _ganttTooltipEl.innerHTML = html;
   _ganttTooltipEl.style.display = 'block';
