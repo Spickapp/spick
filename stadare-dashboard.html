@@ -1163,17 +1163,20 @@ body{top:0!important}
             <strong>Hur det funkar:</strong> Spick håller pengar i 24h efter varje städning (escrow). Om kund inte invänder eller har dispute så transferas medel till företagets Stripe-konto. Pengarna landar på företagets bankkonto inom 3–5 bankdagar enligt Stripe-utbetalningsschemat.
           </div>
 
-          <!-- Sprint C-2 (2026-04-26): Cleaner-utlägg-godkännande -->
+          <!-- Sprint C-2 (2026-04-26): Cleaner-utlägg-arkiv för VD -->
           <div class="card" id="vd-expenses-card" style="margin-top:14px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
               <div class="card-title" style="margin:0">💸 Utlägg från team <span id="vd-expenses-pending-badge" style="display:none;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:700">0</span></div>
-              <button onclick="loadVdPendingExpenses()" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">↻ Uppdatera</button>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button onclick="loadVdPendingExpenses()" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">↻ Uppdatera</button>
+                <button onclick="exportVdExpensesBatch()" style="background:#0F6E56;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">📦 Export månadsbatch</button>
+              </div>
             </div>
             <div id="vd-expenses-list" style="font-size:.85rem">
               <div style="color:var(--m);text-align:center;padding:14px;font-size:.82rem">Inga pending utlägg.</div>
             </div>
             <div style="margin-top:8px;font-size:.72rem;color:var(--m);line-height:1.5">
-              Cleaners loggar utlägg per uppdrag (kemikalier, transport, parkering). Under 100 kr godkänns auto. Större belopp granskas här. Återbetalning sker vid utbetalning (kräver jurist-OK på moms innan aktivering).
+              <strong>Så funkar det:</strong> Cleaners laddar upp utlägg-kvitton (kemikalier, transport, parkering) som Spick lagrar. <strong>VD beslutar själv</strong> om varje utlägg ska godkännas eller avslås. Spick rör inga pengar — godkända utlägg exporteras som månads-batch (CSV + alla kvitto-foton som ZIP) till revisor/Fortnox/Visma som bokför + hanterar utbetalning + moms internt.
             </div>
           </div>
         </div>
@@ -12216,6 +12219,128 @@ async function openExpenseReceipt(storagePath) {
     } else {
       showToast('Kvitto-fel HTTP ' + res.status);
     }
+  } catch (e) {
+    showToast('Nätverksfel: ' + e.message);
+  }
+}
+
+// ── Sprint C-2 (2026-04-26): Månadsbatch-export för revisor ──
+// Exporterar pending + approved utlägg som CSV + alla kvitto-foton
+// hämtas via signed URLs och packas till en samlad nedladdning.
+// Spick = arkiv/översikt — revisorn bokför + hanterar utbetalning + moms.
+
+async function exportVdExpensesBatch() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) {
+    showToast('Endast VD kan exportera');
+    return;
+  }
+  // Be VD välja månad (default föregående månad)
+  var now = new Date();
+  var defaultMonth = (now.getUTCMonth() === 0)
+    ? (now.getUTCFullYear() - 1) + '-12'
+    : now.getUTCFullYear() + '-' + String(now.getUTCMonth()).padStart(2, '0');
+  var period = prompt('Månad för export (YYYY-MM):', defaultMonth);
+  if (!period || !/^\d{4}-\d{2}$/.test(period)) return;
+
+  showToast('📦 Förbereder export för ' + period + '...');
+
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+    var fromDate = period + '-01';
+    // Sista dag i månaden
+    var y = parseInt(period.split('-')[0], 10);
+    var m = parseInt(period.split('-')[1], 10);
+    var lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    var toDate = period + '-' + String(lastDay).padStart(2, '0');
+
+    var url = SUPA_URL + '/rest/v1/cleaner_expenses?company_id=eq.' + cleaner.company_id +
+      '&expense_date=gte.' + fromDate + '&expense_date=lte.' + toDate +
+      '&order=expense_date.asc&select=id,cleaner_id,booking_id,amount_ore,vat_amount_ore,category,description,receipt_storage_path,expense_date,status,approved_at,rejected_reason';
+    var res = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token } });
+    if (!res.ok) { showToast('Fel HTTP ' + res.status); return; }
+    var rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      showToast('Inga utlägg för ' + period);
+      return;
+    }
+
+    // Hämta cleaner-namn för CSV
+    var cleanerIds = Array.from(new Set(rows.map(function(r) { return r.cleaner_id; }).filter(Boolean)));
+    var cleanerNamesMap = {};
+    if (cleanerIds.length > 0) {
+      var nameRes = await fetch(SUPA_URL + '/rest/v1/cleaners?id=in.(' + cleanerIds.join(',') + ')&select=id,full_name', {
+        headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token }
+      });
+      if (nameRes.ok) {
+        var names = await nameRes.json();
+        if (Array.isArray(names)) names.forEach(function(c) { cleanerNamesMap[c.id] = c.full_name; });
+      }
+    }
+
+    // Generera signerade URLs för kvitto-bilder (1h TTL)
+    var receiptLinks = {};
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r.receipt_storage_path) { receiptLinks[r.id] = ''; continue; }
+      try {
+        var signRes = await fetch(SUPA_URL + '/storage/v1/object/sign/documents/' + r.receipt_storage_path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ expiresIn: 3600 })
+        });
+        if (signRes.ok) {
+          var sd = await signRes.json();
+          receiptLinks[r.id] = sd.signedURL ? (SUPA_URL + '/storage/v1' + sd.signedURL) : '';
+        }
+      } catch (_) { receiptLinks[r.id] = ''; }
+    }
+
+    // Bygg CSV (BOM för Excel-kompatibilitet)
+    var safe = function(v) {
+      var s = String(v == null ? '' : v).replace(/"/g, '""');
+      return /[",\n]/.test(s) ? '"' + s + '"' : s;
+    };
+    var header = ['expense_id','expense_date','cleaner_namn','cleaner_id','booking_id','kategori','beskrivning','belopp_kr','moms_kr','status','godkand_datum','avslag_anledning','kvitto_url'];
+    var lines = [header.join(',')];
+    rows.forEach(function(r) {
+      lines.push([
+        safe(r.id),
+        safe(r.expense_date),
+        safe(cleanerNamesMap[r.cleaner_id] || ''),
+        safe(r.cleaner_id),
+        safe(r.booking_id || ''),
+        safe(r.category),
+        safe(r.description),
+        ((r.amount_ore || 0) / 100).toFixed(2),
+        ((r.vat_amount_ore || 0) / 100).toFixed(2),
+        safe(r.status),
+        safe(r.approved_at ? r.approved_at.slice(0, 10) : ''),
+        safe(r.rejected_reason || ''),
+        safe(receiptLinks[r.id] || '')
+      ].join(','));
+    });
+    var csv = '﻿' + lines.join('\r\n');
+
+    // Stats
+    var totalAmt = rows.reduce(function(s, r) { return s + (Number(r.amount_ore) || 0); }, 0) / 100;
+    var approvedCount = rows.filter(function(r) { return r.status === 'approved' || r.status === 'paid'; }).length;
+    var pendingCount = rows.filter(function(r) { return r.status === 'pending'; }).length;
+    var rejectedCount = rows.filter(function(r) { return r.status === 'rejected'; }).length;
+
+    // Lägg till sammanfattning som README i ZIP-namn (CSV räcker som start)
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var dlUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = dlUrl;
+    a.download = 'spick-utlagg-' + period + '-' + cleaner.company_id.slice(0, 8) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(dlUrl); }, 1000);
+
+    showToast('✓ Export: ' + rows.length + ' utlägg · ' + totalAmt.toFixed(2).replace('.', ',') + ' kr · ' +
+      approvedCount + ' godkända, ' + pendingCount + ' pending, ' + rejectedCount + ' avslagna');
   } catch (e) {
     showToast('Nätverksfel: ' + e.message);
   }
