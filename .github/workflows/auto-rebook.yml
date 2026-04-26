@@ -13,10 +13,11 @@ jobs:
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
           SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
-            -H "Authorization: Bearer $SUPA_KEY" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "apikey: $SUPA_KEY" \
             -H "Content-Type: application/json" \
             "$SUPA_URL/functions/v1/auto-rebook" \
