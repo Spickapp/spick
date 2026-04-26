@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PNR-verifiering — Spick Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--t:#1C1C1A;--m:#6B6960;--bg:#F7F7F5;--border:#E8E8E4;--w:#fff;--err:#DC2626;--warn:#D97706;--succ:#059669;--info:#2563eb;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2,h3{font-family:'Playfair Display',Georgia,serif;color:var(--b);line-height:1.2;font-weight:700}
+.page-header{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);color:var(--w);padding:2.5rem 1.5rem 1.5rem}
+.page-header-inner{max-width:1100px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:.25rem}
+.page-header .sub{opacity:.9;font-size:1rem}
+.container{max-width:1100px;margin:-1rem auto 4rem;padding:0 1.5rem;position:relative}
+.card{background:var(--w);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{text-align:left;padding:.6rem .75rem;border-bottom:2px solid var(--border);color:var(--m);font-weight:600;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;background:#F9F9F7}
+td{padding:.6rem .75rem;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+tr:hover td{background:#FAFAF8}
+.alert{padding:.9rem 1.1rem;border-radius:8px;font-size:.9rem;margin-bottom:1rem}
+.alert-error{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem}
+.tab-btn{background:#fff;border:1px solid var(--border);border-radius:99px;padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--t)}
+.tab-btn.active{background:var(--g);color:#fff;border-color:var(--g)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;white-space:nowrap}
+.pill-verified{background:#D1FAE5;color:#065F46}
+.pill-pending{background:#FEF3C7;color:#92400E}
+.pill-needs-review{background:#FED7AA;color:#9A3412}
+.pill-rut-lost{background:#FEE2E2;color:#991B1B}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px}
+.stat-label{font-size:.7rem;color:var(--m);text-transform:uppercase;font-weight:600}
+.stat-value{font-size:1.4rem;font-weight:700;margin-top:4px;font-family:'Playfair Display',serif}
+.btn-action{background:var(--g);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-action:hover{background:#0a5341}
+.btn-danger{background:#fff;color:var(--err);border:1px solid #FCA5A5}
+.btn-danger:hover{background:#FEE2E2}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>🔐 PNR-verifiering</h1>
+    <div class="sub" id="subHeader">Laddar…</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alertBox"></div>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" onclick="showTab('all')" data-tab="all">Alla</button>
+    <button class="tab-btn" onclick="showTab('needs_review')" data-tab="needs_review">⚠️ Behöver granskning</button>
+    <button class="tab-btn" onclick="showTab('pending')" data-tab="pending">⏳ Pending</button>
+    <button class="tab-btn" onclick="showTab('verified')" data-tab="verified">✅ Verifierade</button>
+    <button class="tab-btn" onclick="showTab('rut_lost')" data-tab="rut_lost">❌ RUT förlorat</button>
+    <button class="tab-btn" onclick="showTab('aggregate')" data-tab="aggregate">📊 Per cleaner</button>
+  </div>
+
+  <div id="content">
+    <div class="card empty">
+      <div class="spinner"></div>
+      <p style="margin-top:1rem">Laddar PNR-verifierings-data…</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase.min.js" defer></script>
+<script src="js/config.js"></script>
+<script>
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let SB; var _allRows = []; var _aggRows = []; var _activeTab = 'all';
+
+async function init() {
+  if (typeof SPICK === 'undefined' || !window.supabase) { setTimeout(init, 100); return; }
+  SB = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+  const { data: sess } = await SB.auth.getSession();
+  if (!sess?.session?.access_token) { showAlert('Du måste vara inloggad som admin. <a href="/mitt-konto.html">Logga in</a>'); return; }
+  const { data: isAdmin, error: adminErr } = await SB.rpc('is_admin');
+  if (adminErr || !isAdmin) { showAlert('Du har inte admin-rättigheter.'); return; }
+  await loadAll();
+}
+function showAlert(msg) {
+  document.getElementById('alertBox').innerHTML = '<div class="alert alert-error">' + msg + '</div>';
+  document.getElementById('content').innerHTML = '';
+}
+
+async function loadAll() {
+  const [allRes, aggRes] = await Promise.all([
+    SB.from('v_admin_pnr_verification').select('*').limit(500),
+    SB.from('v_admin_pnr_aggregate').select('*'),
+  ]);
+  _allRows = allRes.data || [];
+  _aggRows = aggRes.data || [];
+
+  const counts = { all: _allRows.length, needs_review: 0, pending: 0, verified: 0, rut_lost: 0 };
+  _allRows.forEach(r => { if (counts[r.admin_status] !== undefined) counts[r.admin_status]++; });
+
+  document.getElementById('subHeader').textContent =
+    _allRows.length + ' bookings · ' + counts.needs_review + ' behöver granskning · ' + counts.pending + ' pending';
+
+  // Stats
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Totalt</div><div class="stat-value">${_allRows.length}</div></div>
+    <div class="stat-card"><div class="stat-label">⚠️ Behöver granskning</div><div class="stat-value" style="color:#9A3412">${counts.needs_review}</div></div>
+    <div class="stat-card"><div class="stat-label">⏳ Pending</div><div class="stat-value" style="color:#92400E">${counts.pending}</div></div>
+    <div class="stat-card"><div class="stat-label">✅ Verifierade</div><div class="stat-value" style="color:#065F46">${counts.verified}</div></div>
+    <div class="stat-card"><div class="stat-label">❌ RUT förlorat</div><div class="stat-value" style="color:#991B1B">${counts.rut_lost}</div></div>
+  `;
+
+  renderTab(_activeTab);
+}
+
+function showTab(tab) {
+  _activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderTab(tab);
+}
+
+function renderTab(tab) {
+  if (tab === 'aggregate') return renderAggregate();
+  const rows = (tab === 'all') ? _allRows : _allRows.filter(r => r.admin_status === tab);
+  if (rows.length === 0) {
+    document.getElementById('content').innerHTML = '<div class="card empty"><p>Inga bookings i denna kategori.</p></div>';
+    return;
+  }
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2>${rows.length} booking(s)</h2>
+    <table>
+      <thead><tr><th>Status</th><th>Booking</th><th>Kund</th><th>Cleaner</th><th>Datum</th><th>Pris</th><th>Method</th><th>Reminders</th><th>Åtgärd</th></tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const pillCls = 'pill pill-' + r.admin_status.replace('_', '-');
+          const pillIcon = { verified: '✅', pending: '⏳', needs_review: '⚠️', rut_lost: '❌' }[r.admin_status] || '?';
+          const reminders = (r.customer_pnr_reminder_count || 0);
+          const lastReminder = r.customer_pnr_reminder_sent_at ? new Date(r.customer_pnr_reminder_sent_at).toISOString().slice(0, 10) : '–';
+          const action = r.admin_status === 'needs_review'
+            ? `<button class="btn-action" onclick="markVerifiedManual('${esc(r.booking_id)}')">✓ Granskad-OK</button> <button class="btn-action btn-danger" onclick="markUnverified('${esc(r.booking_id)}')">✗ Avvisa</button>`
+            : (r.admin_status === 'pending' ? `<button class="btn-action btn-danger" onclick="markUnverified('${esc(r.booking_id)}')">Timeout nu</button>` : '–');
+          return `<tr>
+            <td><span class="${pillCls}">${pillIcon} ${r.admin_status.replace('_', ' ')}</span></td>
+            <td><span style="font-family:monospace;font-size:.78rem">${esc((r.booking_id || '').slice(0, 8))}</span></td>
+            <td>${esc(r.customer_name || '–')}<br><span style="font-size:.72rem;color:var(--m)">${esc(r.customer_email || '')}</span></td>
+            <td>${esc(r.cleaner_name || '–')}${r.company_name ? `<br><span style="font-size:.72rem;color:var(--m)">${esc(r.company_name)}</span>` : ''}</td>
+            <td>${esc(r.booking_date || '–')}</td>
+            <td>${r.total_price || 0} kr</td>
+            <td><span style="font-size:.72rem;font-family:monospace">${esc(r.pnr_verification_method)}</span></td>
+            <td>${reminders}/3<br><span style="font-size:.7rem;color:var(--m)">${lastReminder}</span></td>
+            <td>${action}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('content').innerHTML = '';
+  document.getElementById('content').appendChild(card);
+}
+
+function renderAggregate() {
+  const rows = _aggRows;
+  if (rows.length === 0) {
+    document.getElementById('content').innerHTML = '<div class="card empty"><p>Ingen aggregerings-data ännu.</p></div>';
+    return;
+  }
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2>Aggregat per cleaner + method (senaste 30 dagar)</h2>
+    <p style="font-size:.85rem;color:var(--m);margin-bottom:.75rem">Cleaners med många manual_klartext = utbildning behövs (BankID är säkrare). Cleaners med bara bankid = bra praxis.</p>
+    <table>
+      <thead><tr><th>Cleaner</th><th>Företag</th><th>Method</th><th>Antal</th><th>Snittpris</th><th>Första</th><th>Senaste</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td><strong>${esc(r.cleaner_name)}</strong></td>
+          <td>${esc(r.company_name)}</td>
+          <td><span style="font-family:monospace;font-size:.78rem">${esc(r.pnr_verification_method)}</span></td>
+          <td>${r.booking_count}</td>
+          <td>${r.avg_price} kr</td>
+          <td>${esc((r.first_seen_at || '').slice(0, 10))}</td>
+          <td>${esc((r.last_seen_at || '').slice(0, 10))}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('content').innerHTML = '';
+  document.getElementById('content').appendChild(card);
+}
+
+async function markVerifiedManual(bookingId) {
+  if (!confirm('Markera som granskad-OK? Detta sätter pnr_verification_method=bankid + verified_at=nu (admin-override).')) return;
+  const { error } = await SB.from('bookings').update({
+    pnr_verification_method: 'bankid',
+    pnr_verified_at: new Date().toISOString()
+  }).eq('id', bookingId);
+  if (error) { alert('Fel: ' + error.message); return; }
+  alert('✓ Markerad som verifierad');
+  loadAll();
+}
+
+async function markUnverified(bookingId) {
+  if (!confirm('Markera som unverified? Bokningen kvarstår men RUT förloras vid SKV-rapportering.')) return;
+  const { error } = await SB.from('bookings').update({ pnr_verification_method: 'unverified' }).eq('id', bookingId);
+  if (error) { alert('Fel: ' + error.message); return; }
+  alert('Markerad som unverified');
+  loadAll();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
