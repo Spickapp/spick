@@ -1447,6 +1447,32 @@ body{top:0!important}
           </div>
           <div style="font-size:.72rem;color:#6B6960;margin-top:.375rem">Välj de tjänster du erbjuder. Kunder filtreras på detta.</div>
         </div>
+        <!-- Tier-frontend (2026-04-26): försäkrings-status + PDF-upload -->
+        <div id="prof-section-insurance" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee">
+          <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">🛡️ Försäkring & Tier</label>
+          <div id="insurance-tier-status" style="margin-bottom:10px"></div>
+          <div class="prof-field">
+            <label>Försäkringsbelopp (kr)</label>
+            <input type="number" id="edit-insurance-amount-kr" placeholder="5000000" min="1000000" max="50000000">
+          </div>
+          <div class="prof-field">
+            <label>Ren förmögenhetsskada (kr) — krävs för Verifierad+</label>
+            <input type="number" id="edit-insurance-property-damage-kr" placeholder="2000000" min="0" max="20000000">
+          </div>
+          <div class="prof-field">
+            <label>Försäkringen löper ut</label>
+            <input type="date" id="edit-insurance-expires-at">
+          </div>
+          <div class="prof-field">
+            <label>📄 Försäkringsbevis (PDF eller bild)</label>
+            <input type="file" id="edit-insurance-pdf" accept="image/*,application/pdf" style="font-size:.82rem">
+            <div id="insurance-pdf-status" style="font-size:.72rem;color:#6B6960;margin-top:4px"></div>
+          </div>
+          <div style="font-size:.72rem;color:#6B6960;line-height:1.5;background:#F0FDFA;padding:8px;border-radius:6px;margin-top:8px">
+            💡 <strong>Tier-modell:</strong> 5 MSEK = Provanställd (Spick täcker 5 MSEK extra). 10 MSEK + ren förmögenhet 2 MSEK = Verifierad efter 10 jobb + 4.5+ rating.
+          </div>
+        </div>
+
         <div id="prof-section-business" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee">
           <label style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;display:block">Affärsuppgifter (självfakturering)</label>
           <div style="font-size:.72rem;color:#6B6960;margin-bottom:.75rem">Fyll i för att få korrekta självfakturor som bokföringsunderlag.</div>
@@ -2390,6 +2416,22 @@ body{top:0!important}
     </div>
 
   <!-- VD-DISPUTE-DECIDE MODAL -->
+  <!-- Block-detalj-modal (2026-04-26): för utbildning/sjuk/ledig/note - med ta-bort -->
+  <div id="block-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeBlockDetail()">
+    <div style="background:#fff;border-radius:14px;padding:22px;max-width:440px;width:100%;margin:30px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="font-size:1.1rem;font-weight:700" id="bd-block-title">Blockering</h3>
+        <button onclick="closeBlockDetail()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">×</button>
+      </div>
+      <div id="bd-block-body" style="font-size:.9rem;line-height:1.6;color:#3f3d36"></div>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button onclick="closeBlockDetail()" style="flex:1;padding:12px;background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit">Stäng</button>
+        <button onclick="deleteBlockEvent()" style="flex:1;padding:12px;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit">🗑 Ta bort blockering</button>
+      </div>
+      <div id="bd-block-msg" style="font-size:.8rem;text-align:center;margin-top:10px;display:none"></div>
+    </div>
+  </div>
+
   <div id="vd-dispute-decide-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeVdDisputeModal()">
     <div style="background:#fff;border-radius:var(--radius-xl);padding:24px;max-width:440px;width:100%;margin:40px auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -3393,6 +3435,23 @@ async function loadCleanerByEmail(email, authUserId) {
   document.getElementById('edit-org-number').value = cleaner.org_number || '';
   document.getElementById('edit-business-address').value = cleaner.business_address || '';
   document.getElementById('edit-vat-registered').checked = !!cleaner.vat_registered;
+
+  // Tier-frontend (2026-04-26): ladda försäkrings-fält + render tier-status
+  var insAmtEl = document.getElementById('edit-insurance-amount-kr');
+  var insPropEl = document.getElementById('edit-insurance-property-damage-kr');
+  var insExpEl = document.getElementById('edit-insurance-expires-at');
+  var insPdfStatus = document.getElementById('insurance-pdf-status');
+  if (insAmtEl) insAmtEl.value = cleaner.insurance_amount_kr || '';
+  if (insPropEl) insPropEl.value = cleaner.insurance_property_damage_kr || '';
+  if (insExpEl) insExpEl.value = cleaner.insurance_expires_at || '';
+  if (insPdfStatus) {
+    if (cleaner.insurance_pdf_storage_path) {
+      insPdfStatus.innerHTML = '✓ Bevis uppladdat ' + (cleaner.insurance_verified_at ? '(verifierat ' + cleaner.insurance_verified_at.slice(0, 10) + ')' : '(väntar verifiering)');
+    } else {
+      insPdfStatus.textContent = 'Inget bevis uppladdat än.';
+    }
+  }
+  if (typeof renderInsuranceTierStatus === 'function') renderInsuranceTierStatus();
   // §7.4: ladda språk-chips från cleaner.languages (TEXT[])
   _profSelectedLangs = Array.isArray(cleaner.languages)
     ? cleaner.languages.slice()
@@ -8117,7 +8176,10 @@ function renderGanttDay(wrap) {
         ' data-booking-id="' + escHtml(ev.booking_id || '') + '"' +
         ' data-cleaner-id="' + escHtml(ev.cleaner_id) + '"' +
         rutTitleAttr +
-        (isDraggable ? ' onpointerdown="ganttDragStart(event,this)"' : ' onclick="openBD(\'' + escHtml(ev.booking_id || '') + '\',\'' + escHtml(ev.id) + '\')"') +
+        (isDraggable ? ' onpointerdown="ganttDragStart(event,this)"' :
+          (ev.event_type === 'blocked' || ev.event_type === 'note'
+            ? ' onclick="openBlockDetail(\'' + escHtml(ev.id) + '\')"'
+            : ' onclick="openBD(\'' + escHtml(ev.booking_id || '') + '\',\'' + escHtml(ev.id) + '\')"')) +
         ' onmouseenter="ganttShowTooltip(event,this)" onmouseleave="ganttHideTooltip()"' +
         '>';
       html += '<div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
@@ -8681,6 +8743,96 @@ async function _ganttResizeEnd(_e) {
 // ── BOKNINGSDETALJ-PANEL ─────────────────────────────────────
 
 var _bdBookingId = null;
+
+// ── Block-detalj-modal (2026-04-26) ──
+// För calendar_events med event_type='blocked' eller 'note'
+// (sjuk, ledig, utbildning, möte, privat, anteckning)
+
+var _bdBlockEventId = null;
+
+function openBlockDetail(eventId) {
+  var ev = (window._ganttTeamEvents || []).find(function(e) { return e.id === eventId; });
+  if (!ev) { showToast('Kunde inte hitta blockering'); return; }
+  _bdBlockEventId = eventId;
+
+  var titleEl = document.getElementById('bd-block-title');
+  var bodyEl = document.getElementById('bd-block-body');
+  var modal = document.getElementById('block-detail-modal');
+  if (!titleEl || !bodyEl || !modal) return;
+
+  // Cleaner-namn lookup
+  var member = (window._teamMembers || []).find(function(m) { return m.id === ev.cleaner_id; });
+  var cleanerName = member ? (member.first_name || member.full_name || 'Okänd') : 'Okänd';
+
+  // Status-pill
+  var typeIcons = { 'blocked': '⛔', 'note': '✏️' };
+  var titleIcons = { 'Sjuk': '🤒', 'Ledig': '❤️', 'Privat': '🚫', 'Utbildning': '🎓', 'Möte': '💼', 'Anteckning': '✏️' };
+  var icon = titleIcons[ev.title] || typeIcons[ev.event_type] || '⛔';
+  titleEl.textContent = icon + ' ' + (ev.title || 'Blockering');
+
+  // Tid + duration
+  var startDate = new Date(ev.start_at);
+  var endDate = new Date(ev.end_at);
+  var durHours = (endDate - startDate) / 3600000;
+  var dateStr = startDate.toISOString().slice(0, 10);
+  var timeStr = ev.is_all_day
+    ? 'Hela dagen'
+    : startDate.toTimeString().slice(0, 5) + '–' + endDate.toTimeString().slice(0, 5) + ' (' + durHours.toFixed(1) + 'h)';
+
+  bodyEl.innerHTML =
+    '<div style="margin-bottom:8px"><strong>Cleaner:</strong> ' + escHtml(cleanerName) + '</div>' +
+    '<div style="margin-bottom:8px"><strong>Datum:</strong> ' + escHtml(dateStr) + '</div>' +
+    '<div style="margin-bottom:8px"><strong>Tid:</strong> ' + escHtml(timeStr) + '</div>' +
+    '<div style="margin-bottom:8px"><strong>Typ:</strong> ' + escHtml(ev.title || ev.event_type) + '</div>' +
+    (ev.description ? '<div style="margin-top:10px;padding:10px;background:#F7F7F5;border-radius:8px;font-style:italic">' + escHtml(ev.description) + '</div>' : '');
+
+  document.getElementById('bd-block-msg').style.display = 'none';
+  modal.style.display = 'flex';
+}
+
+function closeBlockDetail() {
+  var modal = document.getElementById('block-detail-modal');
+  if (modal) modal.style.display = 'none';
+  _bdBlockEventId = null;
+}
+
+async function deleteBlockEvent() {
+  if (!_bdBlockEventId) return;
+  if (!confirm('Ta bort denna blockering? Cleaner blir tillgänglig för bokningar igen.')) return;
+
+  var msgEl = document.getElementById('bd-block-msg');
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+    var res = await fetch(SUPA_URL + '/rest/v1/calendar_events?id=eq.' + _bdBlockEventId, {
+      method: 'DELETE',
+      headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' }
+    });
+    if (res.ok) {
+      if (msgEl) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#0F6E56';
+        msgEl.textContent = '✓ Blockering borttagen';
+      }
+      setTimeout(function() {
+        closeBlockDetail();
+        loadGanttData();
+      }, 1000);
+    } else {
+      if (msgEl) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#B91C1C';
+        msgEl.textContent = 'Kunde inte ta bort (HTTP ' + res.status + ')';
+      }
+    }
+  } catch (e) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#B91C1C';
+      msgEl.textContent = 'Nätverksfel: ' + e.message;
+    }
+  }
+}
 
 function openBD(bookingId, eventId) {
   _bdBookingId = bookingId;
