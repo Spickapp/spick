@@ -10959,10 +10959,28 @@ function renderCompanyPrices(prices) {
   console.log('renderCompanyPrices, wrap found:', !!wrap, 'cleaner.services:', cleaner ? cleaner.services : 'no cleaner');
   if (!wrap) return;
 
-  // Get company services from owner's profile
+  // Bug-fix 2026-04-26 (Zivar-feedback): VD ska se ALLA tj\u00e4nster f\u00f6r att kunna
+  // s\u00e4tta enhetspriser f\u00f6r team \u2014 inte bara sina personliga tj\u00e4nster. Aggregera
+  // fr\u00e5n team-medlemmars services + fallback till alla supported services.
   var ownerSvcs = (cleaner && Array.isArray(cleaner.services)) ? cleaner.services : [];
-  var allSvcs = ['Hemst\u00e4dning','Storst\u00e4dning','Flyttst\u00e4dning','F\u00f6nsterputs','Kontorsst\u00e4dning','Trappst\u00e4dning','Skolst\u00e4dning','V\u00e5rdst\u00e4dning','Hotell & restaurang'];
-  var svcs = ownerSvcs.length ? ownerSvcs : allSvcs;
+  var teamSvcSet = new Set(ownerSvcs);
+  if (Array.isArray(window._teamCleaners)) {
+    window._teamCleaners.forEach(function(tm) {
+      if (Array.isArray(tm.services)) tm.services.forEach(function(s) { if (s) teamSvcSet.add(s); });
+    });
+  }
+  // Fallback till services-loader om inget team-data laddat \u00e4n, annars hardcoded master-list
+  var allSvcs = (window.SPICK_ALL_SERVICES && window.SPICK_ALL_SERVICES.length)
+    ? window.SPICK_ALL_SERVICES.map(function(s) { return s.name || s; })
+    : ['Hemst\u00e4dning','Storst\u00e4dning','Flyttst\u00e4dning','F\u00f6nsterputs','Mattreng\u00f6ring','Kontorsst\u00e4dning','Trappst\u00e4dning','Skolst\u00e4dning','V\u00e5rdst\u00e4dning','Hotell & restaurang'];
+  // VD eller fler team-services: visa unionen team+all. Solo: bara egna.
+  var svcs;
+  if (cleaner && cleaner.is_company_owner) {
+    // VD ser alla supported services s\u00e5 att enhetspriser kan s\u00e4ttas brett
+    svcs = allSvcs;
+  } else {
+    svcs = ownerSvcs.length ? ownerSvcs : allSvcs;
+  }
   
   var priceMap = {};
   prices.forEach(function(p) { priceMap[p.service_type] = p; });
