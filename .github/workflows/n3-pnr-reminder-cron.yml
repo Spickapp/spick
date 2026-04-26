@@ -1,0 +1,22 @@
+name: N3 PNR Reminder Cron (var 6:e timme)
+
+on:
+  schedule:
+    # Var 6:e timme: 02:00, 08:00, 14:00, 20:00 UTC = 04/10/16/22 CET
+    - cron: '0 2,8,14,20 * * *'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger n3-pnr-reminder-cron EF
+        run: |
+          curl -sS -X POST \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "https://urjeijcncsyuletprydy.supabase.co/functions/v1/n3-pnr-reminder-cron" \
+            | tee response.txt
+          # Verifiera ok=true i svaret
+          grep -q '"ok":true' response.txt || (echo "❌ EF returnerade fel"; cat response.txt; exit 1)
+          echo "✅ N3 reminder-cron körd OK"
