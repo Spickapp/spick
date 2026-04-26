@@ -32,10 +32,17 @@
  * Om Farhad senare får direktåtkomst till Skatteverkets API: byt UPSTREAM-konstanten.
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
 
 const UPSTREAM_BASE = "https://data.foretagsapi.se/v1";
 const API_KEY = Deno.env.get("FORETAGSAPI_KEY") ?? "";
+
+// Audit-fix P1 (2026-04-26): cache-client för fskatt_verification_cache.
+// Service-role-anrop, RLS skipas — bara denna EF får läsa/skriva cachen.
+const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const cacheClient = SERVICE_KEY ? createClient(SUPA_URL, SERVICE_KEY) : null;
 
 // SNI-koder som räknas som "städ-bransch" (used by auto-approve-check)
 // 81.210 = Allmän rengöring av byggnader (=hemstädning, kontorsstädning)
@@ -171,17 +178,69 @@ serve(async (req) => {
     }
 
     let result: VerifyResult;
-    if (!API_KEY) {
-      console.warn("verify-fskatt: FORETAGSAPI_KEY ej satt → fallback (manuell review)");
-      result = fallbackResponse("api_key_not_configured");
+
+    // Audit-fix P1 (2026-04-26): cache-check INNAN upstream-call. TTL 24h
+    // i fskatt_verification_cache. Reducerar ~600 anrop/mån → ~30/mån.
+    let cacheHit = false;
+    if (cacheClient) {
+      const { data: cached } = await cacheClient
+        .from("fskatt_verification_cache")
+        .select("*")
+        .eq("org_number", orgNr)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (cached) {
+        cacheHit = true;
+        result = {
+          valid: true,
+          has_fskatt: cached.has_fskatt,
+          sni_codes: cached.sni_codes || [],
+          company_name: cached.company_name,
+          status: cached.status,
+          api_used: (cached.api_used as VerifyResult["api_used"]) || "foretagsapi.se",
+        };
+      } else {
+        // Cache-miss → API-call
+        if (!API_KEY) {
+          console.warn("verify-fskatt: FORETAGSAPI_KEY ej satt → fallback (manuell review)");
+          result = fallbackResponse("api_key_not_configured");
+        } else {
+          try {
+            result = await callFoeretagsAPI(orgNr);
+            // Cache success-response (även has_fskatt=false är giltigt resultat)
+            if (result.api_used === "foretagsapi.se") {
+              await cacheClient.from("fskatt_verification_cache").upsert({
+                org_number: orgNr,
+                has_fskatt: result.has_fskatt,
+                sni_codes: result.sni_codes,
+                company_name: result.company_name,
+                status: result.status,
+                api_used: result.api_used,
+                verified_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+              }, { onConflict: "org_number" });
+            }
+          } catch (err) {
+            console.error("verify-fskatt upstream-exception", { orgNr, err: (err as Error).message });
+            result = fallbackResponse("upstream_exception");
+          }
+        }
+      }
     } else {
-      try {
-        result = await callFoeretagsAPI(orgNr);
-      } catch (err) {
-        console.error("verify-fskatt upstream-exception", { orgNr, err: (err as Error).message });
-        result = fallbackResponse("upstream_exception");
+      // Ingen service-key → kör utan cache (degraderad)
+      if (!API_KEY) {
+        result = fallbackResponse("api_key_not_configured");
+      } else {
+        try {
+          result = await callFoeretagsAPI(orgNr);
+        } catch (err) {
+          console.error("verify-fskatt upstream-exception", { orgNr, err: (err as Error).message });
+          result = fallbackResponse("upstream_exception");
+        }
       }
     }
+
+    if (cacheHit) console.log(`verify-fskatt cache-hit for orgnr=${orgNr.slice(0, 4)}...`);
 
     return new Response(JSON.stringify(result), {
       status: 200,
