@@ -776,21 +776,30 @@ async function loadProfile() {
   var canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = 'https://spick.se/s/' + (c.slug || c.id);
 
-  // Sprint Prof-5: Enhanced JSON-LD med aggregateRating, review, areaServed-City,
-  // hasOfferCatalog. Ger Google rich-results-chans (stjärnor, priser i SERP).
+  // Sprint Prof-5 + Sprint B2 (2026-04-26): Enhanced JSON-LD med aggregateRating,
+  // review, areaServed-City, hasOfferCatalog. Lägger till @id (stable identifier),
+  // CleaningService-makesOffer + Person-providedBy för bättre rich-results.
+  // Ger Google rich-results-chans (stjärnor, priser i SERP).
+  var _canonicalUrl = "https://spick.se/s/" + (c.slug || c.id);
+  var _ogImageUrl = c.avatar_url || ("https://spick.se/functions/v1/og-image?type=cleaner&id=" + encodeURIComponent(c.id));
   var ld = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": ["LocalBusiness", "CleaningService"],
+    "@id": _canonicalUrl + "#cleaner-" + c.id,
     "name": c.full_name + " — Städare via Spick",
     "description": "Professionell städning i " + (c.city || "Stockholm") + ". ID-verifierad.",
-    "url": "https://spick.se/s/" + (c.slug || c.id),
+    "url": _canonicalUrl,
     "telephone": "+46760505153",
     "priceRange": rate + " kr/h (" + rutPrice + " kr/h med RUT)",
-    "image": c.avatar_url || "https://spick.se/assets/og-image.png",
+    "image": _ogImageUrl,
+    "provider": { "@type": "Person", "name": c.full_name || "Städare" },
     "parentOrganization": { "@type": "Organization", "name": "Spick", "url": "https://spick.se" },
     "address": { "@type": "PostalAddress", "addressLocality": c.city || "Stockholm", "addressCountry": "SE" },
     "areaServed": { "@type": "City", "name": c.city || "Stockholm" }
   };
+  // Sprint B2: Uppdatera <meta og:image> till EF-genererad bild (eller avatar fallback)
+  var _ogImgMeta = document.querySelector('meta[property="og:image"]');
+  if (_ogImgMeta) _ogImgMeta.content = _ogImageUrl;
   if (c.home_lat && c.home_lng) {
     ld.geo = { "@type": "GeoCoordinates", "latitude": String(c.home_lat), "longitude": String(c.home_lng) };
   }

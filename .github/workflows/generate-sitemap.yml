@@ -21,6 +21,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generera sitemap.xml
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           DATE=$(date +%Y-%m-%d)
           echo '<?xml version="1.0" encoding="UTF-8"?>' > sitemap.xml
@@ -64,6 +67,33 @@ jobs:
           done
           # Bloggindex
           echo "  <url><loc>https://spick.se/blogg/</loc><lastmod>$DATE</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>" >> sitemap.xml
+
+          # ── Sprint B4 (2026-04-26): Profil-URLs ──
+          # Hämtar aktiva städare + företag från Supabase via REST + ANON_KEY
+          # (publik info, ingen RLS-bypass behövs). VD-profiler (is_company_owner)
+          # exkluderas — VD-canonical pekar ändå till /f/<slug> (Sprint Prof-5).
+          # Teammedlemmar (company_id NOT NULL && is_company_owner=false) inkluderas
+          # eftersom de har egna /s/<slug>-profiler.
+          if [ -n "$SUPA_ANON_KEY" ]; then
+            echo "  <!-- Profil-URLs (cleaner /s/) -->" >> sitemap.xml
+            # Filtrera ut VD-profiler (is_company_owner=true) — de redirectar
+            # till /f/<slug> och dubbelindexering ger SEO-straff (Sprint Prof-5).
+            curl -sS "${SUPA_URL}/rest/v1/v_cleaners_public?select=slug,is_company_owner&is_approved=eq.true&status=eq.aktiv&slug=not.is.null" \
+              -H "apikey: $SUPA_ANON_KEY" \
+              -H "Authorization: Bearer $SUPA_ANON_KEY" \
+              | jq -r --arg date "$DATE" '.[] | select(.is_company_owner != true and .slug != null) | "  <url><loc>https://spick.se/s/\(.slug)</loc><lastmod>\($date)</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>"' \
+              >> sitemap.xml || echo "  <!-- WARN: cleaner-profile-fetch failed -->" >> sitemap.xml
+
+            echo "  <!-- Foretag-URLs (/f/) -->" >> sitemap.xml
+            curl -sS "${SUPA_URL}/rest/v1/companies?select=slug&slug=not.is.null" \
+              -H "apikey: $SUPA_ANON_KEY" \
+              -H "Authorization: Bearer $SUPA_ANON_KEY" \
+              | jq -r --arg date "$DATE" '.[] | select(.slug != null) | "  <url><loc>https://spick.se/f/\(.slug)</loc><lastmod>\($date)</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>"' \
+              >> sitemap.xml || echo "  <!-- WARN: company-fetch failed -->" >> sitemap.xml
+          else
+            echo "  <!-- SKIP: SUPABASE_ANON_KEY saknas - profil-URLs ej genererade -->" >> sitemap.xml
+          fi
+
           echo '</urlset>' >> sitemap.xml
           echo "✅ Sitemap: $(grep -c '<url>' sitemap.xml) sidor"
 

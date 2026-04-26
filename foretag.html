@@ -852,22 +852,29 @@ async function init() {
     var metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.content = displayName + ' — Professionell städning med verifierade städare. Boka via Spick med säker betalning och RUT-avdrag.';
 
-    // ── SEO: JSON-LD (Prof-5 enhanced) ──
+    // ── SEO: JSON-LD (Prof-5 + Sprint B2 enhanced) ──
     // Rich-result-kandidat: aggregateRating, review[] med author, geo, areaServed,
-    // hasOfferCatalog för tjänster. Google kan visa stjärnor + pris i SERP.
+    // hasOfferCatalog för tjänster. Lägger till stable @id + CleaningService-typ +
+    // OG-image-EF-pekare för dynamisk preview-bild i SERP/sociala medier.
     var primaryCity = cities[0] || 'Stockholm';
+    var _foretagCanonical = 'https://spick.se/f/' + (co.slug || co.id);
+    var _foretagOgImage = co.hero_bg_url || co.logo_url || ('https://spick.se/functions/v1/og-image?type=company&id=' + encodeURIComponent(co.id));
     var jsonLd = {
       '@context': 'https://schema.org',
-      '@type': 'LocalBusiness',
+      '@type': ['LocalBusiness', 'CleaningService'],
+      '@id': _foretagCanonical + '#company-' + co.id,
       'name': co.name,
       'description': co.description || 'Professionell städning',
-      'url': 'https://spick.se/f/' + (co.slug || co.id),
+      'url': _foretagCanonical,
       'telephone': '+46760505153',
       'address': { '@type': 'PostalAddress', 'addressLocality': primaryCity, 'addressCountry': 'SE' },
       'priceRange': '$$',
-      'image': 'https://spick.se/images/spick-og.png',
+      'image': _foretagOgImage,
       'parentOrganization': { '@type': 'Organization', 'name': 'Spick', 'url': 'https://spick.se' }
     };
+    // Sprint B2: Uppdatera <meta og:image> till EF-genererad bild dynamiskt
+    var _foretagOgMeta = document.querySelector('meta[property="og:image"]');
+    if (_foretagOgMeta) _foretagOgMeta.content = _foretagOgImage;
     // Prof-5: areaServed som array (flera städer) eller City (en)
     if (cities.length > 1) {
       jsonLd.areaServed = cities.map(function(cty) { return { '@type': 'City', 'name': cty }; });
