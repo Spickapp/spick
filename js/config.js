@@ -11,9 +11,9 @@ const SPICK = Object.freeze({
   VERSION:   '3.0.0',
   GOOGLE_PLACES_KEY: 'AIzaSyCScYORJPxXCyp0J-Wmr84HtiZc9FteVrs',
   // Fas 10 Sentry frontend — DSN är public per Sentry's design.
-  // Sätt till null för att stänga av; hämtas annars lazy från CDN vid första error.
-  // Aktivering: skapa Sentry-projekt → kopiera DSN → byt null mot strängen.
-  SENTRY_DSN: null,
+  // Aktiverat 2026-04-26 av Farhad. EU-region (.de.sentry.io) per GDPR.
+  // Lazy-load Sentry browser SDK från CDN vid första error/spickCaptureException.
+  SENTRY_DSN: 'https://c59290e72560cf7d14bea89e86a603bf@o4511287877828608.ingest.de.sentry.io/4511287893229648',
   SENTRY_ENVIRONMENT: 'production',
   SENTRY_RELEASE: 'spick-web-2026-04-26',
 });
