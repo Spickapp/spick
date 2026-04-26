@@ -306,17 +306,61 @@ function renderStatusBtns() {
   }).join('');
 }
 
+// Retry-helper för network-resilient fetch (Sprint S2 — fält-UX)
+async function _retryFetch(url, opts, attempts) {
+  attempts = attempts || 3;
+  var lastErr = null;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var res = await fetch(url, opts);
+      if (res.ok || (res.status >= 400 && res.status < 500)) return res;
+      lastErr = new Error('HTTP ' + res.status);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < attempts - 1) {
+      var delay = Math.pow(2, i) * 1000;
+      await new Promise(function(r) { setTimeout(r, delay); });
+    }
+  }
+  throw lastErr || new Error('fetch_failed');
+}
+
 async function updateStatus(status) {
-  await fetch(`${SUPA_URL}/rest/v1/booking_status_log`, {
-    method: 'POST',
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      booking_id: BOOKING_ID,
-      cleaner_email: MY_EMAIL,
-      status,
-      created_at: new Date().toISOString()
-    })
-  });
+  // Sprint S1 — confirm-modal innan irreversibla checkout-actions
+  if (status === 'done') {
+    var confirmDone = window.confirm(
+      'Är du säker på att du är klar med städningen?\n\n' +
+      'Detta skickar en bekräftelse till kunden och avslutar uppdraget.\n\n' +
+      'Tryck OK om du verkligen är klar — annars Avbryt.'
+    );
+    if (!confirmDone) return;
+  }
+  if (status === 'arrived' && _gpsAttempts >= 1) {
+    // 2:a/3:e GPS-försök → varna att check-in sker utan GPS
+    var confirmGps = window.confirm(
+      'GPS-position kunde inte hämtas.\n\n' +
+      'Du kan checka in utan GPS, men detta loggas. Tillåt plats i webbläsaren och tryck Avbryt om du vill försöka igen.'
+    );
+    if (!confirmGps) return;
+  }
+
+  try {
+    await _retryFetch(`${SUPA_URL}/rest/v1/booking_status_log`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        booking_id: BOOKING_ID,
+        cleaner_email: MY_EMAIL,
+        status: status,
+        created_at: new Date().toISOString()
+      })
+    }, 3);
+  } catch (e) {
+    var sd = document.getElementById('currentStatusDesc');
+    if (sd) sd.textContent = '⚠️ Status ej synkad — försök igen om en stund';
+    return;
+  }
 
   // Mappa statusvärden så min-bokning.html förstår dem
   var dbStatus = status;
@@ -381,12 +425,18 @@ async function updateStatus(status) {
     }
   }
 
-  // Uppdatera bokning
-  await fetch(`${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}`, {
-    method: 'PATCH',
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify(patchData)
-  });
+  // Uppdatera bokning (Sprint S2 — retry-wrap)
+  try {
+    await _retryFetch(`${SUPA_URL}/rest/v1/bookings?id=eq.${BOOKING_ID}`, {
+      method: 'PATCH',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(patchData)
+    }, 3);
+  } catch (e) {
+    var sd2 = document.getElementById('currentStatusDesc');
+    if (sd2) sd2.textContent = '⚠️ Status ej synkad — försök igen om en stund';
+    return;
+  }
 
   completedStatuses.push(status);
   logActivity('job_status_' + status, { booking_id: BOOKING_ID, db_status: dbStatus });
