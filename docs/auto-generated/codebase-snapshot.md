@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (98 st)
+## Edge Functions (100 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -98,10 +98,12 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `services-list` | services-list: Public read of services + addons F1 Dag 1 - arkitekturplan v3 |
 | `setup-subscription` | supabase/functions/setup-subscription/index.ts SPICK: Subscription Setup |
 | `sms` |  |
+| `sms-delivery-test` | ═══════════════════════════════════════════════════════════════ SPICK – sms-delivery-test (manuellt-triggad weekly healt |
 | `stripe-connect` |  |
 | `stripe-connect-webhook` | ═══════════════════════════════════════════════════════════════ SPICK – stripe-connect-webhook (Sprint B Dag 1) |
 | `stripe-refund` |  |
 | `stripe-webhook` |  |
+| `synthetic-monitor` | ═══════════════════════════════════════════════════════════════ SPICK – synthetic-monitor (Fas 10 §10.x extension 2026-0 |
 | `team-sms-notify` |  |
 | `vd-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-decide (Fas 9 §9.2 — VD dispute-tier- |
 | `vd-dispute-list` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-list (Fas 9 §9.2 — VD dispute-tab lis |
@@ -144,7 +146,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (41 st)
+## GitHub Actions workflows (44 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -174,13 +176,16 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/monthly-invoices.yml`
 - `.github/workflows/n3-pnr-reminder-cron.yml`
 - `.github/workflows/playwright-smoke.yml`
+- `.github/workflows/playwright-stripe-e2e.yml`
 - `.github/workflows/preference-learn-favorite.yml`
 - `.github/workflows/rating-reminder.yml`
 - `.github/workflows/run-migrations.yml`
 - `.github/workflows/schema-drift-check.yml`
 - `.github/workflows/security-scan.yml`
 - `.github/workflows/set-secrets.yml`
+- `.github/workflows/sms-delivery-weekly.yml`
 - `.github/workflows/ssl-monitor.yml`
+- `.github/workflows/synthetic-monitor.yml`
 - `.github/workflows/team-sms.yml`
 - `.github/workflows/test-money.yml`
 - `.github/workflows/ui-monitor.yml`
@@ -188,7 +193,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (166 st)
+## Migrations (167 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
