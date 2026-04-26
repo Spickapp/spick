@@ -108,7 +108,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `vd-payment-summary` | ═══════════════════════════════════════════════════════════════ SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26) |
 | `verify-fskatt` |  |
 
-## Shared EF helpers (30 st)
+## Shared EF helpers (31 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -132,6 +132,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/preferences.ts` | supabase/functions/_shared/preferences.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/pricing-engine.ts` |  |
 | `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/retry-backoff.ts` | ═══════════════════════════════════════════════════════════════ SPICK: Retry-helper för optimistic-lock retry |
 | `_shared/rut-xml-builder.ts` |  |
 | `_shared/send-magic-sms.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Magic-link hjälpare för publika auth-flows (Fas  |
 | `_shared/sentry.ts` | ═══════════════════════════════════════════════════════════════ SPICK — Sentry-wrapper för Edge Functions (Fas 10 Observ |
@@ -187,7 +188,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (163 st)
+## Migrations (166 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
