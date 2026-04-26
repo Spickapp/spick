@@ -114,7 +114,9 @@
 
       // Audit-fix 2026-04-26: services-list EF flakar 40% 503 (cold-start/
       // transient). Defensive: sessionStorage-cache (5 min TTL) + retry 2x.
-      const _CACHE_KEY = 'spick_services_cache_v1';
+      // Bump v1→v2 (2026-04-26): tvingar cache-invalidation hos alla browsers
+      // efter ugnsrengoring rut_eligible=true-bug där gammal cache visade "ej RUT".
+      const _CACHE_KEY = 'spick_services_cache_v2';
       const _CACHE_TTL_MS = 5 * 60 * 1000;
       let data = null;
       try {
