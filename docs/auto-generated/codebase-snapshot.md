@@ -5,16 +5,18 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (90 st)
+## Edge Functions (97 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
 | `admin-approve-cleaner` |  |
 | `admin-approve-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-approve-company (Sprint B Dag 5) |
+| `admin-cancel-booking` | ═══════════════════════════════════════════════════════════════ SPICK – admin-cancel-booking (Audit-fix P2-1, 2026-04-26 |
 | `admin-create-company` |  |
 | `admin-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – admin-dispute-decide (Fas 8 §8.14 wrapper) |
 | `admin-mark-payouts-paid` | Fas 1.10.2: Admin-trigger av payout-flode (ersatter direkt DB-PATCH) Primarkalla: docs/planning/spick-arkitekturplan-v3. |
 | `admin-morning-report` |  |
+| `admin-pnr-update` | ═══════════════════════════════════════════════════════════════ SPICK – admin-pnr-update (Audit-fix P2-2, 2026-04-26) |
 | `admin-reject-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-reject-company (Sprint B Dag 5) |
 | `analyze-booking-pattern` | analyze-booking-pattern — Fas 5 §5.8 ═══════════════════════════════════════════════════════════════ |
 | `auto-approve-check` |  |
@@ -24,6 +26,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `bankid` |  |
 | `bankid-verify` |  |
 | `bankid-webhook` |  |
+| `blog-auto-publish-cron` | ═══════════════════════════════════════════════════════════════ SPICK – blog-auto-publish-cron (Sprint 6, 2026-04-26) |
+| `blog-generate` | ═══════════════════════════════════════════════════════════════ SPICK – blog-generate (Sprint 6 Content-Engine, 2026-04- |
 | `booking-auto-timeout` |  |
 | `booking-cancel-v2` |  |
 | `booking-create` | supabase/functions/booking-create/index.ts SPICK: Booking Create — med inbyggd prismotor + marginalcheck |
@@ -36,6 +40,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `check-terms-acceptance` | ═══════════════════════════════════════════════════════════════ SPICK – check-terms-acceptance (Item 1 Etapp 3) |
 | `claude` |  |
 | `cleaner-addon-price-set` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-addon-price-set (Fas 4 §4.8c) |
+| `cleaner-application-submit` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-application-submit (Audit-fix P2-3, 2026 |
 | `cleaner-booking-response` |  |
 | `cleaner-job-completed` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-job-completed (Fas 8 §8.2 wiring) |
 | `cleaner-optout` |  |
@@ -78,6 +83,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `public-auth-exchange` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-exchange (Fas 1.2) |
 | `public-auth-link` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-link (Fas 1.2) |
 | `push` | SPICK – Push Notifications med VAPID |
+| `rating-reminder-cron` |  |
 | `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
 | `refund-booking` | ═══════════════════════════════════════════════════════════════ SPICK – refund-booking (Fas 8 §8.11) |
 | `register-bankid-init` | ═══════════════════════════════════════════════════════════════ SPICK – register-bankid-init (Item 1 Etapp 2) |
@@ -86,6 +92,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `rut-bankid-status` | ═══════════════════════════════════════════════════════════════ SPICK – rut-bankid-status (Fas 7.5 §RUT.2 — TIC poll + S |
 | `rut-batch-export-xml` | rut-batch-export-xml — Fas 7.5 §7.5.x ═══════════════════════════════════════════════════════════════ |
 | `save-booking-event` | ═══════════════════════════════════════════════════════════════ SPICK – save-booking-event (Fas 6.3 + §6.5 beslut 2026-0 |
+| `seo-page-stad-tjanst` | ═══════════════════════════════════════════════════════════════ SPICK – seo-page-stad-tjanst (Sprint 4A, 2026-04-26) |
 | `serve-invoice` |  |
 | `services-list` | services-list: Public read of services + addons F1 Dag 1 - arkitekturplan v3 |
 | `setup-subscription` | supabase/functions/setup-subscription/index.ts SPICK: Subscription Setup |
@@ -135,7 +142,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (38 st)
+## GitHub Actions workflows (40 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -143,6 +150,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/auto-remind.yml`
 - `.github/workflows/backup-verify-monthly.yml`
 - `.github/workflows/backup.yml`
+- `.github/workflows/blog-auto-publish.yml`
 - `.github/workflows/bulk-schedule-week.yml`
 - `.github/workflows/charge-subscription.yml`
 - `.github/workflows/claude.yml`
@@ -164,6 +172,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/n3-pnr-reminder-cron.yml`
 - `.github/workflows/playwright-smoke.yml`
 - `.github/workflows/preference-learn-favorite.yml`
+- `.github/workflows/rating-reminder.yml`
 - `.github/workflows/run-migrations.yml`
 - `.github/workflows/schema-drift-check.yml`
 - `.github/workflows/security-scan.yml`
@@ -176,8 +185,8 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (157 st)
+## Migrations (160 st)
 
-- Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
-- Timestamp-prefix: `20260429000003`
+- Senaste: `20260429000004_phase2_data_hygiene.sql`
+- Timestamp-prefix: `20260429000004`
 
