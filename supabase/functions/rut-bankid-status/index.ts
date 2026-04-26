@@ -183,60 +183,74 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Trigger SPAR-enrichment ──
-    const enrichRes = await fetch(`${TIC_BASE_URL}/api/v1/enrichment`, {
-      method: "POST",
-      headers: {
-        "X-Api-Key": TIC_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sessionId,
-        types: ["SPAR"],
-      }),
-    });
-
-    if (!enrichRes.ok) {
-      const errBody = await enrichRes.text();
-      log("error", "TIC SPAR-enrichment failed", {
-        status: enrichRes.status,
-        body: errBody.slice(0, 300),
-      });
-      return json(CORS, 502, { error: "tic_enrichment_failed", details: enrichRes.status });
-    }
-
-    const enrichData = await enrichRes.json();
-    const secureUrl = enrichData.secureUrl || enrichData.secure_url;
-    if (!secureUrl) {
-      log("error", "TIC enrichment-respons saknar secureUrl", { enrichData });
-      return json(CORS, 502, { error: "tic_invalid_enrichment" });
-    }
-
-    // ── Hämta SPAR-data via secureUrl (token-auth, ingen API-key behövs) ──
-    const sparUrl = secureUrl.startsWith("http")
-      ? secureUrl
-      : `${TIC_BASE_URL}${secureUrl}`;
-    const sparRes = await fetch(sparUrl, { method: "GET" });
-    if (!sparRes.ok) {
-      log("error", "SPAR data fetch failed", { url: sparUrl.slice(0, 80), status: sparRes.status });
-      return json(CORS, 502, { error: "tic_spar_fetch_failed" });
-    }
-
-    const sparData = await sparRes.json();
-    // SPAR-respons-shape per TIC docs:
-    // { personalNumber, fullName, address: {street, postalCode, city}, municipalityCode, protectedIdentity }
-    const personalNumber = sparData.personalNumber || sparData.personal_number;
-    const fullName = sparData.fullName || sparData.full_name;
-    const addr = sparData.address || {};
-    const street = addr.street || addr.streetAddress || null;
-    const postal = addr.postalCode || addr.postal_code || null;
-    const city = addr.city || addr.locality || null;
-    const munCode = sparData.municipalityCode || sparData.municipality_code || null;
-    const protectedIdentity = !!(sparData.protectedIdentity || sparData.protected_identity);
+    // ── Hämta PNR + namn från /poll-respons (TIC docs bekräftar user-data
+    //     finns när status=complete) ──
+    // Per https://id.tic.io/docs/api/authentication: complete-respons
+    // innehåller user: { personalNumber, givenName, surname, name }
+    const userData = statusData.user || statusData.userData || {};
+    const personalNumber = userData.personalNumber || userData.personal_number ||
+      statusData.personalNumber || statusData.personal_number;
+    const fullName = userData.name || userData.fullName ||
+      [userData.givenName, userData.surname].filter(Boolean).join(" ") || null;
 
     if (!personalNumber || typeof personalNumber !== "string") {
-      log("error", "SPAR-data saknar personalNumber", { keys: Object.keys(sparData || {}) });
-      return json(CORS, 502, { error: "tic_spar_missing_pnr" });
+      log("error", "TIC /poll complete-respons saknar personalNumber", {
+        statusData_keys: Object.keys(statusData || {}),
+        userData_keys: Object.keys(userData || {}),
+      });
+      return json(CORS, 502, { error: "tic_complete_missing_pnr" });
+    }
+
+    // ── (Best-effort) trigger SPAR-enrichment för folkbokföringsadress ──
+    // I test-mode kan SPAR returnera annorlunda shape eller 4xx. Vi skippar
+    // hellre adressen än 502:ar hela flowet — PNR + namn räcker för audit-
+    // tracen. Adress kan kompletteras manuellt senare eller via SKV-batch.
+    let secureUrl: string | null = null;
+    let street: string | null = null;
+    let postal: string | null = null;
+    let city: string | null = null;
+    let munCode: string | null = null;
+    let protectedIdentity = false;
+
+    try {
+      const enrichRes = await fetch(`${TIC_BASE_URL}/api/v1/enrichment`, {
+        method: "POST",
+        headers: {
+          "X-Api-Key": TIC_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId, types: ["SPAR"] }),
+      });
+
+      if (enrichRes.ok) {
+        const enrichData = await enrichRes.json();
+        secureUrl = enrichData.secureUrl || enrichData.secure_url || null;
+
+        if (secureUrl) {
+          const sparUrl = secureUrl.startsWith("http") ? secureUrl : `${TIC_BASE_URL}${secureUrl}`;
+          const sparRes = await fetch(sparUrl, { method: "GET" });
+          if (sparRes.ok) {
+            const sparData = await sparRes.json();
+            const addr = sparData.address || {};
+            street = addr.street || addr.streetAddress || null;
+            postal = addr.postalCode || addr.postal_code || null;
+            city = addr.city || addr.locality || null;
+            munCode = sparData.municipalityCode || sparData.municipality_code || null;
+            protectedIdentity = !!(sparData.protectedIdentity || sparData.protected_identity);
+          } else {
+            log("warn", "SPAR fetch failed (best-effort, continuing)", { status: sparRes.status });
+          }
+        }
+      } else {
+        const errBody = await enrichRes.text();
+        log("warn", "TIC SPAR-enrichment failed (best-effort, continuing)", {
+          status: enrichRes.status, body: errBody.slice(0, 200),
+        });
+      }
+    } catch (e) {
+      log("warn", "SPAR enrichment-pipeline crashed (best-effort, continuing)", {
+        error: (e as Error).message,
+      });
     }
 
     // ── SHA-256-hash + UPDATE rut_consents ──
@@ -254,7 +268,7 @@ Deno.serve(async (req) => {
         spar_municipality_code: munCode,
         spar_protected_identity: protectedIdentity,
         consumed_at: nowIso,
-        tic_enrichment_token: secureUrl.slice(0, 200),
+        tic_enrichment_token: secureUrl ? secureUrl.slice(0, 200) : null,
       })
       .eq("id", consent.id);
 

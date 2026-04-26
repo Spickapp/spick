@@ -90,8 +90,8 @@ window.addEventListener('error', function(e) {
       },
       body: JSON.stringify({
         event_type: 'js_error',
-        page: location.pathname,
-        data: JSON.stringify({ msg: e.message, file: e.filename, line: e.lineno }),
+        // Schema-verifierat 2026-04-26: kolumnen heter 'metadata' (jsonb), inte 'data'
+        metadata: { msg: e.message, file: e.filename, line: e.lineno, page: location.pathname },
       }),
     }).catch(function() {});
   } catch(_) {}

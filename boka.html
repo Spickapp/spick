@@ -3594,8 +3594,8 @@ function goStep4() {
     const summary = document.createElement('div');
     summary.id = 'step3-error-summary';
     summary.style.cssText = 'background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:12px;padding:12px 16px;margin-bottom:1rem;font-size:.85rem;color:#991B1B';
-    summary.innerHTML = '<strong>⚠️ ' + errors.length + ' fält behöver åtgärdas:</strong> ' + 
-      errors.map(k => fields[k].label).join(', ');
+    summary.innerHTML = '<strong>⚠️ ' + errors.length + ' fält behöver åtgärdas:</strong> ' +
+      errors.map(k => k === 'rut-bankid' ? 'BankID-verifiering' : (fields[k] && fields[k].label) || k).join(', ');
     const cardBody = document.querySelector('#step3 .card-body');
     cardBody.insertBefore(summary, cardBody.firstChild);
     return;
