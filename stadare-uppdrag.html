@@ -795,8 +795,9 @@ function cookieChoice(accept) {
 var _gpsAttempts = 0;
 
 // Sprint S3 — GPS-precision-validation (frontend-only, lazy-geocode)
-// Geocodar booking.customer_address via Nominatim första gången, cachas
-// per booking.id i sessionStorage. Beräknar Haversine-distans i meter.
+// Geocodar booking.customer_address via Google Geocoding API (primär),
+// Nominatim (fallback). Cachas per booking.id i sessionStorage.
+// Google ger högre precision (rooftop/range_interpolated) än Nominatim.
 async function _geocodeBookingAddress(b) {
   if (!b) return null;
   var addr = (b.customer_address || b.address || '').trim();
@@ -810,17 +811,52 @@ async function _geocodeBookingAddress(b) {
       if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') return parsed;
     }
   } catch (_) {}
+
+  var query = addr + (city ? ', ' + city : '') + ', Sweden';
+  var googleKey = (window.SPICK && window.SPICK.GOOGLE_PLACES_KEY) || (typeof SPICK !== 'undefined' && SPICK.GOOGLE_PLACES_KEY) || null;
+
+  // 1) Google Geocoding API (primär — högre precision, inkl. rooftop)
+  if (googleKey) {
+    try {
+      var gUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(query) + '&region=se&key=' + googleKey;
+      var gRes = await fetch(gUrl);
+      if (gRes.ok) {
+        var gData = await gRes.json();
+        if (gData && gData.status === 'OK' && Array.isArray(gData.results) && gData.results.length > 0) {
+          var loc = gData.results[0].geometry && gData.results[0].geometry.location;
+          if (loc && isFinite(loc.lat) && isFinite(loc.lng)) {
+            var gCoords = {
+              lat: loc.lat,
+              lng: loc.lng,
+              source: 'google',
+              precision: (gData.results[0].geometry.location_type || 'unknown')
+            };
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(gCoords)); } catch (_) {}
+            return gCoords;
+          }
+        }
+      }
+    } catch (_) {
+      // tyst — vi går till fallback
+    }
+  }
+
+  // 2) Nominatim fallback (om Google fail/quota/disabled)
   try {
-    var query = addr + (city ? ', ' + city : '') + ', Sweden';
-    var url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1&countrycodes=se';
-    var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) return null;
-    var data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
-    var coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    if (!isFinite(coords.lat) || !isFinite(coords.lng)) return null;
-    try { sessionStorage.setItem(cacheKey, JSON.stringify(coords)); } catch (_) {}
-    return coords;
+    var nUrl = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1&countrycodes=se';
+    var nRes = await fetch(nUrl, { headers: { 'Accept': 'application/json' } });
+    if (!nRes.ok) return null;
+    var nData = await nRes.json();
+    if (!Array.isArray(nData) || nData.length === 0) return null;
+    var nCoords = {
+      lat: parseFloat(nData[0].lat),
+      lng: parseFloat(nData[0].lon),
+      source: 'nominatim',
+      precision: 'fallback'
+    };
+    if (!isFinite(nCoords.lat) || !isFinite(nCoords.lng)) return null;
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(nCoords)); } catch (_) {}
+    return nCoords;
   } catch (_) {
     return null;
   }
