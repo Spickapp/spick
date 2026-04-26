@@ -263,7 +263,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div style="margin-bottom:14px">
       <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:#222">Foto av kvitto</label>
-      <input type="file" id="exp-receipt-file" accept="image/*,application/pdf" capture="environment" style="width:100%;padding:8px;border:1.5px dashed #0F6E56;border-radius:8px;font-size:.82rem;font-family:inherit;color:#0F6E56;background:#F0FDFA">
+      <!-- Två val: kamera (capture-attribute aktiverar bakre kameran direkt) + galleri (utan capture) -->
+      <div id="exp-photo-buttons" style="display:flex;gap:8px;margin-bottom:8px">
+        <button type="button" onclick="document.getElementById('exp-receipt-camera').click()" style="flex:1;padding:10px;background:#0F6E56;color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit">📷 Ta foto nu</button>
+        <button type="button" onclick="document.getElementById('exp-receipt-gallery').click()" style="flex:1;padding:10px;background:#fff;color:#0F6E56;border:1.5px solid #0F6E56;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit">🖼️ Från galleri</button>
+      </div>
+      <!-- Hidden inputs: 'camera' aktiverar direkt-kamera, 'gallery' tillåter välja existerande fil -->
+      <input type="file" id="exp-receipt-camera" accept="image/*" capture="environment" style="display:none" onchange="handleExpReceiptFile(this)">
+      <input type="file" id="exp-receipt-gallery" accept="image/*,application/pdf" style="display:none" onchange="handleExpReceiptFile(this)">
+      <!-- Behåll original input för bakåtkompat med existing submitExpense-flow -->
+      <input type="file" id="exp-receipt-file" accept="image/*,application/pdf" capture="environment" style="display:none">
+
+      <!-- Live preview efter foto tagits -->
+      <div id="exp-receipt-preview" style="display:none;margin-top:8px;padding:10px;background:#F7F7F5;border-radius:8px;border:1px solid #e5e7eb">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <img id="exp-receipt-thumb" src="" alt="Förhandsgranskning" style="max-width:80px;max-height:80px;border-radius:6px;border:1px solid #ddd">
+          <div style="flex:1">
+            <div id="exp-receipt-filename" style="font-size:.78rem;font-weight:600;color:#222;word-break:break-all"></div>
+            <div id="exp-receipt-filesize" style="font-size:.72rem;color:#666;margin-top:2px"></div>
+            <button type="button" onclick="clearExpReceipt()" style="background:none;border:none;color:#B91C1C;font-size:.72rem;text-decoration:underline;cursor:pointer;font-family:inherit;padding:4px 0;margin-top:4px">✗ Ta bort / ta om</button>
+          </div>
+        </div>
+      </div>
       <small id="exp-receipt-status" style="display:block;margin-top:4px;color:#666;font-size:.72rem"></small>
     </div>
     <div id="exp-msg" style="display:none;font-size:.82rem;text-align:center;padding:8px;border-radius:6px;margin-bottom:10px"></div>
@@ -973,13 +994,99 @@ function openExpenseModal() {
   document.getElementById('exp-category').value = 'chemicals';
   document.getElementById('exp-description').value = '';
   document.getElementById('exp-amount-kr').value = '';
-  document.getElementById('exp-receipt-file').value = '';
-  document.getElementById('exp-receipt-status').textContent = '';
+  clearExpReceipt();
   document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('exp-msg').style.display = 'none';
   document.getElementById('exp-submit-btn').disabled = false;
   document.getElementById('exp-submit-btn').textContent = '💾 Spara';
   modal.style.display = 'flex';
+}
+
+// Hantera foto-val från antingen kamera eller galleri
+async function handleExpReceiptFile(inputEl) {
+  if (!inputEl.files || inputEl.files.length === 0) return;
+  var file = inputEl.files[0];
+  var statusEl = document.getElementById('exp-receipt-status');
+  var previewEl = document.getElementById('exp-receipt-preview');
+  var thumbEl = document.getElementById('exp-receipt-thumb');
+  var nameEl = document.getElementById('exp-receipt-filename');
+  var sizeEl = document.getElementById('exp-receipt-filesize');
+
+  statusEl.textContent = '⏳ Bearbetar bild...';
+
+  try {
+    var processedFile = file;
+    var wasCompressed = false;
+    // Komprimera om bild >800 KB (PDF lämnas orörd)
+    if (file.type.indexOf('image/') === 0 && file.size > 800 * 1024) {
+      processedFile = await compressImage(file, 1600, 0.82);
+      wasCompressed = true;
+    }
+    // Lägg på dolda 'exp-receipt-file' så submitExpense plockar upp den
+    var dt = new DataTransfer();
+    dt.items.add(processedFile);
+    document.getElementById('exp-receipt-file').files = dt.files;
+
+    // Live thumbnail
+    if (file.type.indexOf('image/') === 0) {
+      thumbEl.src = URL.createObjectURL(processedFile);
+      thumbEl.style.display = 'block';
+    } else {
+      thumbEl.src = '';
+      thumbEl.style.display = 'none';
+    }
+    nameEl.textContent = processedFile.name;
+    sizeEl.textContent = (processedFile.size / 1024).toFixed(1) + ' KB' +
+      (wasCompressed ? ' (komprimerad från ' + (file.size / 1024).toFixed(0) + ' KB)' : '');
+    previewEl.style.display = 'block';
+    statusEl.textContent = '';
+  } catch (e) {
+    statusEl.textContent = '⚠ Kunde inte bearbeta bild: ' + (e.message || e);
+  }
+}
+
+function clearExpReceipt() {
+  document.getElementById('exp-receipt-camera').value = '';
+  document.getElementById('exp-receipt-gallery').value = '';
+  document.getElementById('exp-receipt-file').value = '';
+  document.getElementById('exp-receipt-preview').style.display = 'none';
+  document.getElementById('exp-receipt-status').textContent = '';
+  var thumb = document.getElementById('exp-receipt-thumb');
+  if (thumb.src && thumb.src.startsWith('blob:')) URL.revokeObjectURL(thumb.src);
+  thumb.src = '';
+}
+
+// Klient-side image-compression via canvas. Returnerar nytt File-object.
+function compressImage(file, maxWidth, quality) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function() {
+      try {
+        var w = img.width;
+        var h = img.height;
+        if (w > maxWidth) {
+          h = Math.round(h * (maxWidth / w));
+          w = maxWidth;
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) {
+          URL.revokeObjectURL(url);
+          if (!blob) { reject(new Error('toBlob failed')); return; }
+          var newName = file.name.replace(/\.[^.]+$/, '') + '-compressed.jpg';
+          resolve(new File([blob], newName, { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        reject(e);
+      }
+    };
+    img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.src = url;
+  });
 }
 
 function closeExpenseModal() {
