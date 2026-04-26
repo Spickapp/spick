@@ -43,6 +43,31 @@ html{font-size:17px}
     min-height:44px;
   }
 }
+/* FOCUS-RINGS (Audit-fix P0 2026-04-26) — WCAG 2.4.7 keyboard navigation.
+   Tidigare hade alla buttons :hover-state men ingen :focus-ring → tangentbords-
+   users kunde inte navigera. Använder :focus-visible för att inte spamma ring
+   vid mus-klick (modern browser-stöd ≥97%). Två varianter: solid ring för
+   "default" elements + inset ring för buttons-on-dark (nav-buttons, cta-btns
+   inuti gröna sektioner). */
+*:focus-visible{
+  outline:2px solid #0F6E56;
+  outline-offset:2px;
+  border-radius:4px;
+}
+.cta-btn:focus-visible, .btn-main:focus-visible, .nl-btn:focus-visible,
+.cta-sec a:focus-visible, [class*="cta"]:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible{
+  outline-width:2px;
+  outline-style:solid;
+}
+/* Skip outline för rena dekor-elements (klickbara cards utan tabbing-värde) */
+[role="presentation"]:focus-visible, [aria-hidden="true"]:focus-visible{
+  outline:none;
+}
 /* NAV */
 nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
   justify-content:space-between;border-bottom:1px solid #E8E8E4;
