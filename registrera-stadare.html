@@ -1036,6 +1036,17 @@ async function startBankID(method) {
       body: JSON.stringify({ action: 'start' })
     });
     var startData = await startRes.json();
+    // Audit-fix 2026-04-26: bankid-EF returnerar 503 vid GRANDID_API_KEY saknad.
+    // Visa info-banner istf röd error — flow fortsätter ändå (verifiering sker senare).
+    if (startRes.status === 503 || startData.error === 'BankID ej konfigurerat') {
+      statusEl.className = 'bankid-status waiting';
+      statusText.innerHTML = 'ℹ️ BankID-verifiering aktiveras inom kort — registrera utan tills vidare';
+      mobileBtn.classList.remove('loading'); qrBtn.classList.remove('loading');
+      mobileBtn.disabled = false; qrBtn.disabled = false;
+      // Tillåt kontotabb-progression utan BankID-verifiering
+      window._bankidSkipped = true;
+      return;
+    }
     if (!startRes.ok) throw new Error(startData.message || startData.error || 'Kunde inte starta BankID');
     if (startData.demo) document.getElementById('testBanner').style.display = 'block';
     bankidSessionId = startData.sessionId;

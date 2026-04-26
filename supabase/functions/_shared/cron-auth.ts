@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 export interface CronAuthResult {
   ok: boolean;
@@ -25,19 +26,24 @@ export interface CronAuthResult {
 }
 
 /**
- * Validerar CRON_SECRET från Authorization-header (Bearer) eller x-cron-secret.
- * Returnerar { ok: true } om OK, annars { ok: false, response: 401 } som ska returneras direkt.
+ * Validerar antingen CRON_SECRET eller SUPABASE_SERVICE_ROLE_KEY från
+ * Authorization: Bearer-header eller x-cron-secret.
+ *
+ * BAKÅTKOMPATIBILITET (audit-fix 2026-04-26): GitHub Actions-workflows
+ * skickar service-role-key som Authorization-header (etablerat pattern
+ * från innan CRON_SECRET introducerades). Vi accepterar BÅDA — service-
+ * role är högre behörighet än CRON_SECRET så det är säkert att tillåta.
  *
  * Användning:
  *   const auth = requireCronAuth(req);
  *   if (!auth.ok) return auth.response;
  */
 export function requireCronAuth(req: Request, corsHeaders: Record<string, string> = {}): CronAuthResult {
-  if (!CRON_SECRET) {
-    // Misconfiguration — secret saknas i env
+  if (!CRON_SECRET && !SERVICE_ROLE_KEY) {
+    // Misconfiguration — ingen av secrets satta i env
     return {
       ok: false,
-      response: new Response(JSON.stringify({ error: "cron_secret_not_configured" }), {
+      response: new Response(JSON.stringify({ error: "auth_not_configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }),
@@ -49,7 +55,13 @@ export function requireCronAuth(req: Request, corsHeaders: Record<string, string
     ? authHeader.slice(7)
     : req.headers.get("x-cron-secret");
 
-  if (!providedSecret || providedSecret !== CRON_SECRET) {
+  // Acceptera antingen CRON_SECRET eller service-role-key
+  const isValid = providedSecret && (
+    (CRON_SECRET && providedSecret === CRON_SECRET) ||
+    (SERVICE_ROLE_KEY && providedSecret === SERVICE_ROLE_KEY)
+  );
+
+  if (!isValid) {
     return {
       ok: false,
       response: new Response(JSON.stringify({ error: "unauthorized" }), {

@@ -438,13 +438,17 @@ state.ticVerified = false;
 state.ticPolling = null;
 
 async function loadCompanyBankidVisibility() {
-  // Visa wrap bara om tic_enabled='true' i platform_settings
+  // Audit-fix 2026-04-26: company-bankid-init/verify EFs saknas (404).
+  // Visa wrap bara om BÅDE tic_enabled OCH company_bankid_enabled='true'.
+  // company_bankid_enabled = false default tills EFs är byggda.
   try {
-    const res = await fetch(`${SPICK.SUPA_URL}/rest/v1/platform_settings?key=eq.tic_enabled&select=value`, {
+    const res = await fetch(`${SPICK.SUPA_URL}/rest/v1/platform_settings?key=in.(tic_enabled,company_bankid_enabled)&select=key,value`, {
       headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY }
     });
     const rows = await res.json();
-    if (rows && rows[0] && rows[0].value === 'true') {
+    const flags = {};
+    (Array.isArray(rows) ? rows : []).forEach(r => { flags[r.key] = r.value; });
+    if (flags.tic_enabled === 'true' && flags.company_bankid_enabled === 'true') {
       const wrap = document.getElementById('company-bankid-wrap');
       if (wrap) wrap.style.display = 'block';
     }
