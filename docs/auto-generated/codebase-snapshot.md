@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (97 st)
+## Edge Functions (98 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -43,6 +43,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `cleaner-application-submit` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-application-submit (Audit-fix P2-3, 2026 |
 | `cleaner-booking-response` |  |
 | `cleaner-job-completed` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-job-completed (Fas 8 §8.2 wiring) |
+| `cleaner-onboarding-emails` |  |
 | `cleaner-optout` |  |
 | `cleanup-stale` |  |
 | `company-accept-invite` | ═══════════════════════════════════════════════════════════════ SPICK – company-accept-invite (Sprint B Dag 4) |
@@ -142,7 +143,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (40 st)
+## GitHub Actions workflows (41 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -154,6 +155,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/bulk-schedule-week.yml`
 - `.github/workflows/charge-subscription.yml`
 - `.github/workflows/claude.yml`
+- `.github/workflows/cleaner-onboarding-emails.yml`
 - `.github/workflows/cleanup-stale.yml`
 - `.github/workflows/content-engine.yml`
 - `.github/workflows/customer-nudge-recurring.yml`
@@ -185,7 +187,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (161 st)
+## Migrations (162 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
