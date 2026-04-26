@@ -491,7 +491,12 @@ async function init() {
     // ── HERO ──
     h += '<div class="hero"><div class="hero-bg"></div><div class="hero-pattern"></div><div class="hero-glow"></div><div class="hero-inner">';
     h += '<div class="hero-top">';
-    h += '<div class="hero-avatar">' + (displayName || '?').charAt(0) + '</div>';
+    // Logo om finns, annars initial-bokstav (Zivar-request 2026-04-26)
+    if (co.logo_url) {
+      h += '<div class="hero-avatar" style="overflow:hidden;background:#fff"><img src="' + esc(co.logo_url) + '" alt="' + esc(displayName) + ' logo" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>';
+    } else {
+      h += '<div class="hero-avatar">' + (displayName || '?').charAt(0) + '</div>';
+    }
     h += '<div class="hero-info"><h1>' + esc(displayName) + '</h1>';
     if (co.org_number) h += '<div class="hero-tagline">Org.nr ' + esc(co.org_number) + '</div>';
 

@@ -1278,6 +1278,25 @@ body{top:0!important}
 
         <div class="settings-section" id="settings-company-section" style="display:none">
           <div class="settings-section-title">Företag</div>
+          <!-- Företagslogo (Zivar-request 2026-04-26) -->
+          <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100)">
+            <div style="font-size:.88rem;font-weight:600;margin-bottom:8px">🖼️ Företagslogo</div>
+            <div style="font-size:.74rem;color:var(--m);margin-bottom:10px">Visas på din företagssida och bokningsbekräftelser. PNG/JPG/WebP, max 2 MB.</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div id="company-logo-preview" style="width:64px;height:64px;border-radius:12px;background:#F7F7F5;display:flex;align-items:center;justify-content:center;border:1.5px dashed #E8E8E4;flex-shrink:0;overflow:hidden">
+                <span id="company-logo-placeholder" style="font-size:1.5rem;color:#aaa">📷</span>
+                <img id="company-logo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label for="company-logo-file" style="background:var(--g);color:#fff;padding:8px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-block">
+                  Välj fil
+                  <input type="file" id="company-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none" onchange="uploadCompanyLogo(this)">
+                </label>
+                <button id="company-logo-remove" type="button" onclick="removeCompanyLogo()" style="background:none;border:none;color:#dc2626;font-size:.74rem;cursor:pointer;text-align:left;padding:0;display:none">Ta bort logo</button>
+              </div>
+            </div>
+            <div id="company-logo-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
+          </div>
           <div class="settings-link" id="settings-team-link" onclick="switchTab('team')">
             <span class="sl-icon">🏢</span><span class="sl-text">Team-hantering</span><span class="sl-arrow">›</span>
           </div>
@@ -3573,6 +3592,8 @@ async function loadCleanerByEmail(email, authUserId) {
       toggle.checked = !!cleaner.owner_only;
       updateToggleStyle(toggle.checked);
     }
+    // Visa befintlig logo (Zivar-request 2026-04-26)
+    if (typeof loadCompanyLogoPreview === 'function') loadCompanyLogoPreview();
   }
 
   if (cleaner.owner_only) {
@@ -7319,6 +7340,155 @@ async function toggleOwnerOnly(isOwner) {
     // Reload to apply UI changes
     setTimeout(function() { location.reload(); }, 1000);
   } catch(e) { alert('Fel: ' + e.message); }
+}
+
+// \u2500\u2500 F\u00d6RETAGSLOGO (Zivar-request 2026-04-26) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// VD laddar upp logo som visas p\u00e5 foretag.html, boka.html, tack.html.
+// Storage-bucket 'company-logos' med RLS som filtrerar p\u00e5 company_id.
+async function loadCompanyLogoPreview() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=logo_url', {
+      headers: _authHeadersLegacy()
+    });
+    const rows = await res.json();
+    const url = rows && rows[0] && rows[0].logo_url;
+    if (url) _showLogoPreview(url);
+  } catch(e) { /* ignorera, fallback till placeholder */ }
+}
+
+function _showLogoPreview(url) {
+  var img = document.getElementById('company-logo-img');
+  var ph = document.getElementById('company-logo-placeholder');
+  var rmBtn = document.getElementById('company-logo-remove');
+  if (img) {
+    img.src = url + '?cb=' + Date.now(); // cache-bust
+    img.style.display = 'block';
+  }
+  if (ph) ph.style.display = 'none';
+  if (rmBtn) rmBtn.style.display = 'inline-block';
+}
+
+function _hideLogoPreview() {
+  var img = document.getElementById('company-logo-img');
+  var ph = document.getElementById('company-logo-placeholder');
+  var rmBtn = document.getElementById('company-logo-remove');
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (ph) ph.style.display = 'inline';
+  if (rmBtn) rmBtn.style.display = 'none';
+}
+
+async function uploadCompanyLogo(input) {
+  var statusEl = document.getElementById('company-logo-status');
+  var setStatus = function(msg, color) {
+    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--m)'; }
+  };
+
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) {
+    setStatus('Bara f\u00f6retags\u00e4gare kan ladda upp logo', '#dc2626');
+    return;
+  }
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    setStatus('Filen \u00e4r f\u00f6r stor (max 2 MB)', '#dc2626');
+    input.value = '';
+    return;
+  }
+  var validTypes = ['image/png','image/jpeg','image/webp','image/svg+xml'];
+  if (validTypes.indexOf(file.type) === -1) {
+    setStatus('Ogiltig filtyp. Anv\u00e4nd PNG, JPG, WebP eller SVG.', '#dc2626');
+    input.value = '';
+    return;
+  }
+
+  setStatus('Laddar upp\u2026');
+
+  try {
+    // Best\u00e4m extension fr\u00e5n MIME
+    var extMap = { 'image/png':'png', 'image/jpeg':'jpg', 'image/webp':'webp', 'image/svg+xml':'svg' };
+    var ext = extMap[file.type] || 'png';
+    var path = cleaner.company_id + '/logo.' + ext;
+
+    // Upload via Storage REST API (PUT med upsert)
+    var uploadRes = await fetch(
+      SUPA_URL + '/storage/v1/object/company-logos/' + encodeURIComponent(path),
+      {
+        method: 'POST',
+        headers: Object.assign({}, _authHeadersLegacy(), {
+          'Content-Type': file.type,
+          'x-upsert': 'true',
+          'Cache-Control': 'no-cache'
+        }),
+        body: file
+      }
+    );
+    if (!uploadRes.ok) {
+      var errText = await uploadRes.text();
+      throw new Error('Upload-fel: ' + uploadRes.status + ' ' + errText.slice(0, 100));
+    }
+
+    // Public URL
+    var publicUrl = SUPA_URL + '/storage/v1/object/public/company-logos/' + path;
+
+    // UPDATE companies.logo_url + logo_storage_path
+    var updRes = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ logo_url: publicUrl, logo_storage_path: 'company-logos/' + path })
+    });
+    if (!updRes.ok) {
+      var updErrText = await updRes.text();
+      throw new Error('DB-uppdatering misslyckades: ' + updRes.status + ' ' + updErrText.slice(0, 100));
+    }
+
+    _showLogoPreview(publicUrl);
+    setStatus('\u2713 Logo uppdaterad \u2014 visas nu p\u00e5 f\u00f6retagssidan + bokningsbekr\u00e4ftelser', '#059669');
+  } catch (e) {
+    console.error('[uploadCompanyLogo]', e);
+    setStatus('Fel: ' + e.message, '#dc2626');
+  }
+  input.value = '';
+}
+
+async function removeCompanyLogo() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
+  if (!confirm('Vill du ta bort f\u00f6retagslogon? Den slutar visas omedelbart p\u00e5 f\u00f6retagssidan + bokningsbekr\u00e4ftelser.')) return;
+  var statusEl = document.getElementById('company-logo-status');
+  var setStatus = function(msg, color) {
+    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--m)'; }
+  };
+  setStatus('Tar bort\u2026');
+
+  try {
+    // H\u00e4mta nuvarande path f\u00f6r att kunna deleta
+    var pathRes = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=logo_storage_path', {
+      headers: _authHeadersLegacy()
+    });
+    var pathRows = await pathRes.json();
+    var storagePath = pathRows && pathRows[0] && pathRows[0].logo_storage_path;
+
+    // Delete fr\u00e5n storage (om path finns)
+    if (storagePath && storagePath.indexOf('company-logos/') === 0) {
+      var fileName = storagePath.replace(/^company-logos\//, '');
+      await fetch(SUPA_URL + '/storage/v1/object/company-logos/' + encodeURIComponent(fileName), {
+        method: 'DELETE',
+        headers: _authHeadersLegacy()
+      }).catch(function() {});
+    }
+
+    // Nulla DB-f\u00e4lt
+    await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ logo_url: null, logo_storage_path: null })
+    });
+
+    _hideLogoPreview();
+    setStatus('Logo borttagen', '#059669');
+  } catch (e) {
+    setStatus('Fel: ' + e.message, '#dc2626');
+  }
 }
 
 function updateToggleStyle(isOn) {
