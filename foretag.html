@@ -489,14 +489,27 @@ async function init() {
     var h = '';
 
     // ── HERO ──
-    // Anpassad bakgrund (Zivar-request 2026-04-26): om co.hero_bg_url finns
-    // → use foto med dark-overlay för läsbarhet; annars fallback till
-    // dynamic-color-gradient (befintligt beteende via .hero-bg-rule).
-    var heroBgInline = co.hero_bg_url
-      ? 'background:linear-gradient(165deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.55) 100%),url("' + esc(co.hero_bg_url) + '") center/cover no-repeat;'
-      : '';
+    // Anpassad bakgrund (Zivar 2026-04-26):
+    //   1. co.hero_bg_url (custom bild) — högst prio + dark-overlay
+    //   2. co.hero_bg_color (custom hex) — gradient från färgen
+    //   3. nameToColor() — befintligt fallback (via .hero-bg-rule + --accent)
+    var heroBgInline = '';
+    if (co.hero_bg_url) {
+      heroBgInline = 'background:linear-gradient(165deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.55) 100%),url("' + esc(co.hero_bg_url) + '") center/cover no-repeat;';
+    } else if (co.hero_bg_color && /^#[0-9a-fA-F]{3,8}$/.test(co.hero_bg_color)) {
+      // Override --accent-color så hela hero + buttons matchar VD:s val
+      var heroLight = (function(hex) {
+        var x = hex.replace('#',''); if (x.length===3) x = x[0]+x[0]+x[1]+x[1]+x[2]+x[2];
+        var r = parseInt(x.slice(0,2),16), g = parseInt(x.slice(2,4),16), b = parseInt(x.slice(4,6),16);
+        r = Math.min(255, Math.round(r + (255-r)*0.25));
+        g = Math.min(255, Math.round(g + (255-g)*0.25));
+        b = Math.min(255, Math.round(b + (255-b)*0.25));
+        return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+      })(co.hero_bg_color);
+      heroBgInline = 'background:linear-gradient(165deg,' + co.hero_bg_color + ' 0%,' + heroLight + ' 100%);';
+    }
     h += '<div class="hero"' + (heroBgInline ? ' style="' + heroBgInline + '"' : '') + '>';
-    h += co.hero_bg_url ? '' : '<div class="hero-bg"></div>';
+    h += (co.hero_bg_url || co.hero_bg_color) ? '' : '<div class="hero-bg"></div>';
     h += '<div class="hero-pattern"></div><div class="hero-glow"></div><div class="hero-inner">';
     h += '<div class="hero-top">';
     // Logo om finns, annars initial-bokstav (Zivar-request 2026-04-26)

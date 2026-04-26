@@ -1659,21 +1659,34 @@ body{top:0!important}
               </div>
               <div id="company-logo-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
             </div>
-            <!-- Hero-bakgrundsbild (Zivar-request 2026-04-26) -->
+            <!-- Hero-bakgrund (Zivar 2026-04-26: färg ELLER bild) -->
             <div style="background:#F7F7F5;border-radius:10px;padding:12px;margin-bottom:12px">
-              <div style="font-size:.82rem;font-weight:600;margin-bottom:4px">🎨 Bakgrundsbild på företagssida</div>
-              <div style="font-size:.72rem;color:var(--m);margin-bottom:10px">Visas som hero på din publika företagssida (spick.se/f/{slug}). PNG/JPG/WebP, max 4 MB. Rekommenderad storlek: 1920×600 eller större. Standard: färggradient från företagsnamn.</div>
-              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                <div id="company-hero-preview" style="width:140px;height:60px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px dashed #E8E8E4;flex-shrink:0;overflow:hidden">
-                  <span id="company-hero-placeholder" style="font-size:1.2rem;color:#aaa">🌄</span>
-                  <img id="company-hero-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+              <div style="font-size:.82rem;font-weight:600;margin-bottom:4px">🎨 Bakgrund på företagssida</div>
+              <div style="font-size:.72rem;color:var(--m);margin-bottom:10px">Visas som hero på din publika företagssida (spick.se/f/{slug}). Standard: färggradient från företagsnamn.</div>
+              <!-- Förhandsvisning -->
+              <div id="company-hero-preview" style="width:100%;max-width:280px;height:80px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px dashed #E8E8E4;overflow:hidden;margin-bottom:12px">
+                <span id="company-hero-placeholder" style="font-size:1.2rem;color:#aaa">🌄</span>
+                <img id="company-hero-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+              </div>
+              <!-- Färgväljare (enklast) -->
+              <div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid #E8E8E4">
+                <div style="font-size:.74rem;font-weight:600;margin-bottom:6px">Egen färg</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <input type="color" id="company-hero-color" value="#0F6E56" style="width:48px;height:36px;border:1px solid #E8E8E4;border-radius:6px;cursor:pointer;padding:2px;background:#fff">
+                  <button type="button" onclick="saveCompanyHeroColor()" style="background:var(--g);color:#fff;padding:8px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;font-family:inherit">Spara färg</button>
+                  <button id="company-hero-color-remove" type="button" onclick="removeCompanyHeroColor()" style="background:none;border:none;color:#dc2626;font-size:.72rem;cursor:pointer;display:none">Ta bort färg</button>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:6px">
+              </div>
+              <!-- Bild-upload (avancerat) -->
+              <div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #E8E8E4">
+                <div style="font-size:.74rem;font-weight:600;margin-bottom:4px">Eller egen bild</div>
+                <div style="font-size:.68rem;color:var(--m);margin-bottom:6px">PNG/JPG/WebP, max 4 MB. Rekommenderad storlek: 1920×600.</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <label for="company-hero-file" style="background:var(--g);color:#fff;padding:8px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-block">
                     Välj fil
                     <input type="file" id="company-hero-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadCompanyHero(this)">
                   </label>
-                  <button id="company-hero-remove" type="button" onclick="removeCompanyHero()" style="background:none;border:none;color:#dc2626;font-size:.74rem;cursor:pointer;text-align:left;padding:0;display:none">Ta bort bakgrund</button>
+                  <button id="company-hero-remove" type="button" onclick="removeCompanyHero()" style="background:none;border:none;color:#dc2626;font-size:.72rem;cursor:pointer;display:none">Ta bort bild</button>
                 </div>
               </div>
               <div id="company-hero-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
@@ -7391,15 +7404,91 @@ async function toggleOwnerOnly(isOwner) {
 async function loadCompanyLogoPreview() {
   if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=logo_url,hero_bg_url', {
+    const res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=logo_url,hero_bg_url,hero_bg_color', {
       headers: _authHeadersLegacy()
     });
     const rows = await res.json();
     if (rows && rows[0]) {
       if (rows[0].logo_url) _showLogoPreview(rows[0].logo_url);
-      if (rows[0].hero_bg_url) _showHeroPreview(rows[0].hero_bg_url);
+      if (rows[0].hero_bg_url) {
+        _showHeroPreview(rows[0].hero_bg_url);
+      } else if (rows[0].hero_bg_color) {
+        _showHeroColor(rows[0].hero_bg_color);
+      }
     }
   } catch(e) { /* ignorera, fallback till placeholder */ }
+}
+
+function _showHeroColor(hex) {
+  var prev = document.getElementById('company-hero-preview');
+  var ph = document.getElementById('company-hero-placeholder');
+  var img = document.getElementById('company-hero-img');
+  var input = document.getElementById('company-hero-color');
+  var rmBtn = document.getElementById('company-hero-color-remove');
+  if (prev) prev.style.background = 'linear-gradient(165deg,' + hex + ' 0%,' + _lighten(hex, 20) + ' 100%)';
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (ph) ph.style.display = 'none';
+  if (input) input.value = hex;
+  if (rmBtn) rmBtn.style.display = 'inline-block';
+}
+
+function _lighten(hex, pct) {
+  // Förenklad lighten: parse hex → ljusare variant för gradient
+  var h = hex.replace('#','');
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  var f = pct/100;
+  r = Math.min(255, Math.round(r + (255-r)*f));
+  g = Math.min(255, Math.round(g + (255-g)*f));
+  b = Math.min(255, Math.round(b + (255-b)*f));
+  return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+async function saveCompanyHeroColor() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
+  var statusEl = document.getElementById('company-hero-status');
+  var setStatus = function(msg, color) { if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--m)'; } };
+  var input = document.getElementById('company-hero-color');
+  var hex = input ? input.value : '';
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) { setStatus('Ogiltig färg', '#dc2626'); return; }
+  setStatus('Sparar färg…');
+  try {
+    var updRes = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ hero_bg_color: hex })
+    });
+    if (!updRes.ok) {
+      var t = await updRes.text();
+      throw new Error('PATCH-fel: ' + updRes.status + ' ' + t.slice(0, 100));
+    }
+    _showHeroColor(hex);
+    setStatus('✓ Färg sparad — visas på företagssidan', '#059669');
+  } catch (e) {
+    setStatus('Fel: ' + e.message, '#dc2626');
+  }
+}
+
+async function removeCompanyHeroColor() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
+  if (!confirm('Ta bort egen färg? Hero återgår till standard-gradient från företagsnamn.')) return;
+  var statusEl = document.getElementById('company-hero-status');
+  var setStatus = function(msg, color) { if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--m)'; } };
+  setStatus('Tar bort…');
+  try {
+    await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ hero_bg_color: null })
+    });
+    var prev = document.getElementById('company-hero-preview');
+    var ph = document.getElementById('company-hero-placeholder');
+    var rmBtn = document.getElementById('company-hero-color-remove');
+    if (prev) prev.style.background = '#fff';
+    if (ph) ph.style.display = 'inline';
+    if (rmBtn) rmBtn.style.display = 'none';
+    setStatus('Färg borttagen', '#059669');
+  } catch (e) { setStatus('Fel: ' + e.message, '#dc2626'); }
 }
 
 function _showHeroPreview(url) {
