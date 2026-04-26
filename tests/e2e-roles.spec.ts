@@ -69,14 +69,16 @@ test.describe('Admin: Login + skyddade routes', () => {
 });
 
 test.describe('Health-check', () => {
-  test('H01: health-EF rapporterar status (degraded eller ok)', async ({ request }) => {
+  test('H01: health-EF rapporterar status (healthy/degraded/ok)', async ({ request }) => {
     const res = await request.post(`${SUPA}/functions/v1/health`, {
       headers: { 'Content-Type': 'application/json' },
       data: {},
     });
     expect(res.ok()).toBe(true);
     const data = await res.json();
-    expect(['ok', 'degraded']).toContain(data.status);
+    // health/index.ts:136 returnerar 'healthy' | 'degraded' | 'down' — test
+    // var inte i sync med EF:n. 'ok' behålls för bakåtkompatibilitet.
+    expect(['healthy', 'ok', 'degraded']).toContain(data.status);
   });
 
   test('H02: auto_remind cron senast körd inom 24h', async ({ request }) => {
