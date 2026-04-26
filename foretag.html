@@ -373,7 +373,32 @@ async function init() {
     if (!co) { document.getElementById('content').innerHTML = '<div class="not-found"><h2>Företaget hittades inte</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--accent);font-weight:600">← Boka städning</a></div>'; return; }
 
     // ── 1. DYNAMIC ACCENT COLOR ──
+    // Zivar 2026-04-26: synka pristext + alla accent-element med VD:s
+    // valda hero-färg om finns. Annars fallback till nameToColor(co.name).
     var colors = nameToColor(co.name);
+    if (co.hero_bg_color && /^#[0-9a-fA-F]{3,8}$/.test(co.hero_bg_color)) {
+      // VD har valt egen färg → använd den som accent överallt
+      var _hexToRgb = function(hex) {
+        var x = hex.replace('#',''); if (x.length===3) x = x[0]+x[0]+x[1]+x[1]+x[2]+x[2];
+        return { r: parseInt(x.slice(0,2),16), g: parseInt(x.slice(2,4),16), b: parseInt(x.slice(4,6),16) };
+      };
+      var _lightenHex = function(hex, pct) {
+        var c = _hexToRgb(hex), f = pct/100;
+        var r = Math.min(255, Math.round(c.r + (255-c.r)*f));
+        var g = Math.min(255, Math.round(c.g + (255-c.g)*f));
+        var b = Math.min(255, Math.round(c.b + (255-c.b)*f));
+        return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+      };
+      var _bgFromHex = function(hex) {
+        var c = _hexToRgb(hex);
+        return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.08)'; // svag bakgrund-tint
+      };
+      colors = {
+        main: co.hero_bg_color,
+        light: _lightenHex(co.hero_bg_color, 25),
+        bg: _bgFromHex(co.hero_bg_color)
+      };
+    }
     document.documentElement.style.setProperty('--accent', colors.main);
     document.documentElement.style.setProperty('--accent2', colors.light);
     document.documentElement.style.setProperty('--accent3', colors.bg);
