@@ -140,6 +140,8 @@ serve(async (req) => {
       selected_addons,           // Array<{addon_id: uuid}> — valideras + berikas nedan
       // ── §7.5 TIC BankID: länkar rut_consents-rad till denna booking ──
       rut_bankid_session_id,     // string — TIC session_id om kund verifierat via BankID
+      // ── N3 Sprint 2 (2026-04-26): explicit method-flagga för manuell-modal-flow ──
+      pnr_verification_method,   // 'bankid' | 'manual_klartext' | 'pending_bankid' | 'unverified'
     } = body;
 
     // Validera payment_mode (CHECK constraint i DB)
@@ -569,6 +571,21 @@ serve(async (req) => {
       return json(500, { error: "Kunde inte skapa bokning" });
     }
 
+    // N3 Sprint 2 (2026-04-26): Manuell-fallback från VD-modal — om EJ BankID
+    // men VD klickade "Mata in manuellt" → spara method='manual_klartext'.
+    const validN3Methods = ['bankid', 'manual_klartext', 'pending_bankid', 'unverified'];
+    if (!rut_bankid_session_id && pnr_verification_method && validN3Methods.includes(pnr_verification_method)) {
+      try {
+        await supabase
+          .from("bookings")
+          .update({ pnr_verification_method })
+          .eq("id", bookingId);
+        console.log("[booking-create] N3 method satt", { booking_id: bookingId, method: pnr_verification_method });
+      } catch (e) {
+        console.warn("[booking-create] N3 method update failed", (e as Error).message);
+      }
+    }
+
     // §7.5 TIC BankID: länka rut_consents-rad till denna booking om
     // kund-flow inkluderade BankID-verifiering. Pnr-hash är redan satt
     // av rut-bankid-status-EFen. UPDATE booking_id + customer_pnr_hash
@@ -588,11 +605,19 @@ serve(async (req) => {
             .from("rut_consents")
             .update({ booking_id: bookingId })
             .eq("id", consent.id);
+          // N3 Sprint 2 (2026-04-26): Sätt verification-spårnings-kolumner
+          // method='bankid' + verified_at + session_id-FK → v_rut_pending_queue
+          // visar safe_to_apply=true för dessa bokningar.
           await supabase
             .from("bookings")
-            .update({ customer_pnr_hash: consent.pnr_hash })
+            .update({
+              customer_pnr_hash: consent.pnr_hash,
+              pnr_verification_method: "bankid",
+              pnr_verified_at: consent.consumed_at,
+              customer_pnr_verification_session_id: consent.id,
+            })
             .eq("id", bookingId);
-          console.log("[booking-create] TIC BankID linked", { booking_id: bookingId, consent_id: consent.id });
+          console.log("[booking-create] TIC BankID linked + N3 method=bankid", { booking_id: bookingId, consent_id: consent.id });
         } else {
           console.warn("[booking-create] TIC consent ej giltig för länkning", {
             booking_id: bookingId,
