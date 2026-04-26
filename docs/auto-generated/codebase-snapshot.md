@@ -1,4 +1,4 @@
-# Codebase Snapshot (auto-generated 2026-04-25)
+# Codebase Snapshot (auto-generated 2026-04-26)
 
 Genererad av `scripts/generate-claude-md.ts`. Kopiera valda sektioner
 till CLAUDE.md för att fixa Regel #29-drift.
