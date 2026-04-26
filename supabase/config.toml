@@ -42,3 +42,12 @@ verify_jwt = false
 
 [functions.cleaner-onboarding-emails]
 verify_jwt = false
+
+# Weekly health-check som anropas via cron (sms-delivery-weekly.yml).
+# Egen auth via requireCronAuth() — gateway behöver släppa igenom Bearer.
+[functions.sms-delivery-test]
+verify_jwt = false
+
+# Nightly synthetic monitor — auth via Bearer CRON_SECRET, inte JWT.
+[functions.synthetic-monitor]
+verify_jwt = false

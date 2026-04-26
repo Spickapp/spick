@@ -1,0 +1,91 @@
+name: Synthetic Monitor (nightly)
+# Pingar 10 kritiska EFs varje natt 03:00 UTC (05:00 CET sommartid /
+# 04:00 CET vintertid). Fångar regressions tidigt + alertar via Discord.
+
+'on':
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  synthetic-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run synthetic-monitor EF
+        id: monitor
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/synthetic-monitor" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          # Extrahera overall_status (utan jq beroende — sed-fallback)
+          STATUS=$(echo "$BODY" | sed -n 's/.*"overall_status"[[:space:]]*:[[:space:]]*"\([a-z]*\)".*/\1/p' | head -1)
+          FAILED=$(echo "$BODY" | sed -n 's/.*"failed_count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' | head -1)
+
+          echo "overall_status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "failed_count=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # Fail-on-HTTP-4xx/5xx
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Synthetic monitor returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          # Fail om EF säger "down"
+          if [ "$STATUS" = "down" ]; then
+            echo "::error::Synthetic monitor reported overall_status=down ($FAILED checks failed)"
+            exit 1
+          fi
+
+          if [ "$STATUS" = "degraded" ]; then
+            echo "::warning::Synthetic monitor reported overall_status=degraded ($FAILED checks failed)"
+          fi
+
+      - name: Discord alert on degraded/down
+        if: failure() || steps.monitor.outputs.overall_status == 'degraded' || steps.monitor.outputs.overall_status == 'down'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+          STATUS: ${{ steps.monitor.outputs.overall_status }}
+          FAILED: ${{ steps.monitor.outputs.failed_count }}
+          BODY: ${{ steps.monitor.outputs.body }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "ADMIN_ALERT_WEBHOOK_URL not set — skipping Discord notification (EF console-fallback already emitted)."
+            exit 0
+          fi
+
+          # Klipp body till 1500 tecken (Discord-embed-gräns 4096 i description)
+          BODY_SHORT=$(echo "$BODY" | head -c 1500)
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "Synthetic Monitor: ${STATUS:-unknown}",
+              "description": "Failed: ${FAILED:-?}/10 EFs\n\n\`\`\`json\n$(echo "$BODY_SHORT" | sed 's/"/\\"/g' | tr -d '\n')\n\`\`\`",
+              "color": $([ "$STATUS" = "down" ] && echo 16711680 || echo 16753920)
+            }]
+          }
+          EOF
+          )
+
+          curl -s -X POST -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL" || echo "Discord post failed (non-fatal)"
