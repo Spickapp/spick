@@ -10,6 +10,12 @@ const SPICK = Object.freeze({
   ADMIN_EMAIL: 'hello@spick.se',
   VERSION:   '3.0.0',
   GOOGLE_PLACES_KEY: 'AIzaSyCScYORJPxXCyp0J-Wmr84HtiZc9FteVrs',
+  // Fas 10 Sentry frontend — DSN är public per Sentry's design.
+  // Sätt till null för att stänga av; hämtas annars lazy från CDN vid första error.
+  // Aktivering: skapa Sentry-projekt → kopiera DSN → byt null mot strängen.
+  SENTRY_DSN: null,
+  SENTRY_ENVIRONMENT: 'production',
+  SENTRY_RELEASE: 'spick-web-2026-04-26',
 });
 
 // Exponera globalt för pages som boot-checkar `window.SPICK`
@@ -70,11 +76,66 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 window.escHtml = escHtml;
+
+// ── SENTRY (Fas 10 Observability) ────────────────────────────
+// Lazy-load Sentry browser SDK från CDN vid första error/explicit captureException.
+// Inget bundle-overhead om Sentry aldrig triggas. DSN=null → no-op.
+//
+// PII-sanering: Sentry's beforeSend-hook strippar PNR-mönster + auth-headers.
+(function initSentryLazy() {
+  if (!SPICK.SENTRY_DSN) return; // Av tills DSN konfigurerats
+  let sentryReady = null;
+
+  window.spickCaptureException = function(err, ctx) {
+    if (!sentryReady) {
+      sentryReady = new Promise(function(resolve) {
+        var s = document.createElement('script');
+        s.src = 'https://browser.sentry-cdn.com/8.0.0/bundle.min.js';
+        s.crossOrigin = 'anonymous';
+        s.onload = function() {
+          window.Sentry.init({
+            dsn: SPICK.SENTRY_DSN,
+            environment: SPICK.SENTRY_ENVIRONMENT,
+            release: SPICK.SENTRY_RELEASE,
+            sampleRate: 1.0,
+            tracesSampleRate: 0.1, // 10% performance-sampling
+            beforeSend: function(event) {
+              // PII-sanering: maska PNR + strippa auth-headers
+              try {
+                var json = JSON.stringify(event)
+                  .replace(/\b(\d{6,8})[-]?\d{4}\b/g, '[PNR-MASKED]')
+                  .replace(/("(?:apikey|authorization|x-api-key|password|token)"\s*:\s*)"[^"]+"/gi, '$1"[REDACTED]"');
+                event = JSON.parse(json);
+              } catch(_) {}
+              return event;
+            },
+          });
+          resolve(window.Sentry);
+        };
+        s.onerror = function() { resolve(null); };
+        document.head.appendChild(s);
+      });
+    }
+    sentryReady.then(function(Sentry) {
+      if (Sentry) {
+        Sentry.captureException(err, { extra: ctx || {} });
+      }
+    });
+  };
+})();
 // ── PRODUCTION RESILIENCE ────────────────────────────────────
 
 // Global error handler — fångar uncaught errors utan att visa rå stacktraces
 window.addEventListener('error', function(e) {
   console.error('[SPICK]', e.message, e.filename, e.lineno);
+  // Fas 10: skicka även till Sentry om aktiverat
+  if (typeof window.spickCaptureException === 'function') {
+    try {
+      window.spickCaptureException(e.error || new Error(e.message), {
+        file: e.filename, line: e.lineno, page: location.pathname,
+      });
+    } catch(_) {}
+  }
   // Skicka till analytics (fire-and-forget). sendBeacon kan inte sätta apikey-
   // header → CORS-fel mot Supabase. Använd fetch+keepalive istället så vi kan
   // inkludera apikey + Authorization-headers (krav för PostgREST).
@@ -100,6 +161,12 @@ window.addEventListener('error', function(e) {
 // Unhandled promise rejection
 window.addEventListener('unhandledrejection', function(e) {
   console.error('[SPICK] Unhandled:', e.reason?.message || e.reason);
+  if (typeof window.spickCaptureException === 'function') {
+    try {
+      var err = (e.reason instanceof Error) ? e.reason : new Error(String(e.reason));
+      window.spickCaptureException(err, { type: 'unhandledrejection', page: location.pathname });
+    } catch(_) {}
+  }
 });
 
 // Fetch med timeout + retry (för frontend-anrop)

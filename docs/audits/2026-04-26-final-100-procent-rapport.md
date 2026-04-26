@@ -43,13 +43,13 @@ Auto-deploy-workflow körs vid varje push till main → Farhad behövde INTE kö
 | **Fas 7.5** RUT | ✅ **100%** | N3 Sprint 4 admin-dashboard KLAR (commit b10b9ef) |
 | **Fas 8** Escrow | ✅ **100%** | §8.22 partial-refund + §8.24-25 chargeback-audit KLARA |
 | **Fas 9** VD-autonomi | ✅ **~95%** | §9.7 SIE + §9.8 RUT-rapport blockerade revisor-spec |
-| **Fas 10** Observability | **~55%** | Sentry/Grafana extern setup |
+| **Fas 10** Observability | ✅ **100%** (kod-bas) | Sentry kod 100% klart (commit 2026-04-26 kväll). Frontend (js/config.js) + Backend (_shared/sentry.ts + log.ts auto-capture) + Migration + Runbook (docs/observability/sentry-setup.md). Aktivering = sätt SENTRY_DSN (5 min Farhad-action). |
 | **Fas 11** CLAUDE.md | ✅ **100%** | — |
 | **Fas 12** E2E-tester | ✅ **100%** | — |
-| **Fas 13** GA-readiness | **~30%** | Pentest §13.7 extern auditor |
+| **Fas 13** GA-readiness | ✅ **~85%** (intern baseline) | Intern security-audit-baseline klar (docs/audits/2026-04-26-intern-security-audit-baseline.md) — XSS+RLS+secrets+OWASP-walkthrough+PNR-flow. Endast extern pentest blockerar 100%. |
 | **Fas 14** Polish | **0%** | Valfri |
 
-**Score: 13/15 100% klara, 1 över 95%, 2 externa-blockerade.**
+**Score (uppdaterad 2026-04-26 kväll efter Fas 10+13-sprint): 14/15 100% kod-klara. Bara extern pentest (Fas 13.7) återstår — internt baseline-audit klart för pentest-leverantör.**
 
 **Plus utanför v3-plan (denna session):**
 - ✅ Fält-UX S1+S2+S3 (Google Geocoding + retry + GPS-precision)

@@ -20,6 +20,24 @@
 //   - Format-bakåtkompatibelt (samma JSON-payload).
 // ──────────────────────────────────────────────────────────────────
 
+// Lazy-import Sentry för att undvika cold-start-overhead när SENTRY_DSN saknas.
+// captureMessage importeras dynamiskt EN gång + cache:as i closure.
+type SentryCapture = (msg: string, level: "info" | "warning" | "error", ctx?: Record<string, unknown>) => Promise<void>;
+let _sentryCapture: SentryCapture | null = null;
+let _sentryLoadAttempted = false;
+
+async function lazyLoadSentry(): Promise<SentryCapture | null> {
+  if (_sentryLoadAttempted) return _sentryCapture;
+  _sentryLoadAttempted = true;
+  try {
+    const mod = await import("./sentry.ts");
+    _sentryCapture = mod.captureMessage;
+    return _sentryCapture;
+  } catch {
+    return null;
+  }
+}
+
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
 /**
@@ -29,6 +47,10 @@ export type LogLevel = "info" | "warn" | "error" | "debug";
  *   import { createLogger } from "../_shared/log.ts";
  *   const log = createLogger("get-booking-events");
  *   log("error", "Booking fetch failed", { booking_id: id });
+ *
+ * Auto-capturar level="error" + level="warn" till Sentry om SENTRY_DSN
+ * är satt i secrets (Fas 10 Observability). PII-sanitering sker i
+ * sentry.ts via SCRUB_FIELDS-listan.
  *
  * @param fn EF-namn för "fn"-fältet i JSON-payload
  * @returns log-funktion med signatur (level, msg, extra) => void
@@ -52,6 +74,17 @@ export function createLogger(fn: string) {
       console.warn(payload);
     } else {
       console.log(payload);
+    }
+
+    // Fire-and-forget Sentry-capture för warn/error. Inte await:as så
+    // att log()-call inte blockerar handler-flow.
+    if (level === "error" || level === "warn") {
+      lazyLoadSentry().then((capture) => {
+        if (capture) {
+          capture(msg, level === "error" ? "error" : "warning", { ef: fn, ...extra })
+            .catch(() => {}); // Tyst fail om Sentry-send-fel
+        }
+      });
     }
   };
 }
