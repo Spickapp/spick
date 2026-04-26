@@ -270,6 +270,8 @@ c) Kunden förbinder sig att betala dessa belopp inom 30 dagar från krav.
 | Datum | Version | Ändring | Av |
 |---|---|---|---|
 | 2026-04-25 | v0.1 | DRAFT skapad baserat på Hemfrid/Vardagsfrid/Städade Hem-research | Claude (review krävs av Farhad jurist) |
+| 2026-04-25 | v0.2 | Hybrid-roll (utförare/förmedlare) + 50 %-drag-mot-kund vid RUT-nekande (§10.3) | Claude |
+| 2026-04-26 | **v1.0 PUBLICERAD** | Konverterad till `kundvillkor.html` live i prod. Inkl: §9.2 dolda-fel-tillägg, §11.3 PNR-via-BankID-aktivering, §12.1 IT-haveri/cyber, §13.2 EU ODR-länk, §15 RUT-ombud-info | Farhad (jurist) godkänd 2026-04-26 |
 
 ---
 

@@ -247,7 +247,7 @@ Specifika sifferförslag (1 PBB cap, 48 h reklamation, 30 dagar lång frist, 500
 | Deliverable | Status | Fil |
 |---|---|---|
 | Konkurrent-research | ✅ KLAR | [2026-04-25-konkurrent-research-villkor.md](2026-04-25-konkurrent-research-villkor.md) |
-| Kundvillkor draft v0.2 | ✅ KLAR (uppdaterad — hybrid-roll + 50%-drag-RUT) | [2026-04-25-kundvillkor-draft.md](2026-04-25-kundvillkor-draft.md) |
+| Kundvillkor draft v0.2 | ✅ **PUBLICERAD som v1.0 i `kundvillkor.html` 2026-04-26** | [2026-04-25-kundvillkor-draft.md](2026-04-25-kundvillkor-draft.md) → [kundvillkor.html](../../kundvillkor.html) |
 | Underleverantörsavtal draft v0.2 | ✅ KLAR (anti-fraud + vite-skala + hybrid-roll-medvetenhet) | [2026-04-25-underleverantorsavtal-draft.md](2026-04-25-underleverantorsavtal-draft.md) |
 | Utförare-vs-förmedlare-analys | ✅ KLAR (NY) | [2026-04-25-utforare-vs-formedlare-hybrid-analys.md](2026-04-25-utforare-vs-formedlare-hybrid-analys.md) |
 | Jurist-checklist | ✅ KLAR (utökad §11-12 nedan) | [2026-04-25-jurist-checklist.md](2026-04-25-jurist-checklist.md) (denna fil) |

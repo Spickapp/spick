@@ -142,6 +142,9 @@ serve(async (req) => {
       rut_bankid_session_id,     // string — TIC session_id om kund verifierat via BankID
       // ── N3 Sprint 2 (2026-04-26): explicit method-flagga för manuell-modal-flow ──
       pnr_verification_method,   // 'bankid' | 'manual_klartext' | 'pending_bankid' | 'unverified'
+      // ── Kundvillkor v1.0 (2026-04-26): version kunden accepterade vid bokning ──
+      // Audit-trail för §14 + ARN/jurist-tvister. Bumpas vid villkors-ändring.
+      terms_version,             // string — t.ex. "1.0"
     } = body;
 
     // Validera payment_mode (CHECK constraint i DB)
@@ -555,6 +558,10 @@ serve(async (req) => {
       invoice_address_city:         b2bFields.invoice_address_city,
       invoice_address_postal_code:  b2bFields.invoice_address_postal_code,
       auto_delegation_enabled: auto_delegation_enabled === true ? true : (auto_delegation_enabled === false ? false : null),
+
+      // ── Kundvillkor v1.0 (2026-04-26): audit-trail för accepterad version ──
+      // Backfill till '0.x-pre-v1' om frontend ej skickar (gammal cache eller manuell-bokning)
+      terms_version: (typeof terms_version === 'string' && terms_version.length > 0) ? terms_version : '0.x-pre-v1',
 
       // ── V1.0: Payment mode + Override + Subscription + RUT ──
       payment_mode: effectivePaymentMode,

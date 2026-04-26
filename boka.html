@@ -711,7 +711,7 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
           <!-- Villkor & ångerrätt -->
           <label style="display:flex;align-items:flex-start;gap:.75rem;padding:.75rem;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;margin-bottom:1rem;font-size:.82rem;line-height:1.6;color:var(--m)" id="terms-label">
             <input type="checkbox" id="accept-terms" style="accent-color:var(--g);margin-top:3px;flex-shrink:0" onchange="document.getElementById('pay-btn').disabled=!this.checked;document.getElementById('terms-label').style.borderColor=this.checked?'var(--g)':'var(--border)'">
-            <span>Jag godkänner <a href="kundvillkor.html" target="_blank" style="color:var(--g);text-decoration:underline">kundvillkoren</a> och <a href="integritetspolicy.html" target="_blank" style="color:var(--g);text-decoration:underline">integritetspolicyn</a>. Jag är informerad om min <strong>14 dagars ångerrätt</strong> enligt distansavtalslagen och samtycker till att städtjänsten kan påbörjas inom ångerfristen.</span>
+            <span>Jag godkänner <a href="kundvillkor.html" target="_blank" style="color:var(--g);text-decoration:underline">kundvillkoren v1.0</a> och <a href="integritetspolicy.html" target="_blank" style="color:var(--g);text-decoration:underline">integritetspolicyn</a>. Jag har särskilt tagit del av: <strong>Värdesak-upplysningsplikt</strong> (§5.2 — värdesaker &gt; 10 000 kr ska anmälas innan städning), <strong>avbokningsavgifter</strong> (§4.3 — 25 % vid 24-48 h, 100 % vid &lt; 24 h), och <strong>50 %-efterdebitering vid Kund-orsakat RUT-nekande</strong> (§10.3). Jag är informerad om min <strong>14 dagars ångerrätt</strong> enligt distansavtalslagen och samtycker till att städtjänsten kan påbörjas inom ångerfristen.</span>
           </label>
 
           <button class="btn-primary" onclick="doBook()" id="pay-btn" disabled>
@@ -3810,6 +3810,9 @@ async function doBook() {
           if (!cb || !section || section.style.display === 'none') return undefined;
           return cb.checked;
         })(),
+        // Audit-trail för accepterad kundvillkors-version (§14 — bevis vid ARN/jurist-tvist).
+        // Bumpas vid varje publicerad villkors-ändring.
+        terms_version: '1.0',
       })
     });
     if (!bcRes.ok) {
