@@ -4999,15 +4999,29 @@ async function loadAdminUser() {
       AR.update('admin_users', { last_login: new Date().toISOString(), login_count: (au.login_count||0)+1 }, 'id=eq.' + au.id).then(function(){});
       auditLog('login','auth',null,null,null).catch(function(){});
     } else {
-      adminUser = { email: user.email, display_name: user.email.split('@')[0], role_name: 'superadmin', role_level: 100, is_active: true };
+      // Audit-fix 2026-04-26 (rule #30 säkerhet): tidigare default role_level: 100
+      // = superadmin vid saknad admin_roles-koppling → RBAC-bypass-risk. Default
+      // till lägsta nivå (0) + visa banner + logga incident.
+      adminUser = { email: user.email, display_name: user.email.split('@')[0], role_name: 'restricted', role_level: 0, is_active: true };
       var nameEl2 = document.getElementById('admin-name');
       if (nameEl2) nameEl2.textContent = adminUser.display_name;
       var roleEl2 = document.getElementById('admin-role-badge');
-      if (roleEl2) roleEl2.textContent = 'Superadmin (legacy)';
+      if (roleEl2) { roleEl2.textContent = '⚠️ Begränsad åtkomst'; roleEl2.style.color = '#dc2626'; }
+      // Best-effort audit-log + admin-alert
+      try {
+        await fetch(SUPA_URL + '/rest/v1/admin_audit_log', {
+          method: 'POST',
+          headers: Object.assign({}, _authHeadersLegacy ? _authHeadersLegacy() : {apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY}, {'Content-Type':'application/json'}),
+          body: JSON.stringify({ action: 'rbac_fallback', resource: 'admin_users', notes: 'Saknad admin_roles-koppling — default role_level=0' })
+        });
+      } catch(_) {}
     }
   } catch(e) {
     console.warn('loadAdminUser error:', e.message);
-    adminUser = { email: ADMIN_EMAIL, display_name: 'Admin', role_name: 'superadmin', role_level: 100, is_active: true };
+    // Audit-fix 2026-04-26: vid catch → samma säkra fallback (role_level: 0)
+    adminUser = { email: ADMIN_EMAIL, display_name: 'Admin', role_name: 'restricted', role_level: 0, is_active: true };
+    var rb = document.getElementById('admin-role-badge');
+    if (rb) { rb.textContent = '⚠️ Begränsad (loadError)'; rb.style.color = '#dc2626'; }
   }
 }
 

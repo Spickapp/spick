@@ -156,6 +156,35 @@ serve(async (req) => {
       return json(400, { error: "Obligatoriska fält saknas: name, email, date, time, hours, service" });
     }
 
+    // Audit-fix 2026-04-26 P0: server-side validering (kund-agent fann att
+    // backend accepterar past-dates + Lulea-koordinater utan rejection).
+
+    // Past-date-validering: bookning får inte vara i förfluten tid.
+    // Tillåt -1d för timezone-buffer (Stockholm vs UTC).
+    try {
+      const bookingDate = new Date(date + 'T' + (time || '00:00'));
+      const yesterdayUtc = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      if (isNaN(bookingDate.getTime())) {
+        return json(400, { error: "Ogiltigt datum-format (förväntar YYYY-MM-DD)" });
+      }
+      if (bookingDate < yesterdayUtc) {
+        return json(400, { error: "Bokningsdatum får inte vara i förfluten tid" });
+      }
+    } catch (_) {
+      return json(400, { error: "Ogiltigt datum/tid-värde" });
+    }
+
+    // Coverage-validering: koordinater måste vara inom rimlig svensk-area
+    // (ca 55-69° N, 11-25° E). Tillåt avsaknad (frontend kanske inte skickar).
+    if (typeof customer_lat === 'number' && typeof customer_lng === 'number') {
+      if (customer_lat < 55 || customer_lat > 69 || customer_lng < 10 || customer_lng > 25) {
+        return json(400, {
+          error: "Vi täcker inte ditt område ännu — Spick finns främst i Stockholms-, Göteborgs- och Malmö-regionerna",
+          code: "outside_coverage_area"
+        });
+      }
+    }
+
     // ── §2.7.3: B2B-sanitering + customer_type-validering ──
     // sanitize(): trim sträng + returnera null för whitespace-only
     // (defense-in-depth; frontend trim:ar redan, men direkt API-anrop

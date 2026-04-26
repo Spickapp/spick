@@ -2,6 +2,25 @@
 <html lang="sv">
 <head>
 <script>if(top!==self){top.location=self.location}</script>
+<script src="js/config.js"></script>
+<script>
+// AUTH GUARD (audit-fix 2026-04-26 P0): tidigare ingen auth → vem som helst
+// med booking-URL kunde ändra status. Nu krävs Supabase-session.
+document.documentElement.style.display='none';
+(function(){
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var token = raw ? JSON.parse(raw)?.access_token : null;
+    if (!token) { window.location.replace('stadare-dashboard.html'); return; }
+    fetch('https://urjeijcncsyuletprydy.supabase.co/auth/v1/user', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + token }
+    }).then(function(r){
+      if (r.status === 200) { document.documentElement.style.display=''; }
+      else { window.location.replace('stadare-dashboard.html'); }
+    }).catch(function(){ window.location.replace('stadare-dashboard.html'); });
+  } catch(e) { window.location.replace('stadare-dashboard.html'); }
+})();
+</script>
 <meta name="description" content="Hantera dina städuppdrag på Spick. Acceptera, avboka och markera uppdrag som klara.">
 <meta charset="UTF-8">
   <link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
