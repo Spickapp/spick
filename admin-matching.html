@@ -102,28 +102,127 @@ async function init() {
 }
 
 async function loadAll() {
-  const [statsRes, histoRes, recentRes] = await Promise.all([
+  // §3.8 admin-matching-frontend (2026-04-26): 3 nya sektioner top-cleaners,
+  // skipped-cleaners, score-distribution + befintliga shadow-stats.
+  const [statsRes, histoRes, recentRes, topRes, skippedRes, scoreDistRes] = await Promise.all([
     SB.from('v_shadow_mode_stats').select('*').limit(14),
     SB.from('v_shadow_mode_histogram').select('*'),
     SB.from('v_shadow_mode_recent').select('*').limit(30),
+    SB.from('v_matching_top_cleaners').select('*'),
+    SB.from('v_matching_skipped_cleaners').select('*'),
+    SB.from('v_matching_score_distribution').select('*'),
   ]);
 
   const stats = statsRes.data || [];
   const histo = histoRes.data || [];
   const recent = recentRes.data || [];
+  const top = topRes.data || [];
+  const skipped = skippedRes.data || [];
+  const scoreDist = scoreDistRes.data || [];
 
   document.getElementById('subHeader').textContent =
-    `${stats.length} dag(ar) data · ${recent.length} sökningar senaste 48h`;
+    `${stats.length} dag(ar) data · ${recent.length} sökningar senaste 48h · ${top.length} top-cleaners · ${skipped.length} skipped`;
 
-  if (stats.length === 0 && recent.length === 0) {
+  if (stats.length === 0 && recent.length === 0 && top.length === 0) {
     document.getElementById('content').innerHTML =
       '<div class="card empty"><p style="font-size:1.1rem">Ingen matching-data ännu.</p><p>Shadow-mode börjar logga när första bokningen görs.</p></div>';
     return;
   }
 
-  renderStats(stats);
-  renderHistogram(histo);
-  renderRecent(recent);
+  // Töm content
+  document.getElementById('content').innerHTML = '';
+
+  // §3.8 sektion 1: Top 20 cleaners
+  renderTopCleaners(top);
+
+  // §3.8 sektion 2: Skipped cleaners
+  renderSkippedCleaners(skipped);
+
+  // §3.8 sektion 3: Score-distribution
+  renderScoreDistribution(scoreDist);
+
+  // Befintliga sektioner (shadow-mode stats)
+  if (stats.length > 0) renderStats(stats);
+  if (histo.length > 0) renderHistogram(histo);
+  if (recent.length > 0) renderRecent(recent);
+}
+
+// §3.8 sektion 1: Top 20 mest visade cleaners (senaste 30d)
+function renderTopCleaners(rows) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2>🏆 Top 20 cleaners — visningsfrekvens (senaste 30d)</h2>
+    ${rows.length === 0 ? '<p class="empty">Ingen data — börjar visas när matching-engine körs.</p>' : `
+    <p style="font-size:.85rem;color:var(--m);margin-bottom:.75rem">Cleaners som visas oftast i kund-sökresultat. Hög view_count + låg booking_count = matching ger dem visibility men kunder väljer någon annan.</p>
+    <table>
+      <thead><tr><th>Cleaner</th><th>Stad</th><th>Visningar 30d</th><th>Avg score</th><th>Avg rank</th><th>Bokningar 30d</th><th>Conv-rate</th></tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const conv = r.view_count_30d > 0 ? ((r.bookings_30d / r.view_count_30d) * 100).toFixed(1) + '%' : '–';
+          return `<tr>
+            <td><strong>${esc(r.cleaner_name)}</strong></td>
+            <td>${esc(r.cleaner_city)}</td>
+            <td>${r.view_count_30d}</td>
+            <td>${r.avg_score ?? '–'}</td>
+            <td>${r.avg_rank ?? '–'}</td>
+            <td>${r.bookings_30d}</td>
+            <td>${conv}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`}
+  `;
+  document.getElementById('content').appendChild(card);
+}
+
+// §3.8 sektion 2: Skipped cleaners
+function renderSkippedCleaners(rows) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2>👻 Bortglömda cleaners (ingen vy senaste 30d)</h2>
+    ${rows.length === 0 ? '<p class="empty">Inga aktiva cleaners blev "glömda". Bra!</p>' : `
+    <p style="font-size:.85rem;color:var(--m);margin-bottom:.75rem">Aktiva, godkända cleaners (>7d gamla) som matching-engine ALDRIG visat senaste 30d. Möjliga orsaker: geo-isolering, för smal service-radius, fel city.</p>
+    <table>
+      <thead><tr><th>Cleaner</th><th>Stad</th><th>Rating</th><th>Onboarded</th><th>Dagar gammal</th><th>Företag?</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td><strong>${esc(r.full_name)}</strong></td>
+          <td>${esc(r.city)}</td>
+          <td>${r.avg_rating ?? '–'}</td>
+          <td>${esc((r.onboarded_at || '').slice(0, 10))}</td>
+          <td>${r.days_since_onboarded}</td>
+          <td>${r.is_company_owner ? 'VD' : (r.company_id ? 'Team' : 'Solo')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+  `;
+  document.getElementById('content').appendChild(card);
+}
+
+// §3.8 sektion 3: Score-distribution (histogram + chosen-rate)
+function renderScoreDistribution(rows) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const maxCount = Math.max(...rows.map(r => r.count || 0), 1);
+  card.innerHTML = `
+    <h2>📊 Score-distribution (senaste 30d)</h2>
+    ${rows.length === 0 ? '<p class="empty">Ingen score-data ännu.</p>' : `
+    <p style="font-size:.85rem;color:var(--m);margin-bottom:.75rem">Histogram över match_score-värden. Hög skew mot 0.5-0.7 = matching ger få "perfekta" träffar. Chosen-count visar hur ofta cleaners i bucket faktiskt valdes.</p>
+    <div>
+      ${rows.map(r => {
+        const widthPct = (r.count / maxCount) * 100;
+        const chosenPct = r.count > 0 ? ((r.chosen_count / r.count) * 100).toFixed(1) : '0';
+        return `<div class="histo-bar">
+          <div class="histo-label">${esc(r.score_bucket)}</div>
+          <div class="histo-fill" style="width:${widthPct}%">${r.count}</div>
+          <div style="margin-left:.5rem;font-size:.75rem;color:var(--m)">→ ${r.chosen_count} valda (${chosenPct}%)</div>
+        </div>`;
+      }).join('')}
+    </div>`}
+  `;
+  document.getElementById('content').appendChild(card);
 }
 
 function renderStats(rows) {
