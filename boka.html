@@ -3057,6 +3057,9 @@ async function startRutBankid() {
     if (data.qr_data) {
       _renderRutBankidQr(data.qr_data);
     } else if (data.qr_start_token && data.qr_start_secret) {
+      // DIAGNOSTIK 2026-04-26: logga TIC's alla keys så vi ser om de
+      // returnerar qr_code/qr_url som vi inte använder.
+      console.log('[TIC keys]', data._debug_tic_keys, { qr_data: data.qr_data, qr_code: data.qr_code, qr_url: data.qr_url });
       _startRutBankidQrTicker(data.qr_start_token, data.qr_start_secret);
     }
 

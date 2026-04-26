@@ -154,13 +154,24 @@ Deno.serve(async (req) => {
     }
 
     const ticData = await ticRes.json();
+    // KRITISKT: logga FULL start-response med ALLA keys så vi ser TIC:s exakta
+    // QR-format (live-test 2026-04-26 visade qrStartSecret är varken hex eller
+    // base64 → vi använder fel klient-side QR-format).
+    log("info", "TIC start-response RAW", {
+      keys: Object.keys(ticData || {}),
+      ticData,
+    });
+
     const sessionId = ticData.sessionId || ticData.session_id;
     const autoStartToken = ticData.autoStartToken || ticData.auto_start_token;
     // QR-data för cross-device (annan enhet). TIC kan returnera olika fält-namn:
-    // qrStartToken+qrStartSecret (BankID-standard), eller qrData (för-genererad).
+    // qrStartToken+qrStartSecret (BankID-standard), qrData (för-genererad sträng),
+    // qrCode (SVG/base64), qrUrl (bild-URL).
     const qrStartToken = ticData.qrStartToken || ticData.qr_start_token || null;
     const qrStartSecret = ticData.qrStartSecret || ticData.qr_start_secret || null;
     const qrData = ticData.qrData || ticData.qr_data || null;
+    const qrCode = ticData.qrCode || ticData.qr_code || null;
+    const qrUrl = ticData.qrUrl || ticData.qr_url || null;
 
     if (!sessionId) {
       log("error", "TIC respons saknar sessionId", { ticData });
@@ -196,8 +207,13 @@ Deno.serve(async (req) => {
       qr_start_token: qrStartToken,
       qr_start_secret: qrStartSecret,
       qr_data: qrData,
+      qr_code: qrCode, // ev. färdig QR-sträng/SVG från TIC
+      qr_url: qrUrl,   // ev. bild-URL från TIC
       consent_text: CONSENT_TEXT,
       expires_at: expiresAt,
+      // DIAGNOSTIK 2026-04-26: returnera TIC:s alla keys så frontend
+      // kan logga och vi kan se EXAKT vad TIC stödjer för QR.
+      _debug_tic_keys: Object.keys(ticData || {}),
     });
   } catch (err) {
     log("error", "Unexpected error", { error: (err as Error).message });
