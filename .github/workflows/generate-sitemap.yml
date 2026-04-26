@@ -26,6 +26,8 @@ jobs:
           echo '<?xml version="1.0" encoding="UTF-8"?>' > sitemap.xml
           echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> sitemap.xml
           for f in *.html; do
+            # Glob-exclude admin-* + _f1_test (audit-fix 2026-04-26)
+            [[ "$f" == admin-* || "$f" == _f1_test* || "$f" == _* ]] && continue
             [[ "$f" == "admin.html" || "$f" == "404.html" || "$f" == "tack.html" \
             || "$f" == "index_1.html" || "$f" == "cookie-banner.html" \
             || "$f" == "seo-snippet.html" || "$f" == "sakerhetsplan.html" \
