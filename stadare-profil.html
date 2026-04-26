@@ -372,6 +372,23 @@ async function loadProfile() {
   if (!c) { showError('Städaren hittades inte eller är inte aktiv.'); return; }
   _cleaner = c;
 
+  // Per-cleaner allow_individual_booking (Zivar 2026-04-26)
+  // Om städaren är timanställd (allow_individual_booking=false) → redirect till
+  // /f/<company-slug> (samma SEO-pattern som VD-canonical) eftersom kund inte
+  // kan boka individuellt ändå.
+  try {
+    var modeRes = await fetch(SUPA + '/rest/v1/v_cleaner_booking_mode?id=eq.' + c.id + '&select=allow_individual_booking&apikey=' + KEY, {headers: H});
+    var modeArr = modeRes.ok ? await modeRes.json() : [];
+    if (modeArr[0] && modeArr[0].allow_individual_booking === false && c.company_id) {
+      var compSlugRes = await fetch(SUPA + '/rest/v1/companies?select=slug&id=eq.' + c.company_id + '&apikey=' + KEY, {headers: H});
+      var compSlugArr = compSlugRes.ok ? await compSlugRes.json() : [];
+      if (compSlugArr[0] && compSlugArr[0].slug) {
+        location.replace('/f/' + compSlugArr[0].slug);
+        return;
+      }
+    }
+  } catch(e) { /* fail-soft: visa profilen utan redirect */ }
+
   // Sprint Prof-5: VD-canonical-redirect.
   // Om cleaner är VD (is_company_owner) → redirect till /f/<company-slug>.
   // Samma entity ska inte indexeras på två URL:er (SEO-straff för duplikat).

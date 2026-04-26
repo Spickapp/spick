@@ -406,6 +406,17 @@ async function init() {
     // Hämta teammedlemmar
     var mr = await fetch(SU + '/rest/v1/v_cleaners_public?select=id,full_name,first_name,bio,avatar_url,services,hourly_rate,avg_rating,review_count,completed_jobs,status,owner_only,city&company_id=eq.' + co.id + '&is_approved=eq.true', { headers: H });
     var members = await mr.json() || [];
+    // Per-cleaner allow_individual_booking-berikning (Zivar 2026-04-26)
+    if (members.length > 0) {
+      try {
+        var memberIds = members.map(function(m) { return m.id; }).join(',');
+        var modeRes = await fetch(SU + '/rest/v1/v_cleaner_booking_mode?id=in.(' + memberIds + ')&select=id,allow_individual_booking', { headers: H });
+        var modeArr = modeRes.ok ? await modeRes.json() : [];
+        var modeMap = {};
+        modeArr.forEach(function(b) { modeMap[b.id] = b.allow_individual_booking !== false; });
+        members.forEach(function(m) { m._allowIndividual = modeMap[m.id] !== false; });
+      } catch(e) { members.forEach(function(m) { m._allowIndividual = true; }); }
+    }
     var active = members.filter(function(m) { return !m.owner_only && m.status !== 'pausad'; });
 
     // Detect B2B company
@@ -667,7 +678,12 @@ async function init() {
         }
         if (m.bio) h += '<div class="team-bio">"' + esc(m.bio) + '"</div>';
         if (svcs.length) { h += '<div class="team-svcs">'; svcs.forEach(function(s) { h += '<span class="team-svc">' + esc(s) + '</span>'; }); if (extraCount > 0) h += '<span class="team-svc" style="opacity:.6">+' + extraCount + ' till</span>'; h += '</div>'; }
-        h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</a>';
+        // Zivar 2026-04-26: dölj individual-bok-länk om timanställd
+        if (m._allowIndividual === false) {
+          h += '<div class="team-book" style="background:#F7F7F5;color:#6B6960;border:1px solid #E8E8E4;cursor:default">🏢 Bokas via företaget</div>';
+        } else {
+          h += '<a href="' + bookUrl + '&cleaner_id=' + m.id + '" class="team-book">Boka ' + esc((m.full_name || '').split(' ')[0]) + ' →</a>';
+        }
         h += '</div>';
       });
       h += '</div></div>';

@@ -6968,6 +6968,18 @@ async function renderTeam() {
         <button onclick="editTeamMember('${m.id}')" style="flex:1;padding:10px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Redigera</button>
         <button onclick="toggleMemberStatus('${m.id}','${isPaused || isOnboarding ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused || isOnboarding ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused || isOnboarding ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused || isOnboarding ? 'Aktivera' : 'Pausa'}</button>
       </div>
+      <!-- Per-cleaner individual-booking toggle (Zivar 2026-04-26) -->
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.78rem;font-weight:600">Bokas individuellt</div>
+          <div style="font-size:.68rem;color:var(--m);margin-top:1px">${m.allow_individual_booking === false ? 'Av — kund bokar bara företaget (timanställd)' : 'På — kund kan välja denna städare (F-skattare)'}</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0">
+          <input type="checkbox" ${m.allow_individual_booking !== false ? 'checked' : ''} onchange="toggleMemberIndividualBooking('${m.id}', this.checked)" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:${m.allow_individual_booking !== false ? 'var(--g)' : '#ccc'};border-radius:24px;transition:.2s"></span>
+          <span style="position:absolute;left:${m.allow_individual_booking !== false ? '20px' : '2px'};top:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+        </label>
+      </div>
     </div>`;
   }).join('') : '<p style="color:var(--gray-500);font-size:.85rem;padding:12px 0">Inga teammedlemmar ännu. Lägg till via knappen ovan.</p>';
 
@@ -10873,6 +10885,28 @@ function showTeamMsg(text, isError) {
   el.textContent = text;
   el.style.color = isError ? 'var(--danger)' : 'var(--spick-500)';
   el.style.display = 'block';
+}
+
+// Per-cleaner individual-booking toggle (Zivar 2026-04-26)
+async function toggleMemberIndividualBooking(memberId, allow) {
+  try {
+    var res = await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + memberId, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ allow_individual_booking: allow })
+    });
+    if (!res.ok) {
+      var t = await res.text();
+      throw new Error('HTTP ' + res.status + ' ' + t.slice(0, 100));
+    }
+    showToast(allow
+      ? '✓ Kund kan välja denna städare individuellt'
+      : '✓ Kund bokar bara via företaget för denna städare');
+    // Re-render team för uppdaterad text + toggle-state
+    if (typeof renderTeam === 'function') renderTeam();
+  } catch(e) {
+    alert('Fel vid uppdatering: ' + e.message);
+  }
 }
 
 async function toggleMemberStatus(memberId, newStatus) {

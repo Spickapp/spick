@@ -141,6 +141,53 @@ async function readSettings(supabase: SupabaseClient): Promise<SettingsPair> {
 
 type VerifFilterRow = Record<string, unknown>;
 
+/**
+ * Per-cleaner allow_individual_booking-filter (Zivar 2026-04-26).
+ * Tar bort solo-providers vars cleaner är timanställd (allow=false).
+ * Company-providers behålls oavsett — kund bokar då hela företaget.
+ * Cleaners-mode-filter: tar bort solo-cleaners med allow=false.
+ */
+async function filterIndividualBookingMode(
+  supabase: SupabaseClient,
+  rows: Array<Record<string, unknown>>,
+): Promise<Array<Record<string, unknown>>> {
+  if (rows.length === 0) return rows;
+  const soloIds = new Set<string>();
+  for (const r of rows) {
+    // Providers-mode: bara solo-providers (company-providers påverkas inte)
+    if (r.provider_type === "solo") {
+      const id = String(r.representative_cleaner_id ?? r.provider_id ?? "");
+      if (id) soloIds.add(id);
+    } else if (r.provider_type === undefined) {
+      // cleaners-mode (v1/v2): platt cleaner-rad, alla räknas som solo-träff
+      const id = String(r.id ?? "");
+      if (id) soloIds.add(id);
+    }
+  }
+  if (soloIds.size === 0) return rows;
+  const { data } = await supabase
+    .from("v_cleaner_booking_mode")
+    .select("id, allow_individual_booking")
+    .in("id", Array.from(soloIds));
+  const blockedIds = new Set<string>(
+    (data ?? [])
+      .filter((c: Record<string, unknown>) => c.allow_individual_booking === false)
+      .map((c: Record<string, unknown>) => String(c.id))
+  );
+  if (blockedIds.size === 0) return rows;
+  return rows.filter((r) => {
+    if (r.provider_type === "solo") {
+      const id = String(r.representative_cleaner_id ?? r.provider_id ?? "");
+      return !blockedIds.has(id);
+    }
+    if (r.provider_type === undefined) {
+      const id = String(r.id ?? "");
+      return !blockedIds.has(id);
+    }
+    return true; // company-providers behålls
+  });
+}
+
 async function filterByVerification(
   supabase: SupabaseClient,
   rows: VerifFilterRow[],
@@ -351,6 +398,11 @@ serve(async (req) => {
       if (requireVerification) {
         rows = await filterByVerification(supabase, rows, "providers", "providers");
       }
+      // Per-cleaner allow_individual_booking-filter (Zivar 2026-04-26):
+      // Solo-providers vars cleaner är timanställd (allow_individual=false)
+      // ska INTE dyka upp som solo-träff. Company-providers behålls eftersom
+      // kund då bokar HELA företaget oavsett vilka cleaners som är timanställda.
+      rows = await filterIndividualBookingMode(supabase, rows);
       return json(200, {
         cleaners: mapProvidersToV2Cleaners(rows),
         algorithm_version: "providers",
@@ -376,6 +428,8 @@ serve(async (req) => {
       if (requireVerification) {
         rows = await filterByVerification(supabase, rows, "cleaners", "v2");
       }
+      // Per-cleaner allow_individual_booking-filter (Zivar 2026-04-26)
+      rows = await filterIndividualBookingMode(supabase, rows);
       return json(200, {
         cleaners: rows as unknown as V2Cleaner[],
         algorithm_version: "v2",
