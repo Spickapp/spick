@@ -1063,6 +1063,54 @@ body{top:0!important}
     <!-- ═══ TAB: INKOMST ═══ -->
     <div class="tab-content" id="tab-inkomst">
       <div class="tab-pad">
+
+        <!-- Fas 9-utökning (2026-04-26): VD-betalningsöversikt — visas bara för is_company_owner -->
+        <div id="vd-payment-summary-section" style="display:none;margin-bottom:24px">
+          <div class="card" style="background:linear-gradient(135deg,#0F6E56 0%,#1D9E75 100%);color:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div>
+                <div style="font-size:.78rem;opacity:.85">Företagets betalningar</div>
+                <div id="vd-pay-period" style="font-family:Playfair Display,serif;font-size:1.4rem;font-weight:700">–</div>
+              </div>
+              <button onclick="loadVdPaymentSummary()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:6px 12px;font-size:.8rem;cursor:pointer;font-family:inherit">↻ Uppdatera</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
+                <div style="font-size:.72rem;opacity:.8">✅ Slutreglerat</div>
+                <div id="vd-pay-paid-sum" style="font-size:1.3rem;font-weight:700;font-family:Playfair Display,serif">0 kr</div>
+                <div id="vd-pay-paid-count" style="font-size:.72rem;opacity:.8">0 bokningar</div>
+              </div>
+              <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
+                <div style="font-size:.72rem;opacity:.8">⏳ I escrow</div>
+                <div id="vd-pay-escrow-sum" style="font-size:1.3rem;font-weight:700;font-family:Playfair Display,serif">0 kr</div>
+                <div id="vd-pay-escrow-count" style="font-size:.72rem;opacity:.8">0 väntar</div>
+              </div>
+              <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
+                <div style="font-size:.72rem;opacity:.8">📅 Kommande</div>
+                <div id="vd-pay-upcoming-sum" style="font-size:1.3rem;font-weight:700;font-family:Playfair Display,serif">0 kr</div>
+                <div id="vd-pay-upcoming-count" style="font-size:.72rem;opacity:.8">0 bokningar</div>
+              </div>
+              <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
+                <div style="font-size:.72rem;opacity:.8">📊 Per cleaner</div>
+                <div id="vd-pay-cleaner-count" style="font-size:1.3rem;font-weight:700;font-family:Playfair Display,serif">0</div>
+                <div style="font-size:.72rem;opacity:.8">aktiva denna månad</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-cleaner-tabell -->
+          <div class="card" style="margin-top:14px">
+            <div class="card-title">Intern fördelning per cleaner (denna månad)</div>
+            <div id="vd-pay-cleaner-table" style="font-size:.85rem">
+              <div style="color:var(--m);text-align:center;padding:20px">Ingen data ännu — ladda om vid behov.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:8px;font-size:.72rem;color:var(--m);line-height:1.5">
+            <strong>Hur det funkar:</strong> Spick håller pengar i 24h efter varje städning (escrow). Om kund inte invänder eller har dispute så transferas medel till företagets Stripe-konto. Pengarna landar på företagets bankkonto inom 3–5 bankdagar enligt Stripe-utbetalningsschemat.
+          </div>
+        </div>
+
         <div id="solo-inkomst-content">
           <div class="earn-hero">
             <div style="font-size:.8rem;opacity:.8">Intjänat denna månad</div>
@@ -6184,6 +6232,8 @@ function switchTab(tab) {
       loadCompanyPrices();
       loadSalaryReport();
       loadVdInvoices();
+      // Fas 9-utökning (2026-04-26): VD-betalningsöversikt
+      loadVdPaymentSummary();
     } else {
       renderEarnings();
       setTimeout(loadMyReviews, 200);
@@ -10736,6 +10786,72 @@ function startReassignmentRefresh() {
   _reassignmentRefreshTimer = setInterval(function() {
     if (window._isCompanyOwner) loadPendingReassignments();
   }, 30000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Fas 9-utökning (2026-04-26) — VD-betalningsöversikt
+// ═══════════════════════════════════════════════════════════════
+//
+// Anropas när VD klickar "Inkomst"-tab. Visar slutreglerat / escrow /
+// kommande + per-cleaner-fördelning för innevarande månad.
+// Flag-via cleaner.is_company_owner: bara VD ser sektionen.
+
+async function loadVdPaymentSummary() {
+  if (!cleaner || !cleaner.is_company_owner) return;
+  const section = document.getElementById('vd-payment-summary-section');
+  if (!section) return;
+  section.style.display = 'block';
+
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/vd-payment-summary', {
+      method: 'POST',
+      headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      console.warn('[SPICK] vd-payment-summary failed:', res.status);
+      return;
+    }
+    const data = await res.json();
+    if (!data.ok) return;
+
+    // Period-label
+    const monthNames = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+    document.getElementById('vd-pay-period').textContent =
+      monthNames[data.period.month - 1] + ' ' + data.period.year;
+
+    // Aggregat-kort
+    document.getElementById('vd-pay-paid-sum').textContent = (data.slutreglerat?.total_sek || 0).toLocaleString('sv-SE') + ' kr';
+    document.getElementById('vd-pay-paid-count').textContent = (data.slutreglerat?.count || 0) + ' bokningar';
+    document.getElementById('vd-pay-escrow-sum').textContent = (data.i_escrow?.total_sek || 0).toLocaleString('sv-SE') + ' kr';
+    document.getElementById('vd-pay-escrow-count').textContent = (data.i_escrow?.count || 0) + ' väntar';
+    document.getElementById('vd-pay-upcoming-sum').textContent = (data.kommande?.total_sek || 0).toLocaleString('sv-SE') + ' kr';
+    document.getElementById('vd-pay-upcoming-count').textContent = (data.kommande?.count || 0) + ' bokningar';
+    document.getElementById('vd-pay-cleaner-count').textContent = String(data.per_cleaner?.length || 0);
+
+    // Per-cleaner-tabell
+    const tbl = document.getElementById('vd-pay-cleaner-table');
+    if (tbl) {
+      const rows = (data.per_cleaner || []);
+      if (rows.length === 0) {
+        tbl.innerHTML = '<div style="color:var(--m);text-align:center;padding:20px">Inga jobb denna månad än.</div>';
+      } else {
+        let html = '<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px 14px;font-size:.85rem">';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.75rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">Cleaner</div>';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.75rem;text-transform:uppercase;text-align:center;border-bottom:1px solid var(--border);padding-bottom:6px">Jobb</div>';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.75rem;text-transform:uppercase;text-align:right;border-bottom:1px solid var(--border);padding-bottom:6px">Belopp</div>';
+        rows.forEach(function(r) {
+          html += '<div>' + escHtml(r.full_name) + '</div>';
+          html += '<div style="text-align:center">' + r.count + '</div>';
+          html += '<div style="text-align:right;font-weight:600">' + r.total_sek.toLocaleString('sv-SE') + ' kr</div>';
+        });
+        html += '</div>';
+        tbl.innerHTML = html;
+      }
+    }
+  } catch (e) {
+    console.warn('[SPICK] loadVdPaymentSummary exception:', e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

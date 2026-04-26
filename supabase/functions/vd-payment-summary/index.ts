@@ -1,0 +1,192 @@
+// ═══════════════════════════════════════════════════════════════
+// SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26)
+// ═══════════════════════════════════════════════════════════════
+//
+// Aggregerar betalnings-status per company för VD-dashboarden.
+// Ger transparens över: slutreglerat, i escrow, kommande, per-cleaner.
+//
+// AUTH: JWT (cleaner-token). VD-kontroll: cleaner.is_company_owner=true.
+//
+// SVAR-FORMAT:
+// {
+//   ok: true,
+//   period: { year, month },
+//   company: { id, name },
+//   slutreglerat: { total_sek, count, bookings: [...] },
+//   i_escrow: { total_sek, count, bookings: [...] },
+//   kommande: { total_sek, count, bookings: [...] },
+//   per_cleaner: [{ cleaner_id, full_name, count, total_sek }]
+// }
+//
+// REGLER: #26 grep schema (money.ts payout_audit_log-INSERT pattern),
+// #27 scope (bara aggregat, ingen mutation), #28 SSOT (denna EF =
+// enda källa för VD-payment-overview), #30 ingen Stripe Balance-API
+// (skippas tills behövs — DB-aggregat räcker), #31 schema verifierat
+// via _shared/money.ts code-grep 2026-04-26.
+// ═══════════════════════════════════════════════════════════════
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { corsHeaders } from "../_shared/email.ts";
+import { createLogger } from "../_shared/log.ts";
+
+const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+const sbService = createClient(SUPABASE_URL, SERVICE_KEY);
+const log = createLogger("vd-payment-summary");
+
+function json(cors: Record<string, string>, status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
+}
+
+function monthRange(year: number, month: number): { from: string; to: string } {
+  const from = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10);
+  const to = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  return { from, to };
+}
+
+Deno.serve(async (req) => {
+  const CORS = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
+
+  try {
+    // ── JWT-auth ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json(CORS, 401, { error: "missing_auth" });
+    const token = authHeader.slice(7);
+    if (token === ANON_KEY) return json(CORS, 401, { error: "anon_not_allowed" });
+    const sbAuth = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: { user }, error: authErr } = await sbAuth.auth.getUser();
+    if (authErr || !user) return json(CORS, 401, { error: "invalid_token" });
+
+    // ── VD-check: hämta caller-cleaner + verifiera is_company_owner ──
+    const { data: caller, error: callerErr } = await sbService
+      .from("cleaners")
+      .select("id, company_id, is_company_owner, full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (callerErr || !caller) return json(CORS, 403, { error: "cleaner_not_found" });
+    if (!caller.is_company_owner) return json(CORS, 403, { error: "not_company_owner" });
+    if (!caller.company_id) return json(CORS, 422, { error: "no_company_id" });
+
+    const companyId = caller.company_id as string;
+
+    // ── Hämta company-info ──
+    const { data: company } = await sbService
+      .from("companies")
+      .select("id, name")
+      .eq("id", companyId)
+      .maybeSingle();
+
+    // ── Period (default: pågående månad) ──
+    const body = await req.json().catch(() => ({}));
+    const now = new Date();
+    const year = (body && typeof body.year === "number") ? body.year : now.getUTCFullYear();
+    const month = (body && typeof body.month === "number") ? body.month : (now.getUTCMonth() + 1);
+    const { from, to } = monthRange(year, month);
+
+    // ── Hämta alla cleaner-IDs i company (för WHERE-filter) ──
+    const { data: teamMembers } = await sbService
+      .from("cleaners")
+      .select("id, full_name")
+      .eq("company_id", companyId);
+    const teamIds = (teamMembers || []).map((m) => m.id as string);
+    if (teamIds.length === 0) {
+      return json(CORS, 200, {
+        ok: true,
+        period: { year, month },
+        company: company || { id: companyId, name: null },
+        slutreglerat: { total_sek: 0, count: 0, bookings: [] },
+        i_escrow: { total_sek: 0, count: 0, bookings: [] },
+        kommande: { total_sek: 0, count: 0, bookings: [] },
+        per_cleaner: [],
+      });
+    }
+
+    // ── Slutreglerat: bookings med transfer_created i payout_audit_log denna månad ──
+    const { data: paidBookings } = await sbService
+      .from("bookings")
+      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state")
+      .in("cleaner_id", teamIds)
+      .gte("booking_date", from)
+      .lte("booking_date", to)
+      .in("escrow_state", ["released", "released_partial"]);
+    const slutreglerat = paidBookings || [];
+
+    // ── I escrow: bookings i awaiting_attest eller paid_held ──
+    const { data: escrowBookings } = await sbService
+      .from("bookings")
+      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state")
+      .in("cleaner_id", teamIds)
+      .gte("booking_date", from)
+      .lte("booking_date", to)
+      .in("escrow_state", ["paid_held", "awaiting_attest"]);
+    const iEscrow = escrowBookings || [];
+
+    // ── Kommande: bokade ej utförda (booking_date >= today, status confirmed/pending) ──
+    const todayIso = now.toISOString().slice(0, 10);
+    const { data: kommandeBookings } = await sbService
+      .from("bookings")
+      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state, status")
+      .in("cleaner_id", teamIds)
+      .gte("booking_date", todayIso)
+      .neq("status", "cancelled")
+      .neq("status", "completed");
+    const kommande = kommandeBookings || [];
+
+    // ── Per cleaner-aggregat (slutreglerat + escrow denna månad) ──
+    const allRelevant = [...slutreglerat, ...iEscrow];
+    const perCleanerMap = new Map<string, { cleaner_id: string; full_name: string; count: number; total_sek: number }>();
+    for (const b of allRelevant) {
+      const cid = b.cleaner_id as string;
+      if (!cid) continue;
+      const member = teamMembers?.find((m) => m.id === cid);
+      const fullName = member?.full_name as string || (b.cleaner_name as string) || "Okänd";
+      const existing = perCleanerMap.get(cid);
+      const price = Number(b.total_price) || 0;
+      if (existing) {
+        existing.count += 1;
+        existing.total_sek += price;
+      } else {
+        perCleanerMap.set(cid, { cleaner_id: cid, full_name: fullName, count: 1, total_sek: price });
+      }
+    }
+    const perCleaner = Array.from(perCleanerMap.values())
+      .sort((a, b) => b.total_sek - a.total_sek);
+
+    const sumPrice = (rows: Array<Record<string, unknown>>) =>
+      rows.reduce((acc, r) => acc + (Number(r.total_price) || 0), 0);
+
+    return json(CORS, 200, {
+      ok: true,
+      period: { year, month },
+      company: company || { id: companyId, name: null },
+      slutreglerat: {
+        total_sek: sumPrice(slutreglerat),
+        count: slutreglerat.length,
+        bookings: slutreglerat,
+      },
+      i_escrow: {
+        total_sek: sumPrice(iEscrow),
+        count: iEscrow.length,
+        bookings: iEscrow,
+      },
+      kommande: {
+        total_sek: sumPrice(kommande),
+        count: kommande.length,
+        bookings: kommande,
+      },
+      per_cleaner: perCleaner,
+    });
+  } catch (err) {
+    log("error", "Unexpected error", { error: (err as Error).message });
+    return json(CORS, 500, { error: "internal_error" });
+  }
+});
