@@ -57,9 +57,54 @@ serve(async (req) => {
 
     const results: Array<{ booking_id: string; action: string; reason?: string }> = [];
 
+    // ────────────────────────────────────────────────────────────────
+    // Audit-fix P0 (2026-04-26): batch-fetch INNAN loop för att undvika
+    // N+1 queries. Tidigare 2 queries per booking × 14 bookings/timme
+    // (vid 10k/månad) = ~28 DB-anrop/timme bara för delegation-cron.
+    // Nu 2 queries totalt per körning oavsett booking-count.
+    // ────────────────────────────────────────────────────────────────
+
+    // Steg 1: batch-fetch alla previous cleaners (för company_id-lookup)
+    const prevCleanerIds = [...new Set(bookings.map(b => b.cleaner_id).filter(Boolean))];
+    const prevCleanersById = new Map<string, { id: string; company_id: string | null; avg_rating: number | null }>();
+    if (prevCleanerIds.length > 0) {
+      const { data: prevCleaners } = await sb
+        .from("cleaners")
+        .select("id, company_id, avg_rating")
+        .in("id", prevCleanerIds);
+      for (const pc of (prevCleaners || [])) {
+        prevCleanersById.set(pc.id, pc);
+      }
+    }
+
+    // Steg 2: batch-fetch alla candidates per unik company_id
+    const companyIds = [...new Set(
+      Array.from(prevCleanersById.values())
+        .map(pc => pc.company_id)
+        .filter((id): id is string => !!id)
+    )];
+    const candidatesByCompany = new Map<string, Array<{ id: string; full_name: string; avg_rating: number | null }>>();
+    if (companyIds.length > 0) {
+      const { data: allCandidates } = await sb
+        .from("cleaners")
+        .select("id, full_name, avg_rating, company_id")
+        .in("company_id", companyIds)
+        .eq("is_active", true)
+        .eq("status", "aktiv")
+        .eq("is_approved", true)
+        .order("avg_rating", { ascending: false });
+      for (const cand of (allCandidates || [])) {
+        if (!cand.company_id) continue;
+        if (!candidatesByCompany.has(cand.company_id)) candidatesByCompany.set(cand.company_id, []);
+        candidatesByCompany.get(cand.company_id)!.push({ id: cand.id, full_name: cand.full_name, avg_rating: cand.avg_rating });
+      }
+    }
+
     for (const booking of bookings) {
       try {
-        // Kolla auto-delegation
+        // Kolla auto-delegation (per-booking customer_profiles-fetch är OK,
+        // ingen batch eftersom auto_delegation_enabled redan kan ligga i
+        // booking-row och oftast inte triggar lookup).
         let autoDelegation = booking.auto_delegation_enabled;
         if (autoDelegation === null || autoDelegation === undefined) {
           const { data: profile } = await sb
@@ -75,33 +120,20 @@ serve(async (req) => {
           continue;
         }
 
-        // Hämta företag via previous cleaner
         if (!booking.cleaner_id) {
           results.push({ booking_id: booking.id, action: "skipped", reason: "no previous cleaner" });
           continue;
         }
 
-        const { data: prevCleaner } = await sb
-          .from("cleaners")
-          .select("id, company_id, avg_rating")
-          .eq("id", booking.cleaner_id)
-          .single();
-
+        const prevCleaner = prevCleanersById.get(booking.cleaner_id);
         if (!prevCleaner?.company_id) {
           results.push({ booking_id: booking.id, action: "skipped", reason: "not a company booking" });
           continue;
         }
 
-        // Hitta lediga teammedlemmar, sorterade efter avg_rating desc
-        const { data: candidates } = await sb
-          .from("cleaners")
-          .select("id, full_name, avg_rating, is_active, status, is_approved")
-          .eq("company_id", prevCleaner.company_id)
-          .eq("is_active", true)
-          .eq("status", "aktiv")
-          .eq("is_approved", true)
-          .neq("id", prevCleaner.id)
-          .order("avg_rating", { ascending: false });
+        // Filter candidates: ej previous cleaner, ej tom lista
+        const candidates = (candidatesByCompany.get(prevCleaner.company_id) || [])
+          .filter(c => c.id !== prevCleaner.id);
 
         if (!candidates || candidates.length === 0) {
           results.push({ booking_id: booking.id, action: "no_candidates" });
