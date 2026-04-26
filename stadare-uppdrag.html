@@ -216,6 +216,63 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
   </div>
+
+  <!-- Sprint C-1 (2026-04-26): Cleaner-utlägg per uppdrag -->
+  <div class="info-card" id="expense-section">
+    <h3>💸 Utlägg för detta jobb</h3>
+    <p style="font-size:.82rem;color:#ccc;margin-bottom:10px">Köpte du städkemikalier, dukar, parkering eller annat? Lägg in utlägget så återbetalas du vid utbetalning.</p>
+    <div id="expense-list" style="margin-bottom:10px">
+      <div style="text-align:center;padding:14px;color:#ccc;font-size:.85rem" id="expense-empty">Inga utlägg registrerade ännu.</div>
+    </div>
+    <button onclick="openExpenseModal()" style="width:100%;padding:12px;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
+      📷 Lägg till utlägg
+    </button>
+  </div>
+</div>
+
+<!-- Sprint C-1 expense-modal -->
+<div id="expense-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeExpenseModal()">
+  <div style="background:#fff;border-radius:14px;padding:22px;max-width:440px;width:100%;margin:30px auto;color:#222">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:1.1rem;font-weight:700;color:#222">Lägg till utlägg</h3>
+      <button onclick="closeExpenseModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">×</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:#222">Kategori</label>
+      <select id="exp-category" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;font-family:inherit;color:#222">
+        <option value="chemicals">🧴 Kemikalier (städmedel)</option>
+        <option value="tools">🧽 Verktyg (dukar, mopp, etc)</option>
+        <option value="transport">🚗 Transport (km × kr)</option>
+        <option value="parking">🅿️ Parkering</option>
+        <option value="other">📋 Annat</option>
+      </select>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:#222">Beskrivning *</label>
+      <input type="text" id="exp-description" maxlength="200" placeholder="t.ex. Allrent + golvmedel ICA" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;font-family:inherit;color:#222">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:#222">Belopp (kr) *</label>
+        <input type="number" id="exp-amount-kr" min="1" max="500" step="1" placeholder="89" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;font-family:inherit;color:#222">
+      </div>
+      <div>
+        <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:#222">Datum</label>
+        <input type="date" id="exp-date" style="width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;font-family:inherit;color:#222">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:#222">Foto av kvitto</label>
+      <input type="file" id="exp-receipt-file" accept="image/*,application/pdf" capture="environment" style="width:100%;padding:8px;border:1.5px dashed #0F6E56;border-radius:8px;font-size:.82rem;font-family:inherit;color:#0F6E56;background:#F0FDFA">
+      <small id="exp-receipt-status" style="display:block;margin-top:4px;color:#666;font-size:.72rem"></small>
+    </div>
+    <div id="exp-msg" style="display:none;font-size:.82rem;text-align:center;padding:8px;border-radius:6px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeExpenseModal()" style="flex:1;padding:12px;background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
+      <button id="exp-submit-btn" onclick="submitExpense()" style="flex:1;padding:12px;background:#0F6E56;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit">💾 Spara</button>
+    </div>
+    <small style="display:block;text-align:center;margin-top:10px;color:#888;font-size:.7rem">Utlägg under 100 kr godkänns automatiskt. Större belopp granskas av VD.</small>
+  </div>
 </div>
 
 <!-- CHATT TAB -->
@@ -735,6 +792,7 @@ function showTab(tab) {
     el.classList.toggle('active', ['status','key','uppdrag','chat'][i] === tab)
   );
   if (tab === 'key') loadKeyInfo();
+  if (tab === 'uppdrag' && typeof loadExpenseList === 'function') loadExpenseList();
   if (tab === 'chat') {
     loadMessages();
     clearInterval(messagePolling);
@@ -901,6 +959,188 @@ function collectGPS(callback) {
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint C-1 (2026-04-26) — Cleaner-utlägg per uppdrag
+// ═══════════════════════════════════════════════════════════════
+
+var _expenseListCache = [];
+
+function openExpenseModal() {
+  var modal = document.getElementById('expense-modal');
+  if (!modal) return;
+  document.getElementById('exp-category').value = 'chemicals';
+  document.getElementById('exp-description').value = '';
+  document.getElementById('exp-amount-kr').value = '';
+  document.getElementById('exp-receipt-file').value = '';
+  document.getElementById('exp-receipt-status').textContent = '';
+  document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('exp-msg').style.display = 'none';
+  document.getElementById('exp-submit-btn').disabled = false;
+  document.getElementById('exp-submit-btn').textContent = '💾 Spara';
+  modal.style.display = 'flex';
+}
+
+function closeExpenseModal() {
+  var modal = document.getElementById('expense-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function _expenseShowMsg(text, isError) {
+  var el = document.getElementById('exp-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#B91C1C' : '#065F46';
+  el.style.background = isError ? '#FEF2F2' : '#D1FAE5';
+  el.style.display = 'block';
+}
+
+async function submitExpense() {
+  var btn = document.getElementById('exp-submit-btn');
+  var category = document.getElementById('exp-category').value;
+  var description = (document.getElementById('exp-description').value || '').trim();
+  var amountKr = parseFloat(document.getElementById('exp-amount-kr').value) || 0;
+  var dateStr = document.getElementById('exp-date').value;
+  var fileInput = document.getElementById('exp-receipt-file');
+  var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+  if (!description || description.length < 2) { _expenseShowMsg('Beskrivning krävs', true); return; }
+  if (amountKr <= 0) { _expenseShowMsg('Belopp måste vara > 0', true); return; }
+  if (amountKr > 500) { _expenseShowMsg('Belopp över 500 kr — kontakta VD direkt', true); return; }
+  if (!dateStr) { _expenseShowMsg('Datum krävs', true); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sparar...';
+
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+
+    // Hämta cleaner_id + company_id (cached på BOOKING-objektet om laddat)
+    var cleanerEmail = MY_EMAIL;
+    if (!cleanerEmail) { _expenseShowMsg('Inte inloggad', true); btn.disabled = false; btn.textContent = '💾 Spara'; return; }
+
+    // Slå upp cleaner via email
+    var cleanerRes = await fetch(SUPA_URL + '/rest/v1/cleaners?email=eq.' + encodeURIComponent(cleanerEmail) + '&select=id,company_id', {
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token }
+    });
+    var cleanerRows = await cleanerRes.json().catch(function() { return []; });
+    if (!Array.isArray(cleanerRows) || cleanerRows.length === 0) {
+      _expenseShowMsg('Kunde inte hitta din cleaner-profil', true);
+      btn.disabled = false; btn.textContent = '💾 Spara';
+      return;
+    }
+    var cleanerId = cleanerRows[0].id;
+    var companyId = cleanerRows[0].company_id || null;
+
+    // Foto-upload (om någon)
+    var receiptStoragePath = null;
+    var receiptMimeType = null;
+    if (file) {
+      var ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
+      var path = 'expense-receipts/' + new Date().toISOString().slice(0, 7) + '/' + cleanerId + '/' + crypto.randomUUID() + '.' + ext;
+      var uploadRes = await fetch(SUPA_URL + '/storage/v1/object/documents/' + path, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': file.type, 'x-upsert': 'false' },
+        body: file
+      });
+      if (uploadRes.ok) {
+        receiptStoragePath = path;
+        receiptMimeType = file.type;
+      } else {
+        // Fallback: spara utan foto, varna user
+        console.warn('[expense] receipt upload failed:', uploadRes.status);
+      }
+    }
+
+    var amountOre = Math.round(amountKr * 100);
+    var insertRes = await fetch(SUPA_URL + '/rest/v1/cleaner_expenses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPA_KEY,
+        Authorization: 'Bearer ' + token,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        cleaner_id: cleanerId,
+        company_id: companyId,
+        booking_id: BOOKING_ID || null,
+        amount_ore: amountOre,
+        category: category,
+        description: description.slice(0, 500),
+        expense_date: dateStr,
+        receipt_storage_path: receiptStoragePath,
+        receipt_mime_type: receiptMimeType
+      })
+    });
+
+    if (!insertRes.ok) {
+      var err = await insertRes.json().catch(function() { return {}; });
+      _expenseShowMsg('Fel: ' + (err.message || 'Kunde inte spara utlägget'), true);
+      btn.disabled = false; btn.textContent = '💾 Spara';
+      return;
+    }
+
+    var saved = await insertRes.json();
+    var savedRow = Array.isArray(saved) ? saved[0] : saved;
+    _expenseShowMsg(savedRow.status === 'approved'
+      ? '✅ Auto-godkänt! (under 100 kr)'
+      : '✅ Skickat till VD för godkännande', false);
+
+    setTimeout(function() {
+      closeExpenseModal();
+      loadExpenseList();
+    }, 1300);
+  } catch (e) {
+    _expenseShowMsg('Nätverksfel: ' + (e.message || e), true);
+    btn.disabled = false; btn.textContent = '💾 Spara';
+  }
+}
+
+async function loadExpenseList() {
+  if (!BOOKING_ID) return;
+  var listEl = document.getElementById('expense-list');
+  var emptyEl = document.getElementById('expense-empty');
+  if (!listEl) return;
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+    var r = await fetch(SUPA_URL + '/rest/v1/cleaner_expenses?booking_id=eq.' + BOOKING_ID + '&order=submitted_at.desc&select=id,amount_ore,category,description,status,expense_date', {
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token }
+    });
+    if (!r.ok) return;
+    var rows = await r.json();
+    _expenseListCache = Array.isArray(rows) ? rows : [];
+    if (_expenseListCache.length === 0) {
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    var catIcon = { chemicals: '🧴', tools: '🧽', transport: '🚗', parking: '🅿️', other: '📋' };
+    var statusBadge = function(s) {
+      if (s === 'approved' || s === 'paid') return '<span style="color:#10B981;font-size:.72rem">✓ ' + (s === 'paid' ? 'Utbetald' : 'Godkänd') + '</span>';
+      if (s === 'rejected') return '<span style="color:#EF4444;font-size:.72rem">✗ Avslagen</span>';
+      return '<span style="color:#F59E0B;font-size:.72rem">⏳ Väntar VD</span>';
+    };
+    var html = _expenseListCache.map(function(e) {
+      var icon = catIcon[e.category] || '📋';
+      var kr = ((e.amount_ore || 0) / 100).toFixed(2).replace('.', ',');
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(255,255,255,.05);border-radius:8px;margin-bottom:6px;font-size:.85rem">' +
+        '<div>' + icon + ' ' + escapeHtml(e.description || '') + '<div style="font-size:.7rem;color:#aaa">' + statusBadge(e.status) + ' · ' + (e.expense_date || '') + '</div></div>' +
+        '<div style="font-weight:700">' + kr + ' kr</div>' +
+        '</div>';
+    }).join('');
+    listEl.innerHTML = html + '<div style="text-align:center;padding:6px;font-size:.7rem;color:#999">' +
+      _expenseListCache.length + ' utlägg · ' + (_expenseListCache.reduce(function(s, e) { return s + (e.amount_ore || 0); }, 0) / 100).toFixed(2).replace('.', ',') + ' kr totalt</div>';
+  } catch (e) {
+    console.warn('[expense] list load failed:', e);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // Öppna Google Maps vägbeskrivning

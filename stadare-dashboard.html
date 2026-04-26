@@ -1147,6 +1147,20 @@ body{top:0!important}
           <div style="margin-top:8px;font-size:.72rem;color:var(--m);line-height:1.5">
             <strong>Hur det funkar:</strong> Spick håller pengar i 24h efter varje städning (escrow). Om kund inte invänder eller har dispute så transferas medel till företagets Stripe-konto. Pengarna landar på företagets bankkonto inom 3–5 bankdagar enligt Stripe-utbetalningsschemat.
           </div>
+
+          <!-- Sprint C-2 (2026-04-26): Cleaner-utlägg-godkännande -->
+          <div class="card" id="vd-expenses-card" style="margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div class="card-title" style="margin:0">💸 Utlägg från team <span id="vd-expenses-pending-badge" style="display:none;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:700">0</span></div>
+              <button onclick="loadVdPendingExpenses()" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">↻ Uppdatera</button>
+            </div>
+            <div id="vd-expenses-list" style="font-size:.85rem">
+              <div style="color:var(--m);text-align:center;padding:14px;font-size:.82rem">Inga pending utlägg.</div>
+            </div>
+            <div style="margin-top:8px;font-size:.72rem;color:var(--m);line-height:1.5">
+              Cleaners loggar utlägg per uppdrag (kemikalier, transport, parkering). Under 100 kr godkänns auto. Större belopp granskas här. Återbetalning sker vid utbetalning (kräver jurist-OK på moms innan aktivering).
+            </div>
+          </div>
         </div>
 
         <div id="solo-inkomst-content">
@@ -6387,6 +6401,8 @@ function switchTab(tab) {
       loadVdInvoices();
       // Fas 9-utökning (2026-04-26): VD-betalningsöversikt
       loadVdPaymentSummary();
+      // Sprint C-2 (2026-04-26): pending utlägg från team
+      if (typeof loadVdPendingExpenses === 'function') loadVdPendingExpenses();
     } else {
       renderEarnings();
       setTimeout(loadMyReviews, 200);
@@ -11817,6 +11833,167 @@ async function loadVdPaymentSummary() {
     }
   } catch (e) {
     console.warn('[SPICK] loadVdPaymentSummary exception:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint C-2 (2026-04-26) — VD-pending-utlägg-godkännande
+// ═══════════════════════════════════════════════════════════════
+
+var _vdExpensesCache = [];
+var _vdExpensesCleanerNames = {};
+
+async function loadVdPendingExpenses() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
+  var listEl = document.getElementById('vd-expenses-list');
+  var badgeEl = document.getElementById('vd-expenses-pending-badge');
+  if (!listEl) return;
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+    var url = SUPA_URL + '/rest/v1/cleaner_expenses?company_id=eq.' + cleaner.company_id + '&status=eq.pending&order=submitted_at.desc&limit=50&select=id,cleaner_id,booking_id,amount_ore,vat_amount_ore,category,description,receipt_storage_path,expense_date,submitted_at';
+    var res = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token } });
+    if (!res.ok) {
+      listEl.innerHTML = '<div style="color:#B91C1C;text-align:center;padding:14px">Kunde inte ladda utlägg (HTTP ' + res.status + ')</div>';
+      return;
+    }
+    _vdExpensesCache = await res.json();
+    if (!Array.isArray(_vdExpensesCache)) _vdExpensesCache = [];
+
+    if (badgeEl) {
+      if (_vdExpensesCache.length > 0) {
+        badgeEl.textContent = String(_vdExpensesCache.length);
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    if (_vdExpensesCache.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--m);text-align:center;padding:14px;font-size:.82rem">Inga pending utlägg.</div>';
+      return;
+    }
+
+    // Bygg cleaner-namn-lookup
+    var cleanerIds = Array.from(new Set(_vdExpensesCache.map(function(e) { return e.cleaner_id; }).filter(Boolean)));
+    if (cleanerIds.length > 0) {
+      var nameRes = await fetch(SUPA_URL + '/rest/v1/cleaners?id=in.(' + cleanerIds.join(',') + ')&select=id,full_name', {
+        headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token }
+      });
+      if (nameRes.ok) {
+        var names = await nameRes.json();
+        if (Array.isArray(names)) names.forEach(function(c) { _vdExpensesCleanerNames[c.id] = c.full_name; });
+      }
+    }
+
+    listEl.innerHTML = _vdExpensesCache.map(renderVdExpenseCard).join('');
+  } catch (e) {
+    console.warn('[expenses] load failed:', e);
+  }
+}
+
+function renderVdExpenseCard(e) {
+  var catIcon = { chemicals: '🧴', tools: '🧽', transport: '🚗', parking: '🅿️', other: '📋' };
+  var catLabel = { chemicals: 'Kemikalier', tools: 'Verktyg', transport: 'Transport', parking: 'Parkering', other: 'Annat' };
+  var icon = catIcon[e.category] || '📋';
+  var label = catLabel[e.category] || e.category;
+  var name = _vdExpensesCleanerNames[e.cleaner_id] || 'Cleaner';
+  var kr = ((e.amount_ore || 0) / 100).toFixed(2).replace('.', ',');
+  var receiptLink = e.receipt_storage_path
+    ? '<button onclick="openExpenseReceipt(\'' + escHtml(e.receipt_storage_path) + '\')" style="background:none;border:none;color:#0F6E56;font-size:.72rem;text-decoration:underline;cursor:pointer">📷 Visa kvitto</button>'
+    : '<span style="color:#999;font-size:.72rem">Inget kvitto</span>';
+  return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">' +
+      '<div>' +
+        '<div style="font-weight:700">' + icon + ' ' + escHtml(label) + ' · ' + kr + ' kr</div>' +
+        '<div style="font-size:.78rem;color:var(--m)">' + escHtml(name) + ' · ' + escHtml(e.expense_date || '') + '</div>' +
+      '</div>' +
+      '<div>' + receiptLink + '</div>' +
+    '</div>' +
+    '<div style="font-size:.85rem;color:#3f3d36;margin-bottom:8px">"' + escHtml(e.description || '') + '"</div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button onclick="rejectVdExpense(\'' + escHtml(e.id) + '\')" style="flex:1;padding:8px;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">✗ Avslå</button>' +
+      '<button onclick="approveVdExpense(\'' + escHtml(e.id) + '\')" style="flex:1;padding:8px;background:#0F6E56;color:#fff;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">✓ Godkänn</button>' +
+    '</div>' +
+    '</div>';
+}
+
+async function approveVdExpense(expenseId) {
+  if (!confirm('Godkänn detta utlägg?\n\nObs: Återbetalning sker vid utbetalning (om aktiverat).')) return;
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+    var res = await fetch(SUPA_URL + '/rest/v1/cleaner_expenses?id=eq.' + expenseId + '&status=eq.pending', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + token, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        status: 'approved',
+        approved_by_cleaner_id: cleaner.id,
+        approved_at: new Date().toISOString()
+      })
+    });
+    if (res.ok) {
+      showToast('✓ Utlägg godkänt');
+      loadVdPendingExpenses();
+    } else {
+      var err = await res.json().catch(function() { return {}; });
+      showToast('Fel: ' + (err.message || 'Kunde inte godkänna'));
+    }
+  } catch (e) {
+    showToast('Nätverksfel: ' + (e.message || e));
+  }
+}
+
+async function rejectVdExpense(expenseId) {
+  var reason = prompt('Anledning till avslag (visas för cleaner):');
+  if (!reason || reason.trim().length < 2) return;
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+    var res = await fetch(SUPA_URL + '/rest/v1/cleaner_expenses?id=eq.' + expenseId + '&status=eq.pending', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + token, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        status: 'rejected',
+        approved_by_cleaner_id: cleaner.id,
+        approved_at: new Date().toISOString(),
+        rejected_reason: reason.trim().slice(0, 500)
+      })
+    });
+    if (res.ok) {
+      showToast('Utlägg avslaget');
+      loadVdPendingExpenses();
+    } else {
+      var err = await res.json().catch(function() { return {}; });
+      showToast('Fel: ' + (err.message || 'Kunde inte avslå'));
+    }
+  } catch (e) {
+    showToast('Nätverksfel: ' + (e.message || e));
+  }
+}
+
+async function openExpenseReceipt(storagePath) {
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : SUPA_KEY;
+    var url = SUPA_URL + '/storage/v1/object/sign/documents/' + storagePath;
+    var res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ expiresIn: 3600 })
+    });
+    if (res.ok) {
+      var data = await res.json();
+      if (data.signedURL) {
+        window.open(SUPA_URL + '/storage/v1' + data.signedURL, '_blank');
+      } else {
+        showToast('Kunde inte hämta kvitto-URL');
+      }
+    } else {
+      showToast('Kvitto-fel HTTP ' + res.status);
+    }
+  } catch (e) {
+    showToast('Nätverksfel: ' + e.message);
   }
 }
 
