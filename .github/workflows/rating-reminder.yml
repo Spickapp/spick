@@ -1,0 +1,48 @@
+name: Rating-reminder cron (var 2:a timme dagtid)
+# Sprint 5A — kör rating-reminder-cron var 2:a timme mellan 8-20 CET
+# (06-18 UTC vinter, 06-18 UTC sommartid via DST-skip = inte exakt men
+# acceptabelt för rating-reminder som inte är tids-kritisk).
+#
+# Pattern: identisk struktur som auto-remind.yml (efter 2026-04-25 IO-fix).
+# Skickar Authorization: Bearer $CRON_SECRET — verifieras via _shared/cron-auth.ts.
+'on':
+  schedule:
+    # Var 2:a timme mellan 06:00-18:00 UTC (≈ 08-20 CET, ≈ 08-20 CEST)
+    - cron: '0 6 * * *'
+    - cron: '0 8 * * *'
+    - cron: '0 10 * * *'
+    - cron: '0 12 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 16 * * *'
+    - cron: '0 18 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Kör rating-reminder-cron
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/rating-reminder-cron" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::rating-reminder-cron failed with HTTP $HTTP_CODE"
+            exit 1
+          fi

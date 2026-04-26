@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Hur gick städningen? — Spick</title>
+<meta name="description" content="1-tap betyg på din städning hos Spick. Tar 1 sekund.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://urjeijcncsyuletprydy.supabase.co">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="js/config.js"></script>
+<style>
+:root{--g:#0F6E56;--gm:#1D9E75;--gp:#E1F5EE;--b:#0E0E0E;--gr:#F7F7F5;--grd:#E8E8E4;--t:#1C1C1A;--m:#6B6960;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--gr);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem}
+.card{background:#fff;border-radius:24px;padding:2.5rem 2rem;max-width:440px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.08)}
+.logo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--g);margin-bottom:1.5rem;display:block;text-decoration:none}
+h1{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--b);margin-bottom:.5rem;line-height:1.25}
+.cleaner-info{display:flex;align-items:center;justify-content:center;gap:.75rem;margin:1.25rem 0 1rem;padding:.875rem 1rem;background:var(--gp);border-radius:12px}
+.cleaner-photo{width:48px;height:48px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:2px solid var(--g)}
+.cleaner-meta{text-align:left;font-size:.85rem;color:var(--t);line-height:1.35}
+.cleaner-meta strong{color:var(--g);font-size:.95rem;display:block;margin-bottom:2px}
+.sub{font-size:.92rem;color:var(--m);line-height:1.6;margin-bottom:1.75rem}
+.stars{display:flex;justify-content:center;gap:.5rem;margin-bottom:1.5rem}
+.star{font-size:3.5rem;cursor:pointer;transition:transform .15s,filter .2s;filter:grayscale(1);opacity:.4;background:none;border:none;padding:.25rem;line-height:1;font-family:inherit}
+.star:hover,.star.active{filter:none;opacity:1;transform:scale(1.18)}
+.star:focus-visible{outline:3px solid var(--g);outline-offset:2px;border-radius:8px}
+.label{font-size:1.05rem;font-weight:600;color:var(--g);min-height:1.5rem;margin-bottom:1.5rem}
+.comment-box{width:100%;padding:.75rem .9rem;border:1.5px solid var(--grd);border-radius:10px;font-size:.92rem;font-family:inherit;outline:none;resize:none;transition:border-color .2s;min-height:80px;margin-bottom:1.25rem;display:none}
+.comment-box.visible{display:block}
+.comment-box:focus{border-color:var(--g)}
+.submit-btn{width:100%;padding:.95rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:none}
+.submit-btn.visible{display:flex;align-items:center;justify-content:center;gap:.5rem}
+.submit-btn:hover:not(:disabled){background:var(--gm)}
+.submit-btn:disabled{opacity:.6;cursor:not-allowed}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.done,.err{display:none}
+.done.visible,.err.visible{display:block}
+.done-icon{font-size:3.5rem;margin-bottom:.75rem;line-height:1}
+.done h2{font-family:'Playfair Display',serif;font-size:1.55rem;color:var(--b);margin-bottom:.5rem}
+.done p{font-size:.95rem;color:var(--m);margin-bottom:1.5rem;line-height:1.65}
+.cta{display:block;padding:.875rem 1.5rem;background:var(--g);color:#fff;border-radius:100px;text-decoration:none;font-weight:600;margin-bottom:.5rem;transition:background .2s}
+.cta:hover{background:var(--gm)}
+.cta-secondary{background:var(--gr);color:var(--t);border:1.5px solid var(--grd)}
+.err{color:#991B1B}
+.err h2{font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:.5rem;color:#991B1B}
+</style>
+</head>
+<body>
+
+<!-- LOAD-VY (initial) -->
+<div class="card" id="load">
+  <a href="index.html" class="logo">Spick</a>
+  <p style="color:var(--m);font-size:.9rem;padding:1rem 0">Laddar...</p>
+</div>
+
+<!-- RATING-VY -->
+<div class="card" id="form" style="display:none">
+  <a href="index.html" class="logo">Spick</a>
+  <h1 id="formTitle">Hur gick städningen?</h1>
+  <div class="cleaner-info" id="cleanerInfo" style="display:none">
+    <div class="cleaner-photo">🧹</div>
+    <div class="cleaner-meta">
+      <strong id="cleanerName"></strong>
+      <span id="bookingMeta"></span>
+    </div>
+  </div>
+  <p class="sub">Tap en stjärna nedan — tar 1 sekund.</p>
+  <div class="stars" id="stars" role="radiogroup" aria-label="Betyg 1 till 5 stjärnor">
+    <button type="button" class="star" data-v="1" aria-label="1 stjärna">⭐</button>
+    <button type="button" class="star" data-v="2" aria-label="2 stjärnor">⭐</button>
+    <button type="button" class="star" data-v="3" aria-label="3 stjärnor">⭐</button>
+    <button type="button" class="star" data-v="4" aria-label="4 stjärnor">⭐</button>
+    <button type="button" class="star" data-v="5" aria-label="5 stjärnor">⭐</button>
+  </div>
+  <div class="label" id="lbl"></div>
+  <textarea class="comment-box" id="cmt" placeholder="Skriv en kommentar (valfritt)" maxlength="800" aria-label="Kommentar"></textarea>
+  <button type="button" class="submit-btn" id="btn">Spara betyg</button>
+</div>
+
+<!-- TACK-VY -->
+<div class="card done" id="done">
+  <a href="index.html" class="logo">Spick</a>
+  <div class="done-icon" id="doneIcon">⭐</div>
+  <h2 id="doneTitle">Tack för ditt betyg!</h2>
+  <p id="doneSub">Ditt betyg är sparat och hjälper andra hitta bra städare.</p>
+  <a href="boka.html" class="cta">Boka samma städare igen →</a>
+  <a href="index.html" class="cta cta-secondary">Tillbaka till startsidan</a>
+</div>
+
+<!-- ERROR-VY -->
+<div class="card err" id="err">
+  <a href="index.html" class="logo">Spick</a>
+  <div class="done-icon">⚠️</div>
+  <h2 id="errTitle">Länken fungerar inte</h2>
+  <p id="errSub" style="color:var(--m);margin-bottom:1.5rem;line-height:1.6">
+    Länken är ogiltig eller har gått ut. Om du redan lämnat betyg är det redan registrerat.
+  </p>
+  <a href="index.html" class="cta">Till startsidan →</a>
+</div>
+
+<script>
+'use strict';
+(function(){
+  var SUPA = SPICK.SUPA_URL;
+  var KEY = SPICK.SUPA_KEY;
+  var H = {
+    'apikey': KEY,
+    'Authorization': 'Bearer ' + KEY,
+    'Content-Type': 'application/json'
+  };
+  var LABELS = ['', '😞 Dåligt', '😐 Okej', '🙂 Bra', '😊 Mycket bra', '🤩 Fantastiskt!'];
+
+  // URL-params
+  var params = new URLSearchParams(location.search);
+  var bid = params.get('b') || '';
+  var token = params.get('t') || '';
+  var preRating = parseInt(params.get('r')) || 0;
+  if (preRating < 1 || preRating > 5) preRating = 0;
+
+  var chosen = 0;
+  var bookingData = null;
+  var submitted = false;
+
+  // Show error if missing required params
+  if (!bid || !token) {
+    showError('Länken saknar information. Be om en ny från Spick eller kontakta hello@spick.se.');
+    return;
+  }
+
+  function show(id) {
+    ['load','form','done','err'].forEach(function(x){
+      var el = document.getElementById(x);
+      if (!el) return;
+      if (x === id) {
+        el.style.display = 'block';
+        el.classList.add('visible');
+      } else {
+        el.style.display = 'none';
+        el.classList.remove('visible');
+      }
+    });
+  }
+
+  function showError(msg) {
+    if (msg) {
+      var sub = document.getElementById('errSub');
+      if (sub) sub.textContent = msg;
+    }
+    show('err');
+  }
+
+  function escHtml(s) {
+    return typeof window.escHtml === 'function'
+      ? window.escHtml(s)
+      : String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setRating(n) {
+    chosen = n;
+    var stars = document.querySelectorAll('.star');
+    stars.forEach(function(s, i) {
+      s.classList.toggle('active', i < n);
+    });
+    document.getElementById('lbl').textContent = LABELS[n] || '';
+    var btn = document.getElementById('btn');
+    var cmt = document.getElementById('cmt');
+    btn.classList.add('visible');
+    cmt.classList.add('visible');
+  }
+
+  // Setup star click handlers
+  document.querySelectorAll('.star').forEach(function(s) {
+    s.addEventListener('click', function() {
+      var v = parseInt(s.getAttribute('data-v'));
+      setRating(v);
+    });
+    s.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        s.click();
+      }
+    });
+  });
+
+  document.getElementById('btn').addEventListener('click', submit);
+
+  async function loadBooking() {
+    try {
+      var res = await fetch(SUPA + '/rest/v1/rpc/get_booking_for_rating', {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({ _id: bid, _token: token })
+      });
+
+      if (!res.ok) {
+        showError('Kunde inte ladda bokningsinformation. Kontrollera länken.');
+        return;
+      }
+
+      var data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        showError('Länken är ogiltig eller har redan använts.');
+        return;
+      }
+
+      bookingData = data[0];
+
+      if (bookingData.already_rated) {
+        // Visa tack-vyn direkt — kund har redan ratad
+        document.getElementById('doneIcon').textContent = '✅';
+        document.getElementById('doneTitle').textContent = 'Du har redan lämnat betyg';
+        document.getElementById('doneSub').textContent =
+          'Tack! Vi har redan registrerat ditt omdöme för denna städning.';
+        show('done');
+        return;
+      }
+
+      // Fyll i cleaner-info
+      var info = document.getElementById('cleanerInfo');
+      var nameEl = document.getElementById('cleanerName');
+      var metaEl = document.getElementById('bookingMeta');
+      if (bookingData.cleaner_name) {
+        nameEl.textContent = bookingData.cleaner_name;
+        var meta = (bookingData.service_type || 'Städning');
+        if (bookingData.booking_date) meta += ' · ' + bookingData.booking_date;
+        metaEl.textContent = meta;
+        info.style.display = 'flex';
+        document.getElementById('formTitle').textContent =
+          'Hur gick det med ' + (bookingData.cleaner_name.split(' ')[0]) + '?';
+      }
+
+      show('form');
+
+      // Om SMS-länken hade pre-rating (?r=N) → submit:a direkt (1-tap-flow)
+      if (preRating) {
+        setRating(preRating);
+        // Auto-submit efter 200ms (ge UI chans att rendera + hindra Stop-Submit)
+        setTimeout(function() {
+          if (!submitted) submit();
+        }, 250);
+      }
+    } catch (e) {
+      console.error('loadBooking error:', e);
+      showError('Något gick fel vid laddning. Försök igen om en stund.');
+    }
+  }
+
+  async function submit() {
+    if (!chosen || submitted) return;
+    submitted = true;
+    var btn = document.getElementById('btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spin"></div> Sparar...';
+
+    try {
+      var commentVal = (document.getElementById('cmt').value || '').trim();
+
+      var res = await fetch(SUPA + '/rest/v1/rpc/insert_rating_with_token', {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({
+          _booking_id: bid,
+          _token: token,
+          _rating: chosen,
+          _comment: commentVal || null
+        })
+      });
+
+      if (!res.ok) {
+        var errBody = await res.json().catch(function(){ return {}; });
+        console.error('Submit failed:', res.status, errBody);
+        submitted = false;
+        btn.disabled = false;
+        btn.innerHTML = 'Spara betyg';
+        showError('Kunde inte spara betyget. Försök igen eller kontakta hello@spick.se.');
+        return;
+      }
+
+      var result = await res.json();
+
+      if (!result.ok) {
+        if (result.error === 'already_rated') {
+          document.getElementById('doneIcon').textContent = '✅';
+          document.getElementById('doneTitle').textContent = 'Du har redan lämnat betyg';
+          document.getElementById('doneSub').textContent =
+            'Tack! Vi har redan registrerat ditt omdöme.';
+          show('done');
+          return;
+        }
+        if (result.error === 'invalid_token' || result.error === 'token_not_set') {
+          showError('Länken är ogiltig. Kontakta hello@spick.se om du tror detta är fel.');
+          return;
+        }
+        submitted = false;
+        btn.disabled = false;
+        btn.innerHTML = 'Spara betyg';
+        showError('Kunde inte spara betyget: ' + escHtml(result.error || 'okänt fel'));
+        return;
+      }
+
+      // Success!
+      var icon = chosen >= 4 ? '🎉' : (chosen >= 3 ? '⭐' : '🙏');
+      document.getElementById('doneIcon').textContent = icon;
+      if (chosen <= 2) {
+        document.getElementById('doneTitle').textContent = 'Tack — vi hör av oss';
+        document.getElementById('doneSub').textContent =
+          'Vi ser ditt betyg och kontaktar dig för att förstå vad som gick fel. ' +
+          'Mejla hello@spick.se om du vill att vi ringer.';
+      }
+      show('done');
+
+    } catch (e) {
+      console.error('Submit error:', e);
+      submitted = false;
+      btn.disabled = false;
+      btn.innerHTML = 'Spara betyg';
+      showError('Något gick fel. Försök igen om en stund.');
+    }
+  }
+
+  // Boot
+  loadBooking();
+})();
+</script>
+</body>
+</html>

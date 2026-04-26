@@ -8,14 +8,16 @@
 if (typeof SPICK === 'undefined') return;
 
 // ── SOCIAL PROOF TOAST (riktig data) ────────────────────────
-// Hämtar riktiga recensioner från Supabase (reviews-tabellen är public).
-// Visar bara om det finns minst 3 recensioner (MFL-kompatibelt).
+// Sprint 5E: läser från v_recent_ratings (publik view, anon-friendly).
+// Adderad i migration 20260426300000 — ratings tabellen är RLS-låst,
+// men view:n exponerar BARA cleaner_first_name + city + rating + ts.
+// Visar bara om det finns minst 3 recensioner (undvik fake-känsla).
 let _toastData = [];
 let _toastIdx = 0;
 
 async function loadToastData() {
   try {
-    const res = await fetch(SPICK.SUPA_URL + '/rest/v1/reviews?select=cleaner_rating,created_at,cleaner_id,cleaners(city,full_name)&cleaner_rating=gte.4&order=created_at.desc&limit=10', {
+    const res = await fetch(SPICK.SUPA_URL + '/rest/v1/v_recent_ratings?select=rating,created_at,cleaner_first_name,cleaner_city&order=created_at.desc&limit=10', {
       headers: {
         'apikey': SPICK.SUPA_KEY,
         'Authorization': 'Bearer ' + SPICK.SUPA_KEY
@@ -23,15 +25,15 @@ async function loadToastData() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    _toastData = data.filter(r => r.cleaners?.city).map(r => {
+    _toastData = (data || []).filter(r => r.cleaner_city).map(r => {
       const mins = Math.max(5, Math.floor((Date.now() - new Date(r.created_at).getTime()) / 60000));
-      const timeLabel = mins < 60 ? mins + ' min sedan' : 
-                        mins < 1440 ? Math.floor(mins/60) + 'h sedan' : 
+      const timeLabel = mins < 60 ? mins + ' min sedan' :
+                        mins < 1440 ? Math.floor(mins/60) + 'h sedan' :
                         Math.floor(mins/1440) + 'd sedan';
       return {
-        name: (r.cleaners.full_name || '').split(' ')[0] || 'Kund',
-        city: r.cleaners.city,
-        rating: r.cleaner_rating,
+        name: (r.cleaner_first_name || '').split(' ')[0] || 'Städaren',
+        city: r.cleaner_city,
+        rating: r.rating,
         time: timeLabel
       };
     });
