@@ -152,9 +152,14 @@ async function fetchBookingBySession(sessionId, attempts = 0) {
   const maxAttempts = 5;
   const delay = [500, 1500, 3000, 5000, 8000][attempts] || 8000;
   
+  // Anti-enumeration: använd RPC istf direct view-query (audit 2026-04-26)
   const data = await fetch(
-    `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?payment_intent_id=eq.${sessionId}&select=id,service_type,booking_date,booking_time,customer_address,total_price,payment_status,cleaner_id,cleaner_name`,
-    { headers: { 'apikey': SPICK.SUPA_KEY } }
+    `${SPICK.SUPA_URL}/rest/v1/rpc/get_booking_by_session`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
+      body: JSON.stringify({ _session_id: sessionId })
+    }
   ).then(r => r.json()).catch(() => []);
 
   const b = data?.[0];
@@ -195,8 +200,12 @@ if (bid) {
   (async () => {
     try {
       const bookingRes = await fetch(
-        `${SPICK.SUPA_URL}/rest/v1/booking_confirmation?id=eq.${encodeURIComponent(bid)}&select=cleaner_id,cleaner_name`,
-        { headers: { 'apikey': SPICK.SUPA_KEY } }
+        `${SPICK.SUPA_URL}/rest/v1/rpc/get_booking_by_id`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY },
+          body: JSON.stringify({ _id: bid })
+        }
       );
       const rows = await bookingRes.json();
       const b = rows?.[0];

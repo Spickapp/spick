@@ -10,6 +10,7 @@ import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 import { parseStockholmTime } from "../_shared/timezone.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
+import { requireCronAuth } from "../_shared/cron-auth.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -74,8 +75,10 @@ serve(async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  // Auth: --no-verify-jwt på Supabase nivå + GitHub Actions secret
-  // Ingen manuell auth-check behövs
+  // Security-audit-fix 2026-04-26: kräv CRON_SECRET (var helt öppen,
+  // attackor kunde trigga mass-mejl/SMS via anon-key)
+  const auth = requireCronAuth(req, CORS);
+  if (!auth.ok) return auth.response!;
 
   const now  = new Date();
   const sent: string[] = [];

@@ -154,7 +154,7 @@ async function submit() {
   let cleanerId = null;
   let serviceType = null;
   if (bid) {
-    const { data } = await SB.from('booking_confirmation').select('cleaner_id,service_type').eq('id', bid);
+    const { data } = await SB.rpc('get_booking_by_id', { _id: bid });
     cleanerId = data?.[0]?.cleaner_id || null;
     serviceType = data?.[0]?.service_type || null;
   }

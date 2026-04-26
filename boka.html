@@ -1004,7 +1004,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // §5.6: Boka samma som sist — ?rebook=<booking_id> förfyller state från existing booking
   const rebookId = p.get('rebook');
   if (rebookId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rebookId)) {
-    fetch(SUPA + '/rest/v1/booking_confirmation?id=eq.' + encodeURIComponent(rebookId) + '&select=service_type,square_meters,booking_hours,customer_address,has_pets,has_materials,notes,cleaner_id,cleaner_name,customer_name,customer_email,customer_phone', {headers: H})
+    fetch(SUPA + '/rest/v1/rpc/get_booking_by_id', {
+        method: 'POST',
+        headers: Object.assign({}, H, {'Content-Type':'application/json'}),
+        body: JSON.stringify({ _id: rebookId })
+      })
       .then(function(r) { return r.json(); })
       .then(function(rows) {
         var b = rows && rows[0];

@@ -83,7 +83,7 @@ async function submit(){
   btn.innerHTML='<div class="spin"></div> Sparar...';
   try{
     // 1. Spara betyg
-    const {data:booking}=await SB.from('booking_confirmation').select('*').eq('id',bid).single();
+    const {data:bookings}=await SB.rpc('get_booking_by_id',{_id:bid});const booking=bookings?.[0];
     const {data:rating,error}=await SB.from('ratings').insert([{
       booking_id:bid,
       cleaner_id:booking?.cleaner_id,

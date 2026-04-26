@@ -7,6 +7,7 @@
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCronAuth } from "../_shared/cron-auth.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -15,7 +16,11 @@ const ADMIN_EMAIL = "hello@spick.se";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-serve(async (_req) => {
+serve(async (req) => {
+  // Security-audit-fix 2026-04-26: kräv CRON_SECRET (var helt öppen)
+  const auth = requireCronAuth(req);
+  if (!auth.ok) return auth.response!;
+
   try {
     const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 

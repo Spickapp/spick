@@ -22,6 +22,7 @@ import { corsHeaders, getMaterialInfo } from "../_shared/email.ts";
 import { sendMagicSms } from "../_shared/send-magic-sms.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
+import { verifyStripeWebhookSignature } from "../_shared/stripe-webhook-verify.ts";
 
 const STRIPE_SECRET_KEY       = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_SECRET_KEY_TEST  = Deno.env.get("STRIPE_SECRET_KEY_TEST") || "";
@@ -60,7 +61,8 @@ function isExperiencedCleaner(cleaner: any): boolean {
   return jobs >= AUTO_CONFIRM_MIN_JOBS && rating >= AUTO_CONFIRM_MIN_RATING;
 }
 
-// ── Stripe event verification via API ───────────────────────────────────────
+// ── Stripe event verification via API (LEGACY — fallback om HMAC fail) ─────
+// Behålls som fallback för backwards-compat med events utan signature.
 async function verifyEventWithStripe(eventId: string, stripeKey: string): Promise<boolean> {
   try {
     const res = await fetch(`https://api.stripe.com/v1/events/${eventId}`, {
@@ -71,6 +73,13 @@ async function verifyEventWithStripe(eventId: string, stripeKey: string): Promis
     return false;
   }
 }
+
+// ── HMAC-SHA256-verifiering env-vars (security-audit-fix 2026-04-26) ────────
+// Standard Stripe-pattern: snabbare (ingen API-roundtrip), säkrare (HMAC är
+// tamper-proof + replay-skyddad via 5-min-toleranse).
+// Import flyttad till toppen pga ESM top-level-import-krav.
+const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
+const STRIPE_WEBHOOK_SECRET_TEST = Deno.env.get("STRIPE_WEBHOOK_SECRET_TEST") || "";
 
 /**
  * Resolve Stripe key för code-paths som saknar event-context
@@ -1113,13 +1122,27 @@ serve(async (req) => {
     return new Response("OK (blocked: mode mismatch)", { status: 200 });
   }
 
-  if (eventId) {
-    const isReal = await verifyEventWithStripe(eventId, stripeKey);
-    if (!isReal) {
-      console.error("Event verification failed:", eventId);
+  // ── HMAC-verifiering FÖRST (audit-fix 2026-04-26) ─────────────────────
+  // Om Stripe-Signature-header finns + STRIPE_WEBHOOK_SECRET är satt → HMAC.
+  // Annars fallback till API-fetch-verifiering (legacy-pattern).
+  const stripeSig = req.headers.get("stripe-signature");
+  const webhookSecret = isTestEvent ? (STRIPE_WEBHOOK_SECRET_TEST || STRIPE_WEBHOOK_SECRET) : STRIPE_WEBHOOK_SECRET;
+
+  if (stripeSig && webhookSecret) {
+    const verifyResult = await verifyStripeWebhookSignature(body, stripeSig, webhookSecret);
+    if (!verifyResult.valid) {
+      console.error(`HMAC verification failed: ${verifyResult.reason} (eventId=${eventId})`);
       return new Response("Unauthorized", { status: 401 });
     }
-    console.log("Event verified via Stripe API:", eventId);
+    // HMAC OK — event är verified, hoppa over API-fetch
+  } else if (eventId) {
+    // Legacy fallback: API-fetch-verifiering
+    const isReal = await verifyEventWithStripe(eventId, stripeKey);
+    if (!isReal) {
+      console.error("Event verification failed (API fallback):", eventId);
+      return new Response("Unauthorized", { status: 401 });
+    }
+    console.log("Event verified via Stripe API (legacy fallback):", eventId);
   }
 
   // ── IDEMPOTENCY: check before processing, insert after success ───────────

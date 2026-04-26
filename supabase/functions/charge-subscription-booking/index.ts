@@ -20,6 +20,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
+import { requireCronAuth } from "../_shared/cron-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,6 +33,11 @@ const NO_RETRY_ERRORS = new Set(["expired_card", "authentication_required"]);
 serve(async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  // Security-audit-fix 2026-04-26: kräv CRON_SECRET (var helt öppen,
+  // anyone kunde trigga off-session card-debiteringar via anon-key)
+  const auth = requireCronAuth(req, CORS);
+  if (!auth.ok) return auth.response!;
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   const json = (s: number, d: unknown) => new Response(JSON.stringify(d), {

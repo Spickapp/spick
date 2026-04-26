@@ -169,8 +169,12 @@ async function submit() {
   btn.innerHTML = '<div class="spin"></div> Sparar...';
 
   try {
-    // 1. Slå upp bokning
-    var bookingRes = await fetch(SUPA + '/rest/v1/booking_confirmation?id=eq.' + encodeURIComponent(bid) + '&select=id,cleaner_id,cleaner_name,customer_name,customer_email&apikey=' + KEY, {headers: H});
+    // 1. Slå upp bokning via RPC (anti-enumeration audit 2026-04-26)
+    var bookingRes = await fetch(SUPA + '/rest/v1/rpc/get_booking_by_id', {
+      method: 'POST',
+      headers: Object.assign({}, H, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ _id: bid })
+    });
     var bookingArr = bookingRes.ok ? await bookingRes.json() : [];
     var booking = Array.isArray(bookingArr) && bookingArr.length > 0 ? bookingArr[0] : null;
 

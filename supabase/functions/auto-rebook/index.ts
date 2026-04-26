@@ -20,6 +20,7 @@ import { getStockholmDateString } from "../_shared/timezone.ts";
 import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
 import { findSlotConflict } from "../_shared/slot-holds.ts";
 import { isHoliday, nextNonHoliday } from "../_shared/holidays.ts";
+import { requireCronAuth } from "../_shared/cron-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,6 +33,11 @@ const HORIZON_DAYS = 28;
 serve(async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  // Security-audit-fix 2026-04-26: kräv CRON_SECRET (var helt öppen,
+  // anyone kunde trigga mass-bookning-skapelse via anon-key)
+  const auth = requireCronAuth(req, CORS);
+  if (!auth.ok) return auth.response!;
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   const json = (s: number, d: unknown) => new Response(JSON.stringify(d), {
