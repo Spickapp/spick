@@ -56,11 +56,37 @@ serve(async (req) => {
     if (action === "onboard_cleaner") {
       const { cleaner_id, email, name } = params;
 
-      // Kolla om städaren är VD med företag
-      const { data: cleanerRow } = await sb.from("cleaners")
-        .select("is_company_owner, company_id")
+      // Audit 2026-04-26 (Farhad-rapport): tidigare skapade EF nytt
+      // Stripe-konto VID VARJE anrop. Resultat: 11 anslutna konton i
+      // Stripe Dashboard varav många dupes (Solid Service ×3, Farhad ×3,
+      // Rafa ×2). Defensiv check: om cleaner redan har stripe_account_id
+      // → branch till refresh_account_link-logik istf skapa nytt.
+      const { data: existing } = await sb.from("cleaners")
+        .select("stripe_account_id, is_company_owner, company_id")
         .eq("id", cleaner_id)
         .maybeSingle();
+
+      if (existing?.stripe_account_id) {
+        console.log("[SPICK] Cleaner har redan Stripe-konto, återanvänder:", existing.stripe_account_id);
+        const refreshLink = await stripe("/account_links", "POST", {
+          account: existing.stripe_account_id,
+          refresh_url: `${BASE_URL}/stadare-dashboard.html?stripe=refresh`,
+          return_url:  `${BASE_URL}/stadare-dashboard.html?stripe=success`,
+          type: "account_onboarding",
+        });
+        if (refreshLink.error) throw new Error(refreshLink.error.message);
+        return new Response(JSON.stringify({
+          ok: true,
+          url: refreshLink.url,
+          account_id: existing.stripe_account_id,
+          reused: true,
+        }), {
+          headers: { "Content-Type": "application/json", ...CORS },
+        });
+      }
+
+      // Kolla om städaren är VD med företag (för nytt konto-skapande)
+      const cleanerRow = existing;
 
       let companyData: { name?: string; org_number?: string } | null = null;
       if (cleanerRow?.is_company_owner && cleanerRow?.company_id) {
