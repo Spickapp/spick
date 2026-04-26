@@ -11,42 +11,64 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 /**
  * Skicka SMS via Spicks sms-EF
  * Misslyckas tyst (loggar fel, kastar inte).
+ *
+ * Audit-fix P1 (2026-04-26): exponential-backoff retry på 5xx eller
+ * network-fel (max 3 försök, 200ms→400ms→800ms). 4xx (kund-fel) retry:as
+ * INTE — mottagar-nummer är felaktigt och retry hjälper inte.
  */
 export async function sendSms(to: string, message: string): Promise<boolean> {
   if (!to || !message) return false;
 
-  try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/sms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SERVICE_KEY}`,
-      },
-      body: JSON.stringify({ to, message }),
-    });
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${SUPA_URL}/functions/v1/sms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SERVICE_KEY}`,
+        },
+        body: JSON.stringify({ to, message }),
+      });
 
-    if (!res.ok) {
-      const err = await res.text();
+      if (res.ok) {
+        if (attempt > 1) {
+          console.log(JSON.stringify({
+            level: "info", fn: "sendSms", msg: "SMS succeeded after retry",
+            to: to.slice(0, 5) + "...", attempt,
+          }));
+        }
+        return true;
+      }
+
+      // 4xx = kund-fel (felaktigt nummer etc) — retry:a inte
+      if (res.status >= 400 && res.status < 500) {
+        const err = await res.text();
+        console.warn(JSON.stringify({
+          level: "warn", fn: "sendSms", msg: "SMS failed (4xx, no retry)",
+          to: to.slice(0, 5) + "...", status: res.status, error: err,
+        }));
+        return false;
+      }
+
+      // 5xx — retry-able
       console.warn(JSON.stringify({
-        level: "warn",
-        fn: "sendSms",
-        msg: "SMS failed",
-        to: to.slice(0, 5) + "...",
-        status: res.status,
-        error: err
+        level: "warn", fn: "sendSms", msg: `SMS 5xx, attempt ${attempt}/${maxAttempts}`,
+        to: to.slice(0, 5) + "...", status: res.status,
       }));
-      return false;
+    } catch (e) {
+      // Network/exception — retry-able
+      console.warn(JSON.stringify({
+        level: "warn", fn: "sendSms", msg: `SMS exception, attempt ${attempt}/${maxAttempts}`,
+        error: (e as Error).message,
+      }));
     }
-    return true;
-  } catch (e) {
-    console.warn(JSON.stringify({
-      level: "warn",
-      fn: "sendSms",
-      msg: "SMS exception",
-      error: (e as Error).message
-    }));
-    return false;
+
+    if (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt - 1)));
+    }
   }
+  return false;
 }
 
 /**
@@ -58,30 +80,39 @@ export async function sendPush(
   type: string,
   data: Record<string, unknown>
 ): Promise<boolean> {
-  try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/push`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SERVICE_KEY}`,
-      },
-      body: JSON.stringify({
-        type,
-        data,
-        target_email: target.email,
-        target_type: target.type,
-      }),
-    });
-    return res.ok;
-  } catch (e) {
-    console.warn(JSON.stringify({
-      level: "warn",
-      fn: "sendPush",
-      msg: "Push exception",
-      error: (e as Error).message
-    }));
-    return false;
+  // Audit-fix P1 (2026-04-26): retry på 5xx/network — samma pattern som sendSms.
+  const maxAttempts = 3;
+  const body = JSON.stringify({ type, data, target_email: target.email, target_type: target.type });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${SUPA_URL}/functions/v1/push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_KEY}` },
+        body,
+      });
+      if (res.ok) return true;
+      if (res.status >= 400 && res.status < 500) {
+        console.warn(JSON.stringify({
+          level: "warn", fn: "sendPush", msg: "Push failed (4xx, no retry)",
+          status: res.status, type,
+        }));
+        return false;
+      }
+      console.warn(JSON.stringify({
+        level: "warn", fn: "sendPush", msg: `Push 5xx, attempt ${attempt}/${maxAttempts}`,
+        status: res.status,
+      }));
+    } catch (e) {
+      console.warn(JSON.stringify({
+        level: "warn", fn: "sendPush", msg: `Push exception, attempt ${attempt}/${maxAttempts}`,
+        error: (e as Error).message,
+      }));
+    }
+    if (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt - 1)));
+    }
   }
+  return false;
 }
 
 /**
