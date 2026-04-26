@@ -825,9 +825,10 @@ export async function triggerStripeTransfer(
 
   // Steg 4: fetch cleaner + Stripe Connect-verifiering
   //   is_test_account krävs för Fas 1.6.1 mode-isolation (§3.6).
+  //   company_id + is_company_owner krävs för Alt A B2B-fallback (2026-04-26).
   const { data: cleaner, error: cErr } = await supabase
     .from('cleaners')
-    .select('id, stripe_account_id, stripe_onboarding_status, is_test_account')
+    .select('id, stripe_account_id, stripe_onboarding_status, is_test_account, company_id, is_company_owner')
     .eq('id', booking.cleaner_id)
     .maybeSingle();
 
@@ -838,20 +839,46 @@ export async function triggerStripeTransfer(
     });
   }
 
-  if (!cleaner.stripe_account_id) {
-    throw new TransferPreconditionError('Cleaner has no stripe_account_id', {
+  // ── Alt A B2B-fallback (Farhad-beslut 2026-04-26) ──
+  // Om cleaner är team-medlem (har company_id men inte is_company_owner) och
+  // saknar eget Stripe-konto → använd företagets konto. Standard B2B-modell:
+  // en juridisk part per företag tar all betalning, fördelar lön internt.
+  // VD (is_company_owner=true) använder eget konto som vanligt.
+  let resolvedDestinationAccountId: string | null = cleaner.stripe_account_id ?? null;
+  let resolvedDestinationType: 'cleaner' | 'company' = 'cleaner';
+  let resolvedDestinationOnboardingStatus: string | null = cleaner.stripe_onboarding_status;
+
+  if (!resolvedDestinationAccountId && cleaner.company_id && !cleaner.is_company_owner) {
+    const { data: company } = await supabase
+      .from('companies')
+      .select('stripe_account_id, stripe_onboarding_status')
+      .eq('id', cleaner.company_id)
+      .maybeSingle();
+    if (company?.stripe_account_id) {
+      resolvedDestinationAccountId = company.stripe_account_id;
+      resolvedDestinationType = 'company';
+      resolvedDestinationOnboardingStatus = (company as { stripe_onboarding_status?: string }).stripe_onboarding_status ?? 'complete';
+    }
+  }
+
+  if (!resolvedDestinationAccountId) {
+    throw new TransferPreconditionError('No stripe_account_id (cleaner or company-fallback)', {
       booking_id,
       cleaner_id: booking.cleaner_id,
+      company_id: cleaner.company_id,
+      is_company_owner: cleaner.is_company_owner,
     });
   }
 
-  if (cleaner.stripe_onboarding_status !== 'complete') {
+  if (resolvedDestinationOnboardingStatus !== 'complete') {
     throw new TransferPreconditionError(
-      `Cleaner onboarding not complete: ${cleaner.stripe_onboarding_status}`,
+      `Stripe onboarding not complete (destination=${resolvedDestinationType}): ${resolvedDestinationOnboardingStatus}`,
       {
         booking_id,
         cleaner_id: booking.cleaner_id,
-        status: cleaner.stripe_onboarding_status,
+        destination_type: resolvedDestinationType,
+        destination_account_id: resolvedDestinationAccountId,
+        status: resolvedDestinationOnboardingStatus,
       }
     );
   }
@@ -892,7 +919,7 @@ export async function triggerStripeTransfer(
       stripe_idempotency_key: idempotencyKey,
       status: 'pending',
       amount_sek: payout.cleaner_payout_sek,
-      destination_account_id: cleaner.stripe_account_id,
+      destination_account_id: resolvedDestinationAccountId,
     })
     .select()
     .single();
@@ -923,12 +950,14 @@ export async function triggerStripeTransfer(
   const stripeParams: Record<string, string> = {
     amount: String(payout.cleaner_payout_sek * 100), // SEK → öre
     currency: 'sek',
-    destination: cleaner.stripe_account_id,
+    destination: resolvedDestinationAccountId,
     transfer_group: `booking_${booking_id}`,
     'metadata[booking_id]': booking_id,
     'metadata[cleaner_id]': String(booking.cleaner_id ?? ''),
     'metadata[commission_pct]': String(payout.commission_pct),
     'metadata[attempt_count]': String(attemptCount),
+    'metadata[destination_type]': resolvedDestinationType,
+    'metadata[company_id]': String(cleaner.company_id ?? ''),
   };
 
   let stripeResp;
