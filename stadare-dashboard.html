@@ -498,6 +498,13 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 /* Sick-day knapp */
 .gantt-sick-btn{padding:2px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:.6rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px}
 .gantt-sick-btn:hover{background:#FCA5A5;color:#7F1D1D}
+.gantt-block-menu-btn{padding:2px 6px;background:#F3F4F6;color:#3f3d36;border:1px solid #E5E7EB;border-radius:6px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;margin-left:4px;line-height:1}
+.gantt-block-menu-btn:hover{background:#E5E7EB;color:#0F6E56}
+.gantt-block-menu{position:fixed;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);border:1px solid #E5E7EB;padding:6px;z-index:400;min-width:200px}
+.gantt-block-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:none;border:none;border-radius:8px;font-size:.85rem;font-weight:500;color:#3f3d36;cursor:pointer;font-family:inherit;text-align:left}
+.gantt-block-menu button:hover{background:#F3F4F6}
+.gantt-block-menu button .gbm-icon{font-size:1rem;width:20px}
+.gantt-block-menu .gbm-divider{border-top:1px solid #E5E7EB;margin:4px 0}
 
 /* ── BOKNINGSDETALJ-PANEL ──────────────── */
 .booking-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
@@ -7663,6 +7670,7 @@ function renderGanttDay(wrap) {
     html += '<div class="gantt-row-rate">' + (m.hourly_rate || 350) + ' kr/h · ' + bookedHours.toFixed(1) + '/' + availHours.toFixed(0) + 'h</div>';
     html += '<div class="gantt-row-cap"><div class="gantt-row-cap-fill ' + capClass + '" style="width:' + Math.min(capPct, 100) + '%"></div></div>';
     html += '<button class="gantt-sick-btn" onclick="ganttMarkSick(\'' + escHtml(m.id) + '\',\'' + dateStr + '\')">Sjukanmäl</button>';
+    html += '<button class="gantt-block-menu-btn" onclick="ganttOpenBlockMenu(event,\'' + escHtml(m.id) + '\',\'' + dateStr + '\')" title="Fler alternativ">⋯</button>';
     html += '</div>';
 
     html += '<div class="gantt-row-cells" data-cleaner-id="' + escHtml(m.id) + '" data-date="' + dateStr + '">';
@@ -8451,6 +8459,164 @@ async function ganttMarkSick(cleanerId, dateStr) {
       return m.id !== cleanerId && (m.status === 'aktiv' || m.is_approved) && !m.owner_only;
     });
     if (availableMembers.length === 0) {
+      alert('Inga andra tillgängliga städare att omfördela till. Kontakta kunderna manuellt.');
+    } else {
+      dayBookings.forEach(function(ev) {
+        if (ev.booking_id && typeof showReassignPicker === 'function') {
+          showReassignPicker(ev.booking_id, cleanerId);
+        }
+      });
+    }
+  }
+
+  loadGanttData();
+}
+
+// ── F3 (2026-04-26): Context-meny för 4-typs-blockering ──
+// 'sick' = Sjuk, 'vacation' = Ledig (semester), 'private' = Privat,
+// 'note' = Anteckning (med fri text). Återanvänder calendar_events
+// + befintlig omfördelnings-flow när dayBookings finns.
+
+var _ganttBlockMenuEl = null;
+
+function ganttOpenBlockMenu(evt, cleanerId, dateStr) {
+  evt.stopPropagation();
+  ganttCloseBlockMenu();
+  var menu = document.createElement('div');
+  menu.className = 'gantt-block-menu';
+  menu.id = 'gantt-block-menu';
+  menu.innerHTML =
+    '<button onclick="ganttPickBlock(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'sick\')"><span class="gbm-icon">🤒</span> Sjuk</button>' +
+    '<button onclick="ganttPickBlock(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'vacation\')"><span class="gbm-icon">❤️</span> Ledig (semester)</button>' +
+    '<button onclick="ganttPickBlock(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'private\')"><span class="gbm-icon">🚫</span> Privat block</button>' +
+    '<div class="gbm-divider"></div>' +
+    '<button onclick="ganttPickBlock(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'note\')"><span class="gbm-icon">✏️</span> Lägg till anteckning</button>';
+  document.body.appendChild(menu);
+  _ganttBlockMenuEl = menu;
+
+  // Positionera vid klick-knappen
+  var rect = evt.target.getBoundingClientRect();
+  var menuW = 220;
+  var left = Math.min(rect.left, window.innerWidth - menuW - 10);
+  var top = rect.bottom + 4;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+
+  // Stäng vid klick utanför
+  setTimeout(function() {
+    document.addEventListener('click', _ganttCloseMenuOutside, { once: true });
+  }, 50);
+}
+
+function _ganttCloseMenuOutside(e) {
+  if (_ganttBlockMenuEl && !_ganttBlockMenuEl.contains(e.target)) {
+    ganttCloseBlockMenu();
+  } else if (_ganttBlockMenuEl) {
+    document.addEventListener('click', _ganttCloseMenuOutside, { once: true });
+  }
+}
+
+function ganttCloseBlockMenu() {
+  if (_ganttBlockMenuEl) {
+    _ganttBlockMenuEl.remove();
+    _ganttBlockMenuEl = null;
+  }
+}
+
+async function ganttPickBlock(cleanerId, dateStr, type) {
+  ganttCloseBlockMenu();
+  if (type === 'sick') {
+    return ganttMarkSick(cleanerId, dateStr);
+  }
+  await ganttMarkBlocked(cleanerId, dateStr, type);
+}
+
+async function ganttMarkBlocked(cleanerId, dateStr, type) {
+  var member = _teamMembers.find(function(m) { return m.id === cleanerId; });
+  var name = member ? ((member.first_name || member.full_name || '').split(' ')[0] || 'Städaren') : 'Städaren';
+
+  var typeMeta = {
+    sick:     { title: 'Sjuk',           icon: '🤒', label: 'sjuk' },
+    vacation: { title: 'Ledig',          icon: '❤️', label: 'ledig' },
+    private:  { title: 'Privat',         icon: '🚫', label: 'privat block' },
+    note:     { title: 'Anteckning',     icon: '✏️', label: 'anteckning' }
+  }[type] || { title: 'Blockerad', icon: '⛔', label: 'blockerad' };
+
+  var dayBookings = _ganttTeamEvents.filter(function(ev) {
+    return ev.cleaner_id === cleanerId && evDate(ev.start_at) === dateStr && ev.event_type === 'booking';
+  });
+
+  // För 'note': bara fri text + en dag
+  if (type === 'note') {
+    var noteText = prompt('Anteckning för ' + name + ' ' + dateStr + ':');
+    if (!noteText) return;
+    try {
+      var session = (await SB.auth.getSession()).data.session;
+      var token = session ? session.access_token : ANON_KEY;
+      await fetch(SUPA_URL + '/rest/v1/calendar_events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          cleaner_id: cleanerId,
+          start_at: dateStr + 'T00:00:00Z',
+          end_at:   dateStr + 'T23:59:59Z',
+          event_type: 'note',
+          source: 'manual',
+          title: typeMeta.title,
+          description: noteText.slice(0, 500),
+          is_all_day: true
+        })
+      });
+      showToast('Anteckning sparad för ' + name);
+      loadGanttData();
+    } catch (e) {
+      console.warn('Note save failed:', e);
+      showToast('Kunde inte spara anteckning');
+    }
+    return;
+  }
+
+  var msg = name + ' markeras som ' + typeMeta.label + ' ' + dateStr + '.';
+  if (dayBookings.length > 0) msg += '\n\n' + dayBookings.length + ' bokning(ar) behöver omfördelas. Vill du fortsätta?';
+  if (!confirm(msg)) return;
+
+  var daysStr = prompt('Hur många dagar? (1 = bara idag)', '1');
+  if (!daysStr) return;
+  var numDays = Math.min(Math.max(parseInt(daysStr) || 1, 1), 90); // max 90 (semester kan vara längre)
+
+  for (var di = 0; di < numDays; di++) {
+    var blockDate = new Date(dateStr + 'T12:00:00');
+    blockDate.setDate(blockDate.getDate() + di);
+    var blockDateStr = blockDate.toISOString().slice(0, 10);
+    try {
+      var sess = (await SB.auth.getSession()).data.session;
+      var tok = sess ? sess.access_token : ANON_KEY;
+      await fetch(SUPA_URL + '/rest/v1/calendar_events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + tok, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          cleaner_id: cleanerId,
+          start_at: blockDateStr + 'T00:00:00Z',
+          end_at:   blockDateStr + 'T23:59:59Z',
+          event_type: 'blocked',
+          source: 'manual',
+          title: typeMeta.title,
+          is_all_day: true
+        })
+      });
+    } catch (e) {
+      console.warn(typeMeta.label + ' day ' + blockDateStr + ' failed:', e);
+    }
+  }
+
+  showToast(typeMeta.icon + ' ' + name + ' markerad som ' + typeMeta.label + ' ' + numDays + ' dag' + (numDays > 1 ? 'ar' : ''));
+
+  // Omfördelnings-dialog (samma logik som sjukanmälan)
+  if (dayBookings.length > 0) {
+    var available = _teamMembers.filter(function(m) {
+      return m.id !== cleanerId && (m.status === 'aktiv' || m.is_approved) && !m.owner_only;
+    });
+    if (available.length === 0) {
       alert('Inga andra tillgängliga städare att omfördela till. Kontakta kunderna manuellt.');
     } else {
       dayBookings.forEach(function(ev) {
