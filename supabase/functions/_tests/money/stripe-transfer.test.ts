@@ -352,10 +352,12 @@ Deno.test('triggerStripeTransfer: saknat stripe_account_id → TransferPrecondit
   const state = baseState();
   state.cleaners.c1.stripe_account_id = null;
   const sb = createMockSb(state);
+  // Per Alt A B2B-fallback (commit edc267e): error-text utvidgad med
+  // "(cleaner or company-fallback)" — case-insensitive partial-match.
   await assertRejects(
     () => triggerStripeTransfer(sb, 'b1', { _stripeRequest: mockStripeOk() }),
     TransferPreconditionError,
-    'no stripe_account_id'
+    'No stripe_account_id'
   );
 });
 
