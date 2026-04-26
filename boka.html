@@ -2994,16 +2994,22 @@ state.rutBankidPolling = null;     // setInterval-id
 state.rutBankidVerified = false;   // true om SPAR-data hämtad
 
 async function startRutBankid() {
-  if (!state.email) {
-    showRutBankidError('Ange din e-post först (steg 4)');
+  // Bug-fix 2026-04-26: läs email från input om state.email inte satts än
+  // (state.email sätts först i goStep4 → race-condition på steg 3)
+  var emailInput = document.getElementById('email');
+  var emailVal = state.email || (emailInput ? (emailInput.value || '').trim() : '');
+  if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+    showRutBankidError('Ange en giltig e-postadress i fältet ovan först');
     return;
   }
+  // Synka tillbaka till state om vi läste från input
+  state.email = emailVal;
   showRutBankidPending();
   try {
     var res = await fetch(SPICK.SUPA_URL + '/functions/v1/rut-bankid-init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + SPICK.SUPA_KEY },
-      body: JSON.stringify({ customer_email: state.email })
+      body: JSON.stringify({ customer_email: emailVal })
     });
     var data = await res.json();
     if (!res.ok) {
