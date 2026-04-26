@@ -46,6 +46,8 @@ serve(async (req) => {
     // 2. Kontrollera auto-approve-kriterier
     let shouldAutoApprove = false;
     let reason = "";
+    // Audit-data som loggas till admin_audit_log oavsett utfall (Sprint 1B)
+    const auditMeta: Record<string, unknown> = { application_id, email: app.email };
 
     // Kriterie 1: VD-tillagd teammedlem (invited_by_company_id finns)
     if (app.invited_by_company_id) {
@@ -59,23 +61,61 @@ serve(async (req) => {
       if (company && company.owner_cleaner_id) {
         shouldAutoApprove = true;
         reason = "VD-tillagd teammedlem (företag: " + company.name + ")";
+        auditMeta.criterion = "company_invite";
       }
     }
 
-    // Framtida kriterier (avkommenteras när det behövs):
-    // Kriterie 2: Företag med org.nr
-    // if (!shouldAutoApprove && app.is_company && app.org_number && /^\d{6}-\d{4}$/.test(app.org_number)) {
-    //   shouldAutoApprove = true;
-    //   reason = "Företag med validerat org.nr: " + app.org_number;
-    // }
-    //
-    // Kriterie 3: Solo med F-skatt
-    // if (!shouldAutoApprove && app.fskatt_confirmed) {
-    //   shouldAutoApprove = true;
-    //   reason = "Solo med F-skatt bekräftad";
-    // }
+    // Kriterie 2 (Sprint 1B 2026-04-26): Solo eller företag med VERIFIERAD F-skatt + städ-SNI
+    // Kräver att verify-fskatt-EFen returnerat valid=true + has_fskatt=true + minst en städ-SNI.
+    // Vi anropar EFen här (server-to-server) så att vi inte litar på frontend-claim.
+    if (!shouldAutoApprove && app.org_number && app.fskatt_confirmed) {
+      try {
+        const verifyRes = await fetch(`${SUPA_URL}/functions/v1/verify-fskatt`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SERVICE_KEY}`,
+          },
+          body: JSON.stringify({ org_number: app.org_number }),
+        });
+        const verifyData = await verifyRes.json();
+        auditMeta.fskatt_check = verifyData;
+
+        const VALID_SNI = ["81210", "81220", "81290"];
+        const hasMatchingSni = Array.isArray(verifyData?.sni_codes)
+          && verifyData.sni_codes.some((c: string) => VALID_SNI.includes(c));
+
+        if (verifyData?.valid && verifyData?.has_fskatt && hasMatchingSni
+            && verifyData?.api_used === "foretagsapi.se") {
+          shouldAutoApprove = true;
+          reason = `F-skatt verifierad via Skatteverket+Bolagsverket (org ${app.org_number}, SNI ${verifyData.sni_codes.join(",")})`;
+          auditMeta.criterion = "fskatt_verified";
+        } else if (verifyData?.api_used === "fallback") {
+          // Upstream nere ELLER FORETAGSAPI_KEY saknas → fall tillbaka på manuell granskning
+          auditMeta.fskatt_skipped = "upstream_unavailable_fallback_to_manual";
+        }
+      } catch (e) {
+        console.error("verify-fskatt fetch failed", (e as Error).message);
+        auditMeta.fskatt_error = (e as Error).message;
+        // Inte blockerande — manuell review tar över
+      }
+    }
 
     if (!shouldAutoApprove) {
+      // Best-effort audit-log för "ej auto-approved" (rule #28 — observability)
+      // Schema verifierat via migration 00006_fas_2_1_1_admin_bootstrap.sql:
+      //   action, resource_type, resource_id, admin_email, old_value, new_value, reason
+      try {
+        await sb.from("admin_audit_log").insert({
+          action: "auto_approve_skipped",
+          resource_type: "cleaner_application",
+          resource_id: application_id,
+          admin_email: "system:auto-approve-check",
+          new_value: auditMeta,
+          reason: "Did not meet auto-approve criteria — manual review required",
+        });
+      } catch (_) { /* admin_audit_log skrivning ej kritiskt — manuell review tar över */ }
+
       console.log("Auto-approve: AVSLAGET för", app.full_name || app.email, "— manuell granskning krävs");
       return new Response(JSON.stringify({ auto_approved: false, reason: "Uppfyller inte auto-approve-kriterier" }), {
         headers: { "Content-Type": "application/json", ...CORS }
@@ -109,6 +149,18 @@ serve(async (req) => {
         status: 500, headers: { "Content-Type": "application/json", ...CORS }
       });
     }
+
+    // Audit-logga GODKÄND auto-approve (Sprint 1B observability)
+    try {
+      await sb.from("admin_audit_log").insert({
+        action: "auto_approved",
+        resource_type: "cleaner_application",
+        resource_id: application_id,
+        admin_email: "system:auto-approve-check",
+        new_value: auditMeta,
+        reason,
+      });
+    } catch (_) { /* ej kritiskt */ }
 
     return new Response(JSON.stringify({
       auto_approved: true,

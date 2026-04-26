@@ -445,21 +445,30 @@ function switchLang(lang, btn) {
     <span data-i18n="testBanner">⚠️ TEST MODE — ID-verifiering körs i testläge. Ingen riktig identitetsverifiering sker.</span>
   </div>
 
-  <!-- STEP NAVIGATION -->
+  <!-- STEP NAVIGATION (Sprint 1A 2026-04-26: 4→3 steg, ID-koll-info-sidan borttagen) -->
   <div class="steps-nav">
     <div class="step-dot active" id="dot1">1</div>
     <div class="step-line" id="line1"></div>
     <div class="step-dot pending" id="dot2">2</div>
     <div class="step-line" id="line2"></div>
     <div class="step-dot pending" id="dot3">3</div>
-    <div class="step-line" id="line3"></div>
-    <div class="step-dot pending" id="dot4">4</div>
   </div>
   <div class="steps-labels">
     <div class="step-label active" id="lbl1" data-i18n="stepKontakt">Kontakt</div>
     <div class="step-label" id="lbl2" data-i18n="stepProfil">Profil</div>
-    <div class="step-label" id="lbl3" data-i18n="stepIdKoll">ID-koll</div>
-    <div class="step-label" id="lbl4" data-i18n="stepKlart">Klart</div>
+    <div class="step-label" id="lbl3" data-i18n="stepKlart">Klart</div>
+  </div>
+
+  <!-- PROGRESS BAR (Sprint 1A) -->
+  <div style="background:#E8E8E4;border-radius:99px;height:8px;margin:0 0 8px;overflow:hidden">
+    <div id="progressBar" style="background:linear-gradient(90deg,#0F6E56,#1D9E75);height:100%;width:0%;
+      transition:width .35s ease-out;border-radius:99px"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;font-size:.78rem;color:#6B6960">
+    <span id="progressLabel">0% klart</span>
+    <button type="button" id="saveLaterBtn" onclick="saveAndContinueLater()"
+      style="background:none;border:none;color:#0F6E56;font-size:.78rem;font-weight:600;cursor:pointer;
+      font-family:inherit;text-decoration:underline;padding:0">💾 Spara och fortsätt senare</button>
   </div>
 
   <!-- USP TRUST BAR -->
@@ -712,44 +721,40 @@ function switchLang(lang, btn) {
     <button class="btn-primary" id="submitBtn" onclick="submitRegistration()" data-i18n="btnSkicka">Skicka ansökan →</button>
   </div>
 
-  <!-- STEP 3: BANKID (optional) -->
+  <!-- STEP 3: VERIFICATION + DONE (Sprint 1A 2026-04-26)
+       Tidigare Step 3 = "ID-koll info-sida utan funktion" (BankID-EF-503-flow). Borttagen
+       för friktion-fri onboarding. ID-verifiering sker nu i bakgrunden av admin/auto-approve. -->
   <div id="step3" style="display:none">
     <div class="card">
-      <h2 data-i18n="h2IdVerif">🔒 ID-verifiering</h2>
-      <p class="desc" data-i18n="descIdVerif">Verifiera din identitet för att få en verifierad-badge på din profil. Du kan också göra detta senare.</p>
-
-      <div class="gdpr-box">
-        <div class="gdpr-icon">🔒</div>
-        <div>
-          <strong style="font-size:13px;color:#3730A3" data-i18n="gdprTitle">Så skyddar vi din identitet</strong>
-          <ul class="gdpr-list">
-            <li data-i18n="gdpr1">Ditt personnummer krypteras och lagras aldrig i klartext</li>
-            <li data-i18n="gdpr2">Vi delar aldrig din identitet med tredje part</li>
-            <li data-i18n="gdpr3">Du kan begära radering av all data när som helst</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="id-verify-notice">
-        <p data-i18n="idVerifNotice">Vi verifierar din identitet för allas trygghet. Just nu hanterar vi detta manuellt — vi kontaktar dig efter ansökan.</p>
-        <p class="id-later-note" data-i18n="idLaterNote">Du kan fortsätta utan verifiering nu. Vi återkommer inom 24h.</p>
-      </div>
-    </div>
-    <button class="btn-secondary" onclick="goToStep(2)" data-i18n="btnTillbaka3">← Tillbaka</button>
-    <button class="btn-primary" onclick="goToStep(4)" data-i18n="btnSlutfor">Slutför →</button>
-  </div>
-
-  <!-- STEP 4: DONE -->
-  <div id="step4" style="display:none">
-    <div class="card">
       <div class="success-screen" style="display:block">
-        <div class="success-icon-big">🎉</div>
-        <h2 style="font-size:24px;font-weight:900;margin-bottom:8px" data-i18n="h2Valkommen">Välkommen till Spick!</h2>
-        <p style="color:var(--m);font-size:14px;line-height:1.7;margin-bottom:20px" data-i18n="descValkommen">
-          Din ansökan är skickad! Vi granskar den inom <strong>24 timmar</strong>.<br>
-          Du får ett mejl när ditt konto är aktiverat.<br>
-          <strong style="color:#92400E">📬 Kolla skräpposten</strong> om du inte ser mejlet — markera hello@spick.se som säker avsändare.
-        </p>
+        <!-- AUTO-VERIFY-LOADER (Sprint 1B). Visas medan vi anropar verify-fskatt.
+             Döljs sedan till förmån för antingen autoApprovedBox eller manualReviewBox. -->
+        <div id="verifyLoader" style="display:none;text-align:center;padding:24px 16px">
+          <div class="spinner" style="width:32px;height:32px;border-width:3px;color:#0F6E56;margin:0 auto 12px"></div>
+          <div style="font-size:.95rem;font-weight:600;color:#0F6E56">Verifierar din F-skatt…</div>
+          <div style="font-size:.78rem;color:#6B6960;margin-top:6px">Detta tar 5–10 sekunder.</div>
+        </div>
+
+        <!-- AUTO-APPROVED-resultat (Sprint 1B) -->
+        <div id="autoApprovedBox" style="display:none">
+          <div class="success-icon-big">🎉</div>
+          <h2 style="font-size:24px;font-weight:900;margin-bottom:8px;color:#0F6E56">Din profil är aktiv!</h2>
+          <p style="color:var(--m);font-size:14px;line-height:1.7;margin-bottom:20px">
+            F-skatt verifierad mot Skatteverket. Du kan börja ta emot bokningar nu.<br>
+            Vi har skickat ett välkomstmejl med inloggningslänk.
+          </p>
+        </div>
+
+        <!-- DEFAULT/MANUAL-review (orig) -->
+        <div id="manualReviewBox">
+          <div class="success-icon-big">🎉</div>
+          <h2 style="font-size:24px;font-weight:900;margin-bottom:8px" data-i18n="h2Valkommen">Välkommen till Spick!</h2>
+          <p style="color:var(--m);font-size:14px;line-height:1.7;margin-bottom:20px" data-i18n="descValkommen">
+            Din ansökan är skickad! Vi granskar den inom <strong>24 timmar</strong>.<br>
+            Du får ett mejl när ditt konto är aktiverat.<br>
+            <strong style="color:#92400E">📬 Kolla skräpposten</strong> om du inte ser mejlet — markera hello@spick.se som säker avsändare.
+          </p>
+        </div>
 
         <div style="background:var(--gp);border-radius:14px;padding:20px;text-align:left;margin-bottom:16px">
           <div style="font-size:13px;color:#166534;font-weight:700;margin-bottom:10px" data-i18n="lblDinaUppgifter">📋 Dina uppgifter</div>
@@ -870,16 +875,19 @@ function adaptStep2ForOwner() {
 
 function goToStep(n) {
   if (n === 2) adaptStep2ForOwner();
-  [1,2,3,4].forEach(function(i) {
-    document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
+  // Sprint 1A 2026-04-26: 4→3 steg (BankID-info-sidan borttagen)
+  [1,2,3].forEach(function(i) {
+    var el = document.getElementById('step' + i);
+    if (!el) return;
+    el.style.display = i === n ? 'block' : 'none';
     if (i === n) {
-      document.getElementById('step' + i).style.height = 'auto';
-      document.getElementById('step' + i).style.overflow = 'visible';
-      // Force reflow
-      document.getElementById('step' + i).offsetHeight;
+      el.style.height = 'auto';
+      el.style.overflow = 'visible';
+      el.offsetHeight; // force reflow
     }
     var dot = document.getElementById('dot' + i);
     var lbl = document.getElementById('lbl' + i);
+    if (!dot || !lbl) return;
     if (i < n) { dot.className = 'step-dot done'; dot.textContent = '✓'; lbl.className = 'step-label done'; }
     else if (i === n) { dot.className = 'step-dot active'; dot.textContent = i; lbl.className = 'step-label active'; }
     else { dot.className = 'step-dot pending'; dot.textContent = i; lbl.className = 'step-label'; }
@@ -887,7 +895,251 @@ function goToStep(n) {
     if (line) line.className = i < n ? 'step-line done' : 'step-line';
   });
   currentStep = n;
+  updateProgressBar();
   window.scrollTo(0, 0);
+}
+
+// ── PROGRESS-BAR + LIVE FIELD-COMPLETION (Sprint 1A) ──────────────────
+// Beräknar % baserat på obligatoriska fält som är ifyllda + nuvarande steg.
+// Steg 1 = 50% (5 fält), Steg 2 = 90% (språk+terms+fskatt), Steg 3 (klar) = 100%.
+function updateProgressBar() {
+  var pct = 0;
+  if (currentStep >= 3) {
+    pct = 100;
+  } else {
+    // Steg 1: räkna fält som är OK
+    var s1Fields = ['firstNameInput','lastNameInput','emailInput','phoneInput','cleaner-address'];
+    var s1Ok = 0;
+    s1Fields.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.value && el.value.trim().length >= 2) s1Ok++;
+    });
+    // Email måste innehålla @
+    var em = document.getElementById('emailInput');
+    if (em && em.value && !em.value.includes('@')) s1Ok = Math.max(0, s1Ok - 1);
+    // Lat/lng valda från autocomplete
+    var lat = document.getElementById('cleaner-lat');
+    var hasGeo = lat && lat.value;
+    var s1Pct = (s1Ok / 5) * 50; // 0–50%
+    if (hasGeo) s1Pct = Math.min(50, s1Pct + 4); // bonus när adress är geocodad
+
+    if (currentStep === 1) {
+      pct = Math.round(s1Pct);
+    } else {
+      // Steg 2: räkna språk + tjänster + fskatt + terms
+      var s2Items = 0; var s2Total = 4;
+      if (_selectedLangs && _selectedLangs.length > 0) s2Items++;
+      if (document.querySelectorAll('.svc-btn.on').length > 0) s2Items++;
+      if (_fskattStatus) s2Items++;
+      var terms = document.getElementById('chkTerms');
+      if (terms && terms.checked) s2Items++;
+      var s2Pct = (s2Items / s2Total) * 40; // 0–40%
+      pct = Math.round(50 + s2Pct);
+    }
+  }
+  pct = Math.max(0, Math.min(100, pct));
+  var bar = document.getElementById('progressBar');
+  var lbl = document.getElementById('progressLabel');
+  if (bar) bar.style.width = pct + '%';
+  if (lbl) lbl.textContent = pct + '% klart';
+}
+
+// ── LOCALSTORAGE PROGRESS-SAVE (Sprint 1A) ────────────────────────────
+// Sparar formulär-state lokalt så användaren kan stänga browsern och fortsätta senare.
+// Spara: var 30 sek + onChange. Återställ: vid page-load (innan auto-focus).
+var STORAGE_KEY = 'spick_cleaner_application_v1';
+var STORAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dagar
+
+function collectFormState() {
+  var state = {
+    saved_at: Date.now(),
+    step: currentStep,
+    fields: {},
+    langs: _selectedLangs.slice(),
+    fskatt: _fskattStatus,
+    regType: _regType,
+  };
+  var ids = ['firstNameInput','lastNameInput','emailInput','phoneInput',
+             'cleaner-address','cleaner-lat','cleaner-lng','cleaner-city',
+             'bio','priceInput','cleaner-radius','experienceInput',
+             'companyName','orgNumber','teamSize','ownerOnly',
+             'businessName','businessOrgNumber','businessAddress',
+             'chkTerms','chkMarketing','chkVatRegistered'];
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === 'checkbox') state.fields[id] = el.checked;
+    else state.fields[id] = el.value || '';
+  });
+  // Selected services
+  state.services = [];
+  document.querySelectorAll('.svc-btn.on').forEach(function(b) {
+    state.services.push(b.dataset.svc);
+  });
+  return state;
+}
+
+function persistState() {
+  try {
+    var s = collectFormState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch (e) { /* quota / private mode — ignorera */ }
+}
+
+function restoreState() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    var s = JSON.parse(raw);
+    if (!s || !s.saved_at) return;
+    if (Date.now() - s.saved_at > STORAGE_TTL_MS) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    Object.keys(s.fields || {}).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = !!s.fields[id];
+      else el.value = s.fields[id];
+    });
+    if (Array.isArray(s.langs) && s.langs.length) {
+      _selectedLangs = s.langs;
+      renderLangs();
+    }
+    if (s.fskatt) setFskattStatus(s.fskatt);
+    if (s.regType) setRegType(s.regType);
+    if (Array.isArray(s.services)) {
+      s.services.forEach(function(svc) {
+        var btn = document.querySelector('.svc-btn[data-svc="' + svc + '"]');
+        if (btn) btn.classList.add('on');
+      });
+    }
+    // Trigga slider-uppdateringar
+    var pe = document.getElementById('priceInput');
+    if (pe) pe.dispatchEvent(new Event('input'));
+    var re = document.getElementById('cleaner-radius');
+    if (re) re.dispatchEvent(new Event('input'));
+    // Trigga inline-validation för restored fält (Sprint 1A)
+    ['firstNameInput','lastNameInput','emailInput','phoneInput','cleaner-address',
+     'orgNumber','companyName'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.value) updateInlineValidation(el);
+    });
+    // Visa "vi återställde din ansökan"-banner
+    var savedAgo = Math.round((Date.now() - s.saved_at) / 60000);
+    showRestoreBanner(savedAgo);
+    // Hoppa till senast aktivt steg om > 1 (men inte till klar-steget)
+    if (s.step === 2) {
+      goToStep(2);
+    }
+    setTimeout(updateProgressBar, 50);
+  } catch (e) { /* parse error — ignorera */ }
+}
+
+function showRestoreBanner(minutesAgo) {
+  var existing = document.getElementById('restoreBanner');
+  if (existing) return;
+  var banner = document.createElement('div');
+  banner.id = 'restoreBanner';
+  banner.style.cssText = 'background:#E1F5EE;border:1.5px solid #0F6E56;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#085041;display:flex;align-items:center;justify-content:space-between;gap:8px';
+  var when = minutesAgo < 60 ? minutesAgo + ' min sedan' : Math.round(minutesAgo / 60) + ' h sedan';
+  banner.innerHTML = '<span>✅ Vi återställde din påbörjade ansökan från ' + when + '</span>'
+    + '<button onclick="clearSavedState();this.parentElement.remove()" style="background:none;border:none;color:#085041;font-size:.78rem;cursor:pointer;text-decoration:underline;font-family:inherit">Börja om</button>';
+  var container = document.querySelector('.reg-container');
+  var firstStep = document.getElementById('step1');
+  if (container && firstStep) container.insertBefore(banner, firstStep);
+}
+
+function clearSavedState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  // Reset UI
+  ['firstNameInput','lastNameInput','emailInput','phoneInput','cleaner-address',
+   'bio','companyName','orgNumber','businessName','businessOrgNumber','businessAddress'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['chkTerms','chkMarketing','chkVatRegistered','ownerOnly'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+  document.querySelectorAll('.svc-btn.on').forEach(function(b) {
+    if (b.dataset.svc !== 'Hemstädning') b.classList.remove('on');
+  });
+  _selectedLangs = ['Svenska']; renderLangs();
+  _fskattStatus = null;
+  document.querySelectorAll('.fskatt-btn.on').forEach(function(b) { b.classList.remove('on'); });
+  goToStep(1);
+}
+
+function saveAndContinueLater() {
+  persistState();
+  alert('💾 Din ansökan sparades lokalt. Stäng webbläsaren när du vill — kom tillbaka när du är redo så fortsätter du där du slutade.\n\nObs: sparas bara på denna enhet och denna webbläsare.');
+}
+
+// Auto-save var 30 sek
+setInterval(function() {
+  if (currentStep < 3) persistState();
+}, 30000);
+
+// Auto-save vid input/change i alla fält
+document.addEventListener('input', function(e) {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
+    persistState();
+    updateProgressBar();
+    updateInlineValidation(e.target);
+  }
+});
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.type === 'checkbox') {
+    persistState();
+    updateProgressBar();
+  }
+});
+
+// ── INLINE-VALIDATION (Sprint 1A) ────────────────────────────────────
+// Visar grön ✓ när ett fält är OK (positiv feedback). Inga röda fel — vi använder
+// alert() vid submit som fallback (existing).
+function updateInlineValidation(el) {
+  if (!el || !el.id) return;
+  var wrapper = el.closest('.field');
+  if (!wrapper) return;
+  var ok = false;
+  switch (el.id) {
+    case 'firstNameInput':
+    case 'lastNameInput':
+      ok = el.value.trim().length >= 2;
+      break;
+    case 'emailInput':
+      ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
+      break;
+    case 'phoneInput':
+      ok = el.value.replace(/\D/g, '').length >= 8;
+      break;
+    case 'cleaner-address':
+      var lat = document.getElementById('cleaner-lat');
+      ok = !!(el.value.trim() && lat && lat.value && /\d/.test(el.value));
+      break;
+    case 'orgNumber':
+      ok = /^\d{6}-\d{4}$/.test(el.value.trim());
+      break;
+    case 'companyName':
+      ok = el.value.trim().length >= 2;
+      break;
+    default:
+      return;
+  }
+  var existing = wrapper.querySelector('.field-ok-mark');
+  if (ok) {
+    if (!existing) {
+      var mark = document.createElement('span');
+      mark.className = 'field-ok-mark';
+      mark.style.cssText = 'position:absolute;right:14px;top:38px;color:#0F6E56;font-weight:700;font-size:1.1rem;pointer-events:none';
+      mark.textContent = '✓';
+      wrapper.appendChild(mark);
+    }
+  } else if (existing) {
+    existing.remove();
+  }
 }
 
 // ── STEP 1 VALIDATION ────────────────────────
@@ -1017,6 +1269,18 @@ function removeLang(lang) {
 
 renderLangs();
 
+// ── INITIAL RESTORE + PROGRESS-BAR (Sprint 1A) ──────────────────────
+// Körs efter all DOM-rendering. restoreState återanvänder existing setRegType/
+// setFskattStatus/renderLangs så ordningen är säker.
+document.addEventListener('DOMContentLoaded', function() {
+  restoreState();
+  updateProgressBar();
+});
+// Failsafe om DOMContentLoaded redan fyrats (script är inline efter body)
+if (document.readyState !== 'loading') {
+  setTimeout(function() { restoreState(); updateProgressBar(); }, 0);
+}
+
 // ── BANKID (REAL EF INTEGRATION) ─────────────
 async function startBankID(method) {
   var statusEl = document.getElementById('bankidStatus');
@@ -1101,6 +1365,46 @@ function resetBankIDButtons() {
   bankidSessionId = null;
 }
 
+// ── F-SKATT AUTO-VERIFY (Sprint 1B 2026-04-26) ────────────────
+// Anropas efter lyckad cleaner_applications-INSERT. Slår upp F-skatt + SNI hos
+// verify-fskatt-EFen. Om verifierad → "Din profil är aktiv!"-box.
+// Annars (eller upstream-fel) → fall tillbaka på "vi granskar inom 24h".
+async function verifyFskattAndShowResult(orgNumber) {
+  var loader = document.getElementById('verifyLoader');
+  var manual = document.getElementById('manualReviewBox');
+  var approved = document.getElementById('autoApprovedBox');
+  try {
+    var res = await fetch(SUPA_URL + '/functions/v1/verify-fskatt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPA_KEY,
+        Authorization: 'Bearer ' + SUPA_KEY,
+      },
+      body: JSON.stringify({ org_number: orgNumber }),
+    });
+    var data = await res.json();
+    var validSni = ['81210','81220','81290'];
+    var hasSni = Array.isArray(data?.sni_codes) && data.sni_codes.some(function(c) {
+      return validSni.indexOf(c) !== -1;
+    });
+    var verified = data && data.valid && data.has_fskatt && hasSni
+                   && data.api_used === 'foretagsapi.se';
+    if (loader) loader.style.display = 'none';
+    if (verified) {
+      if (approved) approved.style.display = 'block';
+      if (manual) manual.style.display = 'none';
+    } else {
+      if (manual) manual.style.display = 'block';
+      if (approved) approved.style.display = 'none';
+    }
+  } catch (e) {
+    console.warn('verify-fskatt failed', e);
+    if (loader) loader.style.display = 'none';
+    if (manual) manual.style.display = 'block';
+  }
+}
+
 // ── REGISTRATION ─────────────────────────────
 async function submitRegistration() {
   var firstName = document.getElementById('firstNameInput').value.trim();
@@ -1182,9 +1486,27 @@ async function submitRegistration() {
       document.getElementById('confirmedName').textContent = fullName;
       document.getElementById('confirmedEmail').textContent = email;
       document.getElementById('confirmedCity').textContent = address;
-      goToStep(4); // Skip BankID, go directly to Done
+      // Sprint 1A: clear localStorage så att user inte ser "återställ"-banner nästa gång
+      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+      goToStep(3); // Sprint 1A: step 3 = klar (tidigare step 4)
 
-      // Notify körs EFTER goToStep(4) — icke-kritiskt, guardat så att tomma
+      // Sprint 1B: starta auto-verify-loader om org-nummer finns
+      var orgForVerify = (cleanerData.org_number || cleanerData.business_org_number || '').trim();
+      var loaderEl = document.getElementById('verifyLoader');
+      var manualBox = document.getElementById('manualReviewBox');
+      var approvedBox = document.getElementById('autoApprovedBox');
+      if (orgForVerify && _fskattStatus === 'yes') {
+        if (loaderEl) loaderEl.style.display = 'block';
+        if (manualBox) manualBox.style.display = 'none';
+        if (approvedBox) approvedBox.style.display = 'none';
+        verifyFskattAndShowResult(orgForVerify);
+      } else {
+        if (loaderEl) loaderEl.style.display = 'none';
+        if (manualBox) manualBox.style.display = 'block';
+        if (approvedBox) approvedBox.style.display = 'none';
+      }
+
+      // Notify körs EFTER goToStep(3) — icke-kritiskt, guardat så att tomma
       // värden aldrig skickas om något variable-scope-problem uppstår.
       if (fullName && email) {
         fetch(SUPA_URL + '/functions/v1/notify', {
