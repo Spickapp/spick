@@ -1,0 +1,70 @@
+name: SMS Delivery Weekly Health Check
+# Verifierar att 46elks-leveransen fungerar (saldo OK, kredentialer OK).
+# Discord-alert om SMS failar — annars går regression tyst (städare hör inte
+# av sig om de inte får SMS, så ingen larmar idag).
+'on':
+  schedule:
+    - cron: '0 10 * * 0'   # Söndag 10:00 UTC = 12:00 CEST
+  workflow_dispatch: {}
+
+jobs:
+  sms-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger sms-delivery-test EF
+        id: sms
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TEST_PHONE_NUMBER: ${{ secrets.TEST_PHONE_NUMBER }}
+        run: |
+          if [ -z "$TEST_PHONE_NUMBER" ]; then
+            echo "::error::TEST_PHONE_NUMBER GitHub Secret saknas — sätt Farhads mobil eller test-mobil först"
+            exit 1
+          fi
+
+          MESSAGE="Spick SMS-leverans-test $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/sms-delivery-test" \
+            -d "{\"to_phone\":\"$TEST_PHONE_NUMBER\",\"message\":\"$MESSAGE\"}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::sms-delivery-test failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Discord alert on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+          HTTP_CODE: ${{ steps.sms.outputs.http_code }}
+          BODY: ${{ steps.sms.outputs.body }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::ADMIN_ALERT_WEBHOOK_URL ej satt — fallback till console-log"
+            echo "FAIL: HTTP=$HTTP_CODE BODY=$BODY"
+            exit 0
+          fi
+
+          PAYLOAD=$(printf '{"content":"**SMS-leverans-test FAILED** (weekly)\\nHTTP: %s\\n46elks kan vara nere eller saldot slut. Kolla 46elks dashboard + Supabase function logs (sms + sms-delivery-test).\\n```\\n%s\\n```"}' \
+            "$HTTP_CODE" "$BODY")
+
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
