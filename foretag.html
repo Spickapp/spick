@@ -489,7 +489,15 @@ async function init() {
     var h = '';
 
     // ── HERO ──
-    h += '<div class="hero"><div class="hero-bg"></div><div class="hero-pattern"></div><div class="hero-glow"></div><div class="hero-inner">';
+    // Anpassad bakgrund (Zivar-request 2026-04-26): om co.hero_bg_url finns
+    // → use foto med dark-overlay för läsbarhet; annars fallback till
+    // dynamic-color-gradient (befintligt beteende via .hero-bg-rule).
+    var heroBgInline = co.hero_bg_url
+      ? 'background:linear-gradient(165deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.35) 50%,rgba(0,0,0,.55) 100%),url("' + esc(co.hero_bg_url) + '") center/cover no-repeat;'
+      : '';
+    h += '<div class="hero"' + (heroBgInline ? ' style="' + heroBgInline + '"' : '') + '>';
+    h += co.hero_bg_url ? '' : '<div class="hero-bg"></div>';
+    h += '<div class="hero-pattern"></div><div class="hero-glow"></div><div class="hero-inner">';
     h += '<div class="hero-top">';
     // Logo om finns, annars initial-bokstav (Zivar-request 2026-04-26)
     if (co.logo_url) {

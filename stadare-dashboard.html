@@ -1659,6 +1659,25 @@ body{top:0!important}
               </div>
               <div id="company-logo-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
             </div>
+            <!-- Hero-bakgrundsbild (Zivar-request 2026-04-26) -->
+            <div style="background:#F7F7F5;border-radius:10px;padding:12px;margin-bottom:12px">
+              <div style="font-size:.82rem;font-weight:600;margin-bottom:4px">🎨 Bakgrundsbild på företagssida</div>
+              <div style="font-size:.72rem;color:var(--m);margin-bottom:10px">Visas som hero på din publika företagssida (spick.se/f/{slug}). PNG/JPG/WebP, max 4 MB. Rekommenderad storlek: 1920×600 eller större. Standard: färggradient från företagsnamn.</div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <div id="company-hero-preview" style="width:140px;height:60px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px dashed #E8E8E4;flex-shrink:0;overflow:hidden">
+                  <span id="company-hero-placeholder" style="font-size:1.2rem;color:#aaa">🌄</span>
+                  <img id="company-hero-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <label for="company-hero-file" style="background:var(--g);color:#fff;padding:8px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-block">
+                    Välj fil
+                    <input type="file" id="company-hero-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadCompanyHero(this)">
+                  </label>
+                  <button id="company-hero-remove" type="button" onclick="removeCompanyHero()" style="background:none;border:none;color:#dc2626;font-size:.74rem;cursor:pointer;text-align:left;padding:0;display:none">Ta bort bakgrund</button>
+                </div>
+              </div>
+              <div id="company-hero-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
+            </div>
             <button onclick="editCompanyProfile()" style="padding:8px 16px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Redigera företagsprofil</button>
           </div>
           <div id="company-profile-edit" style="display:none">
@@ -1849,17 +1868,22 @@ body{top:0!important}
           </div>
         </div>
 
-        <!-- Självfakturor (VD) -->
+        <!-- Självfakturor (VD — team-perspektiv) -->
         <div id="vd-invoices-section" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
             <div>
-              <div style="font-weight:600;font-size:.92rem">Självfakturor</div>
+              <div style="font-weight:600;font-size:.92rem">Självfakturor — team</div>
               <div style="font-size:.72rem;color:var(--m);margin-top:2px">Generera bokföringsunderlag för städare med F-skatt</div>
             </div>
             <button id="generate-invoices-btn" onclick="generateInvoices()" style="padding:8px 16px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit">Generera för förra månaden</button>
           </div>
           <div id="vd-invoices-list" style="font-size:.85rem;color:var(--m)">Laddar...</div>
         </div>
+
+        <!-- Slot för "Mina självfakturor" (Zivar-flytt 2026-04-26): JS appendChild:ar
+             #my-invoices-card hit för VDs så de inte behöver hoppa till Jag-tab.
+             Solo-cleaners behåller sektionen i Jag-tab (inget JS-flytt). -->
+        <div id="mina-invoices-target"></div>
 
         <!-- ═══ VD-RAPPORTER ═══ -->
         <div class="card" style="padding:20px;margin-top:12px" id="team-reports-card">
@@ -3597,6 +3621,22 @@ async function loadCleanerByEmail(email, authUserId) {
     }
     // Visa befintlig logo (Zivar-request 2026-04-26)
     if (typeof loadCompanyLogoPreview === 'function') loadCompanyLogoPreview();
+    // Flytta "Mina självfakturor" från Jag-tab till Företag-tab för VD (Zivar-feedback 2026-04-26)
+    try {
+      var minaInvCard = document.getElementById('my-invoices-card');
+      var minaInvTarget = document.getElementById('mina-invoices-target');
+      if (minaInvCard && minaInvTarget) {
+        var section = minaInvCard.closest('.settings-section');
+        var cardWrap = document.createElement('div');
+        cardWrap.style.cssText = 'background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px';
+        cardWrap.innerHTML = '<div style="font-weight:600;font-size:.92rem;margin-bottom:4px">Mina självfakturor</div><div style="font-size:.72rem;color:var(--m);margin-bottom:12px">Självfakturor genereras månadsvis som bokföringsunderlag (för dig som städare).</div><div id="my-invoices-list-vd" style="font-size:.85rem;color:var(--m)">Laddar...</div>';
+        minaInvTarget.appendChild(cardWrap);
+        // Sync render: rendera till BÅDE listor när loadMyInvoices() körs
+        window._myInvoicesAlsoRenderTo = 'my-invoices-list-vd';
+        // Dölj Jag-tab-sektionen helt (för VD är den i Företag-tab istället)
+        if (section) section.style.display = 'none';
+      }
+    } catch(e) { console.warn('[mina-invoices flytt]', e); }
   }
 
   if (cleaner.owner_only) {
@@ -7351,13 +7391,129 @@ async function toggleOwnerOnly(isOwner) {
 async function loadCompanyLogoPreview() {
   if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=logo_url', {
+    const res = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=logo_url,hero_bg_url', {
       headers: _authHeadersLegacy()
     });
     const rows = await res.json();
-    const url = rows && rows[0] && rows[0].logo_url;
-    if (url) _showLogoPreview(url);
+    if (rows && rows[0]) {
+      if (rows[0].logo_url) _showLogoPreview(rows[0].logo_url);
+      if (rows[0].hero_bg_url) _showHeroPreview(rows[0].hero_bg_url);
+    }
   } catch(e) { /* ignorera, fallback till placeholder */ }
+}
+
+function _showHeroPreview(url) {
+  var img = document.getElementById('company-hero-img');
+  var ph = document.getElementById('company-hero-placeholder');
+  var rmBtn = document.getElementById('company-hero-remove');
+  if (img) {
+    img.src = url + '?cb=' + Date.now();
+    img.style.display = 'block';
+  }
+  if (ph) ph.style.display = 'none';
+  if (rmBtn) rmBtn.style.display = 'inline-block';
+}
+
+function _hideHeroPreview() {
+  var img = document.getElementById('company-hero-img');
+  var ph = document.getElementById('company-hero-placeholder');
+  var rmBtn = document.getElementById('company-hero-remove');
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (ph) ph.style.display = 'inline';
+  if (rmBtn) rmBtn.style.display = 'none';
+}
+
+async function uploadCompanyHero(input) {
+  var statusEl = document.getElementById('company-hero-status');
+  var setStatus = function(msg, color) {
+    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--m)'; }
+  };
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) {
+    setStatus('Bara företagsägare kan ladda upp bakgrund', '#dc2626');
+    return;
+  }
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 4 * 1024 * 1024) {
+    setStatus('Filen är för stor (max 4 MB)', '#dc2626');
+    input.value = ''; return;
+  }
+  var validTypes = ['image/png','image/jpeg','image/webp'];
+  if (validTypes.indexOf(file.type) === -1) {
+    setStatus('Ogiltig filtyp. Använd PNG, JPG eller WebP.', '#dc2626');
+    input.value = ''; return;
+  }
+  setStatus('Laddar upp…');
+  try {
+    var extMap = { 'image/png':'png', 'image/jpeg':'jpg', 'image/webp':'webp' };
+    var ext = extMap[file.type] || 'png';
+    var path = cleaner.company_id + '/hero.' + ext;
+    var uploadRes = await fetch(
+      SUPA_URL + '/storage/v1/object/company-hero-bg/' + encodeURIComponent(path),
+      {
+        method: 'POST',
+        headers: Object.assign({}, _authHeadersLegacy(), {
+          'Content-Type': file.type,
+          'x-upsert': 'true',
+          'Cache-Control': 'no-cache'
+        }),
+        body: file
+      }
+    );
+    if (!uploadRes.ok) {
+      var errText = await uploadRes.text();
+      throw new Error('Upload-fel: ' + uploadRes.status + ' ' + errText.slice(0, 100));
+    }
+    var publicUrl = SUPA_URL + '/storage/v1/object/public/company-hero-bg/' + path;
+    var updRes = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ hero_bg_url: publicUrl, hero_bg_storage_path: 'company-hero-bg/' + path })
+    });
+    if (!updRes.ok) {
+      var updErrText = await updRes.text();
+      throw new Error('DB-uppdatering misslyckades: ' + updRes.status + ' ' + updErrText.slice(0, 100));
+    }
+    _showHeroPreview(publicUrl);
+    setStatus('✓ Bakgrund uppdaterad — visas nu på företagssidan', '#059669');
+  } catch (e) {
+    console.error('[uploadCompanyHero]', e);
+    setStatus('Fel: ' + e.message, '#dc2626');
+  }
+  input.value = '';
+}
+
+async function removeCompanyHero() {
+  if (!cleaner || !cleaner.is_company_owner || !cleaner.company_id) return;
+  if (!confirm('Vill du ta bort bakgrundsbilden? Hero återgår till färggradient.')) return;
+  var statusEl = document.getElementById('company-hero-status');
+  var setStatus = function(msg, color) {
+    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--m)'; }
+  };
+  setStatus('Tar bort…');
+  try {
+    var pathRes = await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id + '&select=hero_bg_storage_path', {
+      headers: _authHeadersLegacy()
+    });
+    var pathRows = await pathRes.json();
+    var storagePath = pathRows && pathRows[0] && pathRows[0].hero_bg_storage_path;
+    if (storagePath && storagePath.indexOf('company-hero-bg/') === 0) {
+      var fileName = storagePath.replace(/^company-hero-bg\//, '');
+      await fetch(SUPA_URL + '/storage/v1/object/company-hero-bg/' + encodeURIComponent(fileName), {
+        method: 'DELETE',
+        headers: _authHeadersLegacy()
+      }).catch(function() {});
+    }
+    await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
+      method: 'PATCH',
+      headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ hero_bg_url: null, hero_bg_storage_path: null })
+    });
+    _hideHeroPreview();
+    setStatus('Bakgrund borttagen', '#059669');
+  } catch (e) {
+    setStatus('Fel: ' + e.message, '#dc2626');
+  }
 }
 
 function _showLogoPreview(url) {
@@ -11863,7 +12019,10 @@ async function viewInvoice(file) {
 }
 
 async function loadMyInvoices() {
-  var el = document.getElementById('my-invoices-list');
+  // Zivar-flytt 2026-04-26: VD ser kortet i Företag-tab (#my-invoices-list-vd),
+  // solo cleaners ser i Jag-tab (#my-invoices-list).
+  var el = document.getElementById(window._myInvoicesAlsoRenderTo || 'my-invoices-list')
+        || document.getElementById('my-invoices-list');
   if (!el || !cleaner) return;
   try {
     var res = await R.select('self_invoices', 'select=*&cleaner_id=eq.' + cleaner.id + '&order=period_start.desc&limit=50');
