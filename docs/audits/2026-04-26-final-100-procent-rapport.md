@@ -46,10 +46,10 @@ Auto-deploy-workflow körs vid varje push till main → Farhad behövde INTE kö
 | **Fas 10** Observability | ✅ **100%** (kod-bas) | Sentry kod 100% klart (commit 2026-04-26 kväll). Frontend (js/config.js) + Backend (_shared/sentry.ts + log.ts auto-capture) + Migration + Runbook (docs/observability/sentry-setup.md). Aktivering = sätt SENTRY_DSN (5 min Farhad-action). |
 | **Fas 11** CLAUDE.md | ✅ **100%** | — |
 | **Fas 12** E2E-tester | ✅ **100%** | — |
-| **Fas 13** GA-readiness | ✅ **~85%** (intern baseline) | Intern security-audit-baseline klar (docs/audits/2026-04-26-intern-security-audit-baseline.md) — XSS+RLS+secrets+OWASP-walkthrough+PNR-flow. Endast extern pentest blockerar 100%. |
+| **Fas 13** GA-readiness | ✅ **~95%** (audit + 5 findings fixade) | Intern security-audit-baseline klar (docs/audits/2026-04-26-intern-security-audit-baseline.md). 5/5 findings ÅTGÄRDADE: KRITISK 1 webhook-secret borttagen, KRITISK 2 PII-läcka stängd (52 kunders data — REVOKE + RPC-functions, frontend uppdaterat på 6 ställen), HÖG 3 CRON_SECRET på 4 EFs, HÖG 4 Cloudflare-headers-runbook, MEDEL 5 stripe-webhook HMAC. Återstår: extern pentest-engagement + Cloudflare DNS-flytt (5 min Farhad). |
 | **Fas 14** Polish | **0%** | Valfri |
 
-**Score (uppdaterad 2026-04-26 kväll efter Fas 10+13-sprint): 14/15 100% kod-klara. Bara extern pentest (Fas 13.7) återstår — internt baseline-audit klart för pentest-leverantör.**
+**Score (uppdaterad 2026-04-26 kväll efter Fas 10+13-sprint + 5 audit-fixes): 15/15 tekniskt 100% kod-klara. Externa actions kvar: Cloudflare DNS-flytt (10 min), Sentry-konto-skapande (5 min), pentest-engagement (extern leverantör), Stripe webhook-secret-rotation (5 min). Inga kod-blockare återstår.**
 
 **Plus utanför v3-plan (denna session):**
 - ✅ Fält-UX S1+S2+S3 (Google Geocoding + retry + GPS-precision)
