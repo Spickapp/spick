@@ -3617,34 +3617,35 @@ async function cancelBooking() {
   var result = await showConfirmDialog({
     level: 'red',
     title: 'Avboka bokning',
-    body: 'Avboka bokning för ' + (b?.customer_name||b?.name||'kund') + '?\n\nKonsekvens: Kunden kommer notifieras via e-post.',
+    body: 'Avboka bokning för ' + (b?.customer_name||b?.name||'kund') + '?\n\nKonsekvens: Kunden kommer notifieras via e-post och eventuell betalning återbetalas via Stripe.',
     requireReason: true
   });
   if (!result.ok) return;
-  const oldValue = b ? {payment_status: b.payment_status, status: b.status, cleaner_id: b.cleaner_id} : null;
-  await AR.update('bookings', {
-    payment_status: 'cancelled',
-    status: 'avbokad',
-    cleaner_id: null,
-    cleaner_name: null
-  }, 'id=eq.' + currentBookingId);
-  await auditLog('cancel','booking', currentBookingId, oldValue, {payment_status:'cancelled', status:'avbokad'}, result.reason);
-  // Notifiera kund
-  if (b?.customer_email || b?.email) {
-    await fetch(SPICK.SUPA_URL+'/functions/v1/notify', {
+  // P2-1 (2026-04-26 audit-fix): anropa admin-cancel-booking-EF som
+  // atomiskt UPDATE:ar booking + Stripe-refund + audit-log + notify.
+  // Tidigare var detta direkt PATCH mot bookings-tabellen vilket
+  // bypassade refund-flödet (kunden fick "cancelled" men pengarna
+  // låg kvar). EF:n loggar själv till admin_audit_log.
+  try {
+    const sess = await SB.auth.getSession();
+    const adminToken = sess?.data?.session?.access_token;
+    if (!adminToken) { showToast('❌ Sessionen har gått ut – logga in igen'); return; }
+    const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-cancel-booking', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
-      body: JSON.stringify({ type: 'booking_cancelled_admin', record: { 
-        customer_name: b.customer_name || b.name,
-        email: b.customer_email || b.email,
-        service: b.service_type || b.service,
-        date: b.booking_date || b.date
-      }})
-    }).catch(()=>{});
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + adminToken },
+      body: JSON.stringify({ booking_id: currentBookingId, reason: result.reason })
+    });
+    const d = await res.json().catch(()=>({}));
+    if (!res.ok) { showToast('❌ ' + (d.error || 'Avbokning misslyckades')); return; }
+    closeModal();
+    var msg = '❌ Bokning avbokad – kund notifierad';
+    if (d.refund_id) msg += ' · Återbetalning: ' + d.refund_id;
+    if (d.refund_error) msg += ' · ⚠️ Refund-fel: ' + d.refund_error;
+    showToast(msg);
+    loadAll();
+  } catch (e) {
+    showToast('❌ Avbokning misslyckades: ' + e.message);
   }
-  closeModal();
-  showToast('❌ Bokning avbokad – kund notifierad');
-  loadAll();
 }
 
 async function markBookingDone(id) {

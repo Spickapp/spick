@@ -201,21 +201,40 @@ function renderAggregate() {
   document.getElementById('content').appendChild(card);
 }
 
+// P2-2 (2026-04-26 audit-fix): båda PNR-update-funktionerna anropar nu
+// admin-pnr-update-EF som JWT-verifierar admin + skriver till
+// admin_audit_log. Tidigare var dessa direkt-PATCH som förlitade sig
+// 100% på RLS — vid policy-drift = RUT-bedrägeri-vektor.
+async function _callPnrUpdateEf(bookingId, method, reason) {
+  const sess = await SB.auth.getSession();
+  const token = sess?.data?.session?.access_token;
+  if (!token) { alert('Sessionen har gått ut – logga in igen'); return null; }
+  const res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-pnr-update', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SPICK.SUPA_KEY,
+      'Authorization': 'Bearer ' + token,
+    },
+    body: JSON.stringify({ booking_id: bookingId, pnr_verification_method: method, reason }),
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { alert('Fel: ' + (d.error || 'okänt')); return null; }
+  return d;
+}
+
 async function markVerifiedManual(bookingId) {
   if (!confirm('Markera som granskad-OK? Detta sätter pnr_verification_method=bankid + verified_at=nu (admin-override).')) return;
-  const { error } = await SB.from('bookings').update({
-    pnr_verification_method: 'bankid',
-    pnr_verified_at: new Date().toISOString()
-  }).eq('id', bookingId);
-  if (error) { alert('Fel: ' + error.message); return; }
+  const d = await _callPnrUpdateEf(bookingId, 'bankid', 'Admin-override till bankid (manuell granskning)');
+  if (!d) return;
   alert('✓ Markerad som verifierad');
   loadAll();
 }
 
 async function markUnverified(bookingId) {
   if (!confirm('Markera som unverified? Bokningen kvarstår men RUT förloras vid SKV-rapportering.')) return;
-  const { error } = await SB.from('bookings').update({ pnr_verification_method: 'unverified' }).eq('id', bookingId);
-  if (error) { alert('Fel: ' + error.message); return; }
+  const d = await _callPnrUpdateEf(bookingId, 'unverified', 'Admin markerade som unverified');
+  if (!d) return;
   alert('Markerad som unverified');
   loadAll();
 }
