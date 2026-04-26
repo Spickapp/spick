@@ -97,13 +97,14 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `vd-dispute-list` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-list (Fas 9 §9.2 — VD dispute-tab lis |
 | `vd-payment-summary` | ═══════════════════════════════════════════════════════════════ SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26) |
 
-## Shared EF helpers (29 st)
+## Shared EF helpers (30 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
 | `_shared/alerts.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Admin-alert-helper (Fas 10 §10.1 + §10.2 partial |
 | `_shared/auth.ts` | supabase/functions/_shared/auth.ts ───────────────────────────────────────────────────────────────── |
 | `_shared/chargeback-buffer.ts` | supabase/functions/_shared/chargeback-buffer.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/cron-auth.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Cron-EF auth-helper (security-audit-fix 2026-04- |
 | `_shared/document-store.ts` | supabase/functions/_shared/document-store.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/email.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Delad Edge Function-infrastruktur |
 | `_shared/encryption.ts` | supabase/functions/_shared/encryption.ts ────────────────────────────────────────────────────────────────── |
@@ -172,7 +173,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (150 st)
+## Migrations (151 st)
 
 - Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
 - Timestamp-prefix: `20260429000003`
