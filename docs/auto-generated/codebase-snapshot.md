@@ -96,17 +96,19 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `vd-dispute-list` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-list (Fas 9 §9.2 — VD dispute-tab lis |
 | `vd-payment-summary` | ═══════════════════════════════════════════════════════════════ SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26) |
 
-## Shared EF helpers (26 st)
+## Shared EF helpers (28 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
 | `_shared/alerts.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Admin-alert-helper (Fas 10 §10.1 + §10.2 partial |
 | `_shared/auth.ts` | supabase/functions/_shared/auth.ts ───────────────────────────────────────────────────────────────── |
 | `_shared/chargeback-buffer.ts` | supabase/functions/_shared/chargeback-buffer.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/document-store.ts` | supabase/functions/_shared/document-store.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/email.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Delad Edge Function-infrastruktur |
 | `_shared/encryption.ts` | supabase/functions/_shared/encryption.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/escrow-state.ts` | supabase/functions/_shared/escrow-state.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/events.ts` | supabase/functions/_shared/events.ts ────────────────────────────────────────────────────────────────── |
+| `_shared/expenses.ts` | supabase/functions/_shared/expenses.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/fonts.ts` |  |
 | `_shared/holidays.ts` | _shared/holidays.ts — Fas 5 §5.11 ═══════════════════════════════════════════════════════════════ |
 | `_shared/log.ts` | supabase/functions/_shared/log.ts ────────────────────────────────────────────────────────────────── |
@@ -167,7 +169,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (141 st)
+## Migrations (142 st)
 
 - Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
 - Timestamp-prefix: `20260429000003`
