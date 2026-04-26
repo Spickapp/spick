@@ -19,6 +19,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="js/supabase.min.js"></script>
+<!-- QRCode.js — för BankID cross-device QR-rendering (~4 KB minified) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Service","name":"Boka hemstädning","provider":{"@type":"Organization","name":"Spick","url":"https://spick.se"},"areaServed":"Sweden","url":"https://spick.se/boka.html"}</script>
 <style>
@@ -597,10 +599,21 @@ input.invalid,select.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,
               <button type="button" id="rut-bankid-start-btn" onclick="startRutBankid()" style="width:100%;padding:.75rem 1rem;background:var(--g);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:.88rem">Verifiera med BankID →</button>
             </div>
             <div id="rut-bankid-pending" style="display:none;text-align:center;padding:.5rem">
-              <div style="font-size:.85rem;font-weight:600;color:var(--g);margin-bottom:.4rem">Öppna BankID-appen…</div>
-              <div id="rut-bankid-link-row" style="margin:.5rem 0">
-                <a id="rut-bankid-app-link" href="#" style="display:inline-block;padding:.6rem 1rem;background:var(--g);color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600">Öppna BankID på denna enhet</a>
+              <div style="font-size:.85rem;font-weight:600;color:var(--g);margin-bottom:.6rem">Öppna BankID-appen…</div>
+
+              <!-- QR-kod för cross-device (BankID på mobil) -->
+              <div id="rut-bankid-qr-wrap" style="display:none;margin:.5rem 0;background:#fff;padding:14px;border-radius:10px;border:1.5px solid var(--g)">
+                <div style="font-size:.78rem;font-weight:600;margin-bottom:8px">📱 Skanna med BankID-appen på din mobil</div>
+                <div id="rut-bankid-qr" style="display:inline-block"></div>
+                <div style="font-size:.72rem;color:var(--m);margin-top:6px">QR-koden uppdateras automatiskt — håll mobilen redo</div>
               </div>
+
+              <!-- Same-device-knapp -->
+              <div id="rut-bankid-link-row" style="margin:.5rem 0;display:flex;flex-direction:column;gap:8px;align-items:center">
+                <a id="rut-bankid-app-link" href="#" style="display:inline-block;padding:.6rem 1.2rem;background:var(--g);color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600">📲 Öppna BankID på denna enhet</a>
+                <button type="button" id="rut-bankid-toggle-qr" onclick="toggleRutBankidQr()" style="background:none;border:none;color:var(--g);text-decoration:underline;font-size:.78rem;cursor:pointer;font-family:inherit">eller skanna QR-kod med annan enhet</button>
+              </div>
+
               <div style="font-size:.72rem;color:var(--m)">Status: <span id="rut-bankid-hint">Initierar…</span></div>
               <button type="button" onclick="cancelRutBankid()" style="margin-top:.6rem;background:none;border:none;color:var(--m);text-decoration:underline;font-size:.78rem;cursor:pointer">Avbryt</button>
             </div>
@@ -3020,17 +3033,95 @@ async function startRutBankid() {
       }
       return;
     }
-    state.rutBankidSession = { session_id: data.session_id, expires_at: data.expires_at };
+    state.rutBankidSession = {
+      session_id: data.session_id,
+      expires_at: data.expires_at,
+      qr_start_token: data.qr_start_token || null,
+      qr_start_secret: data.qr_start_secret || null,
+      qr_data: data.qr_data || null
+    };
     var appLink = document.getElementById('rut-bankid-app-link');
     if (appLink && data.auto_start_token) {
       // bankid:// URI startar BankID-app på samma enhet
       appLink.href = 'bankid:///?autostarttoken=' + encodeURIComponent(data.auto_start_token) + '&redirect=null';
     }
+
+    // QR-rendering: TIC kan returnera färdig qr_data eller token+secret för
+    // kontinuerlig generering. Vi visar QR-knappen om någon av dessa finns.
+    var qrToggle = document.getElementById('rut-bankid-toggle-qr');
+    if (qrToggle) {
+      qrToggle.style.display = (data.qr_data || data.qr_start_token) ? '' : 'none';
+    }
+    if (data.qr_data) {
+      // Färdig qr_data → rendera direkt en gång
+      _renderRutBankidQr(data.qr_data);
+    } else if (data.qr_start_token && data.qr_start_secret) {
+      // BankID-standard: regenerera QR varje sekund med HMAC
+      _startRutBankidQrTicker(data.qr_start_token, data.qr_start_secret);
+    }
+
     pollRutBankidStatus();
   } catch (e) {
     console.warn('[SPICK] startRutBankid error:', e);
     showRutBankidError(e && e.message ? e.message : 'Något gick fel');
   }
+}
+
+// ── BankID QR-cross-device-stöd (2026-04-26) ──
+// Två modes: (1) qr_data (färdig sträng från TIC, bara rendera) eller
+// (2) qr_start_token + qr_start_secret (BankID-standard, regenerera HMAC varje sek)
+
+function toggleRutBankidQr() {
+  var wrap = document.getElementById('rut-bankid-qr-wrap');
+  if (!wrap) return;
+  var visible = wrap.style.display !== 'none';
+  wrap.style.display = visible ? 'none' : 'block';
+  var toggle = document.getElementById('rut-bankid-toggle-qr');
+  if (toggle) toggle.textContent = visible
+    ? 'eller skanna QR-kod med annan enhet'
+    : '↑ dölj QR-kod';
+}
+
+function _renderRutBankidQr(qrText) {
+  var wrap = document.getElementById('rut-bankid-qr');
+  if (!wrap || typeof qrcode === 'undefined') return;
+  wrap.innerHTML = '';
+  try {
+    var q = qrcode(0, 'L');
+    q.addData(qrText);
+    q.make();
+    wrap.innerHTML = q.createImgTag(5, 4);  // cellSize=5, margin=4
+  } catch (e) {
+    wrap.textContent = '⚠ Kunde inte generera QR — använd 📲-knappen istället';
+  }
+}
+
+async function _startRutBankidQrTicker(qrStartToken, qrStartSecret) {
+  // BankID QR-formel: bankid.{qrStartToken}.{seconds_elapsed}.{HMAC-SHA256}
+  // Ny QR varje sekund. Stoppas via cancelRutBankid() eller success.
+  var startMs = Date.now();
+  async function tick() {
+    var elapsed = Math.floor((Date.now() - startMs) / 1000);
+    try {
+      var qrAuthCode = await _hmacSha256Hex(qrStartSecret, String(elapsed));
+      var qrData = 'bankid.' + qrStartToken + '.' + elapsed + '.' + qrAuthCode;
+      _renderRutBankidQr(qrData);
+    } catch (e) {
+      console.warn('[QR] tick failed:', e);
+    }
+  }
+  await tick();
+  state.rutBankidQrTicker = setInterval(tick, 1000);
+}
+
+async function _hmacSha256Hex(key, msg) {
+  var enc = new TextEncoder();
+  var keyBytes = typeof key === 'string'
+    ? new Uint8Array(key.match(/.{1,2}/g).map(function(b) { return parseInt(b, 16); }))
+    : enc.encode(key);
+  var cryptoKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  var sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg));
+  return Array.from(new Uint8Array(sig)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
 
 function pollRutBankidStatus() {
