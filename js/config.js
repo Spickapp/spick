@@ -75,16 +75,25 @@ window.escHtml = escHtml;
 // Global error handler — fångar uncaught errors utan att visa rå stacktraces
 window.addEventListener('error', function(e) {
   console.error('[SPICK]', e.message, e.filename, e.lineno);
-  // Skicka till analytics (fire-and-forget)
+  // Skicka till analytics (fire-and-forget). sendBeacon kan inte sätta apikey-
+  // header → CORS-fel mot Supabase. Använd fetch+keepalive istället så vi kan
+  // inkludera apikey + Authorization-headers (krav för PostgREST).
   try {
-    navigator.sendBeacon && navigator.sendBeacon(
-      SPICK.SUPA_URL + '/rest/v1/analytics_events',
-      new Blob([JSON.stringify({
+    fetch(SPICK.SUPA_URL + '/rest/v1/analytics_events', {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
         event_type: 'js_error',
         page: location.pathname,
         data: JSON.stringify({ msg: e.message, file: e.filename, line: e.lineno }),
-      })], { type: 'application/json' })
-    );
+      }),
+    }).catch(function() {});
   } catch(_) {}
 });
 

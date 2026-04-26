@@ -3408,7 +3408,11 @@ function goStep4() {
     phone:   { el: document.getElementById('phone'),   val: document.getElementById('phone').value.trim(),   label: 'Mobilnummer' },
     address: { el: document.getElementById('address'), val: document.getElementById('address').value.trim(), label: 'Adress' },
   };
-  
+
+  // ── VALIDATE EACH FIELD ──────────────────────────────────
+  // errors måste deklareras INNAN BankID-checken pga TDZ
+  const errors = [];
+
   // PNR only required if RUT enabled (avstängt Fas 7.5-blocker)
   if (useRut && !PNR_FIELD_DISABLED) {
     document.getElementById('pnr-wrap').style.display = 'block';
@@ -3446,9 +3450,6 @@ function goStep4() {
     }
     errors.push('rut-bankid');
   }
-  
-  // ── VALIDATE EACH FIELD ──────────────────────────────────
-  const errors = [];
   
   // Clear all previous errors
   document.querySelectorAll('.f-inline-error').forEach(e => e.remove());
