@@ -1106,6 +1106,32 @@ body{top:0!important}
             </div>
           </div>
 
+          <!-- Per-jobb-detaljerad lista (Fas 9-utvidgning 2026-04-26) -->
+          <div class="card" style="margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div class="card-title" style="margin:0">Detaljerad jobb-lista</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button onclick="toggleVdJobsSection()" id="vd-jobs-toggle-btn" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Visa detaljer ▾</button>
+                <button onclick="exportVdJobsCsv()" style="background:#0F6E56;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">📊 CSV</button>
+              </div>
+            </div>
+            <div id="vd-jobs-detailed" style="display:none">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                <button class="vd-jobs-filter-btn" data-filter="all" onclick="filterVdJobs('all')" style="background:#0F6E56;color:#fff;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Alla</button>
+                <button class="vd-jobs-filter-btn" data-filter="slutreglerat" onclick="filterVdJobs('slutreglerat')" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Slutreglerat</button>
+                <button class="vd-jobs-filter-btn" data-filter="i_escrow" onclick="filterVdJobs('i_escrow')" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">I escrow</button>
+                <button class="vd-jobs-filter-btn" data-filter="kommande" onclick="filterVdJobs('kommande')" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Kommande</button>
+                <input type="text" id="vd-jobs-search" placeholder="🔍 Sök cleaner/kund" oninput="filterVdJobs()" style="flex:1;min-width:160px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;font-size:.78rem;font-family:inherit">
+              </div>
+              <div id="vd-jobs-list-body" style="font-size:.82rem">
+                <div style="text-align:center;padding:14px;color:var(--m)">Laddar jobb-detaljer...</div>
+              </div>
+              <div style="margin-top:8px;font-size:.72rem;color:var(--m);line-height:1.5">
+                <strong>Statusförklaring:</strong> <span style="color:#0F6E56">Slutreglerat</span> = pengar utbetalade. <span style="color:#92400E">I escrow</span> = utförd, väntar på attest/release. <span style="color:#3f3d36">Kommande</span> = bokad, ej utförd än.
+              </div>
+            </div>
+          </div>
+
           <div style="margin-top:8px;font-size:.72rem;color:var(--m);line-height:1.5">
             <strong>Hur det funkar:</strong> Spick håller pengar i 24h efter varje städning (escrow). Om kund inte invänder eller har dispute så transferas medel till företagets Stripe-konto. Pengarna landar på företagets bankkonto inom 3–5 bankdagar enligt Stripe-utbetalningsschemat.
           </div>
@@ -10870,6 +10896,15 @@ async function loadVdPaymentSummary() {
     document.getElementById('vd-pay-upcoming-count').textContent = (data.kommande?.count || 0) + ' bokningar';
     document.getElementById('vd-pay-cleaner-count').textContent = String(data.per_cleaner?.length || 0);
 
+    // Cache rådata för per-jobb-vy + CSV-export (Fas 9-utvidgning 2026-04-26)
+    window._vdJobsCache = {
+      slutreglerat: (data.slutreglerat?.bookings) || [],
+      i_escrow: (data.i_escrow?.bookings) || [],
+      kommande: (data.kommande?.bookings) || []
+    };
+    window._vdJobsActiveFilter = window._vdJobsActiveFilter || 'all';
+    if (typeof renderVdJobsList === 'function') renderVdJobsList();
+
     // Per-cleaner-tabell
     const tbl = document.getElementById('vd-pay-cleaner-table');
     if (tbl) {
@@ -10893,6 +10928,137 @@ async function loadVdPaymentSummary() {
   } catch (e) {
     console.warn('[SPICK] loadVdPaymentSummary exception:', e);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Fas 9-utvidgning (2026-04-26) — Per-jobb-spec av VD-utbetalningar
+// ═══════════════════════════════════════════════════════════════
+
+window._vdJobsCache = window._vdJobsCache || { slutreglerat: [], i_escrow: [], kommande: [] };
+window._vdJobsActiveFilter = window._vdJobsActiveFilter || 'all';
+
+function toggleVdJobsSection() {
+  const el = document.getElementById('vd-jobs-detailed');
+  const btn = document.getElementById('vd-jobs-toggle-btn');
+  if (!el || !btn) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  btn.textContent = open ? 'Visa detaljer ▾' : 'Dölj detaljer ▴';
+  if (!open) renderVdJobsList();
+}
+
+function filterVdJobs(filter) {
+  if (typeof filter === 'string') {
+    window._vdJobsActiveFilter = filter;
+    document.querySelectorAll('.vd-jobs-filter-btn').forEach(function(b) {
+      const isActive = b.getAttribute('data-filter') === filter;
+      b.style.background = isActive ? '#0F6E56' : '#F3F4F6';
+      b.style.color = isActive ? '#fff' : '#3f3d36';
+    });
+  }
+  renderVdJobsList();
+}
+
+function _vdJobsAllRows() {
+  const cache = window._vdJobsCache || {};
+  const rows = [];
+  (cache.slutreglerat || []).forEach(function(b) { rows.push({ ...b, _category: 'slutreglerat' }); });
+  (cache.i_escrow || []).forEach(function(b) { rows.push({ ...b, _category: 'i_escrow' }); });
+  (cache.kommande || []).forEach(function(b) { rows.push({ ...b, _category: 'kommande' }); });
+  return rows;
+}
+
+function _vdJobsFilteredRows() {
+  const filter = window._vdJobsActiveFilter || 'all';
+  const searchEl = document.getElementById('vd-jobs-search');
+  const search = searchEl ? (searchEl.value || '').toLowerCase().trim() : '';
+  let rows = _vdJobsAllRows();
+  if (filter !== 'all') rows = rows.filter(function(r) { return r._category === filter; });
+  if (search) {
+    rows = rows.filter(function(r) {
+      const cleaner = String(r.cleaner_name || '').toLowerCase();
+      const customer = String(r.customer_name || '').toLowerCase();
+      const service = String(r.service_type || '').toLowerCase();
+      return cleaner.indexOf(search) >= 0 || customer.indexOf(search) >= 0 || service.indexOf(search) >= 0;
+    });
+  }
+  rows.sort(function(a, b) { return String(b.booking_date || '').localeCompare(String(a.booking_date || '')); });
+  return rows;
+}
+
+function _vdCategoryLabel(cat) {
+  if (cat === 'slutreglerat') return { text: 'Slutreglerat', color: '#0F6E56', bg: '#E1F5EE' };
+  if (cat === 'i_escrow') return { text: 'I escrow', color: '#92400E', bg: '#FEF3C7' };
+  if (cat === 'kommande') return { text: 'Kommande', color: '#3f3d36', bg: '#F3F4F6' };
+  return { text: cat || '-', color: '#3f3d36', bg: '#F3F4F6' };
+}
+
+function renderVdJobsList() {
+  const body = document.getElementById('vd-jobs-list-body');
+  if (!body) return;
+  const rows = _vdJobsFilteredRows();
+  if (rows.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:18px;color:var(--m);font-size:.82rem">Inga jobb matchar filtret.</div>';
+    return;
+  }
+  let html = '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr auto auto;gap:6px 10px;align-items:center">';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Status</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Datum</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Cleaner</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Kund</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Tjänst</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Belopp</div>';
+  rows.forEach(function(r) {
+    const lbl = _vdCategoryLabel(r._category);
+    const price = (Number(r.total_price) || 0).toLocaleString('sv-SE');
+    html += '<div><span style="background:' + lbl.bg + ';color:' + lbl.color + ';padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:600;white-space:nowrap">' + escHtml(lbl.text) + '</span></div>';
+    html += '<div style="font-family:monospace;font-size:.78rem">' + escHtml(r.booking_date || '-') + '</div>';
+    html += '<div>' + escHtml(r.cleaner_name || '-') + '</div>';
+    html += '<div>' + escHtml(r.customer_name || '-') + '</div>';
+    html += '<div style="color:var(--m);font-size:.78rem">' + escHtml(r.service_type || '-') + '</div>';
+    html += '<div style="text-align:right;font-weight:600">' + price + ' kr</div>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:8px;font-size:.72rem;color:var(--m);text-align:right">Totalt: ' + rows.length + ' jobb · ' + rows.reduce(function(s, r) { return s + (Number(r.total_price) || 0); }, 0).toLocaleString('sv-SE') + ' kr</div>';
+  body.innerHTML = html;
+}
+
+function exportVdJobsCsv() {
+  const rows = _vdJobsAllRows();
+  if (rows.length === 0) {
+    showToast('Inga jobb att exportera än.');
+    return;
+  }
+  const header = ['booking_id', 'date', 'service', 'cleaner', 'customer', 'total_price_sek', 'escrow_state', 'category'];
+  const csvLines = [header.join(',')];
+  rows.forEach(function(r) {
+    const safe = function(v) {
+      const s = String(v == null ? '' : v).replace(/"/g, '""');
+      return /[",\n]/.test(s) ? '"' + s + '"' : s;
+    };
+    csvLines.push([
+      safe(r.booking_id || r.id || ''),
+      safe(r.booking_date || ''),
+      safe(r.service_type || ''),
+      safe(r.cleaner_name || ''),
+      safe(r.customer_name || ''),
+      Number(r.total_price) || 0,
+      safe(r.escrow_state || ''),
+      safe(r._category || '')
+    ].join(','));
+  });
+  const csv = '﻿' + csvLines.join('\r\n'); // BOM för Excel-kompatibilitet
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = 'spick-vd-jobb-' + today + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  showToast('CSV nedladdad (' + rows.length + ' jobb).');
 }
 
 // ═══════════════════════════════════════════════════════════════
