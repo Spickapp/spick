@@ -95,7 +95,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `vd-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – vd-dispute-decide (Fas 9 §9.2 — VD dispute-tier- |
 | `vd-payment-summary` | ═══════════════════════════════════════════════════════════════ SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26) |
 
-## Shared EF helpers (23 st)
+## Shared EF helpers (24 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -111,6 +111,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/matching-diff.ts` | supabase/functions/_shared/matching-diff.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/money.ts` |  |
 | `_shared/notifications.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Multi-kanal notifikationer |
+| `_shared/pnr-verification.ts` | supabase/functions/_shared/pnr-verification.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/preferences.ts` | supabase/functions/_shared/preferences.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/pricing-engine.ts` |  |
 | `_shared/pricing-resolver.ts` | supabase/functions/_shared/pricing-resolver.ts ────────────────────────────────────────────────────────────────── |
@@ -163,7 +164,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (138 st)
+## Migrations (139 st)
 
 - Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
 - Timestamp-prefix: `20260429000003`
