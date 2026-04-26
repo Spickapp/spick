@@ -3046,17 +3046,18 @@ async function startRutBankid() {
       appLink.href = 'bankid:///?autostarttoken=' + encodeURIComponent(data.auto_start_token) + '&redirect=null';
     }
 
-    // QR-rendering: SÄKERT — bara visa QR om TIC ger färdig qr_data.
-    // BankID-spec kräver clock-sync med qrStartTime från server. Klient-genererad
-    // HMAC kan resultera i ogiltig QR pga klock-skew (live-bug 2026-04-26).
-    // Tills TIC support bekräftar exakt format för qrStartToken+secret-flow:
-    // använd ENDAST färdig qr_data om sådan finns.
+    // QR-rendering: TIC returnerar qrStartToken + qrStartSecret per BankID-
+    // standard (verifierat via id.tic.io/docs/api/authentication 2026-04-26).
+    // qrAuthCode = HMAC-SHA256(qrStartSecret, "ELAPSED_SECONDS")
+    // qrData = "bankid." + qrStartToken + "." + ELAPSED + "." + qrAuthCode
+    // Ny QR varje sekund — BankID-app accepterar QR upp till 30 sek gammal.
     var qrToggle = document.getElementById('rut-bankid-toggle-qr');
-    if (qrToggle) {
-      qrToggle.style.display = data.qr_data ? '' : 'none';
-    }
+    var hasQrData = !!(data.qr_data || (data.qr_start_token && data.qr_start_secret));
+    if (qrToggle) qrToggle.style.display = hasQrData ? '' : 'none';
     if (data.qr_data) {
       _renderRutBankidQr(data.qr_data);
+    } else if (data.qr_start_token && data.qr_start_secret) {
+      _startRutBankidQrTicker(data.qr_start_token, data.qr_start_secret);
     }
 
     pollRutBankidStatus();
@@ -3115,9 +3116,16 @@ async function _startRutBankidQrTicker(qrStartToken, qrStartSecret) {
 
 async function _hmacSha256Hex(key, msg) {
   var enc = new TextEncoder();
-  var keyBytes = typeof key === 'string'
-    ? new Uint8Array(key.match(/.{1,2}/g).map(function(b) { return parseInt(b, 16); }))
-    : enc.encode(key);
+  var keyBytes;
+  // BankID-spec: qrStartSecret är hex-string (ofta 64 chars = 32 bytes).
+  // TIC kan ev returnera base64 — testa hex först, fallback till raw bytes.
+  if (typeof key === 'string' && /^[0-9a-fA-F]+$/.test(key) && key.length % 2 === 0) {
+    keyBytes = new Uint8Array(key.match(/.{1,2}/g).map(function(b) { return parseInt(b, 16); }));
+  } else if (typeof key === 'string') {
+    keyBytes = enc.encode(key); // raw UTF-8 fallback
+  } else {
+    keyBytes = key;
+  }
   var cryptoKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   var sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg));
   return Array.from(new Uint8Array(sig)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
