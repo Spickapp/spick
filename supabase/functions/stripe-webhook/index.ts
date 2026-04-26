@@ -927,6 +927,27 @@ async function handleDisputeCreated(dispute: Record<string, unknown>) {
     dispute_reason: reason,
   }).eq("id", booking.id);
 
+  // §8.24-25 (2026-04-26): chargeback_events audit-trail
+  try {
+    await sb.from("chargeback_events").insert({
+      booking_id: booking.id,
+      stripe_dispute_id: dispute.id as string,
+      stripe_charge_id: dispute.charge as string,
+      stripe_payment_intent_id: piId,
+      event_type: "created",
+      payment_method: ((dispute.payment_method_details as Record<string, unknown>)?.type as string) || null,
+      amount_ore: BigInt((dispute.amount as number) || 0).toString() as unknown as number,
+      reason,
+      status: dispute.status as string,
+      evidence_due_by: dispute.evidence_details
+        ? new Date(((dispute.evidence_details as Record<string, unknown>).due_by as number) * 1000).toISOString()
+        : null,
+      raw_event_jsonb: dispute,
+    });
+  } catch (e) {
+    console.warn("[SPICK] chargeback_events insert failed:", (e as Error).message);
+  }
+
   // Öka städarens tvist-räknare
   if (booking.cleaner_id) {
     try {
@@ -987,6 +1008,24 @@ async function handleDisputeClosed(dispute: Record<string, unknown>) {
   await sb.from("bookings").update({
     dispute_status: newStatus,
   }).eq("id", booking.id);
+
+  // §8.24-25: chargeback_events audit-trail
+  try {
+    await sb.from("chargeback_events").insert({
+      booking_id: booking.id,
+      stripe_dispute_id: dispute.id as string,
+      stripe_charge_id: dispute.charge as string,
+      stripe_payment_intent_id: piId,
+      event_type: won ? "won" : "lost",
+      payment_method: ((dispute.payment_method_details as Record<string, unknown>)?.type as string) || null,
+      amount_ore: BigInt((dispute.amount as number) || 0).toString() as unknown as number,
+      reason: (dispute.reason as string) || null,
+      status: dispute.status as string,
+      raw_event_jsonb: dispute,
+    });
+  } catch (e) {
+    console.warn("[SPICK] chargeback_events closed-insert failed:", (e as Error).message);
+  }
 
   // Om förlorad: öka cleaner disputes_count_lost + clawback
   if (!won && booking.cleaner_id) {

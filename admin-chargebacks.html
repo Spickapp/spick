@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chargebacks — Spick Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gp:#E1F5EE;--b:#0E0E0E;--t:#1C1C1A;--m:#6B6960;--bg:#F7F7F5;--border:#E8E8E4;--w:#fff;--err:#DC2626;--warn:#D97706;--succ:#059669;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2{font-family:'Playfair Display',Georgia,serif;color:var(--b);font-weight:700}
+.page-header{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 50%,#1D9E75 100%);color:var(--w);padding:2.5rem 1.5rem 1.5rem}
+.page-header-inner{max-width:1100px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:.25rem}
+.page-header .sub{opacity:.9}
+.container{max-width:1100px;margin:-1rem auto 4rem;padding:0 1.5rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{text-align:left;padding:.6rem .75rem;border-bottom:2px solid var(--border);color:var(--m);font-weight:600;font-size:.76rem;text-transform:uppercase;background:#F9F9F7}
+td{padding:.6rem .75rem;border-bottom:1px solid var(--border)}
+tr:hover td{background:#FAFAF8}
+.alert-error{padding:.9rem;border-radius:8px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;margin-bottom:1rem}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
+.pill-pending{background:#FEF3C7;color:#92400E}
+.pill-won{background:#D1FAE5;color:#065F46}
+.pill-lost{background:#FEE2E2;color:#991B1B}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px}
+.stat-label{font-size:.7rem;color:var(--m);text-transform:uppercase;font-weight:600}
+.stat-value{font-size:1.4rem;font-weight:700;margin-top:4px;font-family:'Playfair Display',serif}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>💳 Chargebacks & Disputes</h1>
+    <div class="sub" id="subHeader">Laddar…</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="alertBox"></div>
+  <div class="stats-grid" id="statsGrid"></div>
+  <div id="content">
+    <div class="card empty">
+      <div class="spinner"></div>
+      <p style="margin-top:1rem">Laddar chargeback-data…</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase.min.js" defer></script>
+<script src="js/config.js"></script>
+<script>
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let SB;
+
+async function init() {
+  if (typeof SPICK === 'undefined' || !window.supabase) { setTimeout(init, 100); return; }
+  SB = window.supabase.createClient(SPICK.SUPA_URL, SPICK.SUPA_KEY);
+  const { data: sess } = await SB.auth.getSession();
+  if (!sess?.session?.access_token) {
+    document.getElementById('alertBox').innerHTML = '<div class="alert-error">Du måste vara inloggad som admin. <a href="/mitt-konto.html">Logga in</a></div>';
+    document.getElementById('content').innerHTML = '';
+    return;
+  }
+  const { data: isAdmin } = await SB.rpc('is_admin');
+  if (!isAdmin) {
+    document.getElementById('alertBox').innerHTML = '<div class="alert-error">Du har inte admin-rättigheter.</div>';
+    document.getElementById('content').innerHTML = '';
+    return;
+  }
+  await loadAll();
+}
+
+async function loadAll() {
+  const [allRes, aggRes] = await Promise.all([
+    SB.from('v_admin_chargebacks').select('*').limit(200),
+    SB.from('v_admin_chargeback_aggregate').select('*').limit(50)
+  ]);
+  const all = allRes.data || [];
+  const agg = aggRes.data || [];
+
+  const counts = {
+    total: all.length,
+    pending: all.filter(r => r.dispute_status === 'pending').length,
+    won: all.filter(r => r.dispute_status === 'won').length,
+    lost: all.filter(r => r.dispute_status === 'lost').length,
+    klarna: all.filter(r => r.payment_method === 'klarna').length,
+    card: all.filter(r => r.payment_method === 'card').length,
+    total_sek: all.reduce((s, r) => s + (Number(r.dispute_amount_sek) || 0), 0)
+  };
+
+  document.getElementById('subHeader').textContent =
+    counts.total + ' chargebacks · ' + counts.pending + ' pending · ' + counts.lost + ' förlorade';
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Totalt</div><div class="stat-value">${counts.total}</div></div>
+    <div class="stat-card"><div class="stat-label">⏳ Pending</div><div class="stat-value" style="color:#92400E">${counts.pending}</div></div>
+    <div class="stat-card"><div class="stat-label">✅ Vunna</div><div class="stat-value" style="color:#065F46">${counts.won}</div></div>
+    <div class="stat-card"><div class="stat-label">❌ Förlorade</div><div class="stat-value" style="color:#991B1B">${counts.lost}</div></div>
+    <div class="stat-card"><div class="stat-label">💰 Total SEK</div><div class="stat-value">${counts.total_sek.toLocaleString('sv-SE')}</div></div>
+    <div class="stat-card"><div class="stat-label">Klarna / Kort</div><div class="stat-value">${counts.klarna} / ${counts.card}</div></div>
+  `;
+
+  if (all.length === 0) {
+    document.getElementById('content').innerHTML = '<div class="card empty"><p style="font-size:1.1rem">🎉 Inga chargebacks!</p><p>Spick har inga öppna eller historiska disputes.</p></div>';
+    return;
+  }
+
+  let html = '';
+
+  // Sektion 1: Lista alla chargebacks
+  html += '<div class="card"><h2>Alla chargebacks (' + all.length + ')</h2>';
+  html += '<table><thead><tr><th>Status</th><th>Booking</th><th>Kund</th><th>Cleaner</th><th>Belopp</th><th>Method</th><th>Anledning</th><th>Öppnad</th><th>Senaste event</th><th>Svar-deadline</th></tr></thead><tbody>';
+  all.forEach(r => {
+    const pillCls = 'pill pill-' + (r.dispute_status || 'pending');
+    const pillIcon = { pending: '⏳', won: '✅', lost: '❌' }[r.dispute_status] || '?';
+    html += `<tr>
+      <td><span class="${pillCls}">${pillIcon} ${esc(r.dispute_status || 'pending')}</span></td>
+      <td><span style="font-family:monospace;font-size:.78rem">${esc((r.booking_id || '').slice(0, 8))}</span></td>
+      <td>${esc(r.customer_name || '–')}<br><span style="font-size:.7rem;color:var(--m)">${esc(r.customer_email || '')}</span></td>
+      <td>${esc(r.cleaner_name || '–')}${r.company_name ? `<br><span style="font-size:.7rem;color:var(--m)">${esc(r.company_name)}</span>` : ''}</td>
+      <td>${(r.dispute_amount_sek || 0).toLocaleString('sv-SE')} kr</td>
+      <td>${esc(r.payment_method || '–')}</td>
+      <td><span style="font-size:.78rem">${esc(r.dispute_reason || '–')}</span></td>
+      <td>${esc((r.dispute_opened_at || '').slice(0, 10))}</td>
+      <td>${esc(r.latest_event || '–')}<br><span style="font-size:.7rem;color:var(--m)">${esc((r.latest_event_at || '').slice(0, 10))}</span></td>
+      <td>${esc((r.evidence_due_by || '').slice(0, 10))}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+
+  // Sektion 2: Aggregat per cleaner
+  if (agg.length > 0) {
+    html += '<div class="card"><h2>📊 Aggregat per cleaner (senaste 30d)</h2>';
+    html += '<p style="font-size:.85rem;color:var(--m);margin-bottom:.75rem">Cleaners med många chargebacks = hög-risk. Lost-rate >50% = utbildning eller suspension.</p>';
+    html += '<table><thead><tr><th>Cleaner</th><th>Företag</th><th>Total</th><th>Vunna</th><th>Förlorade</th><th>Pending</th><th>Total SEK</th><th>Snitt SEK</th></tr></thead><tbody>';
+    agg.forEach(r => {
+      html += `<tr>
+        <td><strong>${esc(r.cleaner_name)}</strong></td>
+        <td>${esc(r.company_name)}</td>
+        <td>${r.total_disputes_30d}</td>
+        <td style="color:#065F46">${r.won_count}</td>
+        <td style="color:#991B1B">${r.lost_count}</td>
+        <td style="color:#92400E">${r.pending_count}</td>
+        <td>${(r.total_amount_sek || 0).toLocaleString('sv-SE')}</td>
+        <td>${(r.avg_amount_sek || 0).toLocaleString('sv-SE')}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+
+  document.getElementById('content').innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
