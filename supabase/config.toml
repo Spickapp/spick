@@ -30,3 +30,15 @@ verify_jwt = false
 # Sprint 1B — anon POST från registrera-stadare.html för F-skatt-verify.
 [functions.verify-fskatt]
 verify_jwt = false
+
+# Cron-EFs — autentisering via Bearer CRON_SECRET (inte JWT).
+# requireCronAuth() i _shared/cron-auth.ts gör auth-checken inne i EF:n,
+# men Supabase-gateway måste släppa igenom non-JWT-token först.
+[functions.rating-reminder-cron]
+verify_jwt = false
+
+[functions.blog-auto-publish-cron]
+verify_jwt = false
+
+[functions.cleaner-onboarding-emails]
+verify_jwt = false
