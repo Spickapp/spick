@@ -1278,25 +1278,6 @@ body{top:0!important}
 
         <div class="settings-section" id="settings-company-section" style="display:none">
           <div class="settings-section-title">Företag</div>
-          <!-- Företagslogo (Zivar-request 2026-04-26) -->
-          <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100)">
-            <div style="font-size:.88rem;font-weight:600;margin-bottom:8px">🖼️ Företagslogo</div>
-            <div style="font-size:.74rem;color:var(--m);margin-bottom:10px">Visas på din företagssida och bokningsbekräftelser. PNG/JPG/WebP, max 2 MB.</div>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-              <div id="company-logo-preview" style="width:64px;height:64px;border-radius:12px;background:#F7F7F5;display:flex;align-items:center;justify-content:center;border:1.5px dashed #E8E8E4;flex-shrink:0;overflow:hidden">
-                <span id="company-logo-placeholder" style="font-size:1.5rem;color:#aaa">📷</span>
-                <img id="company-logo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px">
-                <label for="company-logo-file" style="background:var(--g);color:#fff;padding:8px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-block">
-                  Välj fil
-                  <input type="file" id="company-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none" onchange="uploadCompanyLogo(this)">
-                </label>
-                <button id="company-logo-remove" type="button" onclick="removeCompanyLogo()" style="background:none;border:none;color:#dc2626;font-size:.74rem;cursor:pointer;text-align:left;padding:0;display:none">Ta bort logo</button>
-              </div>
-            </div>
-            <div id="company-logo-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
-          </div>
           <div class="settings-link" id="settings-team-link" onclick="switchTab('team')">
             <span class="sl-icon">🏢</span><span class="sl-text">Team-hantering</span><span class="sl-arrow">›</span>
           </div>
@@ -1649,13 +1630,35 @@ body{top:0!important}
           <h4 style="font-size:.95rem;font-weight:700;margin-bottom:12px">Företagsprofil</h4>
           <div id="company-profile-view">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-              <div id="company-avatar" style="width:48px;height:48px;border-radius:12px;background:var(--spick-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem"></div>
+              <div id="company-avatar" style="width:48px;height:48px;border-radius:12px;background:var(--spick-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;overflow:hidden">
+                <span id="company-avatar-letter"></span>
+                <img id="company-avatar-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+              </div>
               <div>
                 <div id="company-display-name" style="font-weight:700;font-size:1rem"></div>
                 <div id="company-org-nr" style="font-size:.78rem;color:var(--m)"></div>
               </div>
             </div>
             <div id="company-bio-display" style="font-size:.85rem;color:var(--gray-600);margin-bottom:12px"></div>
+            <!-- Logo-upload (Zivar-feedback 2026-04-26: placerat här istf settings — naturlig plats för "ansikte mot kund") -->
+            <div style="background:#F7F7F5;border-radius:10px;padding:12px;margin-bottom:12px">
+              <div style="font-size:.82rem;font-weight:600;margin-bottom:4px">🖼️ Företagslogo</div>
+              <div style="font-size:.72rem;color:var(--m);margin-bottom:10px">Visas på företagssidan + bokningsbekräftelser. PNG/JPG/WebP, max 2 MB.</div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <div id="company-logo-preview" style="width:64px;height:64px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;border:1.5px dashed #E8E8E4;flex-shrink:0;overflow:hidden">
+                  <span id="company-logo-placeholder" style="font-size:1.5rem;color:#aaa">📷</span>
+                  <img id="company-logo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <label for="company-logo-file" style="background:var(--g);color:#fff;padding:8px 14px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-block">
+                    Välj fil
+                    <input type="file" id="company-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none" onchange="uploadCompanyLogo(this)">
+                  </label>
+                  <button id="company-logo-remove" type="button" onclick="removeCompanyLogo()" style="background:none;border:none;color:#dc2626;font-size:.74rem;cursor:pointer;text-align:left;padding:0;display:none">Ta bort logo</button>
+                </div>
+              </div>
+              <div id="company-logo-status" style="font-size:.72rem;margin-top:8px;min-height:1em"></div>
+            </div>
             <button onclick="editCompanyProfile()" style="padding:8px 16px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Redigera företagsprofil</button>
           </div>
           <div id="company-profile-edit" style="display:none">
@@ -1684,12 +1687,12 @@ body{top:0!important}
           </div>
         </div>
 
-        <!-- Prismodell toggle -->
+        <!-- Prismodell toggle (Alt A pedagogiskt — Zivar-feedback 2026-04-26) -->
         <div id="pricing-toggle-card" style="background:var(--w);border:1px solid var(--gray-200);border-radius:12px;padding:16px;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="font-weight:600;font-size:.88rem">Prismodell</div>
-              <div style="font-size:.75rem;color:var(--m);margin-top:2px" id="pricing-model-desc">Städare sätter egna priser</div>
+              <div style="font-weight:600;font-size:.88rem">Enhetlig företagsprissättning</div>
+              <div style="font-size:.75rem;color:var(--m);margin-top:2px" id="pricing-model-desc">Varje städare sätter sitt eget timpris</div>
             </div>
             <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
               <input type="checkbox" id="toggle-company-pricing" onchange="togglePricingModel(this.checked)" style="opacity:0;width:0;height:0">
@@ -10903,12 +10906,13 @@ async function togglePricingModel(useCompany, silent) {
   var knob = document.getElementById('pricing-model-knob');
   var track = knob ? knob.previousElementSibling : null;
 
+  // Alt A pedagogiska beskrivningar (Zivar-feedback 2026-04-26)
   if (useCompany) {
-    if (desc) desc.textContent = 'Alla st\u00e4dare visar f\u00f6retagets priser';
+    if (desc) desc.textContent = 'Alla st\u00e4dare visar samma pris (enhetlig prislista f\u00f6r hela teamet)';
     if (knob) knob.style.left = '22px';
     if (track) track.style.background = 'var(--g)';
   } else {
-    if (desc) desc.textContent = 'St\u00e4dare s\u00e4tter egna priser';
+    if (desc) desc.textContent = 'Varje st\u00e4dare s\u00e4tter sitt eget timpris';
     if (knob) knob.style.left = '2px';
     if (track) track.style.background = '#ccc';
   }
@@ -10923,7 +10927,9 @@ async function togglePricingModel(useCompany, silent) {
       headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
       body: JSON.stringify({ use_company_pricing: useCompany })
     });
-    if (!silent) showToast(useCompany ? 'Enhetspriser aktiverade' : 'Individuella priser aktiverade');
+    if (!silent) showToast(useCompany
+      ? '✓ Enhetlig prissättning aktiverad — alla städare visar samma pris'
+      : '✓ Individuella priser — varje städare sätter sitt eget');
   } catch(e) { console.warn('Pricing model toggle error:', e); }
 }
 
