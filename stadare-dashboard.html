@@ -6187,13 +6187,65 @@ async function saveProfile() {
   const businessAddress = document.getElementById('edit-business-address').value.trim();
   const vatRegistered = document.getElementById('edit-vat-registered').checked;
 
+  // Tier-frontend (2026-04-26): försäkrings-fält + PDF-upload
+  const insAmtKr = parseInt(document.getElementById('edit-insurance-amount-kr').value) || null;
+  const insPropKr = parseInt(document.getElementById('edit-insurance-property-damage-kr').value) || null;
+  const insExpAt = document.getElementById('edit-insurance-expires-at').value || null;
+  const insPdfInput = document.getElementById('edit-insurance-pdf');
+  const insPdfFile = insPdfInput && insPdfInput.files && insPdfInput.files[0] ? insPdfInput.files[0] : null;
+  let insPdfStoragePath = null;
+
+  // Upload PDF om ny vald (lagra under documents/insurance/yyyy-mm/cleaner_id/uuid.ext)
+  if (insPdfFile) {
+    var insStatusEl = document.getElementById('insurance-pdf-status');
+    if (insStatusEl) insStatusEl.textContent = '⏳ Laddar upp bevis...';
+    try {
+      var sess = (await SB.auth.getSession()).data.session;
+      var insTok = sess ? sess.access_token : SUPA_KEY;
+      var insExt = (insPdfFile.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
+      insPdfStoragePath = 'insurance/' + new Date().toISOString().slice(0, 7) + '/' + cleaner.id + '/' + crypto.randomUUID() + '.' + insExt;
+      var insUpRes = await fetch(SUPA_URL + '/storage/v1/object/documents/' + insPdfStoragePath, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + insTok, 'Content-Type': insPdfFile.type, 'x-upsert': 'false' },
+        body: insPdfFile
+      });
+      if (!insUpRes.ok) {
+        if (insStatusEl) insStatusEl.textContent = '⚠ Upload-fel — bevis sparas EJ. Profil sparas ändå.';
+        insPdfStoragePath = null;
+      } else {
+        if (insStatusEl) insStatusEl.textContent = '✓ Bevis uppladdat — väntar verifiering av Spick';
+      }
+    } catch (e) {
+      console.warn('[insurance] upload failed:', e);
+      insPdfStoragePath = null;
+    }
+  }
+
   const slug = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   // §7.4: inkludera languages (TEXT[]) i update-payload
   const langs = Array.isArray(_profSelectedLangs) && _profSelectedLangs.length ? _profSelectedLangs : null;
-  const {error} = await R.update('cleaners', {full_name:name,phone,city,hourly_rate:rate,bio,slug,services,languages:langs,business_name:businessName||null,org_number:orgNumber||null,business_address:businessAddress||null,vat_registered:vatRegistered}, `id=eq.${cleaner.id}`);
+
+  // Tier-frontend (2026-04-26): inkludera insurance-fält + nytt PDF-path om uppladdad
+  const _insuranceUpdate = {};
+  if (insAmtKr !== null) _insuranceUpdate.insurance_amount_kr = insAmtKr;
+  if (insPropKr !== null) _insuranceUpdate.insurance_property_damage_kr = insPropKr;
+  if (insExpAt) _insuranceUpdate.insurance_expires_at = insExpAt;
+  if (insPdfStoragePath) {
+    _insuranceUpdate.insurance_pdf_storage_path = insPdfStoragePath;
+    _insuranceUpdate.insurance_verified_at = null; // Reset — Spick verifierar manuellt
+  }
+
+  const _updatePayload = Object.assign(
+    {full_name:name,phone,city,hourly_rate:rate,bio,slug,services,languages:langs,
+     business_name:businessName||null,org_number:orgNumber||null,business_address:businessAddress||null,vat_registered:vatRegistered},
+    _insuranceUpdate
+  );
+  const {error} = await R.update('cleaners', _updatePayload, `id=eq.${cleaner.id}`);
   btn.disabled = false; btn.textContent = '💾 Spara ändringar';
   if (error) { showToast('❌ Fel vid sparning'); return; }
-  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug,services,languages:langs});
+  Object.assign(cleaner, {full_name:name,phone,city,hourly_rate:rate,bio,slug,services,languages:langs}, _insuranceUpdate);
+  // Re-render tier-status om visad
+  if (typeof renderInsuranceTierStatus === 'function') renderInsuranceTierStatus();
   logActivity('profile_update', { fields: Object.keys({full_name:name,phone,city,hourly_rate:rate,bio,slug,services,languages:langs}) });
   document.getElementById('prof-name').textContent = name;
   document.getElementById('earn-rate').textContent = rate + ' kr/h';
@@ -8746,6 +8798,41 @@ async function _ganttResizeEnd(_e) {
 // ── BOKNINGSDETALJ-PANEL ─────────────────────────────────────
 
 var _bdBookingId = null;
+
+// ── Tier-frontend (2026-04-26): visualisera försäkrings-tier-status ──
+function renderInsuranceTierStatus() {
+  var el = document.getElementById('insurance-tier-status');
+  if (!el || !window.cleaner) return;
+  var c = window.cleaner;
+  var tier = c.insurance_tier || 'provanstalld';
+  var jobs = c.jobs_completed || 0;
+  var rating = c.avg_rating || 0;
+
+  var tierConfig = {
+    provanstalld: { icon: '🌱', label: 'Provanställd', color: '#92400E', bg: '#FEF3C7', desc: '5 MSEK + Spick-täckning extra 5 MSEK' },
+    verifierad:   { icon: '✓',  label: 'Verifierad',   color: '#065F46', bg: '#D1FAE5', desc: '10 MSEK + ren förmögenhetsskada 2 MSEK' },
+    spick_pro:    { icon: '⭐', label: 'Spick Pro',    color: '#1E40AF', bg: '#DBEAFE', desc: 'Almega-medlem · prioritet i matching' }
+  };
+  var t = tierConfig[tier] || tierConfig.provanstalld;
+
+  var nextStep = '';
+  if (tier === 'provanstalld') {
+    var jobsLeft = Math.max(0, 10 - jobs);
+    var ratingOk = rating >= 4.5;
+    nextStep = '<div style="margin-top:8px;font-size:.78rem;color:#3f3d36">' +
+      'För <strong>Verifierad</strong>: ' +
+      (jobsLeft > 0 ? jobsLeft + ' jobb kvar · ' : '✓ 10+ jobb · ') +
+      (ratingOk ? '✓ rating ' + rating.toFixed(1) : 'rating ' + rating.toFixed(1) + '/5 (krävs 4.5+)') +
+      ' · uppgradera försäkring till 10 MSEK + ren förmögenhet 2 MSEK.' +
+      '</div>';
+  }
+
+  el.innerHTML = '<div style="background:' + t.bg + ';color:' + t.color + ';padding:10px 14px;border-radius:10px;font-size:.85rem">' +
+    '<div style="font-weight:700;font-size:.95rem">' + t.icon + ' ' + t.label + '</div>' +
+    '<div style="font-size:.78rem;margin-top:4px">' + t.desc + '</div>' +
+    nextStep +
+    '</div>';
+}
 
 // ── Block-detalj-modal (2026-04-26) ──
 // För calendar_events med event_type='blocked' eller 'note'
