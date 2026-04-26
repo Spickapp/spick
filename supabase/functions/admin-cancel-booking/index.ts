@@ -99,6 +99,17 @@ serve(async (req) => {
       return json({ error: "reason krävs (min 3 tecken)" }, 400, CORS);
     }
 
+    // Audit-fix P1-1 (2026-04-26): refund_amount_ore accepterades men
+    // ignorerades alltid (full refund only). Det är en UX-bedrägeri-vektor
+    // — admin tror sig göra partial men får full. Reject explicit istället
+    // för silent ignore. Caller måste använda stripe-refund-EF för partial.
+    if (typeof refund_amount_ore === "number" && refund_amount_ore > 0) {
+      return json({
+        error: "partial_refund_not_supported",
+        detail: "admin-cancel-booking gör endast full refund. Använd stripe-refund-EF direkt för partial.",
+      }, 422, CORS);
+    }
+
     // ── 1. SELECT booking (validering) ──────────────────────
     const { data: booking, error: selErr } = await sb
       .from("bookings")
@@ -239,13 +250,6 @@ serve(async (req) => {
       }
     }
 
-    // refund_amount_ore är reserverat för framtida partial-refund-stöd.
-    // I nuvarande implementation skickas det inte vidare till stripe-refund
-    // eftersom EF:n alltid gör full refund. Logga om det skickades så vi
-    // ser om någon caller försöker använda det.
-    if (typeof refund_amount_ore === "number" && refund_amount_ore > 0) {
-      console.log("[admin-cancel-booking] refund_amount_ore mottaget men ignorerat (full refund only):", refund_amount_ore);
-    }
 
     return json({
       ok: true,

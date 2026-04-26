@@ -102,6 +102,25 @@ serve(async (req) => {
         },
         created_at: new Date().toISOString()
       });
+
+      // Audit-fix P0-3 (2026-04-26): trigga admin-alert direkt så vi inte
+      // upptäcker money_layer-rollback först nästa cron-tick (1h tyst).
+      try {
+        const { sendAdminAlert } = await import('../_shared/alerts.ts');
+        await sendAdminAlert({
+          severity: 'critical',
+          title: 'Payout reconciliation: critical mismatch → money_layer auto-disabled',
+          source: 'reconcile-payouts',
+          message: `${criticals.length} kritisk(a) mismatch detected. money_layer disabled. Inspect payout_audit_log run_id=${report.run_id}`,
+          metadata: {
+            run_id: report.run_id,
+            critical_count: criticals.length,
+            critical_types: criticals.map(c => c.type),
+          },
+        });
+      } catch (e) {
+        console.error('[reconcile-payouts] sendAdminAlert failed:', (e as Error).message);
+      }
     }
 
     // 5. Auto-activation: 20 clean dry-runs i 24h → enable

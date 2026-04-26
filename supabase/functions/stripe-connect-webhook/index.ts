@@ -244,10 +244,27 @@ async function handleDeauthorized(event: StripeAccountEvent): Promise<void> {
     msg: "Cleaner deauthorized Stripe",
     cleaner_id: cleaner.id,
   }));
-  
-  // Alert admin via email (kritisk händelse)
+
+  // Audit-fix P0-4 (2026-04-26): trigga Discord-alert + använd sendEmail
+  // till ADMIN-konstanten (env-config) istället för hardcoded.
+  // Email + Discord parallellt = redundans vid kanal-fel.
+  try {
+    const { sendAdminAlert } = await import("../_shared/alerts.ts");
+    await sendAdminAlert({
+      severity: "critical",
+      title: "Cleaner deauthorized Stripe Connect",
+      source: "stripe-connect-webhook",
+      cleaner_id: cleaner.id,
+      message: `${cleaner.full_name} (${cleaner.email}) har kopplat ur Stripe Connect. Utbetalningar blockerade.`,
+      metadata: { cleaner_full_name: cleaner.full_name, cleaner_email: cleaner.email },
+    });
+  } catch (e) {
+    console.error("[stripe-connect-webhook] sendAdminAlert failed:", (e as Error).message);
+  }
+
+  // Email-alert (parallellt — best-effort fallback)
   await sendEmail(
-    "hello@spick.se",
+    Deno.env.get("ADMIN_EMAIL") || "hello@spick.se",
     "⚠ Cleaner har kopplat ur Stripe Connect",
     wrap(`
       <h2>Cleaner-deauthorization</h2>

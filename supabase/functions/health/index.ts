@@ -97,17 +97,21 @@ serve(async (req) => {
       ...(minutesAgo !== null ? { minutes_since_last_run: minutesAgo } : { error: "Aldrig körd" }),
     };
     if (!isHealthy) {
-      await fetch(`${SUPA_URL}/functions/v1/notify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPA_KEY}`, apikey: SUPA_KEY },
-        body: JSON.stringify({
-          type: "uptime_alert",
-          record: {
-            subject: "⚠️ auto-remind har inte körts på " + (minutesAgo || "okänt antal") + " minuter",
-            message: "Senaste körning: " + (lastRun?.toISOString() || "aldrig") + ". Kontrollera GitHub Actions."
-          }
-        })
-      }).catch(() => {});
+      // Audit-fix P2-2 (2026-04-26): byte från notify-EF till sendAdminAlert
+      // (rätt observability-kanal — notify är för transaktionsmail till kund,
+      // inte för admin-uptime-alarm). Discord-leverans + console-fallback.
+      try {
+        const { sendAdminAlert } = await import("../_shared/alerts.ts");
+        await sendAdminAlert({
+          severity: "error",
+          title: "auto-remind degraderad",
+          source: "health",
+          message: `Senaste auto-remind körning: ${lastRun?.toISOString() || "aldrig"}. ${minutesAgo} min sedan (gräns 120 min). Kontrollera GitHub Actions.`,
+          metadata: { minutes_since_last_run: minutesAgo, last_run: lastRun?.toISOString() },
+        });
+      } catch (e) {
+        console.error("[health] sendAdminAlert failed:", (e as Error).message);
+      }
     }
   } catch (e) {
     checks["auto_remind"] = { ok: false, ms: 0, error: (e as Error).message };
