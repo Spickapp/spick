@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (86 st)
+## Edge Functions (87 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -68,6 +68,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `get-cleaner-contact` |  |
 | `health` |  |
 | `matching-wrapper` | supabase/functions/matching-wrapper/index.ts §3.7-full Step 2b — Matching-wrapper EF (shadow-mode A/B-ramverk) |
+| `n3-pnr-reminder-cron` | ═══════════════════════════════════════════════════════════════ SPICK – n3-pnr-reminder-cron (N3 Sprint 3, 2026-04-26) |
 | `noshow-refund` |  |
 | `notify` |  |
 | `places-autocomplete` |  |
@@ -129,7 +130,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (37 st)
+## GitHub Actions workflows (38 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -155,6 +156,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/load-test.yml`
 - `.github/workflows/loopia-dns.yml`
 - `.github/workflows/monthly-invoices.yml`
+- `.github/workflows/n3-pnr-reminder-cron.yml`
 - `.github/workflows/playwright-smoke.yml`
 - `.github/workflows/preference-learn-favorite.yml`
 - `.github/workflows/run-migrations.yml`
@@ -169,7 +171,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/uptime-monitor.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (144 st)
+## Migrations (145 st)
 
 - Senaste: `20260429000003_fas_a_manual_booking_schema.sql`
 - Timestamp-prefix: `20260429000003`
