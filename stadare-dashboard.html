@@ -448,6 +448,7 @@ button:active{transform:scale(.97);transition:transform .1s ease}
 .gantt-row-cap-fill.high{background:#dc2626}
 
 .gantt-row-cells{flex:1;position:relative;display:flex}
+.gantt-create-ghost{position:absolute;top:4px;bottom:4px;background:rgba(15,110,86,.15);border:2px dashed #0F6E56;border-radius:6px;pointer-events:none;z-index:6;display:flex;align-items:center;justify-content:center;color:#0F6E56;font-size:.7rem;font-weight:700}
 .gantt-cell{flex:1;min-width:50px;border-left:1px solid var(--gray-50);position:relative;cursor:pointer}
 .gantt-cell:hover{background:rgba(15,110,86,.03)}
 .gantt-cell.drop-target{background:rgba(15,110,86,.08)}
@@ -7898,7 +7899,7 @@ function renderGanttDay(wrap) {
     html += '<button class="gantt-block-menu-btn" onclick="ganttOpenBlockMenu(event,\'' + escHtml(m.id) + '\',\'' + dateStr + '\')" title="Fler alternativ">⋯</button>';
     html += '</div>';
 
-    html += '<div class="gantt-row-cells" data-cleaner-id="' + escHtml(m.id) + '" data-date="' + dateStr + '">';
+    html += '<div class="gantt-row-cells" data-cleaner-id="' + escHtml(m.id) + '" data-date="' + dateStr + '" onpointerdown="ganttRangeStart(event,this)">';
 
     // Availability-bakgrund
     memberAvail.forEach(function(a) {
@@ -8638,6 +8639,190 @@ function ganttWeekDayClick(cleanerId, dateStr) {
   var dayBtn = document.getElementById('gantt-mode-day');
   if (dayBtn) dayBtn.classList.add('active');
   loadGanttData();
+}
+
+// ── F2 (2026-04-26): Drag-och-skapa nytt jobb på tom yta ──
+// Drag på .gantt-row-cells → ghost-block visar tids-omfång → drop
+// öppnar manual-booking-modal med pre-fyllt date/time/hours/cleaner.
+// Skip:as om drag startar PÅ ett gantt-event-block (event har egen handler).
+
+var _ganttCreateState = null;
+
+function ganttRangeStart(evt, cellsEl) {
+  // Skip om klick startar på ett gantt-event eller block-button (egna handlers)
+  if (evt.target.closest('.gantt-event')) return;
+  if (evt.target.closest('.gantt-cell') === null && evt.target !== cellsEl) {
+    // Endast om vi klickade direkt på en cell eller cellsEl
+    if (!evt.target.classList.contains('gantt-cell') && evt.target !== cellsEl) return;
+  }
+  if (evt.button !== undefined && evt.button !== 0) return; // bara vänsterknapp
+
+  var rect = cellsEl.getBoundingClientRect();
+  var startPx = Math.max(0, Math.round((evt.clientX - rect.left) / 25) * 25);
+
+  _ganttCreateState = {
+    cellsEl: cellsEl,
+    cleanerId: cellsEl.dataset.cleanerId,
+    dateStr: cellsEl.dataset.date,
+    rectLeft: rect.left,
+    startPx: startPx,
+    currentPx: startPx,
+    startClientX: evt.clientX,
+    ghost: null,
+    started: false
+  };
+
+  document.addEventListener('pointermove', _ganttRangeMove);
+  document.addEventListener('pointerup', _ganttRangeEnd, { once: true });
+  document.addEventListener('pointercancel', _ganttRangeEnd, { once: true });
+}
+
+function _ganttRangeMove(e) {
+  if (!_ganttCreateState) return;
+  var s = _ganttCreateState;
+  var dx = Math.abs(e.clientX - s.startClientX);
+  if (!s.started && dx < 8) return; // tröskel — undvik konflikt med klick
+  s.started = true;
+
+  var newPx = Math.max(0, Math.round((e.clientX - s.rectLeft) / 25) * 25);
+  s.currentPx = newPx;
+
+  if (!s.ghost) {
+    s.ghost = document.createElement('div');
+    s.ghost.className = 'gantt-create-ghost';
+    s.cellsEl.appendChild(s.ghost);
+  }
+  var leftPx  = Math.min(s.startPx, newPx);
+  var widthPx = Math.max(25, Math.abs(newPx - s.startPx));
+  s.ghost.style.left = leftPx + 'px';
+  s.ghost.style.width = widthPx + 'px';
+
+  // Beräkna tider för ghost-label
+  var startHourDec = (leftPx / _ganttHourPx) + _ganttHourStart;
+  var hours = widthPx / _ganttHourPx;
+  s.ghost.textContent = '+ ' + _ganttPxHourLabel(startHourDec) + ' (' + hours.toFixed(1) + 'h)';
+}
+
+function _ganttRangeEnd(_e) {
+  document.removeEventListener('pointermove', _ganttRangeMove);
+  if (!_ganttCreateState) return;
+  var s = _ganttCreateState;
+  _ganttCreateState = null;
+
+  if (!s.started || !s.ghost) {
+    if (s.ghost) s.ghost.remove();
+    return;
+  }
+
+  var leftPx  = Math.min(s.startPx, s.currentPx);
+  var widthPx = Math.max(25, Math.abs(s.currentPx - s.startPx));
+  if (s.ghost) s.ghost.remove();
+
+  var startHourDec = (leftPx / _ganttHourPx) + _ganttHourStart;
+  var startHour = Math.floor(startHourDec);
+  var startMinDec = (startHourDec - startHour) * 60;
+  var startMin = Math.round(startMinDec / 30) * 30;
+  if (startMin >= 60) { startHour++; startMin = 0; }
+  var hours = Math.max(0.5, Math.round((widthPx / _ganttHourPx) * 2) / 2); // halvtimmar
+
+  var timeStr = (startHour < 10 ? '0' : '') + startHour + ':' + (startMin < 10 ? '0' : '') + startMin;
+  // Beräkna sluttid för label
+  var endHourDec = startHourDec + hours;
+  var endHour = Math.floor(endHourDec);
+  var endMin = Math.round((endHourDec - endHour) * 60);
+  if (endMin >= 60) { endHour++; endMin = 0; }
+  var endTimeStr = (endHour < 10 ? '0' : '') + endHour + ':' + (endMin < 10 ? '0' : '') + endMin;
+
+  ganttOpenRangeMenu(_e, s.cleanerId, s.dateStr, timeStr, endTimeStr, hours);
+}
+
+// F2+F3-utvidgning: post-drag-meny med 2 val
+function ganttOpenRangeMenu(evt, cleanerId, dateStr, startTime, endTime, hours) {
+  ganttCloseBlockMenu();
+  var menu = document.createElement('div');
+  menu.className = 'gantt-block-menu';
+  menu.id = 'gantt-block-menu';
+  var rangeLabel = startTime + '–' + endTime + ' (' + hours.toFixed(1) + 'h)';
+  menu.innerHTML =
+    '<div style="padding:6px 10px;font-size:.72rem;color:#6B6960;border-bottom:1px solid #E5E7EB;margin-bottom:4px">' + escHtml(dateStr) + ' · ' + escHtml(rangeLabel) + '</div>' +
+    '<button onclick="ganttPickRangeAction(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'' + startTime + '\',\'' + endTime + '\',' + hours + ',\'book\')"><span class="gbm-icon">📅</span> Boka uppdrag här</button>' +
+    '<div class="gbm-divider"></div>' +
+    '<button onclick="ganttPickRangeAction(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'' + startTime + '\',\'' + endTime + '\',' + hours + ',\'block_training\')"><span class="gbm-icon">🎓</span> Blocka — utbildning</button>' +
+    '<button onclick="ganttPickRangeAction(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'' + startTime + '\',\'' + endTime + '\',' + hours + ',\'block_meeting\')"><span class="gbm-icon">💼</span> Blocka — möte</button>' +
+    '<button onclick="ganttPickRangeAction(\'' + escHtml(cleanerId) + '\',\'' + dateStr + '\',\'' + startTime + '\',\'' + endTime + '\',' + hours + ',\'block_other\')"><span class="gbm-icon">⛔</span> Blocka — annat</button>';
+  document.body.appendChild(menu);
+  _ganttBlockMenuEl = menu;
+
+  var x = evt && evt.clientX != null ? evt.clientX : 100;
+  var y = evt && evt.clientY != null ? evt.clientY : 100;
+  var menuW = 240;
+  menu.style.left = Math.min(x, window.innerWidth - menuW - 10) + 'px';
+  menu.style.top  = (y + 6) + 'px';
+
+  setTimeout(function() {
+    document.addEventListener('click', _ganttCloseMenuOutside, { once: true });
+  }, 50);
+}
+
+async function ganttPickRangeAction(cleanerId, dateStr, startTime, endTime, hours, action) {
+  ganttCloseBlockMenu();
+  if (action === 'book') {
+    return ganttOpenManualBookingPrefilled(cleanerId, dateStr, startTime, hours);
+  }
+  // Block-actions
+  var titleByAction = {
+    block_training: { title: 'Utbildning', icon: '🎓' },
+    block_meeting:  { title: 'Möte', icon: '💼' },
+    block_other:    { title: 'Blockerad', icon: '⛔' }
+  };
+  var meta = titleByAction[action] || { title: 'Blockerad', icon: '⛔' };
+  var customTitle = prompt('Beskrivning för blockering ' + startTime + '–' + endTime + ' (lämna tom för "' + meta.title + '"):', '');
+  var finalTitle = (customTitle && customTitle.trim()) ? customTitle.trim().slice(0, 100) : meta.title;
+
+  try {
+    var session = (await SB.auth.getSession()).data.session;
+    var token = session ? session.access_token : ANON_KEY;
+    var res = await fetch(SUPA_URL + '/rest/v1/calendar_events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        cleaner_id: cleanerId,
+        start_at: dateStr + 'T' + startTime + ':00',
+        end_at:   dateStr + 'T' + endTime + ':00',
+        event_type: 'blocked',
+        source: 'manual',
+        title: finalTitle,
+        is_all_day: false
+      })
+    });
+    if (res.ok) {
+      showToast(meta.icon + ' Blockerat ' + startTime + '–' + endTime + ': ' + finalTitle);
+      loadGanttData();
+    } else {
+      var errBody = await res.json().catch(function() { return {}; });
+      showToast('Kunde inte blockera: ' + (errBody.message || 'okänt fel'));
+    }
+  } catch (e) {
+    console.warn('block range failed:', e);
+    showToast('Nätverksfel vid blockering');
+  }
+}
+
+function _ganttPxHourLabel(hourDec) {
+  var h = Math.floor(hourDec);
+  var m = Math.round((hourDec - h) * 60);
+  if (m >= 60) { h++; m = 0; }
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+
+function ganttOpenManualBookingPrefilled(cleanerId, dateStr, timeStr, hours) {
+  // Återanvänd ganttCellClick-pattern men sätt även hours
+  ganttCellClick(cleanerId, dateStr, parseInt(timeStr.split(':')[0], 10));
+  var timeInput  = document.getElementById('mb-time');
+  var hoursInput = document.getElementById('mb-hours');
+  if (timeInput) timeInput.value = timeStr;
+  if (hoursInput) hoursInput.value = String(hours);
+  if (typeof updateManualPrice === 'function') updateManualPrice();
 }
 
 // ── SJUKDAG ──────────────────────────────────────────────────
