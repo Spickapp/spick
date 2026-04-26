@@ -3110,6 +3110,7 @@ function shareProfile() {
 async function doLogout() {
   if (realtimeCh) SB.removeChannel(realtimeCh);
   await SB.auth.signOut().catch(() => {});
+  if (typeof clearCleanerCache === 'function') clearCleanerCache(); // P3 cache-invalidation
   cleaner = null; jobs = [];
   showScreen('login');
 }
@@ -3170,6 +3171,41 @@ async function exportMyData(btn) {
 }
 
 // ── LOAD CLEANER ─────────────────────────────────────────────
+// Performance P3 (2026-04-26): sessionStorage-cache för cleaner-row.
+// Reducerar fetch-tid på subsequent page-loads från ~150ms till 0ms.
+// 5 min TTL — invalidation vid logout via clearCleanerCache().
+function _cleanerCacheGet(authUserId) {
+  if (!authUserId) return null;
+  try {
+    var raw = sessionStorage.getItem('spick-cleaner-' + authUserId);
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (!parsed.expires || Date.now() > parsed.expires) {
+      sessionStorage.removeItem('spick-cleaner-' + authUserId);
+      return null;
+    }
+    return parsed.data;
+  } catch (_) { return null; }
+}
+
+function _cleanerCacheSet(authUserId, data) {
+  if (!authUserId || !data) return;
+  try {
+    sessionStorage.setItem('spick-cleaner-' + authUserId, JSON.stringify({
+      data: data,
+      expires: Date.now() + 5 * 60 * 1000  // 5 min TTL
+    }));
+  } catch (_) {}
+}
+
+function clearCleanerCache() {
+  try {
+    Object.keys(sessionStorage)
+      .filter(function(k) { return k.startsWith('spick-cleaner-'); })
+      .forEach(function(k) { sessionStorage.removeItem(k); });
+  } catch (_) {}
+}
+
 async function loadCleanerByEmail(email, authUserId) {
   let data, error;
 
@@ -3177,8 +3213,15 @@ async function loadCleanerByEmail(email, authUserId) {
     // Admin view-as: använd förhämtad städardata, skippa normal auth-lookup
     data = _adminPreloadedCleaner;
   } else if (authUserId) {
-    const res = await R.selectSingle('cleaners', `select=*&auth_user_id=eq.${authUserId}&is_approved=eq.true`);
-    data = res.data; error = res.error;
+    // P3: Försök cache-träff först
+    var _cached = _cleanerCacheGet(authUserId);
+    if (_cached) {
+      data = _cached;
+    } else {
+      const res = await R.selectSingle('cleaners', `select=*&auth_user_id=eq.${authUserId}&is_approved=eq.true`);
+      data = res.data; error = res.error;
+      if (data && !error) _cleanerCacheSet(authUserId, data);
+    }
   }
 
   if (error || !data) {
