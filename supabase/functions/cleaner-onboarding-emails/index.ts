@@ -171,12 +171,18 @@ serve(async (req) => {
     });
   }
 
-  // Hämta alla approved cleaners med email
+  // BACKFILL-SKYDD (Audit P0-Sprint1D 2026-04-26): exkludera cleaners
+  // approved >35 dagar sedan utan onboarding-state. Annars skickas Mail 1
+  // till befintlig kohort vid första cron-körningen (Resend-spam-flag-risk
+  // + dålig kund-upplevelse "varför fick jag detta nu?").
+  // Cleaners som registrerats senaste 35 dagarna får full sekvens.
+  const cutoff = new Date(Date.now() - 35 * 24 * 3600000).toISOString();
   const { data: cleaners, error } = await sb
     .from("cleaners")
-    .select("id, first_name, email, slug, onboarding_emails_sent")
+    .select("id, first_name, email, slug, onboarding_emails_sent, created_at")
     .eq("is_approved", true)
-    .not("email", "is", null);
+    .not("email", "is", null)
+    .gte("created_at", cutoff);
 
   if (error) {
     log("error", "cleaner-onboarding-emails", "fetch cleaners failed", { error: error.message });
@@ -227,11 +233,17 @@ serve(async (req) => {
       continue;
     }
 
+    // RACE-CONDITION-SKYDD (Audit P0-Sprint1D 2026-04-26): tidigare gjorde
+    // vi read-modify-write på sent-objekten. Vid samtidiga cron-körningar
+    // eller failover kunde två processer skriva över varandras stage-stamps.
+    // Nu använder vi PostgREST sql-uttryck via update_cleaner_onboarding_stage
+    // RPC som kör jsonb_set + WHERE-villkor (skipa om redan satt) atomiskt.
     sent[nextStage] = now.toISOString();
-    const { error: updErr } = await sb
-      .from("cleaners")
-      .update({ onboarding_emails_sent: sent })
-      .eq("id", c.id);
+    const { error: updErr } = await sb.rpc("update_cleaner_onboarding_stage", {
+      p_cleaner_id: c.id,
+      p_stage: nextStage,
+      p_timestamp: now.toISOString(),
+    });
 
     if (updErr) {
       stats.errors++;
