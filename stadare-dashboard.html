@@ -936,6 +936,43 @@ body{top:0!important}
       <!-- Onboarding Checklist -->
       <div class="card" id="onboarding-checklist" style="display:none"></div>
 
+      <!-- Sprint 1C: Cleaner Onboarding-Checklist (för icke-VD städare) -->
+      <div class="card" id="cleaner-onboarding-checklist" style="display:none;margin:0 16px 12px;padding:18px;background:linear-gradient(135deg,#E1F5EE 0%,#fff 100%);border:1px solid var(--g)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="font-weight:700;font-size:.98rem;color:var(--g)">🚀 Kom igång på Spick</div>
+            <div style="font-size:.78rem;color:var(--m);margin-top:2px" id="cleaner-onboard-progress">Steg 0/5 klara — klart om ~10 min</div>
+          </div>
+          <button onclick="document.getElementById('cleaner-onboarding-checklist').style.display='none'" style="background:none;border:none;color:var(--m);cursor:pointer;font-size:1.2rem">×</button>
+        </div>
+        <div id="cleaner-onboard-steps" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- Sprint 1E: Marketing-kit "Min URL"-card (alla cleaners + VDs med slug) -->
+      <div class="card" id="cleaner-marketing-kit" style="display:none;margin:0 16px 12px;padding:18px;background:#fff;border:1px solid var(--gray-200)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:.95rem">📣 Din profil-länk</div>
+            <div style="font-size:.78rem;color:var(--m);margin-top:2px">Dela med kunder för att få fler bokningar — du får 12 % på varje</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--gray-200);border-radius:10px;padding:10px;margin-bottom:10px">
+          <span style="font-size:1.2rem">🔗</span>
+          <input id="cleaner-share-url" type="text" readonly style="flex:1;border:none;background:transparent;font-size:.85rem;color:var(--g);font-family:monospace" value="https://spick.se/s/...">
+          <button onclick="copyCleanerShareUrl()" style="background:var(--g);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Kopiera</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="shareCleanerUrlWhatsApp()" style="flex:1;min-width:120px;background:#25D366;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">💬 WhatsApp</button>
+          <button onclick="shareCleanerUrlSMS()" style="flex:1;min-width:120px;background:#0F6E56;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">📱 SMS</button>
+          <button onclick="generateCleanerQR()" style="flex:1;min-width:120px;background:#fff;color:var(--g);border:1.5px solid var(--g);padding:10px;border-radius:8px;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">🔲 QR-kod</button>
+        </div>
+        <div id="cleaner-qr-display" style="display:none;text-align:center;margin-top:14px;padding:14px;background:#fff;border:1px dashed var(--gray-200);border-radius:10px">
+          <div id="cleaner-qr-img"></div>
+          <div style="font-size:.72rem;color:var(--m);margin-top:8px">Scanna med kameran för att öppna din profil</div>
+          <button onclick="downloadCleanerQR()" style="margin-top:8px;background:var(--g);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Ladda ner som PNG</button>
+        </div>
+      </div>
+
       <div id="onboarding-wizard" class="wiz-overlay" style="display:none">
         <div class="wiz-card">
           <div class="wiz-title" id="wiz-title">Nästan klar!</div>
@@ -3515,6 +3552,9 @@ async function loadCleanerByEmail(email, authUserId) {
     }
   }
   if (typeof renderInsuranceTierStatus === 'function') renderInsuranceTierStatus();
+  // Sprint 1C+1E (2026-04-26): ladda cleaner onboarding-checklist + marketing-kit
+  if (typeof loadCleanerOnboardingChecklist === 'function') loadCleanerOnboardingChecklist();
+  if (typeof loadCleanerMarketingKit === 'function') loadCleanerMarketingKit();
   // §7.4: ladda språk-chips från cleaner.languages (TEXT[])
   _profSelectedLangs = Array.isArray(cleaner.languages)
     ? cleaner.languages.slice()
@@ -7408,6 +7448,112 @@ async function toggleOwnerOnly(isOwner) {
     // Reload to apply UI changes
     setTimeout(function() { location.reload(); }, 1000);
   } catch(e) { alert('Fel: ' + e.message); }
+}
+
+// \u2500\u2500 SPRINT 1C+1E (2026-04-26): Onboarding-checklist + Marketing-kit \u2500\u2500\u2500\u2500\u2500
+// 1C: Visar steg cleaner ska g\u00f6ra dag 1-7 f\u00f6r att komma ig\u00e5ng.
+// 1E: "Min URL"-card med kopiera-l\u00e4nk + WhatsApp/SMS-share + QR-kod.
+// B\u00e5da gated bakom cleaner-data finns + slug satt.
+
+function _renderCleanerOnboardingStep(label, done) {
+  return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:.85rem">' +
+    '<span style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:' +
+    (done ? 'var(--g)' : '#fff') + ';border:2px solid var(--g);color:#fff;font-size:.78rem;font-weight:700">' +
+    (done ? '\u2713' : '') + '</span>' +
+    '<span style="' + (done ? 'color:var(--m);text-decoration:line-through' : 'color:var(--t)') + '">' + escHtml(label) + '</span>' +
+    '</div>';
+}
+
+function loadCleanerOnboardingChecklist() {
+  // Visa bara f\u00f6r cleaners (inte VD utan eget cleaner-arbete)
+  if (!cleaner || cleaner.is_company_owner) return;
+  var box = document.getElementById('cleaner-onboarding-checklist');
+  if (!box) return;
+  var steps = [
+    { label: '\u2705 Profil skapad (BankID-verifierad)', done: !!cleaner.identity_verified || cleaner.is_approved },
+    { label: '\ud83d\udcf7 Ladda upp profilbild', done: !!cleaner.avatar_url },
+    { label: '\ud83d\udcb0 S\u00e4tt minst 1 tj\u00e4nstepris', done: Array.isArray(cleaner.services) && cleaner.services.length > 0 },
+    { label: '\ud83d\udcc5 Markera ditt veckoschema', done: !!cleaner._has_schedule }, // window-flag som s\u00e4tts av loadSchedule
+    { label: '\ud83c\udf89 F\u00e5 f\u00f6rsta bokningen', done: (cleaner.completed_jobs || 0) > 0 }
+  ];
+  var done = steps.filter(function(s) { return s.done; }).length;
+  if (done === steps.length) { box.style.display = 'none'; return; } // Allt klart \u2192 d\u00f6lj
+  document.getElementById('cleaner-onboard-progress').textContent =
+    'Steg ' + done + '/' + steps.length + ' klara \u2014 forts\u00e4tt f\u00f6r att aktivera fullt';
+  document.getElementById('cleaner-onboard-steps').innerHTML =
+    steps.map(function(s) { return _renderCleanerOnboardingStep(s.label, s.done); }).join('');
+  box.style.display = 'block';
+}
+
+function loadCleanerMarketingKit() {
+  if (!cleaner) return;
+  var slug = cleaner.slug;
+  if (!slug) return; // Ingen slug = ingen profil-URL \u00e4nnu
+  var box = document.getElementById('cleaner-marketing-kit');
+  if (!box) return;
+  var url = 'https://spick.se/s/' + slug;
+  var input = document.getElementById('cleaner-share-url');
+  if (input) input.value = url;
+  box.style.display = 'block';
+}
+
+function copyCleanerShareUrl() {
+  var input = document.getElementById('cleaner-share-url');
+  if (!input) return;
+  input.select();
+  try {
+    navigator.clipboard.writeText(input.value).then(function() {
+      showToast('\u2713 L\u00e4nk kopierad!');
+    });
+  } catch (_) {
+    document.execCommand('copy');
+    showToast('\u2713 L\u00e4nk kopierad!');
+  }
+}
+
+function shareCleanerUrlWhatsApp() {
+  var url = document.getElementById('cleaner-share-url').value;
+  var msg = 'Boka mig f\u00f6r st\u00e4dning p\u00e5 Spick: ' + url;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function shareCleanerUrlSMS() {
+  var url = document.getElementById('cleaner-share-url').value;
+  var msg = 'Boka mig f\u00f6r st\u00e4dning p\u00e5 Spick: ' + url;
+  window.location.href = 'sms:?body=' + encodeURIComponent(msg);
+}
+
+function generateCleanerQR() {
+  var url = document.getElementById('cleaner-share-url').value;
+  var display = document.getElementById('cleaner-qr-display');
+  var img = document.getElementById('cleaner-qr-img');
+  if (!url || !img) return;
+  // Anv\u00e4nd qrcode-generator-CDN (samma som boka.html f\u00f6r BankID-QR)
+  if (typeof qrcode === 'undefined') {
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+    script.onload = function() { _renderCleanerQR(url); };
+    document.head.appendChild(script);
+  } else {
+    _renderCleanerQR(url);
+  }
+  display.style.display = 'block';
+}
+
+function _renderCleanerQR(url) {
+  var qr = qrcode(0, 'M');
+  qr.addData(url);
+  qr.make();
+  document.getElementById('cleaner-qr-img').innerHTML = qr.createImgTag(6, 8);
+}
+
+function downloadCleanerQR() {
+  var img = document.querySelector('#cleaner-qr-img img');
+  if (!img) return;
+  var link = document.createElement('a');
+  link.download = 'spick-' + (cleaner.slug || 'profil') + '-qr.png';
+  link.href = img.src;
+  link.click();
 }
 
 // \u2500\u2500 F\u00d6RETAGSLOGO (Zivar-request 2026-04-26) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
