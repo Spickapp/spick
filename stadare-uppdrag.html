@@ -370,56 +370,73 @@ async function updateStatus(status) {
   var patchData = { status: dbStatus };
   if (status === 'done') patchData.completed_at = new Date().toISOString();
 
-  // Samla GPS vid utcheckning
+  // Samla GPS vid utcheckning + S3-precision-validation
   if (status === 'done') {
     var statusLabel2 = document.getElementById('currentStatusDesc');
     if (statusLabel2) statusLabel2.textContent = '📍 Registrerar utcheckning...';
 
-    await new Promise(function(resolve) {
-      collectGPS(function(gps) {
-        if (gps) {
-          patchData.checkout_lat = gps.lat;
-          patchData.checkout_lng = gps.lng;
-          patchData.checkout_gps_status = 'green';
-          if (statusLabel2) statusLabel2.textContent = '✅ Utcheckning registrerad';
-        } else {
-          patchData.checkout_gps_status = 'denied';
-          if (statusLabel2) statusLabel2.textContent = '✅ Klar (utan GPS)';
-        }
-        resolve();
-      });
+    var gpsResult = await new Promise(function(resolve) {
+      collectGPS(function(gps) { resolve(gps); });
     });
+
+    if (gpsResult) {
+      var classifyOut = await _classifyGpsDistance(booking, gpsResult);
+      patchData.checkout_lat = gpsResult.lat;
+      patchData.checkout_lng = gpsResult.lng;
+      if (typeof classifyOut.distance_m === 'number') patchData.checkout_distance_m = classifyOut.distance_m;
+      patchData.checkout_gps_status = classifyOut.status;
+      if (statusLabel2) {
+        if (classifyOut.status === 'green') statusLabel2.textContent = '✅ Utcheckning registrerad';
+        else if (classifyOut.status === 'warning_far') statusLabel2.textContent = '⚠️ Utcheckad (' + classifyOut.distance_m + ' m från adressen)';
+        else statusLabel2.textContent = '⚠️ Utcheckad — ' + classifyOut.distance_m + ' m från adressen (loggat)';
+      }
+    } else {
+      patchData.checkout_gps_status = 'denied';
+      if (statusLabel2) statusLabel2.textContent = '✅ Klar (utan GPS)';
+    }
   }
 
-  // Samla GPS vid ankomst
+  // Samla GPS vid ankomst + S3-precision-validation
   if (status === 'arrived') {
     var statusLabel = document.getElementById('currentStatusDesc');
     if (statusLabel) statusLabel.textContent = '📍 Hämtar GPS-position...';
 
-    await new Promise(function(resolve) {
-      collectGPS(function(gps) {
-        if (gps) {
-          patchData.checkin_lat = gps.lat;
-          patchData.checkin_lng = gps.lng;
-          patchData.checkin_time = new Date().toISOString();
-          patchData.checkin_gps_status = 'green';
-          if (statusLabel) statusLabel.textContent = '✅ GPS registrerad';
-        } else if (_gpsAttempts >= 2) {
-          patchData.checkin_time = new Date().toISOString();
-          patchData.checkin_gps_status = 'denied';
-          if (statusLabel) statusLabel.textContent = '⚠️ Incheckad utan GPS';
-        } else {
-          if (statusLabel) statusLabel.textContent = '⚠️ GPS blockerad — tillåt plats i webbläsaren och tryck "Anlänt" igen';
-          resolve();
-          return;
-        }
-        resolve();
-      });
+    var arrivedGps = await new Promise(function(resolve) {
+      collectGPS(function(gps) { resolve(gps); });
     });
 
-    // Om GPS misslyckades första gången och vi inte nått 2 försök, avbryt
-    if (!patchData.checkin_time && _gpsAttempts < 2) {
-      // Rulla inte vidare — låt användaren försöka igen
+    if (arrivedGps) {
+      var arrivedClass = await _classifyGpsDistance(booking, arrivedGps);
+      // Blockera vid >2km — confirm med tydlig text
+      if (arrivedClass.status === 'denied_too_far') {
+        var allowFar = window.confirm(
+          'Du befinner dig ' + arrivedClass.distance_m + ' meter från städningsadressen.\n\n' +
+          'Är du säker på att du är på rätt plats?\n\n' +
+          'OK = checka in ändå (loggat)\nAvbryt = försök igen från rätt plats'
+        );
+        if (!allowFar) {
+          if (statusLabel) statusLabel.textContent = '⚠️ Check-in avbruten (för långt från adress)';
+          renderStatusBtns();
+          return;
+        }
+      }
+      patchData.checkin_lat = arrivedGps.lat;
+      patchData.checkin_lng = arrivedGps.lng;
+      patchData.checkin_time = new Date().toISOString();
+      if (typeof arrivedClass.distance_m === 'number') patchData.checkin_distance_m = arrivedClass.distance_m;
+      patchData.checkin_gps_status = arrivedClass.status;
+      if (statusLabel) {
+        if (arrivedClass.status === 'green') statusLabel.textContent = '✅ GPS registrerad';
+        else if (arrivedClass.status === 'warning_far') statusLabel.textContent = '⚠️ Incheckad (' + arrivedClass.distance_m + ' m från adressen)';
+        else statusLabel.textContent = '⚠️ Incheckad — ' + arrivedClass.distance_m + ' m från adressen (loggat)';
+      }
+    } else if (_gpsAttempts >= 2) {
+      patchData.checkin_time = new Date().toISOString();
+      patchData.checkin_gps_status = 'denied';
+      if (statusLabel) statusLabel.textContent = '⚠️ Incheckad utan GPS';
+    } else {
+      // Hantera fallet där GPS misslyckades — original-fallback nedan
+      if (statusLabel) statusLabel.textContent = '⚠️ GPS blockerad — tillåt plats i webbläsaren och tryck "Anlänt" igen';
       renderStatusBtns();
       return;
     }
@@ -776,6 +793,62 @@ function cookieChoice(accept) {
 }
 
 var _gpsAttempts = 0;
+
+// Sprint S3 — GPS-precision-validation (frontend-only, lazy-geocode)
+// Geocodar booking.customer_address via Nominatim första gången, cachas
+// per booking.id i sessionStorage. Beräknar Haversine-distans i meter.
+async function _geocodeBookingAddress(b) {
+  if (!b) return null;
+  var addr = (b.customer_address || b.address || '').trim();
+  var city = (b.city || '').trim();
+  if (!addr) return null;
+  var cacheKey = 'spick-geo-' + (b.id || addr);
+  try {
+    var cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') return parsed;
+    }
+  } catch (_) {}
+  try {
+    var query = addr + (city ? ', ' + city : '') + ', Sweden';
+    var url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1&countrycodes=se';
+    var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    var coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    if (!isFinite(coords.lat) || !isFinite(coords.lng)) return null;
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(coords)); } catch (_) {}
+    return coords;
+  } catch (_) {
+    return null;
+  }
+}
+
+function _haversineMeters(lat1, lng1, lat2, lng2) {
+  var R = 6371000; // meter
+  var toRad = function(x) { return x * Math.PI / 180; };
+  var dLat = toRad(lat2 - lat1);
+  var dLng = toRad(lng2 - lng1);
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// Klassificera GPS-position vs booking-adress.
+// Returnerar { distance_m, status } där status är 'green' / 'warning_far' / 'denied_too_far'.
+// Trösklar: <=500m green, 500-2000m warning, >2000m denied.
+async function _classifyGpsDistance(booking, gps) {
+  if (!gps || !booking) return { distance_m: null, status: 'green' };
+  var coords = await _geocodeBookingAddress(booking);
+  if (!coords) return { distance_m: null, status: 'green' }; // graceful degradation
+  var d = _haversineMeters(gps.lat, gps.lng, coords.lat, coords.lng);
+  if (d <= 500) return { distance_m: d, status: 'green' };
+  if (d <= 2000) return { distance_m: d, status: 'warning_far' };
+  return { distance_m: d, status: 'denied_too_far' };
+}
 
 function collectGPS(callback) {
   if (!navigator.geolocation) {
