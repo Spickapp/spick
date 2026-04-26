@@ -112,17 +112,42 @@
         return { flag: false, services: 0, addons: 0 };
       }
 
-      const svcRes = await fetch(
-        SPICK.SUPA_URL + '/functions/v1/services-list',
-        { headers: { apikey: SPICK.SUPA_KEY } }
-      );
+      // Audit-fix 2026-04-26: services-list EF flakar 40% 503 (cold-start/
+      // transient). Defensive: sessionStorage-cache (5 min TTL) + retry 2x.
+      const _CACHE_KEY = 'spick_services_cache_v1';
+      const _CACHE_TTL_MS = 5 * 60 * 1000;
+      let data = null;
+      try {
+        const cached = sessionStorage.getItem(_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && (Date.now() - parsed.ts) < _CACHE_TTL_MS && parsed.data) {
+            data = parsed.data;
+          }
+        }
+      } catch(_) { /* cache-fel ignoreras */ }
 
-      if (!svcRes.ok) {
-        console.error('[services-loader] services-list EF returned ' + svcRes.status);
-        return { flag: true, services: 0, addons: 0, error: svcRes.status };
+      if (!data) {
+        let svcRes = null;
+        for (let attempt = 0; attempt < 3 && !data; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 200 * attempt));
+          try {
+            svcRes = await fetch(
+              SPICK.SUPA_URL + '/functions/v1/services-list',
+              { headers: { apikey: SPICK.SUPA_KEY } }
+            );
+            if (svcRes.ok) {
+              data = await svcRes.json();
+              try { sessionStorage.setItem(_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(_) {}
+              break;
+            }
+          } catch(_) { /* network-fel → retry */ }
+        }
+        if (!data) {
+          console.error('[services-loader] services-list EF failed after 3 retries (status ' + (svcRes ? svcRes.status : 'no-response') + ')');
+          return { flag: true, services: 0, addons: 0, error: svcRes ? svcRes.status : 0 };
+        }
       }
-
-      const data = await svcRes.json();
       window.SPICK_SERVICES.services = Array.isArray(data.services) ? data.services : [];
       window.SPICK_SERVICES.addons = data.addons && typeof data.addons === 'object' ? data.addons : {};
 
