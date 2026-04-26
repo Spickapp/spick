@@ -134,17 +134,25 @@ Deno.serve(async (req) => {
     }
 
     // ── Polla TIC status ──
+    // KRITISKT 2026-04-26: använd POST /poll (INTE GET /status eller /collect).
+    // Per TIC docs (https://id.tic.io/docs/api/authentication):
+    //   - POST /poll = driver autentiseringsflödet framåt (kontaktar BankID)
+    //   - GET /status = visar bara att session existerar (orderCount/maxOrders)
+    //   - GET /collect = bara cachad data, kontaktar EJ BankID
+    // Live-test 2026-04-26: med /status fastnade status:pending evigt eftersom
+    // TIC aldrig kontaktade BankID. Med /poll triggas BankID-collect så att
+    // status går pending → complete när användaren signerar.
     const statusRes = await fetch(
-      `${TIC_BASE_URL}/api/v1/auth/${encodeURIComponent(sessionId)}/status`,
+      `${TIC_BASE_URL}/api/v1/auth/${encodeURIComponent(sessionId)}/poll`,
       {
-        method: "GET",
+        method: "POST",
         headers: { "X-Api-Key": TIC_API_KEY },
       },
     );
 
     if (!statusRes.ok) {
       const errBody = await statusRes.text();
-      log("warn", "TIC status fetch failed", {
+      log("warn", "TIC poll fetch failed", {
         session_id: sessionId.slice(0, 8) + "...",
         status: statusRes.status,
         body: errBody.slice(0, 300),
@@ -156,25 +164,22 @@ Deno.serve(async (req) => {
     const ticStatusRaw = statusData.status || statusData.state || statusData.result;
     const ticStatus = typeof ticStatusRaw === "string" ? ticStatusRaw.toLowerCase() : "";
 
-    // Logga FULL TIC-respons så vi kan diagnosa "stuck on pending"-bugs
-    log("info", "TIC status poll", {
+    // Logga TIC-respons för diagnostik (kan tas bort efter stabilitet bekräftad)
+    log("info", "TIC poll response", {
       session_id: sessionId.slice(0, 8) + "...",
       status_raw: ticStatusRaw,
       keys: Object.keys(statusData || {}),
       hint: statusData.hintCode || statusData.hint_code,
     });
 
-    // Lenient match: TIC kan returnera complete/completed/succeeded/successful/authenticated
-    const completedStates = new Set([
-      "complete", "completed", "success", "successful", "succeeded",
-      "authenticated", "authorized", "ok", "done", "finished",
-    ]);
-    if (!completedStates.has(ticStatus)) {
+    // Per TIC docs: status-värden = pending, complete, failed, cancelled
+    if (ticStatus !== "complete") {
       return json(CORS, 200, {
         ok: true,
         status: ticStatus || "pending",
         hint: statusData.hintCode || statusData.hint_code,
-        raw: statusData, // Hjälp för frontend-diagnos när status-värdet är okänt
+        message: statusData.message,
+        raw: statusData,
       });
     }
 
