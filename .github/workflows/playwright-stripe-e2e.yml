@@ -1,0 +1,77 @@
+name: Playwright Stripe E2E (testmode, dagligen 02:00 UTC)
+'on':
+  schedule:
+    # 02:00 UTC = 04:00 CEST. Före admin-morning-report (03:00 CEST)
+    # så ev. brutet checkout-flöde syns i morgonrapporten.
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}
+
+# Notera (CLAUDE.md): platform_settings.stripe_test_mode toggleas till
+# 'true' innan test och lämnas så efteråt — admin styr återställning
+# manuellt. Edge functions är dual-key så live-bokningar fungerar
+# fortfarande, men nya checkouts kommer skapas i Stripe testmode tills
+# admin sätter tillbaka 'false' i admin.html → Settings.
+
+jobs:
+  stripe-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --include=dev || npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Stripe E2E spec
+        env:
+          CI: 'true'
+          # Aktiverar test (annars skip via test.skip-guard i specen)
+          STRIPE_E2E_ENABLED: '1'
+          # Service-role behövs för (a) toggla stripe_test_mode och
+          # (b) cleanup av test-bokningar efter körning.
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Stripe-keys exponeras INTE till Playwright direkt — de
+          # läses serverside av booking-create EF + stripe-webhook.
+          # Vi sätter dem ändå här för synlighet/audit-spårning av
+          # vilken workflow som "äger" stripe-test-flödet i CI.
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+        run: npx playwright test tests/e2e-stripe-checkout.spec.ts --reporter=list
+
+      - name: Upload test-results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripe-e2e-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+
+      - name: Discord-alert vid fel (kritisk — bokning fungerar ej live)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::ADMIN_ALERT_WEBHOOK_URL saknas — kan inte skicka Discord-alert"
+            exit 0
+          fi
+          MSG=$(cat <<EOF
+          {
+            "username": "Spick CI",
+            "content": ":rotating_light: **STRIPE E2E FAILED** — kund-bokningsflödet kan vara brutet i prod.\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nKolla artifact 'stripe-e2e-results' för screenshots + trace. Verifiera manuellt på https://spick.se/boka.html innan dagens trafik vaknar."
+          }
+          EOF
+          )
+          curl -s -X POST -H "Content-Type: application/json" \
+            -d "$MSG" \
+            "$DISCORD_WEBHOOK" \
+            || echo "::warning::Discord-alert misslyckades"
