@@ -16,7 +16,10 @@ let _toastIdx = 0;
 async function loadToastData() {
   try {
     const res = await fetch(SPICK.SUPA_URL + '/rest/v1/reviews?select=cleaner_rating,created_at,cleaner_id,cleaners(city,full_name)&cleaner_rating=gte.4&order=created_at.desc&limit=10', {
-      headers: { 'apikey': SPICK.SUPA_KEY }
+      headers: {
+        'apikey': SPICK.SUPA_KEY,
+        'Authorization': 'Bearer ' + SPICK.SUPA_KEY
+      }
     });
     if (!res.ok) return;
     const data = await res.json();

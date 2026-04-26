@@ -153,14 +153,28 @@ Deno.serve(async (req) => {
     }
 
     const statusData = await statusRes.json();
-    const ticStatus = statusData.status || statusData.state;
+    const ticStatusRaw = statusData.status || statusData.state || statusData.result;
+    const ticStatus = typeof ticStatusRaw === "string" ? ticStatusRaw.toLowerCase() : "";
 
-    // Pågående: returnera status så frontend kan polla igen
-    if (ticStatus !== "complete" && ticStatus !== "completed") {
+    // Logga FULL TIC-respons så vi kan diagnosa "stuck on pending"-bugs
+    log("info", "TIC status poll", {
+      session_id: sessionId.slice(0, 8) + "...",
+      status_raw: ticStatusRaw,
+      keys: Object.keys(statusData || {}),
+      hint: statusData.hintCode || statusData.hint_code,
+    });
+
+    // Lenient match: TIC kan returnera complete/completed/succeeded/successful/authenticated
+    const completedStates = new Set([
+      "complete", "completed", "success", "successful", "succeeded",
+      "authenticated", "authorized", "ok", "done", "finished",
+    ]);
+    if (!completedStates.has(ticStatus)) {
       return json(CORS, 200, {
         ok: true,
         status: ticStatus || "pending",
         hint: statusData.hintCode || statusData.hint_code,
+        raw: statusData, // Hjälp för frontend-diagnos när status-värdet är okänt
       });
     }
 

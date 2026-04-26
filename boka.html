@@ -3166,6 +3166,10 @@ function pollRutBankidStatus() {
         body: JSON.stringify({ session_id: state.rutBankidSession.session_id, customer_email: state.email })
       });
       var data = await res.json();
+      // Debug: logga första 5 polls så vi kan diagnosa "stuck on pending"
+      if (attempts <= 5 || attempts % 10 === 0) {
+        console.log('[BankID poll #' + attempts + ']', { status: data.status, hint: data.hint, raw: data.raw });
+      }
       if (!res.ok) {
         clearInterval(state.rutBankidPolling);
         state.rutBankidPolling = null;
@@ -3173,7 +3177,7 @@ function pollRutBankidStatus() {
         return;
       }
       var hintEl = document.getElementById('rut-bankid-hint');
-      if (data.status === 'complete' || data.already_consumed) {
+      if (data.status === 'complete' || data.status === 'completed' || data.already_consumed) {
         clearInterval(state.rutBankidPolling);
         state.rutBankidPolling = null;
         state.rutBankidVerified = true;
