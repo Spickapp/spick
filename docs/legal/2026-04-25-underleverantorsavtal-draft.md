@@ -56,11 +56,30 @@
 
 **2.2** Underleverantören ska:
 - Vara godkänd för F-skatt (verifieras löpande av Spick mot Skatteverket)
-- Inneha gällande ansvarsförsäkring med minst 5 000 000 kr i försäkringsbelopp
+- Inneha gällande verksamhetsansvarsförsäkring enligt **§ 2.2.1 Tier-modell** nedan
 - Genomgå Spicks identitetsverifiering (BankID via TIC.io)
 - Lämna referenser eller annan dokumentation som Spick begär
 - Underteckna och följa Spicks Code of Conduct
 - Hålla F-skattbevis och försäkringar uppdaterade i Mitt konto utan dröjsmål
+
+**§ 2.2.1 Försäkrings-Tier-modell** (uppdaterad 2026-04-26):
+
+Spick tillämpar en progressiv onboarding för att inte skapa onödig friktion för nya underleverantörer.
+
+| Tier | Krav | Begränsning |
+|---|---|---|
+| **Provanställd** (0-90 dagar / första 10 utförda jobb) | Verksamhetsansvar minst **5 000 000 kr per skada** | Inga premium-jobb (>2000 kr per bokning) |
+| **Verifierad** (efter 10 jobb + snittbetyg ≥4,5) | Verksamhetsansvar **10 000 000 kr per skada** + ren förmögenhetsskada **2 000 000 kr** + täckning för städverksamhet inkl. nyckelhantering | Auto-uppgradering vid uppfyllt krav |
+| **Spick Pro** (Almega-medlem eller motsvarande) | Som Verifierad + sak-försäkring | Prioritet i matching, badge i kund-vy |
+
+**Kompletterande Spick-täckning under Provanställd-period:**
+Under provanställning täcker Spick mellanskillnaden upp till 10 MSEK genom plattformsförsäkring för skador som inte täcks av Underleverantörens egen 5 MSEK. Detta gäller endast för bokningar förmedlade via Spick och endast under provanställningsperioden (max 90 dagar).
+
+**Verifiering:**
+- Försäkringsbevis (PDF) ska laddas upp i Mitt konto vid registrering
+- Spick verifierar belopp och giltighetstid manuellt inom 48 timmar
+- Vid förnyelse av försäkring ska nytt bevis laddas upp innan utgångsdatum
+- Vid utgånget försäkringsbevis pausas Underleverantörens jobbtilldelning automatiskt
 
 **2.3** Underleverantören är ensam ansvarig för:
 - Sin egen arbetstid och planering inom accepterade Tjänster
