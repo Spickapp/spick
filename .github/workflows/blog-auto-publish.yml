@@ -1,0 +1,44 @@
+name: Blog Auto-Publish (tis + tor 09:00 CET)
+
+# Sprint 6 Content-Engine: triggar blog-auto-publish-cron-EF som
+#   1. Pop:ar första topic från platform_settings.blog_topics_queue
+#   2. Anropar blog-generate (Anthropic claude-haiku-4-5)
+#   3. INSERTar i blog_posts (published_at = NOW())
+#   4. UPDATEar queue (remove processed)
+#
+# Schedule: tis + tor 07:00 UTC = 09:00 CET (sommartid)
+# Vintertid: kör 08:00 CET (nära nog för veckovis content-cadence).
+'on':
+  schedule:
+    - cron: '0 7 * * 2,4'  # tis (2) + tor (4) 07:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger blog-auto-publish-cron EF
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/blog-auto-publish-cron" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::blog-auto-publish failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
