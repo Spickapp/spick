@@ -1684,6 +1684,19 @@ body{top:0!important}
             <div class="gantt-stat"><div class="gantt-stat-label">Intäkt (est.)</div><div class="gantt-stat-value" id="gs-revenue">0 kr</div></div>
           </div>
 
+          <!-- F6 (2026-04-26): Utökad statistik (expanderbar) -->
+          <div style="margin-bottom:10px;text-align:right">
+            <button onclick="toggleGanttExtraStats()" id="gantt-extra-stats-btn" style="background:none;border:none;color:#0F6E56;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:underline">Visa mer statistik ▾</button>
+          </div>
+          <div id="gantt-extra-stats" style="display:none;background:#F7F7F5;border-radius:12px;padding:14px;margin-bottom:14px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+              <div><div style="font-size:.72rem;color:#6B6960;text-transform:uppercase;font-weight:600">Sjuk-frekvens</div><div style="font-size:1.1rem;font-weight:700" id="ges-sick-pct">0%</div><div style="font-size:.7rem;color:#6B6960" id="ges-sick-count">0 sjukdagar</div></div>
+              <div><div style="font-size:.72rem;color:#6B6960;text-transform:uppercase;font-weight:600">Snitt-beläggning per cleaner</div><div style="font-size:1.1rem;font-weight:700" id="ges-avg-util">0%</div><div style="font-size:.7rem;color:#6B6960">av tillgänglig tid</div></div>
+              <div><div style="font-size:.72rem;color:#6B6960;text-transform:uppercase;font-weight:600">Topp-cleaner</div><div style="font-size:1.05rem;font-weight:700" id="ges-top-cleaner">–</div><div style="font-size:.7rem;color:#6B6960" id="ges-top-hours">0h denna period</div></div>
+              <div><div style="font-size:.72rem;color:#6B6960;text-transform:uppercase;font-weight:600">Antal jobb</div><div style="font-size:1.1rem;font-weight:700" id="ges-job-count">0</div><div style="font-size:.7rem;color:#6B6960">denna period</div></div>
+            </div>
+          </div>
+
           <!-- Filterrad -->
           <div class="gantt-filters" id="gantt-filters">
             <button class="gantt-filter-chip active" onclick="toggleGanttFilter(this,'all')" data-filter="all">Alla</button>
@@ -8133,6 +8146,92 @@ function updateGanttSummary() {
   var el2 = document.getElementById('gs-available');    if (el2) el2.textContent = Math.max(totalAvail - totalBooked, 0).toFixed(1) + 'h';
   var el3 = document.getElementById('gs-utilization');  if (el3) el3.textContent = totalAvail > 0 ? Math.round(totalBooked / totalAvail * 100) + '%' : '–';
   var el4 = document.getElementById('gs-revenue');      if (el4) el4.textContent = Math.round(totalRevenue).toLocaleString('sv') + ' kr';
+
+  // F6 (2026-04-26): Utökad statistik
+  if (typeof renderGanttExtraStats === 'function') renderGanttExtraStats();
+}
+
+function toggleGanttExtraStats() {
+  var panel = document.getElementById('gantt-extra-stats');
+  var btn   = document.getElementById('gantt-extra-stats-btn');
+  if (!panel || !btn) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? 'Visa mer statistik ▾' : 'Dölj statistik ▴';
+  if (!open) renderGanttExtraStats();
+}
+
+function renderGanttExtraStats() {
+  if (!_teamMembers || !_teamMembers.length) return;
+  var dates = [];
+  if (_ganttMode === 'day') {
+    dates = [localDateStr(_ganttDate)];
+  } else {
+    var ws = getWeekStart(_ganttDate);
+    for (var i = 0; i < 7; i++) { var d = new Date(ws); d.setDate(d.getDate() + i); dates.push(localDateStr(d)); }
+  }
+  var dateSet = {};
+  dates.forEach(function(d) { dateSet[d] = true; });
+
+  // Team-events filtrerade till period
+  var periodEvents = (_ganttTeamEvents || []).filter(function(e) {
+    var d = evDate(e.start_at);
+    return dateSet[d];
+  });
+
+  // Sjuk-frekvens
+  var sickEvents = periodEvents.filter(function(e) {
+    return e.event_type === 'blocked' && (e.title === 'Sjuk' || /sjuk/i.test(e.title || ''));
+  });
+  var possibleSickDays = _teamMembers.length * dates.length;
+  var sickPct = possibleSickDays > 0 ? Math.round((sickEvents.length / possibleSickDays) * 100) : 0;
+
+  // Per-cleaner stats (för top + snitt)
+  var perCleaner = {};
+  _teamMembers.forEach(function(m) { perCleaner[m.id] = { id: m.id, name: m.first_name || m.full_name || 'Okänd', booked_h: 0, avail_h: 0 }; });
+  periodEvents.forEach(function(e) {
+    if (e.event_type !== 'booking') return;
+    var rec = perCleaner[e.cleaner_id];
+    if (rec) rec.booked_h += eventDurationHours(e);
+  });
+  // Avail
+  (_ganttTeamAvail || []).forEach(function(a) {
+    var rec = perCleaner[a.cleaner_id];
+    if (!rec) return;
+    dates.forEach(function(d) {
+      var dt = new Date(d + 'T12:00:00');
+      var dow = dt.getDay() === 0 ? 7 : dt.getDay();
+      if (a.day_of_week === dow) {
+        rec.avail_h += timeDiffHours(a.start_time, a.end_time);
+      }
+    });
+  });
+  var bookings_count = periodEvents.filter(function(e) { return e.event_type === 'booking'; }).length;
+  var totalAvail = 0, totalBooked = 0;
+  Object.keys(perCleaner).forEach(function(k) { totalAvail += perCleaner[k].avail_h; totalBooked += perCleaner[k].booked_h; });
+  var avgUtilPct = totalAvail > 0 ? Math.round((totalBooked / totalAvail) * 100) : 0;
+
+  // Top-cleaner
+  var topCleaner = null;
+  Object.keys(perCleaner).forEach(function(k) {
+    var c = perCleaner[k];
+    if (!topCleaner || c.booked_h > topCleaner.booked_h) topCleaner = c;
+  });
+
+  // Render
+  var sickPctEl = document.getElementById('ges-sick-pct');
+  var sickCountEl = document.getElementById('ges-sick-count');
+  var avgUtilEl = document.getElementById('ges-avg-util');
+  var topNameEl = document.getElementById('ges-top-cleaner');
+  var topHoursEl = document.getElementById('ges-top-hours');
+  var jobCountEl = document.getElementById('ges-job-count');
+
+  if (sickPctEl) sickPctEl.textContent = sickPct + '%';
+  if (sickCountEl) sickCountEl.textContent = sickEvents.length + (sickEvents.length === 1 ? ' sjukdag' : ' sjukdagar');
+  if (avgUtilEl) avgUtilEl.textContent = avgUtilPct + '%';
+  if (topNameEl) topNameEl.textContent = (topCleaner && topCleaner.booked_h > 0) ? topCleaner.name : '–';
+  if (topHoursEl) topHoursEl.textContent = (topCleaner ? topCleaner.booked_h.toFixed(1) : '0') + 'h denna period';
+  if (jobCountEl) jobCountEl.textContent = String(bookings_count);
 }
 
 // ── DRAG AND DROP ────────────────────────────────────────────
