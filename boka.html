@@ -3099,12 +3099,24 @@ function _renderRutBankidQr(qrText) {
 async function _startRutBankidQrTicker(qrStartToken, qrStartSecret) {
   // BankID QR-formel: bankid.{qrStartToken}.{seconds_elapsed}.{HMAC-SHA256}
   // Ny QR varje sekund. Stoppas via cancelRutBankid() eller success.
+  // Logga första QR + key-format för debugging (rule #29).
+  console.log('[QR] start ticker', {
+    qrStartToken_len: qrStartToken ? qrStartToken.length : 0,
+    qrStartSecret_len: qrStartSecret ? qrStartSecret.length : 0,
+    secret_looks_hex: qrStartSecret ? /^[0-9a-fA-F]+$/.test(qrStartSecret) : false,
+    secret_looks_base64: qrStartSecret ? /^[A-Za-z0-9+/]+=*$/.test(qrStartSecret) : false
+  });
   var startMs = Date.now();
+  var firstLogged = false;
   async function tick() {
     var elapsed = Math.floor((Date.now() - startMs) / 1000);
     try {
       var qrAuthCode = await _hmacSha256Hex(qrStartSecret, String(elapsed));
       var qrData = 'bankid.' + qrStartToken + '.' + elapsed + '.' + qrAuthCode;
+      if (!firstLogged) {
+        console.log('[QR] first qrData (debug):', qrData);
+        firstLogged = true;
+      }
       _renderRutBankidQr(qrData);
     } catch (e) {
       console.warn('[QR] tick failed:', e);
