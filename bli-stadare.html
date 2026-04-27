@@ -20,6 +20,8 @@
 <script src="js/supabase.min.js" defer></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HTKC1TS64C');</script>
 <script src="js/config.js"></script>
+<script src="js/posthog-loader.js" defer></script>
+<script src="js/crisp-loader.js" defer></script>
 <script src="js/commission-helpers.js"></script>
 <script src="js/i18n-bli-stadare.js" defer></script>
 <script src="js/components.js" defer></script>
@@ -204,16 +206,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-h
 
 <!-- LANGUAGE SELECTOR -->
 <div class="lang-bar">
-  <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska"><img src="https://flagcdn.com/24x18/se.png" alt="Svenska" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('en',this)" title="English"><img src="https://flagcdn.com/24x18/gb.png" alt="English" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська"><img src="https://flagcdn.com/24x18/ua.png" alt="Українська" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский"><img src="https://flagcdn.com/24x18/ru.png" alt="Русский" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski"><img src="https://flagcdn.com/24x18/pl.png" alt="Polski" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย"><img src="https://flagcdn.com/24x18/th.png" alt="ภาษาไทย" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog"><img src="https://flagcdn.com/24x18/ph.png" alt="Tagalog" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali"><img src="https://flagcdn.com/24x18/so.png" alt="Soomaali" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('es',this)" title="Español"><img src="https://flagcdn.com/24x18/es.png" alt="Español" width="24" height="18"></button>
-  <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي"><img src="https://flagcdn.com/24x18/sa.png" alt="عربي" width="24" height="18"></button>
+  <button class="lang-btn on" onclick="switchLang('sv',this)" title="Svenska">🇸🇪</button>
+  <button class="lang-btn" onclick="switchLang('en',this)" title="English">🇬🇧</button>
+  <button class="lang-btn" onclick="switchLang('uk',this)" title="Українська">🇺🇦</button>
+  <button class="lang-btn" onclick="switchLang('ru',this)" title="Русский">🇷🇺</button>
+  <button class="lang-btn" onclick="switchLang('pl',this)" title="Polski">🇵🇱</button>
+  <button class="lang-btn" onclick="switchLang('th',this)" title="ภาษาไทย">🇹🇭</button>
+  <button class="lang-btn" onclick="switchLang('tl',this)" title="Tagalog">🇵🇭</button>
+  <button class="lang-btn" onclick="switchLang('so',this)" title="Soomaali">🇸🇴</button>
+  <button class="lang-btn" onclick="switchLang('es',this)" title="Español">🇪🇸</button>
+  <button class="lang-btn" onclick="switchLang('ar',this)" title="عربي">🇸🇦</button>
 </div>
 <!-- NAV (injected by components.js) -->
 
@@ -229,7 +231,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);line-h
 
     <!-- Primary CTA flyttad above-the-fold (audit 2026-04-25): tidigare under hero-stats vilket
          placerade den below the fold på mobile (812×... viewport, CTA vid pixel 845). -->
-    <a href="registrera-stadare.html" class="hero-cta" data-i18n="hero_cta">Ansök gratis — tar 3 minuter →</a>
+    <!-- Referral-banner (visas bara om ?ref=X-parameter finns) -->
+    <div id="ref-banner" style="display:none;background:rgba(245,200,66,.15);border:1px solid var(--gold);border-radius:12px;padding:12px 16px;margin:0 auto 16px;max-width:480px;font-size:.85rem">
+      <span style="font-weight:600">🎁 Inbjuden av <span id="ref-banner-name">en städare</span>!</span>
+      <span style="opacity:.85;display:block;margin-top:2px;font-size:.78rem">Du och din inbjudare får båda 500 kr när du tar din första bokning.</span>
+    </div>
+
+    <a href="registrera-stadare.html" class="hero-cta cta-with-ref" data-i18n="hero_cta">Ansök gratis — tar 3 minuter →</a>
     <div style="margin-top:10px"><a href="#foretag-section" style="font-size:.82rem;color:var(--w);opacity:.75;text-decoration:underline">🏢 Har du ett städföretag?</a></div>
 
     <!-- Stats sekundärt — efter primär CTA -->
