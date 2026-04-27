@@ -2978,7 +2978,7 @@ async function loadAddonsForService(serviceLabelSv) {
       return [];
     }
     var serviceId = svcRows[0].id;
-    var addRes = await fetch(SUPA + '/rest/v1/service_addons?select=id,key,label_sv,price_sek,display_order&service_id=eq.' + encodeURIComponent(serviceId) + '&active=eq.true&order=display_order.asc', {headers:H});
+    var addRes = await fetch(SUPA + '/rest/v1/service_addons?select=id,key,label_sv,price_sek,display_order,rut_eligible&service_id=eq.' + encodeURIComponent(serviceId) + '&active=eq.true&order=display_order.asc', {headers:H});
     var addRows = addRes.ok ? await addRes.json() : [];
     var list = Array.isArray(addRows) ? addRows : [];
     window._addonCache[serviceLabelSv] = list;
