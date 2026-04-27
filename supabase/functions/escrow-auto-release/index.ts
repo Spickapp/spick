@@ -82,8 +82,15 @@ Deno.serve(async (req) => {
       .lte("created_at", cutoff);
 
     if (fetchErr) {
-      log("error", "escrow_events fetch failed", { error: fetchErr.message });
-      return json(CORS, 500, { error: "fetch_failed" });
+      // Logga hela error-objektet — Supabase-client kan returnera tomt message
+      // med info i details/hint/code (typ schema-mismatch eller policy-fel).
+      log("error", "escrow_events fetch failed", {
+        message: fetchErr.message || "(empty)",
+        code: (fetchErr as { code?: string }).code || "(none)",
+        details: (fetchErr as { details?: string }).details || "(none)",
+        hint: (fetchErr as { hint?: string }).hint || "(none)",
+      });
+      return json(CORS, 500, { error: "fetch_failed", detail: fetchErr.message || (fetchErr as { code?: string }).code });
     }
 
     // Dedup: samma booking_id kan ha flera awaiting_attest-transitions

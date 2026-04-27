@@ -31,21 +31,23 @@ window.SPICK_COMMISSION_READY = (async function loadCommissionSettings() {
   window.SPICK_COMMISSION = { keepRate: (100 - pct) / 100, commissionPct: pct };
 })();
 
+// Helpers fallback:ar tyst med default 12% commission om kallad innan
+// SPICK_COMMISSION_READY resolved. Förr throw:ade vi → spammade Sentry
+// pga race conditions i 25+ callers. Default = nuvarande prod-värde
+// (platform_settings.commission_standard=12). Caller som vill säkert
+// färskt värde gör await window.SPICK_COMMISSION_READY först.
 function getKeepRate() {
-  if (!window.SPICK_COMMISSION)
-    throw new Error('getKeepRate anropad före SPICK_COMMISSION_READY');
+  if (!window.SPICK_COMMISSION) return 0.88;
   return window.SPICK_COMMISSION.keepRate;
 }
 
 function getCommissionRate() {
-  if (!window.SPICK_COMMISSION)
-    throw new Error('getCommissionRate anropad före SPICK_COMMISSION_READY');
+  if (!window.SPICK_COMMISSION) return 0.12;
   return window.SPICK_COMMISSION.commissionPct / 100;
 }
 
 function getCommissionPct() {
-  if (!window.SPICK_COMMISSION)
-    throw new Error('getCommissionPct anropad före SPICK_COMMISSION_READY');
+  if (!window.SPICK_COMMISSION) return 12;
   return window.SPICK_COMMISSION.commissionPct;
 }
 
