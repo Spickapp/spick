@@ -7329,7 +7329,7 @@ async function renderTeam() {
   const memberIds = _teamMembers.map(m => m.id);
   if (memberIds.length > 0) {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
-    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,customer_phone,service_type,booking_date,booking_time,booking_hours,status,cleaner_id,cleaner_name,total_price,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at,key_info,notes&or=(${idFilter})&order=booking_date.asc&limit=100`);
+    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,customer_phone,service_type,booking_date,booking_time,booking_hours,square_meters,status,cleaner_id,cleaner_name,total_price,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at,key_info,notes&or=(${idFilter})&order=booking_date.asc&limit=100`);
     const teamBookings = bookings || [];
     // Status-text på svenska (UX-fix: tidigare visades engelska "timed_out", "pending", etc).
     const stMap = {
@@ -7447,7 +7447,7 @@ async function renderTeam() {
         '</div>' +
         // Detaljer-expand (default dolt)
         '<div id="dt-' + b.id + '" style="display:none;margin-top:8px;padding:10px 12px;background:#F9FAFB;border-radius:8px;font-size:.78rem;line-height:1.7">' +
-          '<div><strong>📅 Datum:</strong> ' + escHtml(b.booking_date || '–') + ' · <strong>🕐 Tid:</strong> ' + (b.booking_time || '').slice(0,5) + ' · <strong>⏱️</strong> ' + (b.booking_hours || '–') + 'h</div>' +
+          '<div><strong>📅 Datum:</strong> ' + escHtml(b.booking_date || '–') + ' · <strong>🕐 Tid:</strong> ' + (b.booking_time || '').slice(0,5) + ' · <strong>⏱️</strong> ' + (b.booking_hours || '–') + 'h' + (b.square_meters ? ' · <strong>📐</strong> ' + b.square_meters + ' kvm' : '') + '</div>' +
           '<div><strong>📍 Adress:</strong> ' + escHtml(b.customer_address || '–') + '</div>' +
           (b.customer_phone ? '<div><strong>📞 Telefon:</strong> <a href="tel:' + escHtml(b.customer_phone) + '" style="color:var(--g);text-decoration:none">' + escHtml(b.customer_phone) + '</a></div>' : '') +
           (b.customer_email ? '<div><strong>📧 Email:</strong> <a href="mailto:' + escHtml(b.customer_email) + '" style="color:var(--g);text-decoration:none">' + escHtml(b.customer_email) + '</a></div>' : '') +
