@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (107 st)
+## Edge Functions (110 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -38,6 +38,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `calendar-sync` | calendar-sync — Synkronisera Google Calendar ↔ Spick Triggas av: |
 | `charge-subscription-booking` | charge-subscription-booking — Debiterar sparade kort dagen innan städning ══════════════════════════════════════════════ |
 | `check-terms-acceptance` | ═══════════════════════════════════════════════════════════════ SPICK – check-terms-acceptance (Item 1 Etapp 3) |
+| `checklist-mark` | ═══════════════════════════════════════════════════════════════ SPICK – checklist-mark (Phase 1.2) |
 | `claude` |  |
 | `cleaner-addon-price-set` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-addon-price-set (Fas 4 §4.8c) |
 | `cleaner-application-submit` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-application-submit (Audit-fix P2-3, 2026 |
@@ -46,6 +47,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `cleaner-onboarding-emails` |  |
 | `cleaner-optout` |  |
 | `cleanup-stale` |  |
+| `clock-event` | ═══════════════════════════════════════════════════════════════ SPICK – clock-event (Phase 1.1) |
 | `company-accept-invite` | ═══════════════════════════════════════════════════════════════ SPICK – company-accept-invite (Sprint B Dag 4) |
 | `company-propose-substitute` |  |
 | `company-self-signup` | ═══════════════════════════════════════════════════════════════ SPICK – company-self-signup (Sprint B Dag 3) |
@@ -80,6 +82,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `get-booking-events` | ═══════════════════════════════════════════════════════════════ SPICK – get-booking-events (Fas 6 §6.4-§6.6) |
 | `get-cleaner-contact` |  |
 | `health` |  |
+| `incident-create` | ═══════════════════════════════════════════════════════════════ SPICK – incident-create (Phase 1.3) |
 | `matching-wrapper` | supabase/functions/matching-wrapper/index.ts §3.7-full Step 2b — Matching-wrapper EF (shadow-mode A/B-ramverk) |
 | `n3-pnr-reminder-cron` | ═══════════════════════════════════════════════════════════════ SPICK – n3-pnr-reminder-cron (N3 Sprint 3, 2026-04-26) |
 | `noshow-refund` |  |
@@ -207,7 +210,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/visual-regression.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (171 st)
+## Migrations (172 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
