@@ -10621,6 +10621,19 @@ function calGoToday()  { ganttToday(); }
 // Fas 6 §6.6: Event-timeline expand på team-bookings för VD.
 // Pattern matchar mitt-konto.html toggleBookingTimeline anpassad för
 // team-context (id-prefix "ttl-" istället för "bk-timeline-").
+function toggleTeamBookingDetails(bookingId) {
+  var el = document.getElementById('dt-' + bookingId);
+  var btn = document.getElementById('dt-btn-' + bookingId);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    if (btn) btn.textContent = '📋 Dölj';
+  } else {
+    el.style.display = 'none';
+    if (btn) btn.textContent = '📋 Detaljer';
+  }
+}
+
 async function toggleTeamBookingTimeline(bookingId) {
   var el = document.getElementById('ttl-' + bookingId);
   var btn = document.getElementById('ttl-btn-' + bookingId);
