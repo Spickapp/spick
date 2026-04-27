@@ -7329,7 +7329,7 @@ async function renderTeam() {
   const memberIds = _teamMembers.map(m => m.id);
   if (memberIds.length > 0) {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
-    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,service_type,booking_date,booking_time,booking_hours,status,cleaner_id,cleaner_name,total_price,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at&or=(${idFilter})&order=booking_date.asc&limit=100`);
+    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,customer_phone,service_type,booking_date,booking_time,booking_hours,status,cleaner_id,cleaner_name,total_price,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at,key_info,notes&or=(${idFilter})&order=booking_date.asc&limit=100`);
     const teamBookings = bookings || [];
     // Status-text på svenska (UX-fix: tidigare visades engelska "timed_out", "pending", etc).
     const stMap = {
@@ -7440,8 +7440,20 @@ async function renderTeam() {
           '</div>' +
         '</div>' +
         actions +
-        // Historik-expand (Fas 6 §6.6 SSOT-integration på team-bookings)
-        '<div style="margin-top:6px"><button onclick="toggleTeamBookingTimeline(\'' + b.id + '\')" id="ttl-btn-' + b.id + '" style="padding:4px 10px;background:transparent;color:var(--m);border:1px solid var(--gray-200);border-radius:6px;font-size:.7rem;cursor:pointer;font-family:inherit">📜 Historik</button></div>' +
+        // VD-detaljer-expand (full insyn i bokningen)
+        '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
+          '<button onclick="toggleTeamBookingDetails(\'' + b.id + '\')" id="dt-btn-' + b.id + '" style="padding:4px 10px;background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;border-radius:6px;font-size:.7rem;cursor:pointer;font-family:inherit;font-weight:600">📋 Detaljer</button>' +
+          '<button onclick="toggleTeamBookingTimeline(\'' + b.id + '\')" id="ttl-btn-' + b.id + '" style="padding:4px 10px;background:transparent;color:var(--m);border:1px solid var(--gray-200);border-radius:6px;font-size:.7rem;cursor:pointer;font-family:inherit">📜 Historik</button>' +
+        '</div>' +
+        // Detaljer-expand (default dolt)
+        '<div id="dt-' + b.id + '" style="display:none;margin-top:8px;padding:10px 12px;background:#F9FAFB;border-radius:8px;font-size:.78rem;line-height:1.7">' +
+          '<div><strong>📅 Datum:</strong> ' + escHtml(b.booking_date || '–') + ' · <strong>🕐 Tid:</strong> ' + (b.booking_time || '').slice(0,5) + ' · <strong>⏱️</strong> ' + (b.booking_hours || '–') + 'h</div>' +
+          '<div><strong>📍 Adress:</strong> ' + escHtml(b.customer_address || '–') + '</div>' +
+          (b.customer_phone ? '<div><strong>📞 Telefon:</strong> <a href="tel:' + escHtml(b.customer_phone) + '" style="color:var(--g);text-decoration:none">' + escHtml(b.customer_phone) + '</a></div>' : '') +
+          (b.customer_email ? '<div><strong>📧 Email:</strong> <a href="mailto:' + escHtml(b.customer_email) + '" style="color:var(--g);text-decoration:none">' + escHtml(b.customer_email) + '</a></div>' : '') +
+          (b.key_info ? '<div style="margin-top:6px;padding:6px 10px;background:#FEF3C7;border-radius:6px"><strong>🔑 Tillträde:</strong> ' + escHtml(b.key_info) + '</div>' : '') +
+          (b.notes ? '<div style="margin-top:6px;padding:6px 10px;background:#E1F5EE;border-radius:6px"><strong>📝 Speciella önskemål:</strong> ' + escHtml(b.notes) + '</div>' : '') +
+        '</div>' +
         '<div id="ttl-' + b.id + '" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-200)"></div>' +
       '</div>';
     }
