@@ -384,13 +384,11 @@ async function init() {
     // nummer via owner_cleaner_id → cleaners.phone). Hardcoda ALDRIG Spick-nr
     // på företagsprofiler — det förvirrar kunder + skapar 070-650-51-53-spam.
     var co_phone = '';
-    if (co.owner_cleaner_id) {
-      try {
-        var ownRes = await fetch(SU + '/rest/v1/cleaners?id=eq.' + encodeURIComponent(co.owner_cleaner_id) + '&select=phone', { headers: H });
-        var ownRows = await ownRes.json();
-        co_phone = (Array.isArray(ownRows) && ownRows[0] && ownRows[0].phone) ? String(ownRows[0].phone) : '';
-      } catch (_) { /* fallback: ingen knapp */ }
-    }
+    try {
+      var phRes = await fetch(SU + '/rest/v1/v_company_owner_phone?company_id=eq.' + encodeURIComponent(co.id) + '&select=owner_phone', { headers: H });
+      var phRows = await phRes.json();
+      co_phone = (Array.isArray(phRows) && phRows[0] && phRows[0].owner_phone) ? String(phRows[0].owner_phone) : '';
+    } catch (_) { /* fallback: ingen knapp */ }
 
     // ── 1. DYNAMIC ACCENT COLOR ──
     // Zivar 2026-04-26: synka pristext + alla accent-element med VD:s
