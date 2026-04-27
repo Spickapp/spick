@@ -25,10 +25,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
 import { createLogger } from "../_shared/log.ts";
+import { requireCronAuth } from "../_shared/cron-auth.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
 
 const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -77,15 +77,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    // ── Auth: CRON_SECRET ──
-    const authHeader = req.headers.get("Authorization");
-    const providedSecret = authHeader?.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : req.headers.get("x-cron-secret");
-
-    if (!providedSecret || providedSecret !== CRON_SECRET) {
-      return json(CORS, 401, { error: "unauthorized" });
-    }
+    // ── Auth: shared requireCronAuth (accepterar både CRON_SECRET +
+    // SERVICE_ROLE_KEY från Bearer ELLER x-cron-secret-header).
+    // Inline-checken bröts efter workflow-header-fix 2026-04-27.
+    const auth = requireCronAuth(req, CORS);
+    if (!auth.ok) return auth.response!;
 
     // ── Fetch öppna disputes ──
     const { data: openDisputes, error: fetchErr } = await sb
