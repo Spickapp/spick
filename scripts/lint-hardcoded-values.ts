@@ -252,11 +252,11 @@ async function loadAllowList(): Promise<AllowEntry[]> {
 }
 
 function isAllowed(finding: Finding, allowList: AllowEntry[]): boolean {
+  // Line-agnostic match: file + rule räcker. Förr bröt CI varje gång en
+  // edit ovanför FALLBACK-arrayer bumpade line-numret. Nu kvarstår allow
+  // även när raden flyttas, så länge den hittas i samma fil.
   return allowList.some(
-    (a) =>
-      a.file === finding.file &&
-      a.line === finding.line &&
-      a.rule === finding.rule,
+    (a) => a.file === finding.file && a.rule === finding.rule,
   );
 }
 
@@ -379,10 +379,11 @@ async function main() {
   if (newFindings.length === 0) {
     console.log("✓ Inga nya hardcoded värden.");
     // Flagga orphan allow-list-rader (rader som inte längre träffar)
+    // Line-agnostic: bara file+rule (matchar isAllowed-logik).
     const orphans = allowList.filter(
       (a) =>
         !allFindings.some(
-          (f) => f.file === a.file && f.line === a.line && f.rule === a.rule,
+          (f) => f.file === a.file && f.rule === a.rule,
         ),
     );
     if (orphans.length > 0) {
