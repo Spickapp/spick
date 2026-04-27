@@ -161,7 +161,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (52 st)
+## GitHub Actions workflows (53 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -200,6 +200,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/playwright-smoke.yml`
 - `.github/workflows/playwright-stripe-e2e.yml`
 - `.github/workflows/preference-learn-favorite.yml`
+- `.github/workflows/quality-check-cron.yml`
 - `.github/workflows/rating-reminder.yml`
 - `.github/workflows/run-migrations.yml`
 - `.github/workflows/schema-drift-check.yml`
