@@ -62,9 +62,24 @@ export function requireCronAuth(req: Request, corsHeaders: Record<string, string
   );
 
   if (!isValid) {
+    // Debug-info för att diagnosera auth-mismatch (no secret-values exposed —
+    // bara längder + matchning-status så vi kan se vad som inte stämmer).
+    const debug = {
+      error: "unauthorized",
+      debug: {
+        provided_via: authHeader?.startsWith("Bearer ") ? "Authorization" : (req.headers.get("x-cron-secret") ? "x-cron-secret" : "none"),
+        provided_len: providedSecret?.length || 0,
+        cron_secret_set: !!CRON_SECRET,
+        cron_secret_len: CRON_SECRET.length,
+        service_role_set: !!SERVICE_ROLE_KEY,
+        service_role_len: SERVICE_ROLE_KEY.length,
+        matched_cron: CRON_SECRET && providedSecret === CRON_SECRET,
+        matched_service: SERVICE_ROLE_KEY && providedSecret === SERVICE_ROLE_KEY,
+      },
+    };
     return {
       ok: false,
-      response: new Response(JSON.stringify({ error: "unauthorized" }), {
+      response: new Response(JSON.stringify(debug), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }),
