@@ -87,10 +87,10 @@ serve(async (req) => {
       ? `Du är Spick admin-assistent. Hjälp ägaren med bokningar, städare och statistik.${contextData}`
       : SYSTEM_PROMPT;
 
-    // Audit-fix 2026-04-27: bytte från claude-sonnet-4-20250514 (deprecated)
-    // till claude-haiku-4-5-20251001 (snabb + billig + kapabel för chat-context).
-    // För admin-mode med komplex data: använd claude-sonnet-4-6.
-    const model = mode === "admin" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
+    // Audit-fix 2026-04-27: använd stable modell-IDs som garanterat finns
+    // tillgängliga på alla Anthropic-konton. Newer haiku-4-5 kan kräva
+    // model-access-approval. claude-3-5-haiku/sonnet är stabila och billiga.
+    const model = mode === "admin" ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
