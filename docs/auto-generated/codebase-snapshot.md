@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (110 st)
+## Edge Functions (112 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -91,9 +91,11 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `og-prerender` | ═══════════════════════════════════════════════════════════════ SPICK – og-prerender (Sprint B1, 2026-04-26) |
 | `places-autocomplete` |  |
 | `preference-learn-favorite` | preference-learn-favorite — Fas 5 §5.5b ═══════════════════════════════════════════════════════════════ |
+| `proof-photo-upload` | ═══════════════════════════════════════════════════════════════ SPICK – proof-photo-upload (Tier A.2) |
 | `public-auth-exchange` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-exchange (Fas 1.2) |
 | `public-auth-link` | ═══════════════════════════════════════════════════════════════ SPICK – public-auth-link (Fas 1.2) |
 | `push` | SPICK – Push Notifications med VAPID |
+| `quality-check-ai` | ═══════════════════════════════════════════════════════════════ SPICK – quality-check-ai (Tier A.4) |
 | `rating-reminder-cron` |  |
 | `reconcile-payouts` | Fas 1.9: Edge Function for reconciliation cron Primarkalla: docs/architecture/fas-1-8-reconciliation-design.md |
 | `refund-booking` | ═══════════════════════════════════════════════════════════════ SPICK – refund-booking (Fas 8 §8.11) |
@@ -210,7 +212,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/visual-regression.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (172 st)
+## Migrations (173 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
