@@ -1,11 +1,15 @@
-name: Auto-remind (2 ggr/dag)
-# Etapp 1 IO-fix 2026-04-25: ändrat från 30-min till 2 ggr/dag. Spara
-# ~95% IO. Påminnelser går ut max 6-8 h efter optimal tidpunkt — fortfarande
-# nyttigt för 24h-före-bokning-påminnelser.
+name: Auto-remind (var 15 min)
+# 2026-04-27 (Farhad-mandate): bytt från 2 ggr/dag → var 15 min.
+# Tidigare 2 ggr/dag betydde att 90-min auto-timeout kunde vänta upp
+# till 6h innan trigger. För live-bokningar (kunden väntar nu) måste
+# auto-cancel + refund ske inom minuter, inte timmar.
+# IO-impakt: ~96 körningar/dag istället för 2. Acceptabelt — varje
+# körning idle-loopar genom ~5 bokningar och returnerar på <1s om inget
+# att göra. Idempotency-keys på Stripe-refund + reminders_sent[]-array
+# på bokningen säkrar att inget skickas/refundas dubbelt.
 'on':
   schedule:
-    - cron: '0 9 * * *'
-    - cron: '0 15 * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch: {}
 
 jobs:
