@@ -133,21 +133,42 @@ serve(async (req) => {
         cleaner_phone: targetCleaner?.phone || null,
       }).eq("id", booking_id);
 
-      // Email to customer
+      // Multi-kanal till kund: Email + SMS + push (parallellt, fail-safe)
+      const cleanerDisplayName = cleaner.full_name || "Din städare";
+      const dateLong = formatStockholmDateLong(bookingDate);
+      const timeShort = bookingTime ? bookingTime.slice(0,5) : "";
+
+      // Email
       if (customerEmail) {
         const html = wrap(`
           <h2>Din städning är bekräftad! ✅</h2>
           <p>Hej ${esc(customerName)},</p>
-          <p><strong>${esc(cleaner.full_name)}</strong> har bekräftat din städning!</p>
+          <p><strong>${esc(cleanerDisplayName)}</strong> har bekräftat din städning!</p>
           ${card([
-            ["Datum", formatStockholmDateLong(bookingDate)],
+            ["Datum", dateLong],
             ["Tid", bookingTime || "Se bekräftelse"],
             ["Tjänst", `${esc(serviceType)}, ${bookingHours}h`],
-            ["Städare", esc(cleaner.full_name)],
+            ["Städare", esc(cleanerDisplayName)],
           ])}
           <p>Vi ses! Om du behöver ändra eller avboka, kontakta oss på <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> minst 24h innan.</p>
         `);
         await sendEmail(customerEmail, "Din städning är bekräftad! ✅", html);
+      }
+
+      // SMS + push via notify() — saknades tidigare i accept-flow (2026-04-27 fix)
+      if (booking.customer_phone || customerEmail) {
+        await notify({
+          email: customerEmail || undefined,
+          phone: booking.customer_phone || undefined,
+          sms_message: `Spick: Din städning ${dateLong}${timeShort ? " kl " + timeShort : ""} är bekräftad av ${cleanerDisplayName}. Vi ses!`,
+          push_type: "booking_confirmed_by_cleaner",
+          push_data: {
+            cleaner_name: cleanerDisplayName,
+            date: dateLong,
+            time: timeShort,
+            booking_id,
+          },
+        });
       }
 
       // Email to admin
