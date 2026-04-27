@@ -195,6 +195,19 @@ async function load() {
     rut: raw.rut_amount > 0,
     stripe_payment_intent: raw.stripe_payment_intent,
   };
+
+  // ── SMART-ETA (2026-04-27): supplementera med ETA-kolumner ──
+  // booking_confirmation-vyn exponerar inte cleaner_on_way_at/cleaner_eta_at etc.
+  // Hämta via authenticated SDK (RLS slipper anon igenom om customer-JWT matchar).
+  // Faller tyst tillbaka för anon-magic-link (då visas ingen ETA-banner).
+  try {
+    const etaRes = await SB.from('bookings')
+      .select('cleaner_on_way_at,cleaner_eta_at,cleaner_eta_minutes,manual_delay_minutes,delay_status,predicted_arrival_at')
+      .eq('id', b.id).limit(1);
+    if (etaRes.data && etaRes.data[0]) {
+      Object.assign(b, etaRes.data[0]);
+    }
+  } catch (e) { /* ignorera — kund ej inloggad eller RLS blockerar */ }
   
   // Hämta städare om tilldelad
   let cleaner = null;
@@ -243,11 +256,25 @@ async function load() {
     if (cancelBtn) cancelBtn.style.display = isPaid && !isPast ? 'inline-block' : 'none';
   }
   
-  // Real-time polling var 30s om städning pågår idag
+  // Real-time polling var 30s om städning pågår idag ELLER städare på väg
   const dateTime = new Date((b.scheduled_date||b.date)+'T'+(b.time||'09:00')+':00');
   const isToday = new Date().toDateString() === dateTime.toDateString();
-  if (isToday && b.payment_status === 'paid' && b.status !== 'klar') {
-    setInterval(load, 30000);
+  const cleanerEnRoute = !!b.cleaner_on_way_at;
+  if (isToday && b.payment_status === 'paid' && b.status !== 'klar' &&
+      (b.status === 'pågår' || cleanerEnRoute)) {
+    if (!window._etaPollHandle) window._etaPollHandle = setInterval(load, 30000);
+  }
+  // Live "min kvar"-räknare (klient-side) var 60s — uppdaterar bara texten,
+  // inte hela view (sparar nätverk + undviker DOM-flicker).
+  if (isToday && cleanerEnRoute && b.cleaner_eta_at) {
+    if (window._etaCountdownHandle) clearInterval(window._etaCountdownHandle);
+    window._etaCountdownHandle = setInterval(function() {
+      var el = document.getElementById('eta-min-kvar');
+      if (!el) return;
+      var msLeft = new Date(b.cleaner_eta_at).getTime() - Date.now();
+      var minLeft = Math.max(0, Math.round(msLeft / 60000));
+      el.textContent = minLeft + ' min kvar';
+    }, 60000);
   }
 }
 
@@ -303,6 +330,33 @@ const dateLabel = isToday ? 'Idag' : isTomorrow ? 'Imorgon' : d2;
   <div class="row"><span class="lbl">🧹 Material</span><span class="val">${getMaterialText(b.service)}</span></div>
   ${b.customer_notes ? `<div class="row"><span class="lbl">📝 Dina noteringar</span><span class="val">${escHtml(b.customer_notes)}</span></div>` : ''}
 </div>
+
+<!-- Smart-ETA: städare på väg (visas innan "pågår") -->
+${isToday && b.cleaner_on_way_at && b.status !== 'pågår' && b.status !== 'klar' ? (function() {
+  var since = new Date(b.cleaner_on_way_at).toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
+  var etaTxt = b.cleaner_eta_at ? new Date(b.cleaner_eta_at).toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' }) : '–';
+  var minLeft = b.cleaner_eta_at ? Math.max(0, Math.round((new Date(b.cleaner_eta_at).getTime() - Date.now()) / 60000)) : (b.cleaner_eta_minutes != null ? b.cleaner_eta_minutes : 0);
+  var noShow = b.delay_status === 'no_show_risk';
+  var delayNote = (b.manual_delay_minutes && b.manual_delay_minutes > 0)
+    ? '<div style="font-size:.78rem;margin-top:6px;color:#FEF3C7">⚠️ Försenad ca ' + b.manual_delay_minutes + ' min</div>' : '';
+  if (noShow) {
+    return '<div class="live-banner" style="background:linear-gradient(135deg,#DC2626,#991B1B)">' +
+      '<div class="live-dot" style="background:#FCA5A5"></div>' +
+      '<div>' +
+        '<div style="font-weight:700;font-size:.95rem">Städaren har inte hörts av</div>' +
+        '<div style="font-size:.78rem;opacity:.9;margin-top:4px">Vi har inte kunnat nå ' + escHtml(cleaner ? cleaner.full_name : 'städaren') + ' — vår support hjälper dig. Kontakta hello@spick.se vid behov.</div>' +
+      '</div></div>';
+  }
+  return '<div class="live-banner">' +
+    '<div class="live-dot"></div>' +
+    '<div style="flex:1">' +
+      '<div style="font-weight:700;font-size:.95rem">🚗 ' + escHtml(cleaner ? cleaner.full_name : (b.cleaner_name || 'Din städare')) + ' är på väg</div>' +
+      '<div style="font-size:.78rem;opacity:.85;margin-top:2px">På väg sedan kl ' + escHtml(since) + '</div>' +
+      '<div style="font-size:1.1rem;font-weight:700;margin-top:8px">⏱️ Beräknad ankomst kl ' + escHtml(etaTxt) + '</div>' +
+      '<div id="eta-min-kvar" style="font-size:.85rem;opacity:.9;margin-top:2px">' + minLeft + ' min kvar</div>' +
+      delayNote +
+    '</div></div>';
+})() : ''}
 
 <!-- Live-status om städning pågår idag -->
 ${isToday && b.status === 'pågår' ? `

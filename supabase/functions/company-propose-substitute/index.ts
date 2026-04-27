@@ -361,6 +361,129 @@ serve(async (req) => {
         }).eq("id", booking_id);
       }
 
+      // ── PREDICTIVE ETA: kolla om städaren har tidigare jobb samma dag ─────
+      // Resultat sparas i predicted_arrival_at + cleaner_eta_* för att kund
+      // i booking-confirmation/min-bokning ser realistisk ankomsttid.
+      // Wrappad i try/catch — får ALDRIG blockera tilldelningen.
+      let predictedArrival: Date | null = null;
+      let predictedEtaMinutes: number | null = null;
+      try {
+        if (booking.customer_lat != null && booking.customer_lng != null && booking.booking_time && booking.booking_date) {
+          const { data: priorBookings } = await sb
+            .from("bookings")
+            .select("id, booking_date, booking_time, booking_hours, customer_lat, customer_lng")
+            .eq("cleaner_id", newCleaner.id)
+            .eq("booking_date", booking.booking_date)
+            .neq("id", booking_id)
+            .in("status", ["confirmed", "bekräftad", "pending_confirmation"])
+            .order("booking_time", { ascending: true });
+
+          if (priorBookings && priorBookings.length > 0) {
+            // booking_time format: "HH:MM:SS" eller "HH:MM"
+            const toMinutes = (t: string) => {
+              const [h, m] = t.split(":").map(Number);
+              return h * 60 + m;
+            };
+            const thisStartMin = toMinutes(booking.booking_time);
+            // Hitta den prior_booking som SLUTAR närmast (men före) detta jobbs start
+            let bestPrior: typeof priorBookings[0] | null = null;
+            let bestEndMin = -1;
+            for (const p of priorBookings) {
+              if (!p.booking_time || !p.booking_hours || p.customer_lat == null || p.customer_lng == null) continue;
+              const startMin = toMinutes(p.booking_time);
+              const endMin = startMin + Math.round((Number(p.booking_hours) || 0) * 60);
+              if (endMin < thisStartMin && endMin > bestEndMin) {
+                bestPrior = p;
+                bestEndMin = endMin;
+              }
+            }
+
+            if (bestPrior) {
+              // OSRM driving time, fallback haversine × 1.4 / 50 km/h
+              const lat1 = Number(bestPrior.customer_lat);
+              const lng1 = Number(bestPrior.customer_lng);
+              const lat2 = Number(booking.customer_lat);
+              const lng2 = Number(booking.customer_lng);
+
+              const haversineKm = (a1: number, o1: number, a2: number, o2: number) => {
+                const R = 6371;
+                const dLat = (a2 - a1) * Math.PI / 180;
+                const dLng = (o2 - o1) * Math.PI / 180;
+                const x = Math.sin(dLat / 2) ** 2 + Math.cos(a1 * Math.PI / 180) * Math.cos(a2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+                return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+              };
+
+              let etaMinutes = 0;
+              let distanceKm = haversineKm(lat1, lng1, lat2, lng2);
+              try {
+                const ctrl = new AbortController();
+                const timeout = setTimeout(() => ctrl.abort(), 5000);
+                const osrmRes = await fetch(
+                  `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=false`,
+                  { signal: ctrl.signal }
+                );
+                clearTimeout(timeout);
+                if (osrmRes.ok) {
+                  const osrmJson = await osrmRes.json();
+                  const route = osrmJson?.routes?.[0];
+                  if (route?.duration != null) {
+                    etaMinutes = Math.round(route.duration / 60);
+                    if (route.distance != null) distanceKm = route.distance / 1000;
+                  }
+                }
+              } catch (_osrmErr) {
+                // OSRM down/timeout → fallback nedan
+              }
+              if (etaMinutes === 0) {
+                etaMinutes = Math.round(distanceKm * 1.4 / 50 * 60);
+              }
+
+              // predicted_arrival_at = max(detta jobbs start, prior_end + eta)
+              const priorEndAbsMin = bestEndMin + etaMinutes;
+              const arrivalMin = Math.max(thisStartMin, priorEndAbsMin);
+              const arrivalH = Math.floor(arrivalMin / 60);
+              const arrivalM = arrivalMin % 60;
+              // Bygg TIMESTAMPTZ från booking_date + arrivalMin (i Stockholm-tid via offset-naive ISO)
+              const arrivalISO = `${booking.booking_date}T${String(arrivalH).padStart(2, "0")}:${String(arrivalM).padStart(2, "0")}:00+02:00`;
+              predictedArrival = new Date(arrivalISO);
+              predictedEtaMinutes = etaMinutes;
+
+              await sb.from("bookings").update({
+                predicted_arrival_at: predictedArrival.toISOString(),
+                cleaner_eta_minutes: etaMinutes,
+                cleaner_eta_distance_km: Number(distanceKm.toFixed(2)),
+                cleaner_eta_source: "predictive",
+              }).eq("id", booking_id);
+
+              log("info", "company-propose-substitute", "Predictive ETA set", {
+                booking_id, prior_booking_id: bestPrior.id, eta_minutes: etaMinutes,
+                distance_km: Number(distanceKm.toFixed(2)), arrival: arrivalISO,
+              });
+            }
+          }
+        }
+      } catch (etaErr) {
+        console.warn("[predictive-eta] failed (non-blocking):", (etaErr as Error).message);
+      }
+
+      // Bygg ev. ETA-not till kundmejl/SMS (om arrival > start + 5 min)
+      const bookingStartMinNum = (() => {
+        const [h, m] = (booking.booking_time || "00:00").split(":").map(Number);
+        return h * 60 + m;
+      })();
+      const arrivalDriftMin = predictedArrival
+        ? Math.round((predictedArrival.getTime() - new Date(`${booking.booking_date}T${booking.booking_time}+02:00`).getTime()) / 60000)
+        : 0;
+      const showEtaNote = predictedArrival && arrivalDriftMin > 5;
+      const etaTimeStr = predictedArrival
+        ? `${String(predictedArrival.getUTCHours() + 2).padStart(2, "0")}:${String(predictedArrival.getUTCMinutes()).padStart(2, "0")}`
+        : "";
+      const etaNoteHtml = showEtaNote
+        ? `<p style="background:#FFF8E1;border-left:4px solid #F4A100;padding:10px 14px;border-radius:4px;margin:14px 0">Din städare kommer ca <strong>${esc(etaTimeStr)}</strong> (efter annat städuppdrag).</p>`
+        : "";
+      const etaNoteSms = showEtaNote ? ` Kommer ca ${etaTimeStr} (efter annat uppdrag).` : "";
+      void bookingStartMinNum; // unused-helper-marker
+
       // Info-mejl till kund (inget att godkänna)
       if (booking.customer_email) {
         const infoEmailLink = await generateMagicShortUrl({
@@ -379,6 +502,7 @@ serve(async (req) => {
             ["Datum & tid", `${formatStockholmDate(booking.booking_date)} kl ${esc(booking.booking_time)}`],
             ["Pris", `${booking.total_price} kr (oförändrat)`],
           ])}
+          ${etaNoteHtml}
           <p>Detta skedde enligt dina preferenser för automatisk hantering. Du kan ändra detta i dina kontoinställningar.</p>
           <p><a href="${infoEmailLink}">Se din bokning →</a></p>
         `));
@@ -387,7 +511,7 @@ serve(async (req) => {
         await notify({
           email: booking.customer_email,
           phone: booking.customer_phone || undefined,
-          sms_message: `Spick: Din städning ${formatStockholmDate(booking.booking_date)} utförs av ${newCleaner.full_name} (ersättare). Oförändrat pris och tid.`,
+          sms_message: `Spick: Din städning ${formatStockholmDate(booking.booking_date)} utförs av ${newCleaner.full_name} (ersättare). Oförändrat pris och tid.${etaNoteSms}`,
           push_type: "auto_delegated",
           push_data: {
             cleaner_name: newCleaner.full_name,

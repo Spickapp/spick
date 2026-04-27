@@ -96,7 +96,11 @@ export type BookingEventType =
   | "recurring_resumed"
   | "recurring_cancelled"
   // Ändring
-  | "schedule_changed";
+  | "schedule_changed"
+  // Smart-ETA (2026-04-27 — cleaner-eta-update + eta-monitor)
+  | "cleaner_on_the_way"      // städare tryckte "På väg"
+  | "cleaner_delayed"          // manual_delay_minutes uppdaterat
+  | "cleaner_arrived";         // checkin via "Anlänt"-knapp eller GPS
 
 /**
  * Vem som utlöste eventet. `system` = cron/trigger/webhook utan explicit
@@ -156,6 +160,10 @@ export const EVENT_METADATA: Record<BookingEventType, string[]> = {
   recurring_cancelled: ["subscription_id", "cancelled_by", "reason"],
   // Ändring
   schedule_changed: ["from_date", "from_time", "to_date", "to_time", "changed_by"],
+  // Smart-ETA
+  cleaner_on_the_way: ["cleaner_id", "eta_minutes", "distance_km", "source", "eta_at"],
+  cleaner_delayed: ["cleaner_id", "manual_delay_minutes", "new_eta_at", "delay_status"],
+  cleaner_arrived: ["cleaner_id", "arrived_at"],
 };
 
 // ============================================================

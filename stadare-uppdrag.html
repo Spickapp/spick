@@ -177,6 +177,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="status-btns" id="statusBtns"></div>
   </div>
 
+  <!-- ═══ SMART-ETA (2026-04-27): "På väg" + manuell försening ═══ -->
+  <div class="status-card" id="eta-card">
+    <h3>🚗 På väg till kunden</h3>
+    <p>Tryck när du lämnar för uppdraget — kunden får ETA via SMS och ser realtidsuppdatering.</p>
+    <div id="eta-predicted-banner" style="display:none;background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
+    <div id="eta-status-display" style="display:none;background:#f0fff8;border:2px solid #0F6E56;border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
+    <button id="eta-on-way-btn" class="confirm-btn" style="width:100%;background:#0F6E56;color:#fff;padding:14px;border-radius:12px;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-top:0" onclick="markOnTheWay(BOOKING_ID, this)">🚗 Jag är på väg</button>
+    <button id="eta-delay-btn" style="display:none;width:100%;background:#fff;color:#92400E;padding:12px;border-radius:12px;border:2px solid #F59E0B;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit" onclick="showDelayPicker(BOOKING_ID)">⚠️ Försenad?</button>
+    <div id="eta-delay-picker" style="display:none;margin-top:10px;padding:12px;background:#FFFBEB;border-radius:10px">
+      <div style="font-size:12px;color:#78350F;margin-bottom:8px;font-weight:600">Hur mycket sen?</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <button class="eta-delay-opt" onclick="submitManualDelay(BOOKING_ID, 10)" style="padding:10px 6px;background:#fff;border:1.5px solid #F59E0B;color:#92400E;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+10 min</button>
+        <button class="eta-delay-opt" onclick="submitManualDelay(BOOKING_ID, 20)" style="padding:10px 6px;background:#fff;border:1.5px solid #F59E0B;color:#92400E;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+20 min</button>
+        <button class="eta-delay-opt" onclick="submitManualDelay(BOOKING_ID, 30)" style="padding:10px 6px;background:#fff;border:1.5px solid #F59E0B;color:#92400E;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+30 min</button>
+        <button class="eta-delay-opt" onclick="submitManualDelay(BOOKING_ID, null)" style="padding:10px 6px;background:#fff;border:1.5px solid #F59E0B;color:#92400E;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Annat</button>
+      </div>
+    </div>
+    <div id="eta-error" style="display:none;color:#dc2626;font-size:12px;margin-top:8px"></div>
+  </div>
+
   <!-- ═══ PHASE 1.1: CLOCK IN/OUT ═══ -->
   <div class="status-card" id="clock-card">
     <h3>🕐 Klocka in & ut</h3>
@@ -905,7 +925,185 @@ async function loadBooking() {
   ).then(r => r.json()).catch(() => []);
   completedStatuses = (logs || []).map(l => l.status);
   renderStatusBtns();
+  renderEtaState(booking);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SMART-ETA (2026-04-27) — markOnTheWay / showDelayPicker / submitManualDelay
+// ═══════════════════════════════════════════════════════════════
+const ETA_EF_URL = SUPA_URL + '/functions/v1/cleaner-eta-update';
+
+function _fmtHHMM(iso) {
+  if (!iso) return '–';
+  try {
+    return new Date(iso).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return '–'; }
+}
+
+function _getAuthToken() {
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    return raw ? JSON.parse(raw)?.access_token : null;
+  } catch (e) { return null; }
+}
+
+function _showEtaError(msg) {
+  var err = document.getElementById('eta-error');
+  if (!err) return;
+  err.textContent = '⚠️ ' + msg;
+  err.style.display = 'block';
+  setTimeout(function() { err.style.display = 'none'; }, 6000);
+}
+
+function renderEtaState(b) {
+  if (!b) return;
+  var predBanner = document.getElementById('eta-predicted-banner');
+  var statusEl = document.getElementById('eta-status-display');
+  var onWayBtn = document.getElementById('eta-on-way-btn');
+  var delayBtn = document.getElementById('eta-delay-btn');
+  if (!onWayBtn || !statusEl) return;
+
+  // Banner — VD/predictive arrival från tidigare jobb
+  if (b.predicted_arrival_at && !b.cleaner_on_way_at) {
+    predBanner.textContent = '⏰ Du är väntad ca ' + _fmtHHMM(b.predicted_arrival_at) + '. Tryck "På väg" när du lämnar förra plats.';
+    predBanner.style.display = 'block';
+  } else {
+    predBanner.style.display = 'none';
+  }
+
+  // Stadier:
+  // 1) Inte på väg → visa "Jag är på väg"-knappen
+  // 2) På väg     → visa status + delay-button
+  // 3) Anlänt     → dölj allt, lämna åt clock/status-flow
+  if (!b.cleaner_on_way_at) {
+    onWayBtn.style.display = 'block';
+    onWayBtn.disabled = false;
+    delayBtn.style.display = 'none';
+    statusEl.style.display = 'none';
+    return;
+  }
+  onWayBtn.style.display = 'none';
+  var since = _fmtHHMM(b.cleaner_on_way_at);
+  var eta = _fmtHHMM(b.cleaner_eta_at);
+  var delayLine = '';
+  if (b.manual_delay_minutes && b.manual_delay_minutes > 0) {
+    delayLine = '<div style="margin-top:6px;color:#92400E;font-weight:600">⚠️ Försening registrerad: +' + b.manual_delay_minutes + ' min</div>';
+  }
+  statusEl.innerHTML =
+    '<div style="font-weight:700;color:#0F6E56">🚗 På väg sedan kl ' + since + '</div>' +
+    '<div style="margin-top:4px">⏱️ Beräknad ankomst: <strong>kl ' + eta + '</strong>' +
+    (b.cleaner_eta_minutes != null ? ' (' + b.cleaner_eta_minutes + ' min)' : '') + '</div>' +
+    delayLine;
+  statusEl.style.display = 'block';
+  delayBtn.style.display = 'block';
+}
+
+async function markOnTheWay(bookingId, btnEl) {
+  if (!bookingId) return;
+  var origText = btnEl ? btnEl.textContent : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '📍 Hämtar position...'; }
+  var coords = null;
+  try {
+    if (navigator.geolocation) {
+      coords = await new Promise(function(resolve) {
+        navigator.geolocation.getCurrentPosition(
+          function(p) { resolve({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+          function() { resolve(null); },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      });
+    }
+  } catch (e) { coords = null; }
+
+  if (btnEl) btnEl.textContent = '⏳ Beräknar ETA...';
+
+  var token = _getAuthToken();
+  if (!token) {
+    _showEtaError('Du är inte inloggad. Logga in och försök igen.');
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = origText; }
+    return;
+  }
+
+  var body = { booking_id: bookingId, action: 'on_my_way' };
+  if (coords) { body.cleaner_lat = coords.lat; body.cleaner_lng = coords.lng; }
+
+  try {
+    var res = await fetch(ETA_EF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json().catch(function() { return {}; });
+    if (!res.ok) throw new Error(data.error || data.message || ('HTTP ' + res.status));
+
+    // Mappa svaret till booking-state och rendera om
+    if (booking) {
+      booking.cleaner_on_way_at = data.cleaner_on_way_at || new Date().toISOString();
+      booking.cleaner_eta_at = data.cleaner_eta_at || booking.cleaner_eta_at;
+      booking.cleaner_eta_minutes = (data.cleaner_eta_minutes != null) ? data.cleaner_eta_minutes : booking.cleaner_eta_minutes;
+    }
+    renderEtaState(booking);
+    sendMessage('🚗 Jag är på väg! Beräknad ankomst kl ' + _fmtHHMM(data.cleaner_eta_at), 'system');
+    logActivity('eta_on_my_way', { booking_id: bookingId, eta_minutes: data.cleaner_eta_minutes });
+  } catch (e) {
+    _showEtaError('Kunde inte registrera "På väg": ' + (e.message || 'okänt fel'));
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = origText; }
+  }
+}
+
+function showDelayPicker(bookingId) {
+  var p = document.getElementById('eta-delay-picker');
+  if (p) p.style.display = (p.style.display === 'block' ? 'none' : 'block');
+}
+
+async function submitManualDelay(bookingId, minutes) {
+  if (!bookingId) return;
+  if (minutes == null) {
+    var v = window.prompt('Hur många minuter försenad? (1–240)', '15');
+    if (v == null) return;
+    minutes = parseInt(v, 10);
+    if (!isFinite(minutes) || minutes < 1 || minutes > 240) {
+      _showEtaError('Ange ett tal mellan 1 och 240.');
+      return;
+    }
+  }
+
+  var token = _getAuthToken();
+  if (!token) { _showEtaError('Du är inte inloggad.'); return; }
+
+  // Disable picker temporarily
+  var picker = document.getElementById('eta-delay-picker');
+  var btns = picker ? picker.querySelectorAll('button') : [];
+  btns.forEach(function(b) { b.disabled = true; });
+
+  try {
+    var res = await fetch(ETA_EF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ booking_id: bookingId, action: 'manual_delay', manual_delay_minutes: minutes })
+    });
+    var data = await res.json().catch(function() { return {}; });
+    if (!res.ok) throw new Error(data.error || data.message || ('HTTP ' + res.status));
+    if (booking) {
+      booking.cleaner_eta_at = data.cleaner_eta_at || booking.cleaner_eta_at;
+      booking.cleaner_eta_minutes = (data.cleaner_eta_minutes != null) ? data.cleaner_eta_minutes : booking.cleaner_eta_minutes;
+      booking.manual_delay_minutes = minutes;
+    }
+    renderEtaState(booking);
+    if (picker) picker.style.display = 'none';
+    sendMessage('⚠️ Jag är försenad ca ' + minutes + ' min — ny ankomst kl ' + _fmtHHMM(data.cleaner_eta_at), 'system');
+    logActivity('eta_manual_delay', { booking_id: bookingId, minutes: minutes });
+  } catch (e) {
+    _showEtaError('Kunde inte registrera försening: ' + (e.message || 'okänt fel'));
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; });
+  }
+}
+
+// Window-attach so inline onclick handlers work even om script-ordning ändras
+window.markOnTheWay = markOnTheWay;
+window.showDelayPicker = showDelayPicker;
+window.submitManualDelay = submitManualDelay;
 
 // ═══════════════════════════════════════════════════════════════
 // PHASE 1.1 — CLOCK IN/OUT (GPS-verifierad)

@@ -7432,7 +7432,20 @@ async function renderTeam() {
                     return '<div style="font-size:.78rem;color:var(--m);margin-top:4px">brutto ' + Math.round(bp.gross) + ' kr</div>' +
                            '<div style="font-size:.68rem;color:var(--m);margin-top:1px;font-style:italic">ingen utbetalning</div>';
                   }
-                  var earn = Math.round(bp.gross * getKeepRate());
+                  var keepRate = getKeepRate();
+                  var earn = Math.round(bp.gross * keepRate);
+                  // RUT-split: del 1 (efter städning, från Stripe) + del 2 (efter SKV-godkännande, ~6v)
+                  if (bp.hasRut) {
+                    var earnNow = Math.round(bp.net * keepRate);
+                    var earnRut = Math.round(bp.rut * keepRate);
+                    return '<div style="font-size:.88rem;font-weight:700;color:var(--g);margin-top:4px">' + earn + ' kr <span style="font-size:.62rem;color:var(--m);font-weight:500">totalt</span></div>' +
+                           '<div style="font-size:.7rem;color:var(--m);margin-top:3px;line-height:1.5">' +
+                             '<div>💳 <strong style="color:#0F6E56">' + earnNow + ' kr</strong> efter städning</div>' +
+                             '<div>📋 <strong style="color:#92400E">' + earnRut + ' kr</strong> efter RUT (~6v)</div>' +
+                           '</div>' +
+                           '<div style="font-size:.62rem;color:var(--m);margin-top:3px;font-style:italic">brutto ' + Math.round(bp.gross) + ' kr · Spick ' + Math.round((1-keepRate)*100) + '%</div>';
+                  }
+                  // Utan RUT (B2B etc): bara totalsumman direkt
                   return '<div style="font-size:.88rem;font-weight:700;color:var(--g);margin-top:4px">' + earn + ' kr</div>' +
                          '<div style="font-size:.68rem;color:var(--m);margin-top:1px">cleaner tjänar · brutto ' + Math.round(bp.gross) + ' kr</div>';
                 })()
@@ -10788,19 +10801,37 @@ async function ownerAcceptBooking(bookingId, cleanerId) {
   if (!confirm('Acceptera denna bokning?')) return;
   try {
     var token = (await SB.auth.getSession()).data.session?.access_token;
+    if (!token) {
+      alert('\ud83d\udd12 Sessionen har g\u00e5tt ut. Logga in igen.');
+      console.error('[SPICK accept] No JWT token in session');
+      return;
+    }
+    console.log('[SPICK accept] booking_id=' + bookingId + ' cleaner_id=' + cleanerId);
     var res = await fetch(SUPA_URL + '/functions/v1/cleaner-booking-response', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
       body: JSON.stringify({ booking_id: bookingId, action: 'accept' })
     });
     var result = await res.json();
+    console.log('[SPICK accept] HTTP ' + res.status, result);
     if (res.ok && result.success) {
       showToast('\u2705 Bokning accepterad!');
       renderTeam();
     } else {
-      alert(result.error || 'N\u00e5got gick fel');
+      var errMsg = '\u274c Kunde inte acceptera (HTTP ' + res.status + ')\n\n' +
+                   (result.error || 'Ok\u00e4nt fel') + '\n\n' +
+                   'Boknings-ID: ' + bookingId.slice(0, 8) + '\n\n' +
+                   'Kopiera felet och skicka till Farhad om problemet kvarst\u00e5r.';
+      alert(errMsg);
+      // Auto-diagnostik om f\u00f6rsta f\u00f6rs\u00f6k misslyckas
+      if (typeof runOwnerDiagnostic === 'function') {
+        setTimeout(function(){ runOwnerDiagnostic(bookingId); }, 500);
+      }
     }
-  } catch(e) { alert('Fel: ' + e.message); }
+  } catch(e) {
+    console.error('[SPICK accept] Exception', e);
+    alert('\u274c Tekniskt fel: ' + e.message + '\n\nKopiera detta meddelande till Farhad.');
+  }
 }
 
 async function ownerRejectBooking(bookingId, cleanerId) {
@@ -10808,19 +10839,79 @@ async function ownerRejectBooking(bookingId, cleanerId) {
   if (reason === null) return;
   try {
     var token = (await SB.auth.getSession()).data.session?.access_token;
+    if (!token) {
+      alert('\ud83d\udd12 Sessionen har g\u00e5tt ut. Logga in igen.');
+      console.error('[SPICK reject] No JWT token in session');
+      return;
+    }
+    console.log('[SPICK reject] booking_id=' + bookingId + ' reason=' + reason);
     var res = await fetch(SUPA_URL + '/functions/v1/cleaner-booking-response', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
       body: JSON.stringify({ booking_id: bookingId, action: 'reject', reason: reason || '' })
     });
     var result = await res.json();
+    console.log('[SPICK reject] HTTP ' + res.status, result);
     if (res.ok && result.success) {
       showToast('Bokning avb\u00f6jd');
       renderTeam();
     } else {
-      alert(result.error || 'N\u00e5got gick fel');
+      var errMsg = '\u274c Kunde inte avb\u00f6ja (HTTP ' + res.status + ')\n\n' +
+                   (result.error || 'Ok\u00e4nt fel') + '\n\n' +
+                   'Boknings-ID: ' + bookingId.slice(0, 8) + '\n\n' +
+                   'Kopiera felet och skicka till Farhad om problemet kvarst\u00e5r.';
+      alert(errMsg);
+      if (typeof runOwnerDiagnostic === 'function') {
+        setTimeout(function(){ runOwnerDiagnostic(bookingId); }, 500);
+      }
     }
-  } catch(e) { alert('Fel: ' + e.message); }
+  } catch(e) {
+    console.error('[SPICK reject] Exception', e);
+    alert('\u274c Tekniskt fel: ' + e.message + '\n\nKopiera detta meddelande till Farhad.');
+  }
+}
+
+// \u2500\u2500 DIAGNOSTIK: Anropas automatiskt vid accept/reject-fel \u2500\u2500
+// Kallar debug-cleaner-auth EF som returnerar Zivar's status
+async function runOwnerDiagnostic(bookingId) {
+  try {
+    var token = (await SB.auth.getSession()).data.session?.access_token;
+    if (!token) { alert('Diagnostik: ej inloggad'); return; }
+    var res = await fetch(SUPA_URL + '/functions/v1/debug-cleaner-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SPICK.SUPA_KEY },
+      body: JSON.stringify({ booking_id: bookingId })
+    });
+    var d = await res.json();
+    console.log('[SPICK DIAGNOSTIK]', d);
+    var report = '\ud83d\udd27 DIAGNOSTIK (skicka till Farhad):\n\n';
+    if (d.error) {
+      report += '\u274c ' + d.error + '\n';
+    } else {
+      report += '\ud83d\udc64 Cleaner-row: ' + (d.cleaner ? '\u2713 finns' : '\u274c saknas') + '\n';
+      if (d.cleaner) {
+        report += '   Namn: ' + (d.cleaner.full_name || '?') + '\n';
+        report += '   is_approved: ' + (d.cleaner.is_approved ? '\u2713' : '\u274c FALSE') + '\n';
+        report += '   is_company_owner: ' + (d.cleaner.is_company_owner ? '\u2713' : '\u274c FALSE') + '\n';
+        report += '   company_id: ' + (d.cleaner.company_id || '\u274c NULL') + '\n';
+      }
+      report += '\n\ud83d\udccb Bokning: ' + (d.booking ? '\u2713 finns' : '\u274c saknas') + '\n';
+      if (d.booking) {
+        report += '   status: ' + d.booking.status + '\n';
+        report += '   cleaner_id: ' + (d.booking.cleaner_id || '\u274c NULL') + '\n';
+      }
+      report += '\n\ud83d\udc65 Tilldelad st\u00e4dare: ' + (d.assigned_cleaner ? '\u2713' : '\u274c saknas') + '\n';
+      if (d.assigned_cleaner) {
+        report += '   company_id: ' + (d.assigned_cleaner.company_id || '\u274c NULL') + '\n';
+        report += '   matchar VD-company: ' + (d.company_match ? '\u2713' : '\u274c NEJ') + '\n';
+      }
+      report += '\n\ud83c\udfaf Auktoriserad: ' + (d.is_authorized ? '\u2713 JA' : '\u274c NEJ \u2014 ' + (d.reason || 'ok\u00e4nd anledning'));
+    }
+    alert(report);
+  } catch(e) {
+    console.error('[SPICK DIAGNOSTIK]', e);
+    alert('Diagnostik-fel: ' + e.message);
+  }
 }
 
 async function ownerCancelBooking(bookingId) {
