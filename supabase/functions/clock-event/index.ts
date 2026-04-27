@@ -103,6 +103,9 @@ Deno.serve(async (req) => {
       return json(CORS, 403, { error: "not_owned_by_cleaner" });
     }
 
+    // GEOFENCE: Phase 3 — bookings.customer_lat/lng saknas i prod.
+    // Tier A.1 deferred tills geocoding-kolumner lagts till via separat migration.
+
     // ── Insert event ──
     const { data: inserted, error: insErr } = await sb
       .from("cleaner_clock_events")
