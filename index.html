@@ -23,6 +23,12 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://spick.se">
 <meta property="og:image" content="https://spick.se/assets/og-image.png">
+<!-- iOS PWA / Apple Touch (Audit-fix Agent T 2026-04-27) -->
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spick">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0F6E56">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -735,9 +741,14 @@ function cookieChoice(accept) {
   }
 }
 
-// Service Worker + Push
+// Service Worker + Push (PWA install + offline support)
 if ('serviceWorker' in navigator) {
-  }
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(err) {
+      console.warn('[SW] register failed:', err);
+    });
+  });
+}
 // CRO toast + urgency hanteras av js/cro.js
 </script>
 </body>
