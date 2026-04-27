@@ -13884,10 +13884,12 @@ async function startTermsBankidFlow(version) {
       }
     }
 
-    // Polla register-bankid-status
+    // Polla register-bankid-status (med circuit breaker mot TIC 502/503-loop)
     const sessionId = initData.session_id;
     let attempts = 0;
+    let consecutiveFailures = 0;
     const maxAttempts = 90;  // ~3 min @ 2s
+    const maxConsecutiveFailures = 5;  // Stop polling efter 5 502/503 i rad (TIC nere)
     const poll = setInterval(async function() {
       attempts++;
       if (attempts > maxAttempts) {
@@ -13901,6 +13903,20 @@ async function startTermsBankidFlow(version) {
           headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
           body: JSON.stringify({ session_id: sessionId }),
         });
+        // Circuit breaker: stoppa polling om BankID-leverantören (TIC) är nere
+        if (statusRes.status === 502 || statusRes.status === 503) {
+          consecutiveFailures++;
+          if (consecutiveFailures >= maxConsecutiveFailures) {
+            clearInterval(poll);
+            if (statusEl) {
+              statusEl.style.color = 'var(--err)';
+              statusEl.innerHTML = '⚠ BankID-leverantören (TIC) svarar inte. Kontakta Spick på hello@spick.se eller försök igen senare.';
+            }
+            return;
+          }
+        } else {
+          consecutiveFailures = 0;
+        }
         const statusData = await statusRes.json();
         if (statusData.status === 'complete') {
           clearInterval(poll);
