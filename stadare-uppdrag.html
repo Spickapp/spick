@@ -205,6 +205,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <p>Något gick fel? Berätta vad så Spick kan hjälpa till. Texten lagras inte längre än 24 mån (GDPR).</p>
     <button class="confirm-btn" style="width:100%;background:#fff;color:#dc2626;padding:14px;border-radius:12px;border:2px solid #dc2626;font-size:14px;font-weight:700;cursor:pointer" onclick="openIncidentModal()">🚨 Rapportera problem</button>
   </div>
+
+  <!-- ═══ TIER A.2: FOTO-BEVIS ═══ -->
+  <div class="status-card" id="photo-card">
+    <h3>📸 Foto-bevis</h3>
+    <p>Ta bilder före och efter städningen — skyddar dig mot dispute och visar kunden ditt arbete.</p>
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <label style="flex:1;background:#0F6E56;color:#fff;padding:14px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;text-align:center">
+        📷 Före-foto
+        <input type="file" accept="image/*" capture="environment" onchange="uploadProofPhoto(this, 'before')" style="display:none">
+      </label>
+      <label style="flex:1;background:#fff;color:#0F6E56;padding:14px;border-radius:12px;border:2px solid #0F6E56;font-size:14px;font-weight:700;cursor:pointer;text-align:center">
+        📷 Efter-foto
+        <input type="file" accept="image/*" capture="environment" onchange="uploadProofPhoto(this, 'after')" style="display:none">
+      </label>
+    </div>
+    <div id="photo-status" style="font-size:12px;color:#888;margin-top:6px"></div>
+    <div id="photo-list" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px"></div>
+  </div>
+
+  <!-- ═══ TIER A.4: AI-QUALITY-CHECK ═══ -->
+  <div class="status-card" id="quality-card" style="display:none">
+    <h3>🤖 AI-kvalitetsbedömning</h3>
+    <p style="font-size:12px;color:#888">AI-genererad bedömning baserad på checklist + foton + historik. Rådgivande.</p>
+    <div id="quality-result"></div>
+    <button id="quality-btn" class="confirm-btn" style="width:100%;background:#0F6E56;color:#fff;padding:12px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px" onclick="runQualityCheck()">⚡ Kör AI-bedömning nu</button>
+  </div>
 </div>
 
 <!-- ═══ INCIDENT-MODAL ═══ -->
@@ -1088,11 +1114,137 @@ async function submitIncident() {
   }
 }
 
-// Init Phase 1-features när status-tab visas (matchar existing pattern)
+// ═══════════════════════════════════════════════════════════════
+// TIER A.2 — FOTO-BEVIS (camera-upload till Supabase Storage)
+// ═══════════════════════════════════════════════════════════════
+async function uploadProofPhoto(input, phase) {
+  var statusEl = document.getElementById('photo-status');
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    statusEl.textContent = '❌ Max 10 MB per foto';
+    statusEl.style.color = '#dc2626';
+    return;
+  }
+  statusEl.textContent = '⏳ Laddar upp ' + phase + '-foto...';
+  statusEl.style.color = '#888';
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) throw new Error('Inte inloggad');
+    // Konvertera till base64
+    var b64 = await new Promise(function(resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function() { resolve(fr.result.split(',')[1]); };
+      fr.onerror = function() { reject(new Error('Kunde inte läsa filen')); };
+      fr.readAsDataURL(file);
+    });
+    var res = await fetch(SUPA_URL + '/functions/v1/proof-photo-upload', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:'Bearer ' + tok },
+      body: JSON.stringify({
+        booking_id: BOOKING_ID,
+        phase: phase,
+        file_base64: b64,
+        mime_type: file.type
+      })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload misslyckades');
+    statusEl.textContent = '✅ ' + phase + '-foto sparat';
+    statusEl.style.color = '#0F6E56';
+    input.value = ''; // reset så samma fil kan väljas igen
+    await loadProofPhotos();
+  } catch (e) {
+    statusEl.textContent = '❌ ' + (e.message || 'Fel');
+    statusEl.style.color = '#dc2626';
+  }
+}
+
+async function loadProofPhotos() {
+  if (!BOOKING_ID) return;
+  var listEl = document.getElementById('photo-list');
+  if (!listEl) return;
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) return;
+    var res = await fetch(SUPA_URL + '/rest/v1/booking_proof_photos?booking_id=eq.' + encodeURIComponent(BOOKING_ID) + '&select=id,phase,storage_path,created_at&order=created_at.asc', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+    });
+    if (!res.ok) return;
+    var photos = await res.json();
+    if (!photos || photos.length === 0) { listEl.innerHTML = ''; return; }
+    listEl.innerHTML = photos.map(function(p) {
+      return '<div style="position:relative;padding-top:100%;background:#f0f0f0;border-radius:8px;overflow:hidden;border:2px solid ' + (p.phase === 'before' ? '#0F6E56' : '#1D9E75') + '">' +
+        '<div style="position:absolute;top:4px;left:4px;background:' + (p.phase === 'before' ? '#0F6E56' : '#1D9E75') + ';color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">' + (p.phase === 'before' ? 'FÖRE' : 'EFTER') + '</div>' +
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px">📷</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) { console.warn('[proof] load failed:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TIER A.4 — AI-QUALITY-CHECK
+// ═══════════════════════════════════════════════════════════════
+async function loadQualityAssessment() {
+  if (!BOOKING_ID) return;
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) return;
+    var res = await fetch(SUPA_URL + '/rest/v1/booking_quality_assessments?booking_id=eq.' + encodeURIComponent(BOOKING_ID) + '&select=score,ai_summary,ai_strengths,ai_improvements,created_at&order=created_at.desc&limit=1', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+    });
+    if (!res.ok) return;
+    var rows = await res.json();
+    var card = document.getElementById('quality-card');
+    var resultEl = document.getElementById('quality-result');
+    if (!card || !resultEl) return;
+    if (!rows || rows.length === 0) { card.style.display = 'block'; resultEl.innerHTML = ''; return; }
+    var qa = rows[0];
+    card.style.display = 'block';
+    var color = qa.score >= 85 ? '#0F6E56' : qa.score >= 70 ? '#D97706' : '#dc2626';
+    resultEl.innerHTML =
+      '<div style="text-align:center;padding:14px;background:#f9fafb;border-radius:10px;margin:10px 0">' +
+        '<div style="font-size:36px;font-weight:800;color:' + color + ';line-height:1">' + qa.score + '<span style="font-size:14px;color:#888">/100</span></div>' +
+        '<div style="font-size:13px;color:#555;margin-top:6px">' + (qa.ai_summary || '') + '</div>' +
+      '</div>' +
+      ((Array.isArray(qa.ai_strengths) && qa.ai_strengths.length) ? '<div style="font-size:12px;font-weight:600;color:#0F6E56;margin-top:8px">✅ Styrkor:</div><ul style="font-size:12px;color:#555;padding-left:20px;margin-top:4px">' + qa.ai_strengths.map(function(s){return '<li>'+s+'</li>';}).join('') + '</ul>' : '') +
+      ((Array.isArray(qa.ai_improvements) && qa.ai_improvements.length) ? '<div style="font-size:12px;font-weight:600;color:#D97706;margin-top:8px">💡 Förbättringar:</div><ul style="font-size:12px;color:#555;padding-left:20px;margin-top:4px">' + qa.ai_improvements.map(function(s){return '<li>'+s+'</li>';}).join('') + '</ul>' : '');
+  } catch (e) { console.warn('[quality] load failed:', e); }
+}
+
+async function runQualityCheck() {
+  var btn = document.getElementById('quality-btn');
+  var resultEl = document.getElementById('quality-result');
+  btn.disabled = true; btn.textContent = '⏳ AI analyserar...';
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) throw new Error('Inte inloggad');
+    var res = await fetch(SUPA_URL + '/functions/v1/quality-check-ai', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:'Bearer ' + tok },
+      body: JSON.stringify({ booking_id: BOOKING_ID, triggered_by: 'manual' })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'AI-anrop failade');
+    await loadQualityAssessment();
+  } catch (e) {
+    resultEl.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:8px">❌ ' + (e.message || 'Fel') + '</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = '⚡ Kör AI-bedömning nu';
+  }
+}
+
+// Init Phase 1+2 features när sidan laddas
 window.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     if (typeof loadClockState === 'function') loadClockState();
     if (typeof loadChecklist === 'function') loadChecklist();
+    if (typeof loadProofPhotos === 'function') loadProofPhotos();
+    if (typeof loadQualityAssessment === 'function') loadQualityAssessment();
   }, 800);
 });
 
