@@ -1,0 +1,137 @@
+name: Lighthouse + Rich Results (nightly)
+# Kör Lighthouse-audit (Performance/A11y/Best-Practices/SEO >=90) + Schema.org
+# JSON-LD-validering nattvis 04:00 UTC.
+# Discord-alert vid score-degradering eller schema-fel.
+'on':
+  schedule:
+    - cron: '0 4 * * *'   # 04:00 UTC dagligen (06:00 CET sommartid / 05:00 CET vintertid)
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'tests/lighthouse-audit.spec.ts'
+      - 'tests/rich-results-validation.spec.ts'
+      - '.github/workflows/lighthouse-nightly.yml'
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30   # 8 sidor × ~2min lighthouse + buffer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm ci --include=dev || npm install
+          # Lighthouse + chrome-launcher krävs för audit-skriptet
+          npm install --no-save lighthouse@13 chrome-launcher
+
+      - name: Install Playwright Chromium (för rich-results-tests + lighthouse via chrome)
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Google Chrome (för lighthouse CLI)
+        run: |
+          # lighthouse-CLI behöver en chrome-binär — Playwright-installationen ger chromium men
+          # lighthouse föredrar google-chrome. Installera stable.
+          sudo apt-get update
+          wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt-get install -y /tmp/chrome.deb
+
+      - name: Run Lighthouse audit (8 pages)
+        id: lighthouse
+        continue-on-error: true   # Vi vill ha Discord-alert även vid fail
+        run: |
+          npx playwright test tests/lighthouse-audit.spec.ts --reporter=list
+        env:
+          CI: 'true'
+
+      - name: Run Rich Results / JSON-LD validation (5 pages)
+        id: schema
+        continue-on-error: true
+        run: |
+          npx playwright test tests/rich-results-validation.spec.ts --reporter=list
+        env:
+          CI: 'true'
+
+      - name: Upload Lighthouse reports + summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: |
+            lighthouse-reports/
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+      - name: Build Discord-alert payload
+        if: always() && (steps.lighthouse.outcome == 'failure' || steps.schema.outcome == 'failure')
+        id: payload
+        run: |
+          # Bygg en sammanfattning från summary.json (skapad av lighthouse-spec).
+          SUMMARY_JSON="lighthouse-reports/summary.json"
+          if [ -f "$SUMMARY_JSON" ]; then
+            # Plocka ut sidor med failures (failed-array är tom om alla score >=90).
+            # Använd node för säker JSON-parsing.
+            DETAIL=$(node -e "
+              const s = require('./$SUMMARY_JSON');
+              const fails = Object.entries(s).filter(([k,v]) => v.failed && v.failed.length).map(([name, v]) => {
+                return name + ' (P=' + v.performance + ' A=' + v.accessibility + ' BP=' + v['best-practices'] + ' SEO=' + v.seo + ')';
+              });
+              console.log(fails.length ? fails.join(' | ') : 'Lighthouse OK; schema-fel separat.');
+            ")
+          else
+            DETAIL="Ingen Lighthouse-summary genererad — sannolikt setup-fel. Kolla artifact."
+          fi
+          echo "detail=$DETAIL" >> "$GITHUB_OUTPUT"
+          echo "lh_outcome=${{ steps.lighthouse.outcome }}" >> "$GITHUB_OUTPUT"
+          echo "schema_outcome=${{ steps.schema.outcome }}" >> "$GITHUB_OUTPUT"
+
+      - name: Discord alert vid score-degradering eller schema-fel
+        if: always() && (steps.lighthouse.outcome == 'failure' || steps.schema.outcome == 'failure')
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+          DETAIL: ${{ steps.payload.outputs.detail }}
+          LH_OUTCOME: ${{ steps.payload.outputs.lh_outcome }}
+          SCHEMA_OUTCOME: ${{ steps.payload.outputs.schema_outcome }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "ADMIN_ALERT_WEBHOOK_URL not set — skipping Discord notification."
+            exit 0
+          fi
+
+          # Färg: röd om båda fail, orange om bara en
+          COLOR=16753920   # orange
+          if [ "$LH_OUTCOME" = "failure" ] && [ "$SCHEMA_OUTCOME" = "failure" ]; then
+            COLOR=16711680  # röd
+          fi
+
+          # Escape detail för JSON
+          DETAIL_ESCAPED=$(echo "$DETAIL" | sed 's/"/\\"/g' | tr -d '\n' | head -c 1500)
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "Lighthouse Nightly: failures detected",
+              "description": "Lighthouse: \`${LH_OUTCOME}\`\nSchema: \`${SCHEMA_OUTCOME}\`\n\n**Detail:** ${DETAIL_ESCAPED}\n\n[Run details](${RUN_URL})",
+              "color": $COLOR
+            }]
+          }
+          EOF
+          )
+
+          curl -s -X POST -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL" || echo "Discord post failed (non-fatal)"
+
+      - name: Fail job if any check failed
+        if: always() && (steps.lighthouse.outcome == 'failure' || steps.schema.outcome == 'failure')
+        run: |
+          echo "::error::Lighthouse outcome=${{ steps.lighthouse.outcome }}, Schema outcome=${{ steps.schema.outcome }}"
+          exit 1

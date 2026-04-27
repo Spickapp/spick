@@ -1,0 +1,156 @@
+name: Email Deliverability Monthly Audit
+# Verifierar Resend + DKIM/SPF/DMARC + spam-score månadsvis.
+# Discord-alert om Resend failar eller mail-tester-score < 8/10.
+#
+# CRON: första måndagen i månaden 09:00 UTC (= 11:00 CEST)
+# Cron-uttrycket "0 9 1-7 * 1" kör 09:00 alla 1-7 i månaden där det är
+# måndag (cron-1 är måndag i GitHub Actions). Det blir alltid exakt
+# första måndagen.
+'on':
+  schedule:
+    - cron: '0 9 1-7 * 1'
+  workflow_dispatch:
+    inputs:
+      to_email:
+        description: 'Recipient (default: EMAIL_TEST_RECIPIENT secret eller mail-tester fallback)'
+        required: false
+        type: string
+      score_url:
+        description: 'mail-tester.com score-URL (om annan adress)'
+        required: false
+        type: string
+
+jobs:
+  email-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger email-deliverability-test EF
+        id: email
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INPUT_TO: ${{ inputs.to_email }}
+          INPUT_SCORE_URL: ${{ inputs.score_url }}
+        run: |
+          # Bygg request-body. Tom body → EF använder env EMAIL_TEST_RECIPIENT
+          BODY="{}"
+          if [ -n "$INPUT_TO" ] && [ -n "$INPUT_SCORE_URL" ]; then
+            BODY=$(printf '{"to_email":"%s","score_url":"%s"}' "$INPUT_TO" "$INPUT_SCORE_URL")
+          elif [ -n "$INPUT_TO" ]; then
+            BODY=$(printf '{"to_email":"%s"}' "$INPUT_TO")
+          fi
+
+          echo "Request body: $BODY"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/email-deliverability-test" \
+            -d "$BODY")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY_RESP=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY_RESP"
+          echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          {
+            echo 'body<<EOF'
+            echo "$BODY_RESP"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
+          # Extrahera score_check_url för follow-up steg
+          SCORE_URL=$(echo "$BODY_RESP" | grep -oE '"score_check_url":"[^"]+"' | sed 's/"score_check_url":"//;s/"$//' || echo "")
+          echo "score_url=$SCORE_URL" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::email-deliverability-test failed med HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          if echo "$BODY_RESP" | grep -q '"ok":false'; then
+            echo "::error::Resend returnerade ok=false"
+            exit 1
+          fi
+
+      - name: Wait for mail-tester score (om mail-tester.com-recipient)
+        if: steps.email.outputs.score_url != ''
+        id: score
+        env:
+          SCORE_URL: ${{ steps.email.outputs.score_url }}
+        run: |
+          echo "Score-URL: $SCORE_URL"
+          # mail-tester behöver ~30s på att SpamAssassin-processa mailet
+          sleep 45
+
+          # Hämta JSON-API:n bredvid HTML-sidan. mail-tester har ingen
+          # officiell publicly-documented API men /<id>/json fungerar.
+          ID=$(echo "$SCORE_URL" | sed 's|https://www.mail-tester.com/||')
+          API_URL="https://www.mail-tester.com/${ID}&format=json"
+
+          SCORE_JSON=$(curl -s -A "Spick-Email-Audit/1.0" "$API_URL" || echo "{}")
+          echo "API response: $SCORE_JSON"
+
+          # Parsa score (kan vara "8.5/10" eller "X / 10" eller fail)
+          SCORE_RAW=$(echo "$SCORE_JSON" | grep -oE '"score":\s*"[^"]+"' | head -1 | sed 's/.*:\s*"//;s/"$//' || echo "")
+
+          if [ -z "$SCORE_RAW" ]; then
+            # Fallback: scrape HTML-sidan
+            HTML=$(curl -s -A "Spick-Email-Audit/1.0" "$SCORE_URL" || echo "")
+            SCORE_RAW=$(echo "$HTML" | grep -oE '[0-9]+\.?[0-9]*/10' | head -1 || echo "")
+          fi
+
+          echo "Raw score: '$SCORE_RAW'"
+          echo "score_raw=$SCORE_RAW" >> $GITHUB_OUTPUT
+
+          # Extrahera numeriskt värde (ex "8.5/10" → "8.5")
+          SCORE_NUM=$(echo "$SCORE_RAW" | grep -oE '^[0-9]+\.?[0-9]*' | head -1 || echo "")
+          echo "score_num=$SCORE_NUM" >> $GITHUB_OUTPUT
+
+          if [ -z "$SCORE_NUM" ]; then
+            echo "::warning::Kunde inte parsa mail-tester-score automatiskt — manuell check krävs på $SCORE_URL"
+            exit 0
+          fi
+
+          # Bash floating-point via awk
+          BELOW_THRESHOLD=$(awk -v s="$SCORE_NUM" 'BEGIN { print (s < 8) ? "1" : "0" }')
+          if [ "$BELOW_THRESHOLD" = "1" ]; then
+            echo "::error::mail-tester score $SCORE_NUM/10 (under tröskel 8/10)"
+            exit 1
+          fi
+
+          echo "Score OK: $SCORE_NUM/10"
+
+      - name: Discord alert on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+          HTTP_CODE: ${{ steps.email.outputs.http_code }}
+          BODY: ${{ steps.email.outputs.body }}
+          SCORE_URL: ${{ steps.email.outputs.score_url }}
+          SCORE_RAW: ${{ steps.score.outputs.score_raw }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::ADMIN_ALERT_WEBHOOK_URL ej satt — fallback till console-log"
+            echo "FAIL: HTTP=$HTTP_CODE BODY=$BODY SCORE=$SCORE_RAW URL=$SCORE_URL"
+            exit 0
+          fi
+
+          # Bygg payload baserat på vad som faktiskt failade
+          if [ -n "$SCORE_RAW" ]; then
+            # mail-tester-score under tröskel
+            CONTENT="**Email Deliverability FAILED** (monthly)\\nmail-tester score: $SCORE_RAW (tröskel: 8/10)\\nKolla score-detaljer på $SCORE_URL\\nVerifiera DKIM/SPF/DMARC + content-quality."
+          else
+            # Resend själva failade
+            CONTENT="**Email Deliverability FAILED** (monthly)\\nHTTP: $HTTP_CODE\\nResend kan vara nere eller API-key invalid. Kolla Resend dashboard + Supabase function logs (email-deliverability-test).\\n\`\`\`\\n$BODY\\n\`\`\`"
+          fi
+
+          PAYLOAD=$(printf '{"content":"%s"}' "$CONTENT")
+
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"

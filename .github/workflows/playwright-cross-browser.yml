@@ -1,0 +1,117 @@
+name: Playwright Cross-Browser (Chromium + Firefox + WebKit + Mobile, dagligen 05:00 UTC)
+
+# ─────────────────────────────────────────────────────────────────────
+# SYFTE (2026-04-26):
+#   Verifierar att Spicks 77 Playwright-tests fungerar på alla 5
+#   browser-targets (Chromium/Firefox/WebKit + Pixel 5 + iPhone 13).
+#   WebKit (Safari) + Firefox utgör >30% av svensk mobil-trafik.
+#
+# STRATEGI:
+#   - Matrix kör projects parallellt (5 jobs samtidigt, ~5 min vardera)
+#   - Chromium = hard fail (blockerar deploy om brutet)
+#   - Firefox/WebKit/mobile-* = continue-on-error → markeras "warning"
+#     i CI, blockerar EJ pipeline (icke-kritiska browser-quirks)
+#   - Cron 05:00 UTC = 07:00 CEST (efter admin-morning-report 03:00 CEST,
+#     före office-hours så browser-issues syns på morgon-checken)
+#
+# REGLER #26-#32:
+#   #26 läste playwright.config.ts + befintliga playwright-workflows
+#       INNAN bygge (snake_case-namn, secrets-pattern, retention-days)
+#   #27 scope = bara cross-browser-CI. Ingen ändring i tests/* eller
+#       befintliga workflows (playwright-smoke.yml + playwright-stripe-e2e.yml
+#       fortsätter köra som tidigare i Chromium-only).
+#   #28 SSOT = playwright.config.ts.projects styr matrix-targets via
+#       env CROSS_BROWSER=1 (en plats för alla 5 namn).
+# ─────────────────────────────────────────────────────────────────────
+
+'on':
+  schedule:
+    - cron: '0 5 * * *'  # 05:00 UTC = 07:00 CEST
+  workflow_dispatch: {}
+  # Trigga också manuellt på PR som rör playwright-config eller tests
+  push:
+    branches: [main]
+    paths:
+      - 'playwright.config.ts'
+      - '.github/workflows/playwright-cross-browser.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false  # Låt alla 5 projects köra klart även om en failar
+      matrix:
+        include:
+          - project: chromium
+            critical: true
+          - project: firefox
+            critical: false
+          - project: webkit
+            critical: false
+          - project: mobile-chrome
+            critical: false
+          - project: mobile-safari
+            critical: false
+
+    name: ${{ matrix.project }}${{ matrix.critical && ' (critical)' || ' (warning)' }}
+    # continue-on-error per matrix-row: chromium hard-fail, övriga warning
+    continue-on-error: ${{ !matrix.critical }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --include=dev || npm install
+
+      - name: Install Playwright browser (${{ matrix.project }})
+        run: |
+          # Map matrix.project → playwright browser-binary
+          case "${{ matrix.project }}" in
+            chromium|mobile-chrome) BROWSER="chromium" ;;
+            firefox) BROWSER="firefox" ;;
+            webkit|mobile-safari) BROWSER="webkit" ;;
+            *) echo "::error::Okänt project ${{ matrix.project }}"; exit 1 ;;
+          esac
+          npx playwright install --with-deps "$BROWSER"
+
+      - name: Run Playwright tests (${{ matrix.project }})
+        env:
+          CI: 'true'
+          CROSS_BROWSER: '1'  # Aktiverar alla 5 projects i playwright.config.ts
+        run: npx playwright test --project=${{ matrix.project }} --reporter=list
+
+      - name: Upload test-results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ matrix.project }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────
+  # Aggregat-summary: rapporterar i loggen om någon non-critical browser
+  # failade så Farhad ser det i daglig morgon-check (utan att blockera CI).
+  # ─────────────────────────────────────────────────────────────────
+  summary:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cross-browser status
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "Cross-Browser Run Summary"
+          echo "═══════════════════════════════════════════════════════"
+          echo "Chromium status: ${{ needs.test.result }}"
+          echo ""
+          echo "Notera: Firefox/WebKit/mobile-* har continue-on-error=true"
+          echo "→ kontrollera per-project artifacts vid fel."
+          echo "Chromium är enda hard-fail (blockerar workflow-status)."
