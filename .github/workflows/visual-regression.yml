@@ -1,0 +1,118 @@
+name: Playwright Visual Regression (Chromium, dagligen 06:00 UTC)
+
+# ─────────────────────────────────────────────────────────────────────
+# SYFTE (2026-04-26):
+#   Gratis Percy/Chromatic-alternativ. Jämför 8 nyckel-sidors
+#   full-page screenshots mot baselines lagrade i repo, fångar layout-,
+#   font- och design-regressions automatiskt.
+#
+# STRATEGI:
+#   - Schedule 06:00 UTC = 08:00 CEST (efter cross-browser 05:00 UTC,
+#     stripe-e2e 02:00 UTC och smoke 01:00 UTC). Plats sist i kedjan
+#     så ev. visual-fail syns under arbetsdagen utan att blockera
+#     andra checks.
+#   - Baselines lagras IN-REPO under
+#     `tests/visual-regression.spec.ts-snapshots/`. Första gången
+#     workflow körs (eller efter --update-snapshots) commitas dessa
+#     via PR; därefter hard-fail vid diff > maxDiffPixels (100).
+#   - Vid fail: actual + expected + diff PNG laddas upp som artifact
+#     (retention 14d) för manuell granskning. Hjälper skilja
+#     "designern ändrade UI" (uppdatera baseline) från "regression"
+#     (fix bug).
+#   - Endast Chromium — visual-tests är browser-specifika. Cross-browser-
+#     quirks fångas av playwright-cross-browser.yml.
+#
+# REGLER #26-#32:
+#   #26 läste playwright-smoke.yml + playwright-cross-browser.yml +
+#       playwright-stripe-e2e.yml INNAN bygge (matchar pattern: setup-node,
+#       npm ci, install --with-deps chromium, upload-artifact retention).
+#   #27 scope = visual regression only. Ingen ändring i andra workflows.
+#   #28 baseURL + maxDiffPixels-default i playwright.config.ts (SSOT).
+# ─────────────────────────────────────────────────────────────────────
+
+'on':
+  schedule:
+    - cron: '0 6 * * *'  # 06:00 UTC = 08:00 CEST
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'tests/visual-regression.spec.ts'
+      - '.github/workflows/visual-regression.yml'
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --include=dev || npm install
+
+      - name: Install Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      # ─────────────────────────────────────────────────────────────
+      # Baseline-strategi:
+      # Baselines lever IN-REPO under
+      # tests/visual-regression.spec.ts-snapshots/. När de saknas
+      # (första körning eller ny target lagts till) skapar Playwright
+      # dem automatiskt och testet "failar" första gången. Vi hanterar
+      # det genom att (1) ladda upp genererade snapshots som artifact
+      # och (2) instruera Farhad att kommitta dem via PR.
+      #
+      # Subsequent runs: hard-fail vid diff > maxDiffPixels (100).
+      # ─────────────────────────────────────────────────────────────
+
+      - name: Run visual regression tests
+        id: visual_test
+        env:
+          CI: 'true'
+        run: npx playwright test tests/visual-regression.spec.ts --reporter=list
+
+      # Vid fel: ladda upp ALLT (actual + expected + diff PNG + report)
+      # för manuell granskning. test-results/ innehåller diff-images,
+      # tests/visual-regression.spec.ts-snapshots/ innehåller (ev nya)
+      # baselines.
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs
+          path: |
+            test-results/
+            playwright-report/
+            tests/visual-regression.spec.ts-snapshots/
+          retention-days: 14
+
+      # ─────────────────────────────────────────────────────────────
+      # Discord-alert vid fel — UI-regression är icke-blocking men
+      # synlighet i morgon-check hjälper Farhad spotta designer-ändringar
+      # eller deploy-orsakade layout-bugs tidigt.
+      # ─────────────────────────────────────────────────────────────
+      - name: Discord-alert vid visual diff
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::ADMIN_ALERT_WEBHOOK_URL saknas — skippar Discord-alert"
+            exit 0
+          fi
+          MSG=$(cat <<EOF
+          {
+            "username": "Spick CI",
+            "content": ":frame_with_picture: **VISUAL REGRESSION** — en eller flera sidor avviker från baseline.\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nKolla artifact 'visual-regression-diffs' för diff-bilder. Om designern medvetet ändrade UI: kör lokalt\n\`\`\`\nnpx playwright test --update-snapshots tests/visual-regression.spec.ts\n\`\`\`\noch commita uppdaterade .png-filer."
+          }
+          EOF
+          )
+          curl -s -X POST -H "Content-Type: application/json" \
+            -d "$MSG" \
+            "$DISCORD_WEBHOOK" \
+            || echo "::warning::Discord-alert misslyckades"

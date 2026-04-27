@@ -106,6 +106,30 @@ const CHECKS: CheckSpec[] = [
     bodyContains: ['"cleaners"'],
   },
   {
+    // Regression-skydd för 2026-04-27-incidenten: kund-bokning med 2.5h
+    // gav 500 ("invalid input syntax for type integer: 2.5") eftersom
+    // find_nearby_providers-RPC har booking_hours INTEGER. Math.ceil i
+    // matching-wrapper EF rundar nu upp innan RPC-anrop. Denna check
+    // garanterar att decimal-hours fortsätter funka.
+    name: "matching-wrapper-decimal-hours",
+    ef: "matching-wrapper",
+    method: "POST",
+    body: {
+      customer_lat: 59.3293,
+      customer_lng: 18.0686,
+      booking_date: "2026-05-01",
+      booking_time: "12:00",
+      booking_hours: 2.5,  // ← decimal — testar Math.ceil-skyddet
+      has_pets: false,
+      has_elevator: null,
+      booking_materials: null,
+      customer_id: null,
+      required_addons: [],
+    },
+    expectStatuses: [200],
+    bodyContains: ['"cleaners"'],
+  },
+  {
     name: "verify-fskatt",
     ef: "verify-fskatt",
     method: "POST",

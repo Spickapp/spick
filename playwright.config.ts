@@ -38,7 +38,20 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
+  // ─────────────────────────────────────────────────────────────────
+  // Visual regression defaults (tests/visual-regression.spec.ts)
+  // maxDiffPixels=100 tolererar font-rendering-jitter mellan headless
+  // Chromium-versioner. Per-test override möjlig via { maxDiffPixels: N }.
+  // ─────────────────────────────────────────────────────────────────
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixels: 100,
+    },
+  },
   // Cross-browser via env-flagga eller explicit --project=<name>
+  // Visual-regression-specen körs alltid Chromium-only (oavsett CROSS_BROWSER)
+  // — baselines är browser-specifika och cross-browser-rendering hanteras
+  // av playwright-cross-browser.yml.
   projects: CROSS_BROWSER
     ? allProjects
     : [allProjects[0]], // default: chromium-only (bakåtkompatibelt med befintliga workflows)

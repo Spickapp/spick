@@ -105,7 +105,7 @@ BUFFER_ACCESS_TOKEN, CRON_SECRET
 | js/cro.js | Social proof toasts (riktig data från reviews), exit-intent popup |
 | js/services-loader.js | Feature-flagged DB-driven services-rendering (F1_USE_DB_SERVICES) |
 | js/commission-helpers.js | Centralized commission-läsning (getCommissionRate/Pct från platform_settings) |
-| sw.js | Service Worker v2026-03-30-v1 |
+| sw.js | Service Worker v2026-04-27 (stale-while-revalidate HTML, cache-first statics, never-cache admin/booking/Supabase). Saknades i prod 2026-03-30→2026-04-27 — registrerades inte i index.html (tomt SW-block). Fixed commit `b4ff932`. |
 | supabase/functions/_shared/money.ts | Central money-layer (Fas 1) |
 | supabase/functions/_shared/events.ts | Central event-logging (Fas 6.2) |
 | supabase/functions/_shared/preferences.ts | customer_preferences helpers (Fas 5.5a) |
