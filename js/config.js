@@ -20,7 +20,7 @@ const SPICK = Object.freeze({
   // Tom = no-op (lazy-loader skippar silent). Sätts av Farhad efter signup
   // på posthog.com → välj EU region → kopiera "Project API Key" (phc_...).
   // Setup-guide: docs/csp-update-posthog.md.
-  POSTHOG_KEY: '',
+  POSTHOG_KEY: 'phc_uyAZjjps4RGHEPVT23yrV4mbZSCNMJopEkpmYBVh7BiB',
 });
 
 // Exponera globalt för pages som boot-checkar `window.SPICK`
