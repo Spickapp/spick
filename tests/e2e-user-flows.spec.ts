@@ -200,3 +200,35 @@ test.describe('FLOW 5: Public profile-pages', () => {
     await expect(cta).toBeAttached({ timeout: 10000 });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// FLOW 6: boka.html?company=X filtrerar tjänst-grid till företagets utbud
+// Regression-test för UX-bug 2026-04-27 (Farhad-fynd):
+// När kund landar via company-URL visades alla 8 B2B-tjänster oavsett
+// vilket företag — vilket gav 0 matchande städare i step 2 om kund klickade
+// en tjänst företaget inte erbjuder. Fix: data-company-blocked-attr + CSS.
+// ═══════════════════════════════════════════════════════════════
+test.describe('FLOW 6: company-URL filtrerar svc-grid', () => {
+  test('F6: boka.html?company=<solid-service-id> visar bara erbjudna tjänster', async ({ page }) => {
+    const SOLID_COMPANY_ID = '1b969ed7-99f7-4553-be0e-8bedcaa7f5eb';
+
+    console.log('[F6] Step 1: Goto boka.html?company=' + SOLID_COMPANY_ID);
+    await page.goto(`/boka.html?company=${SOLID_COMPANY_ID}`);
+
+    console.log('[F6] Step 2: Vänta på company-filter-banner');
+    const banner = page.locator('#company-filter-banner');
+    await expect(banner).toBeVisible({ timeout: 15000 });
+    await expect(banner).toContainText('Solid Service');
+
+    console.log('[F6] Step 3: Verifiera blockerade tjänster har data-attr');
+    const blocked = await page.locator('#svc-grid button[data-company-blocked="true"]').count();
+    expect(blocked).toBeGreaterThan(0); // Solid erbjuder INTE alla 8 B2B → minst 1 blockerad
+
+    console.log('[F6] Step 4: Verifiera CSS injected (filter-class)');
+    const cssExists = await page.locator('#company-filter-css').count();
+    expect(cssExists).toBe(1);
+
+    console.log('[F6] Step 5: Verifiera "Visa alla tjänster"-link finns i banner');
+    await expect(banner.locator('a[href="?"]')).toBeVisible();
+  });
+});

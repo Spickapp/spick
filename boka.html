@@ -916,6 +916,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       })
       .catch(e => console.warn('[SPICK] Company fetch failed:', e));
+
+    // UX-fix 2026-04-27 (Farhad-fynd): Filter svc-grid till bara tjänster
+    // detta företag faktiskt erbjuder. Tidigare visades alla 8 B2B-tjänster
+    // oavsett vilket företag → kund kunde klicka "Vårdstädning" mot ett
+    // företag som inte erbjuder den → 0 matchande städare i step 2.
+    // Hämta union av cleaners.services för company_id, hide buttons utanför.
+    fetch(SUPA + '/rest/v1/v_cleaners_public?company_id=eq.' + window.preCompanyId + '&select=services', {headers: H})
+      .then(function(r){ return r.json(); })
+      .then(function(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        // Union alla services från medlemmar
+        var allowedServices = new Set();
+        rows.forEach(function(row) {
+          (row.services || []).forEach(function(svc) { allowedServices.add(svc); });
+        });
+        if (allowedServices.size === 0) return;
+        window.companyAllowedServices = allowedServices;
+        // Vänta på services-loader rendering, sen filtrera
+        var applyFilter = function() {
+          var grid = document.getElementById('svc-grid');
+          if (!grid) return;
+          var btns = grid.querySelectorAll('button.svc-btn');
+          if (btns.length === 0) {
+            // Services inte renderade än, retry om 200ms
+            setTimeout(applyFilter, 200);
+            return;
+          }
+          // Inject CSS rule (en gång) som hider company-blocked buttons
+          // oavsett vilket tab-state services-loader sätter. Robust mot
+          // Privatperson↔Företag tab-toggles.
+          if (!document.getElementById('company-filter-css')) {
+            var css = document.createElement('style');
+            css.id = 'company-filter-css';
+            css.textContent = '.svc-btn[data-company-blocked="true"]{display:none !important}';
+            document.head.appendChild(css);
+          }
+          var hiddenCount = 0;
+          btns.forEach(function(btn) {
+            var svc = btn.getAttribute('data-svc');
+            if (!allowedServices.has(svc)) {
+              btn.setAttribute('data-company-blocked', 'true');
+              hiddenCount++;
+            } else {
+              btn.removeAttribute('data-company-blocked');
+            }
+          });
+          // Banner överst i tjänst-väljaren
+          var compName = (window.companyData && (window.companyData.display_name || window.companyData.name)) || 'detta företag';
+          var existingBanner = document.getElementById('company-filter-banner');
+          if (!existingBanner) {
+            var banner = document.createElement('div');
+            banner.id = 'company-filter-banner';
+            banner.style.cssText = 'background:#E1F5EE;border-left:4px solid #0F6E56;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.875rem;color:#1C1C1A;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap';
+            banner.innerHTML = '<span><strong>' + escHtml(compName) + '</strong> erbjuder dessa tjänster. <a href="?" style="color:#0F6E56;text-decoration:underline">Visa alla tjänster</a></span>';
+            grid.parentElement.insertBefore(banner, grid);
+          }
+          console.log('[SPICK] Company-filter: dolde ' + hiddenCount + ' tjänster, ' + allowedServices.size + ' tillgängliga från ' + compName);
+        };
+        // Vänta på SPICK_SERVICES_READY innan filter
+        if (window.SPICK_SERVICES_READY) {
+          window.SPICK_SERVICES_READY.then(applyFilter);
+        } else {
+          setTimeout(applyFilter, 500);
+        }
+      })
+      .catch(function(e) { console.warn('[SPICK] Company services fetch failed:', e); });
   }
   const preCleanerName = p.get('name') ? decodeURIComponent(p.get('name')) : '';
   const preRate        = +(p.get('rate') || SAFETY_FALLBACK_RATE);
