@@ -106,7 +106,10 @@ self.addEventListener('fetch', (event) => {
       const cached = await caches.match(req);
       const networkPromise = fetch(req).then(res => {
         if (res.ok) {
-          caches.open(HTML_CACHE).then(cache => cache.put(req, res.clone()));
+          // Clone SYNKRONT innan res returneras (annars kan body vara konsumerad
+          // när cache.put() kör i async-then-callback → "body already used").
+          const resClone = res.clone();
+          caches.open(HTML_CACHE).then(cache => cache.put(req, resClone));
         }
         return res;
       }).catch(() => cached || new Response('Offline', { status: 503 }));
