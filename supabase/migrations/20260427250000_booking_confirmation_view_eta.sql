@@ -28,6 +28,7 @@ CREATE VIEW booking_confirmation AS
 SELECT
   id,
   stripe_session_id,
+  payment_intent_id,
   service_type,
   booking_date,
   booking_time,
