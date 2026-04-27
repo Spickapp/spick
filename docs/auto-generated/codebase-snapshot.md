@@ -212,7 +212,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/visual-regression.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (176 st)
+## Migrations (177 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
