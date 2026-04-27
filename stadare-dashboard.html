@@ -10798,7 +10798,8 @@ async function ownerReassignBooking(bookingId, newCleanerId, newCleanerName) {
 }
 
 async function ownerAcceptBooking(bookingId, cleanerId) {
-  if (!confirm('Acceptera denna bokning?')) return;
+  // Direkt action \u2014 klick = bekr\u00e4ftelse (confirm() blockeras av popup-blocker
+  // i InPrivate-mode + vissa browsers vilket gjorde att inget h\u00e4nde 2026-04-27).
   try {
     var token = (await SB.auth.getSession()).data.session?.access_token;
     if (!token) {
