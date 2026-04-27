@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (104 st)
+## Edge Functions (107 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -70,6 +70,9 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `expire-team-invitations` | ═══════════════════════════════════════════════════════════════ SPICK – expire-team-invitations (Sprint B Dag 6) |
 | `export-cleaner-data` | export-cleaner-data — Fas 8 §8.20 ═══════════════════════════════════════════════════════════════ |
 | `export-customer-data` | export-customer-data — Fas 13 §13.4 gap A1 ═══════════════════════════════════════════════════════════════ |
+| `fortnox-oauth-callback` |  |
+| `fortnox-oauth-init` |  |
+| `fortnox-push-invoice` |  |
 | `generate-receipt` | ═══════════════════════════════════════════════════════════════ SPICK – Kundkvitto (Customer Receipt HTML + Email) |
 | `generate-receipt-pdf` | ═══════════════════════════════════════════════════════════════ SPICK – generate-receipt-pdf (Fas F-PDF, 2026-04-28) |
 | `generate-self-invoice` | ═══════════════════════════════════════════════════════════════ SPICK – Självfaktura-generator (Self-billing invoice) |
@@ -204,7 +207,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/visual-regression.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (167 st)
+## Migrations (168 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
