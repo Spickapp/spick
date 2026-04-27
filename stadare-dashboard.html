@@ -1740,6 +1740,7 @@ body{top:0!important}
               </div>
             </div>
             <div id="company-bio-display" style="font-size:.85rem;color:var(--gray-600);margin-bottom:12px"></div>
+            <div id="company-phone-display" style="font-size:.85rem;color:var(--gray-700);margin-bottom:12px;display:none">📞 <a id="company-phone-link" href="" style="color:var(--g);text-decoration:none;font-weight:600"></a> <span style="font-size:.72rem;color:var(--m);margin-left:6px">(visas publikt på företagssidan)</span></div>
             <!-- Logo-upload (Zivar-feedback 2026-04-26: placerat här istf settings — naturlig plats för "ansikte mot kund") -->
             <div style="background:#F7F7F5;border-radius:10px;padding:12px;margin-bottom:12px">
               <div style="font-size:.82rem;font-weight:600;margin-bottom:4px">🖼️ Företagslogo</div>
@@ -1797,6 +1798,7 @@ body{top:0!important}
             <div class="tm-form-group"><label>Företagsnamn</label><input type="text" id="cp-name" class="tm-input"></div>
             <div class="tm-form-group"><label>Visningsnamn (valfritt)</label><input type="text" id="cp-display-name" class="tm-input" placeholder="T.ex. GoClean, Rafa Städ..."></div>
             <div class="tm-form-group"><label>Beskrivning (visas för kunder)</label><textarea id="cp-bio" class="tm-input" rows="3" maxlength="200" style="resize:none"></textarea></div>
+            <div class="tm-form-group"><label for="cp-phone">Företagstelefon (visas på företagssidan)</label><input type="tel" id="cp-phone" class="tm-input" placeholder="T.ex. 08-746 06 06"></div>
             <div style="display:flex;gap:8px;margin-top:12px">
               <button onclick="saveCompanyProfile()" style="padding:10px 20px;background:var(--spick-500);color:#fff;border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Spara</button>
               <button onclick="cancelCompanyEdit()" style="padding:10px 20px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
@@ -10665,6 +10667,18 @@ function renderCompanyProfile(company) {
   if (orgEl) orgEl.textContent = company.org_number ? 'Org.nr: ' + company.org_number : '';
   var bioEl = document.getElementById('company-bio-display');
   if (bioEl) bioEl.textContent = company.description || 'Ingen beskrivning ännu.';
+  var phWrap = document.getElementById('company-phone-display');
+  var phLink = document.getElementById('company-phone-link');
+  if (phWrap && phLink) {
+    if (company.phone && String(company.phone).trim()) {
+      var ph = String(company.phone).trim();
+      phLink.textContent = ph;
+      phLink.href = 'tel:' + ph.replace(/[^+0-9]/g, '');
+      phWrap.style.display = 'block';
+    } else {
+      phWrap.style.display = 'none';
+    }
+  }
 }
 
 function editCompanyProfile() {
@@ -10674,6 +10688,8 @@ function editCompanyProfile() {
   document.getElementById('cp-name').value = company.name || '';
   document.getElementById('cp-bio').value = company.description || '';
   document.getElementById('cp-display-name').value = company.display_name || '';
+  var phEl = document.getElementById('cp-phone');
+  if (phEl) phEl.value = company.phone || '';
 }
 
 function cancelCompanyEdit() {
@@ -10685,14 +10701,16 @@ async function saveCompanyProfile() {
   var name = document.getElementById('cp-name').value.trim();
   var bio = document.getElementById('cp-bio').value.trim();
   var displayName = document.getElementById('cp-display-name').value.trim() || null;
+  var phEl = document.getElementById('cp-phone');
+  var phone = phEl ? phEl.value.trim() || null : null;
   if (!name) { alert('F\u00f6retagsnamn kr\u00e4vs'); return; }
   try {
     await fetch(SUPA_URL + '/rest/v1/companies?id=eq.' + cleaner.company_id, {
       method: 'PATCH',
       headers: Object.assign({}, _authHeadersLegacy(), {'Content-Type':'application/json','Prefer':'return=minimal'}),
-      body: JSON.stringify({ name: name, description: bio, display_name: displayName })
+      body: JSON.stringify({ name: name, description: bio, display_name: displayName, phone: phone })
     });
-    window._companyData = Object.assign(window._companyData || {}, { name: name, description: bio, display_name: displayName });
+    window._companyData = Object.assign(window._companyData || {}, { name: name, description: bio, display_name: displayName, phone: phone });
     renderCompanyProfile(window._companyData);
     cancelCompanyEdit();
     showToast('F\u00f6retagsprofil sparad!');
