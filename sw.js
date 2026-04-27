@@ -77,6 +77,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
+  // Skip cross-origin helt — browsern hanterar CDN/fonts direkt utan SW-interception.
+  // Annars triggas CSP connect-src av SW:s fetch() (även för script-src-tillåtna CDNs)
+  // → onödig whack-a-mole varje gång ny 3rd-party CDN läggs till.
+  if (url.origin !== self.location.origin) return;
+
   // Skip alla cross-origin POST + auth-bunden
   if (shouldNeverCache(url)) return;
 
