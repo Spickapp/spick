@@ -380,6 +380,18 @@ async function init() {
     var co = cos[0];
     if (!co) { document.getElementById('content').innerHTML = '<div class="not-found"><h2>Företaget hittades inte</h2><p style="color:var(--m)">Kontrollera URL:en.</p><a href="boka.html" style="color:var(--accent);font-weight:600">← Boka städning</a></div>'; return; }
 
+    // Hämta företagsägarens telefon för "Ring oss"-knappen (företaget har eget
+    // nummer via owner_cleaner_id → cleaners.phone). Hardcoda ALDRIG Spick-nr
+    // på företagsprofiler — det förvirrar kunder + skapar 070-650-51-53-spam.
+    var co_phone = '';
+    if (co.owner_cleaner_id) {
+      try {
+        var ownRes = await fetch(SU + '/rest/v1/cleaners?id=eq.' + encodeURIComponent(co.owner_cleaner_id) + '&select=phone', { headers: H });
+        var ownRows = await ownRes.json();
+        co_phone = (Array.isArray(ownRows) && ownRows[0] && ownRows[0].phone) ? String(ownRows[0].phone) : '';
+      } catch (_) { /* fallback: ingen knapp */ }
+    }
+
     // ── 1. DYNAMIC ACCENT COLOR ──
     // Zivar 2026-04-26: synka pristext + alla accent-element med VD:s
     // valda hero-färg om finns. Annars fallback till nameToColor(co.name).
@@ -593,7 +605,10 @@ async function init() {
 
     h += '<div class="hero-cta-wrap">';
     h += '<a href="' + bookUrl + '" class="hero-btn">Boka städning →</a>';
-    h += '<a href="tel:+46760505153" class="hero-btn-sec"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Ring oss</a>';
+    if (co_phone) {
+      var telHref = 'tel:' + co_phone.replace(/[^+0-9]/g, '');
+      h += '<a href="' + telHref + '" class="hero-btn-sec"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Ring ' + esc(displayName.split(' ')[0]) + '</a>';
+    }
     h += '</div>';
     h += '</div></div>';
 
