@@ -16,6 +16,11 @@ const SPICK = Object.freeze({
   SENTRY_DSN: 'https://c59290e72560cf7d14bea89e86a603bf@o4511287877828608.ingest.de.sentry.io/4511287893229648',
   SENTRY_ENVIRONMENT: 'production',
   SENTRY_RELEASE: 'spick-web-2026-04-26',
+  // PostHog (Fas 11.x Observability) — EU Cloud (Frankfurt) per GDPR.
+  // Tom = no-op (lazy-loader skippar silent). Sätts av Farhad efter signup
+  // på posthog.com → välj EU region → kopiera "Project API Key" (phc_...).
+  // Setup-guide: docs/csp-update-posthog.md.
+  POSTHOG_KEY: '',
 });
 
 // Exponera globalt för pages som boot-checkar `window.SPICK`
