@@ -126,7 +126,7 @@ footer{background:#080808;padding:4rem 5rem 2rem;}
 .footer-desc{font-size:.875rem;color:#5A5A55;line-height:1.7;max-width:260px;}
 .footer-contact{margin-top:1.25rem;display:flex;flex-direction:column;gap:.5rem;}
 .footer-contact a{font-size:.875rem;color:#1D9E75;text-decoration:none;}
-footer h4{font-size:.7rem;font-weight:600;text-transform:uppercase;
+footer h3{font-size:.7rem;font-weight:600;text-transform:uppercase;
   letter-spacing:.1em;color:#3A3A35;margin-bottom:1rem;}
 footer ul{list-style:none;display:flex;flex-direction:column;gap:.625rem;}
 footer a{font-size:.875rem;color:#6B6B65;text-decoration:none;transition:color .2s;}
@@ -198,7 +198,7 @@ const FOOTER_HTML = `
     </div>
   </div>
   <div>
-    <h4>Kunder</h4>
+    <h3>Kunder</h3>
     <ul>
       <li><a href="${P}boka.html">Boka städning</a></li>
       <li><a href="${P}hur-det-funkar.html">Hur det funkar</a></li>
@@ -213,14 +213,14 @@ const FOOTER_HTML = `
     </ul>
   </div>
   <div>
-    <h4>Städare</h4>
+    <h3>Städare</h3>
     <ul>
       <li><a href="${P}bli-stadare.html">Bli städare</a></li>
       <li><a href="${P}stadare-dashboard.html">Städarportalen</a></li>
       <li><a href="${P}uppdragsavtal.html">Uppdragsavtal</a></li>
       <li><a href="${P}tips-for-stadare.html">Tips för städare</a></li>
     </ul>
-    <h4 style="margin-top:1rem">Guider</h4>
+    <h3 style="margin-top:1rem">Guider</h3>
     <ul>
       <li><a href="${P}blogg/rut-avdrag-guide.html">RUT-avdrag 2026</a></li>
       <li><a href="${P}blogg/flyttstadning-tips.html">Flyttstädning checklista</a></li>
@@ -228,7 +228,7 @@ const FOOTER_HTML = `
     </ul>
   </div>
   <div>
-    <h4>Städer</h4>
+    <h3>Städer</h3>
     <ul>
       <li><a href="${P}stockholm.html">Stockholm</a></li>
       <li><a href="${P}sundbyberg.html">Sundbyberg</a></li>
