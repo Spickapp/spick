@@ -37,6 +37,8 @@ import { corsHeaders } from "../_shared/email.ts";
 import { validateInput } from "../_shared/escrow-state.ts";
 import { verifyInternalSecret } from "../_shared/auth.ts";
 import { createLogger } from "../_shared/log.ts";
+import { retryWithBackoff } from "../_shared/retry-backoff.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -52,7 +54,7 @@ function json(cors: Record<string, string>, status: number, body: unknown) {
 
 const log = createLogger("escrow-state-transition");
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry("escrow-state-transition", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
@@ -122,14 +124,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Atomisk UPDATE med optimistic concurrency control ──
-    const { data: updated, error: updateErr } = await sb
-      .from("bookings")
-      .update({ escrow_state: transition.to })
-      .eq("id", booking_id)
-      .eq("escrow_state", fromState)
-      .select("id, escrow_state")
-      .maybeSingle();
+    // ── Atomisk UPDATE med optimistic concurrency control + retry ──
+    // P1 Race Fix #2: wrap UPDATE i retryWithBackoff (3 attempts, 100ms→200ms→400ms)
+    // för transienta optimistic-lock-konflikter. Permanenta konflikter kastas vidare.
+    let updated: { id: string; escrow_state: string } | null = null;
+    let updateErr: { message: string } | null = null;
+    try {
+      updated = await retryWithBackoff(
+        async () => {
+          const { data, error } = await sb
+            .from("bookings")
+            .update({ escrow_state: transition.to })
+            .eq("id", booking_id)
+            .eq("escrow_state", fromState)
+            .select("id, escrow_state")
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) throw new Error("optimistic_lock_conflict");
+          return data;
+        },
+        { maxAttempts: 3, initialDelayMs: 100 }
+      );
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg === "optimistic_lock_conflict") {
+        return json(CORS, 409, {
+          error: "state_changed_concurrently",
+          details: { booking_id, expected_from: fromState },
+        });
+      }
+      updateErr = { message: msg };
+    }
 
     if (updateErr) {
       log("error", "Update failed", { booking_id, error: updateErr.message });
@@ -178,4 +203,4 @@ Deno.serve(async (req) => {
     log("error", "Unexpected error", { error: (err as Error).message });
     return json(CORS, 500, { error: "internal_error" });
   }
-});
+}));

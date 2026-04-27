@@ -48,6 +48,7 @@ import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
 import { verifyInternalSecret } from "../_shared/auth.ts";
 import { createLogger } from "../_shared/log.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -145,7 +146,7 @@ async function callEscrowStateTransition(
   }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry("escrow-release", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
@@ -363,4 +364,4 @@ Deno.serve(async (req) => {
     log("error", "Unexpected", { error: (err as Error).message });
     return json(CORS, 500, { error: "internal_error" });
   }
-});
+}));

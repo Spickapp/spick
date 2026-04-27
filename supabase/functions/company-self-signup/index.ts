@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, sendEmail, wrap } from "../_shared/email.ts";
 import { sendSms } from "../_shared/notifications.ts";
 import { createLogger } from "../_shared/log.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const log = createLogger("company-self-signup");
 
@@ -60,13 +61,13 @@ function slugify(name: string): string {
 // ─────────────────────────────────────────────
 // Main handler
 // ─────────────────────────────────────────────
-Deno.serve(async (req) => {
+Deno.serve(withSentry("company-self-signup", async (req) => {
   const CORS = corsHeaders(req);
-  
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
   }
-  
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "method_not_allowed" }), {
       status: 405,
@@ -455,12 +456,12 @@ Deno.serve(async (req) => {
       stripe_onboarding_url: stripeUrl,
       require_bankid: REQUIRE_BANKID,
     });
-    
+
   } catch (err) {
     log("error", "Unhandled exception", { error: (err as Error).message });
     return json(CORS, 500, { error: "internal_error" });
   }
-});
+}));
 
 // ─────────────────────────────────────────────
 // Helpers

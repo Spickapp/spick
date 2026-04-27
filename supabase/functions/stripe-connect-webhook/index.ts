@@ -20,6 +20,7 @@ import { verifyStripeWebhookSignature } from "../_shared/stripe-webhook-verify.t
 import { sendSms } from "../_shared/notifications.ts";
 import { sendEmail, wrap, corsHeaders } from "../_shared/email.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -277,9 +278,9 @@ async function handleDeauthorized(event: StripeAccountEvent): Promise<void> {
 // ─────────────────────────────────────────────────────────
 // Main handler
 // ─────────────────────────────────────────────────────────
-Deno.serve(async (req) => {
+Deno.serve(withSentry("stripe-connect-webhook", async (req) => {
   const CORS = corsHeaders(req);
-  
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
   }
@@ -372,4 +373,4 @@ Deno.serve(async (req) => {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
-});
+}));

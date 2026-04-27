@@ -37,6 +37,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,7 +51,7 @@ function json(data: unknown, status: number, cors: Record<string, string>) {
   });
 }
 
-serve(async (req) => {
+serve(withSentry("admin-cancel-booking", async (req) => {
   const t0 = Date.now();
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -269,4 +270,4 @@ serve(async (req) => {
       ms: Date.now() - t0,
     }, 500, CORS);
   }
-});
+}));

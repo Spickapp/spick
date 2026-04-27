@@ -11,6 +11,7 @@ import { parseStockholmTime } from "../_shared/timezone.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
 import { requireCronAuth } from "../_shared/cron-auth.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPA_URL   = "https://urjeijcncsyuletprydy.supabase.co";
 const SUPA_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -71,7 +72,7 @@ async function sendSms(to: string | null | undefined, message: string): Promise<
   }
 }
 
-serve(async (req) => {
+serve(withSentry("auto-remind", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
@@ -1084,4 +1085,4 @@ ${b.payment_intent_id ? `<p><strong>Full återbetalning är på väg</strong> �
   return new Response(JSON.stringify({ok:true,sent,ts:now.toISOString()}), {
     headers:{"Content-Type":"application/json"}
   });
-});
+}));

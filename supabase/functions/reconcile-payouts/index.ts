@@ -13,11 +13,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { reconcilePayouts, isMoneyLayerEnabled } from '../_shared/money.ts';
+import { withSentry } from "../_shared/sentry.ts";
 
 const AUTO_ACTIVATION_CLEAN_RUNS_THRESHOLD = 20;  // ~20 timmar clean
 const AUTO_ACTIVATION_HOURS_WINDOW = 24;
 
-serve(async (req) => {
+serve(withSentry("reconcile-payouts", async (req) => {
   // 1. Auth: verifiera JWT-role (service_role eller authenticated)
   // Byt fran strict env-match till JWT-decode for robusthet mot
   // Supabase API-generationsbyte (2026-04-20).
@@ -204,4 +205,4 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-});
+}));

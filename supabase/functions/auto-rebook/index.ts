@@ -21,6 +21,7 @@ import { logBookingEvent, type SupabaseRpcClient } from "../_shared/events.ts";
 import { findSlotConflict } from "../_shared/slot-holds.ts";
 import { isHoliday, nextNonHoliday } from "../_shared/holidays.ts";
 import { requireCronAuth } from "../_shared/cron-auth.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,7 +31,7 @@ const BASE_URL     = Deno.env.get("BASE_URL") || "https://spick.se";
 // Vid skala >1000 aktiva subs: överväg platform_settings-key + batchning (separat iteration).
 const HORIZON_DAYS = 28;
 
-serve(async (req) => {
+serve(withSentry("auto-rebook", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -99,7 +100,7 @@ serve(async (req) => {
     log("error", "auto-rebook", "Fatal", { error: (err as Error).message });
     return json(500, { error: (err as Error).message });
   }
-});
+}));
 
 // ── Beräkna nästa datum baserat på frekvens ──────────────────
 function nextDate(current: string, frequency: string): string {

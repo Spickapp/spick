@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log } from "../_shared/email.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-serve(async (req) => {
+serve(withSentry("admin-approve-cleaner", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
@@ -402,7 +403,7 @@ serve(async (req) => {
 </div>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-skatt bekräftad — du är redo att ta emot bokningar!</p>` : ""}
         ${card([
           ["Timpris", `${hr} kr/h`],
-          ["Provision", "17% (du behåller 83%)"],
+          ["Provision", "12% (du behåller 88%)"],
           ["Tjänster", svcs.join(", ")],
         ])}
         <p>Klicka på knappen nedan för att logga in på din dashboard där du kan se och hantera bokningar:</p>
@@ -439,7 +440,7 @@ serve(async (req) => {
 </div>` : app.fskatt_confirmed ? `<p style="background:#E1F5EE;border-radius:12px;padding:12px 16px;font-size:14px;color:#166534">✅ F-tax confirmed — you're ready to receive bookings!</p>` : ""}
         ${card([
           ["Hourly rate", `${hr} kr/h`],
-          ["Commission", "17% (you keep 83%)"],
+          ["Commission", "12% (you keep 88%)"],
           ["Services", svcs.join(", ")],
         ])}
         <p>Click the button below to log in to your dashboard where you can see and manage your bookings:</p>
@@ -531,7 +532,7 @@ serve(async (req) => {
     log("error", "admin-approve-cleaner", "Unhandled error", { error: (err as Error).message });
     return json({ error: (err as Error).message }, 500, CORS);
   }
-});
+}));
 
 function json(data: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(data), {

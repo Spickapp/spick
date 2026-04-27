@@ -20,11 +20,12 @@ import { corsHeaders, log } from "../_shared/email.ts";
 import { notify } from "../_shared/notifications.ts";
 import { formatStockholmDate } from "../_shared/timezone.ts";
 import { logBookingEvent } from "../_shared/events.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-serve(async (req) => {
+serve(withSentry("auto-delegate", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
@@ -253,7 +254,7 @@ serve(async (req) => {
     log("error", "auto-delegate", "Unhandled error", { error: (err as Error).message });
     return json({ error: (err as Error).message }, 500, CORS);
   }
-});
+}));
 
 function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {

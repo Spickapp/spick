@@ -36,6 +36,7 @@ import {
 import { resolvePricing } from "../_shared/pricing-resolver.ts";
 import { corsHeaders, encryptPnr, sendEmail, wrap, card } from "../_shared/email.ts";
 import { logBookingEvent } from "../_shared/events.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -70,7 +71,7 @@ async function resolveStripeKey(supabase: any): Promise<{ key: string; mode: 'te
   return { key: STRIPE_KEY_LIVE, mode: 'live' };
 }
 
-serve(async (req) => {
+serve(withSentry("booking-create", async (req) => {
   const CORS = corsHeaders(req);
 
   function json(status: number, body: any) {
@@ -507,6 +508,28 @@ serve(async (req) => {
         }
       }
       await supabase.from("bookings").delete().eq("id", existingBooking.id);
+    }
+
+    // ── 7c. P0 RACE-FIX: acquire_booking_slot (pessimistic lock) ──────
+    // Verifiera att slot är ledig + locka cleaner_availability_v2-raden
+    // tills denna transaktion är klar. Anropas FÖRE booking-INSERT +
+    // Stripe Checkout för att förhindra concurrent dubbelbokningar.
+    // Ref: migration 20260426350000 (Agent A + C audit).
+    const { data: slotOk, error: slotErr } = await supabase.rpc('acquire_booking_slot', {
+      p_cleaner_id: cleaner.id,
+      p_booking_date: date,
+      p_booking_time: time,
+      p_booking_hours: validHours,
+    });
+    if (slotErr || !slotOk) {
+      console.warn("[booking-create] slot_taken", {
+        cleaner_id: cleaner.id, date, time, hours: validHours,
+        error: slotErr?.message,
+      });
+      return json(409, {
+        error: "slot_taken",
+        detail: "Den valda tiden är inte längre tillgänglig.",
+      });
     }
 
     // ── 8. SKAPA BOKNING I DB ──────────────────────
@@ -1060,7 +1083,7 @@ serve(async (req) => {
     console.error("booking-create exception:", e);
     return json(500, { error: (e as Error).message });
   }
-});
+}));
 
 // ── HELPERS ──────────────────────────────────────
 

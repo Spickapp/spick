@@ -23,6 +23,7 @@ import { sendMagicSms } from "../_shared/send-magic-sms.ts";
 import { logBookingEvent } from "../_shared/events.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
 import { verifyStripeWebhookSignature } from "../_shared/stripe-webhook-verify.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const STRIPE_SECRET_KEY       = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_SECRET_KEY_TEST  = Deno.env.get("STRIPE_SECRET_KEY_TEST") || "";
@@ -1081,7 +1082,7 @@ async function handleDisputeClosed(dispute: Record<string, unknown>) {
   console.log("[SPICK] Dispute closed:", { bookingId: booking.id, won, newStatus });
 }
 
-serve(async (req) => {
+serve(withSentry("stripe-webhook", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   // Direkt capture-anrop från städardashboard
@@ -1191,4 +1192,4 @@ serve(async (req) => {
   }
 
   return new Response("OK", { status: 200 });
-});
+}));

@@ -21,6 +21,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
 import { requireCronAuth } from "../_shared/cron-auth.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,7 +31,7 @@ const BASE_URL     = Deno.env.get("BASE_URL") || "https://spick.se";
 // Fel som INTE är värda att försöka igen
 const NO_RETRY_ERRORS = new Set(["expired_card", "authentication_required"]);
 
-serve(async (req) => {
+serve(withSentry("charge-subscription-booking", async (req) => {
   const CORS = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -108,7 +109,7 @@ serve(async (req) => {
     log("error", "charge-sub", "Fatal", { error: (err as Error).message });
     return json(500, { error: (err as Error).message });
   }
-});
+}));
 
 // ── Hämta Connect-destination för bokningen ──────────────────
 async function getConnectDestination(
@@ -232,18 +233,63 @@ async function chargeBooking(
 
   // 5a. LYCKAT
   if (piRes.ok && pi.status === "succeeded") {
-    await supabase.from("bookings").update({
-      payment_status: "paid",
-      stripe_payment_intent_id: pi.id,
-      subscription_charge_attempts: newAttempts,
-      confirmed_at: booking.confirmed_at || new Date().toISOString(),
-    }).eq("id", bookingId);
+    // P1 Race Fix #3: atomisk dubbeluppdatering via commit_subscription_charge RPC
+    // Ersätter 2 separate UPDATEs med 1 transaktion + idempotency-guard
+    // (förhindrar duplicate charge om cron-retry sker innan payment_status hinner sparas).
+    // Ref: migration 20260426350001 (Agent A + C audit).
+    const nowIso = new Date().toISOString();
+    const confirmedAt = (booking.confirmed_at as string) || nowIso;
 
     if (subscriptionId) {
-      await supabase.from("subscriptions").update({
-        last_charge_success_at: new Date().toISOString(),
-        consecutive_failures: 0,
-      }).eq("id", subscriptionId);
+      const { data: chargeResult, error: chargeErr } = await supabase.rpc(
+        "commit_subscription_charge",
+        {
+          p_booking_id: bookingId,
+          p_subscription_id: subscriptionId,
+          p_payment_status: "paid",
+          p_stripe_payment_intent_id: pi.id,
+          p_confirmed_at: confirmedAt,
+          p_last_charge_success_at: nowIso,
+        },
+      );
+
+      if (chargeErr) {
+        log("error", "charge-sub", "commit_subscription_charge RPC failed", {
+          booking_id: bookingId,
+          subscription_id: subscriptionId,
+          error: chargeErr.message,
+        });
+        // Hård fail: vi har redan dragit pengarna i Stripe — returnera error-status
+        // så cron-retry inte triggar dubbeldebitering. Manuell intervention krävs
+        // (jfr Stripe Dashboard payment_intents.list för pi.id för att refunda).
+        return {
+          status: "error",
+          error: `commit_failed_after_stripe_charge: ${chargeErr.message}`,
+          pi_id: pi.id,
+          amount: chargeAmount,
+        };
+      }
+
+      if (chargeResult?.[0]?.idempotent) {
+        log("info", "charge-sub", "Charge already committed (idempotency-skip)", {
+          booking_id: bookingId,
+          subscription_id: subscriptionId,
+        });
+      }
+
+      // subscription_charge_attempts ingår ej i RPC-spec — uppdatera separat.
+      // Best-effort; ej kritisk för transaktion (cron-filter använder den i nästa run).
+      await supabase.from("bookings").update({
+        subscription_charge_attempts: newAttempts,
+      }).eq("id", bookingId);
+    } else {
+      // Ingen subscription_id (manuell engångsbokning?) — kör legacy 1-step UPDATE
+      await supabase.from("bookings").update({
+        payment_status: "paid",
+        stripe_payment_intent_id: pi.id,
+        subscription_charge_attempts: newAttempts,
+        confirmed_at: confirmedAt,
+      }).eq("id", bookingId);
     }
 
     // Email: Betalning lyckad
