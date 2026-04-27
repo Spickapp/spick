@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (103 st)
+## Edge Functions (104 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -50,6 +50,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `company-propose-substitute` |  |
 | `company-self-signup` | ═══════════════════════════════════════════════════════════════ SPICK – company-self-signup (Sprint B Dag 3) |
 | `company-url-monitor` |  |
+| `content-claims-monitor` |  |
 | `customer-approve-proposal` |  |
 | `customer-check-auto-delegation` | ═══════════════════════════════════════════════════════════════ SPICK – customer-check-auto-delegation (Fas 1.2) |
 | `customer-nudge-recurring` | customer-nudge-recurring — Fas 5 §5.9 ═══════════════════════════════════════════════════════════════ |
@@ -149,7 +150,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (50 st)
+## GitHub Actions workflows (51 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -164,6 +165,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/cleaner-onboarding-emails.yml`
 - `.github/workflows/cleanup-stale.yml`
 - `.github/workflows/company-url-monitor.yml`
+- `.github/workflows/content-claims-monitor.yml`
 - `.github/workflows/content-engine.yml`
 - `.github/workflows/customer-nudge-recurring.yml`
 - `.github/workflows/daily-automation.yml`
