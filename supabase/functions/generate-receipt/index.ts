@@ -393,7 +393,7 @@ async function sendReceiptEmail(
     return { ok: false, error: "customer_email saknas" };
   }
 
-  const subject = `Bokningsbekräftelse + kvitto — ${d.service} ${d.bookingDate}`;
+  const subject = `Bokningsförfrågan mottagen + kvitto — ${d.service} ${d.bookingDate}`;
   const html = buildReceiptEmailHtml(d, company, receiptUrl, ctx);
 
   // 2026-04-27 (Fas E-PDF): bifoga PDF-kvitto. Email-body är nu minimal
@@ -521,7 +521,7 @@ function buildReceiptEmailHtml(
     : `Din bokning är mottagen. Städaren bekräftar uppdraget inom 90 minuter.`;
 
   const content = `
-<h2>Tack för din bokning${fname ? ", " + fname : ""}! 🌿</h2>
+<h2>Tack för din bokningsförfrågan${fname ? ", " + fname : ""}! 🌿</h2>
 <p>${statusLine}</p>
 <p>📄 <strong>Kvitto:</strong> Bifogat som PDF (för RUT-deklaration och garanti-krav).</p>
 <p>🔗 <a href="${escAttr(ctx.magicLink)}" style="color:#0F6E56">Visa min bokning</a></p>
