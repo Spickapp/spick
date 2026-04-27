@@ -57,9 +57,9 @@ export function wrap(content: string): string {
 h2{font-family:Georgia,serif;font-size:20px;color:#1C1C1A;margin:0 0 12px}
 p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
 .card{background:#F7F7F5;border-radius:12px;padding:20px;margin:16px 0}
-.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4;font-size:14px}
+.row{padding:6px 0;border-bottom:1px solid #E8E8E4;font-size:14px}
 .row:last-child{border:none;padding-top:12px}
-.row .lbl{color:#9B9B95}.row .val{font-weight:600;color:#1C1C1A}
+.row .lbl{color:#9B9B95;display:inline-block;min-width:110px;padding-right:12px}.row .val{font-weight:600;color:#1C1C1A}
 .btn{display:inline-block;background:#0F6E56;color:#fff;padding:12px 24px;border-radius:100px;text-decoration:none;font-weight:600;font-size:15px;margin-top:8px}
 .badge{display:inline-block;background:#E1F5EE;color:#0F6E56;padding:6px 14px;border-radius:100px;font-size:13px;font-weight:600}
 </style></head><body>

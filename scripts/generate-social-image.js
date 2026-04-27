@@ -121,7 +121,7 @@ function generateSVG(hook, pillar, day) {
   <rect x="60" y="940" width="960" height="3" rx="1.5" fill="${theme.accent}" opacity="0.6"/>
 
   <!-- Spick branding -->
-  <text x="60" y="1000" font-family="'Playfair Display', Georgia, serif" font-size="36" font-weight="700" fill="white" letter-spacing="2">SPICK</text>
+  <text x="60" y="1000" font-family="'Plus Jakarta Sans', Georgia, serif" font-size="36" font-weight="700" fill="white" letter-spacing="2">SPICK</text>
 
   <!-- CTA -->
   <text x="1020" y="1000" text-anchor="end" font-family="'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="white" opacity="0.7">spick.se/boka</text>

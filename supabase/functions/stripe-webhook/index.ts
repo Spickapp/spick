@@ -137,8 +137,8 @@ body{margin:0;padding:0;background:#F7F7F5;font-family:'DM Sans',Arial,sans-seri
 h2{font-family:Georgia,serif;font-size:20px;color:#1C1C1A;margin:0 0 12px}
 p{color:#6B6960;line-height:1.7;font-size:15px;margin:0 0 12px}
 .card{background:#F7F7F5;border-radius:12px;padding:20px;margin:16px 0}
-.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #E8E8E4;font-size:14px}
-.row:last-child{border:none;padding-top:10px}.row .lbl{color:#9B9B95}.row .val{font-weight:600;color:#1C1C1A}
+.row{padding:6px 0;border-bottom:1px solid #E8E8E4;font-size:14px}
+.row:last-child{border:none;padding-top:10px}.row .lbl{color:#9B9B95;display:inline-block;min-width:110px;padding-right:12px}.row .val{font-weight:600;color:#1C1C1A}
 .btn{display:inline-block;background:#0F6E56;color:#fff;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:600;font-size:15px;margin-top:8px}
 .check{background:#E1F5EE;border-radius:12px;padding:20px;text-align:center;margin:16px 0}
 .check-icon{font-size:3rem;display:block}.check-text{font-weight:700;color:#0F6E56;font-size:18px;font-family:Georgia,serif}

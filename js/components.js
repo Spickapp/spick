@@ -72,7 +72,7 @@ select:focus-visible, textarea:focus-visible{
 nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
   justify-content:space-between;border-bottom:1px solid #E8E8E4;
   position:sticky;top:0;z-index:100;backdrop-filter:blur(8px);}
-.logo{font-family:'Playfair Display',Georgia,serif;font-size:1.7rem;font-weight:700;
+.logo{font-family:'Plus Jakarta Sans',Georgia,serif;font-size:1.7rem;font-weight:700;
   color:#0F6E56;text-decoration:none;}
 .nav-links{display:flex;align-items:center;gap:2rem;}
 .nl{font-size:.9rem;color:#6B6960;text-decoration:none;transition:color .2s;}
@@ -121,7 +121,7 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
 /* FOOTER */
 footer{background:#080808;padding:4rem 5rem 2rem;}
 .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2rem;margin-bottom:3rem;max-width:1200px;margin-left:auto;margin-right:auto;}
-.footer-logo{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700;
+.footer-logo{font-family:'Plus Jakarta Sans',Georgia,serif;font-size:2rem;font-weight:700;
   color:#1D9E75;margin-bottom:.75rem;}
 .footer-desc{font-size:.875rem;color:#5A5A55;line-height:1.7;max-width:260px;}
 .footer-contact{margin-top:1.25rem;display:flex;flex-direction:column;gap:.5rem;}

@@ -21,6 +21,11 @@ const SPICK = Object.freeze({
   // på posthog.com → välj EU region → kopiera "Project API Key" (phc_...).
   // Setup-guide: docs/csp-update-posthog.md.
   POSTHOG_KEY: 'phc_uyAZjjps4RGHEPVT23yrV4mbZSCNMJopEkpmYBVh7BiB',
+  // Crisp live-chat (cleaner-recruitment 2026-04-26) — EU region (Frankrike).
+  // Tom = no-op (lazy-loader skippar silent). Sätts av Farhad efter signup
+  // på crisp.chat → välj EU region → kopiera Website-ID från Settings.
+  // Setup-guide: docs/crisp-setup.md.
+  CRISP_WEBSITE_ID: '',
 });
 
 // Exponera globalt för pages som boot-checkar `window.SPICK`

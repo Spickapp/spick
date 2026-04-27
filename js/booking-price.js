@@ -71,7 +71,7 @@
    */
   function formatCustomerBookingPrice(booking) {
     var p = calcBookingPrice(booking);
-    var priceHtml = '<span style="font-family:\'Playfair Display\',serif;font-size:1.25rem;font-weight:700;color:#1C1C1A">'
+    var priceHtml = '<span style="font-family:\'Plus Jakarta Sans\',serif;font-size:1.25rem;font-weight:700;color:#1C1C1A">'
       + Math.round(p.net) + ' kr</span>';
 
     if (p.hasRut) {
@@ -115,7 +115,7 @@
     }
 
     var earnings = p.gross * keepRate;
-    return '<span style="font-family:\'Playfair Display\',serif;font-size:1.25rem;font-weight:700;color:#0F6E56">'
+    return '<span style="font-family:\'Plus Jakarta Sans\',serif;font-size:1.25rem;font-weight:700;color:#0F6E56">'
       + Math.round(earnings) + ' kr</span>'
       + '<div style="font-size:.75rem;color:#6B6960;margin-top:4px">efter '
       + commissionPct + '% Spick-provision (brutto '
