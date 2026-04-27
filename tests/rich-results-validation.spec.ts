@@ -80,10 +80,10 @@ const PAGES: Array<{
   },
   {
     name: 'hemstadning-stockholm',
-    url: `${BASE}/hemstadning-stockholm.html`,
-    requiredTypes: ['LocalBusiness'],
+    url: `${BASE}/blogg/hemstadning-stockholm.html`,
+    requiredTypes: ['Article'],
     requiredProperties: {
-      LocalBusiness: ['name', 'url'],
+      Article: ['headline'],
     },
   },
 ];
