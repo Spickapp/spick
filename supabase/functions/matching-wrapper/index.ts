@@ -352,6 +352,19 @@ serve(async (req) => {
       return json(400, { error: "customer_lat och customer_lng krävs (number)" });
     }
 
+    // P0 prod-fix 2026-04-27: find_nearby_providers + find_nearby_cleaners-RPCs
+    // har booking_hours som INTEGER (PostgreSQL-typ). Klient skickar decimaler
+    // (t.ex. 2.5h för "2.5 timmar städning"). PostgreSQL kastade
+    // "invalid input syntax for type integer: 2.5" → 500 Internal Server Error.
+    // Fix: Math.ceil rundar upp 2.5 → 3 så matchningen kräver att cleaner har
+    // minst 3h ledigt (lite strängare, men ALDRIG bokar 2.5h-jobb mot cleaner
+    // med bara 2h ledigt). Bokningens FAKTISKA timmar lagras i bookings-tabellen
+    // oförändrat (booking-create skriver den NUMERIC). Permanent DB-fix
+    // (ALTER FUNCTION → NUMERIC) i separat migration nästa sprint.
+    if (typeof body.booking_hours === "number" && !Number.isInteger(body.booking_hours)) {
+      body.booking_hours = Math.ceil(body.booking_hours);
+    }
+
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     const { version, shadowLogEnabled, requireVerification } = await readSettings(supabase);
 
