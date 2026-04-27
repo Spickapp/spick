@@ -80,13 +80,27 @@ export function card(rows: Array<[string, string]>): string {
 }
 
 /**
+ * Resend-attachment: filename + base64-encoded content (eller content_type override).
+ * Resend-API: https://resend.com/docs/api-reference/emails/send-email#attachments
+ */
+export interface EmailAttachment {
+  filename: string;
+  content: string;      // base64-encoded
+  content_type?: string; // default application/octet-stream — sätt explicit för PDF
+}
+
+/**
  * Skicka e-post via Resend
  * Returnerar { ok, id?, error? }
+ *
+ * 2026-04-27: utökad med valfri attachments-parameter (Fas E-PDF, kund-kvitto-PDF).
+ * Backward-compat: ingen befintlig caller behöver ändras.
  */
 export async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  attachments?: EmailAttachment[],
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   // §10.6 (2026-04-25): admin-email-disable-flag.
   // När DISABLE_ADMIN_EMAIL='true' i env → admin-emails (to=ADMIN) skippas.
@@ -98,13 +112,17 @@ export async function sendEmail(
     return { ok: true, id: "skipped-admin-email-disabled" };
   }
   try {
+    const payload: Record<string, unknown> = { from: FROM, to, subject, html };
+    if (attachments && attachments.length > 0) {
+      payload.attachments = attachments;
+    }
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: FROM, to, subject, html }),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       const data = await res.json();

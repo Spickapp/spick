@@ -965,6 +965,15 @@ serve(withSentry("booking-create", async (req) => {
     params.append("line_items[0][price_data][product_data][images][]", "https://spick.se/assets/og-image.png");
 
     params.append("payment_intent_data[statement_descriptor]", "SPICK STADNING");
+    // ── DISABLE STRIPE AUTOMATIC RECEIPT-EMAIL ─────────────────────────
+    // Spick skickar eget kvitto via generate-receipt EF (BokfL 5 kap 7§-kompatibelt)
+    // + "Tack för din bokning"-mail via notify EF. Vi vill INTE att Stripe
+    // dubbelmailar kunden ("Kvitto från Spick").
+    // Tom sträng på receipt_email överskrider Dashboard-setting "Email customers
+    // about successful payments" för denna specifika PaymentIntent.
+    // OBS: Dashboard-toggeln bör också stängas av i Stripe-dashboard som backup.
+    // Ref: https://docs.stripe.com/api/payment_intents/create#create_payment_intent-receipt_email
+    params.append("payment_intent_data[receipt_email]", "");
     params.append("billing_address_collection", "auto");
 
     // ── STRIPE CONNECT: Destination charge (Fas 8 §8.2 flag-styrd) ──────

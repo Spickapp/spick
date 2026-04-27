@@ -118,23 +118,51 @@ serve(async (req) => {
     // ACCEPT
     // ════════════════════════════════════════════════════════
     if (action === "accept") {
-      // Regel #28: Hämta alltid target-cleaner's email/phone, inte inloggad användares
-      // Detta gör flödet homogent för både solo-accept och VD-accept
+      // Regel #28: Hämta target-cleaner = TILLDELAD städare (booking.cleaner_id)
+      // Olika från `cleaner`-variabeln som kan vara VD eller admin (impersonation).
+      // Måste användas för display-namn så kund ser RIKTIG städare, inte VD.
       const { data: targetCleaner } = await sb
         .from("cleaners")
-        .select("email, phone")
+        .select("id, full_name, email, phone, company_id, is_company_owner")
         .eq("id", booking.cleaner_id)
         .maybeSingle();
+
+      // Hämta företagsnamn om städaren tillhör ett företag
+      let companyName: string | null = null;
+      if (targetCleaner?.company_id) {
+        const { data: company } = await sb
+          .from("companies")
+          .select("display_name, name")
+          .eq("id", targetCleaner.company_id)
+          .maybeSingle();
+        companyName = company?.display_name || company?.name || null;
+      }
+
+      // Display-namn: VD visar bara företagsnamn (anonymisering — kund ska inte se
+      // VDs namn som städare). Solo-städare eller teammedlem visar personnamn + ev.
+      // företagsnamn i parentes (Nasiba Kenjaeva (Solid Service)).
+      let displayName: string;
+      if (targetCleaner?.is_company_owner && companyName) {
+        // VD = visa bara företagsnamn (kund vet inte att VD är städaren)
+        displayName = companyName;
+      } else if (targetCleaner?.full_name && companyName) {
+        displayName = `${targetCleaner.full_name} (${companyName})`;
+      } else {
+        displayName = targetCleaner?.full_name || "Din städare";
+      }
 
       await sb.from("bookings").update({
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
         cleaner_email: targetCleaner?.email || null,
         cleaner_phone: targetCleaner?.phone || null,
+        cleaner_name: displayName,  // Skriv över så frontend också ser rätt
       }).eq("id", booking_id);
 
       // Multi-kanal till kund: Email + SMS + push (parallellt, fail-safe)
-      const cleanerDisplayName = cleaner.full_name || "Din städare";
+      // Använd displayName (= TILLDELAD städare + ev. företag), inte cleaner.full_name
+      // som kan vara VD eller admin pga impersonation-flow.
+      const cleanerDisplayName = displayName;
       const dateLong = formatStockholmDateLong(bookingDate);
       const timeShort = bookingTime ? bookingTime.slice(0,5) : "";
 
@@ -171,27 +199,40 @@ serve(async (req) => {
         });
       }
 
-      // Email to admin
-      await sendEmail(ADMIN, `Bokning bekräftad av ${cleaner.full_name}`, wrap(`
+      // Email to admin — visar accepted-by (VD/admin) PLUS tilldelad städare
+      const acceptedByLabel = isAdmin ? `Admin (${authUser.email})` : (cleaner.full_name || "okänd");
+      await sendEmail(ADMIN, `Bokning bekräftad: ${displayName}`, wrap(`
         <h2>Bokning bekräftad</h2>
-        <p><strong>${esc(cleaner.full_name)}</strong> har accepterat bokning <code>${esc(booking_id.slice(0, 8))}</code>.</p>
+        <p>Bokning <code>${esc(booking_id.slice(0, 8))}</code> accepterad.</p>
         ${card([
+          ["Tilldelad städare", esc(displayName)],
+          ["Accepterad av", esc(acceptedByLabel)],
           ["Kund", esc(customerName)],
           ["Datum", formatStockholmDateLong(bookingDate)],
           ["Tjänst", `${esc(serviceType)}, ${bookingHours}h`],
         ])}
       `));
-      // Fas 10: info — normalt flöde, nice-to-know
       await sendAdminAlert({
         severity: "info",
-        title: `Bokning bekräftad: ${cleaner.full_name}`,
+        title: `Bokning bekräftad: ${displayName}`,
         source: "cleaner-booking-response",
         booking_id,
-        cleaner_id: cleaner.id,
-        metadata: { customer: customerName, service: serviceType, hours: bookingHours, date: bookingDate },
+        cleaner_id: targetCleaner?.id || cleaner.id || null,
+        metadata: {
+          customer: customerName,
+          service: serviceType,
+          hours: bookingHours,
+          date: bookingDate,
+          accepted_by: acceptedByLabel,
+          via_admin_impersonation: isAdmin,
+        },
       });
 
-      log("info", "cleaner-booking-response", "Booking accepted", { booking_id, cleaner_id: cleaner.id });
+      log("info", "cleaner-booking-response", "Booking accepted", {
+        booking_id,
+        target_cleaner_id: targetCleaner?.id,
+        accepted_by: acceptedByLabel,
+      });
       return json({ success: true, message: "Bokning bekräftad! Kunden har fått mejl." }, 200, CORS);
     }
 

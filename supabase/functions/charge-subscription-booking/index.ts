@@ -210,6 +210,13 @@ async function chargeBooking(
   }
   piParams.append("metadata[type]", "subscription_charge");
   piParams.append("statement_descriptor", "SPICK STADNING");
+  // ── DISABLE STRIPE AUTOMATIC RECEIPT-EMAIL ─────────────────────────
+  // Spick skickar eget kvitto via generate-receipt EF + notify EF.
+  // Tom sträng på receipt_email överskrider Dashboard-setting "Email customers
+  // about successful payments" för denna specifika PaymentIntent.
+  // OBS: Dashboard-toggeln bör också stängas av i Stripe-dashboard som backup.
+  // Ref: https://docs.stripe.com/api/payment_intents/create#create_payment_intent-receipt_email
+  piParams.append("receipt_email", "");
 
   if (destinationAccountId) {
     piParams.append("transfer_data[destination]", destinationAccountId);

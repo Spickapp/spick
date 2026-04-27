@@ -23,7 +23,8 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders, sendEmail, wrap, ADMIN, getMaterialInfo } from "../_shared/email.ts";
+import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import { corsHeaders, sendEmail, wrap, ADMIN, getMaterialInfo, type EmailAttachment } from "../_shared/email.ts";
 import { generateMagicShortUrl } from "../_shared/send-magic-sms.ts";
 import { sendAdminAlert } from "../_shared/alerts.ts";
 
@@ -395,11 +396,21 @@ async function sendReceiptEmail(
   const subject = `Bokningsbekräftelse + kvitto — ${d.service} ${d.bookingDate}`;
   const html = buildReceiptEmailHtml(d, company, receiptUrl, ctx);
 
-  const result = await sendEmail(d.customerEmail, subject, html);
+  // 2026-04-27 (Fas E-PDF): bifoga PDF-kvitto. Email-body är nu minimal
+  // text — all kvitto-data ligger i PDF:n (kund-feedback: "borde endast
+  // vara PDF, inget mejl i text"). Best-effort — om PDF-bygge failar
+  // skickas mejl utan attachment.
+  const attachments = await buildPdfAttachment(d, company, /* isInvoice */ false)
+    .catch((e) => {
+      console.warn("[RECEIPT] PDF generation failed, sending email without attachment:", (e as Error).message);
+      return undefined;
+    });
+
+  const result = await sendEmail(d.customerEmail, subject, html, attachments);
   if (!result.ok) {
     console.error("[RECEIPT] sendEmail failed:", result.error);
   } else {
-    console.log("[RECEIPT] Email sent to", d.customerEmail, "id:", result.id);
+    console.log("[RECEIPT] Email sent to", d.customerEmail, "id:", result.id, "pdf_attached:", !!attachments);
   }
   return result.ok ? { ok: true } : { ok: false, error: result.error };
 }
@@ -421,20 +432,28 @@ async function sendInvoiceEmail(
   const subject = `Faktura ${d.documentNumber} — ${d.service} ${d.bookingDate}`;
   const html = buildInvoiceEmailHtml(d, company, invoiceUrl, ctx);
 
+  // 2026-04-27 (Fas E-PDF): bifoga PDF-faktura. Email-body är nu minimal
+  // text — all faktura-data ligger i PDF:n. Best-effort.
+  const attachments = await buildPdfAttachment(d, company, /* isInvoice */ true)
+    .catch((e) => {
+      console.warn("[RECEIPT] PDF (invoice) generation failed, sending email without attachment:", (e as Error).message);
+      return undefined;
+    });
+
   // Kund-mejl (obligatoriskt)
-  const customerResult = await sendEmail(d.customerEmail, subject, html);
+  const customerResult = await sendEmail(d.customerEmail, subject, html, attachments);
   if (!customerResult.ok) {
     console.error("[RECEIPT] Invoice email to customer failed:", customerResult.error);
     return { ok: false, error: customerResult.error };
   }
-  console.log("[RECEIPT] Invoice email sent to customer", d.customerEmail, "id:", customerResult.id);
+  console.log("[RECEIPT] Invoice email sent to customer", d.customerEmail, "id:", customerResult.id, "pdf_attached:", !!attachments);
 
   // Separat faktura-mejl om business_invoice_email skiljer sig
   const separateEmail = d.bizInvoiceEmail
     && d.bizInvoiceEmail.toLowerCase() !== d.customerEmail.toLowerCase();
 
   if (separateEmail) {
-    const invoiceResult = await sendEmail(d.bizInvoiceEmail, subject, html);
+    const invoiceResult = await sendEmail(d.bizInvoiceEmail, subject, html, attachments);
     if (!invoiceResult.ok) {
       // Logga men räkna inte som hårt fel — kund-mejlet gick ut
       console.warn("[RECEIPT] Invoice email to business_invoice_email failed:", invoiceResult.error);
@@ -484,113 +503,29 @@ async function notifyAdminEmailFailure(
   });
 }
 
-// ─── Email HTML Builder (R2) ────────────────────────────────
-// Kompakt mejl-version med alla 11 bokföringslag-fält. För fullständig
-// webbversion använder kunden "Öppna webbversion"-länken till storage.
+// ─── Email HTML Builder (Fas E-PDF, 2026-04-27) ─────────────
+// Minimal text-mejl. All kvitto-data ligger i bifogat PDF — kund-feedback:
+// "borde endast vara PDF, inget mejl i text". Tidigare wrap()-mall med
+// .lbl + .val (CSS-baserad spacing) renderade som "KvittonummerKV-2026-..."
+// i mejl-klienter som strippar inline-CSS.
 
 function buildReceiptEmailHtml(
   d: ReceiptData,
-  company: CompanyInfo,
-  receiptUrl: string,
+  _company: CompanyInfo,
+  _receiptUrl: string,
   ctx: EmailContext,
 ): string {
-  const pricing = computePricingBreakdown(d);
-  const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
-
-  const customerAddrLine = d.address ? `<br>${escHtml(d.address)}` : "";
-  const cleanerLabel = ctx.cleanerFullName
-    ? `<div class="row"><span class="lbl">Städare</span><span class="val">${escHtml(ctx.cleanerFullName)} ⭐ ${escHtml(ctx.cleanerAvgRating)}</span></div>`
-    : "";
-
-  const pricingRows = d.isRut
-    ? `
-    <div class="row"><span class="lbl">Arbetskostnad exkl. moms</span><span class="val">${fmtKr(pricing.exVat)} kr</span></div>
-    <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtKr(pricing.vat)} kr</span></div>
-    <div class="row"><span class="lbl">Arbetskostnad inkl. moms</span><span class="val">${fmtKr(pricing.gross)} kr</span></div>
-    <div class="row" style="color:#0F6E56"><span class="lbl">RUT-avdrag 50%</span><span class="val">-${fmtKr(d.rutAmount)} kr</span></div>
-    <div class="row"><span class="lbl"><strong>Att betala</strong></span><span class="val"><strong>${fmtKr(d.amountPaid)} kr</strong></span></div>`
-    : `
-    <div class="row"><span class="lbl">Arbetskostnad exkl. moms</span><span class="val">${fmtKr(pricing.exVat)} kr</span></div>
-    <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtKr(pricing.vat)} kr</span></div>
-    <div class="row"><span class="lbl"><strong>Att betala inkl. moms</strong></span><span class="val"><strong>${fmtKr(d.totalPrice)} kr</strong></span></div>`;
-
-  const rutNote = d.isRut
-    ? `<p style="font-size:12px;color:#6B6960;margin-top:16px">
-         RUT-avdraget ansöks hos Skatteverket efter utfört arbete.
-         Maximalt avdrag är 75 000 kr per person och år.
-       </p>`
-    : "";
-
-  const fSkattLine = company.fSkatt ? "Godkänd för F-skatt. " : "";
-  const fname = d.customerName.split(" ")[0] || "";
-
-  // Status-banner: auto-confirm vs pending 90 min
-  const statusBanner = ctx.autoConfirm
-    ? `<div style="background:#E1F5EE;border-left:4px solid #0F6E56;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#0F6E56">
-         <strong>✅ Bokning bekräftad</strong> — ${escHtml(ctx.cleanerFullName)} har bekräftats för ditt uppdrag.
-       </div>`
-    : `<div style="background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#92400E">
-         <strong>⏳ Bokning mottagen</strong> — Din städare bekräftar uppdraget inom 90 minuter.
-       </div>`;
-
-  const prepBox = ctx.materialCustomerText
-    ? `<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin:16px 0;font-size:13px;color:#92400E;line-height:1.6">
-         ${ctx.materialEmoji} <strong>Förberedelse:</strong> ${escHtml(ctx.materialCustomerText)}
-       </div>`
-    : "";
+  const fname = escHtml(d.customerName.split(" ")[0] || "");
+  const statusLine = ctx.autoConfirm
+    ? `Din bokning är bekräftad — ${escHtml(ctx.cleanerFullName)} utför uppdraget.`
+    : `Din bokning är mottagen. Städaren bekräftar uppdraget inom 90 minuter.`;
 
   const content = `
-${statusBanner}
-<h2>Tack för din bokning${fname ? ", " + escHtml(fname) : ""}! 🌿</h2>
-<p>Här är ditt bokföringslag-grundade kvitto. Spara mejlet — det är underlag för eventuell RUT-deklaration och garanti-krav.</p>
-
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Kvitto</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Kvittonummer</span><span class="val">${escHtml(d.documentNumber)}</span></div>
-  <div class="row"><span class="lbl">Utfärdandedatum</span><span class="val">${escHtml(d.receiptDate)}</span></div>
-  <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
-</div>
-
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Utfärdare</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Företag</span><span class="val">${escHtml(company.legalName)} (bifirma ${escHtml(company.tradeName)})</span></div>
-  <div class="row"><span class="lbl">Org.nr</span><span class="val">${escHtml(company.orgNumber)}</span></div>
-  <div class="row"><span class="lbl">Momsreg.nr</span><span class="val">${escHtml(company.vatNumber)}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${escHtml(company.address)}</span></div>
-</div>
-
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Kund</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Namn</span><span class="val">${escHtml(d.customerName)}${customerAddrLine}</span></div>
-  ${d.isCompany && d.companyName ? `<div class="row"><span class="lbl">Företag</span><span class="val">${escHtml(d.companyName)}${d.companyOrg ? " · Org.nr " + escHtml(d.companyOrg) : ""}</span></div>` : ""}
-</div>
-
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Tjänst</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Beskrivning</span><span class="val">${escHtml(d.service)}</span></div>
-  <div class="row"><span class="lbl">Utförd</span><span class="val">${escHtml(d.bookingDate)} kl ${escHtml(d.bookingTime)}</span></div>
-  <div class="row"><span class="lbl">Omfattning</span><span class="val">${d.hours} timmar</span></div>
-  ${cleanerLabel}
-</div>
-
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Belopp</h3>
-<div class="card">${pricingRows}
-</div>
-
-<p style="font-size:12px;color:#6B6960;margin-top:20px">
-  ${fSkattLine}Momssatsen 25% är inkluderad i priset.
-  SNI ${escHtml(company.sniCode)} (städtjänster).
-</p>
-${rutNote}
-${prepBox}
-
-<a href="${escAttr(ctx.magicLink)}" class="btn">Visa min bokning →</a>
-
-<hr style="border:none;border-top:1px solid #E8E8E4;margin:24px 0">
-<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> — inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a> inom 24h.</p>
-<p style="font-size:13px">Ändra eller avboka senast 24h innan på <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a>.</p>
+<h2>Tack för din bokning${fname ? ", " + fname : ""}! 🌿</h2>
+<p>${statusLine}</p>
+<p>📄 <strong>Kvitto:</strong> Bifogat som PDF (för RUT-deklaration och garanti-krav).</p>
+<p>🔗 <a href="${escAttr(ctx.magicLink)}" style="color:#0F6E56">Visa min bokning</a></p>
 `;
-
   return wrap(content);
 }
 
@@ -604,105 +539,186 @@ ${prepBox}
 //   - Fakturaadress-fallback (E2): invoice_address_street → customer_address
 function buildInvoiceEmailHtml(
   d: ReceiptData,
-  company: CompanyInfo,
-  invoiceUrl: string,
+  _company: CompanyInfo,
+  _invoiceUrl: string,
   ctx: EmailContext,
 ): string {
+  const fname = escHtml(d.customerName.split(" ")[0] || "");
+
+  const content = `
+<h2>Tack för ditt uppdrag${fname ? ", " + fname : ""}! 🌿</h2>
+<p>Fakturan ${escHtml(d.documentNumber)} är bifogad som PDF — spara den som underlag för er bokföring.</p>
+<p>🔗 <a href="${escAttr(ctx.magicLink)}" style="color:#0F6E56">Visa bokning</a></p>
+`;
+  return wrap(content);
+}
+
+// ─── PDF-bygge (Fas E-PDF, 2026-04-27) ──────────────────────
+// Genererar BokfL 5 kap 7 § + MervL 11 kap 8 § kompatibel PDF inline.
+// Matchar layout från generate-receipt-pdf EF (samma fält, samma ordning)
+// så regulator-granskning gäller identisk. Returnerar Resend-attachment-
+// objekt med base64-kodad PDF.
+async function buildPdfAttachment(
+  d: ReceiptData,
+  company: CompanyInfo,
+  isInvoice: boolean,
+): Promise<EmailAttachment[]> {
   const pricing = computePricingBreakdown(d);
   const pm = d.paymentMethod === "klarna" ? "Klarna" : "Kortbetalning";
 
-  // Fakturaadress-fallback (E2/B-16): använd invoice_address_* om satt,
-  // annars fall tillbaka till tjänste-adress (customer_address).
-  const useSeparateInvoiceAddr = !!d.invoiceAddrStreet;
-  const invoiceAddrDisplay = useSeparateInvoiceAddr
-    ? `${escHtml(d.invoiceAddrStreet)}${d.invoiceAddrPostal || d.invoiceAddrCity ? `<br>${escHtml(d.invoiceAddrPostal)} ${escHtml(d.invoiceAddrCity)}`.trim() : ""}`
-    : escHtml(d.address || "—");
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const cleanerLabel = ctx.cleanerFullName
-    ? `<div class="row"><span class="lbl">Städare</span><span class="val">${escHtml(ctx.cleanerFullName)} ⭐ ${escHtml(ctx.cleanerAvgRating)}</span></div>`
-    : "";
+  const M = 40;
+  const W = 595.28 - 2 * M;
+  let y = 841.89 - M;
 
-  // B2B-pricing: aldrig RUT. Bara exkl-moms + moms + totalt.
-  const pricingRows = `
-    <div class="row"><span class="lbl">Arbetskostnad exkl. moms</span><span class="val">${fmtKr(pricing.exVat)} kr</span></div>
-    <div class="row"><span class="lbl">Moms 25%</span><span class="val">${fmtKr(pricing.vat)} kr</span></div>
-    <div class="row"><span class="lbl"><strong>Att betala inkl. moms</strong></span><span class="val"><strong>${fmtKr(d.totalPrice)} kr</strong></span></div>`;
+  const black = rgb(0, 0, 0);
+  const dark = rgb(0.06, 0.43, 0.34);
+  const grey = rgb(0.42, 0.41, 0.38);
+  const lightGrey = rgb(0.85, 0.85, 0.85);
 
-  const fSkattLine = company.fSkatt ? "Utfärdaren är godkänd för F-skatt. " : "";
-  const fname = d.customerName.split(" ")[0] || "";
+  function text(s: string, x: number, yy: number, opts: { size?: number; bold?: boolean; color?: ReturnType<typeof rgb> } = {}) {
+    page.drawText(s || "", {
+      x, y: yy,
+      size: opts.size ?? 10,
+      font: opts.bold ? fontBold : font,
+      color: opts.color ?? black,
+    });
+  }
+  function row(lbl: string, val: string, size = 10) {
+    text(lbl, M, y, { size, color: grey });
+    text(val, M + 180, y, { size });
+    y -= size + 6;
+  }
+  function divider() {
+    page.drawLine({
+      start: { x: M, y: y + 4 },
+      end: { x: M + W, y: y + 4 },
+      thickness: 0.3,
+      color: lightGrey,
+    });
+    y -= 10;
+  }
 
-  // Betalningsstatus-box
-  const paymentStatusBox = `
-    <div style="background:#E1F5EE;border-left:4px solid #0F6E56;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#0F6E56">
-      <strong>✓ Betald via ${pm.toLowerCase()} den ${escHtml(d.receiptDate)}.</strong> Ingen återstående skuld.
-    </div>`;
+  const title = isInvoice ? "FAKTURA" : "KVITTO";
+  const numberLabel = isInvoice ? "Fakturanr" : "Kvittonr";
 
-  // Köpare-sektion (B2B-specifik)
-  const buyerSection = `
-    <h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Köpare</h3>
-    <div class="card">
-      <div class="row"><span class="lbl">Företag</span><span class="val">${escHtml(d.companyName || "—")}</span></div>
-      <div class="row"><span class="lbl">Org.nr</span><span class="val">${escHtml(d.companyOrg || "—")}</span></div>
-      ${d.bizVatNumber ? `<div class="row"><span class="lbl">Momsreg.nr</span><span class="val">${escHtml(d.bizVatNumber)}</span></div>` : ""}
-      ${d.bizContactPerson ? `<div class="row"><span class="lbl">Att</span><span class="val">${escHtml(d.bizContactPerson)}</span></div>` : ""}
-      <div class="row"><span class="lbl">Fakturaadress</span><span class="val" style="text-align:right">${invoiceAddrDisplay}</span></div>
-      ${d.companyRef ? `<div class="row"><span class="lbl">Referens</span><span class="val">${escHtml(d.companyRef)}</span></div>` : ""}
-    </div>`;
+  // Header
+  text(company.tradeName, M, y, { size: 24, bold: true, color: dark });
+  y -= 32;
+  text(title, M, y, { size: 20, bold: true, color: dark });
+  y -= 24;
+  text(`${numberLabel}: ${d.documentNumber}`, M, y, { size: 10, color: grey });
+  text(`Utställt: ${d.receiptDate}`, M + 280, y, { size: 10, color: grey });
+  y -= 22;
+  divider();
 
-  // Spick-plattform-notering (transparens mot företagskund)
-  const platformNote = d.cleanerName
-    ? `<p style="font-size:12px;color:#6B6960;margin-top:12px">Fakturan genererades av ${escHtml(company.tradeName)}, plattformen för städtjänster. Arbetet utfördes av ${escHtml(d.cleanerName)}.</p>`
-    : `<p style="font-size:12px;color:#6B6960;margin-top:12px">Fakturan genererades av ${escHtml(company.tradeName)}, plattformen för städtjänster.</p>`;
+  // Säljare
+  text("SÄLJARE", M, y, { size: 9, bold: true, color: dark });
+  y -= 14;
+  row("Företag", `${company.legalName} (${company.tradeName})`);
+  row("Organisationsnummer", company.orgNumber);
+  if (company.vatNumber) row("Momsregnr", company.vatNumber);
+  row("Adress", company.address);
+  row("E-post", company.email);
+  row("Webb", company.website);
+  y -= 6;
+  divider();
 
-  const content = `
-${paymentStatusBox}
-<h2>Tack för ditt uppdrag${fname ? ", " + escHtml(fname) : ""}! 🌿</h2>
-<p>Här är fakturan för utfört städuppdrag. Spara mejlet som underlag för er bokföring.</p>
+  // Köpare / Kund
+  text(isInvoice ? "KÖPARE" : "KUND", M, y, { size: 9, bold: true, color: dark });
+  y -= 14;
+  if (isInvoice && d.companyName) {
+    row("Företag", d.companyName);
+    if (d.companyOrg) row("Organisationsnummer", d.companyOrg);
+    if (d.bizVatNumber) row("Momsregnr", d.bizVatNumber);
+    if (d.bizContactPerson) row("Kontaktperson", d.bizContactPerson);
+    if (d.companyRef) row("Referens", d.companyRef);
+    const invoiceAddr = d.invoiceAddrStreet
+      ? `${d.invoiceAddrStreet}${d.invoiceAddrPostal || d.invoiceAddrCity ? ", " + (d.invoiceAddrPostal + " " + d.invoiceAddrCity).trim() : ""}`
+      : (d.address || "–");
+    row("Fakturaadress", invoiceAddr);
+  } else {
+    row("Namn", d.customerName || "–");
+  }
+  row("E-post", d.customerEmail || "–");
+  if (!isInvoice) row("Adress", d.address || "–");
+  y -= 6;
+  divider();
 
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Faktura</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Fakturanummer</span><span class="val">${escHtml(d.documentNumber)}</span></div>
-  <div class="row"><span class="lbl">Utfärdandedatum</span><span class="val">${escHtml(d.receiptDate)}</span></div>
-  <div class="row"><span class="lbl">Betalningsmetod</span><span class="val">${pm}</span></div>
-  <div class="row"><span class="lbl">Betalningsstatus</span><span class="val" style="color:#0F6E56">✓ Betald</span></div>
-</div>
+  // Tjänst
+  text("TJÄNST", M, y, { size: 9, bold: true, color: dark });
+  y -= 14;
+  row("Typ", d.service);
+  row("Datum", `${d.bookingDate} kl ${d.bookingTime}`);
+  row("Omfattning", `${d.hours} timmar`);
+  if (d.cleanerName) row("Städare", d.cleanerName);
+  y -= 6;
+  divider();
 
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Säljare (Utfärdare)</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Företag</span><span class="val">${escHtml(company.legalName)} (bifirma ${escHtml(company.tradeName)})</span></div>
-  <div class="row"><span class="lbl">Org.nr</span><span class="val">${escHtml(company.orgNumber)}</span></div>
-  <div class="row"><span class="lbl">Momsreg.nr</span><span class="val">${escHtml(company.vatNumber)}</span></div>
-  <div class="row"><span class="lbl">Adress</span><span class="val">${escHtml(company.address)}</span></div>
-</div>
+  // Belopp
+  text("BELOPP", M, y, { size: 9, bold: true, color: dark });
+  y -= 14;
+  row("Netto (exkl. moms)", `${fmtKr(pricing.exVat)} kr`);
+  row("Moms 25 %", `${fmtKr(pricing.vat)} kr`);
+  row("Brutto (inkl. moms)", `${fmtKr(pricing.gross)} kr`);
+  if (d.isRut) {
+    row("RUT-avdrag 50 %", `-${fmtKr(d.rutAmount)} kr`);
+  }
+  y -= 4;
 
-${buyerSection}
+  const attBetalaBoxH = 32;
+  const attBetalaBoxY = y - attBetalaBoxH + 6;
+  page.drawRectangle({
+    x: M, y: attBetalaBoxY, width: W, height: attBetalaBoxH,
+    color: rgb(0.96, 0.96, 0.93),
+  });
+  text("Att betala", M + 12, y - 14, { size: 13, bold: true, color: dark });
+  const amountValue = d.isRut ? d.amountPaid : d.totalPrice;
+  const amountStr = `${fmtKr(amountValue)} kr`;
+  const amountW = amountStr.length * 8.5;
+  text(amountStr, M + W - amountW - 12, y - 14, { size: 15, bold: true, color: dark });
+  y -= attBetalaBoxH + 10;
+  divider();
 
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Tjänst</h3>
-<div class="card">
-  <div class="row"><span class="lbl">Beskrivning</span><span class="val">${escHtml(d.service)}</span></div>
-  <div class="row"><span class="lbl">Utförd</span><span class="val">${escHtml(d.bookingDate)} kl ${escHtml(d.bookingTime)}</span></div>
-  <div class="row"><span class="lbl">Omfattning</span><span class="val">${d.hours} timmar</span></div>
-  <div class="row"><span class="lbl">Utförd på adress</span><span class="val" style="text-align:right">${escHtml(d.address || "—")}</span></div>
-  ${cleanerLabel}
-</div>
+  // Betalning
+  text("BETALNING", M, y, { size: 9, bold: true, color: dark });
+  y -= 14;
+  row("Metod", pm);
+  row("Status", "Betald");
+  y -= 8;
 
-<h3 style="font-family:Georgia,serif;font-size:16px;color:#1C1C1A;margin:20px 0 8px">Belopp</h3>
-<div class="card">${pricingRows}
-</div>
+  // Fotnot
+  y = M + 20;
+  const fSkattNote = company.fSkatt ? " Utfärdaren är godkänd för F-skatt." : "";
+  text(
+    `Detta dokument är ett automatgenererat ${isInvoice ? "faktura" : "kvitto"} och uppfyller BokfL 5 kap 7 § samt MervL 11 kap 8 §.${fSkattNote}`,
+    M, y, { size: 8, color: grey }
+  );
 
-<p style="font-size:12px;color:#6B6960;margin-top:20px">
-  ${fSkattLine}Momssatsen 25% är inkluderad i priset.
-  SNI ${escHtml(company.sniCode)} (städtjänster).
-</p>
-${platformNote}
+  const pdfBytes = await pdfDoc.save();
+  const base64 = base64Encode(pdfBytes);
+  const filename = `${isInvoice ? "faktura" : "kvitto"}-${d.documentNumber}.pdf`;
 
-<a href="${escAttr(ctx.magicLink)}" class="btn">Visa bokning →</a>
+  return [{
+    filename,
+    content: base64,
+    content_type: "application/pdf",
+  }];
+}
 
-<hr style="border:none;border-top:1px solid #E8E8E4;margin:24px 0">
-<p style="font-size:13px">🛡️ <strong>Nöjdhetsgaranti</strong> — inte nöjd med städningen? Vi städar om kostnadsfritt. Kontakta <a href="mailto:${escAttr(company.email)}" style="color:#0F6E56">${escHtml(company.email)}</a>.</p>
-`;
-
-  return wrap(content);
+// Base64-encode Uint8Array (Deno har btoa men bara för strings).
+// Chunkar i 8KB-block för att undvika "Maximum call stack" på stora PDF:er.
+function base64Encode(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.byteLength; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
 
 interface PricingBreakdown {
