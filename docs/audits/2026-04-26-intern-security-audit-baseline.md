@@ -173,7 +173,7 @@ Många av dessa är `TO service_role` (legitima) men pentestaren bör verifiera 
 
 **Fil:** `sakerhetsplan.html:368`
 ```html
-<li><span class="ch-icon">4️⃣</span> Webhook-secret: whsec_al4z5aWMSGg5Q5Qpf9WERYl7FUeREFHl</li>
+<li><span class="ch-icon">4️⃣</span> Webhook-secret: whsec_[REDACTED — exempel-värdet roterades 2026-04-27 efter Stripe automatic scanner-detection]</li>
 ```
 
 **Verifiering:** `curl -I https://spick.se/sakerhetsplan.html` returnerar `HTTP 200` och `grep -c whsec_` returnerar `1`. Filen är **live i prod på en publikt indexerbar URL**.
