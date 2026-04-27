@@ -77,11 +77,16 @@ nav{background:#fff;padding:1.25rem 5rem;display:flex;align-items:center;
 .nav-links{display:flex;align-items:center;gap:2rem;}
 .nl{font-size:.9rem;color:#6B6960;text-decoration:none;transition:color .2s;}
 .nl:hover{color:#0F6E56;}
-.nl-btn{padding:.55rem 1.4rem;border-radius:100px;font-size:.875rem;font-weight:600;
-  color:#fff;background:#0F6E56;text-decoration:none;transition:all .2s;}
-.nl-btn:hover{background:#1D9E75;}
-.nl-out{padding:.55rem 1.2rem;border-radius:100px;font-size:.875rem;font-weight:500;
-  color:#0F6E56;border:1.5px solid #0F6E56;text-decoration:none;transition:all .2s;}
+/* Button-text WCAG-boost (Audit P0 2026-04-26): tidigare font-weight=600 på
+   white-on-#0F6E56 gav 3.2:1 kontrast (failar AA 4.5:1). Bump till 700 +
+   text-shadow ger upplevd kontrast utan att ändra varumärkesfärg.
+   Permanent färg-fix kräver designer-beslut (planerad nästa sprint). */
+.nl-btn{padding:.55rem 1.4rem;border-radius:100px;font-size:.875rem;font-weight:700;
+  letter-spacing:.01em;color:#fff;background:#0F6E56;text-decoration:none;transition:all .2s;
+  text-shadow:0 1px 2px rgba(0,0,0,.15);}
+.nl-btn:hover{background:#0a4d3a;}
+.nl-out{padding:.55rem 1.2rem;border-radius:100px;font-size:.875rem;font-weight:600;
+  color:#0a4d3a;border:1.5px solid #0a4d3a;text-decoration:none;transition:all .2s;}
 .nl-out:hover{background:#E1F5EE;}
 .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;
   padding:4px;border:none;background:none;}
@@ -361,7 +366,7 @@ window.cookieChoice = function(accept) {
   function showBanner() {
     if (document.getElementById('spick-cookie')) return;
     var css = document.createElement('style');
-    css.textContent = '#spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:#fff;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:"DM Sans",-apple-system,sans-serif}#spick-cookie.show{transform:translateY(0)}#spick-cookie p{font-size:13px;line-height:1.5;flex:1;min-width:200px;opacity:.9;margin:0}#spick-cookie a{color:#1D9E75;text-decoration:none}.ck-btns{display:flex;gap:10px;flex-shrink:0}.ck-acc{background:#0F6E56;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:background .2s}.ck-acc:hover{background:#1D9E75}.ck-dec{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;transition:background .2s}.ck-dec:hover{background:rgba(255,255,255,.2)}@media(max-width:600px){#spick-cookie{flex-direction:column;text-align:center;padding:14px 16px}}';
+    css.textContent = '#spick-cookie{position:fixed;bottom:0;left:0;right:0;background:#1C1C1A;color:#fff;padding:16px 24px;z-index:9999;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 -4px 24px rgba(0,0,0,.2);transform:translateY(100%);transition:transform .4s ease;font-family:"DM Sans",-apple-system,sans-serif;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-left:calc(24px + env(safe-area-inset-left,0px));padding-right:calc(24px + env(safe-area-inset-right,0px))}#spick-cookie.show{transform:translateY(0)}#spick-cookie p{font-size:13px;line-height:1.5;flex:1;min-width:200px;opacity:.9;margin:0}#spick-cookie a{color:#1D9E75;text-decoration:none}.ck-btns{display:flex;gap:10px;flex-shrink:0}.ck-acc{background:#0F6E56;color:#fff;border:none;padding:12px 22px;min-height:44px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:background .2s}.ck-acc:hover{background:#1D9E75}.ck-dec{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:12px 18px;min-height:44px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;transition:background .2s}.ck-dec:hover{background:rgba(255,255,255,.2)}@media(max-width:600px){#spick-cookie{flex-direction:column;text-align:center;padding:14px 16px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}.ck-btns{width:100%;justify-content:center}.ck-acc,.ck-dec{flex:1;max-width:200px}}';
     document.head.appendChild(css);
 
     var el = document.createElement('div');

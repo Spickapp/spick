@@ -2557,7 +2557,7 @@ function renderCleaners(cleaners) {
     }
     expandHTML += '</div>';
     var avatarHTML = cl.avatar_url
-      ? '<div class="cleaner-av" style="padding:0;overflow:hidden"><img src="' + cl.avatar_url + '" alt="' + escHtml(cl.full_name||'') + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
+      ? '<div class="cleaner-av" style="padding:0;overflow:hidden"><img src="' + cl.avatar_url + '" alt="' + escHtml(cl.full_name||'') + '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>'
       : '<div class="cleaner-av" style="background:' + col + '20;color:' + col + '">' + ini + '</div>';
     card.innerHTML = `
       ${avatarHTML}
@@ -2786,7 +2786,7 @@ async function toggleTeamDrawer(companyId, companyDisplayNameEnc, btnEl) {
     drawerEl.innerHTML = '<div style="font-size:.78rem;color:#6B6960;margin-bottom:.5rem">Eller välj en specifik städare från teamet:</div>' + team.map(function(tm) {
       var tmIni = (tm.full_name||'?').split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase();
       var tmAvatar = tm.avatar_url
-        ? '<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0"><img src="' + escHtml(tm.avatar_url) + '" alt="' + escHtml(tm.full_name||'') + '" style="width:100%;height:100%;object-fit:cover"></div>'
+        ? '<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0"><img src="' + escHtml(tm.avatar_url) + '" alt="' + escHtml(tm.full_name||'') + '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover"></div>'
         : '<div style="width:40px;height:40px;border-radius:50%;background:#0F6E5620;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">' + escHtml(tmIni) + '</div>';
       var ratingHTML = (tm.avg_rating != null && tm.review_count > 0)
         ? '<span style="color:#0F6E56;font-weight:600">★ ' + tm.avg_rating.toFixed(1) + '</span> <span style="color:#6B6960;font-size:.75rem">(' + tm.review_count + ')</span>'

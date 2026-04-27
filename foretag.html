@@ -556,7 +556,7 @@ async function init() {
     h += '<div class="hero-top">';
     // Logo om finns, annars initial-bokstav (Zivar-request 2026-04-26)
     if (co.logo_url) {
-      h += '<div class="hero-avatar" style="overflow:hidden;background:#fff"><img src="' + esc(co.logo_url) + '" alt="' + esc(displayName) + ' logo" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>';
+      h += '<div class="hero-avatar" style="overflow:hidden;background:#fff"><img src="' + esc(co.logo_url) + '" alt="' + esc(displayName) + ' logo" style="width:100%;height:100%;object-fit:cover" loading="eager" fetchpriority="high" decoding="async"></div>';
     } else {
       h += '<div class="hero-avatar">' + (displayName || '?').charAt(0) + '</div>';
     }
@@ -615,7 +615,7 @@ async function init() {
         h += '<div class="featured">';
         h += '<div class="featured-badge">Rekommenderad</div>';
         h += '<div class="featured-main">';
-        h += featuredCleaner.avatar_url ? '<div class="featured-av"><img src="' + featuredCleaner.avatar_url + '" alt="' + esc(featuredCleaner.full_name) + '"></div>' : '<div class="featured-av">' + (featuredCleaner.full_name || '?').charAt(0).toUpperCase() + '</div>';
+        h += featuredCleaner.avatar_url ? '<div class="featured-av"><img src="' + featuredCleaner.avatar_url + '" alt="' + esc(featuredCleaner.full_name) + '" loading="lazy" decoding="async"></div>' : '<div class="featured-av">' + (featuredCleaner.full_name || '?').charAt(0).toUpperCase() + '</div>';
         h += '<div><div class="featured-name">' + esc(featuredCleaner.full_name) + '</div>';
         h += '<div class="featured-meta">' + fStars + ' · ' + (featuredCleaner.completed_jobs || 0) + ' utförda jobb</div>';
         if (featuredCleaner.bio) h += '<div class="featured-bio">"' + esc(featuredCleaner.bio) + '"</div>';
@@ -673,7 +673,7 @@ async function init() {
         var svcs = allSvcsForMember.slice(0, 4);
         var extraCount = allSvcsForMember.length - 4;
         h += '<div class="team-card">';
-        h += m.avatar_url ? '<div class="team-av"><img src="' + m.avatar_url + '" alt="' + esc(m.full_name) + '"></div>' : '<div class="team-av">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
+        h += m.avatar_url ? '<div class="team-av"><img src="' + m.avatar_url + '" alt="' + esc(m.full_name) + '" loading="lazy" decoding="async"></div>' : '<div class="team-av">' + (m.full_name || '?').charAt(0).toUpperCase() + '</div>';
         h += '<div class="team-name">' + esc(m.full_name) + '</div>';
         if (rat > 0 && co.show_individual_ratings !== false) h += '<div class="team-stars">' + stars + ' ' + rat.toFixed(1) + '</div>';
         else h += '<div class="team-meta">Ny på Spick</div>';
@@ -796,7 +796,7 @@ async function init() {
           var initial = (s.full_name || '?').charAt(0).toUpperCase();
           var href = (s.is_company_owner && s.slug) ? ('/f/' + s.slug) : ('/stadare-profil.html?s=' + encodeURIComponent(s.slug || s.id));
           h += '<a href="' + href + '" class="similar-card">';
-          h += s.avatar_url ? '<div class="similar-av"><img src="' + esc(s.avatar_url) + '" alt="' + esc(s.full_name || '') + '"></div>' : '<div class="similar-av">' + esc(initial) + '</div>';
+          h += s.avatar_url ? '<div class="similar-av"><img src="' + esc(s.avatar_url) + '" alt="' + esc(s.full_name || '') + '" loading="lazy" decoding="async"></div>' : '<div class="similar-av">' + esc(initial) + '</div>';
           h += '<div class="similar-name">' + esc(s.full_name || 'Städare') + '</div>';
           h += '<div class="similar-area">' + esc(s.city || 'Stockholm') + '</div>';
           if (s.avg_rating) h += '<div class="similar-rating">★ ' + Number(s.avg_rating).toFixed(1) + '</div>';
