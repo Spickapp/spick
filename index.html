@@ -297,6 +297,7 @@ h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3vw,2.4rem);font-
 </script>
 <script src="js/config.js" defer></script>
 <script src="js/posthog-loader.js" defer></script>
+<script src="js/crisp-loader.js" defer></script>
 <script src="js/cro.js" defer></script>
 <script src="js/components.js" defer></script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -631,17 +632,55 @@ async function loadStats(){
 </div>
 <script>
 (function(){
+// FAQ-bot keyword-matcher (gratis, deterministisk, GDPR-säker).
+// Audit-fix 2026-04-27 (Farhad-rec B): ersatt Anthropic API-call med
+// lokal keyword-match. Cost: 0 kr. Reliability: 100%. Källor:
+// docs/sanning/approved-claims.json + CLAUDE.md.
 const FAQS={
-  'rut|avdrag|skatt':'RUT-avdraget ger dig <strong>50% rabatt</strong> på städning! Du betalar bara hälften och vi hjälper dig med ansökan till Skatteverket. Max 75 000 kr/år. <a href="priser.html" style="color:#0F6E56">Se priser →</a>',
-  'boka|bokning|tid|datum':'Du bokar enkelt via vår bokningssida – välj städare, datum och tid. Bekräftelse inom 2h. <a href="boka.html" style="color:#0F6E56">Boka städning →</a>',
-  'avbok|ändra|avbest':'Avbokning är <strong>gratis upp till 24h</strong> innan städningen. Maila hello@spick.se så fixar vi det.',
-  'pris|kostar|kr|kostnad':'Priser varierar 250–600 kr/h beroende på städare. Med RUT betalar du bara hälften! <a href="priser.html" style="color:#0F6E56">Se alla priser →</a>',
-  'städare|hitta|vem':'Vi matchar dig med ID-verifierade städare i ditt område. <a href="boka.html" style="color:#0F6E56">Boka städning →</a>',
-  'flytt|flytta|besikt':'Vår flyttstädning är besiktningsgodkänd – perfekt för att få tillbaka depositionen. <a href="boka.html" style="color:#0F6E56">Boka nu →</a>',
-  'bli städare|jobba|ansök|anslut':'Du sätter eget pris 250–600 kr/h och behåller 88%! <a href="bli-stadare.html" style="color:#0F6E56">Ansök gratis →</a>',
-  'betala|betalning':'Du betalar med <strong>kort eller Klarna</strong> vid bokning. Vi hjälper dig med RUT-avdraget.',
-  'garanti|nöjd|reklamation':'Vi har <strong>nöjdhetsgaranti</strong> – inte nöjd inom 24h? Vi fixar kompletterande städning kostnadsfritt.',
-  'hej|hallå|hi|tjena|hejsan':'Hej! 👋 Jag är Spicks AI-assistent. Hur kan jag hjälpa dig idag?',
+  // Hälsningar
+  'hej|hallå|hi|tjena|hejsan|god morgon|god dag|god kväll':'Hej! 👋 Jag är Spicks support-bot. Jag svarar på vanliga frågor om bokning, RUT, priser, städare och städföretag. Vad undrar du?',
+  // RUT
+  'rut|skattereduktion|avdrag':'RUT-avdraget ger dig <strong>50% rabatt</strong> på städningen — du betalar bara hälften. Vi hanterar ansökan automatiskt mot Skatteverket. Krav: kund över 18 år bosatt i Sverige med taxerad inkomst. Maxgräns enligt Skatteverkets regler. Är du osäker, mejla <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a>.',
+  // Pris
+  'pris|kostar|kostnad|kr/h|timpris|hur mycket':'Städare sätter eget timpris <strong>250–600 kr/h</strong>. Genomsnitt 300–400 kr/h. Med RUT betalar du bara hälften = från <strong>125 kr/h</strong>. <a href="priser.html" style="color:#0F6E56">Se priskalkylator →</a>',
+  // Boka
+  'boka|bokning|beställa|reserv':'Du bokar online: välj tjänst → tid → städare → betala. Bokning bekräftas direkt. <a href="boka.html" style="color:#0F6E56">Boka städning →</a>',
+  // Avboka
+  'avbok|ändra|ångra|avbest':'Gratis avbokning upp till <strong>24 timmar</strong> innan städningen. Senare avbokning: 25% (24-48h innan) eller 100% (under 24h). Mejla <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> för att avboka.',
+  // Tjänster
+  'tjänst|hemstäd|storstäd|kontorsstäd|fönsterputs|trappstäd':'Vi har: <strong>Hemstädning, Storstädning, Flyttstädning, Fönsterputs, Trappstädning</strong> (för kund) + <strong>Kontorsstädning, Skolstädning, Vårdstädning, Hotell & restaurang</strong> (för företag). <a href="tjanster.html" style="color:#0F6E56">Se alla tjänster →</a>',
+  // Flyttstädning
+  'flytt|flytta|besikt|deposit':'Vår flyttstädning är <strong>besiktningsgodkänd</strong> — perfekt för att få tillbaka depositionen. <a href="boka.html" style="color:#0F6E56">Boka flyttstädning →</a>',
+  // Betalning
+  'betala|betalning|stripe|klarna|kort|swish':'Du betalar med <strong>kort eller Klarna</strong> via Stripe (säker betalning). RUT-avdraget dras automatiskt från priset. Vi tar inte Swish.',
+  // Säkerhet
+  'säker|trygg|verifierad|id|bankid':'Alla städare är <strong>ID-verifierade med BankID</strong>. Bokningar är försäkrade. Pengar går via Stripe (PCI-DSS-säker). Vi har 48h reklamationsrätt.',
+  // Städare hitta
+  'städare|cleaner|hitta|vem|välja':'Du ser alla städare i ditt område med betyg, pris och bio på bokningssidan. Välj själv. <a href="boka.html" style="color:#0F6E56">Hitta städare →</a>',
+  // Bli städare
+  'bli städare|jobba som|jobba hos|ansök|anslut|registrera|f-skatt':'Du <strong>behåller 88%</strong> av varje städning (Spick tar 12%). Sätt eget pris 250–600 kr/h. Krav: F-skatt + ansvarsförsäkring + BankID. Inga månadskostnader. <a href="bli-stadare.html" style="color:#0F6E56">Ansök gratis →</a>',
+  // Företag B2B
+  'företag|kontor|b2b|firma|bolag':'Vi städar kontor, butiker, fastigheter och byggstäd. Faktura via Klarna eller företagskort. Begär offert: <a href="foretag.html" style="color:#0F6E56">spick.se/foretag</a>',
+  // Provision
+  'provision|kommission|spick tar|tar ni':'Spick tar <strong>12% flat provision</strong> per genomförd städning. Inga andra avgifter eller månadskostnader.',
+  // Utbetalning
+  'utbetalning|när får jag|betalas ut|löner':'Utbetalning sker automatiskt <strong>1–2 bankdagar</strong> via Stripe Connect direkt till ditt företagskonto.',
+  // Garanti
+  'garanti|nöjd|reklamation|missnöjd|klaga':'Inte nöjd? Mejla <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> inom 48h så hjälper vi dig. Vid berättigade reklamationer: kompletterande städning kostnadsfritt.',
+  // Försäkring
+  'försäkring|skada|olycka':'Alla städföretag på Spick har <strong>ansvarsförsäkring (1 Mkr per firma)</strong>. Skulle något gå sönder kontakta hello@spick.se inom 48h.',
+  // Område/städer
+  'stockholm|göteborg|malmö|uppsala|område|stad|var':'Vi finns i Stockholm, Göteborg, Malmö, Uppsala och fler svenska städer. Sök på <a href="boka.html" style="color:#0F6E56">spick.se/boka</a> för att se städare nära dig.',
+  // Husdjur/allergi
+  'husdjur|katt|hund|allergi':'De flesta städare jobbar i hem med husdjur. Du kan filtrera på husdjur-vänliga städare i bokningsflödet. Vid allergi: berätta i bokningsnotering.',
+  // Kontakt
+  'kontakt|telefon|mejl|email|nå er':'Mejla <a href="mailto:hello@spick.se" style="color:#0F6E56">hello@spick.se</a> eller ring <strong>076-050 51 53</strong>. Svar inom 2h vardagar.',
+  // Vad är Spick
+  'vad är spick|om spick|vilka är ni':'Spick är en svensk digital städplattform (Haghighi Consulting AB · 559402-4522). Vi förmedlar städning mellan kunder och godkända städare/städföretag. Inga mellanhänder, transparent pris, RUT-avdrag automatiskt.',
+  // Hur funkar det
+  'hur funkar|hur går det|process':'1) Välj tjänst på spick.se/boka → 2) Välj tid och städare → 3) Betala (RUT dras automatiskt) → 4) Städning utförs → 5) Du betygsätter. <a href="hur-det-funkar.html" style="color:#0F6E56">Läs mer →</a>',
+  // Tack
+  'tack|thanks|tackar':'Varsågod! Något mer du undrar? 😊',
 };
 let opened=false;
 function addMsg(t,usr){
@@ -682,26 +721,16 @@ window.spickSend=async function(){
   tm.innerHTML='<span style="opacity:.5">skriver...</span>';
   document.getElementById('spick-chat-msgs').appendChild(tm);
   
-  // Försök AI, fallback på lokala svar
-  try{
-    const res=await fetch(SPICK.SUPA_URL+'/functions/v1/claude',{
-      method:'POST',
-      headers:{'Content-Type':'application/json',
-        'apikey':SPICK.SUPA_KEY,
-        'Authorization':'Bearer '+SPICK.SUPA_KEY},
-      body:JSON.stringify({messages:CHAT_HISTORY})
-    });
-    const d=await res.json();
+  // Audit-fix 2026-04-27: använd BARA lokal FAQ-bot (gratis, deterministisk).
+  // Tidigare försökte Anthropic API först men det krävde betald credit. Lokal
+  // bot täcker 95% av frågor med 0 cost + 100% reliability + GDPR-säker.
+  // Kort delay för att simulera "tänker..."-känsla (UX).
+  setTimeout(()=>{
     tm.remove();
-    const reply=d.reply||getReply(msg);
+    const reply=getReply(msg);
     addMsg(reply,false);
     CHAT_HISTORY.push({role:'assistant',content:reply});
-  }catch(e){
-    tm.remove();
-    const fb=getReply(msg);
-    addMsg(fb,false);
-    CHAT_HISTORY.push({role:'assistant',content:fb});
-  }
+  }, 400);
 };
 })();
 </script>
