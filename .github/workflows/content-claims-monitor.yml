@@ -1,0 +1,42 @@
+name: Content claims monitor (1x/dag 04:30 UTC)
+# Daily scan av prod-HTML mot godkända business-claims (approved-claims.json).
+# Förebygger 2026-04-27-incidenten där "30 dagars betalvillkor" var false claim.
+'on':
+  schedule:
+    - cron: '30 4 * * *'  # 04:30 UTC (efter lighthouse 04:00, innan playwright 05:00)
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Kör content-claims-monitor
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/content-claims-monitor" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          # 422 = disallowed claims funna (alert via sendAdminAlert)
+          # 200 = clean. 4xx/5xx = EF-fel.
+          if [ "$HTTP_CODE" -ge 500 ]; then
+            echo "::warning::content-claims-monitor failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          if [ "$HTTP_CODE" = "422" ]; then
+            echo "::warning::Disallowed business-claims detected in prod HTML"
+          fi

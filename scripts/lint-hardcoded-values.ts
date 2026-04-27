@@ -101,6 +101,49 @@ const RULES: Rule[] = [
     defaultReason:
       "Review-krävd: granska om policyn skyddar PII-data. Om inte, begränsa till service_role eller auth.uid()-match.",
   },
+  // ── BUSINESS-CONTENT-CLAIMS (Audit-fix 2026-04-27 Farhad-fynd) ──
+  // Fångar felaktiga business-claims i copy som inte stämmer mot
+  // CLAUDE.md / docs/sanning/. Trigger: foretag.html "30 dagars
+  // betalvillkor" som var falskt påstående.
+  {
+    id: "business_payment_terms",
+    description:
+      "Hardcoded betalvillkor (X dagars betalvillkor) — måste matcha bolagets faktiska betalningspolicy",
+    pattern: /\b\d{1,3}\s*-?\s*dagars?\s+betalvillkor\b/i,
+    fileGlobs: [".html"],
+    skipIfLineContains: /\/\/|<!--|TODO|FIXME|primärkälla/i,
+    fixSuggestion:
+      "Spick använder Stripe + Klarna (CLAUDE.md). Inga 30/60/90-dagars-faktura-villkor som default. Ta bort claim eller använd 'Faktura via Klarna eller företagskort'.",
+    severity: "error",
+    defaultReason:
+      "Verifiera mot CLAUDE.md tech-stack och docs/sanning/. Om bolaget INTE erbjuder X-dagars-villkor → ta bort. Om det är custom B2B-kontrakt → flytta till sanning/-fil och allow-lista här.",
+  },
+  {
+    id: "business_guarantee_claim",
+    description:
+      "Hardcoded garanti-claim (X dagars garanti, X% nöjd-garanti) — måste matcha sanning",
+    pattern: /\b(\d{1,3})\s*-?\s*(dagars?|%)\s+(garanti|n[öo]jd[-\s]?garanti)\b/i,
+    fileGlobs: [".html"],
+    skipIfLineContains: /\/\/|<!--|TODO|FIXME|primärkälla/i,
+    fixSuggestion:
+      "Verifiera mot docs/sanning/garanti.md (om finns) eller CLAUDE.md. Garanti-claims är legal-bindande.",
+    severity: "error",
+    defaultReason:
+      "Garanti-claim måste verifieras mot bolagets faktiska policy + jurist-godkännande. Allow-lista bara om Farhad bekräftat.",
+  },
+  {
+    id: "business_superlative_claim",
+    description:
+      "Superlativ-claim ('Sveriges största/bästa/ledande', 'alltid', 'aldrig')",
+    pattern: /\b(Sveriges|världens)\s+(största|bästa|ledande|främsta|nyaste)\b|\b(alltid svensk|aldrig sena|100%\s*nöjd)/i,
+    fileGlobs: [".html"],
+    skipIfLineContains: /\/\/|<!--|TODO|FIXME|primärkälla|test|exempel|review/i,
+    fixSuggestion:
+      "Superlativ ('Sveriges största') kan vara osanna marknadsföringsclaim. Använd faktiska siffror eller 'En av Sveriges...'.",
+    severity: "warning",
+    defaultReason:
+      "Superlativ kräver verifiering. Allow-lista bara om bolaget HAR data som stödjer påståendet (t.ex. branschstatistik).",
+  },
 ];
 
 // Explicit target-paths för att undvika OOM-problem vid walk()
