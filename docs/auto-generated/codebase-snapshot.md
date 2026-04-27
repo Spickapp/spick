@@ -1,11 +1,11 @@
-# Codebase Snapshot (auto-generated 2026-04-26)
+# Codebase Snapshot (auto-generated 2026-04-27)
 
 Genererad av `scripts/generate-claude-md.ts`. Kopiera valda sektioner
 till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (100 st)
+## Edge Functions (101 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -59,6 +59,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `dispute-evidence-upload` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-evidence-upload (Fas 8 §8.13) |
 | `dispute-open` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-open (Fas 8 §8.8) |
 | `dispute-sla-check` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-sla-check (Fas 8 §8.12.2) |
+| `elks-balance-monitor` |  |
 | `email-inbound` |  |
 | `escrow-auto-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-auto-release (Fas 8 §8.12) |
 | `escrow-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-release (Fas 8 §8.7) |
@@ -146,7 +147,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (44 st)
+## GitHub Actions workflows (45 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -168,6 +169,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/deploy.yml`
 - `.github/workflows/disaster-recovery.yml`
 - `.github/workflows/dispute-sla-check.yml`
+- `.github/workflows/elks-balance-monitor.yml`
 - `.github/workflows/escrow-auto-release.yml`
 - `.github/workflows/generate-sitemap.yml`
 - `.github/workflows/lint-hardcoded-values.yml`
