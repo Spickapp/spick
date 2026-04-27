@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avtal & signaturer — Spick Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gp:#E1F5EE;--b:#0E0E0E;--t:#1C1C1A;--m:#6B6960;--bg:#F7F7F5;--border:#E8E8E4;--w:#fff;--err:#DC2626;--warn:#D97706;--succ:#059669;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2{font-family:'Plus Jakarta Sans',Georgia,serif;color:var(--b);font-weight:700}
+.page-header{background:linear-gradient(165deg,#0a2a1e 0%,#0F6E56 60%,#1D9E75 100%);color:var(--w);padding:2.5rem 1.5rem 1.5rem}
+.page-header-inner{max-width:1100px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:.25rem}
+.page-header .sub{opacity:.9}
+.container{max-width:1100px;margin:-1rem auto 4rem;padding:0 1.5rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+.alert-error{padding:.9rem;border-radius:8px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;margin-bottom:1rem}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
+.pill-signed{background:#D1FAE5;color:#065F46}
+.pill-unsigned{background:#FEF3C7;color:#92400E}
+.pill-purpose{background:#E0E7FF;color:#3730A3}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:1rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px}
+.stat-label{font-size:.7rem;color:var(--m);text-transform:uppercase;font-weight:600}
+.stat-value{font-size:1.6rem;font-weight:700;margin-top:4px;font-family:'Plus Jakarta Sans',serif}
+.row-card{padding:1rem 1.25rem;margin-bottom:.75rem;background:#fff;border-radius:var(--r);border:1px solid var(--border);transition:box-shadow .15s}
+.row-card.expanded{box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.row-meta{display:flex;flex-wrap:wrap;gap:.5rem .9rem;font-size:.78rem;color:var(--m);margin-bottom:.5rem}
+.row-name{font-weight:700;font-size:1rem;color:var(--t);margin-bottom:.25rem;display:flex;align-items:center;gap:.5rem}
+.row-actions{margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap}
+.btn{padding:.45rem 1rem;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block}
+.btn:hover{background:#0a4d3a}
+.btn-secondary{background:#fff;color:var(--g);border:1px solid var(--g)}
+.expand-content{display:none;margin-top:1rem;padding:1rem;background:#FAFAF8;border-radius:10px;font-size:.85rem;line-height:1.7}
+.expand-content.shown{display:block}
+.expand-content pre{background:#fff;padding:.75rem;border-radius:6px;font-size:.7rem;color:var(--m);white-space:pre-wrap;word-break:break-all;border:1px solid var(--border);margin-top:.5rem}
+.expand-content .field{margin-bottom:.5rem}
+.expand-content .field strong{color:var(--t);min-width:160px;display:inline-block}
+.tabs{display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.tab{padding:.5rem 1rem;border-radius:99px;font-size:.85rem;font-weight:600;cursor:pointer;background:#fff;border:1.5px solid var(--border);color:var(--m);font-family:inherit}
+.tab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.search-box{width:100%;padding:.75rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-size:.9rem;font-family:inherit;margin-bottom:1rem}
+.search-box:focus{outline:none;border-color:var(--g)}
+.back-link{color:rgba(255,255,255,.85);text-decoration:none;font-size:.85rem;display:inline-block;margin-bottom:.5rem}
+.back-link:hover{color:#fff}
+.badge-bankid{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;background:#1F2937;color:#fff;font-size:.68rem;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <a href="admin.html" class="back-link">← Tillbaka till admin</a>
+    <h1>📜 Avtal & signaturer</h1>
+    <div class="sub" id="subHeader">Laddar…</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="auth-error" class="alert-error" style="display:none">⚠️ Du måste vara inloggad som admin.</div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">✅ Signerat städare</div><div class="stat-value" id="stat-cleaners">–</div></div>
+    <div class="stat-card"><div class="stat-label">✅ Signerat företag</div><div class="stat-value" id="stat-companies">–</div></div>
+    <div class="stat-card"><div class="stat-label">⏳ Osignerade städare</div><div class="stat-value" id="stat-unsigned" style="color:var(--warn)">–</div></div>
+    <div class="stat-card"><div class="stat-label">📋 Totalt rut_consents</div><div class="stat-value" id="stat-consents">–</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="signed" onclick="switchTab('signed')">✅ Signerade</div>
+    <div class="tab" data-tab="unsigned" onclick="switchTab('unsigned')">⏳ Osignerade</div>
+    <div class="tab" data-tab="all" onclick="switchTab('all')">📋 Alla rut_consents</div>
+  </div>
+
+  <input type="text" class="search-box" id="search" placeholder="🔍 Sök på namn, email eller företag…" oninput="renderList()">
+
+  <div id="list"><div class="spinner"></div></div>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+const SUPA_URL = SPICK.SUPA_URL;
+const ANON_KEY = SPICK.SUPA_KEY;
+
+let allCleaners = [];
+let allCompanies = [];
+let allConsents = [];
+let currentTab = 'signed';
+
+const PURPOSE_LABELS = {
+  cleaner_registration: '👤 Städar-registrering',
+  company_signup: '🏢 Företags-signup',
+  customer_pnr_verification: '🆔 Kund-PNR-BankID',
+  booking_rut: '💰 Kund-RUT-consent'
+};
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fmt(iso) {
+  if (!iso) return '–';
+  try { return new Date(iso).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }); }
+  catch (e) { return iso; }
+}
+
+function fmtDate(iso) {
+  if (!iso) return '–';
+  try { return new Date(iso).toLocaleDateString('sv-SE'); }
+  catch (e) { return iso; }
+}
+
+async function loadData() {
+  try {
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    const tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) {
+      document.getElementById('auth-error').style.display = 'block';
+      return;
+    }
+    const headers = { apikey: ANON_KEY, Authorization: 'Bearer ' + tok };
+
+    // Cleaners (alla)
+    const cRes = await fetch(SUPA_URL + '/rest/v1/cleaners?select=id,full_name,email,terms_accepted_at,terms_version,terms_signature_id,company_id,is_company_owner,is_approved&order=terms_accepted_at.desc.nullslast&limit=500', { headers });
+    if (!cRes.ok) {
+      document.getElementById('auth-error').style.display = 'block';
+      document.getElementById('auth-error').textContent = '❌ Saknar admin-rättigheter (HTTP ' + cRes.status + '). Logga in via admin.html.';
+      return;
+    }
+    allCleaners = await cRes.json();
+
+    // Companies
+    const compRes = await fetch(SUPA_URL + '/rest/v1/companies?select=id,name,org_number,terms_accepted_at,terms_version,terms_signature_id&order=terms_accepted_at.desc.nullslast&limit=500', { headers });
+    allCompanies = compRes.ok ? await compRes.json() : [];
+
+    // Rut_consents (sker via service-role i prod, anon kan ej se)
+    const rcRes = await fetch(SUPA_URL + '/rest/v1/rut_consents?select=id,cleaner_id,company_id,purpose,tic_session_id,pnr_hash,terms_versions,created_at,expires_at&order=created_at.desc&limit=500', { headers });
+    allConsents = rcRes.ok ? await rcRes.json() : [];
+
+    // Bygg cleaner-id → name lookup för consent-display
+    const cleanerMap = Object.fromEntries(allCleaners.map(c => [c.id, c.full_name]));
+    const companyMap = Object.fromEntries(allCompanies.map(c => [c.id, c.name]));
+    allConsents.forEach(rc => {
+      rc.cleaner_name = rc.cleaner_id ? cleanerMap[rc.cleaner_id] || '?' : null;
+      rc.company_name = rc.company_id ? companyMap[rc.company_id] || '?' : null;
+    });
+
+    // Stats
+    const signedCleaners = allCleaners.filter(c => c.terms_accepted_at);
+    const signedCompanies = allCompanies.filter(c => c.terms_accepted_at);
+    const unsignedCleaners = allCleaners.filter(c => !c.terms_accepted_at && c.is_approved);
+    document.getElementById('stat-cleaners').textContent = signedCleaners.length;
+    document.getElementById('stat-companies').textContent = signedCompanies.length;
+    document.getElementById('stat-unsigned').textContent = unsignedCleaners.length;
+    document.getElementById('stat-consents').textContent = allConsents.length;
+    document.getElementById('subHeader').textContent =
+      `${signedCleaners.length} städare + ${signedCompanies.length} företag har signerat · ${unsignedCleaners.length} osignerade städare`;
+
+    renderList();
+  } catch (e) {
+    console.error('[admin-acceptances] load failed:', e);
+    document.getElementById('auth-error').style.display = 'block';
+    document.getElementById('auth-error').textContent = '❌ Fel: ' + e.message;
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  renderList();
+}
+
+function renderList() {
+  const listEl = document.getElementById('list');
+  const search = (document.getElementById('search').value || '').toLowerCase();
+
+  let items = [];
+  if (currentTab === 'signed') {
+    const c = allCleaners.filter(x => x.terms_accepted_at).map(x => ({ type: 'cleaner', ...x }));
+    const co = allCompanies.filter(x => x.terms_accepted_at).map(x => ({ type: 'company', ...x }));
+    items = [...c, ...co].sort((a, b) => (b.terms_accepted_at || '').localeCompare(a.terms_accepted_at || ''));
+  } else if (currentTab === 'unsigned') {
+    items = allCleaners
+      .filter(x => !x.terms_accepted_at && x.is_approved)
+      .map(x => ({ type: 'cleaner', ...x }));
+  } else {
+    items = allConsents.map(x => ({ type: 'consent', ...x }));
+  }
+
+  if (search) {
+    items = items.filter(it => {
+      const blob = (it.full_name || it.name || it.cleaner_name || it.company_name || it.email || it.org_number || it.purpose || '').toString().toLowerCase();
+      return blob.includes(search);
+    });
+  }
+
+  if (items.length === 0) {
+    listEl.innerHTML = '<div class="empty">Inga resultat.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(renderItem).join('');
+}
+
+function renderItem(it) {
+  if (it.type === 'cleaner' || it.type === 'company') {
+    const name = it.full_name || it.name || '?';
+    const isCleaner = it.type === 'cleaner';
+    const consent = allConsents.find(rc => rc.id === it.terms_signature_id);
+    const linkedConsent = consent ? `
+      <div class="field"><strong>BankID-session:</strong> <span class="badge-bankid">🔒 ${escHtml(consent.tic_session_id || '?')}</span></div>
+      <div class="field"><strong>PNR-hash:</strong> <code style="font-size:.7rem">${escHtml((consent.pnr_hash || '').substring(0, 16))}…</code> (envägs-SHA256)</div>
+      <div class="field"><strong>Purpose:</strong> ${escHtml(consent.purpose || '?')}</div>
+      <div class="field"><strong>Avtals-versioner:</strong> <pre>${escHtml(JSON.stringify(consent.terms_versions || {}, null, 2))}</pre></div>
+    ` : '<div class="field" style="color:var(--warn)">⚠️ Ingen rut_consents-rad länkad (legacy-accept utan BankID?)</div>';
+
+    return `
+      <div class="row-card" id="row-${escHtml(it.id)}">
+        <div class="row-meta">
+          ${it.terms_accepted_at ? '<span class="pill pill-signed">✓ SIGNERAT</span>' : '<span class="pill pill-unsigned">⏳ EJ SIGNERAT</span>'}
+          <span class="pill pill-purpose">${isCleaner ? '👤 Städare' : '🏢 Företag'}</span>
+          ${it.terms_version ? `<span>📄 ${escHtml(it.terms_version)}</span>` : ''}
+          ${it.terms_accepted_at ? `<span>📅 ${fmt(it.terms_accepted_at)}</span>` : ''}
+        </div>
+        <div class="row-name">${escHtml(name)}</div>
+        <div style="font-size:.82rem;color:var(--m)">${escHtml(it.email || it.org_number || '')}</div>
+        <div class="row-actions">
+          <button class="btn" onclick="toggleExpand('${escHtml(it.id)}')">📋 Detaljer</button>
+        </div>
+        <div class="expand-content" id="exp-${escHtml(it.id)}">
+          <div class="field"><strong>${isCleaner ? 'Städar-id' : 'Företags-id'}:</strong> <code>${escHtml(it.id)}</code></div>
+          <div class="field"><strong>Email:</strong> ${escHtml(it.email || '–')}</div>
+          ${it.org_number ? `<div class="field"><strong>Org.nr:</strong> ${escHtml(it.org_number)}</div>` : ''}
+          ${linkedConsent}
+        </div>
+      </div>`;
+  }
+
+  // Consent (rut_consents-rad)
+  const subjectName = it.cleaner_name || it.company_name || (it.purpose === 'booking_rut' ? '(kund-RUT)' : '?');
+  return `
+    <div class="row-card" id="row-${escHtml(it.id)}">
+      <div class="row-meta">
+        <span class="pill pill-purpose">${escHtml(PURPOSE_LABELS[it.purpose] || it.purpose || 'okänd')}</span>
+        <span>📅 ${fmt(it.created_at)}</span>
+        ${it.tic_session_id ? '<span class="badge-bankid">🔒 BankID</span>' : ''}
+      </div>
+      <div class="row-name">${escHtml(subjectName)}</div>
+      <div class="row-actions">
+        <button class="btn" onclick="toggleExpand('${escHtml(it.id)}')">📋 Detaljer</button>
+      </div>
+      <div class="expand-content" id="exp-${escHtml(it.id)}">
+        <div class="field"><strong>Consent-ID:</strong> <code>${escHtml(it.id)}</code></div>
+        <div class="field"><strong>TIC-session:</strong> <code>${escHtml(it.tic_session_id || '–')}</code></div>
+        <div class="field"><strong>PNR-hash:</strong> <code style="font-size:.7rem">${escHtml((it.pnr_hash || '').substring(0, 16))}…</code></div>
+        <div class="field"><strong>Skapad:</strong> ${fmt(it.created_at)}</div>
+        <div class="field"><strong>Utgår:</strong> ${fmt(it.expires_at)}</div>
+        <div class="field"><strong>Avtals-versioner:</strong> <pre>${escHtml(JSON.stringify(it.terms_versions || {}, null, 2))}</pre></div>
+      </div>
+    </div>`;
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById('exp-' + id);
+  const card = document.getElementById('row-' + id);
+  if (!el) return;
+  el.classList.toggle('shown');
+  card.classList.toggle('expanded', el.classList.contains('shown'));
+}
+
+loadData();
+</script>
+</body>
+</html>
