@@ -18,7 +18,7 @@
 //   - stripe-webhook — hanterar charge.succeeded / charge.failed events
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, log, sendEmail, wrap, card } from "../_shared/email.ts";
 import { requireCronAuth } from "../_shared/cron-auth.ts";
 import { withSentry } from "../_shared/sentry.ts";
@@ -113,7 +113,7 @@ serve(withSentry("charge-subscription-booking", async (req) => {
 
 // ── Hämta Connect-destination för bokningen ──────────────────
 async function getConnectDestination(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   cleanerId: string,
 ): Promise<{ destinationAccountId: string | null }> {
   const { data: cleaner } = await supabase
@@ -147,7 +147,7 @@ async function getConnectDestination(
 
 // ── Processa debitering av en bokning ────────────────────────
 async function chargeBooking(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   booking: Record<string, unknown>,
 ) {
   const bookingId = booking.id as string;
@@ -387,7 +387,7 @@ async function chargeBooking(
 
 // ── Hjälp: hämta företagsnamn ────────────────────────────────
 async function fetchCompanyName(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   cleanerId: string,
 ): Promise<string> {
   try {
