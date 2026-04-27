@@ -15,11 +15,14 @@ jobs:
       - name: Kör escrow-auto-release
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            -H "apikey: $SUPA_KEY" \
+            -H "x-cron-secret: $CRON_SECRET" \
             -H "Content-Type: application/json" \
             "$SUPA_URL/functions/v1/escrow-auto-release" \
             -d '{}')
@@ -31,5 +34,6 @@ jobs:
           echo "Response: $BODY"
 
           if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::warning::escrow-auto-release failed with HTTP $HTTP_CODE"
+            echo "::error::escrow-auto-release failed with HTTP $HTTP_CODE"
+            exit 1
           fi

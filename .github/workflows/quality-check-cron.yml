@@ -1,19 +1,23 @@
-name: Dispute SLA-check (1 ggr/dag)
-# Etapp 1 IO-fix 2026-04-25: ändrat från varje timme till 1 ggr/dag.
-# Spara ~96% IO. Vid låg dispute-volym är hourly överkill. SLA-warnings
-# batchas och skickas 09:05 UTC (vardag-morgon). Vid hög dispute-volym
-# återställ till hourly.
+name: Quality-check cron (T+24h follow-up, 2x/dag)
+# Sprint 5 (forts.) — kör quality-check-cron 2x/dag för att fånga
+# missnöjda kunder INNAN de blir dispute eller dåliga publika betyg.
+#
+# Pattern: identisk struktur som rating-reminder.yml.
+# Skickar service_role JWT i Authorization + CRON_SECRET via x-cron-secret-header — verifieras via _shared/cron-auth.ts.
 'on':
   schedule:
-    - cron: '5 9 * * *'
+    # 2x/dag: 10:00 UTC (≈ 12 CET) + 18:00 UTC (≈ 20 CET)
+    # Fönstret är 24-48h sedan completed_at, så två körningar/dygn räcker.
+    - cron: '0 10 * * *'
+    - cron: '0 18 * * *'
   workflow_dispatch: {}
 
 jobs:
-  check:
+  quality-check:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Kör dispute-sla-check
+      - name: Kör quality-check-cron
         env:
           SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
           SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -25,7 +29,7 @@ jobs:
             -H "apikey: $SUPA_KEY" \
             -H "x-cron-secret: $CRON_SECRET" \
             -H "Content-Type: application/json" \
-            "$SUPA_URL/functions/v1/dispute-sla-check" \
+            "$SUPA_URL/functions/v1/quality-check-cron" \
             -d '{}')
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
@@ -35,6 +39,6 @@ jobs:
           echo "Response: $BODY"
 
           if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::error::dispute-sla-check failed with HTTP $HTTP_CODE"
+            echo "::error::quality-check-cron failed with HTTP $HTTP_CODE"
             exit 1
           fi

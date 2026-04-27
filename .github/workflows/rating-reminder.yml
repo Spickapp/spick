@@ -4,7 +4,7 @@ name: Rating-reminder cron (var 2:a timme dagtid)
 # acceptabelt för rating-reminder som inte är tids-kritisk).
 #
 # Pattern: identisk struktur som auto-remind.yml (efter 2026-04-25 IO-fix).
-# Skickar Authorization: Bearer $CRON_SECRET — verifieras via _shared/cron-auth.ts.
+# Skickar service_role JWT i Authorization + CRON_SECRET via x-cron-secret-header — verifieras via _shared/cron-auth.ts.
 'on':
   schedule:
     # Var 2:a timme mellan 06:00-18:00 UTC (≈ 08-20 CET, ≈ 08-20 CEST)
@@ -30,8 +30,9 @@ jobs:
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Authorization: Bearer $SUPA_KEY" \
             -H "apikey: $SUPA_KEY" \
+            -H "x-cron-secret: $CRON_SECRET" \
             -H "Content-Type: application/json" \
             "$SUPA_URL/functions/v1/rating-reminder-cron" \
             -d '{}')
@@ -43,6 +44,6 @@ jobs:
           echo "Response: $BODY"
 
           if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::warning::rating-reminder-cron failed with HTTP $HTTP_CODE"
+            echo "::error::rating-reminder-cron failed with HTTP $HTTP_CODE"
             exit 1
           fi
