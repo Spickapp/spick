@@ -19,7 +19,10 @@
 --     booking_confirmation pre-migrate (kund-vy bryts utan denna fix)
 -- ═══════════════════════════════════════════════════════════════
 
-DROP VIEW IF EXISTS booking_confirmation;
+-- DROP CASCADE: tar med get_booking_by_id() + get_booking_by_session()
+-- som beror på vy-typen. Vi ÅTERSKAPAR dem identiskt nedan.
+-- (Verifierat mot 20260426220000_fix_pii_leak_booking_views.sql)
+DROP VIEW IF EXISTS booking_confirmation CASCADE;
 
 CREATE VIEW booking_confirmation AS
 SELECT
@@ -48,7 +51,43 @@ SELECT
   predicted_arrival_at
 FROM bookings;
 
-GRANT SELECT ON booking_confirmation TO anon, authenticated;
+-- PII-fix #2026-04-26: anon får INTE direkt SELECT (anti-enumeration).
+-- Endast authenticated + RPC-functions nedan.
+GRANT SELECT ON booking_confirmation TO authenticated;
+
+-- ── ÅTERSKAPA RPC-functions som drogs av CASCADE ──
+-- Identiska med 20260426220000_fix_pii_leak_booking_views.sql
+
+CREATE OR REPLACE FUNCTION public.get_booking_by_id(_id uuid)
+RETURNS SETOF public.booking_confirmation
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT * FROM public.booking_confirmation WHERE id = _id LIMIT 1;
+$$;
+
+COMMENT ON FUNCTION public.get_booking_by_id(uuid) IS
+  'Anti-enumeration: anon kan hämta EN booking om de känner UUID:n. Återskapad 2026-04-27 efter ETA-vy-uppdatering (CASCADE).';
+
+CREATE OR REPLACE FUNCTION public.get_booking_by_session(_session_id text)
+RETURNS SETOF public.booking_confirmation
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT * FROM public.booking_confirmation
+   WHERE payment_intent_id = _session_id
+   LIMIT 1;
+$$;
+
+COMMENT ON FUNCTION public.get_booking_by_session(text) IS
+  'Anti-enumeration: tack.html-flow med Stripe session-id. Återskapad 2026-04-27 efter ETA-vy-uppdatering (CASCADE).';
+
+GRANT EXECUTE ON FUNCTION public.get_booking_by_id(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_booking_by_session(text) TO anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';
 
