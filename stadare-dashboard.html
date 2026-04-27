@@ -1282,6 +1282,15 @@ body{top:0!important}
               <button onclick="startStripeConnect()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Koppla bankkonto →</button>
             </div>
           </div>
+
+          <!-- Fortnox-koppling (gratis från Spick) -->
+          <div class="card" id="fortnox-card">
+            <div class="card-title">📊 Fortnox — bokföring & fakturering</div>
+            <p style="font-size:.85rem;color:var(--m);margin-bottom:14px;line-height:1.6">Koppla ditt Fortnox-konto så pushas fakturor från betalda städningar automatiskt — <strong>gratis från Spick</strong>. Kräver eget Fortnox-abonnemang.</p>
+            <div id="fortnox-status">
+              <button onclick="connectFortnox()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Koppla Fortnox →</button>
+            </div>
+          </div>
         </div>
         <div id="vd-foretag-content" style="display:none"></div>
       </div>
@@ -1386,6 +1395,59 @@ body{top:0!important}
           <div class="card">
             <div class="card-title">🧹 Mina tjänster <a id="prof-services-edit" onclick="openSubView('sv-profile')" style="font-size:.75rem;color:#0F6E56;cursor:pointer;text-decoration:underline;margin-left:.5rem">Ändra</a></div>
             <div id="prof-services" style="color:var(--m);font-size:.88rem;line-height:1.8">Laddar...</div>
+          </div>
+        </div>
+
+        <!-- Cleaner-referral (2026-04-29 sprint) — Bjud in andra städare, få 500 kr -->
+        <div class="settings-section" id="settings-referral-section">
+          <div class="settings-section-title">Bjud in städare</div>
+          <div class="card">
+            <div class="card-title">🎁 Tjäna <span id="ref-bonus-amount">500 kr</span> per inbjuden städare</div>
+            <p style="font-size:.82rem;color:var(--m);margin-bottom:14px;line-height:1.5">
+              Bjud in andra städare till Spick. När de genomför sin första betalda bokning får ni båda <strong><span id="ref-bonus-amount-2">500 kr</span></strong> via Stripe.
+            </p>
+
+            <!-- Min kod -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:12px">
+              <div style="font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Din kod</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="ref-code-input" readonly style="flex:1;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:.9rem;font-family:monospace;font-weight:600;background:#fff;color:var(--g)" value="Laddar...">
+                <button onclick="copyReferralCode()" style="padding:10px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;min-height:44px">Kopiera</button>
+              </div>
+            </div>
+
+            <!-- Delbar länk -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:12px">
+              <div style="font-size:.72rem;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Delbar länk</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="ref-link-input" readonly style="flex:1;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:.78rem;font-family:monospace;background:#fff;color:var(--gray-600)" value="Laddar...">
+                <button onclick="copyReferralLink()" style="padding:10px 14px;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;min-height:44px">Kopiera</button>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                <button onclick="shareReferralWhatsapp()" style="flex:1;min-width:120px;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px">💬 Dela via WhatsApp</button>
+                <button onclick="shareReferralSms()" style="flex:1;min-width:120px;padding:10px;background:var(--gp);color:var(--g);border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px">📱 SMS</button>
+              </div>
+            </div>
+
+            <!-- Statistik -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+              <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+                <div id="ref-stat-pending" style="font-size:1.4rem;font-weight:700;color:var(--g)">0</div>
+                <div style="font-size:.7rem;color:var(--m);margin-top:2px">Pågående</div>
+              </div>
+              <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+                <div id="ref-stat-completed" style="font-size:1.4rem;font-weight:700;color:var(--g)">0</div>
+                <div style="font-size:.7rem;color:var(--m);margin-top:2px">Klara</div>
+              </div>
+              <div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center">
+                <div id="ref-stat-bonus" style="font-size:1.4rem;font-weight:700;color:var(--g)">0 kr</div>
+                <div style="font-size:.7rem;color:var(--m);margin-top:2px">Tjänat</div>
+              </div>
+            </div>
+
+            <!-- Mina referrals -->
+            <div style="font-size:.82rem;font-weight:600;margin-bottom:8px">Mina inbjudna</div>
+            <div id="ref-list" style="font-size:.82rem;color:var(--m)">Laddar...</div>
           </div>
         </div>
 
@@ -3730,7 +3792,7 @@ async function loadCleanerByEmail(email, authUserId) {
     document.documentElement.style.setProperty('--admin-banner-h', (adminBanner.offsetHeight || 44) + 'px');
   }
 
-  await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus()]);
+  await Promise.all([loadJobs(), loadMyReviews(), checkConnectStatus(), checkFortnoxStatus()]);
   setupRealtime();
 }
 
@@ -5610,6 +5672,172 @@ function copyICalUrl() {
   });
 }
 
+// ── REFERRAL SECTION (2026-04-29 sprint) ─────────────────────
+// Bjud-in-städare-flöde. Genererar/cache:ar referral_code från
+// cleaner.first_name (uppercase, ASCII-fold), visar shareable
+// länk + statistik från v_cleaner_referral_stats VIEW.
+//
+// Regler #28 SSOT: bonus_amount läses från platform_settings,
+//   ALDRIG hardkodat i denna fil.
+// Regel #26: escHtml() på alla DB-fält som renderas i innerHTML.
+async function loadReferralSection() {
+  if (!cleaner || !cleaner.id) return;
+
+  // 1. Generera/läs referral_code
+  var code = cleaner.referral_code || generateReferralCode(cleaner.first_name || cleaner.full_name || 'STADARE');
+
+  // Om koden saknas i cleaners-row, persistera
+  if (!cleaner.referral_code && code) {
+    try {
+      var persistRes = await fetch(SUPA_URL + '/rest/v1/cleaners?id=eq.' + cleaner.id, {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPA_KEY,
+          Authorization: 'Bearer ' + (window._authToken || SUPA_KEY),
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal'
+        },
+        body: JSON.stringify({ referral_code: code })
+      });
+      if (persistRes.ok) cleaner.referral_code = code;
+      else console.warn('[referral] kunde inte persistera kod, fortsätter med temp-display');
+    } catch (e) {
+      console.warn('[referral] persist-fel:', e.message);
+    }
+  }
+
+  var codeInput = document.getElementById('ref-code-input');
+  var linkInput = document.getElementById('ref-link-input');
+  if (codeInput) codeInput.value = code;
+  if (linkInput) linkInput.value = 'https://spick.se/bli-stadare?ref=' + encodeURIComponent(code);
+
+  // 2. Hämta bonus-belopp från platform_settings (Regel #28 SSOT)
+  try {
+    var bonusRes = await fetch(SUPA_URL + '/rest/v1/platform_settings?key=eq.cleaner_referral_bonus_ore&select=value', {
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }
+    });
+    if (bonusRes.ok) {
+      var bonusData = await bonusRes.json();
+      var bonusOre = parseInt((bonusData && bonusData[0]) ? bonusData[0].value : '50000', 10);
+      var bonusKr = Math.round(bonusOre / 100);
+      var amt1 = document.getElementById('ref-bonus-amount');
+      var amt2 = document.getElementById('ref-bonus-amount-2');
+      if (amt1) amt1.textContent = bonusKr + ' kr';
+      if (amt2) amt2.textContent = bonusKr + ' kr';
+    }
+  } catch (e) {
+    console.warn('[referral] kunde inte läsa bonus-belopp:', e.message);
+  }
+
+  // 3. Hämta stats från v_cleaner_referral_stats
+  try {
+    var statsRes = await fetch(
+      SUPA_URL + '/rest/v1/v_cleaner_referral_stats?cleaner_id=eq.' + cleaner.id,
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + (window._authToken || SUPA_KEY) } }
+    );
+    if (statsRes.ok) {
+      var stats = await statsRes.json();
+      var s = (stats && stats[0]) || { pending_count: 0, approved_count: 0, completed_count: 0, total_bonus_paid_ore: 0 };
+      document.getElementById('ref-stat-pending').textContent = String((s.pending_count || 0) + (s.approved_count || 0));
+      document.getElementById('ref-stat-completed').textContent = String(s.completed_count || 0);
+      document.getElementById('ref-stat-bonus').textContent = Math.round((s.total_bonus_paid_ore || 0) / 100) + ' kr';
+    }
+  } catch (e) {
+    console.warn('[referral] kunde inte läsa stats:', e.message);
+  }
+
+  // 4. Lista mina referrals
+  try {
+    var listRes = await fetch(
+      SUPA_URL + '/rest/v1/cleaner_referrals?referrer_cleaner_id=eq.' + cleaner.id +
+        '&select=id,referral_code,status,created_at,completed_at,bonus_paid_referrer,bonus_amount_ore,referred_cleaner_id' +
+        '&order=created_at.desc&limit=20',
+      { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + (window._authToken || SUPA_KEY) } }
+    );
+    var listEl = document.getElementById('ref-list');
+    if (listRes.ok && listEl) {
+      var rows = await listRes.json();
+      if (!rows || rows.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--m)">Inga inbjudna än. Dela din kod ovan för att börja!</div>';
+      } else {
+        var statusLabels = {
+          pending: '<span style="color:#92400E">⏳ Väntar approve</span>',
+          approved: '<span style="color:#0F6E56">✓ Godkänd, väntar 1:a bokning</span>',
+          completed: '<span style="color:#0F6E56;font-weight:600">✅ Klar</span>',
+          rejected: '<span style="color:#9B9B95">✗ Avslagen</span>',
+          expired: '<span style="color:#9B9B95">⌛ Utgången</span>'
+        };
+        listEl.innerHTML = rows.map(function(r) {
+          var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('sv-SE') : '';
+          var bonusStr = r.status === 'completed'
+            ? (r.bonus_paid_referrer ? ' · ' + Math.round((r.bonus_amount_ore||0)/100) + ' kr utbetald' : ' · payout pågår')
+            : '';
+          return '<div style="padding:10px 0;border-bottom:1px solid var(--gray-200)">' +
+            '<div style="font-size:.82rem;color:var(--t)">Kod: <strong>' + escHtml(r.referral_code || '') + '</strong></div>' +
+            '<div style="font-size:.75rem;margin-top:2px">' + (statusLabels[r.status] || escHtml(r.status)) + bonusStr + '</div>' +
+            '<div style="font-size:.7rem;color:var(--m);margin-top:2px">Skapad: ' + escHtml(dateStr) + '</div>' +
+            '</div>';
+        }).join('');
+      }
+    }
+  } catch (e) {
+    console.warn('[referral] kunde inte lista referrals:', e.message);
+  }
+}
+
+// Härled SPICK-{NAME}-kod från first_name. ASCII-fold svenska tecken.
+// Trunca till 20 tecken total (SPICK-{15} = 21 max).
+function generateReferralCode(name) {
+  if (!name) return 'SPICK-STADARE';
+  var clean = String(name)
+    .toUpperCase()
+    .replace(/[ÅÄ]/g, 'A')
+    .replace(/Ö/g, 'O')
+    .replace(/[ÉÈ]/g, 'E')
+    .replace(/[^A-Z0-9]/g, '')
+    .substring(0, 14);
+  return 'SPICK-' + (clean || 'STADARE');
+}
+
+function copyReferralCode() {
+  var input = document.getElementById('ref-code-input');
+  if (!input || !input.value || input.value === 'Laddar...') return;
+  navigator.clipboard.writeText(input.value).then(function() {
+    if (typeof showToast === 'function') showToast('Kod kopierad!');
+  }).catch(function() {
+    input.select();
+    document.execCommand('copy');
+    if (typeof showToast === 'function') showToast('Kod kopierad!');
+  });
+}
+
+function copyReferralLink() {
+  var input = document.getElementById('ref-link-input');
+  if (!input || !input.value || input.value === 'Laddar...') return;
+  navigator.clipboard.writeText(input.value).then(function() {
+    if (typeof showToast === 'function') showToast('Länk kopierad!');
+  }).catch(function() {
+    input.select();
+    document.execCommand('copy');
+    if (typeof showToast === 'function') showToast('Länk kopierad!');
+  });
+}
+
+function shareReferralWhatsapp() {
+  var link = document.getElementById('ref-link-input')?.value || '';
+  if (!link || link === 'Laddar...') return;
+  var msg = 'Hej! Jag jobbar som städare via Spick — Sveriges nya plattform för städare. Du sätter dina egna priser och behåller 88%. Använd min länk så får vi båda 500 kr när du tar din första bokning: ' + link;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function shareReferralSms() {
+  var link = document.getElementById('ref-link-input')?.value || '';
+  if (!link || link === 'Laddar...') return;
+  var msg = 'Bli städare via Spick — 500 kr bonus när du tar din första bokning: ' + link;
+  // sms:?body= fungerar på iOS + Android
+  window.location.href = 'sms:?body=' + encodeURIComponent(msg);
+}
+
 // Kolla URL-parametrar vid sidladdning (efter OAuth-redirect)
 function checkCalendarRedirect() {
   var params = new URLSearchParams(window.location.search);
@@ -6632,6 +6860,67 @@ async function checkConnectStatus() {
   }
 }
 
+// ── FORTNOX ─────────────────────────────────────────────────
+async function checkFortnoxStatus() {
+  if (!cleaner?.id) return;
+  try {
+    const { data } = await SB.from('v_cleaner_fortnox_status')
+      .select('fortnox_company_id, connected_at, last_invoice_pushed_at, token_valid')
+      .eq('cleaner_id', cleaner.id).maybeSingle();
+    const el = document.getElementById('fortnox-status');
+    if (!el) return;
+    if (data) {
+      const lastPush = data.last_invoice_pushed_at
+        ? new Date(data.last_invoice_pushed_at).toLocaleDateString('sv-SE')
+        : 'Aldrig';
+      el.innerHTML = `
+        <div style="color:#065F46;background:#D1FAE5;padding:12px;border-radius:10px;font-size:.85rem;margin-bottom:10px">
+          <div style="font-weight:600">✅ Kopplad till Fortnox (${escHtml(data.fortnox_company_id||'')})</div>
+          <div style="font-size:.75rem;margin-top:4px;opacity:.85">Senaste faktura-push: ${escHtml(lastPush)}</div>
+        </div>
+        <button onclick="disconnectFortnox()" style="width:100%;padding:.6rem;background:#fff;color:#dc2626;border:1px solid #dc2626;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit">Koppla från Fortnox</button>
+      `;
+    }
+  } catch (e) {
+    console.warn('checkFortnoxStatus error:', e);
+  }
+}
+
+async function connectFortnox() {
+  try {
+    const sess = await SB.auth.getSession();
+    const token = sess?.data?.session?.access_token;
+    if (!token) { showToast('❌ Du måste vara inloggad'); return; }
+    const res = await fetch(`${SUPA_URL}/functions/v1/fortnox-oauth-init`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: '{}'
+    });
+    const data = await res.json();
+    if (data.auth_url) {
+      window.location.href = data.auth_url;
+    } else {
+      showToast('❌ Kunde inte starta Fortnox-koppling: ' + (data.error || 'okänt fel'));
+    }
+  } catch (e) {
+    showToast('❌ Fel: ' + (e?.message || e));
+  }
+}
+
+async function disconnectFortnox() {
+  if (!confirm('Vill du verkligen koppla från Fortnox? Spick slutar pusha fakturor automatiskt.')) return;
+  try {
+    const { error } = await SB.from('cleaner_fortnox_credentials').delete().eq('cleaner_id', cleaner.id);
+    if (error) throw error;
+    showToast('✅ Fortnox-koppling borttagen');
+    document.getElementById('fortnox-status').innerHTML = `
+      <button onclick="connectFortnox()" style="width:100%;padding:.875rem;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px">Koppla Fortnox →</button>
+    `;
+  } catch (e) {
+    showToast('❌ Kunde inte koppla från: ' + (e?.message || 'okänt fel'));
+  }
+}
+
 // ── SOS ─────────────────────────────────────────────────────
 function sosSend(type) {
   if (type === '112') { window.location.href = 'tel:112'; return; }
@@ -6714,7 +7003,7 @@ function switchTab(tab) {
     }
   }
 
-  if (tab === 'inst') { loadMyInvoices(); }
+  if (tab === 'inst') { loadMyInvoices(); if (typeof loadReferralSection === 'function') loadReferralSection(); }
 
   if (tab === 'team') {
     renderTeam();
