@@ -176,6 +176,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <div class="status-btns" id="statusBtns"></div>
   </div>
+
+  <!-- ═══ PHASE 1.1: CLOCK IN/OUT ═══ -->
+  <div class="status-card" id="clock-card">
+    <h3>🕐 Klocka in & ut</h3>
+    <p>GPS-verifierad start- och sluttid för jobbet. Kunden ser bekräftelse på att du var på plats.</p>
+    <div id="clock-status" style="display:none;background:#f0fff8;border:2px solid #0F6E56;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px"></div>
+    <div style="display:flex;gap:10px">
+      <button id="clock-in-btn" class="confirm-btn" style="flex:1;background:#0F6E56;color:#fff;padding:14px;border-radius:12px;border:none;font-size:14px;font-weight:700;cursor:pointer" onclick="doClockEvent('in')">🕐 Klocka in</button>
+      <button id="clock-out-btn" class="confirm-btn" style="flex:1;background:#fff;color:#0F6E56;padding:14px;border-radius:12px;border:2px solid #0F6E56;font-size:14px;font-weight:700;cursor:pointer;display:none" onclick="doClockEvent('out')">✅ Klocka ut</button>
+    </div>
+    <div id="clock-error" style="display:none;color:#dc2626;font-size:12px;margin-top:8px"></div>
+  </div>
+
+  <!-- ═══ PHASE 1.2: CHECKLISTA ═══ -->
+  <div class="status-card" id="checklist-card">
+    <h3>✅ Jobb-checklista</h3>
+    <p>Bocka av varje deluppgift när du är klar. Kunden ser att allt är gjort.</p>
+    <div id="checklist-loading" style="text-align:center;color:#888;font-size:13px;padding:12px">Laddar checklista...</div>
+    <div id="checklist-items" style="display:none"></div>
+    <div id="checklist-empty" style="display:none;color:#888;font-size:13px;padding:12px;text-align:center">Ingen checklista finns för denna tjänst ännu.</div>
+    <div id="checklist-summary" style="display:none;background:#E1F5EE;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:12px;color:#0F6E56;font-weight:600"></div>
+  </div>
+
+  <!-- ═══ PHASE 1.3: AVVIKELSE-RAPPORT ═══ -->
+  <div class="status-card" id="incident-card">
+    <h3>🚨 Rapportera avvikelse</h3>
+    <p>Något gick fel? Berätta vad så Spick kan hjälpa till. Texten lagras inte längre än 24 mån (GDPR).</p>
+    <button class="confirm-btn" style="width:100%;background:#fff;color:#dc2626;padding:14px;border-radius:12px;border:2px solid #dc2626;font-size:14px;font-weight:700;cursor:pointer" onclick="openIncidentModal()">🚨 Rapportera problem</button>
+  </div>
+</div>
+
+<!-- ═══ INCIDENT-MODAL ═══ -->
+<div id="incident-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">🚨 Rapportera avvikelse</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:16px">Beskriv kort vad som hände. Spick får notis direkt.</p>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Typ av problem</label>
+    <select id="incident-type" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:14px;font-family:inherit">
+      <option value="">— Välj —</option>
+      <option value="access_problem">🔒 Tillträde-problem (kund ej hemma, fel kod)</option>
+      <option value="damaged_property">💥 Skadat material/möbler</option>
+      <option value="missing_supplies">🧴 Saknade städmaterial</option>
+      <option value="safety_issue">⚠️ Otrygg miljö / säkerhetsrisk</option>
+      <option value="customer_complaint">😟 Kund klagade på plats</option>
+      <option value="other">❓ Annat</option>
+    </select>
+
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Beskrivning <span style="color:#888;font-weight:400">(min 5, max 2000 tecken)</span></label>
+    <textarea id="incident-desc" rows="5" maxlength="2000" placeholder="Vad hände? Var konkret men UNDVIK personuppgifter (namn, personnr, kontonr)." style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;margin-bottom:14px"></textarea>
+
+    <div id="incident-error" style="display:none;color:#dc2626;font-size:13px;margin-bottom:12px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="closeIncidentModal()" style="flex:1;padding:12px;background:#f0f0f0;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Avbryt</button>
+      <button onclick="submitIncident()" style="flex:1;padding:12px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Skicka rapport</button>
+    </div>
+  </div>
 </div>
 
 <!-- NYCKEL TAB -->
@@ -822,6 +880,221 @@ async function loadBooking() {
   completedStatuses = (logs || []).map(l => l.status);
   renderStatusBtns();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 1.1 — CLOCK IN/OUT (GPS-verifierad)
+// ═══════════════════════════════════════════════════════════════
+async function loadClockState() {
+  if (!BOOKING_ID) return;
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) return;
+    var res = await fetch(SUPA_URL + '/rest/v1/cleaner_clock_events?booking_id=eq.' + encodeURIComponent(BOOKING_ID) + '&select=event_type,created_at&order=created_at.desc&limit=10', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+    });
+    if (!res.ok) return;
+    var events = await res.json();
+    var statusEl = document.getElementById('clock-status');
+    var inBtn = document.getElementById('clock-in-btn');
+    var outBtn = document.getElementById('clock-out-btn');
+    var lastEvent = events && events[0];
+    if (!lastEvent) {
+      statusEl.style.display = 'none';
+      inBtn.style.display = 'block';
+      outBtn.style.display = 'none';
+      return;
+    }
+    if (lastEvent.event_type === 'in') {
+      var inAt = new Date(lastEvent.created_at);
+      var nowMs = Date.now();
+      var elapsedMin = Math.floor((nowMs - inAt.getTime()) / 60000);
+      var hh = Math.floor(elapsedMin / 60), mm = elapsedMin % 60;
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = '✅ <strong>Klockad in</strong> ' + inAt.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}) + ' — pågår ' + (hh > 0 ? hh + 'h ' : '') + mm + ' min';
+      inBtn.style.display = 'none';
+      outBtn.style.display = 'block';
+    } else {
+      var outAt = new Date(lastEvent.created_at);
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = '🏁 <strong>Klockad ut</strong> ' + outAt.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}) + ' — kan klocka in igen vid behov';
+      inBtn.style.display = 'block';
+      outBtn.style.display = 'none';
+    }
+  } catch (e) { console.warn('[clock] load failed:', e); }
+}
+
+async function doClockEvent(eventType) {
+  var errEl = document.getElementById('clock-error');
+  errEl.style.display = 'none';
+  var inBtn = document.getElementById('clock-in-btn');
+  var outBtn = document.getElementById('clock-out-btn');
+  inBtn.disabled = true; outBtn.disabled = true;
+  try {
+    if (!navigator.geolocation) {
+      throw new Error('GPS stöds inte i denna browser');
+    }
+    var pos = await new Promise(function(resolve, reject) {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    });
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) throw new Error('Du är inte inloggad');
+    var res = await fetch(SUPA_URL + '/functions/v1/clock-event', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:'Bearer ' + tok },
+      body: JSON.stringify({
+        booking_id: BOOKING_ID,
+        event_type: eventType,
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy_m: Math.round(pos.coords.accuracy)
+      })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Kunde inte spara');
+    await loadClockState();
+  } catch (e) {
+    errEl.textContent = '❌ ' + (e.message || 'Fel vid klockning. GPS-permissions behövs.');
+    errEl.style.display = 'block';
+  } finally {
+    inBtn.disabled = false; outBtn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 1.2 — JOBB-CHECKLISTA
+// ═══════════════════════════════════════════════════════════════
+async function loadChecklist() {
+  if (!BOOKING_ID) return;
+  var loadingEl = document.getElementById('checklist-loading');
+  var itemsEl = document.getElementById('checklist-items');
+  var emptyEl = document.getElementById('checklist-empty');
+  var summaryEl = document.getElementById('checklist-summary');
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) return;
+    var bRes = await fetch(SUPA_URL + '/rest/v1/v_cleaner_uppdrag?booking_id=eq.' + encodeURIComponent(BOOKING_ID) + '&select=service_type&limit=1', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+    }).catch(function(){ return null; });
+    var serviceType = '';
+    if (bRes && bRes.ok) {
+      var bRows = await bRes.json();
+      serviceType = (bRows && bRows[0] && bRows[0].service_type) || '';
+    }
+    if (!serviceType) {
+      var bRes2 = await fetch(SUPA_URL + '/rest/v1/booking_confirmation?booking_id=eq.' + encodeURIComponent(BOOKING_ID) + '&select=service_type&limit=1', {
+        headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+      });
+      var bRows2 = bRes2.ok ? await bRes2.json() : [];
+      serviceType = (bRows2 && bRows2[0] && bRows2[0].service_type) || '';
+    }
+    if (!serviceType) { loadingEl.style.display='none'; emptyEl.style.display='block'; return; }
+    var tRes = await fetch(SUPA_URL + '/rest/v1/service_checklist_templates?service_label_sv=eq.' + encodeURIComponent(serviceType) + '&active=eq.true&select=items&limit=1', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+    });
+    var templates = tRes.ok ? await tRes.json() : [];
+    var items = (templates && templates[0] && templates[0].items) || [];
+    if (!Array.isArray(items) || items.length === 0) {
+      loadingEl.style.display='none'; emptyEl.style.display='block'; return;
+    }
+    var cRes = await fetch(SUPA_URL + '/rest/v1/booking_checklist_completions?booking_id=eq.' + encodeURIComponent(BOOKING_ID) + '&select=item_key,checked', {
+      headers: { apikey: SPICK.SUPA_KEY, Authorization: 'Bearer ' + tok }
+    });
+    var completions = cRes.ok ? await cRes.json() : [];
+    var checkedKeys = new Set((completions || []).filter(function(c){ return c.checked; }).map(function(c){ return c.item_key; }));
+    loadingEl.style.display='none';
+    itemsEl.style.display='block';
+    itemsEl.innerHTML = items.map(function(item) {
+      var isChecked = checkedKeys.has(item.key);
+      return '<label style="display:flex;align-items:center;gap:10px;padding:12px;border:1.5px solid ' + (isChecked ? '#0F6E56' : '#E8E8E4') + ';border-radius:10px;margin-bottom:8px;cursor:pointer;background:' + (isChecked ? '#f0fff8' : '#fff') + '">' +
+        '<input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="toggleChecklistItem(\'' + item.key.replace(/'/g, '') + '\', this.checked)" style="width:18px;height:18px;accent-color:#0F6E56">' +
+        '<span style="flex:1;font-size:14px;' + (isChecked ? 'text-decoration:line-through;color:#888' : '') + '">' + (item.label_sv || item.key) + (item.required ? '' : ' <span style="font-size:11px;color:#aaa">(valfritt)</span>') + '</span>' +
+      '</label>';
+    }).join('');
+    var requiredItems = items.filter(function(i){ return i.required; });
+    var doneRequired = requiredItems.filter(function(i){ return checkedKeys.has(i.key); }).length;
+    summaryEl.style.display='block';
+    summaryEl.textContent = '✅ ' + doneRequired + ' av ' + requiredItems.length + ' obligatoriska klart' + (doneRequired === requiredItems.length ? ' — bra jobbat!' : '');
+  } catch (e) {
+    console.warn('[checklist] load failed:', e);
+    loadingEl.textContent = 'Kunde inte ladda checklista';
+  }
+}
+
+async function toggleChecklistItem(itemKey, checked) {
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) return;
+    var res = await fetch(SUPA_URL + '/functions/v1/checklist-mark', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:'Bearer ' + tok },
+      body: JSON.stringify({ booking_id: BOOKING_ID, item_key: itemKey, checked: checked })
+    });
+    if (!res.ok) {
+      var err = await res.json().catch(function(){ return {}; });
+      console.warn('[checklist] mark failed:', err);
+    }
+    await loadChecklist();
+  } catch (e) {
+    console.warn('[checklist] toggle failed:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 1.3 — INCIDENT-RAPPORT
+// ═══════════════════════════════════════════════════════════════
+function openIncidentModal() {
+  var m = document.getElementById('incident-modal');
+  if (m) {
+    m.style.display = 'flex';
+    document.getElementById('incident-type').value = '';
+    document.getElementById('incident-desc').value = '';
+    document.getElementById('incident-error').style.display = 'none';
+  }
+}
+function closeIncidentModal() {
+  var m = document.getElementById('incident-modal');
+  if (m) m.style.display = 'none';
+}
+async function submitIncident() {
+  var typeEl = document.getElementById('incident-type');
+  var descEl = document.getElementById('incident-desc');
+  var errEl = document.getElementById('incident-error');
+  errEl.style.display = 'none';
+  var type = typeEl.value;
+  var desc = (descEl.value || '').trim();
+  if (!type) { errEl.textContent = 'Välj typ av problem'; errEl.style.display='block'; return; }
+  if (desc.length < 5) { errEl.textContent = 'Beskrivning måste vara minst 5 tecken'; errEl.style.display='block'; return; }
+  if (desc.length > 2000) { errEl.textContent = 'Max 2000 tecken'; errEl.style.display='block'; return; }
+  try {
+    var raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    var tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) throw new Error('Inte inloggad');
+    var res = await fetch(SUPA_URL + '/functions/v1/incident-create', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:'Bearer ' + tok },
+      body: JSON.stringify({ booking_id: BOOKING_ID, incident_type: type, description: desc })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Kunde inte skicka');
+    closeIncidentModal();
+    alert('✅ Avvikelse rapporterad. Spick får notis direkt.');
+  } catch (e) {
+    errEl.textContent = '❌ ' + (e.message || 'Fel vid sändning');
+    errEl.style.display = 'block';
+  }
+}
+
+// Init Phase 1-features när status-tab visas (matchar existing pattern)
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    if (typeof loadClockState === 'function') loadClockState();
+    if (typeof loadChecklist === 'function') loadChecklist();
+  }, 800);
+});
 
 // ── TABS ──────────────────────────────────
 function showTab(tab) {

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avvikelser — Spick Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#0F6E56;--gp:#E1F5EE;--b:#0E0E0E;--t:#1C1C1A;--m:#6B6960;--bg:#F7F7F5;--border:#E8E8E4;--w:#fff;--err:#DC2626;--warn:#D97706;--succ:#059669;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--t);background:var(--bg);line-height:1.6}
+h1,h2{font-family:'Plus Jakarta Sans',Georgia,serif;color:var(--b);font-weight:700}
+.page-header{background:linear-gradient(165deg,#7c2d12 0%,#dc2626 60%,#ef4444 100%);color:var(--w);padding:2.5rem 1.5rem 1.5rem}
+.page-header-inner{max-width:1100px;margin:0 auto}
+.page-header h1{color:var(--w);font-size:clamp(1.5rem,3.5vw,2rem);margin-bottom:.25rem}
+.page-header .sub{opacity:.9}
+.container{max-width:1100px;margin:-1rem auto 4rem;padding:0 1.5rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:3rem 1rem;color:var(--m)}
+.alert-error{padding:.9rem;border-radius:8px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;margin-bottom:1rem}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
+.pill-open{background:#FEE2E2;color:#991B1B}
+.pill-resolved{background:#D1FAE5;color:#065F46}
+.pill-critical{background:#7c2d12;color:#fff}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px}
+.stat-label{font-size:.7rem;color:var(--m);text-transform:uppercase;font-weight:600}
+.stat-value{font-size:1.4rem;font-weight:700;margin-top:4px;font-family:'Plus Jakarta Sans',serif}
+.incident{border-left:4px solid var(--warn);padding:1rem 1.25rem;margin-bottom:.75rem;background:#fff;border-radius:0 var(--r) var(--r) 0;border:1px solid var(--border)}
+.incident.critical{border-left-color:var(--err);background:#FEF2F2}
+.incident.resolved{border-left-color:var(--succ);opacity:.7}
+.incident-meta{display:flex;flex-wrap:wrap;gap:.75rem;font-size:.78rem;color:var(--m);margin-bottom:.5rem}
+.incident-desc{font-size:.92rem;line-height:1.55;color:var(--t);margin-top:.5rem;padding:.5rem .75rem;background:#FAFAF8;border-radius:8px}
+.btn{padding:.5rem 1rem;background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit}
+.btn:hover{background:#0a4d3a}
+.btn-resolve{background:var(--succ)}
+.back-link{color:rgba(255,255,255,.85);text-decoration:none;font-size:.85rem;display:inline-block;margin-bottom:.5rem}
+.back-link:hover{color:#fff}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <a href="admin.html" class="back-link">← Tillbaka till admin</a>
+    <h1>🚨 Avvikelser</h1>
+    <div class="sub" id="subHeader">Laddar…</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="auth-error" class="alert-error" style="display:none">⚠️ Du måste vara inloggad som admin.</div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">🔴 Öppna</div><div class="stat-value" id="stat-open">–</div></div>
+    <div class="stat-card"><div class="stat-label">🚨 Kritiska</div><div class="stat-value" id="stat-critical">–</div></div>
+    <div class="stat-card"><div class="stat-label">✅ Lösta (30d)</div><div class="stat-value" id="stat-resolved">–</div></div>
+    <div class="stat-card"><div class="stat-label">📊 Totalt (30d)</div><div class="stat-value" id="stat-total">–</div></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem">🔴 Öppna avvikelser</h2>
+    <div id="open-list"><div class="spinner"></div></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem">✅ Lösta (senaste 30 dagar)</h2>
+    <div id="resolved-list"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+const SUPA_URL = SPICK.SUPA_URL;
+const ANON_KEY = SPICK.SUPA_KEY;
+
+const TYPE_LABELS = {
+  access_problem: '🔒 Tillträde-problem',
+  damaged_property: '💥 Skadat material',
+  missing_supplies: '🧴 Saknade städmaterial',
+  safety_issue: '⚠️ Otrygg miljö (KRITISK)',
+  customer_complaint: '😟 Kund-klagomål',
+  other: '❓ Annat'
+};
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatDate(iso) {
+  if (!iso) return '–';
+  try {
+    return new Date(iso).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+  } catch (e) { return iso; }
+}
+
+function renderIncident(inc) {
+  const isCritical = inc.incident_type === 'safety_issue';
+  const isResolved = inc.resolved;
+  const klass = isResolved ? 'resolved' : (isCritical ? 'critical' : '');
+  const pill = isResolved
+    ? '<span class="pill pill-resolved">✅ LÖST</span>'
+    : (isCritical ? '<span class="pill pill-critical">🚨 KRITISK</span>' : '<span class="pill pill-open">🔴 ÖPPEN</span>');
+  return `
+    <div class="incident ${klass}">
+      <div class="incident-meta">
+        ${pill}
+        <span><strong>${escHtml(TYPE_LABELS[inc.incident_type] || inc.incident_type)}</strong></span>
+        <span>👤 ${escHtml(inc.cleaner_name || 'Okänd städare')}</span>
+        <span>📍 Bokning ${escHtml((inc.booking_id || '').slice(0, 8))}</span>
+        <span>🗓️ ${formatDate(inc.created_at)}</span>
+      </div>
+      <div class="incident-desc">${escHtml(inc.description)}</div>
+      ${!isResolved ? `<div style="margin-top:.75rem;text-align:right">
+        <button class="btn btn-resolve" onclick="resolveIncident('${inc.id}')">✓ Markera löst</button>
+      </div>` : `<div style="margin-top:.5rem;font-size:.78rem;color:var(--m)">Löst ${formatDate(inc.resolved_at)}</div>`}
+    </div>`;
+}
+
+async function loadIncidents() {
+  try {
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    const tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) {
+      document.getElementById('auth-error').style.display = 'block';
+      return;
+    }
+
+    const headers = { apikey: ANON_KEY, Authorization: 'Bearer ' + tok };
+
+    // Fetch incidents + cleaners-namn
+    const incRes = await fetch(SUPA_URL + '/rest/v1/booking_incidents?select=id,booking_id,cleaner_id,incident_type,description,resolved,resolved_at,created_at&order=created_at.desc&limit=200', { headers });
+    if (!incRes.ok) {
+      document.getElementById('auth-error').style.display = 'block';
+      document.getElementById('auth-error').textContent = '❌ Saknar admin-rättigheter (HTTP ' + incRes.status + '). Logga in via admin.html.';
+      return;
+    }
+    const incidents = await incRes.json();
+
+    // Fetch cleaner-names för alla unika cleaner-ids
+    const cleanerIds = [...new Set(incidents.map(i => i.cleaner_id).filter(Boolean))];
+    let cleanerMap = {};
+    if (cleanerIds.length > 0) {
+      const cleanersRes = await fetch(SUPA_URL + '/rest/v1/v_cleaners_for_booking?select=id,full_name&id=in.(' + cleanerIds.join(',') + ')', { headers });
+      if (cleanersRes.ok) {
+        const cleaners = await cleanersRes.json();
+        cleanerMap = Object.fromEntries((cleaners || []).map(c => [c.id, c.full_name]));
+      }
+    }
+    incidents.forEach(i => { i.cleaner_name = cleanerMap[i.cleaner_id] || ''; });
+
+    // Stats
+    const open = incidents.filter(i => !i.resolved);
+    const critical = open.filter(i => i.incident_type === 'safety_issue');
+    const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const resolved30d = incidents.filter(i => i.resolved && new Date(i.resolved_at).getTime() > cutoff30d);
+    const total30d = incidents.filter(i => new Date(i.created_at).getTime() > cutoff30d);
+
+    document.getElementById('stat-open').textContent = open.length;
+    document.getElementById('stat-critical').textContent = critical.length;
+    document.getElementById('stat-resolved').textContent = resolved30d.length;
+    document.getElementById('stat-total').textContent = total30d.length;
+    document.getElementById('subHeader').textContent = `${open.length} öppna · ${critical.length} kritiska · ${total30d.length} totalt senaste 30 dagar`;
+
+    // Render
+    const openListEl = document.getElementById('open-list');
+    const resolvedListEl = document.getElementById('resolved-list');
+    openListEl.innerHTML = open.length === 0
+      ? '<div class="empty">🎉 Inga öppna avvikelser just nu!</div>'
+      : open.map(renderIncident).join('');
+    resolvedListEl.innerHTML = resolved30d.length === 0
+      ? '<div class="empty">Inga lösta avvikelser senaste 30 dagar.</div>'
+      : resolved30d.map(renderIncident).join('');
+  } catch (e) {
+    console.error('[admin-incidents] load failed:', e);
+    document.getElementById('auth-error').style.display = 'block';
+    document.getElementById('auth-error').textContent = '❌ Fel: ' + e.message;
+  }
+}
+
+async function resolveIncident(incidentId) {
+  if (!confirm('Markera som löst?')) return;
+  try {
+    const raw = localStorage.getItem('sb-urjeijcncsyuletprydy-auth-token');
+    const tok = raw ? JSON.parse(raw)?.access_token : null;
+    if (!tok) return;
+
+    // Hämta auth-user för resolved_by_admin_id
+    const userRes = await fetch(SUPA_URL + '/auth/v1/user', {
+      headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + tok }
+    });
+    const user = await userRes.json();
+
+    const res = await fetch(SUPA_URL + '/rest/v1/booking_incidents?id=eq.' + encodeURIComponent(incidentId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + tok, Prefer: 'return=minimal' },
+      body: JSON.stringify({ resolved: true, resolved_at: new Date().toISOString(), resolved_by_admin_id: user.id })
+    });
+    if (!res.ok) {
+      alert('❌ Kunde inte markera som löst (HTTP ' + res.status + ')');
+      return;
+    }
+    await loadIncidents();
+  } catch (e) {
+    alert('❌ Fel: ' + e.message);
+  }
+}
+
+loadIncidents();
+</script>
+</body>
+</html>
