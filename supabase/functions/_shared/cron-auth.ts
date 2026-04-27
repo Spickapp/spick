@@ -51,14 +51,19 @@ export function requireCronAuth(req: Request, corsHeaders: Record<string, string
   }
 
   const authHeader = req.headers.get("Authorization");
-  const providedSecret = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : req.headers.get("x-cron-secret");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const cronHeader = req.headers.get("x-cron-secret");
 
-  // Acceptera antingen CRON_SECRET eller service-role-key
-  const isValid = providedSecret && (
-    (CRON_SECRET && providedSecret === CRON_SECRET) ||
-    (SERVICE_ROLE_KEY && providedSecret === SERVICE_ROLE_KEY)
+  // Kollar BÅDA headers (inte fallback) eftersom workflows skickar både:
+  // - Authorization: Bearer <SERVICE_ROLE_KEY> (för Supabase API gateway-JWT-validering)
+  // - x-cron-secret: <CRON_SECRET> (för EF-side auth)
+  // Tidigare fallback-only logik hittade bara Authorization → matchade
+  // GitHub-secret JWT (219 chars) mot EF-env sb_secret-format (41 chars) → 401.
+  // Acceptera antingen header med antingen secret-format.
+  const providedSecret = bearerToken || cronHeader;
+  const isValid = (
+    (CRON_SECRET && (bearerToken === CRON_SECRET || cronHeader === CRON_SECRET)) ||
+    (SERVICE_ROLE_KEY && (bearerToken === SERVICE_ROLE_KEY || cronHeader === SERVICE_ROLE_KEY))
   );
 
   if (!isValid) {
