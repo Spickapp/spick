@@ -13868,7 +13868,20 @@ async function startTermsBankidFlow(version) {
     }
 
     if (statusEl) {
-      statusEl.innerHTML = '🔒 Öppna BankID-appen och signera. <a href="bankid:///?autostarttoken=' + initData.auto_start_token + '&redirect=null" style="color:var(--g);font-weight:600">Öppna BankID på denna enhet</a>';
+      // BankID URL: olika protokoll för desktop vs mobil
+      // - Desktop: bankid:/// (lokalt protokoll, öppnar BankID Säkerhetsprogram)
+      // - Mobil (iOS/Android): https://app.bankid.com/ (öppnar BankID-appen via universal link)
+      // Detection: mobile-pattern på userAgent
+      var _isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent || '');
+      var _redirectBack = encodeURIComponent(window.location.href);
+      var _bankidUrl = _isMobile
+        ? 'https://app.bankid.com/?autostarttoken=' + initData.auto_start_token + '&redirect=' + _redirectBack
+        : 'bankid:///?autostarttoken=' + initData.auto_start_token + '&redirect=null';
+      statusEl.innerHTML = '🔒 Öppna BankID-appen och signera. <a href="' + _bankidUrl + '" style="color:var(--g);font-weight:600">' + (_isMobile ? '📱 Öppna BankID-appen' : 'Öppna BankID på denna enhet') + '</a>';
+      // På mobil: auto-trigger BankID-app öppning omedelbart (bättre UX än manuell klick)
+      if (_isMobile) {
+        setTimeout(function() { window.location.href = _bankidUrl; }, 300);
+      }
     }
 
     // Polla register-bankid-status
