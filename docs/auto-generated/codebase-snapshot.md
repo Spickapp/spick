@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (112 st)
+## Edge Functions (115 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -43,6 +43,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `cleaner-addon-price-set` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-addon-price-set (Fas 4 §4.8c) |
 | `cleaner-application-submit` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-application-submit (Audit-fix P2-3, 2026 |
 | `cleaner-booking-response` |  |
+| `cleaner-eta-update` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-eta-update (Smart-ETA primary EF) |
 | `cleaner-job-completed` | ═══════════════════════════════════════════════════════════════ SPICK – cleaner-job-completed (Fas 8 §8.2 wiring) |
 | `cleaner-onboarding-emails` |  |
 | `cleaner-optout` |  |
@@ -58,6 +59,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `customer-nudge-recurring` | customer-nudge-recurring — Fas 5 §5.9 ═══════════════════════════════════════════════════════════════ |
 | `customer-subscription-manage` | customer-subscription-manage — Fas 5 §5.4 ═══════════════════════════════════════════════════════════ |
 | `customer-upsert` | ═══════════════════════════════════════════════════════════════ SPICK – customer-upsert (Fas 1.2) |
+| `debug-cleaner-auth` | ═══════════════════════════════════════════════════════════════ SPICK – debug-cleaner-auth |
 | `dispute-admin-decide` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-admin-decide (Fas 8 §8.14) |
 | `dispute-cleaner-respond` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-cleaner-respond (Fas 8 §8.9) |
 | `dispute-evidence-upload` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-evidence-upload (Fas 8 §8.13) |
@@ -69,6 +71,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `escrow-auto-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-auto-release (Fas 8 §8.12) |
 | `escrow-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-release (Fas 8 §8.7) |
 | `escrow-state-transition` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-state-transition (Fas 8 §8.6) |
+| `eta-monitor` | ═══════════════════════════════════════════════════════════════ SPICK – eta-monitor (cron — körs var 5:e min) |
 | `expire-team-invitations` | ═══════════════════════════════════════════════════════════════ SPICK – expire-team-invitations (Sprint B Dag 6) |
 | `export-cleaner-data` | export-cleaner-data — Fas 8 §8.20 ═══════════════════════════════════════════════════════════════ |
 | `export-customer-data` | export-customer-data — Fas 13 §13.4 gap A1 ═══════════════════════════════════════════════════════════════ |
@@ -158,7 +161,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (51 st)
+## GitHub Actions workflows (52 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -185,6 +188,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/elks-balance-monitor.yml`
 - `.github/workflows/email-deliverability-monthly.yml`
 - `.github/workflows/escrow-auto-release.yml`
+- `.github/workflows/eta-monitor.yml`
 - `.github/workflows/generate-sitemap.yml`
 - `.github/workflows/lighthouse-nightly.yml`
 - `.github/workflows/lint-hardcoded-values.yml`
@@ -212,7 +216,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/visual-regression.yml`
 - `.github/workflows/weekly-report.yml`
 
-## Migrations (177 st)
+## Migrations (180 st)
 
 - Senaste: `20260429000004_phase2_data_hygiene.sql`
 - Timestamp-prefix: `20260429000004`
