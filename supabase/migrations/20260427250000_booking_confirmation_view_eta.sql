@@ -32,7 +32,6 @@ SELECT
   booking_date,
   booking_time,
   booking_hours,
-  city,
   total_price,
   payment_status,
   rut_amount,
@@ -64,9 +63,9 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $func$
   SELECT * FROM public.booking_confirmation WHERE id = _id LIMIT 1;
-$$;
+$func$;
 
 COMMENT ON FUNCTION public.get_booking_by_id(uuid) IS
   'Anti-enumeration: anon kan hämta EN booking om de känner UUID:n. Återskapad 2026-04-27 efter ETA-vy-uppdatering (CASCADE).';
@@ -77,11 +76,11 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $func$
   SELECT * FROM public.booking_confirmation
    WHERE payment_intent_id = _session_id
    LIMIT 1;
-$$;
+$func$;
 
 COMMENT ON FUNCTION public.get_booking_by_session(text) IS
   'Anti-enumeration: tack.html-flow med Stripe session-id. Återskapad 2026-04-27 efter ETA-vy-uppdatering (CASCADE).';
