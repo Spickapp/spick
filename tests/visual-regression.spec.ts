@@ -62,6 +62,12 @@ const TARGETS: VisualTarget[] = [
 ];
 
 test.describe('Visual Regression (Chromium desktop)', () => {
+  // SKIP I CI: Snapshots taggas chromium-{platform}.png. Win-baselines (skapas lokalt)
+  // matchar inte Linux-render i CI pga font-rendering/anti-aliasing-skillnader.
+  // Cross-platform baselines kräver Docker/WSL eller separat CI-job som genererar
+  // Linux-baselines automatiskt. Skip tills vi sätter upp det → körs lokalt manuellt.
+  test.skip(!!process.env.CI, 'Visual-regression skippas i CI: cross-platform-baseline-missmatch');
+
   // Sätt deterministisk viewport — annars kan CI-runner-defaults variera
   // mellan github-runner-versioner och ge falska diffs.
   test.use({ viewport: { width: 1280, height: 800 } });
