@@ -18,6 +18,7 @@
      regler kan override. Aliases håller bakåtkompat för --g/--accent/etc. -->
 <link rel="stylesheet" href="css/profile.css">
 <script type="application/ld+json" id="schema-json"></script>
+<script type="application/ld+json" id="schema-person-json"></script>
 <script src="js/config.js"></script>
 <script src="js/components.js" defer></script>
 <script src="js/services-loader.js" defer></script>
@@ -829,6 +830,20 @@ async function loadProfile() {
     };
   }
   document.getElementById('schema-json').textContent = JSON.stringify(ld);
+
+  // Separat Person-block för Google Rich Results (Person-typ ger profile-info i SERP)
+  var personLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": _canonicalUrl + "#person-" + c.id,
+    "name": c.full_name || "Städare",
+    "url": _canonicalUrl,
+    "image": _ogImageUrl,
+    "jobTitle": "Städare",
+    "worksFor": { "@type": "Organization", "name": "Spick", "url": "https://spick.se" },
+    "address": { "@type": "PostalAddress", "addressLocality": c.city || "Stockholm", "addressCountry": "SE" }
+  };
+  document.getElementById('schema-person-json').textContent = JSON.stringify(personLd);
 
   // Done — show content
   document.getElementById('loading').style.display = 'none';
