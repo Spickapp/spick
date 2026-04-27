@@ -100,14 +100,16 @@ Deno.serve(async (req) => {
     const subjectId = subject_id as string;
 
     // ── Authorisation ──
-    if (subjectType === "cleaner" && user.id !== subjectId) {
+    // Hämta callers cleaner-record via auth_user_id (auth.users.id !== cleaners.id)
+    const { data: callerCleaner } = await sbService
+      .from("cleaners")
+      .select("id, company_id, is_company_owner")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (subjectType === "cleaner" && callerCleaner?.id !== subjectId) {
       // Tillåt VD att kolla teammedlemmar i samma company
-      const { data: vdCheck } = await sbService
-        .from("cleaners")
-        .select("id, company_id, is_company_owner")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!vdCheck?.is_company_owner) {
+      if (!callerCleaner?.is_company_owner) {
         return json(CORS, 403, { error: "not_authorized_for_subject" });
       }
       const { data: targetCheck } = await sbService
@@ -115,17 +117,12 @@ Deno.serve(async (req) => {
         .select("company_id")
         .eq("id", subjectId)
         .maybeSingle();
-      if (targetCheck?.company_id !== vdCheck.company_id) {
+      if (targetCheck?.company_id !== callerCleaner.company_id) {
         return json(CORS, 403, { error: "subject_not_in_your_company" });
       }
     }
     if (subjectType === "company") {
-      const { data: ownerCheck } = await sbService
-        .from("cleaners")
-        .select("company_id, is_company_owner")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!ownerCheck?.is_company_owner || ownerCheck.company_id !== subjectId) {
+      if (!callerCleaner?.is_company_owner || callerCleaner.company_id !== subjectId) {
         return json(CORS, 403, { error: "not_company_owner" });
       }
     }

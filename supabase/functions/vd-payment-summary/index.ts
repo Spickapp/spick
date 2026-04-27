@@ -67,10 +67,11 @@ Deno.serve(async (req) => {
     if (authErr || !user) return json(CORS, 401, { error: "invalid_token" });
 
     // ── VD-check: hämta caller-cleaner + verifiera is_company_owner ──
+    // (auth.users.id !== cleaners.id — använd auth_user_id-FK)
     const { data: caller, error: callerErr } = await sbService
       .from("cleaners")
       .select("id, company_id, is_company_owner, full_name")
-      .eq("id", user.id)
+      .eq("auth_user_id", user.id)
       .maybeSingle();
     if (callerErr || !caller) return json(CORS, 403, { error: "cleaner_not_found" });
     if (!caller.is_company_owner) return json(CORS, 403, { error: "not_company_owner" });

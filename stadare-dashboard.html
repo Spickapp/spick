@@ -6887,22 +6887,26 @@ async function checkFortnoxStatus() {
 }
 
 async function connectFortnox() {
+  console.warn('[fortnox] connectFortnox() klickad');
   try {
-    const sess = await SB.auth.getSession();
-    const token = sess?.data?.session?.access_token;
+    const k = Object.keys(localStorage).find(x => x.startsWith('sb-') && x.endsWith('-auth-token'));
+    const token = k ? JSON.parse(localStorage.getItem(k) || '{}')?.access_token : null;
     if (!token) { showToast('❌ Du måste vara inloggad'); return; }
+    showToast('Startar Fortnox-koppling...');
     const res = await fetch(`${SUPA_URL}/functions/v1/fortnox-oauth-init`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: '{}'
     });
     const data = await res.json();
+    console.warn('[fortnox] EF response HTTP', res.status, data);
     if (data.auth_url) {
       window.location.href = data.auth_url;
     } else {
       showToast('❌ Kunde inte starta Fortnox-koppling: ' + (data.error || 'okänt fel'));
     }
   } catch (e) {
+    console.error('[fortnox] connectFortnox fel:', e);
     showToast('❌ Fel: ' + (e?.message || e));
   }
 }
