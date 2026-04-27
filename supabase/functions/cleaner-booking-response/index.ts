@@ -28,15 +28,32 @@ serve(async (req) => {
     if (!authRes.ok) return json({ error: "Invalid token" }, 401, CORS);
     const authUser = await authRes.json();
 
-    // Find cleaner by auth_user_id
-    const { data: cleaner, error: clErr } = await sb
-      .from("cleaners")
-      .select("id, full_name, email, company_id, is_company_owner")
-      .eq("auth_user_id", authUser.id)
-      .eq("is_approved", true)
-      .maybeSingle();
+    // ── ADMIN-BYPASS: admin (admin_users-tabellen) får agera åt vilken cleaner som helst
+    // Pattern matchar admin-approve-company/admin-cancel-booking. Per Farhad-mandate 2026-04-27:
+    // "Admin ska kunna göra allt även i andras namn" (impersonation från admin-vy).
+    let isAdmin = false;
+    if (authUser?.email) {
+      const { data: adminRow } = await sb
+        .from("admin_users")
+        .select("email")
+        .eq("email", authUser.email)
+        .eq("is_active", true)
+        .maybeSingle();
+      isAdmin = !!adminRow;
+    }
 
-    if (clErr || !cleaner) return json({ error: "Städarprofil hittades inte" }, 403, CORS);
+    // Find cleaner by auth_user_id (om INTE admin — annars använder vi booking.cleaner_id)
+    let cleaner: any = null;
+    if (!isAdmin) {
+      const { data, error: clErr } = await sb
+        .from("cleaners")
+        .select("id, full_name, email, company_id, is_company_owner")
+        .eq("auth_user_id", authUser.id)
+        .eq("is_approved", true)
+        .maybeSingle();
+      if (clErr || !data) return json({ error: "Städarprofil hittades inte" }, 403, CORS);
+      cleaner = data;
+    }
 
     // ── PARSE BODY ──────────────────────────────────────────
     const { booking_id, action, reason } = await req.json();
@@ -53,8 +70,24 @@ serve(async (req) => {
 
     if (bkErr || !booking) return json({ error: "Bokning hittades inte" }, 404, CORS);
 
+    // ── ADMIN: hämta target-cleaner från bookingen för logging/email-namn ──
+    if (isAdmin && booking.cleaner_id) {
+      const { data: targetCl } = await sb
+        .from("cleaners")
+        .select("id, full_name, email, company_id, is_company_owner")
+        .eq("id", booking.cleaner_id)
+        .maybeSingle();
+      if (targetCl) {
+        cleaner = targetCl;
+      } else {
+        // Bokning utan tilldelad cleaner — admin kan ändå hantera; fyll med admin-info
+        cleaner = { id: null, full_name: `Admin (${authUser.email})`, email: authUser.email, company_id: null, is_company_owner: true };
+      }
+    }
+
     // Verify this cleaner owns this booking (or is company owner of the assigned cleaner)
-    let isAuthorized = booking.cleaner_id === cleaner.id;
+    // Admin: alltid auktoriserad (Farhad-mandate 2026-04-27)
+    let isAuthorized = isAdmin || booking.cleaner_id === cleaner.id;
     if (!isAuthorized && cleaner.is_company_owner && cleaner.company_id) {
       // Check if the assigned cleaner belongs to the same company
       const { data: assignedCleaner } = await sb
