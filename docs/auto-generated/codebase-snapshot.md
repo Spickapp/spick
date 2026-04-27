@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (101 st)
+## Edge Functions (102 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -60,6 +60,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `dispute-open` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-open (Fas 8 §8.8) |
 | `dispute-sla-check` | ═══════════════════════════════════════════════════════════════ SPICK – dispute-sla-check (Fas 8 §8.12.2) |
 | `elks-balance-monitor` |  |
+| `email-deliverability-test` | ═══════════════════════════════════════════════════════════════ SPICK – email-deliverability-test (manuellt-triggad / mo |
 | `email-inbound` |  |
 | `escrow-auto-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-auto-release (Fas 8 §8.12) |
 | `escrow-release` | ═══════════════════════════════════════════════════════════════ SPICK – escrow-release (Fas 8 §8.7) |
@@ -147,7 +148,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (45 st)
+## GitHub Actions workflows (48 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -170,13 +171,16 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/disaster-recovery.yml`
 - `.github/workflows/dispute-sla-check.yml`
 - `.github/workflows/elks-balance-monitor.yml`
+- `.github/workflows/email-deliverability-monthly.yml`
 - `.github/workflows/escrow-auto-release.yml`
 - `.github/workflows/generate-sitemap.yml`
+- `.github/workflows/lighthouse-nightly.yml`
 - `.github/workflows/lint-hardcoded-values.yml`
 - `.github/workflows/load-test.yml`
 - `.github/workflows/loopia-dns.yml`
 - `.github/workflows/monthly-invoices.yml`
 - `.github/workflows/n3-pnr-reminder-cron.yml`
+- `.github/workflows/playwright-cross-browser.yml`
 - `.github/workflows/playwright-smoke.yml`
 - `.github/workflows/playwright-stripe-e2e.yml`
 - `.github/workflows/preference-learn-favorite.yml`
