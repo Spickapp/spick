@@ -1,0 +1,37 @@
+name: 46elks balance monitor (1x/dag 06:00 UTC)
+# Daglig saldo-check på 46elks → Discord-alert om <200 SEK (warn) eller <50 SEK (critical).
+# Förebygger 2026-04-26-incidenten där alla credits brändes utan förvarning.
+'on':
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Kör elks-balance-monitor
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Content-Type: application/json" \
+            "$SUPA_URL/functions/v1/elks-balance-monitor" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::elks-balance-monitor failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
