@@ -186,14 +186,32 @@ serve(async (req) => {
     if (!authRes.ok) return json({ error: "Invalid token" }, 401, CORS);
     const authUser = await authRes.json();
 
-    const { data: cleaner, error: clErr } = await sb
-      .from("cleaners")
-      .select("id, full_name, email, phone, company_id, is_company_owner, home_lat, home_lng")
-      .eq("auth_user_id", authUser.id)
-      .eq("is_approved", true)
-      .maybeSingle<CleanerProfile>();
+    // ── ADMIN-BYPASS: admin (admin_users.is_active=true) får agera åt vilken cleaner som helst
+    // Pattern matchar cleaner-booking-response (commit 1744a6b). Per Farhad-mandate 2026-04-27:
+    // "Admin ska kunna göra allt även i andras namn" (impersonation från admin-vy).
+    let isAdmin = false;
+    if (authUser?.email) {
+      const { data: adminRow } = await sb
+        .from("admin_users")
+        .select("email")
+        .eq("email", authUser.email)
+        .eq("is_active", true)
+        .maybeSingle();
+      isAdmin = !!adminRow;
+    }
 
-    if (clErr || !cleaner) return json({ error: "Städarprofil hittades inte" }, 403, CORS);
+    // Find cleaner by auth_user_id (om INTE admin — annars hämtar vi target-cleaner från booking nedan)
+    let cleaner: CleanerProfile | null = null;
+    if (!isAdmin) {
+      const { data, error: clErr } = await sb
+        .from("cleaners")
+        .select("id, full_name, email, phone, company_id, is_company_owner, home_lat, home_lng")
+        .eq("auth_user_id", authUser.id)
+        .eq("is_approved", true)
+        .maybeSingle<CleanerProfile>();
+      if (clErr || !data) return json({ error: "Städarprofil hittades inte" }, 403, CORS);
+      cleaner = data;
+    }
 
     // ── PARSE BODY ──
     const body = await req.json() as EtaBody;
@@ -211,8 +229,29 @@ serve(async (req) => {
 
     if (bkErr || !booking) return json({ error: "Bokning hittades inte" }, 404, CORS);
 
-    // ── AUTH: cleaner äger bokningen ELLER VD i samma företag ──
-    let isAuthorized = booking.cleaner_id === cleaner.id;
+    // ── ADMIN: hämta target-cleaner från bookingen för OSRM-position + audit-namn ──
+    if (isAdmin) {
+      if (!booking.cleaner_id) {
+        return json({ error: "Bokningen saknar tilldelad städare — kan inte sätta ETA" }, 400, CORS);
+      }
+      const { data: targetCl } = await sb
+        .from("cleaners")
+        .select("id, full_name, email, phone, company_id, is_company_owner, home_lat, home_lng")
+        .eq("id", booking.cleaner_id)
+        .maybeSingle<CleanerProfile>();
+      if (!targetCl) {
+        return json({ error: "Tilldelad städare hittades inte" }, 404, CORS);
+      }
+      cleaner = targetCl;
+    }
+
+    // Sanity: cleaner ska nu vara satt (self-fetch eller admin-target)
+    if (!cleaner) {
+      return json({ error: "internal_no_cleaner_context" }, 500, CORS);
+    }
+
+    // ── AUTH: cleaner äger bokningen ELLER VD i samma företag ELLER admin (Farhad-mandate 2026-04-27) ──
+    let isAuthorized = isAdmin || booking.cleaner_id === cleaner.id;
     if (!isAuthorized && cleaner.is_company_owner && cleaner.company_id && booking.cleaner_id) {
       const { data: assigned } = await sb
         .from("cleaners")
