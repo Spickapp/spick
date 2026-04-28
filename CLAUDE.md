@@ -20,7 +20,7 @@ Kunder bokar betygsatta städare direkt. Städare sätter egna priser (250–600
 | Frontend | Vanilla HTML/CSS/JS (64 sidor), components.js (nav/footer) |
 | Typsnitt | Playfair Display (rubriker) + DM Sans (brödtext) |
 | Färger | #0F6E56 primär, #1D9E75 accent, #E1F5EE pale, #F7F7F5 bg |
-| Backend/DB | Supabase PostgreSQL + 78 Edge Functions + 3 VIEWs |
+| Backend/DB | Supabase PostgreSQL (**Pro-tier sedan 2026-04-28** — 2M EF-invocations + 8GB DB + 250GB bandwidth) + 78 Edge Functions + 3 VIEWs |
 | Hosting | GitHub Pages (auto-deploy vid push till main) |
 | E-post | Resend (verifierad) + Google Workspace hello@spick.se |
 | Betalning | Stripe live mode (kort + Klarna) + dual-key test/live-toggle (`platform_settings.stripe_test_mode`) |
