@@ -2408,18 +2408,14 @@ async function loadPlatformStats() {
   if (periodEl) periodEl.textContent = 'Laddar...';
 
   try {
-    var token = (await SB.auth.getSession()).data.session?.access_token;
-    if (!token) {
-      if (periodEl) periodEl.textContent = '⚠️ Ej inloggad';
-      return;
-    }
+    // Använd _adminHeadersLegacy() istället för await SB.auth.getSession() —
+    // getSession() kan hänga sig vid CSP-blockerad realtime-wss (2026-04-28
+    // diagnostik: returns Promise{pending} utan att resolva → ingen fetch).
+    // _adminHeadersLegacy läser token direkt från localStorage utan async-init.
+    var headers = await _adminHeadersLegacy();
     var res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-platform-stats', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-        'apikey': SPICK.SUPA_KEY,
-      },
+      headers: headers,
       body: JSON.stringify({}),
     });
     if (!res.ok) {
