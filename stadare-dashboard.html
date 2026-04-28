@@ -1150,10 +1150,10 @@ body{top:0!important}
                 <div id="vd-pay-escrow-sum" style="font-size:1.3rem;font-weight:700;font-family:Plus Jakarta Sans,sans-serif">0 kr</div>
                 <div id="vd-pay-escrow-count" style="font-size:.72rem;opacity:.8">0 väntar</div>
               </div>
-              <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
+              <div onclick="(function(){ var s=document.getElementById('vd-jobs-detailed'); if(s&&s.style.display==='none'){toggleVdJobsSection();} filterVdJobs('rut_pending'); var d=document.getElementById('vd-jobs-detailed'); if(d) d.scrollIntoView({behavior:'smooth',block:'start'}); })()" style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.12)'" title="Klicka för att se vilka bokningar som väntar RUT">
                 <div style="font-size:.72rem;opacity:.8">📋 RUT-fordran</div>
                 <div id="vd-pay-rut-sum" style="font-size:1.3rem;font-weight:700;font-family:Plus Jakarta Sans,sans-serif">0 kr</div>
-                <div id="vd-pay-rut-count" style="font-size:.72rem;opacity:.8">0 väntar SKV (~6v)</div>
+                <div id="vd-pay-rut-count" style="font-size:.72rem;opacity:.8">0 väntar SKV (~6v) →</div>
               </div>
               <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
                 <div style="font-size:.72rem;opacity:.8">📅 Kommande</div>
@@ -1191,6 +1191,8 @@ body{top:0!important}
                 <button class="vd-jobs-filter-btn" data-filter="slutreglerat" onclick="filterVdJobs('slutreglerat')" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Slutreglerat</button>
                 <button class="vd-jobs-filter-btn" data-filter="i_escrow" onclick="filterVdJobs('i_escrow')" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">I escrow</button>
                 <button class="vd-jobs-filter-btn" data-filter="kommande" onclick="filterVdJobs('kommande')" style="background:#F3F4F6;color:#3f3d36;border:none;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Kommande</button>
+                <button class="vd-jobs-filter-btn" data-filter="rut_pending" onclick="filterVdJobs('rut_pending')" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">⏳ RUT pending</button>
+                <button class="vd-jobs-filter-btn" data-filter="rut_rejected" onclick="filterVdJobs('rut_rejected')" style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:99px;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">❌ RUT avslagen</button>
                 <input type="text" id="vd-jobs-search" placeholder="🔍 Sök cleaner/kund" oninput="filterVdJobs()" style="flex:1;min-width:160px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;font-size:.78rem;font-family:inherit">
               </div>
               <div id="vd-jobs-list-body" style="font-size:.82rem">
@@ -13595,7 +13597,18 @@ function _vdJobsFilteredRows() {
   const searchEl = document.getElementById('vd-jobs-search');
   const search = searchEl ? (searchEl.value || '').toLowerCase().trim() : '';
   let rows = _vdJobsAllRows();
-  if (filter !== 'all') rows = rows.filter(function(r) { return r._category === filter; });
+  if (filter === 'rut_pending') {
+    // RUT-väntar: rut_amount > 0 + rut_application_status NOT IN approved/paid
+    rows = rows.filter(function(r) {
+      var rut = Number(r.rut_amount) || 0;
+      var s = r.rut_application_status;
+      return rut > 0 && s !== 'approved' && s !== 'paid' && s !== 'rejected';
+    });
+  } else if (filter === 'rut_rejected') {
+    rows = rows.filter(function(r) { return r.rut_application_status === 'rejected'; });
+  } else if (filter !== 'all') {
+    rows = rows.filter(function(r) { return r._category === filter; });
+  }
   if (search) {
     rows = rows.filter(function(r) {
       const cleaner = String(r.cleaner_name || '').toLowerCase();
@@ -13623,25 +13636,51 @@ function renderVdJobsList() {
     body.innerHTML = '<div style="text-align:center;padding:18px;color:var(--m);font-size:.82rem">Inga jobb matchar filtret.</div>';
     return;
   }
-  let html = '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr auto auto;gap:6px 10px;align-items:center">';
+  // Helper för RUT-status-badge (NY 2026-04-28)
+  var rutStatusBadge = function(s) {
+    if (s === 'approved' || s === 'paid') return { text: '✓ Utbetald', color: '#065F46', bg: '#D1FAE5' };
+    if (s === 'submitted') return { text: '📤 Skickad SKV', color: '#1E40AF', bg: '#DBEAFE' };
+    if (s === 'rejected') return { text: '❌ Avslagen', color: '#991B1B', bg: '#FEE2E2' };
+    if (s === 'pending' || !s) return { text: '⏳ Väntar', color: '#92400E', bg: '#FEF3C7' };
+    return { text: s, color: '#3f3d36', bg: '#F3F4F6' };
+  };
+  // 8 kolumner nu (lade till RUT + RUT-STATUS)
+  let html = '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr auto auto auto auto;gap:6px 10px;align-items:center">';
   html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Status</div>';
   html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Datum</div>';
   html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Cleaner</div>';
   html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Kund</div>';
   html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Tjänst</div>';
   html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Belopp</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">RUT</div>';
+  html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">RUT-status</div>';
   rows.forEach(function(r) {
     const lbl = _vdCategoryLabel(r._category);
     const price = (Number(r.total_price) || 0).toLocaleString('sv-SE');
+    const rut = Number(r.rut_amount) || 0;
+    const rutStr = rut > 0 ? rut.toLocaleString('sv-SE') + ' kr' : '–';
+    const rs = rutStatusBadge(r.rut_application_status);
     html += '<div><span style="background:' + lbl.bg + ';color:' + lbl.color + ';padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:600;white-space:nowrap">' + escHtml(lbl.text) + '</span></div>';
     html += '<div style="font-family:monospace;font-size:.78rem">' + escHtml(r.booking_date || '-') + '</div>';
     html += '<div>' + escHtml(r.cleaner_name || '-') + '</div>';
     html += '<div>' + escHtml(r.customer_name || '-') + '</div>';
     html += '<div style="color:var(--m);font-size:.78rem">' + escHtml(r.service_type || '-') + '</div>';
     html += '<div style="text-align:right;font-weight:600">' + price + ' kr</div>';
+    html += '<div style="text-align:right;font-size:.78rem;color:' + (rut > 0 ? '#92400E' : 'var(--m)') + '">' + rutStr + '</div>';
+    if (rut > 0) {
+      html += '<div><span style="background:' + rs.bg + ';color:' + rs.color + ';padding:2px 8px;border-radius:99px;font-size:.68rem;font-weight:600;white-space:nowrap">' + escHtml(rs.text) + '</span></div>';
+    } else {
+      html += '<div style="color:var(--m);font-size:.7rem">–</div>';
+    }
   });
   html += '</div>';
-  html += '<div style="margin-top:8px;font-size:.72rem;color:var(--m);text-align:right">Totalt: ' + rows.length + ' jobb · ' + rows.reduce(function(s, r) { return s + (Number(r.total_price) || 0); }, 0).toLocaleString('sv-SE') + ' kr</div>';
+  // Totals: jobs + sum av belopp + sum av RUT-fordran (väntar SKV)
+  const totalRut = rows.reduce(function(s, r) {
+    var rut = Number(r.rut_amount) || 0;
+    var st = r.rut_application_status;
+    return s + ((rut > 0 && st !== 'approved' && st !== 'paid' && st !== 'rejected') ? rut : 0);
+  }, 0);
+  html += '<div style="margin-top:8px;font-size:.72rem;color:var(--m);text-align:right">Totalt: ' + rows.length + ' jobb · ' + rows.reduce(function(s, r) { return s + (Number(r.total_price) || 0); }, 0).toLocaleString('sv-SE') + ' kr' + (totalRut > 0 ? ' · 📋 RUT-fordran: ' + totalRut.toLocaleString('sv-SE') + ' kr' : '') + '</div>';
   body.innerHTML = html;
 }
 
@@ -13651,7 +13690,9 @@ function exportVdJobsCsv() {
     showToast('Inga jobb att exportera än.');
     return;
   }
-  const header = ['booking_id', 'date', 'service', 'cleaner', 'customer', 'total_price_sek', 'escrow_state', 'category'];
+  // CSV-utökad 2026-04-28: lade till rut_amount + rut_application_status + rut_application_id
+  // för revisor-avstämning (per-bokning RUT-spårning för Skatteverket).
+  const header = ['booking_id', 'date', 'service', 'cleaner', 'customer', 'total_price_sek', 'rut_amount_sek', 'rut_application_status', 'rut_application_id', 'escrow_state', 'category'];
   const csvLines = [header.join(',')];
   rows.forEach(function(r) {
     const safe = function(v) {
@@ -13665,6 +13706,9 @@ function exportVdJobsCsv() {
       safe(r.cleaner_name || ''),
       safe(r.customer_name || ''),
       Number(r.total_price) || 0,
+      Number(r.rut_amount) || 0,
+      safe(r.rut_application_status || ''),
+      safe(r.rut_application_id || ''),
       safe(r.escrow_state || ''),
       safe(r._category || '')
     ].join(','));
