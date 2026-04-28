@@ -13321,7 +13321,23 @@ async function loadCleanerOversikt(cleanerId) {
     // Månadens bokningar (lista)
     html += '<div style="margin-bottom:14px"><div style="font-weight:700;font-size:.82rem;margin-bottom:6px">📅 Månadens bokningar (' + bookings.length + ')</div>';
     if (bookings.length === 0) {
-      html += '<div style="color:var(--m);font-size:.78rem;padding:6px">Inga bokningar denna månad.</div>';
+      // UX-polish 2026-04-28: rikare tom-tillstånd med CTA om team har omfördelnings-bokningar
+      // Räkna avhängande awaiting_company_proposal/awaiting_reassignment i hela teamet
+      var awaiting = (window._teamBookings || []).filter(function(tb) {
+        return ['awaiting_company_proposal','awaiting_reassignment'].indexOf(tb.status) !== -1;
+      }).length;
+      // Räkna kvarvarande dagar i månaden
+      var nowD = new Date();
+      var lastDay = new Date(nowD.getFullYear(), nowD.getMonth() + 1, 0).getDate();
+      var daysLeft = lastDay - nowD.getDate();
+      html += '<div style="color:var(--m);font-size:.8rem;padding:14px;background:#fff;border:1px dashed var(--gray-300);border-radius:8px;text-align:center;line-height:1.6">' +
+        '📭 <strong>Inga bokningar denna månad</strong>' +
+        '<div style="font-size:.74rem;margin-top:4px">' + daysLeft + ' dagar kvar i ' + ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'][nowD.getMonth()] + '</div>' +
+        (awaiting > 0
+          ? '<div style="margin-top:10px"><button onclick="event.stopPropagation();showPage(\'team-jobb\');" style="background:var(--g);color:#fff;border:none;border-radius:99px;padding:8px 18px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">⏳ ' + awaiting + ' bokning' + (awaiting !== 1 ? 'ar' : '') + ' väntar tilldelning →</button></div>'
+          : '<div style="font-size:.7rem;color:var(--m);margin-top:6px;font-style:italic">Tilldela bokningar via Bokningar-tabben.</div>'
+        ) +
+      '</div>';
     } else {
       html += '<div style="max-height:200px;overflow-y:auto">';
       bookings.forEach(function(b) {
