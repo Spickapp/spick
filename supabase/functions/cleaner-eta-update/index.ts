@@ -326,8 +326,11 @@ serve(async (req) => {
         return json({ error: "Kunde inte uppdatera ETA" }, 500, CORS);
       }
 
-      // 6) SMS + email (bara vid on_my_way, inte recompute — annars spam)
-      if (action === "on_my_way") {
+      // 6) SMS + email (bara FÖRSTA on_my_way — idempotent mot dubbelklick + page-refresh).
+      //    booking.cleaner_on_way_at speglar DB-state INNAN UPDATE-blocket körde (rad 312-322),
+      //    så detta är true bara första gången knappen trycks.
+      const isFirstOnTheWay = action === "on_my_way" && !booking.cleaner_on_way_at;
+      if (isFirstOnTheWay) {
         const etaStr = formatTimeStockholm(etaAt);
         const customerName = booking.customer_name || "Kund";
         const cleanerName = cleaner.full_name;

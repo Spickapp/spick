@@ -1071,6 +1071,12 @@ function renderEtaState(b) {
 
 async function markOnTheWay(bookingId, btnEl) {
   if (!bookingId) return;
+  // Defensive: skippa om redan på väg (skydd mot dubbelklick + race conditions).
+  // Förhindrar SMS-spam till kund även om EF-idempotency skulle missa något edge-case.
+  if (booking && booking.cleaner_on_way_at) {
+    if (btnEl) { btnEl.disabled = true; btnEl.style.display = 'none'; }
+    return;
+  }
   var origText = btnEl ? btnEl.textContent : '';
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = '📍 Hämtar position...'; }
   var coords = null;
