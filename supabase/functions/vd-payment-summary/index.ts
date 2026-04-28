@@ -165,16 +165,20 @@ Deno.serve(async (req) => {
       .in("escrow_state", ["paid_held", "awaiting_attest"]);
     const iEscrow = escrowBookings || [];
 
-    // ── Kommande: bokade ej utförda (booking_date >= today, status confirmed/pending) ──
+    // ── Kommande: bokade ej utförda + INTE i escrow (annars dubbel-räkning) ──
+    // Fix 2026-04-28: tidigare räknades Clara-Maria både i "I escrow" och
+    // "Kommande" (878 kr × 2 = 1756 kr fel-aggregat). Plus saknades svenska
+    // status-namn ('avbokad','klar') i exclusion → zombie-test-bokningar
+    // räknades som "Kommande".
     const todayIso = now.toISOString().slice(0, 10);
-    const { data: kommandeBookings } = await sbService
+    const escrowIds = new Set((escrowBookings || []).map(b => b.id as string));
+    const { data: kommandeBookingsRaw } = await sbService
       .from("bookings")
       .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state, status")
       .in("cleaner_id", teamIds)
       .gte("booking_date", todayIso)
-      .neq("status", "cancelled")
-      .neq("status", "completed");
-    const kommande = kommandeBookings || [];
+      .not("status", "in", "(cancelled,avbokad,completed,klar,timed_out,rejected,expired)");
+    const kommande = (kommandeBookingsRaw || []).filter(b => !escrowIds.has(b.id as string));
 
     // ── Per cleaner-aggregat (slutreglerat + escrow denna månad) ──
     const allRelevant = [...slutreglerat, ...iEscrow];
