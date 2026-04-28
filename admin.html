@@ -279,8 +279,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <p class="login-sub">Adminpanel 🔒 endast för ägare</p>
     <div id="login-step-email">
       <input type="email" id="admin-email" placeholder="E-postadress" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
+      <input type="password" id="admin-password" placeholder="Lösenord (valfritt — annars OTP via mejl)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;margin-bottom:8px">
       <div id="login-err" style="display:none;color:#DC2626;font-size:.85rem;margin-bottom:8px"></div>
-      <button onclick="sendOtp()" id="login-btn" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">Skicka inloggningskod →</button>
+      <button onclick="loginAdmin()" id="login-btn" style="width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">Logga in →</button>
+      <div style="text-align:center;font-size:.74rem;color:var(--m);margin-top:6px">Lämna lösenord tomt för engångskod via mejl</div>
     </div>
     <div id="login-step-otp" style="display:none">
       <p style="font-size:.85rem;color:var(--m);margin-bottom:12px;text-align:center">Ange koden som skickades till <strong id="otp-email-display"></strong></p>
@@ -1527,6 +1529,51 @@ window.addEventListener('load', function() {
 });
 
 let _adminOtpEmail = '';
+
+// Smart-router: om password ifyllt → password-grant, annars OTP-flow
+async function loginAdmin() {
+  const email = document.getElementById('admin-email').value.trim();
+  const password = document.getElementById('admin-password')?.value || '';
+  if (!email || !email.includes('@')) {
+    document.getElementById('login-err').textContent = 'Ange en giltig e-postadress';
+    document.getElementById('login-err').style.display = 'block';
+    return;
+  }
+  // Om password ifyllt → password-grant via direct fetch (bypass SB.auth deadlock vid CSP-blockad realtime-wss)
+  if (password) {
+    const btn = document.getElementById('login-btn');
+    btn.textContent = '⏳ Loggar in...'; btn.disabled = true;
+    document.getElementById('login-err').style.display = 'none';
+    try {
+      const res = await fetch(SPICK.SUPA_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { 'apikey': SPICK.SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.access_token) {
+        document.getElementById('login-err').textContent = 'Fel: ' + (data.error_description || data.msg || data.error || 'okänt');
+        document.getElementById('login-err').style.display = 'block';
+        btn.textContent = 'Logga in →'; btn.disabled = false;
+        return;
+      }
+      // Spara token i Supabase-format så SB-klienten upptäcker den vid reload
+      localStorage.setItem('sb-urjeijcncsyuletprydy-auth-token', JSON.stringify({
+        access_token: data.access_token, refresh_token: data.refresh_token,
+        expires_at: data.expires_at, expires_in: data.expires_in,
+        token_type: data.token_type || 'bearer', user: data.user
+      }));
+      window.location.reload();
+    } catch (e) {
+      document.getElementById('login-err').textContent = 'Tekniskt fel: ' + e.message;
+      document.getElementById('login-err').style.display = 'block';
+      btn.textContent = 'Logga in →'; btn.disabled = false;
+    }
+    return;
+  }
+  // Annars: OTP-flow
+  return sendOtp();
+}
 
 async function sendOtp() {
   const email = document.getElementById('admin-email').value.trim();
