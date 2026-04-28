@@ -7418,17 +7418,26 @@ async function renderTeam() {
                 (b.actual_hours ? ' · ' + parseFloat(b.actual_hours).toFixed(1) + 'h' : '') : ' · <span style="color:#F59E0B">Pågår</span>') +
             '</div>' : '') +
             // ── Smart-ETA realtids-status (NY 2026-04-28) ──
-            (b.cleaner_on_way_at && !b.checkin_time
-              ? '<div style="font-size:.72rem;margin-top:3px;color:#0F6E56;font-weight:600">' +
-                  '🚗 På väg sedan ' + (b.cleaner_on_way_at||'').slice(11,16) +
-                  (b.cleaner_eta_at ? ' · ETA ' + (b.cleaner_eta_at||'').slice(11,16) : '') +
+            // _fmtTimeSE konverterar ISO → svensk lokaltid HH:MM (TZ-fix 2026-04-28)
+            (function(){
+              var _fmtTimeSE = function(iso) {
+                if (!iso) return '';
+                try { return new Date(iso).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Stockholm'}); }
+                catch(_) { return (iso||'').slice(11,16); }
+              };
+              var html = '';
+              if (b.cleaner_on_way_at && !b.checkin_time) {
+                html += '<div style="font-size:.72rem;margin-top:3px;color:#0F6E56;font-weight:600">' +
+                  '🚗 På väg sedan ' + _fmtTimeSE(b.cleaner_on_way_at) +
+                  (b.cleaner_eta_at ? ' · ETA ' + _fmtTimeSE(b.cleaner_eta_at) : '') +
                   (b.manual_delay_minutes && b.manual_delay_minutes > 0 ? ' · ⚠️ +' + b.manual_delay_minutes + ' min' : '') +
-                '</div>'
-              : '') +
-            // Predictive ETA (VD-tilldelad cleaner med tidigare jobb)
-            (b.predicted_arrival_at && !b.cleaner_on_way_at && !b.checkin_time
-              ? '<div style="font-size:.72rem;margin-top:3px;color:#92400E">⏰ Beräknad ankomst ' + (b.predicted_arrival_at||'').slice(11,16) + '</div>'
-              : '') +
+                '</div>';
+              }
+              if (b.predicted_arrival_at && !b.cleaner_on_way_at && !b.checkin_time) {
+                html += '<div style="font-size:.72rem;margin-top:3px;color:#92400E">⏰ Beräknad ankomst ' + _fmtTimeSE(b.predicted_arrival_at) + ' <span style="color:var(--m);font-weight:400">(efter annat städuppdrag)</span></div>';
+              }
+              return html;
+            })() +
             // Escrow-status (var pengarna är just nu)
             (b.escrow_state && ['paid_held','awaiting_attest','released','disputed'].indexOf(b.escrow_state) !== -1
               ? '<div style="font-size:.68rem;margin-top:2px;color:var(--m)">💰 ' +
@@ -7459,7 +7468,8 @@ async function renderTeam() {
                   // RUT-split: del 1 (efter städning, från Stripe) + del 2 (efter SKV-godkännande, ~6v)
                   if (bp.hasRut) {
                     var earnNow = Math.round(bp.net * keepRate);
-                    var earnRut = Math.round(bp.rut * keepRate);
+                    // Subtract så earnNow + earnRut = earn EXAKT (rounding-fix 2026-04-28)
+                    var earnRut = earn - earnNow;
                     return '<div style="font-size:.88rem;font-weight:700;color:var(--g);margin-top:4px">' + earn + ' kr <span style="font-size:.62rem;color:var(--m);font-weight:500">totalt</span></div>' +
                            '<div style="font-size:.7rem;color:var(--m);margin-top:3px;line-height:1.5">' +
                              '<div>💳 <strong style="color:#0F6E56">' + earnNow + ' kr</strong> efter städning</div>' +
