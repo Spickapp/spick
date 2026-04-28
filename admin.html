@@ -2474,10 +2474,11 @@ async function loadPlatformStats() {
       if ((d.at_risk_companies || []).length === 0) {
         atRiskEl.innerHTML = '<div style="color:var(--g);text-align:center;padding:14px">✓ Alla företag aktiva.</div>';
       } else {
-        var rh = '<div style="display:grid;grid-template-columns:1fr auto;gap:6px 12px">';
+        var rh = '<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px 12px;align-items:center">';
         d.at_risk_companies.forEach(function(c) {
           rh += '<div>' + (c.name || '–') + '</div>';
           rh += '<div style="text-align:right;color:#92400E;font-size:.78rem">≥' + (c.days_inactive || 30) + ' dagar</div>';
+          rh += '<button onclick="sendReengagementEmail(\'' + c.id + '\', \'' + (c.name || '').replace(/\'/g, "\\\\'") + '\', this)" style="background:var(--g);color:#fff;border:none;border-radius:99px;padding:5px 12px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">📧 Skicka påminnelse</button>';
         });
         rh += '</div>';
         atRiskEl.innerHTML = rh;
@@ -2508,6 +2509,34 @@ async function loadPlatformStats() {
   } catch (e) {
     console.error('[platform-stats] exception:', e);
     if (periodEl) periodEl.textContent = '❌ Tekniskt fel: ' + e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// At-risk re-engagement-mejl — manuell trigger från Plattformsöversikt
+// ═══════════════════════════════════════════════════════════════
+async function sendReengagementEmail(companyId, companyName, btnEl) {
+  if (!confirm('Skicka re-engagement-mejl till VD för "' + companyName + '"?')) return;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ Skickar...'; }
+  try {
+    var headers = await _adminHeadersLegacy();
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-reengagement-send', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ company_id: companyId }),
+    });
+    var data = await res.json();
+    if (res.ok && data.ok) {
+      if (btnEl) { btnEl.textContent = '✓ Skickat'; btnEl.style.background = 'var(--gray-300)'; btnEl.style.cursor = 'default'; }
+      showToast('Re-engagement-mejl skickat till ' + (data.sent_to?.email || 'VD'));
+    } else {
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = '📧 Skicka påminnelse'; }
+      alert('❌ Misslyckades: HTTP ' + res.status + '\n\n' + (data.error || 'okänt fel'));
+    }
+  } catch (e) {
+    console.error('[reengagement] failed:', e);
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = '📧 Skicka påminnelse'; }
+    alert('❌ Tekniskt fel: ' + e.message);
   }
 }
 
