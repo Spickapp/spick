@@ -1804,9 +1804,27 @@ async function archiveEmail(emailId) {
 
 
 async function doLogout() {
-  await SB.auth.signOut();
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+  // Robust logout — bygg INTE på SB.auth.signOut() som kan hänga
+  // pga CSP-blockering av Supabase realtime-wss (känd bug 2026-04-27).
+  // Manuell rensning + force-reload garanterar logout även om SDK hänger.
+  try {
+    // Försök SDK-signOut med 2s timeout (best-effort, blockar inte)
+    await Promise.race([
+      SB.auth.signOut(),
+      new Promise(function(_, reject) { setTimeout(function() { reject(new Error('timeout')); }, 2000); })
+    ]);
+  } catch (_) {
+    // Ignorera — manuell cleanup nedan räcker
+  }
+  // Manuell rensning av Supabase-token (sb-<projref>-auth-token-key)
+  try {
+    Object.keys(localStorage).forEach(function(k) {
+      if (k.startsWith('sb-') || k.startsWith('spick_')) localStorage.removeItem(k);
+    });
+    sessionStorage.clear();
+  } catch (_) {}
+  // Force-reload — säkrare än att försöka switcha login-screen manuellt
+  window.location.href = window.location.pathname;
 }
 
 // ═══════════════════════════════════════════════
