@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     // ── Slutreglerat: bookings med transfer_created i payout_audit_log denna månad ──
     const { data: paidBookings } = await sbService
       .from("bookings")
-      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state")
+      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, customer_name, service_type, escrow_state")
       .in("cleaner_id", teamIds)
       .gte("booking_date", from)
       .lte("booking_date", to)
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     // Inkluderar rut_amount + rut_application_status för RUT-fordran-aggregat
     const { data: escrowBookings } = await sbService
       .from("bookings")
-      .select("id, booking_id, booking_date, total_price, rut_amount, cleaner_id, cleaner_name, service_type, escrow_state, rut_application_status")
+      .select("id, booking_id, booking_date, total_price, rut_amount, cleaner_id, cleaner_name, customer_name, service_type, escrow_state, rut_application_status")
       .in("cleaner_id", teamIds)
       .gte("booking_date", from)
       .lte("booking_date", to)
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
     const escrowIds = new Set((escrowBookings || []).map(b => b.id as string));
     const { data: kommandeBookingsRaw } = await sbService
       .from("bookings")
-      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state, status")
+      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, customer_name, service_type, escrow_state, status")
       .in("cleaner_id", teamIds)
       .gte("booking_date", todayIso)
       .not("status", "in", "(cancelled,avbokad,completed,klar,timed_out,rejected,expired)");
