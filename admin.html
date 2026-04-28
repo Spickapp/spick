@@ -303,6 +303,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <nav>
       <div class="nav-section">Översikt</div>
       <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span>Dashboard</div>
+      <div class="nav-item" onclick="showPage('platform')"><span class="icon">🌐</span>Plattformsöversikt</div>
       
       <div class="nav-section">Bokningar</div>
       <div class="nav-item" onclick="showPage('bookings')"><span class="icon">📅</span>Alla bokningar <span class="badge-count" id="badge-bookings">0</span></div>
@@ -377,6 +378,40 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
   <!-- MAIN -->
   <div class="main">
+
+    <!-- PLATTFORMSÖVERSIKT (cross-company aggregat — admin-only) -->
+    <div class="page" id="page-platform">
+      <div class="page-header">
+        <div class="page-title">Plattformsöversikt 🌐</div>
+        <div class="page-sub" id="platform-period">Laddar...</div>
+        <button class="btn btn-outline btn-sm" onclick="loadPlatformStats()" style="margin-left:auto">↻ Uppdatera</button>
+      </div>
+
+      <div class="kpi-grid" style="margin-bottom:20px">
+        <div class="kpi"><div class="kpi-val" id="plat-brutto">–</div><div class="kpi-lbl">Plattform-brutto (denna månad)</div></div>
+        <div class="kpi"><div class="kpi-val" id="plat-provision">–</div><div class="kpi-lbl">Spick-provision (<span id="plat-prov-pct">12</span>%)</div></div>
+        <div class="kpi"><div class="kpi-val" id="plat-bookings">–</div><div class="kpi-lbl">Bokningar denna månad</div></div>
+        <div class="kpi yellow"><div class="kpi-val" id="plat-rut">–</div><div class="kpi-lbl">RUT-fordran (väntar SKV)</div></div>
+        <div class="kpi"><div class="kpi-val" id="plat-active-companies">–</div><div class="kpi-lbl">Aktiva företag (av <span id="plat-total-companies">–</span>)</div></div>
+        <div class="kpi"><div class="kpi-val" id="plat-active-cleaners">–</div><div class="kpi-lbl">Aktiva städare (av <span id="plat-total-cleaners">–</span>)</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:10px">🏆 Top 10 företag (denna månad)</div>
+          <div id="plat-top-companies" style="font-size:.86rem">Laddar...</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:10px">⚠️ Inaktiva företag (>30 dagar)</div>
+          <div id="plat-at-risk" style="font-size:.86rem">Laddar...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px">📈 Månadstrend (senaste 12 månader)</div>
+        <div id="plat-trend" style="font-size:.86rem">Laddar...</div>
+      </div>
+    </div>
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
@@ -2057,6 +2092,7 @@ function showPage(id) {
   if (id === 'applications') renderApplications();
   if (id === 'subscriptions') renderSubscriptions();
   if (id === 'dashboard') setTimeout(renderRevenueChart, 200);
+  if (id === 'platform') loadPlatformStats();
   if (id === 'customers') renderCustomers();
   if (id === 'payouts') renderPayouts();
   if (id === 'reviews') renderReviews();
@@ -2360,6 +2396,123 @@ function renderOnboardPipeline() {
 // Begär notis-tillstånd
 if (Notification && Notification.permission === 'default') {
   Notification.requestPermission();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Plattformsöversikt (cross-company aggregat — admin-only)
+// Source: admin-platform-stats EF
+// Anropas via showPage('platform') eller manual refresh-knapp
+// ═══════════════════════════════════════════════════════════════
+async function loadPlatformStats() {
+  var periodEl = document.getElementById('platform-period');
+  if (periodEl) periodEl.textContent = 'Laddar...';
+
+  try {
+    var token = (await SB.auth.getSession()).data.session?.access_token;
+    if (!token) {
+      if (periodEl) periodEl.textContent = '⚠️ Ej inloggad';
+      return;
+    }
+    var res = await fetch(SPICK.SUPA_URL + '/functions/v1/admin-platform-stats', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SPICK.SUPA_KEY,
+      },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      var errText = await res.text().catch(function() { return ''; });
+      if (periodEl) periodEl.textContent = '❌ HTTP ' + res.status + ': ' + (errText || 'okänt fel').slice(0, 100);
+      console.error('[platform-stats] failed:', res.status, errText);
+      return;
+    }
+    var d = await res.json();
+    if (!d.ok) { if (periodEl) periodEl.textContent = '❌ ' + (d.error || 'okänt'); return; }
+
+    // Period-label
+    var monthNames = ['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+    if (periodEl) periodEl.textContent = monthNames[d.period.month - 1] + ' ' + d.period.year + ' (uppdaterad nu)';
+
+    // Provision-pct
+    var provPctEl = document.getElementById('plat-prov-pct');
+    if (provPctEl) provPctEl.textContent = d.provision_rate_pct;
+
+    // KPI-boxar
+    var fmtKr = function(n) { return (n || 0).toLocaleString('sv-SE') + ' kr'; };
+    document.getElementById('plat-brutto').textContent = fmtKr(d.global.brutto_sek);
+    document.getElementById('plat-provision').textContent = fmtKr(d.global.spick_provision_sek);
+    document.getElementById('plat-bookings').textContent = (d.global.bookings_this_month || 0).toLocaleString('sv-SE');
+    document.getElementById('plat-rut').textContent = fmtKr(d.global.rut_fordran_sek);
+    document.getElementById('plat-active-companies').textContent = String(d.global.active_companies || 0);
+    document.getElementById('plat-total-companies').textContent = String(d.global.total_companies || 0);
+    document.getElementById('plat-active-cleaners').textContent = String(d.global.active_cleaners || 0);
+    document.getElementById('plat-total-cleaners').textContent = String(d.global.total_cleaners || 0);
+
+    // Top 10 företag
+    var topEl = document.getElementById('plat-top-companies');
+    if (topEl) {
+      if ((d.top_companies || []).length === 0) {
+        topEl.innerHTML = '<div style="color:var(--m);text-align:center;padding:14px">Inga aktiva företag denna månad.</div>';
+      } else {
+        var html = '<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center">';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">#</div>';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Företag</div>';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Bokningar</div>';
+        html += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Brutto</div>';
+        d.top_companies.forEach(function(c, i) {
+          html += '<div style="color:var(--m);font-weight:600">' + (i + 1) + '</div>';
+          html += '<div style="font-weight:600">' + (c.name || '–') + '</div>';
+          html += '<div style="text-align:right">' + (c.bookings_count || 0) + '</div>';
+          html += '<div style="text-align:right;font-weight:600;color:var(--g)">' + fmtKr(c.brutto_sek) + '</div>';
+        });
+        html += '</div>';
+        topEl.innerHTML = html;
+      }
+    }
+
+    // Inaktiva företag (>30 dagar)
+    var atRiskEl = document.getElementById('plat-at-risk');
+    if (atRiskEl) {
+      if ((d.at_risk_companies || []).length === 0) {
+        atRiskEl.innerHTML = '<div style="color:var(--g);text-align:center;padding:14px">✓ Alla företag aktiva.</div>';
+      } else {
+        var rh = '<div style="display:grid;grid-template-columns:1fr auto;gap:6px 12px">';
+        d.at_risk_companies.forEach(function(c) {
+          rh += '<div>' + (c.name || '–') + '</div>';
+          rh += '<div style="text-align:right;color:#92400E;font-size:.78rem">≥' + (c.days_inactive || 30) + ' dagar</div>';
+        });
+        rh += '</div>';
+        atRiskEl.innerHTML = rh;
+      }
+    }
+
+    // Månadstrend
+    var trendEl = document.getElementById('plat-trend');
+    if (trendEl) {
+      if ((d.monthly_trend || []).length === 0) {
+        trendEl.innerHTML = '<div style="color:var(--m);text-align:center;padding:14px">Ingen historisk data ännu.</div>';
+      } else {
+        var th = '<div style="display:grid;grid-template-columns:auto auto auto auto;gap:6px 16px">';
+        th += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px">Månad</div>';
+        th += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Bokningar</div>';
+        th += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Brutto</div>';
+        th += '<div style="font-weight:700;color:var(--m);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;text-align:right">Spick-provision</div>';
+        d.monthly_trend.forEach(function(t) {
+          th += '<div style="font-family:monospace">' + t.month_iso + '</div>';
+          th += '<div style="text-align:right">' + (t.bookings_count || 0) + '</div>';
+          th += '<div style="text-align:right">' + fmtKr(t.brutto_sek) + '</div>';
+          th += '<div style="text-align:right;color:var(--g);font-weight:600">' + fmtKr(t.provision_sek) + '</div>';
+        });
+        th += '</div>';
+        trendEl.innerHTML = th;
+      }
+    }
+  } catch (e) {
+    console.error('[platform-stats] exception:', e);
+    if (periodEl) periodEl.textContent = '❌ Tekniskt fel: ' + e.message;
+  }
 }
 
 async function loadAll() {
