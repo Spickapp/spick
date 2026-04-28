@@ -28,10 +28,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
 import { createLogger } from "../_shared/log.ts";
+import { permissionErrorToResponse, requireAdmin } from "../_shared/permissions.ts";
 
 const SUPABASE_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 const log = createLogger("admin-platform-stats");
 
@@ -54,19 +54,14 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
 
   try {
-    // ── Admin-auth (samma pattern som admin-approve-company) ──
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json(CORS, 401, { error: "missing_auth" });
-    const token = authHeader.slice(7);
-    const sbAuth = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const { data: { user } } = await sbAuth.auth.getUser();
-    if (!user?.email) return json(CORS, 401, { error: "invalid_token" });
-
-    const { data: adminRow } = await sb.from("admin_users")
-      .select("email").eq("email", user.email).eq("is_active", true).maybeSingle();
-    if (!adminRow) return json(CORS, 403, { error: "not_admin" });
+    // ── Admin-auth (centraliserad via _shared/permissions.ts) ──
+    try {
+      await requireAdmin(req, sb);
+    } catch (e) {
+      const r = permissionErrorToResponse(e, CORS);
+      if (r) return r;
+      throw e;
+    }
 
     // ── Period (default: pågående månad) ──
     const body = await req.json().catch(() => ({}));

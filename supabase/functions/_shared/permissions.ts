@@ -33,8 +33,15 @@
 // #31 prod-schema verifierat innan kolumn-references.
 // ─────────────────────────────────────────────────────────────────
 
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getJwtRole } from "./auth.ts";
+
+// Strukturell typ — fungerar med både @2 och @2.49.4 av supabase-js.
+// Codebase är fragmenterad på versioner; nominal SupabaseClient-typer är
+// inte assignable mellan versioner pga generics-ändring (3 → 5 params).
+// PostgrestBuilder är PromiseLike (thenable), inte Promise — därför
+// använder vi `then` direkt och PromiseLike som returntyp.
+// deno-lint-ignore no-explicit-any
+export type MinimalSupabaseClient = any;
 
 const SUPA_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -88,7 +95,7 @@ async function getUserFromBearer(token: string): Promise<{ id: string; email: st
   return { id: user.id, email: user.email };
 }
 
-async function checkAdmin(sb: SupabaseClient, email: string): Promise<boolean> {
+async function checkAdmin(sb: MinimalSupabaseClient, email: string): Promise<boolean> {
   const { data } = await sb
     .from("admin_users")
     .select("email")
@@ -107,7 +114,7 @@ async function checkAdmin(sb: SupabaseClient, email: string): Promise<boolean> {
  * Throws PermissionError(401) om token saknas/ogiltig.
  * Throws PermissionError(403) om user inte är admin.
  */
-export async function requireAdmin(req: Request, sb: SupabaseClient): Promise<AuthContext> {
+export async function requireAdmin(req: Request, sb: MinimalSupabaseClient): Promise<AuthContext> {
   const token = extractBearer(req);
   const user = await getUserFromBearer(token);
   const isAdmin = await checkAdmin(sb, user.email);
@@ -131,7 +138,7 @@ export async function requireAdmin(req: Request, sb: SupabaseClient): Promise<Au
  */
 export async function requireServiceOrAdmin(
   req: Request,
-  sb: SupabaseClient,
+  sb: MinimalSupabaseClient,
 ): Promise<AuthContext> {
   const token = extractBearer(req);
   const role = getJwtRole(token);
@@ -159,7 +166,7 @@ export async function requireServiceOrAdmin(
  */
 export async function requireCleanerOrAdminBypass(
   req: Request,
-  sb: SupabaseClient,
+  sb: MinimalSupabaseClient,
 ): Promise<AuthContext> {
   const token = extractBearer(req);
   const user = await getUserFromBearer(token);
@@ -206,7 +213,7 @@ export async function requireCleanerOrAdminBypass(
  */
 export async function requireCompanyRole(
   req: Request,
-  sb: SupabaseClient,
+  sb: MinimalSupabaseClient,
   companyId: string,
   allowedRoles: CompanyRole[],
 ): Promise<AuthContext> {
@@ -232,7 +239,7 @@ export async function requireCompanyRole(
  */
 export async function requireCompanyOwner(
   req: Request,
-  sb: SupabaseClient,
+  sb: MinimalSupabaseClient,
   companyId: string,
 ): Promise<AuthContext> {
   return await requireCompanyRole(req, sb, companyId, ["owner"]);

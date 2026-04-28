@@ -38,6 +38,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/email.ts";
 import { withSentry } from "../_shared/sentry.ts";
+import { permissionErrorToResponse, requireAdmin } from "../_shared/permissions.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -58,27 +59,17 @@ serve(withSentry("admin-cancel-booking", async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405, CORS);
 
   try {
-    // ── AUTH: verify admin via JWT ─────────────────────────
+    // ── AUTH: verify admin via JWT (centraliserad via _shared/permissions.ts) ──
+    // Token extraheras separat eftersom den vidarebefordras till stripe-refund-EF nedan.
     const token = req.headers.get("Authorization")?.replace("Bearer ", "") || "";
-    if (!token || token === ANON_KEY) {
-      return json({ error: "Unauthorized" }, 401, CORS);
-    }
-
-    const authRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: ANON_KEY },
-    });
-    if (!authRes.ok) return json({ error: "Invalid token" }, 401, CORS);
-    const authUser = await authRes.json() as { email?: string };
-    const adminEmail = authUser.email;
-    if (!adminEmail) return json({ error: "Invalid token (no email)" }, 401, CORS);
-
-    const { data: adminRow } = await sb
-      .from("admin_users")
-      .select("id, email")
-      .eq("email", adminEmail)
-      .maybeSingle();
-    if (!adminRow) {
-      return json({ error: "Forbidden: inte admin" }, 403, CORS);
+    let adminEmail: string;
+    try {
+      const ctx = await requireAdmin(req, sb);
+      adminEmail = ctx.email;
+    } catch (e) {
+      const r = permissionErrorToResponse(e, CORS);
+      if (r) return r;
+      throw e;
     }
 
     // ── PARSE BODY ──────────────────────────────────────────
