@@ -156,9 +156,10 @@ Deno.serve(async (req) => {
     const slutreglerat = paidBookings || [];
 
     // ── I escrow: bookings i awaiting_attest eller paid_held ──
+    // Inkluderar rut_amount + rut_application_status för RUT-fordran-aggregat
     const { data: escrowBookings } = await sbService
       .from("bookings")
-      .select("id, booking_id, booking_date, total_price, cleaner_id, cleaner_name, service_type, escrow_state")
+      .select("id, booking_id, booking_date, total_price, rut_amount, cleaner_id, cleaner_name, service_type, escrow_state, rut_application_status")
       .in("cleaner_id", teamIds)
       .gte("booking_date", from)
       .lte("booking_date", to)
@@ -203,6 +204,22 @@ Deno.serve(async (req) => {
     const sumPrice = (rows: Array<Record<string, unknown>>) =>
       rows.reduce((acc, r) => acc + (Number(r.total_price) || 0), 0);
 
+    // ── RUT-fordran: pengar som väntar från Skatteverket ──
+    // För varje bokning i escrow OCH released (denna månad) som har rut_amount > 0
+    // OCH rut_application_status NOT IN ('approved','paid'), summera rut_amount.
+    // VD ser då hur mycket extra som kommer in från SKV (~6 veckor efter städning).
+    const allWithRut = [...iEscrow, ...slutreglerat].filter((b) => {
+      const rut = Number((b as Record<string, unknown>).rut_amount) || 0;
+      const rutStatus = (b as Record<string, unknown>).rut_application_status as string | null;
+      const paid = rutStatus === "approved" || rutStatus === "paid";
+      return rut > 0 && !paid;
+    });
+    const rutFordran = {
+      total_sek: allWithRut.reduce((s, b) => s + (Number((b as Record<string, unknown>).rut_amount) || 0), 0),
+      count: allWithRut.length,
+      bookings: allWithRut,
+    };
+
     return json(CORS, 200, {
       ok: true,
       period: { year, month },
@@ -222,6 +239,7 @@ Deno.serve(async (req) => {
         count: kommande.length,
         bookings: kommande,
       },
+      rut_fordran: rutFordran,
       per_cleaner: perCleaner,
     });
   } catch (err) {

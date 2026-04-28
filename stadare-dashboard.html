@@ -1151,6 +1151,11 @@ body{top:0!important}
                 <div id="vd-pay-escrow-count" style="font-size:.72rem;opacity:.8">0 väntar</div>
               </div>
               <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
+                <div style="font-size:.72rem;opacity:.8">📋 RUT-fordran</div>
+                <div id="vd-pay-rut-sum" style="font-size:1.3rem;font-weight:700;font-family:Plus Jakarta Sans,sans-serif">0 kr</div>
+                <div id="vd-pay-rut-count" style="font-size:.72rem;opacity:.8">0 väntar SKV (~6v)</div>
+              </div>
+              <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:12px">
                 <div style="font-size:.72rem;opacity:.8">📅 Kommande</div>
                 <div id="vd-pay-upcoming-sum" style="font-size:1.3rem;font-weight:700;font-family:Plus Jakarta Sans,sans-serif">0 kr</div>
                 <div id="vd-pay-upcoming-count" style="font-size:.72rem;opacity:.8">0 bokningar</div>
@@ -13223,6 +13228,11 @@ async function loadVdPaymentSummary() {
     document.getElementById('vd-pay-escrow-count').textContent = (data.i_escrow?.count || 0) + ' väntar';
     document.getElementById('vd-pay-upcoming-sum').textContent = (data.kommande?.total_sek || 0).toLocaleString('sv-SE') + ' kr';
     document.getElementById('vd-pay-upcoming-count').textContent = (data.kommande?.count || 0) + ' bokningar';
+    // RUT-fordran (pengar väntar från Skatteverket — ~6 veckor efter städning)
+    var rutSumEl = document.getElementById('vd-pay-rut-sum');
+    var rutCntEl = document.getElementById('vd-pay-rut-count');
+    if (rutSumEl) rutSumEl.textContent = (data.rut_fordran?.total_sek || 0).toLocaleString('sv-SE') + ' kr';
+    if (rutCntEl) rutCntEl.textContent = (data.rut_fordran?.count || 0) + ' väntar SKV (~6v)';
     document.getElementById('vd-pay-cleaner-count').textContent = String(data.per_cleaner?.length || 0);
 
     // Cache rådata för per-jobb-vy + CSV-export (Fas 9-utvidgning 2026-04-26)
