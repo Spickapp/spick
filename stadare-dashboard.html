@@ -7329,7 +7329,7 @@ async function renderTeam() {
   const memberIds = _teamMembers.map(m => m.id);
   if (memberIds.length > 0) {
     const idFilter = memberIds.map(id => `cleaner_id.eq.${id}`).join(',');
-    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,customer_phone,service_type,booking_date,booking_time,booking_hours,square_meters,status,cleaner_id,cleaner_name,total_price,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at,key_info,notes&or=(${idFilter})&order=booking_date.asc&limit=100`);
+    const { data: bookings } = await R.select('bookings', `select=id,customer_name,customer_email,customer_phone,service_type,booking_date,booking_time,booking_hours,square_meters,status,cleaner_id,cleaner_name,total_price,rut_amount,customer_address,checkin_time,checkout_time,actual_hours,attest_status,attested_at,key_info,notes,cleaner_on_way_at,cleaner_eta_at,cleaner_eta_minutes,manual_delay_minutes,delay_status,predicted_arrival_at,escrow_state&or=(${idFilter})&order=booking_date.asc&limit=100`);
     const teamBookings = bookings || [];
     // Status-text på svenska (UX-fix: tidigare visades engelska "timed_out", "pending", etc).
     const stMap = {
@@ -7417,6 +7417,28 @@ async function renderTeam() {
               (b.checkout_time ? ' · <span style="color:#7C3AED">Ut ' + (b.checkout_time||'').slice(11,16) + '</span>' +
                 (b.actual_hours ? ' · ' + parseFloat(b.actual_hours).toFixed(1) + 'h' : '') : ' · <span style="color:#F59E0B">Pågår</span>') +
             '</div>' : '') +
+            // ── Smart-ETA realtids-status (NY 2026-04-28) ──
+            (b.cleaner_on_way_at && !b.checkin_time
+              ? '<div style="font-size:.72rem;margin-top:3px;color:#0F6E56;font-weight:600">' +
+                  '🚗 På väg sedan ' + (b.cleaner_on_way_at||'').slice(11,16) +
+                  (b.cleaner_eta_at ? ' · ETA ' + (b.cleaner_eta_at||'').slice(11,16) : '') +
+                  (b.manual_delay_minutes && b.manual_delay_minutes > 0 ? ' · ⚠️ +' + b.manual_delay_minutes + ' min' : '') +
+                '</div>'
+              : '') +
+            // Predictive ETA (VD-tilldelad cleaner med tidigare jobb)
+            (b.predicted_arrival_at && !b.cleaner_on_way_at && !b.checkin_time
+              ? '<div style="font-size:.72rem;margin-top:3px;color:#92400E">⏰ Beräknad ankomst ' + (b.predicted_arrival_at||'').slice(11,16) + '</div>'
+              : '') +
+            // Escrow-status (var pengarna är just nu)
+            (b.escrow_state && ['paid_held','awaiting_attest','released','disputed'].indexOf(b.escrow_state) !== -1
+              ? '<div style="font-size:.68rem;margin-top:2px;color:var(--m)">💰 ' +
+                  (b.escrow_state === 'paid_held' ? 'Pengar i escrow (väntar städning)'
+                  : b.escrow_state === 'awaiting_attest' ? 'Väntar attest (utbetalning inom 24h)'
+                  : b.escrow_state === 'released' ? '✓ Utbetald'
+                  : b.escrow_state === 'disputed' ? '⚠️ Tvist pågår'
+                  : '') +
+                '</div>'
+              : '') +
           '</div>' +
           '<div style="text-align:right">' +
             '<span style="font-size:.72rem;font-weight:600;color:' + stColor + ';background:' + stColor + '15;padding:2px 8px;border-radius:99px">' + escHtml(stLabel) + '</span>' +
@@ -7560,6 +7582,20 @@ async function renderTeam() {
 
   // Uppdatera VD-checklist i Hem-tab när team/priser/profil har renderats
   if (typeof updateVdOnboarding === 'function') updateVdOnboarding();
+
+  // ── Auto-refresh team-bokningar var 30s för Smart-ETA realtidsvy (NY 2026-04-28) ──
+  // Pollas bara om aktiva bokningar finns för dagen som har städning idag/just nu.
+  // Stoppas när användaren navigerar bort.
+  if (!window._teamAutoRefreshHandle && typeof teamBookings !== 'undefined') {
+    var todayStr = new Date().toISOString().slice(0,10);
+    var hasActive = teamBookings.some(function(b) { return b.booking_date === todayStr; });
+    if (hasActive) {
+      window._teamAutoRefreshHandle = setInterval(function() {
+        if (document.hidden) return;
+        try { renderTeam(); } catch(_) {}
+      }, 30000);
+    }
+  }
 
   } catch(e) { console.error('[SPICK] renderTeam error:', e); }
 }

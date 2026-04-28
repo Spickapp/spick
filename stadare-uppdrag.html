@@ -162,6 +162,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <!-- STATUS TAB -->
 <div class="content" id="tab-status">
+  <!-- ═══ MATERIAL-VARNING (visas dynamiskt baserat på service_type) ═══ -->
+  <div class="status-card" id="material-card" style="display:none;background:#FEF3C7;border:2.5px solid #F59E0B">
+    <h3 id="material-title" style="color:#92400E;font-size:16px">⚠️ Material du ska ta med</h3>
+    <p id="material-text" style="color:#78350F;font-size:13.5px;line-height:1.6;font-weight:600;margin-bottom:0"></p>
+  </div>
+
   <div class="status-card">
     <h3>📍 Uppdatera din status</h3>
     <p>Håll kunden informerad i realtid. Varje statusuppdatering skickar automatiskt en notis.</p>
@@ -181,9 +187,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="status-card" id="eta-card">
     <h3>🚗 På väg till kunden</h3>
     <p>Tryck när du lämnar för uppdraget — kunden får ETA via SMS och ser realtidsuppdatering.</p>
+    <div id="eta-urgent-banner" style="display:none;background:linear-gradient(135deg,#FB923C,#F59E0B);color:#fff;padding:14px 16px;border-radius:12px;margin-bottom:12px;font-size:14px;font-weight:700;text-align:center;box-shadow:0 4px 12px rgba(245,158,11,.35)">
+      ⏰ <span id="eta-urgent-text">Tryck "Jag är på väg" — uppdraget börjar snart</span>
+    </div>
     <div id="eta-predicted-banner" style="display:none;background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
     <div id="eta-status-display" style="display:none;background:#f0fff8;border:2px solid #0F6E56;border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
-    <button id="eta-on-way-btn" class="confirm-btn" style="width:100%;background:#0F6E56;color:#fff;padding:14px;border-radius:12px;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-top:0" onclick="markOnTheWay(BOOKING_ID, this)">🚗 Jag är på väg</button>
+    <button id="eta-on-way-btn" class="confirm-btn" style="width:100%;background:#0F6E56;color:#fff;padding:18px;border-radius:14px;border:none;font-size:17px;font-weight:800;cursor:pointer;margin-top:0;box-shadow:0 4px 12px rgba(15,110,86,.3);letter-spacing:.3px" onclick="markOnTheWay(BOOKING_ID, this)">🚗 Jag är på väg</button>
     <button id="eta-delay-btn" style="display:none;width:100%;background:#fff;color:#92400E;padding:12px;border-radius:12px;border:2px solid #F59E0B;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit" onclick="showDelayPicker(BOOKING_ID)">⚠️ Försenad?</button>
     <div id="eta-delay-picker" style="display:none;margin-top:10px;padding:12px;background:#FFFBEB;border-radius:10px">
       <div style="font-size:12px;color:#78350F;margin-bottom:8px;font-weight:600">Hur mycket sen?</div>
@@ -917,6 +926,7 @@ async function loadBooking() {
   document.getElementById('u-hours').textContent = hours + ' timmar';
   document.getElementById('u-pay').textContent = pay + ' kr';
   renderChecklist(svc);
+  renderMaterialInfo(svc);
 
   // Hämta statuslogg
   const logs = await fetch(
@@ -926,6 +936,43 @@ async function loadBooking() {
   completedStatuses = (logs || []).map(l => l.status);
   renderStatusBtns();
   renderEtaState(booking);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MATERIAL-INFO (2026-04-28) — visa vad städaren ska ta med
+// ═══════════════════════════════════════════════════════════════
+function renderMaterialInfo(serviceType) {
+  var card = document.getElementById('material-card');
+  var title = document.getElementById('material-title');
+  var text = document.getElementById('material-text');
+  if (!card || !title || !text) return;
+  var svc = (serviceType || '').toLowerCase();
+  if (svc.includes('flytt')) {
+    title.textContent = '🧰 DU TAR MED ALL UTRUSTNING';
+    text.innerHTML = 'Dammsugare · mopp · hinkar · allrengöring · ugnsrengöring · avkalkningsmedel · fönsterspray · mikrofiberdukar · skrapa · handskar.<br><br><strong>Lägenheten är tom — kunden förbereder ingenting.</strong>';
+    card.style.display = '';
+  } else if (svc.includes('fönster') || svc.includes('fonster')) {
+    title.textContent = '🪟 Material du ska ta med';
+    text.innerHTML = 'Squeegee · skrapa · fönsterlösning · mikrofiberdukar.';
+    card.style.display = '';
+  } else if (svc.includes('kontor')) {
+    title.textContent = '🧴 Material du ska ta med';
+    text.innerHTML = 'Rengöringsmedel + moppar (kunden tillhandahåller dammsugare).';
+    card.style.background = '#F0FDF4';
+    card.style.borderColor = '#16a34a';
+    title.style.color = '#166534';
+    text.style.color = '#166534';
+    card.style.display = '';
+  } else {
+    // Hemstädning/storstädning: kunden har material
+    title.textContent = '🏠 Material på plats';
+    text.innerHTML = 'Kunden tillhandahåller dammsugare, mopp och rengöringsmedel.';
+    card.style.background = '#F0FDF4';
+    card.style.borderColor = '#16a34a';
+    title.style.color = '#166534';
+    text.style.color = '#166534';
+    card.style.display = '';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -958,10 +1005,34 @@ function _showEtaError(msg) {
 function renderEtaState(b) {
   if (!b) return;
   var predBanner = document.getElementById('eta-predicted-banner');
+  var urgentBanner = document.getElementById('eta-urgent-banner');
+  var urgentText = document.getElementById('eta-urgent-text');
   var statusEl = document.getElementById('eta-status-display');
   var onWayBtn = document.getElementById('eta-on-way-btn');
   var delayBtn = document.getElementById('eta-delay-btn');
   if (!onWayBtn || !statusEl) return;
+
+  // ── Urgent-banner: orange CTA 30 min före slot om EJ tryckt på väg ──
+  if (urgentBanner && !b.cleaner_on_way_at && b.booking_date && b.booking_time) {
+    try {
+      var slotTime = new Date(b.booking_date + 'T' + b.booking_time);
+      var minBefore = (slotTime.getTime() - Date.now()) / 60000;
+      if (minBefore <= 30 && minBefore > -120) {
+        if (urgentText) {
+          if (minBefore <= 0) {
+            urgentText.textContent = '🚨 Uppdraget börjar nu — tryck "Jag är på väg"';
+          } else {
+            urgentText.textContent = '⏰ Uppdraget börjar om ' + Math.round(minBefore) + ' min — tryck "Jag är på väg" när du lämnar';
+          }
+        }
+        urgentBanner.style.display = 'block';
+      } else {
+        urgentBanner.style.display = 'none';
+      }
+    } catch(_) { urgentBanner.style.display = 'none'; }
+  } else if (urgentBanner) {
+    urgentBanner.style.display = 'none';
+  }
 
   // Banner — VD/predictive arrival från tidigare jobb
   if (b.predicted_arrival_at && !b.cleaner_on_way_at) {
