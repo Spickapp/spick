@@ -1,4 +1,4 @@
-# Codebase Snapshot (auto-generated 2026-04-27)
+# Codebase Snapshot (auto-generated 2026-04-28)
 
 Genererad av `scripts/generate-claude-md.ts`. Kopiera valda sektioner
 till CLAUDE.md för att fixa Regel #29-drift.
@@ -162,7 +162,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/terms-acceptance.ts` | supabase/functions/_shared/terms-acceptance.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/timezone.ts` | ───────────────────────────────────────────────────────────── SPICK – Tidszon-hjälpare |
 
-## GitHub Actions workflows (53 st)
+## GitHub Actions workflows (54 st)
 
 - `.github/workflows/admin-morning-report.yml`
 - `.github/workflows/auto-post-daily.yml`
@@ -206,6 +206,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 - `.github/workflows/run-migrations.yml`
 - `.github/workflows/schema-drift-check.yml`
 - `.github/workflows/security-scan.yml`
+- `.github/workflows/services-list-warmup.yml`
 - `.github/workflows/set-secrets.yml`
 - `.github/workflows/sms-delivery-weekly.yml`
 - `.github/workflows/ssl-monitor.yml`
