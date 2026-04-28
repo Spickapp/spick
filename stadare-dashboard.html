@@ -7310,8 +7310,13 @@ async function renderTeam() {
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button onclick="toggleCleanerOversikt('${m.id}')" style="flex:1;padding:10px;background:var(--spick-50);color:var(--spick-700);border:1.5px solid var(--spick-200);border-radius:var(--radius-full);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px">📊 Total översikt</button>
         <button onclick="editTeamMember('${m.id}')" style="flex:1;padding:10px;background:var(--gray-100);color:var(--gray-700);border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">Redigera</button>
         <button onclick="toggleMemberStatus('${m.id}','${isPaused || isOnboarding ? 'aktiv' : 'inactive'}')" style="flex:1;padding:10px;background:${isPaused || isOnboarding ? 'var(--spick-50)' : 'var(--gray-100)'};color:${isPaused || isOnboarding ? 'var(--spick-600)' : 'var(--gray-600)'};border:none;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;min-height:44px">${isPaused || isOnboarding ? 'Aktivera' : 'Pausa'}</button>
+      </div>
+      <!-- VD-totalöversikt per cleaner (NY 2026-04-28 — visar all data om städaren) -->
+      <div id="cleaner-oversikt-${m.id}" style="display:none;margin-top:12px;padding:14px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px;font-size:.84rem">
+        <div style="text-align:center;color:var(--m);padding:8px">Laddar översikt...</div>
       </div>
       <!-- Per-cleaner individual-booking toggle (Zivar 2026-04-26) -->
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -13189,6 +13194,176 @@ function startReassignmentRefresh() {
 // Anropas när VD klickar "Inkomst"-tab. Visar slutreglerat / escrow /
 // kommande + per-cleaner-fördelning för innevarande månad.
 // Flag-via cleaner.is_company_owner: bara VD ser sektionen.
+
+// ═══════════════════════════════════════════════════════════════
+// VD-totalöversikt PER CLEANER (NY 2026-04-28)
+// Per project_vd_total_oversight_principle (memory): VD ska se ALLT
+// om sina städare. Klick på 'Total översikt'-knapp expanderar inline-vy
+// med: aktiva bokningar (Smart-ETA), månadens bokningar + intäkt-aggregat,
+// RUT-status per bokning, senaste recensioner.
+//
+// Schema-noteringar (rule #31, verifierat 2026-04-28):
+//   - clock_events, proof_photos, quality_checks, incidents = EJ i prod än
+//     (Phase 1+2 migrations väntar). UI noterar 'kommer snart'.
+//   - bookings, reviews, cleaner_expenses = OK
+// ═══════════════════════════════════════════════════════════════
+async function toggleCleanerOversikt(cleanerId) {
+  var box = document.getElementById('cleaner-oversikt-' + cleanerId);
+  if (!box) return;
+  if (box.style.display !== 'none') {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+  // Lazy-load om innehåll = "Laddar översikt..."
+  if (box.querySelector('div')?.textContent?.indexOf('Laddar') >= 0) {
+    await loadCleanerOversikt(cleanerId);
+  }
+}
+
+async function loadCleanerOversikt(cleanerId) {
+  var box = document.getElementById('cleaner-oversikt-' + cleanerId);
+  if (!box) return;
+  var member = (_teamMembers || []).find(function(m) { return m.id === cleanerId; });
+  if (!member) {
+    box.innerHTML = '<div style="color:#B91C1C">Kunde inte hitta städare</div>';
+    return;
+  }
+
+  // Fetch parallellt: alla bokningar (denna månad) + recensioner
+  var todayIso = new Date().toISOString().slice(0,10);
+  var monthStart = new Date(); monthStart.setDate(1);
+  var monthStartIso = monthStart.toISOString().slice(0,10);
+
+  try {
+    var headers = { 'apikey': SPICK.SUPA_KEY, 'Authorization': 'Bearer ' + SPICK.SUPA_KEY };
+    if (typeof _authHeadersLegacy === 'function') {
+      headers = _authHeadersLegacy();
+    }
+    var bookingFields = 'id,customer_name,booking_date,booking_time,booking_hours,service_type,status,total_price,rut_amount,rut_application_status,escrow_state,cleaner_on_way_at,cleaner_eta_at,checkin_time,checkout_time';
+    var reviewFields = 'id,cleaner_rating,comment,created_at,service_type';
+
+    var pair = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/bookings?cleaner_id=eq.' + cleanerId +
+        '&booking_date=gte.' + monthStartIso +
+        '&order=booking_date.desc&select=' + bookingFields, { headers: headers }),
+      fetch(SUPA_URL + '/rest/v1/reviews?cleaner_id=eq.' + cleanerId +
+        '&order=created_at.desc&limit=5&select=' + reviewFields, { headers: headers })
+    ]);
+    var bookings = pair[0].ok ? await pair[0].json() : [];
+    var reviews = pair[1].ok ? await pair[1].json() : [];
+
+    // Aggregera-summor
+    var keepRate = (typeof getKeepRate === 'function') ? getKeepRate() : 0.88;
+    var totalEarned = bookings
+      .filter(function(b) { return b.status !== 'cancelled' && b.status !== 'avbokad' && b.status !== 'timed_out'; })
+      .reduce(function(s, b) {
+        var brutto = (Number(b.total_price) || 0) + (Number(b.rut_amount) || 0);
+        return s + Math.round(brutto * keepRate);
+      }, 0);
+    var totalRutPending = bookings
+      .filter(function(b) {
+        var rut = Number(b.rut_amount) || 0;
+        var st = b.rut_application_status;
+        return rut > 0 && st !== 'approved' && st !== 'paid' && st !== 'rejected';
+      })
+      .reduce(function(s, b) { return s + (Number(b.rut_amount) || 0); }, 0);
+
+    var activeToday = bookings.filter(function(b) { return b.booking_date === todayIso && b.status !== 'cancelled' && b.status !== 'avbokad'; });
+
+    // Build HTML
+    var fmtTimeSE = function(iso) {
+      if (!iso) return '–';
+      try { return new Date(iso).toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Stockholm'}); }
+      catch(_) { return (iso||'').slice(11,16); }
+    };
+    var statusBadge = function(s) {
+      var map = {
+        confirmed: { txt: 'Bekräftad', bg: '#D1FAE5', col: '#065F46' },
+        pending_confirmation: { txt: 'Väntar svar', bg: '#FEF3C7', col: '#92400E' },
+        klar: { txt: 'Klar', bg: '#D1FAE5', col: '#065F46' },
+        completed: { txt: 'Klar', bg: '#D1FAE5', col: '#065F46' },
+        avbokad: { txt: 'Avbokad', bg: '#FEE2E2', col: '#991B1B' },
+        cancelled: { txt: 'Avbokad', bg: '#FEE2E2', col: '#991B1B' },
+        timed_out: { txt: 'Tidsgräns', bg: '#FEE2E2', col: '#991B1B' },
+        'pågår': { txt: 'Pågår', bg: '#DBEAFE', col: '#1E40AF' },
+      };
+      return map[s] || { txt: s || '–', bg: '#F3F4F6', col: '#374151' };
+    };
+
+    var html = '';
+
+    // Sammanfattning-rad
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">';
+    html += '<div style="background:#fff;padding:10px;border-radius:8px;border:1px solid var(--gray-200)"><div style="font-size:.7rem;color:var(--m)">Bokningar (denna månad)</div><div style="font-size:1.1rem;font-weight:700;color:var(--g)">' + bookings.length + '</div></div>';
+    html += '<div style="background:#fff;padding:10px;border-radius:8px;border:1px solid var(--gray-200)"><div style="font-size:.7rem;color:var(--m)">Intjänat (efter Spick-prov.)</div><div style="font-size:1.1rem;font-weight:700;color:var(--g)">' + totalEarned.toLocaleString('sv-SE') + ' kr</div></div>';
+    html += '<div style="background:#fff;padding:10px;border-radius:8px;border:1px solid var(--gray-200)"><div style="font-size:.7rem;color:var(--m)">RUT väntar SKV (~6v)</div><div style="font-size:1.1rem;font-weight:700;color:#92400E">' + totalRutPending.toLocaleString('sv-SE') + ' kr</div></div>';
+    html += '</div>';
+
+    // Aktivt idag
+    if (activeToday.length > 0) {
+      html += '<div style="margin-bottom:14px"><div style="font-weight:700;font-size:.82rem;margin-bottom:6px">🟢 Aktiva idag (' + activeToday.length + ')</div>';
+      activeToday.forEach(function(b) {
+        var time = (b.booking_time || '').slice(0,5);
+        var etaStr = '';
+        if (b.cleaner_on_way_at && !b.checkin_time) {
+          etaStr = ' · 🚗 På väg sedan ' + fmtTimeSE(b.cleaner_on_way_at) + (b.cleaner_eta_at ? ' (ETA ' + fmtTimeSE(b.cleaner_eta_at) + ')' : '');
+        } else if (b.checkin_time && !b.checkout_time) {
+          etaStr = ' · 📍 In sedan ' + fmtTimeSE(b.checkin_time);
+        } else if (b.checkout_time) {
+          etaStr = ' · ✅ Klar ' + fmtTimeSE(b.checkout_time);
+        }
+        html += '<div style="background:#fff;padding:8px 10px;border-radius:6px;margin-bottom:4px;font-size:.78rem"><strong>' + escHtml(b.customer_name || '–') + '</strong> kl ' + time + ' · ' + escHtml(b.service_type || '–') + etaStr + '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Månadens bokningar (lista)
+    html += '<div style="margin-bottom:14px"><div style="font-weight:700;font-size:.82rem;margin-bottom:6px">📅 Månadens bokningar (' + bookings.length + ')</div>';
+    if (bookings.length === 0) {
+      html += '<div style="color:var(--m);font-size:.78rem;padding:6px">Inga bokningar denna månad.</div>';
+    } else {
+      html += '<div style="max-height:200px;overflow-y:auto">';
+      bookings.forEach(function(b) {
+        var sb = statusBadge(b.status);
+        var brutto = (Number(b.total_price) || 0) + (Number(b.rut_amount) || 0);
+        html += '<div style="background:#fff;padding:6px 10px;border-radius:6px;margin-bottom:3px;font-size:.76rem;display:flex;justify-content:space-between;gap:8px;align-items:center">' +
+          '<div style="flex:1;min-width:0"><span style="font-family:monospace;color:var(--m)">' + b.booking_date + ' ' + (b.booking_time||'').slice(0,5) + '</span> ' + escHtml(b.customer_name || '–') + '</div>' +
+          '<div style="display:flex;gap:6px;align-items:center">' +
+            '<span style="background:' + sb.bg + ';color:' + sb.col + ';padding:1px 8px;border-radius:99px;font-size:.66rem;font-weight:600">' + escHtml(sb.txt) + '</span>' +
+            '<span style="font-weight:600;color:var(--g)">' + brutto.toLocaleString('sv-SE') + ' kr</span>' +
+          '</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // Recensioner
+    html += '<div><div style="font-weight:700;font-size:.82rem;margin-bottom:6px">⭐ Senaste recensioner (' + reviews.length + ')</div>';
+    if (reviews.length === 0) {
+      html += '<div style="color:var(--m);font-size:.78rem;padding:6px">Inga recensioner än.</div>';
+    } else {
+      reviews.forEach(function(r) {
+        var stars = '';
+        for (var i = 0; i < 5; i++) stars += i < Math.round(r.cleaner_rating || 0) ? '★' : '☆';
+        var date = r.created_at ? new Date(r.created_at).toLocaleDateString('sv-SE') : '';
+        html += '<div style="background:#fff;padding:6px 10px;border-radius:6px;margin-bottom:3px;font-size:.76rem">' +
+          '<div><span style="color:#F59E0B">' + stars + '</span> · ' + escHtml(r.service_type || '–') + ' · <span style="color:var(--m)">' + date + '</span></div>' +
+          (r.comment ? '<div style="color:var(--gray-600);margin-top:2px;font-style:italic">"' + escHtml(r.comment) + '"</div>' : '') +
+        '</div>';
+      });
+    }
+    html += '</div>';
+
+    // Kommande Phase 1+2-data (när migrations körs)
+    html += '<div style="margin-top:12px;padding:8px 10px;background:#EFF6FF;border-radius:6px;font-size:.7rem;color:#1E40AF">ℹ️ Klock-historik, foto-bevis, AI-quality + incidents kommer när Phase 1+2-migrations applicerats i prod.</div>';
+
+    box.innerHTML = html;
+  } catch (e) {
+    console.error('[cleaner-oversikt] failed:', e);
+    box.innerHTML = '<div style="color:#B91C1C;padding:8px">Kunde inte ladda översikt: ' + e.message + '</div>';
+  }
+}
 
 async function loadVdPaymentSummary() {
   if (!cleaner || !cleaner.is_company_owner) return;
