@@ -128,7 +128,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `vd-payment-summary` | ═══════════════════════════════════════════════════════════════ SPICK – vd-payment-summary (Fas 9-utökning, 2026-04-26) |
 | `verify-fskatt` |  |
 
-## Shared EF helpers (31 st)
+## Shared EF helpers (32 st)
 
 | Fil | Första kommentar |
 |-----|------------------|
@@ -148,6 +148,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `_shared/matching-diff.ts` | supabase/functions/_shared/matching-diff.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/money.ts` |  |
 | `_shared/notifications.ts` | ═══════════════════════════════════════════════════════════════ SPICK – Multi-kanal notifikationer |
+| `_shared/permissions.ts` | supabase/functions/_shared/permissions.ts ───────────────────────────────────────────────────────────────── |
 | `_shared/pnr-verification.ts` | supabase/functions/_shared/pnr-verification.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/preferences.ts` | supabase/functions/_shared/preferences.ts ────────────────────────────────────────────────────────────────── |
 | `_shared/pricing-engine.ts` |  |
