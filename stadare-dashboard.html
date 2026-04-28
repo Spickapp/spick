@@ -13190,13 +13190,22 @@ async function loadVdPaymentSummary() {
   section.style.display = 'block';
 
   try {
+    // Skicka view_as_cleaner_id om admin impersonerar (per admin-bypass-pattern)
+    var bodyData = {};
+    if (_isAdminView && _viewAsId) {
+      bodyData.view_as_cleaner_id = _viewAsId;
+    }
     const res = await fetch(SUPA_URL + '/functions/v1/vd-payment-summary', {
       method: 'POST',
       headers: Object.assign({}, _authHeadersLegacy(), { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({}),
+      body: JSON.stringify(bodyData),
     });
     if (!res.ok) {
-      console.warn('[SPICK] vd-payment-summary failed:', res.status);
+      var errBody = await res.text().catch(() => '');
+      console.warn('[SPICK] vd-payment-summary failed:', res.status, errBody);
+      // Visa fel-meddelande istf silent 0 kr (anti-misleading-UI)
+      var periodEl = document.getElementById('vd-pay-period');
+      if (periodEl) periodEl.textContent = '⚠️ Fel: ' + res.status + ' — ' + (errBody || 'okänd').slice(0, 80);
       return;
     }
     const data = await res.json();

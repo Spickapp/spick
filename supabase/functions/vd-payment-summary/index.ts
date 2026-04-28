@@ -66,18 +66,52 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await sbAuth.auth.getUser();
     if (authErr || !user) return json(CORS, 401, { error: "invalid_token" });
 
-    // ── VD-check: hämta caller-cleaner + verifiera is_company_owner ──
-    // (auth.users.id !== cleaners.id — använd auth_user_id-FK)
-    const { data: caller, error: callerErr } = await sbService
-      .from("cleaners")
-      .select("id, company_id, is_company_owner, full_name")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-    if (callerErr || !caller) return json(CORS, 403, { error: "cleaner_not_found" });
-    if (!caller.is_company_owner) return json(CORS, 403, { error: "not_company_owner" });
-    if (!caller.company_id) return json(CORS, 422, { error: "no_company_id" });
+    // ── ADMIN-BYPASS (per project_admin_bypass_principle 2026-04-27) ──
+    // Admin (admin_users-tabellen) får agera åt vilken VD som helst för
+    // felsökning + impersonation. Body kan skicka view_as_cleaner_id eller
+    // company_id för att specifiera vilket företag att summera.
+    let isAdmin = false;
+    if (user.email) {
+      const { data: adminRow } = await sbService
+        .from("admin_users")
+        .select("email")
+        .eq("email", user.email)
+        .eq("is_active", true)
+        .maybeSingle();
+      isAdmin = !!adminRow;
+    }
 
-    const companyId = caller.company_id as string;
+    const earlyBody = await req.json().catch(() => ({}));
+    let companyId: string;
+    let callerName = "(admin)";
+
+    if (isAdmin && (earlyBody?.view_as_cleaner_id || earlyBody?.company_id)) {
+      // Admin impersonation: hämta company_id från body
+      if (earlyBody.company_id) {
+        companyId = earlyBody.company_id;
+      } else {
+        const { data: targetCl } = await sbService
+          .from("cleaners")
+          .select("company_id, full_name")
+          .eq("id", earlyBody.view_as_cleaner_id)
+          .maybeSingle();
+        if (!targetCl?.company_id) return json(CORS, 422, { error: "view_as_cleaner_has_no_company" });
+        companyId = targetCl.company_id;
+        callerName = `Admin (${user.email}) → ${targetCl.full_name}`;
+      }
+    } else {
+      // Vanlig VD-flow: hämta caller-cleaner + verifiera is_company_owner
+      const { data: caller, error: callerErr } = await sbService
+        .from("cleaners")
+        .select("id, company_id, is_company_owner, full_name")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      if (callerErr || !caller) return json(CORS, 403, { error: "cleaner_not_found" });
+      if (!caller.is_company_owner) return json(CORS, 403, { error: "not_company_owner" });
+      if (!caller.company_id) return json(CORS, 422, { error: "no_company_id" });
+      companyId = caller.company_id as string;
+      callerName = caller.full_name as string;
+    }
 
     // ── Hämta company-info ──
     const { data: company } = await sbService
@@ -86,8 +120,8 @@ Deno.serve(async (req) => {
       .eq("id", companyId)
       .maybeSingle();
 
-    // ── Period (default: pågående månad) ──
-    const body = await req.json().catch(() => ({}));
+    // ── Period (default: pågående månad) — använder earlyBody som redan parsats ──
+    const body = earlyBody;
     const now = new Date();
     const year = (body && typeof body.year === "number") ? body.year : now.getUTCFullYear();
     const month = (body && typeof body.month === "number") ? body.month : (now.getUTCMonth() + 1);
