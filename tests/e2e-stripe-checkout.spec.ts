@@ -121,18 +121,20 @@ test.describe('Stripe Checkout E2E (testmode)', () => {
     await page.locator('body').click({ position: { x: 10, y: 10 } });
 
     // ── STEG 1b: välj första lediga datum + tid ────────────────
-    // Vänta på att kalendern populerats (cal-days fylls async)
+    // Vänta på att kalendern populerats (cal-days fylls async).
+    // Timeout 30s för att tåla services-list cold-start (~40% 503-rate; loader retry:ar 3 ggr).
     await page.waitForFunction(
       () => document.querySelectorAll('#cal-days .cal-day:not(.disabled)').length > 0,
-      { timeout: 15_000 }
+      { timeout: 30_000 }
     );
     // Klicka första lediga dag
     await page.locator('#cal-days .cal-day:not(.disabled)').first().click();
 
-    // Vänta på att tids-listan renderas (.tl-list fylls vid dag-klick)
+    // Vänta på att tids-listan renderas (.tl-list fylls vid dag-klick).
+    // Timeout 30s för att tåla cleaner_availability cold-start.
     await page.waitForFunction(
       () => document.querySelectorAll('#tl-list .tl-slot:not(.disabled)').length > 0,
-      { timeout: 15_000 }
+      { timeout: 30_000 }
     );
     await page.locator('#tl-list .tl-slot:not(.disabled)').first().click();
 
