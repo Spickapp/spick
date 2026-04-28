@@ -220,6 +220,48 @@ Deno.serve(async (req) => {
       bookings: allWithRut,
     };
 
+    // ── P&L (Resultaträkning) — alla betalda bokningar denna månad ──
+    // Använder slutreglerat + iEscrow (utförda eller pågående jobb).
+    // 'kommande' exkluderas (inte realiserat ännu).
+    // Provision-rate från platform_settings (SSOT).
+    const { data: provRow } = await sb.from("platform_settings")
+      .select("value").eq("key", "commission_standard").maybeSingle();
+    const provisionRate = (Number(provRow?.value) || 12) / 100;
+    const cleanerKeepRate = 1 - provisionRate;
+
+    const realizedBookings = [...slutreglerat, ...iEscrow];
+    const bruttoPL = realizedBookings.reduce((s, b) =>
+      s + (Number((b as Record<string, unknown>).total_price) || 0)
+        + (Number((b as Record<string, unknown>).rut_amount) || 0), 0);
+    const spickProvisionPL = Math.round(bruttoPL * provisionRate);
+    const cleanerLonekostnad = Math.round(bruttoPL * cleanerKeepRate);
+
+    // Hämta godkända utlägg denna månad för company
+    const { data: approvedExpenses } = await sb.from("cleaner_expenses")
+      .select("amount_ore, vat_amount_ore, status, expense_date")
+      .eq("company_id", companyId)
+      .gte("expense_date", from)
+      .lte("expense_date", to)
+      .eq("status", "approved");
+    const utlaggGodkanda = (approvedExpenses || [])
+      .reduce((s, e) => s + Math.round((Number(e.amount_ore) || 0) / 100), 0);
+
+    const nettoMarginal = bruttoPL - spickProvisionPL - cleanerLonekostnad - utlaggGodkanda;
+    const marginalPct = bruttoPL > 0 ? Math.round((nettoMarginal / bruttoPL) * 100) : 0;
+
+    const pl = {
+      brutto_sek: Math.round(bruttoPL),
+      spick_provision_sek: spickProvisionPL,
+      provision_rate_pct: Math.round(provisionRate * 100),
+      cleaner_lonekostnad_sek: cleanerLonekostnad,
+      cleaner_keep_rate_pct: Math.round(cleanerKeepRate * 100),
+      utlagg_godkanda_sek: utlaggGodkanda,
+      utlagg_count: (approvedExpenses || []).length,
+      netto_marginal_sek: nettoMarginal,
+      marginal_pct: marginalPct,
+      bookings_count: realizedBookings.length,
+    };
+
     return json(CORS, 200, {
       ok: true,
       period: { year, month },
@@ -240,6 +282,7 @@ Deno.serve(async (req) => {
         bookings: kommande,
       },
       rut_fordran: rutFordran,
+      pl: pl,
       per_cleaner: perCleaner,
     });
   } catch (err) {

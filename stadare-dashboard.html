@@ -1168,6 +1168,22 @@ body{top:0!important}
             </div>
           </div>
 
+          <!-- Resultaträkning (P&L) — NY 2026-04-28 -->
+          <div class="card" style="margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div class="card-title" style="margin:0">📊 Resultaträkning (denna månad)</div>
+              <div id="vd-pl-period" style="font-size:.7rem;color:var(--m)">–</div>
+            </div>
+            <div id="vd-pl-body" style="font-size:.88rem">
+              <div style="color:var(--m);text-align:center;padding:18px">Laddar...</div>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--gray-200);font-size:.7rem;color:var(--m);line-height:1.5">
+              💡 <strong>Beräkning:</strong> Intäkter = realiserade bokningar (slutreglerat + escrow).
+              Kostnader = Spick-provision + cleaner-payouts + godkända utlägg.
+              Netto = vad bolaget behåller efter alla utbetalningar.
+            </div>
+          </div>
+
           <!-- Per-cleaner-tabell -->
           <div class="card" style="margin-top:14px">
             <div class="card-title">Intern fördelning per cleaner (denna månad)</div>
@@ -13427,6 +13443,44 @@ async function loadVdPaymentSummary() {
     if (rutSumEl) rutSumEl.textContent = (data.rut_fordran?.total_sek || 0).toLocaleString('sv-SE') + ' kr';
     if (rutCntEl) rutCntEl.textContent = (data.rut_fordran?.count || 0) + ' väntar SKV (~6v)';
     document.getElementById('vd-pay-cleaner-count').textContent = String(data.per_cleaner?.length || 0);
+
+    // ── P&L — Resultaträkning (NY 2026-04-28) ──
+    var plBody = document.getElementById('vd-pl-body');
+    var plPeriod = document.getElementById('vd-pl-period');
+    if (plPeriod) plPeriod.textContent = monthNames[data.period.month - 1] + ' ' + data.period.year;
+    if (plBody && data.pl) {
+      var p = data.pl;
+      var fmtKr = function(n) { return (Math.abs(n) || 0).toLocaleString('sv-SE') + ' kr'; };
+      var nettoColor = p.netto_marginal_sek > 0 ? 'var(--g)' : (p.netto_marginal_sek < 0 ? '#DC2626' : 'var(--m)');
+      var marginalIcon = p.marginal_pct > 0 ? '📈' : (p.marginal_pct < 0 ? '📉' : '➖');
+      plBody.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center">' +
+          // Intäkter
+          '<div style="font-weight:600">+ Intäkter brutto <span style="font-size:.74rem;color:var(--m);font-weight:400">(' + (p.bookings_count || 0) + ' jobb)</span></div>' +
+          '<div style="text-align:right;font-weight:700;color:var(--g);font-size:1.05rem">' + fmtKr(p.brutto_sek) + '</div>' +
+          // Spick-provision
+          '<div style="color:var(--m);font-size:.86rem">− Spick-provision (' + (p.provision_rate_pct || 12) + '%)</div>' +
+          '<div style="text-align:right;color:#92400E">−' + fmtKr(p.spick_provision_sek) + '</div>' +
+          // Cleaner-lön
+          '<div style="color:var(--m);font-size:.86rem">− Cleaner-payouts (' + (p.cleaner_keep_rate_pct || 88) + '% av brutto)</div>' +
+          '<div style="text-align:right;color:#92400E">−' + fmtKr(p.cleaner_lonekostnad_sek) + '</div>' +
+          // Utlägg
+          '<div style="color:var(--m);font-size:.86rem">− Godkända utlägg <span style="font-size:.7rem">(' + (p.utlagg_count || 0) + ' st)</span></div>' +
+          '<div style="text-align:right;color:#92400E">−' + fmtKr(p.utlagg_godkanda_sek) + '</div>' +
+          // Divider
+          '<div style="grid-column:1/-1;height:1px;background:var(--border);margin:6px 0"></div>' +
+          // Netto
+          '<div style="font-weight:700;font-size:1.05rem">= Netto till bolaget</div>' +
+          '<div style="text-align:right;font-weight:800;font-size:1.3rem;color:' + nettoColor + ';font-family:Plus Jakarta Sans,sans-serif">' +
+            (p.netto_marginal_sek < 0 ? '−' : '') + fmtKr(p.netto_marginal_sek) +
+          '</div>' +
+          // Marginal-pct
+          '<div style="font-size:.78rem;color:var(--m)">' + marginalIcon + ' Marginal</div>' +
+          '<div style="text-align:right;font-size:.92rem;font-weight:700;color:' + nettoColor + '">' + (p.marginal_pct || 0) + '%</div>' +
+        '</div>';
+    } else if (plBody) {
+      plBody.innerHTML = '<div style="color:var(--m);text-align:center;padding:14px">Ingen ekonomi-data än för denna månad.</div>';
+    }
 
     // Cache rådata för per-jobb-vy + CSV-export (Fas 9-utvidgning 2026-04-26)
     window._vdJobsCache = {
