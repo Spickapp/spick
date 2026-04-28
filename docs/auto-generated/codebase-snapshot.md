@@ -5,7 +5,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 
 ---
 
-## Edge Functions (116 st)
+## Edge Functions (117 st)
 
 | Funktion | Första kommentar |
 |----------|------------------|
@@ -16,6 +16,7 @@ till CLAUDE.md för att fixa Regel #29-drift.
 | `admin-dispute-decide` | ═══════════════════════════════════════════════════════════════ SPICK – admin-dispute-decide (Fas 8 §8.14 wrapper) |
 | `admin-mark-payouts-paid` | Fas 1.10.2: Admin-trigger av payout-flode (ersatter direkt DB-PATCH) Primarkalla: docs/planning/spick-arkitekturplan-v3. |
 | `admin-morning-report` |  |
+| `admin-platform-stats` | ═══════════════════════════════════════════════════════════════ SPICK – admin-platform-stats (Cross-company översikt 202 |
 | `admin-pnr-update` | ═══════════════════════════════════════════════════════════════ SPICK – admin-pnr-update (Audit-fix P2-2, 2026-04-26) |
 | `admin-reject-company` | ═══════════════════════════════════════════════════════════════ SPICK – admin-reject-company (Sprint B Dag 5) |
 | `alert-test` | ═══════════════════════════════════════════════════════════════ SPICK – alert-test |
