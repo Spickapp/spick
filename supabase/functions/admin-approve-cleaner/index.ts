@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, sendEmail, wrap, esc, card, log } from "../_shared/email.ts";
 import { withSentry } from "../_shared/sentry.ts";
+import { permissionErrorToResponse, requireServiceOrAdmin } from "../_shared/permissions.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const sb = createClient(SUPA_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -11,30 +12,16 @@ serve(withSentry("admin-approve-cleaner", async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
-    // ── AUTH: verify admin ──────────────────────────────────
-    const token = req.headers.get("Authorization")?.replace("Bearer ", "") || "";
-    if (!token || token === Deno.env.get("SUPABASE_ANON_KEY")) {
-      return json({ error: "Unauthorized" }, 401, CORS);
-    }
-
-    // Tillåt internt anrop från auto-approve-check med service_role key
-    const isInternalServiceCall = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    let authUser: { email?: string } | null = null;
-
-    if (!isInternalServiceCall) {
-      const authRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
-        headers: { Authorization: `Bearer ${token}`, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
-      });
-      if (!authRes.ok) return json({ error: "Invalid token" }, 401, CORS);
-      authUser = await authRes.json();
-
-      const { data: adminRow } = await sb
-        .from("admin_users")
-        .select("id")
-        .eq("email", authUser!.email)
-        .maybeSingle();
-      if (!adminRow) return json({ error: "Forbidden: inte admin" }, 403, CORS);
+    // ── AUTH: admin-JWT eller service-role (centraliserad via _shared/permissions.ts)
+    // Service-role-bypass tillåter internt anrop från auto-approve-check.
+    let authActor: { email: string; isService: boolean };
+    try {
+      const ctx = await requireServiceOrAdmin(req, sb);
+      authActor = { email: ctx.email, isService: ctx.isServiceRole };
+    } catch (e) {
+      const r = permissionErrorToResponse(e, CORS);
+      if (r) return r;
+      throw e;
     }
 
     // ── PARSE BODY ──────────────────────────────────────────
@@ -357,7 +344,7 @@ serve(withSentry("admin-approve-cleaner", async (req) => {
       await sb.from("cleaner_applications").update({
         status: "approved",
         approved_at: new Date().toISOString(),
-        reviewed_by: authUser?.email || "system:auto-approve",
+        reviewed_by: authActor.isService ? "system:auto-approve" : authActor.email,
       }).eq("id", application_id);
 
       // 5. Generate magic link for welcome email
@@ -508,7 +495,7 @@ serve(withSentry("admin-approve-cleaner", async (req) => {
       await sb.from("cleaner_applications").update({
         status: "rejected",
         rejected_at: new Date().toISOString(),
-        reviewed_by: authUser?.email || "system:auto-approve",
+        reviewed_by: authActor.isService ? "system:auto-approve" : authActor.email,
       }).eq("id", application_id);
 
       // Send rejection email

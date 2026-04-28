@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/email.ts";
+import { permissionErrorToResponse, requireAdmin } from "../_shared/permissions.ts";
 
 const SUPA_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -15,24 +16,17 @@ serve(async (req) => {
 
   try {
     const sb = createClient(SUPA_URL, SERVICE_KEY);
-    const body = await req.json();
 
-    // ── AUTH: verify admin ──────────────────────────────────
-    const token = req.headers.get("Authorization")?.replace("Bearer ", "") || "";
-    if (!token || token === Deno.env.get("SUPABASE_ANON_KEY")) {
-      return json(401, { error: "Unauthorized — admin-token krävs" });
+    // ── AUTH: admin-JWT (centraliserad via _shared/permissions.ts) ──
+    try {
+      await requireAdmin(req, sb);
+    } catch (e) {
+      const r = permissionErrorToResponse(e, CORS);
+      if (r) return r;
+      throw e;
     }
-    const authRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
-    });
-    if (!authRes.ok) return json(401, { error: "Ogiltig token" });
-    const authUser = await authRes.json();
-    const { data: adminRow } = await sb
-      .from("admin_users")
-      .select("id")
-      .eq("email", authUser.email)
-      .maybeSingle();
-    if (!adminRow) return json(403, { error: "Forbidden: inte admin" });
+
+    const body = await req.json();
 
     // ── Validering ──
     if (!body.company_name) return json(400, { error: "Företagsnamn krävs" });

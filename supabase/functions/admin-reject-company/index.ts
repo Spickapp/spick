@@ -14,10 +14,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders, sendEmail, wrap } from "../_shared/email.ts";
 import { createLogger } from "../_shared/log.ts";
+import { permissionErrorToResponse, requireAdmin } from "../_shared/permissions.ts";
 
 const SUPA_URL = "https://urjeijcncsyuletprydy.supabase.co";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const sbService = createClient(SUPA_URL, SERVICE_KEY);
 
@@ -30,35 +30,22 @@ function json(cors: Record<string,string>, status: number, body: unknown) {
 
 const log = createLogger("admin-reject-company");
 
-async function isAdmin(email: string | undefined): Promise<boolean> {
-  if (!email) return false;
-  const { data } = await sbService
-    .from("admin_users")
-    .select("email, is_active")
-    .eq("email", email)
-    .eq("is_active", true)
-    .maybeSingle();
-  return !!data;
-}
-
 Deno.serve(async (req) => {
   const CORS = corsHeaders(req);
-  
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(CORS, 405, { error: "method_not_allowed" });
-  
+
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json(CORS, 401, { error: "missing_auth" });
-    const token = authHeader.slice(7);
-    
-    const sbUser = createClient(SUPA_URL, ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const { data: { user } } = await sbUser.auth.getUser();
-    
-    if (!user?.email || !(await isAdmin(user.email))) {
-      return json(CORS, 403, { error: "not_admin" });
+    // ── Auth: admin JWT (centraliserad via _shared/permissions.ts) ──
+    let adminEmail: string;
+    try {
+      const ctx = await requireAdmin(req, sbService);
+      adminEmail = ctx.email;
+    } catch (e) {
+      const r = permissionErrorToResponse(e, CORS);
+      if (r) return r;
+      throw e;
     }
     
     const { company_id, reason } = await req.json();
@@ -137,7 +124,7 @@ Deno.serve(async (req) => {
       company_id: company.id,
       company_name: company.name,
       reason: reason.slice(0, 100),
-      rejected_by: user.email,
+      rejected_by: adminEmail,
     });
     
     return json(CORS, 200, {
