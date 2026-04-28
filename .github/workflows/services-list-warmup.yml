@@ -1,0 +1,81 @@
+name: services-list warmup (var 5 min)
+# 2026-04-28: services-list EF har dokumenterad 40% cold-start-rate
+# (js/services-loader.js:115). Frontend retry:ar 3 ggr så riktiga kunder
+# ser inte felet, men:
+# 1) Stripe E2E-test (Playwright) i ren CI-miljö råkar ut för 503 alla
+#    3 retries → tl-slot rendrar inte → testet failar.
+# 2) Latens för första-besökare (~3-5s extra) på boka.html.
+#
+# Detta workflow pingar EFen var 5:e minut för att hålla den varm.
+# Pro-tier Supabase: ~8K invocations/månad = 0.4% av 2M-quota.
+#
+# ALERT-STRATEGI: skickar bara Discord-alert vid 5+ KONSEKUTIVA failures
+# för att undvika alert-storm vid sporadisk 503-flakiness. State-track
+# via GitHub Actions step-output + artifact (workflow_run.outputs).
+#
+# REGEL #34: efter deploy verifiera via Discord att inga false-alerts.
+'on':
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  actions: read
+
+jobs:
+  warmup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Ping services-list
+        id: ping
+        env:
+          SUPA_URL: https://urjeijcncsyuletprydy.supabase.co
+          SUPA_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # GET (services-list accepterar bara GET + OPTIONS, inte POST)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPA_KEY" \
+            "$SUPA_URL/functions/v1/services-list")
+
+          echo "Status: $HTTP_CODE"
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+
+          # Success: 200 (200 = warm body, andra acceptable: 304 = cached)
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "304" ]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            echo "::warning::services-list returned HTTP $HTTP_CODE (cold-start eller bug)"
+          fi
+
+      - name: Räkna konsekutiva failures (skicka alert vid 5+)
+        if: steps.ping.outputs.result == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_WEBHOOK: ${{ secrets.ADMIN_ALERT_WEBHOOK_URL }}
+        run: |
+          # Hämta senaste 5 körningar av detta workflow
+          RECENT=$(gh run list --workflow=services-list-warmup.yml --limit 5 \
+            --json conclusion --jq '[.[].conclusion] | join(",")' 2>/dev/null || echo "")
+
+          echo "Senaste 5 körningar: $RECENT"
+
+          # Räkna failures i senaste 4 (denna pågående är den 5:e)
+          FAIL_COUNT=$(echo "$RECENT" | tr ',' '\n' | grep -c "failure" || echo 0)
+
+          # Plus DENNA = 1 failure → totalt 5+ konsekutiva → alert
+          if [ "$FAIL_COUNT" -ge 4 ]; then
+            echo "::error::5+ konsekutiva services-list failures — eskalerar"
+            if [ -n "$DISCORD_WEBHOOK" ]; then
+              curl -s -X POST -H "Content-Type: application/json" \
+                -d "{\"embeds\":[{\"title\":\"🚨 services-list-EF nere ($((FAIL_COUNT+1))+ konsekutiva fail)\",\"description\":\"5+ konsekutiva HTTP-fel mot services-list. Sannolikt INTE bara cold-start. Kund-bokningsflödet KAN vara påverkat.\",\"color\":15548997,\"fields\":[{\"name\":\"Action\",\"value\":\"Manuell undersökning krävs — kolla Supabase Edge Functions logs.\"}]}]}" \
+                "$DISCORD_WEBHOOK" || true
+            fi
+            exit 1
+          fi
+
+          # Sporadisk 503 — logga men exit 0 (alerta inte)
+          echo "Sporadisk fail ($((FAIL_COUNT+1))/5) — väntar på fler innan eskalering"
+          exit 0
+        shell: bash
